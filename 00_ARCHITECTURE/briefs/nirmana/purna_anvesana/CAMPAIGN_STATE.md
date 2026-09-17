@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0092
-last_updated: 2026-09-17T23:20:00+05:30
+last_event: PA-E0093
+last_updated: 2026-09-17T23:25:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -57,6 +57,11 @@ layer state, queue or authority.
   snapshot (`sha256:ace22…a8ec4`, 182 SCUs, 15 reviewed output claims) and revalidated. Full platform
   test gate: 12,052 passed, 704 skipped, 2 todo; TypeScript and both capability-codegen freshness
   checks pass. This proves local source consistency only, not candidate/live product acceptance.
+
+- MCP source verification: the required managed-job/runtime/lifecycle/status subset passes 24/24;
+  `platform-mcp` typecheck and generated-envelope/registry-shim freshness also pass. This preserves
+  a source-level recovery and lifecycle claim only. It does not prove a cross-instance candidate
+  restart, a served revision, or any three-door product case.
 
 - Product evidence M1: the new real three-door collector has passed focused source checks
   (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without
