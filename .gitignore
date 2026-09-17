@@ -125,6 +125,9 @@ python-sidecar/venv/
 # Paripraśna probe harness — generated turn transcripts (may embed a real reading)
 platform/scripts/probe/out/
 
+# Purna real-collection configurations and responses are local restricted evidence.
+verification_artifacts/purna/
+
 # P4-K narration audit — self-test regenerates this report from the committed
 # fixtures on every run; the fixtures are the source of truth, not the report.
 platform/scripts/probe/fixtures/p4k/*/report.json
