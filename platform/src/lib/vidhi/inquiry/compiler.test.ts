@@ -3,7 +3,7 @@ import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledge/overlay'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
-import { applyInquiryObservations, buildInquiryClosureReceipt, compileInquiryContract, failInquiryForOverlayDrift, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
+import { applyInquiryObservations, buildInquiryClosureReceipt, closeInquiryForEvidenceSuccessor, compileInquiryContract, compileInquirySuccessorContract, failInquiryForOverlayDrift, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
 import type { ScopeTuple } from '../types'
 import type { InquiryContract } from './types'
 
@@ -24,6 +24,45 @@ function withRecomputedAuthorization(contract: InquiryContract): InquiryContract
 
 describe('versioned inquiry compiler', () => {
   const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-13T00:00:00.000Z')
+
+  it('creates a fresh, evidence-admitted successor without mutating the parent authorization', () => {
+    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope, max_iterations: 1 })
+    const source = initial.plan_items.find((item) => item.state === 'ready'
+      && item.obligation_ids.some((id) => initial.obligations.find((obligation) => obligation.obligation_id === id)?.materiality === 'required'))
+    expect(source).toBeDefined()
+    const observed = recordInquiryExecution(initial, {
+      item_id: source!.item_id, disposition: 'served', evidence_refs: ['raw:parent-evidence'],
+      pagination: { semantics: 'offset', exhausted: false, next: 50 },
+    })
+    const parent = closeInquiryForEvidenceSuccessor(observed)
+    const successor = compileInquirySuccessorContract({ snapshot, parent_inquiry_id: '11111111-1111-4111-8111-111111111111', parent })
+
+    expect(successor.successor).toMatchObject({
+      parent_inquiry_id: '11111111-1111-4111-8111-111111111111',
+      parent_contract_hash: parent.semantic_contract_hash,
+      admitted_frontier: [expect.objectContaining({ evidence_refs: ['raw:parent-evidence'] })],
+    })
+    expect(successor.plan_items).not.toHaveLength(0)
+    expect(successor.plan_items.every((item) => parent.plan_items.some((prior) => prior.scu_id === item.scu_id))).toBe(true)
+    expect(inquiryAuthorizationHashes(successor)).toMatchObject({
+      semantic_contract_hash: successor.semantic_contract_hash,
+      execution_plan_hash: successor.execution_plan_hash,
+      contract_id: successor.contract_id,
+    })
+    expect(validateInquiryContract(successor)).toEqual({ valid: true, errors: [] })
+    expect(parent).toMatchObject({ status: 'BLOCKED', status_reasons: expect.arrayContaining(['evidence-admitted successor issued']) })
+  })
+
+  it('refuses a continuation frontier that has no server-observed evidence', () => {
+    const parent = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+    const open = parent.material_frontier.find((frontier) => frontier.materiality === 'required')
+    const forged = {
+      ...parent,
+      status: 'BLOCKED' as const,
+      material_frontier: open ? [open] : [{ frontier_id: 'frontier-001', discovered_from: 'item-001', scu_id: parent.plan_items[0]!.scu_id, materiality: 'required' as const, reason: 'forged', disposition: 'open' as const }],
+    }
+    expect(() => compileInquirySuccessorContract({ snapshot, parent_inquiry_id: '11111111-1111-4111-8111-111111111111', parent: forged })).toThrow('INQUIRY_SUCCESSOR_NO_EVIDENCE_ADMITTED_FRONTIER')
+  })
 
   it('compiles the finance/prosperity golden journey without missing key mechanisms', () => {
     const contract = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Give me a complete deep finance and prosperity outlook: promise, inhibitors, cancellations, varga contradictions, and timing.', scope_tuple: wealthScope })

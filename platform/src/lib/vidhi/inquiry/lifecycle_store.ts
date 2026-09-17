@@ -5,6 +5,7 @@ import { withInquiryStoreContext } from './store_pool'
 
 export interface InquiryLifecycleRow {
   inquiry_id: string
+  parent_inquiry_id: string | null
   principal_uid: string
   chart_id: string
   semantic_contract_hash: string
@@ -19,6 +20,33 @@ export interface InquiryLifecycleRow {
   revision: number
   current_jti_hash: string
   expires_at: string
+}
+
+/** Atomically terminalize a blocked parent and persist one fresh successor. */
+export async function createInquirySuccessorLifecycle(args: {
+  parent: InquiryLifecycleRow
+  expected_parent_jti_hash: string
+  parent_final_contract: InquiryContract
+  inquiry_id: string
+  contract: InquiryContract
+  jti_hash: string
+  expires_at: string
+}): Promise<InquiryLifecycleRow> {
+  return withInquiryStoreContext(args.parent.principal_uid, args.parent.chart_id, async (client) => {
+    const result = await client.query<InquiryLifecycleRow>(
+      `SELECT * FROM create_planner_inquiry_successor_lifecycle(
+        $1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15::jsonb,$16,$17
+      )`,
+      [args.parent.inquiry_id, args.parent.principal_uid, args.parent.chart_id, args.parent.revision,
+        args.expected_parent_jti_hash, JSON.stringify(args.parent_final_contract), args.inquiry_id,
+        args.contract.semantic_contract_hash, args.contract.execution_plan_hash,
+        args.contract.capability_content_hash, args.contract.capability_compatibility_version,
+        args.contract.chart_availability_version, args.contract.chart_build_id,
+        JSON.stringify(args.contract), JSON.stringify(args.contract), args.jti_hash, args.expires_at],
+    )
+    if (!result.rows[0]) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
+    return result.rows[0]
+  })
 }
 
 export interface InquiryActionReservationRow {

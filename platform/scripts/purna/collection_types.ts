@@ -36,7 +36,10 @@ export interface DoorClient { collect(input: AcceptanceCase): Promise<CollectedC
 export function isLiveEvidence(row: CollectedCase): boolean {
   return row.source !== 'fixture'
     && row.networkCallCount > 0
-    && row.terminal === 'complete'
+    // A genuinely served, revision-bound honest insufficiency remains live
+    // evidence. The acceptance protocol, not collection transport, decides
+    // whether its bounded outcome satisfies the particular case.
+    && row.terminal !== 'transport_error'
     && row.observedRevision === row.expectedRevision
     && row.receiptRefs.length > 0
 }

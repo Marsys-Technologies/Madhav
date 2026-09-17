@@ -15,6 +15,7 @@ import {
   type InquiryPlanningBudgetReceipt,
   type InquiryPlanItem,
   type InquiryScopeTuple,
+  type InquirySuccessorReceipt,
   type InquiryValidationResult,
   type MaterialFrontierItem,
 } from './types'
@@ -604,6 +605,115 @@ export function compileInquiryContract(args: {
   }
 }
 
+/**
+ * Compile a fresh contract only for required frontier items that were
+ * discovered by a server-observed, evidence-bearing parent action.  This does
+ * not mutate the parent contract or re-run the broad deterministic floor.
+ */
+export function compileInquirySuccessorContract(args: {
+  snapshot: CapabilityKnowledgeSnapshot
+  overlay?: ChartCapabilityOverlay | null
+  parent_inquiry_id: string
+  parent: InquiryContract
+  max_iterations?: number
+}): InquiryContract {
+  if (!args.parent_inquiry_id) throw new Error('INQUIRY_SUCCESSOR_PARENT_ID_REQUIRED')
+  if (args.parent.status === 'COMPLETE') throw new Error('INQUIRY_SUCCESSOR_PARENT_COMPLETE')
+  if (args.overlay) assertOverlayCompatibility(args.snapshot, args.overlay, args.parent.chart_id)
+  const admitted = args.parent.material_frontier
+    .filter((frontier) => frontier.materiality === 'required' && ['open', 'capped'].includes(frontier.disposition))
+    .flatMap((frontier) => {
+      const source = args.parent.plan_items.find((item) => item.item_id === frontier.discovered_from)
+      if (!source || source.observation?.disposition !== 'served' || source.observation.evidence_refs.length === 0) return []
+      if (!args.snapshot.scus.some((scu) => scu.scu_id === frontier.scu_id)) return []
+      return [{ frontier, evidence_refs: unique(source.observation.evidence_refs).sort() }]
+    })
+  if (admitted.length === 0) throw new Error('INQUIRY_SUCCESSOR_NO_EVIDENCE_ADMITTED_FRONTIER')
+
+  const obligations: InquiryObligation[] = admitted.map(({ frontier }, index) => makeObligation(index, {
+    label: `Evidence-admitted frontier: ${frontier.scu_id}`,
+    source: 'adaptive_frontier',
+    materiality: 'required',
+    scu_ids: [frontier.scu_id],
+    rationale: `Parent frontier ${frontier.frontier_id}: ${frontier.reason}${frontier.source_ref ? ` [${frontier.source_ref}]` : ''}`,
+  }))
+  const presentationTransport = presentationTransportForInquiry(args.parent.execution_channel)
+  const inheritedAnchor = args.parent.plan_items
+    .map((item) => item.argument_resolution?.temporal_anchor_date ?? null)
+    .find((anchor): anchor is string => anchor !== null) ?? undefined
+  const plan = planFor(args.snapshot, obligations, args.parent.chart_id, args.parent.question,
+    args.parent.scope_tuple, presentationTransport, inheritedAnchor, 'caller_temporal_anchor', args.overlay)
+  const successorObligations = obligations.map((obligation) => {
+    const items = plan.filter((item) => item.obligation_ids.includes(obligation.obligation_id))
+    if (items.length === 0 || items.some((item) => item.state !== 'blocked')) return obligation
+    return {
+      ...obligation,
+      disposition: 'dark' as const,
+      gap_reason: unique(items.map((item) => item.blocked_reason).filter((reason): reason is string => Boolean(reason))).join('; ') || 'No executable successor plan item is available.',
+    }
+  })
+  const successorBase = {
+    successor_version: 'inquiry-successor-v1' as const,
+    parent_inquiry_id: args.parent_inquiry_id,
+    parent_contract_hash: args.parent.semantic_contract_hash,
+    parent_execution_plan_hash: args.parent.execution_plan_hash,
+    parent_contract_state_hash: stableFingerprint(args.parent),
+    parent_contract: args.parent,
+    admitted_frontier: admitted.map(({ frontier, evidence_refs }) => ({
+      frontier_id: frontier.frontier_id, scu_id: frontier.scu_id, discovered_from: frontier.discovered_from,
+      reason: frontier.reason, ...(frontier.source_ref ? { source_ref: frontier.source_ref } : {}), evidence_refs,
+    })),
+  }
+  const successor: InquirySuccessorReceipt = { ...successorBase, successor_hash: stableFingerprint(successorBase) }
+  const semanticContractHash = stableFingerprint({
+    contract_version: INQUIRY_CONTRACT_VERSION, compiler_version: INQUIRY_COMPILER_VERSION,
+    question: args.parent.question, scope_tuple: args.parent.scope_tuple,
+    capability_content_hash: args.snapshot.content_hash, obligations: semanticObligationProjection(successorObligations),
+    omission_findings: [], scope_normalization: semanticNormalizationProjection(args.parent.scope_normalization),
+    graph_traversal: args.parent.graph_traversal, omission_challenge: args.parent.omission_challenge,
+    planning_budget: args.parent.planning_budget, material_frontier: [], successor,
+  })
+  const executionPlanHash = stableFingerprint({ semantic_contract_hash: semanticContractHash,
+    chart_id: args.parent.chart_id, execution_channel: args.parent.execution_channel,
+    plan_items: executionPlanAuthorizationProjection(plan) })
+  return {
+    contract_version: INQUIRY_CONTRACT_VERSION, compiler_version: INQUIRY_COMPILER_VERSION,
+    contract_id: stableFingerprint({ semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash }),
+    semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash,
+    chart_id: args.parent.chart_id, question: args.parent.question, scope_tuple: args.parent.scope_tuple,
+    execution_channel: args.parent.execution_channel,
+    capability_compatibility_version: args.snapshot.compatibility_version,
+    capability_content_hash: args.snapshot.content_hash,
+    chart_availability_version: args.overlay?.overlay_version ?? null, chart_build_id: args.overlay?.build_id ?? null,
+    obligations: successorObligations, plan_items: plan, material_frontier: [], omission_findings: [],
+    ai_hypotheses: [], status: 'INCOMPLETE', status_reasons: ['evidence_admitted_frontier_pending'],
+    iteration: 0, max_iterations: args.max_iterations === undefined ? Math.min(Math.max(plan.length + 4, 4), 64) : Math.max(1, Math.min(args.max_iterations, 64)),
+    scope_normalization: args.parent.scope_normalization, graph_traversal: args.parent.graph_traversal,
+    omission_challenge: args.parent.omission_challenge, planning_budget: args.parent.planning_budget, successor,
+  }
+}
+
+/**
+ * A parent may become terminal only when its remaining work is handed to a
+ * fresh evidence-admitted contract.  The route separately rejects any active
+ * reservation before committing this transition.
+ */
+export function closeInquiryForEvidenceSuccessor(contract: InquiryContract): InquiryContract {
+  const finalized = finalizeInquiryContract(contract)
+  if (finalized.status !== 'BLOCKED') throw new Error('INQUIRY_SUCCESSOR_PARENT_NOT_TERMINAL')
+  const hasAdmissibleFrontier = finalized.material_frontier.some((frontier) => {
+    if (frontier.materiality !== 'required' || !['open', 'capped'].includes(frontier.disposition)) return false
+    const source = finalized.plan_items.find((item) => item.item_id === frontier.discovered_from)
+    return source?.observation?.disposition === 'served' && source.observation.evidence_refs.length > 0
+  })
+  if (!hasAdmissibleFrontier) throw new Error('INQUIRY_SUCCESSOR_NO_EVIDENCE_ADMITTED_FRONTIER')
+  return {
+    ...finalized,
+    status: 'BLOCKED',
+    status_reasons: unique([...finalized.status_reasons, 'evidence-admitted successor issued']),
+  }
+}
+
 /** Recompute the immutable authorization hashes from the original contract. */
 export function inquiryAuthorizationHashes(contract: InquiryContract): {
   semantic_contract_hash: string
@@ -623,6 +733,7 @@ export function inquiryAuthorizationHashes(contract: InquiryContract): {
     omission_challenge: contract.omission_challenge,
     planning_budget: contract.planning_budget,
     material_frontier: contract.material_frontier.filter(isCompilerFrontier),
+    ...(contract.successor ? { successor: contract.successor } : {}),
   })
   const executionPlanHash = stableFingerprint({
     semantic_contract_hash: semanticContractHash,
@@ -780,6 +891,12 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
           + Math.max(0, contract.graph_traversal.selected_scu_ids.length - contract.graph_traversal.seed_scu_ids.length)
         if (budget.graph_expansion_nodes_selected !== expectedExpansion) errors.push('graph expansion count does not match traversal receipt')
       }
+    }
+    if (contract.successor) {
+      const { successor_hash: successorHash, ...successor } = contract.successor
+      if (successorHash !== stableFingerprint(successor)) errors.push('successor receipt hash mismatch')
+      if (contract.successor.admitted_frontier.length === 0) errors.push('successor lacks evidence-admitted frontier')
+      if (contract.successor.admitted_frontier.some((item) => item.evidence_refs.length === 0)) errors.push('successor frontier lacks parent evidence refs')
     }
   }
   const obligationIds = new Set<string>()

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { InquiryContract, InquiryResponseAccountability } from '../../src/lib/vidhi/inquiry'
 import type { AcceptanceCase, AcceptanceDoor, CollectedCase, CollectionTerminal, DoorClient } from './collection_types'
 
 type Json = Record<string, unknown>
@@ -57,6 +58,21 @@ function terminalFrom(value: unknown): CollectionTerminal {
 
 export interface McpInvoker { call(name: string, args: Json): Promise<unknown> }
 
+/**
+ * The raw lifecycle deliberately stops at governed evidence and closure. A
+ * reference client may author prose externally, but it must return the same
+ * independently derived response-accountability envelope before Pūrṇa will
+ * treat that prose as assessable evidence.
+ */
+export interface RawExternalSynthesizer {
+  (input: {
+    readonly test: AcceptanceCase
+    readonly inquiryId: string
+    readonly contract: InquiryContract
+    readonly evidencePayloads: readonly unknown[]
+  }): Promise<{ readonly answer: string; readonly responseAccountability: InquiryResponseAccountability }>
+}
+
 export async function collectManagedCase(input: {
   readonly test: AcceptanceCase
   readonly expectedRevision: string
@@ -93,6 +109,7 @@ export async function collectRawCase(input: {
   readonly chartId: string
   readonly invoker: McpInvoker
   readonly maxActions: number
+  readonly synthesize?: RawExternalSynthesizer
 }): Promise<CollectedCase> {
   let calls = 0
   let response = record(await input.invoker.call('inquiry_start', {
@@ -103,6 +120,7 @@ export async function collectRawCase(input: {
   let token = typeof response.lifecycle_token === 'string' ? response.lifecycle_token : null
   if (!inquiryId || !token) return failed(input, 'raw_mcp', calls, 'RAW_LIFECYCLE_START_INVALID')
   const seen = new Set<string>()
+  const evidencePayloads: unknown[] = []
   for (let step = 0; step < input.maxActions; step += 1) {
     const actionId = strings(response.next_action_ids)[0]
     if (!actionId) break
@@ -111,12 +129,35 @@ export async function collectRawCase(input: {
     seen.add(transition)
     response = record(await input.invoker.call('inquiry_execute_next', { lifecycle_token: token, action_id: actionId }))
     calls += 1
+    // Preserve the exact payload whose hash the lifecycle committed. The raw
+    // client must never synthesize from a reconstructed or convenience-shaped
+    // substitute, because that would sever the answer register from receipt
+    // evidence.
+    if (response.raw_result !== undefined) evidencePayloads.push(response.raw_result)
     token = typeof response.lifecycle_token === 'string' ? response.lifecycle_token : null
     if (!token) return normalize(input, 'raw_mcp', response, calls, inquiryId)
   }
   if (!token) return failed(input, 'raw_mcp', calls, 'RAW_LIFECYCLE_TOKEN_MISSING', inquiryId)
   response = record(await input.invoker.call('inquiry_finalize', { lifecycle_token: token }))
   calls += 1
+  if (input.synthesize) {
+    const contract = response.contract
+    if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
+      return failed(input, 'raw_mcp', calls, 'RAW_FINAL_CONTRACT_MISSING', inquiryId)
+    }
+    try {
+      const synthesis = await input.synthesize({
+        test: input.test,
+        inquiryId,
+        contract: contract as InquiryContract,
+        evidencePayloads,
+      })
+      calls += 1
+      response = { ...response, answer: synthesis.answer, response_accountability: synthesis.responseAccountability }
+    } catch {
+      return failed(input, 'raw_mcp', calls, 'RAW_EXTERNAL_SYNTHESIS_FAILED', inquiryId)
+    }
+  }
   return normalize(input, 'raw_mcp', response, calls, inquiryId)
 }
 

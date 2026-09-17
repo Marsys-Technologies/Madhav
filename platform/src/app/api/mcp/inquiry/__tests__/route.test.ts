@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   issue: vi.fn(),
   verify: vi.fn(),
   create: vi.fn(),
+  createSuccessor: vi.fn(),
   get: vi.fn(),
   commitObservation: vi.fn(),
   commitFinalization: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock('@/lib/vidhi/inquiry', async (importOriginal) => {
 })
 vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
   createInquiryLifecycle: mocks.create,
+  createInquirySuccessorLifecycle: mocks.createSuccessor,
   getInquiryLifecycle: mocks.get,
   commitInquiryObservation: mocks.commitObservation,
   commitInquiryFinalization: mocks.commitFinalization,
@@ -66,7 +68,7 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
-import { compileInquiryContract, finalizeInquiryContract } from '@/lib/vidhi/inquiry/compiler'
+import { compileInquiryContract, finalizeInquiryContract, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
@@ -382,6 +384,57 @@ describe('raw MCP inquiry route', () => {
     expect(await response.json()).toMatchObject({ next_action_ids: ['item-001'], pagination: { next: 50 } })
   })
 
+  it('rejects successor creation without a terminal evidence-admitted frontier', async () => {
+    primeStoredLifecycle({ allowed_transition: 'finalize', next_action_ids: [] })
+    const result = await POST(request({ action: 'continue', lifecycle_token: 'current-token' }))
+    expect(result.status).toBe(409)
+    expect(await result.json()).toEqual({ ok: false, error: 'INQUIRY_SUCCESSOR_NOT_AUTHORIZED' })
+    expect(mocks.createSuccessor).not.toHaveBeenCalled()
+  })
+
+  it('atomically creates a fresh successor from a capped, served material frontier', async () => {
+    mocks.overlay.mockResolvedValue({
+      chart_id: chartId, overlay_version: null, capability_compatibility_version: 'planner-scu-v1',
+      catalog_content_hash: 'sha256:catalog', build_id: null, availability: [],
+    })
+    mocks.snapshot.mockReturnValue({
+      content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      scus: [{ scu_id: 'scu.test', bindings: [{
+        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability',
+        capability_uri: 'marsys://tool/L1/test', executable: true, execution_channels: ['mcp_full'],
+        relation: 'primary', input_contract: {},
+      }] }],
+    })
+    const initial = { ...contract(), max_iterations: 1 }
+    const parent = recordInquiryExecution(initial, {
+      item_id: 'item-001', disposition: 'served', evidence_refs: ['raw:parent-evidence'],
+      pagination: { semantics: 'offset', exhausted: false, next: 50 },
+    })
+    mocks.verify.mockReturnValue({
+      sub: 'user-1:key-1', inquiry_id: 'inquiry-1', chart_id: chartId,
+      contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+      catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      overlay_version: null, chart_build_id: null, contract_state_hash: stateHash(parent),
+      revision: 0, allowed_transition: 'finalize', next_action_ids: [], jti: 'current-jti', exp: 2_000_000_000,
+    })
+    mocks.get.mockResolvedValue({
+      inquiry_id: 'inquiry-1', parent_inquiry_id: null, principal_uid: 'user-1', chart_id: chartId,
+      semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+      capability_content_hash: 'sha256:catalog', capability_compatibility_version: 'planner-scu-v1',
+      chart_overlay_version: null, chart_build_id: null, authorization_jsonb: parent, contract_jsonb: parent,
+      status: 'INCOMPLETE', revision: 0, current_jti_hash: 'sha256:current-jti', expires_at: '2099-01-01T00:00:00Z',
+    })
+
+    const result = await POST(request({ action: 'continue', lifecycle_token: 'current-token' }))
+    expect(result.status).toBe(200)
+    expect(await result.json()).toMatchObject({ ok: true, parent_inquiry_id: 'inquiry-1', lifecycle_token: 'next-token' })
+    expect(mocks.createSuccessor).toHaveBeenCalledWith(expect.objectContaining({
+      parent: expect.objectContaining({ inquiry_id: 'inquiry-1' }),
+      parent_final_contract: expect.objectContaining({ status: 'BLOCKED' }),
+      contract: expect.objectContaining({ successor: expect.objectContaining({ parent_inquiry_id: 'inquiry-1' }) }),
+    }))
+  })
+
   it.each([
     ['first', false, 'middle'],
     ['middle', false, 'final'],
@@ -668,6 +721,7 @@ describe('raw MCP inquiry route', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       ok: true,
+      contract: blocked,
       closure: { status: 'BLOCKED', status_reasons: ['required_obligation_failed'] },
       inquiry_door_parity: {
         parity_version: 'inquiry-door-parity-v1',
