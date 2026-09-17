@@ -640,8 +640,10 @@ export const getDashasCapability: CapabilityDescriptor = {
       // may select the build. The fence covers an active replacement AND a terminal ga_dashas
       // run whose mutation/terminal time is at-or-after the selected receipt but lacks its own
       // fresh/proven receipt. A run can start before a later successful run and still mutate
-      // afterwards, so started_at is not a safe ordering boundary. NULL ended_at fences
-      // conservatively; terminal runs known to have ended before the receipt do not block it.
+      // afterwards, so started_at is not a safe ordering boundary. The asset's ended_at is
+      // the producer-specific mutation boundary; fall back to the run's terminal time only
+      // when it is absent. NULL for both fences conservatively; a terminal asset known to
+      // have ended before the receipt does not block it.
       let pageResult: { rows: Array<{
         replacement_in_progress: boolean
         eligible_build_id: string | null
@@ -685,7 +687,8 @@ export const getDashasCapability: CapabilityDescriptor = {
                   OR (
                     EXISTS (
                       SELECT 1 FROM eligible_receipt eligible
-                       WHERE fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at
+                       WHERE COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL
+                          OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at
                     )
                     AND NOT EXISTS (
                       SELECT 1

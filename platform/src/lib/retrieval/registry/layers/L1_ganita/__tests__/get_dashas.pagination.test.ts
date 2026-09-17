@@ -40,12 +40,13 @@ function mockBuildPages(state: {
   queryMock.mockImplementation((sql: string, params: unknown[] = []) => {
     if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
     if (sql.includes('replacement_fence AS')) {
+      const normalizedSql = sql.replace(/\s+/g, ' ')
       const buildId = state.eligibleBuild
       const offset = Number(params[2])
       const fetchLimit = Number(params[1])
       const terminalRunIsFenced = Boolean(state.unreceiptedTerminalRun && state.terminalRunEndedAfterReceipt)
-        && sql.includes('fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at')
-        && sql.includes('proven_receipt.build_id = fenced_run.id')
+        && normalizedSql.includes('COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at')
+        && normalizedSql.includes('proven_receipt.build_id = fenced_run.id')
       pageCalls.push({ sql, params })
       return Promise.resolve({ rows: [{
         replacement_in_progress: state.replacementInProgress ?? terminalRunIsFenced,
@@ -281,7 +282,7 @@ describe('get_dashas build-pinned cursor pagination', () => {
         is_error: true,
         content: { code: 'ga_dashas_replacement_in_progress', restart_required: true },
       })
-      expect(database.pageCalls[0]?.sql).toContain('fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at')
+      expect(database.pageCalls[0]?.sql.replace(/\s+/g, ' ')).toContain('COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at')
       expect(database.pageCalls[0]?.sql).toContain('proven_receipt.build_id = fenced_run.id')
     },
   )
@@ -300,7 +301,7 @@ describe('get_dashas build-pinned cursor pagination', () => {
       is_error: false,
       content: { build_id: 'build-new', rows: [expect.objectContaining({ dasha_row_id: 'n' })] },
     })
-    expect(database.pageCalls[0]?.sql).toContain('fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at')
+    expect(database.pageCalls[0]?.sql.replace(/\s+/g, ' ')).toContain('COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at')
   })
 
   it('clears the post-clean fence when the latest fresh/proven receipt belongs to the new run', async () => {
