@@ -2,8 +2,8 @@
   "schema_version": "madhav-purna-anvesana/product-acceptance-protocol/v2",
   "protocol_version": "purna-product-acceptance-v2",
   "campaign_id": "madhav-purna-anvesana",
-  "status": "HARNESS_READY_NOT_EXECUTED",
-  "claim_ceiling": "HARNESS_AND_DETERMINISTIC_GATES_ONLY",
+  "status": "SUCCESSOR_AUTOMATED_PRODUCT_ACCEPTANCE_ACTIVE",
+  "claim_ceiling": "REAL_THREE_DOOR_COLLECTION_PLUS_DETERMINISTIC_AND_INDEPENDENT_AUTOMATED_GATES_REQUIRED",
   "execution_authority": "An explicit candidate or live environment configuration approved for this protocol. This artifact authorizes no network call by itself.",
   "immutable_beyond_acarya": {
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
@@ -60,5 +60,11 @@
     "human_expert_review_required_for_empirical_claims": true,
     "fixtures_count_as_live_evidence": false,
     "current_verdict": "NOT_RUN"
+  },
+  "successor_product_delivery": {
+    "approved_plan": "docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md",
+    "frozen_execution_denominator": {"original_cases": 5, "product_cases": 30, "doors": 3},
+    "human_expert_research": "NOT_RUN_SEPARATE_FROM_PRODUCT_RELEASE_GATE",
+    "source_or_fixture_only_is_not_a_pass": true
   }
 }

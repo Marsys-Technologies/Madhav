@@ -2,13 +2,13 @@
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 version: 0.20.0
-status: LIVE_WRAPUP_IMPLEMENTATION_SEALED
+status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0079
-last_updated: 2026-09-16T02:41:04+05:30
+last_event: PA-E0084
+last_updated: 2026-09-17T20:36:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,21 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- Successor execution: the Native approved the complete planner and inquiry product-delivery plan
+  at `docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md`; its exact transferred
+  copy has SHA-256 `6cc17144f3877bdac7048f9a7cba5caf15e1f7ca59306289c0f13ec94eb1b666`. Sole execution
+  ownership is task `01a0afe3-2832-7692-b133-d1e6b6bfcdf6` on
+  `codex/purna-product-completion-v2`, created from protected main
+  `0f2d9cc0259ac5983fda7f5e10d75ce189e7440f`, which contains PR #2626 merge
+  `079e77ef92f25217921f02e4956162f43fe3f824`. The fixed release denominator is the original
+  five cases/34 route obligations plus 30 product scenarios across Portal, managed MCP and
+  governed raw MCP. Product delivery now uses real collection, deterministic gates and independent
+  automated assessment; human-expert empirical research remains separately `NOT_RUN` and is not a
+  product-release gate. The predecessor is stood down and preserved. The shared data-plane boundary
+  is idle, but a protected environment owner must replace the structurally unusable
+  `DATA_PLANE_ADMIN_DATABASE_URL` with a valid password-bearing administrator URL before a later
+  data-plane cutover; no secret was accessed, changed or reconstructed here.
 
 - Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
   independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,
