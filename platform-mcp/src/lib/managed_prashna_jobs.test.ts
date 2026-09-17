@@ -54,6 +54,24 @@ describe('platform durable managed-job client', () => {
     })
   })
 
+  it('carries the one durable inquiry identity through an ambiguous create retry', async () => {
+    const inquiryId = 'dddddddd-1111-4000-8000-000000000001'
+    fetchMock
+      .mockRejectedValueOnce(new Error('response lost after commit'))
+      .mockResolvedValueOnce(response({ ok: true, job: job({ inquiry_id: inquiryId }) }))
+
+    const created = await new PlatformManagedPrashnaJobStore().create(principal, {
+      job_id: jobId, chart_id: chartId, inquiry_id: inquiryId,
+      request: { question: 'wealth?', response_format: 'standard' },
+    } as never)
+
+    expect((created as unknown as { inquiry_id?: string }).inquiry_id).toBe(inquiryId)
+    const firstBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    const retryBody = JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string)
+    expect(firstBody.inquiry_id).toBe(inquiryId)
+    expect(retryBody.inquiry_id).toBe(inquiryId)
+  })
+
   it('retries an ambiguous create with the same caller-generated idempotency key', async () => {
     fetchMock
       .mockRejectedValueOnce(new Error('response lost after commit'))

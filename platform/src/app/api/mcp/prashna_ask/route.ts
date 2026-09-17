@@ -89,6 +89,8 @@ import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
 import { synthesizeReading } from '@/lib/pipeline/prashna_ask_synthesis'
+import { ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
+import { getManagedPrashnaJob } from '@/lib/vidhi/inquiry/managed_job_store'
 
 // Wall-clock generous enough for the elevated super_admin cost cap (300s) plus
 // margin for the HTTP round trip; the resolved per-entitlement cap enforces the
@@ -109,6 +111,9 @@ interface PrashnaAskRequestBody {
    * see `callPipelinePlanner`'s `suppliedScopeTuple` param.
    */
   scope_tuple?: unknown
+  /** Present only on the authenticated managed-job bridge. */
+  managed_inquiry_id?: string
+  managed_job_id?: string
 }
 
 const PRASHNA_RESPONSE_FORMATS = ['digest', 'summary', 'standard', 'narrative', 'full'] as const
@@ -531,7 +536,7 @@ export async function POST(request: Request) {
   ensureDashaContextFloor(plan, toolsAuthorized)
   const nowContextDate = new Date().toISOString().slice(0, 10)
   let inquirySnapshot: CapabilityKnowledgeSnapshot | null = null
-  const initialInquiryContract = plan.scope_tuple
+  let initialInquiryContract = plan.scope_tuple
     ? await (async () => {
         inquirySnapshot = assertPinnedCapabilityKnowledgeCurrent()
         const overlay = await loadChartCapabilityOverlay(inquirySnapshot, chartId)
@@ -551,6 +556,41 @@ export async function POST(request: Request) {
         return contract
       })()
     : null
+
+  let managedInquirySession: ManagedInquiryExecutionSession | null = null
+  if (body.managed_inquiry_id !== undefined || body.managed_job_id !== undefined) {
+    if (!body.managed_inquiry_id || !body.managed_job_id) {
+      return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry and job identifiers must be supplied together' }), { status: 400 })
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.managed_inquiry_id)) {
+      return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_inquiry_id must be a UUID' }), { status: 400 })
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.managed_job_id)) {
+      return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_job_id must be a UUID' }), { status: 400 })
+    }
+    if (!initialInquiryContract) {
+      return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry requires a resolved scope tuple' }), { status: 409 })
+    }
+    const managedJob = await getManagedPrashnaJob({
+      job_id: body.managed_job_id,
+      principal_uid: userUid,
+      principal_key_id: keyId,
+    })
+    if (!managedJob || managedJob.chart_id !== chartId || managedJob.request_jsonb.inquiry_id !== body.managed_inquiry_id) {
+      return NextResponse.json(buildErrorEnvelope({ error_class: 'auth', message: 'managed inquiry does not match the authenticated durable job' }), { status: 401 })
+    }
+    managedInquirySession = await ManagedInquiryExecutionSession.open({
+      inquiry_id: body.managed_inquiry_id,
+      principal_uid: userUid,
+      contract: initialInquiryContract,
+      // The managed job itself has a 24-hour logical retention deadline; do
+      // not create a second, longer-lived continuation allowance here.
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    })
+    initialInquiryContract = managedInquirySession.currentContract
+    const adopted = adoptInquiryPlanItems(plan, initialInquiryContract)
+    toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
+  }
 
   // ── PPR-12 PLAN-TIME ENFORCEMENT (G1-A hardening round, C-3) ────────────────
   //
@@ -708,7 +748,11 @@ export async function POST(request: Request) {
   })
 
   async function runDispatchLoop(controller: ReadableStreamDefaultController<Uint8Array>): Promise<void> {
-      const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = []
+      const recoveredToolResults = managedInquirySession
+        ? await managedInquirySession.recoveredEvidence()
+        : []
+      const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = recoveredToolResults
+        .map((entry) => entry as { tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle })
       const toolEventLog: ToolDispatchOutcome[] = []
       // Seeded with whatever the plan-time safety pass recorded, so a stripped
       // capability is disclosed on the wire rather than silently absent.
@@ -716,7 +760,7 @@ export async function POST(request: Request) {
       let costCapTripped: { reason: string; judgmentFlag: string } | null = null
       let unservedTools: string[] = []
       const unresolvedTools: string[] = []
-      let retainedToolResultBytes = 2 // JSON array delimiters
+      let retainedToolResultBytes = Buffer.byteLength(JSON.stringify(toolResults)) // JSON array delimiters + recovered evidence
 
       const retainToolResult = (
         toolName: string,
@@ -774,17 +818,72 @@ export async function POST(request: Request) {
 
         const toolStart = Date.now()
         let terminalResultBudgetStopped = false
+        const capabilityUri = resolveToolUri(toolName)
+        const managedItem = managedInquirySession && capabilityUri
+          ? managedInquirySession.currentContract.plan_items.find((item) => item.state === 'ready' && item.binding_id === `registry:${capabilityUri}`)
+          : undefined
+        if (managedInquirySession && !managedItem) continue
+        const managedBinding = managedInquirySession && managedItem && inquirySnapshot
+          ? bindingForInquiryItem(inquirySnapshot, managedInquirySession.currentContract, managedItem.item_id)
+          : undefined
+        if (managedInquirySession && !managedBinding) {
+          unresolvedTools.push(toolName)
+          judgmentFlags.push('managed_inquiry_binding_unavailable')
+          break
+        }
+        if (managedInquirySession && managedItem) {
+          const begin = await managedInquirySession.beginAction(managedItem.item_id)
+          if (begin === 'in_progress') {
+            judgmentFlags.push('managed_inquiry_action_in_progress')
+            break
+          }
+          if (begin === 'ambiguous') {
+            await managedInquirySession.failClosedAmbiguity(managedItem.item_id)
+            judgmentFlags.push('managed_inquiry_dispatch_ambiguous')
+            break
+          }
+        }
         try {
           const bundle = await tool.retrieve(queryPlanLike, paramsByTool.get(toolName))
-          const capabilityUri = resolveToolUri(toolName)
           const contractItem = initialInquiryContract?.plan_items.find((item) => item.binding_id === `registry:${capabilityUri}`)
           const binding = contractItem && inquirySnapshot ? bindingForInquiryItem(inquirySnapshot, initialInquiryContract!, contractItem.item_id) : undefined
+          if (managedInquirySession && managedItem && managedBinding) {
+            // The lifecycle CAS/receipt is committed before the progress event
+            // below acknowledges this dispatch to the managed worker.
+            await managedInquirySession.persistAcceptedObservation({
+              plan_item_id: managedItem.item_id,
+              obligation_ids: managedItem.obligation_ids,
+              scu_id: managedItem.scu_id,
+              binding_id: managedItem.binding_id!,
+              tool_name: toolName,
+              bundle,
+              disposition: classifyInquiryResult(managedBinding, bundle),
+              pagination: deriveInquiryPaginationReceipt(managedBinding, bundle, managedItem.args),
+              invocation_args: managedItem.args,
+            })
+          }
           toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - toolStart })
           if (!retainToolResult(toolName, bundle)) {
             unservedTools = dispatchableTools.slice(i)
             terminalResultBudgetStopped = true
           }
         } catch (err) {
+          if (managedInquirySession && managedItem) {
+            if (managedBinding) {
+              await managedInquirySession.persistAcceptedObservation({
+                plan_item_id: managedItem.item_id,
+                obligation_ids: managedItem.obligation_ids,
+                scu_id: managedItem.scu_id,
+                binding_id: managedItem.binding_id!,
+                tool_name: toolName,
+                bundle: { ok: false, error: 'TOOL_DISPATCH_FAILED' },
+                disposition: 'failed',
+                pagination: { semantics: managedBinding.pagination, exhausted: true, next: null },
+                gap_reason: 'dispatch_error',
+                invocation_args: managedItem.args,
+              })
+            }
+          }
           toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - toolStart })
           console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
         }
@@ -817,8 +916,8 @@ export async function POST(request: Request) {
         judgmentFlags.push('empty_tool_results')
       }
 
-      let inquiryContract: InquiryContract | null = initialInquiryContract
-      if (inquiryContract && inquirySnapshot) {
+      let inquiryContract: InquiryContract | null = managedInquirySession?.currentContract ?? initialInquiryContract
+      if (inquiryContract && inquirySnapshot && !managedInquirySession) {
         const bundleByTool = new Map(toolResults.map((result) => [result.tool_name, result.bundle]))
         const eventByUri = new Map(toolEventLog.flatMap((event) => {
           const uri = resolveToolUri(event.tool_name)
@@ -898,6 +997,16 @@ export async function POST(request: Request) {
           inquiryContract = failInquiryForOverlayDrift(inquiryContract)
         } else {
           inquiryContract = finalizeInquiryContract(inquiryContract)
+        }
+      }
+      if (managedInquirySession && inquiryContract && inquirySnapshot) {
+        const currentOverlay = await loadChartCapabilityOverlay(inquirySnapshot, inquiryContract.chart_id)
+        if (currentOverlay.overlay_version !== inquiryContract.chart_availability_version
+          || currentOverlay.build_id !== inquiryContract.chart_build_id) {
+          judgmentFlags.push('capability_overlay_changed_during_inquiry')
+          inquiryContract = await managedInquirySession.failClosed(failInquiryForOverlayDrift(inquiryContract))
+        } else if (costCapTripped === null) {
+          inquiryContract = await managedInquirySession.finalizeWhenNoReady()
         }
       }
 

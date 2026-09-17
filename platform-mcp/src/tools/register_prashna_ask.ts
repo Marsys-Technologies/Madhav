@@ -146,8 +146,11 @@ export async function resumeManagedPrashnaJob(
   const claimed = await managedPrashnaJobs.claim(principal, jobId, workerId)
   if (!claimed || claimed.disposition !== 'acquired') return
   const jobRequest = claimed.job.request
-  if (!jobRequest) {
-    await managedPrashnaJobs.fail(principal, jobId, workerId, 'MANAGED_JOB_REQUEST_MISSING')
+  if (!jobRequest?.inquiry_id) {
+    // Legacy rows without the immutable managed inquiry identity cannot safely
+    // be restarted: doing so would mint a fresh lifecycle and risk replaying a
+    // protected action. Make the recovery visibly terminal instead.
+    await managedPrashnaJobs.fail(principal, jobId, workerId, 'MANAGED_JOB_INQUIRY_ID_MISSING')
     return
   }
 
@@ -165,6 +168,8 @@ export async function resumeManagedPrashnaJob(
     result = await callPrashnaAskEngine(
       {
         chartId: claimed.job.chart_id,
+        inquiryId: jobRequest.inquiry_id,
+        jobId,
         question: jobRequest.question,
         principal: { userUid: principal.user_uid, keyId: principal.key_id },
         responseFormat: jobRequest.response_format,
@@ -398,11 +403,13 @@ export function registerPrashnaAskTool(
       }
 
       const jobId = randomUUID()
+      const inquiryId = randomUUID()
       let job
       try {
         job = await managedPrashnaJobs.create(principal, {
           job_id: jobId,
           chart_id: parsed.chart_id,
+          inquiry_id: inquiryId,
           request: {
             question: parsed.question,
             response_format: parsed.response_format,

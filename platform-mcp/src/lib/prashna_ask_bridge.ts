@@ -141,6 +141,10 @@ export interface PrashnaAskScopeTuple {
 
 export interface CallPrashnaAskEngineInput {
   chartId: string
+  /** Immutable lifecycle identity owned by the durable managed job. */
+  inquiryId?: string
+  /** Correlates the internal lifecycle request to the authenticated job row. */
+  jobId?: string
   question: string
   principal: { userUid: string; keyId: string }
   /** Managed jobs always provide the persisted format. Optionality preserves
@@ -260,6 +264,8 @@ export async function callPrashnaAskEngine(
       },
       body: JSON.stringify({
         chart_id: input.chartId,
+        ...(input.inquiryId !== undefined ? { managed_inquiry_id: input.inquiryId } : {}),
+        ...(input.jobId !== undefined ? { managed_job_id: input.jobId } : {}),
         question: input.question,
         response_format: input.responseFormat ?? 'standard',
         ...(input.scopeTuple !== undefined ? { scope_tuple: input.scopeTuple } : {}),

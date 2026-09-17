@@ -32,6 +32,12 @@ export interface InquiryActionReservationRow {
   lease_expired: boolean
 }
 
+export interface InquiryEvidenceRow {
+  readonly inquiry_id: string
+  readonly revision: number
+  readonly evidence_jsonb: unknown
+}
+
 export type InquiryReservationResult =
   | { status: 'acquired'; reservation_hash: string; recovered: boolean }
   | { status: 'in_progress'; reservation_hash: string; retry_after_seconds: number }
@@ -214,6 +220,21 @@ export async function getInquiryLifecycle(inquiryId: string, principalUid: strin
     [inquiryId, principalUid],
   )
     return result.rows[0] ?? null
+  })
+}
+
+/** Ordered accepted evidence for a managed recovery. The same principal/chart
+ * RLS context as the lifecycle is mandatory; this is not a public receipt API. */
+export async function listInquiryEvidence(inquiryId: string, principalUid: string, chartId: string): Promise<InquiryEvidenceRow[]> {
+  return withInquiryStoreContext(principalUid, chartId, async (client) => {
+    const result = await client.query<InquiryEvidenceRow>(
+      `SELECT inquiry_id, revision, evidence_jsonb
+         FROM planner_inquiry_evidence_receipts
+        WHERE inquiry_id=$1
+        ORDER BY revision ASC`,
+      [inquiryId],
+    )
+    return result.rows
   })
 }
 

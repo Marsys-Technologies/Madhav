@@ -23,12 +23,13 @@ import { POST } from './route'
 const chartId = 'aaaaaaaa-1111-4000-8000-000000000001'
 const jobId = 'bbbbbbbb-1111-4000-8000-000000000001'
 const workerId = 'cccccccc-1111-4000-8000-000000000001'
+const inquiryId = 'dddddddd-1111-4000-8000-000000000001'
 
 function row(overrides: Record<string, unknown> = {}) {
   return {
     job_id: jobId, principal_uid: 'user-1', principal_key_id: 'key-1', chart_id: chartId,
     principal_auth_kind: 'api_key', api_key_id: 'key-1', oauth_token_hash: null,
-    request_jsonb: { question: 'wealth?', response_format: 'standard' },
+    request_jsonb: { inquiry_id: inquiryId, question: 'wealth?', response_format: 'standard' },
     status: 'pending', progress_jsonb: null, result_jsonb: null, error_text: null,
     lease_owner: null, lease_expires_at: null, attempt_count: 0,
     created_at: '2026-09-15T00:00:00.000Z', updated_at: '2026-09-15T00:00:00.000Z',
@@ -58,13 +59,13 @@ beforeEach(() => {
 describe('durable managed Prashna job route', () => {
   it('persists a bounded request only after current chart authorization', async () => {
     const response = await POST(request({
-      action: 'create', job_id: jobId, chart_id: chartId, question: 'wealth?', response_format: 'standard',
+      action: 'create', job_id: jobId, chart_id: chartId, inquiry_id: inquiryId, question: 'wealth?', response_format: 'standard',
     }))
     expect(response.status).toBe(200)
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
       principal_uid: 'user-1', principal_key_id: 'key-1', chart_id: chartId,
       principal_auth_kind: 'api_key',
-      request: { question: 'wealth?', response_format: 'standard' },
+      request: { inquiry_id: inquiryId, question: 'wealth?', response_format: 'standard' },
     }))
     expect(await response.json()).toMatchObject({ ok: true, job: { job_id: jobId, status: 'pending' } })
   })
@@ -72,7 +73,7 @@ describe('durable managed Prashna job route', () => {
   it('denies create before persistence when chart entitlement is revoked', async () => {
     mocks.authorize.mockResolvedValue('deny')
     const response = await POST(request({
-      action: 'create', job_id: jobId, chart_id: chartId, question: 'wealth?', response_format: 'standard',
+      action: 'create', job_id: jobId, chart_id: chartId, inquiry_id: inquiryId, question: 'wealth?', response_format: 'standard',
     }))
     expect(response.status).toBe(401)
     expect(mocks.create).not.toHaveBeenCalled()
@@ -80,7 +81,7 @@ describe('durable managed Prashna job route', () => {
 
   it('rejects an unsupported response format before authorization or persistence', async () => {
     const response = await POST(request({
-      action: 'create', job_id: jobId, chart_id: chartId, question: 'wealth?', response_format: 'xml',
+      action: 'create', job_id: jobId, chart_id: chartId, inquiry_id: inquiryId, question: 'wealth?', response_format: 'xml',
     }))
     expect(response.status).toBe(400)
     expect(mocks.authorize).not.toHaveBeenCalled()

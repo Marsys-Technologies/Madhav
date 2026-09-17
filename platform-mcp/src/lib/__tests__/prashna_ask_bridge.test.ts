@@ -104,6 +104,22 @@ describe('callPrashnaAskEngine', () => {
     })
   })
 
+  it('forwards the exact durable job and inquiry identities together for managed recovery', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
+    )
+    await callPrashnaAskEngine({
+      chartId: 'c1', question: 'resume', principal: PRINCIPAL,
+      jobId: 'aaaaaaaa-1111-4000-8000-000000000001',
+      inquiryId: 'bbbbbbbb-1111-4000-8000-000000000001',
+    })
+    const [, opts] = mockFetch.mock.calls[0]
+    expect(JSON.parse(opts.body)).toMatchObject({
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000001',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000001',
+    })
+  })
+
   it('forwards an explicitly requested response format', async () => {
     mockFetch.mockResolvedValueOnce(
       makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
