@@ -115,24 +115,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
     ],
   },
-  query_dosha_catalog: {
-    reason: 'The handler serves SELECT * rows from brahma_dosha_catalog, including created_at, then returns request-specific count and pagination metadata. bg_doshas reviews the same catalog relation but its digest omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:84',
-      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66',
-      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
-    ],
-  },
-  query_compendium_index: {
-    reason: 'The handler returns index_id together with the filtered compendium rows and request-specific count metadata. bg_compendium_index reviews the content fields in chapter/topic-scoped components, but neither component attests the served index_id and no reviewed route-level probe attests the complete filtered response.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:90-102',
-      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-87',
-      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
-    ],
-  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [

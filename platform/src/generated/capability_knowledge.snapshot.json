@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T22:59:00.000Z",
-  "content_hash": "sha256:d2352abd4fc8d8a803a8a73b563ea97ed356fb5407c6af49820e19f345386824",
+  "generated_at": "2026-09-17T23:21:45.000Z",
+  "content_hash": "sha256:1ad250287ba028222a8f30660948b5c1f49fed20af44be5ed622dd47a3e5b443",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:59923e71810a087c106760b867d38216c01f3267fa03d9a454be94b25e81abf4",
+  "semantic_review_fingerprint": "sha256:952a8e7bff58328cc39f79503abc540ed20ca9c8f0977bd70cd411a92c8c19f1",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -14773,16 +14773,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_compendium_index",
-          "status": "deliberately_dark",
-          "reason": "The handler returns index_id together with the filtered compendium rows and request-specific count metadata. bg_compendium_index reviews the content fields in chapter/topic-scoped components, but neither component attests the served index_id and no reviewed route-level probe attests the complete filtered response.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82",
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:90-102",
-            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-87",
-            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-compendium-index:v1",
+              "capability_uri": "marsys://tool/L0/query_compendium_index",
+              "contract_sha256": "sha256:9a0b9733bcc28d3c3b45da2c559eb1f506a495ad33be74f3114521c070ab247f",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211 | platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84"
+            }
           ]
         }
       ],
@@ -16368,16 +16370,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_dosha_catalog",
-          "status": "deliberately_dark",
-          "reason": "The handler serves SELECT * rows from brahma_dosha_catalog, including created_at, then returns request-specific count and pagination metadata. bg_doshas reviews the same catalog relation but its digest omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75",
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:84",
-            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66",
-            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-dosha-catalog:v1",
+              "capability_uri": "marsys://tool/L0/query_dosha_catalog",
+              "contract_sha256": "sha256:de7150d23f852173f7dd3fbfc607ac36b1de6fffd83c0b8fdac7c98352cadfa3",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71 | platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36 | platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047 | platform/supabase/migrations/622_nirmana_l0_doshas_integrity_contract.sql:1-84"
+            }
           ]
         }
       ],
