@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:55c2191bbdd1e8d5b63a1b650e41f2ebf1ef73c6dc324db34a8d724f08aa07e5",
+  "content_hash": "sha256:66edc5f15c3c806546e9fe50b6c25e56e27b6ab39d8ac0051cb74bf92ad9adf5",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:e6b9a340d1d69ef4f91d8e50ad201b8d856a90915300cc467b2d72bddec40751",
+  "semantic_review_fingerprint": "sha256:74b5c58554f55e890a5d41b4624b9f42b665fcbe435a66a78b46a9804cf5ae2c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -16294,6 +16294,19 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_dosha_catalog",
+          "status": "deliberately_dark",
+          "reason": "The handler serves SELECT * rows from brahma_dosha_catalog, including created_at, then returns request-specific count and pagination metadata. bg_doshas reviews the same catalog relation but its digest omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:70",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:84",
+            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66",
+            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

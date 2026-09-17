@@ -115,6 +115,15 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
     ],
   },
+  query_dosha_catalog: {
+    reason: 'The handler serves SELECT * rows from brahma_dosha_catalog, including created_at, then returns request-specific count and pagination metadata. bg_doshas reviews the same catalog relation but its digest omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:70',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:84',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66',
+      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
+    ],
+  },
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {

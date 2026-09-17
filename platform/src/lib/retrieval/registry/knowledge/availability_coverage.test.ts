@@ -296,6 +296,32 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps query_dosha_catalog dark when its related digest omits a served catalog field', async () => {
+    const scu = findScu('scu.catalog.query_dosha_catalog')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L0/query_dosha_catalog',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('SELECT * rows from brahma_dosha_catalog, including created_at'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:70',
+        'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
+      ]),
+    })])
+
+    // bg_doshas is the reviewed producer linked to this catalog, but its
+    // digest leaves out created_at even though the handler's SELECT * serves
+    // it. A plausible fresh matching receipt cannot fill that route gap.
+    const overlay = await overlayFor([
+      globalProducerReceipt('bg_doshas', 'c4c570057c4d29495acb44cf3eff9ea907872a0e17eaf7e8878deea987a67346'),
+    ])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates query_formula_constants only from a fresh, matching global formula-constants receipt', async () => {
     const scu = findScu('scu.catalog.query_formula_constants')
     const bindingId = 'registry:marsys://tool/L0/query_formula_constants'
