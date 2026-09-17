@@ -33,16 +33,16 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
     reason: 'The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.',
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],
   },
   assess_marriage: {
     reason: 'The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.',
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],
   },
   judgment_query: {

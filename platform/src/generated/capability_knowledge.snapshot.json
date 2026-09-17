@@ -1,8 +1,8 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T03:31:53.000Z",
-  "content_hash": "sha256:2c6eb31e9463488469fccf48c657f36a925ec00e350c733dc02fab19090b085f",
+  "generated_at": "2026-09-17T03:35:00.000Z",
+  "content_hash": "sha256:be517ad9eee67c8bc89b11d252b3abec78784f0b6b5b532ecd9e1bcaf40d8a30",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
@@ -327,8 +327,8 @@
           "reason": "The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.",
           "source_refs": [
             "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957"
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
           ]
         }
       ],
@@ -719,8 +719,8 @@
           "reason": "The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.",
           "source_refs": [
             "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957"
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
           ]
         }
       ],
