@@ -85,10 +85,12 @@ describe('DP-SD-020 isolated validation bootstrap', () => {
     expect(diagnostic).not.toContain('gcloud run jobs update')
   })
 
-  it('permits both declared validation readers to attest only the restored pre-cutover copy', () => {
+  it('permits the dedicated verifier and connector-bound reader to attest only the restored pre-cutover copy', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-cutover-preflight.ts'), 'utf8')
-    expect(preflight).toContain('GRANT USAGE ON SCHEMA public TO data_plane_verifier, amjis_app')
-    expect(preflight).toContain('GRANT SELECT ON TABLE public._migrations_applied TO data_plane_verifier, amjis_app')
+    expect(preflight).toContain('const validationReader = validationPoolConfig.user?.trim()')
+    expect(preflight).toContain('GRANT USAGE ON SCHEMA public TO ${readers}')
+    expect(preflight).toContain('GRANT SELECT ON TABLE public._migrations_applied TO ${readers}')
+    expect(preflight).not.toContain('TO data_plane_verifier, amjis_app')
     expect(preflight).toContain('restored validation copy')
   })
 })

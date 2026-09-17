@@ -307,7 +307,7 @@ export function inspectDataPlaneAdminCredential(
 
 async function grantValidationVerifierBootstrapReadAccess(
   adminDatabaseUrl: string,
-  binding: { proxyPort: string },
+  binding: { proxyPort: string; validationReader: string },
 ): Promise<void> {
   const pool = new Pool(validationAdminProxyConfig(adminDatabaseUrl, binding))
   try {
@@ -315,11 +315,17 @@ async function grantValidationVerifierBootstrapReadAccess(
     // terminal ACLs are installed atomically on production by the subsequent
     // locked ownership preflight; the grants merely let the two existing
     // read-only reader identities attest the unmarked restored state before
-    // that transition.  The validation secret predates the dedicated verifier
-    // login and is currently carried by amjis_app, so omitting it makes the
-    // restored-copy inspection fail before the production transaction begins.
-    await pool.query('GRANT USAGE ON SCHEMA public TO data_plane_verifier, amjis_app')
-    await pool.query('GRANT SELECT ON TABLE public._migrations_applied TO data_plane_verifier, amjis_app')
+    // that transition.  The configured validation reader is connector-owned;
+    // derive its quoted role from the already-bound validation configuration
+    // instead of guessing a historical login name.
+    if (!binding.validationReader || binding.validationReader.includes('\0')) {
+      throw new Error('Validation connector did not provide a usable reader identity.')
+    }
+    const readers = ['data_plane_verifier', binding.validationReader]
+      .map((reader) => `"${reader.replaceAll('"', '""')}"`)
+      .join(', ')
+    await pool.query(`GRANT USAGE ON SCHEMA public TO ${readers}`)
+    await pool.query(`GRANT SELECT ON TABLE public._migrations_applied TO ${readers}`)
   } finally {
     await pool.end()
   }
@@ -440,8 +446,12 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
     instance, validationInstance, connectionName: validationConnectionName,
     proxyPort: validationProxyPort, project,
   })
+  const validationReader = validationPoolConfig.user?.trim()
+  if (!validationReader) throw new Error('Validation connector did not provide a reader identity.')
   await grantValidationVerifierBootstrapReadAccess(
-    requireValue('DATA_PLANE_ADMIN_DATABASE_URL'), { proxyPort: validationProxyPort },
+    requireValue('DATA_PLANE_ADMIN_DATABASE_URL'), {
+      proxyPort: validationProxyPort, validationReader,
+    },
   )
   if (await readDataPlaneOwnershipStatus(validationPoolConfig) !== 'unmarked') {
     throw new Error('Isolated restore does not attest the expected pre-cutover protected state.')
