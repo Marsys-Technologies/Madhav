@@ -13,13 +13,39 @@ describe('Purna real three-door collector', () => {
     const stream = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode('data: {"type":"block.commit","text":"partial"}\n\n')); controller.close() } })
     await expect(parsePortalSse(stream)).resolves.toMatchObject({ truncated: true, answer: 'partial' })
   })
+  it('retains receipt evidence when a later terminal event closes the SSE stream', async () => {
+    const stream = new ReadableStream<Uint8Array>({ start(controller) {
+      controller.enqueue(new TextEncoder().encode('data: {"type":"receipt.define","receipt":{"receipt_hash":"r-1"}}\n\ndata: {"type":"turn.close","status":"ok"}\n\n'))
+      controller.close()
+    } })
+    await expect(parsePortalSse(stream)).resolves.toMatchObject({ truncated: false, payload: { receipt: { receipt_hash: 'r-1' } } })
+  })
   it('enforces a managed polling deadline', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 2, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask' ? { job_id: 'job-1' } : { status: 'running' } } })
     expect(row.diagnostic).toBe('MANAGED_JOB_POLL_DEADLINE')
     expect(row.networkCallCount).toBe(3)
   })
+  it('projects the immutable corpus scope into the managed engine vocabulary', async () => {
+    let askArgs: Record<string, unknown> | undefined
+    const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async (name, args) => {
+      if (name === 'prashna_ask') { askArgs = args; return { job_id: 'job-1' } }
+      return { status: 'failed' }
+    } } })
+    expect((askArgs?.scope_tuple as Record<string, unknown>).intent).toBe('domain_assessment')
+    expect(row.networkCallCount).toBe(2)
+  })
+  it('keeps an in-band managed tool error distinct from a missing job handle', async () => {
+    const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async () => ({ __purna_tool_error: true }) } })
+    expect(row.diagnostic).toBe('MANAGED_MCP_TOOL_ERROR')
+  })
   it('rejects raw lifecycle pagination that does not advance', async () => {
     const row = await collectRawCase({ ...base, maxActions: 3, invoker: { call: async (name) => name === 'inquiry_start' ? { inquiry_id: 'i-1', lifecycle_token: 'same', next_action_ids: ['item-001'] } : { lifecycle_token: 'same', next_action_ids: ['item-001'] } } })
     expect(row.diagnostic).toBe('RAW_PAGINATION_DID_NOT_ADVANCE')
+  })
+  it('records a raw lifecycle closure as the terminal contract source', async () => {
+    const row = await collectRawCase({ ...base, maxActions: 1, invoker: { call: async (name) => name === 'inquiry_start'
+      ? { inquiry_id: 'i-1', lifecycle_token: 'token-1', next_action_ids: [] }
+      : { closure: { status: 'INCOMPLETE', receipt_hash: 'r-1', chart_build_id: 'build-1' } } } })
+    expect(row).toMatchObject({ terminal: 'incomplete', chartBuildId: 'build-1', receiptRefs: ['r-1'] })
   })
 })

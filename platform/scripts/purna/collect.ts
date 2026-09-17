@@ -22,7 +22,10 @@ function bearer(): string {
 }
 export async function collect(config: Config, cases: readonly AcceptanceCase[]): Promise<readonly CollectedCase[]> {
   const mcp = new McpClient(config.mcp_url, bearer()); await mcp.init()
-  const invoker = { call: async (name: string, args: Record<string, unknown>) => (await mcp.callTool(name, args)).content }
+  const invoker = { call: async (name: string, args: Record<string, unknown>) => {
+    const outcome = await mcp.callTool(name, args)
+    return outcome.isToolError ? { __purna_tool_error: true } : outcome.content
+  } }
   const sessionCookie = await mintFreshProbeSessionCookie(config.portal_url, process.env.PROBE_UID ?? 'probe-service-account')
   const rows: CollectedCase[] = []
   for (const test of cases) {

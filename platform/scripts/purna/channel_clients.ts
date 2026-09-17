@@ -6,6 +6,16 @@ type Json = Record<string, unknown>
 function record(value: unknown): Json { return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Json : {} }
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [] }
 
+/**
+ * `prashna_ask` accepts the classifier vocabulary, while the immutable Vidhi
+ * corpus carries compiler-family intents such as `wealth_deepdive`. The
+ * domain/depth/horizon evidence remains unchanged; only this known namespace
+ * boundary is adapted at the managed-engine door.
+ */
+function managedScopeTuple(scope: Record<string, unknown>): Record<string, unknown> {
+  return { ...scope, intent: 'domain_assessment' }
+}
+
 function answerFrom(value: unknown): string {
   const data = record(value)
   for (const key of ['answer', 'reading', 'text', 'prose']) if (typeof data[key] === 'string') return data[key] as string
@@ -17,17 +27,20 @@ function answerFrom(value: unknown): string {
 function revisionFrom(value: unknown): string | null {
   const data = record(value)
   for (const key of ['revision', 'source_revision', 'deployed_revision', 'git_sha']) if (typeof data[key] === 'string') return data[key] as string
-  return typeof record(data.receipt).revision === 'string' ? record(data.receipt).revision as string : null
+  const receipt = record(data.receipt)
+  return typeof receipt.revision === 'string' ? receipt.revision as string : typeof record(receipt.provenance).revision === 'string' ? record(receipt.provenance).revision as string : null
 }
 
 function receiptRefsFrom(value: unknown): string[] {
   const data = record(value)
-  return [...strings(data.receipt_refs), ...strings(data.evidence_refs), ...strings(record(data.receipt).refs)]
+  const receipt = record(data.receipt)
+  const closure = record(data.closure)
+  return [...strings(data.receipt_refs), ...strings(data.evidence_refs), ...strings(receipt.refs), ...[receipt.receipt_hash, closure.receipt_hash].filter((item): item is string => typeof item === 'string')]
 }
 
 function terminalFrom(value: unknown): CollectionTerminal {
   const data = record(value)
-  const status = String(data.status ?? record(data.receipt).status ?? record(data.contract ?? record(data.result).inquiry_contract).status ?? '').toLowerCase()
+  const status = String(data.status ?? record(data.receipt).status ?? record(data.closure).status ?? record(data.contract ?? record(data.result).inquiry_contract).status ?? '').toLowerCase()
   if (status === 'complete' || status === 'ok') return 'complete'
   if (status.includes('block')) return 'blocked'
   return 'incomplete'
@@ -46,9 +59,10 @@ export async function collectManagedCase(input: {
 }): Promise<CollectedCase> {
   let calls = 0
   const ask = record(await input.invoker.call('prashna_ask', {
-    chart_id: input.chartId, question: input.test.question, scope_tuple: input.test.scope_tuple, response_format: 'full',
+    chart_id: input.chartId, question: input.test.question, scope_tuple: managedScopeTuple(input.test.scope_tuple), response_format: 'full',
   }))
   calls += 1
+  if (ask.__purna_tool_error === true) return failed(input, 'managed_mcp', calls, 'MANAGED_MCP_TOOL_ERROR')
   const jobId = typeof ask.job_id === 'string' ? ask.job_id : typeof ask.managed_job_id === 'string' ? ask.managed_job_id : typeof record(ask.result).job_id === 'string' ? record(ask.result).job_id as string : null
   if (!jobId) return failed(input, 'managed_mcp', calls, 'MANAGED_JOB_ID_MISSING')
   for (let attempt = 0; attempt < input.maxPolls; attempt += 1) {
@@ -127,7 +141,11 @@ export async function parsePortalSse(stream: ReadableStream<Uint8Array>): Promis
     for (const frame of frames) {
       const line = frame.split('\n').find((candidate) => candidate.startsWith('data: ')); if (!line) continue
       let event: Json; try { event = record(JSON.parse(line.slice(6))) } catch { continue }
-      payload = event
+      // The terminal event is intentionally minimal. Preserve receipt and other
+      // evidence emitted earlier rather than replacing the accumulated payload.
+      payload = event.receipt && typeof event.receipt === 'object'
+        ? { ...payload, ...event, receipt: event.receipt }
+        : { ...payload, ...event }
       if (event.type === 'block.commit' && typeof event.text === 'string') answer += `${answer ? '\n\n' : ''}${event.text}`
       if (event.type === 'turn.commit' && typeof event.conversation_id === 'string') inquiryId = event.conversation_id
       if (event.type === 'turn.close') closed = event.status === 'ok'
@@ -138,7 +156,8 @@ export async function parsePortalSse(stream: ReadableStream<Uint8Array>): Promis
 
 function normalize(input: { test: AcceptanceCase; expectedRevision: string; source: 'candidate' | 'live' }, door: AcceptanceDoor, payload: unknown, calls: number, inquiryId: string | null, answerOverride?: string): CollectedCase {
   const data = record(payload)
-  return { caseId: input.test.id, door, inquiryId, expectedRevision: input.expectedRevision, observedRevision: revisionFrom(data), snapshotHash: typeof data.snapshot_hash === 'string' ? data.snapshot_hash : null, chartBuildId: typeof data.chart_build_id === 'string' ? data.chart_build_id : null, answer: answerOverride ?? answerFrom(data), receiptRefs: receiptRefsFrom(data), materialFactIds: strings(data.material_fact_ids), deliveredFactIds: strings(data.delivered_fact_ids), unresolvedObligationIds: strings(data.unresolved_obligation_ids), networkCallCount: calls, source: input.source, terminal: terminalFrom(data), diagnostic: null }
+  const closure = record(data.closure)
+  return { caseId: input.test.id, door, inquiryId, expectedRevision: input.expectedRevision, observedRevision: revisionFrom(data), snapshotHash: typeof data.snapshot_hash === 'string' ? data.snapshot_hash : null, chartBuildId: typeof data.chart_build_id === 'string' ? data.chart_build_id : typeof closure.chart_build_id === 'string' ? closure.chart_build_id as string : null, answer: answerOverride ?? answerFrom(data), receiptRefs: receiptRefsFrom(data), materialFactIds: strings(data.material_fact_ids), deliveredFactIds: strings(data.delivered_fact_ids), unresolvedObligationIds: strings(data.unresolved_obligation_ids), networkCallCount: calls, source: input.source, terminal: terminalFrom(data), diagnostic: null }
 }
 
 function failed(input: { test: AcceptanceCase; expectedRevision: string; source: 'candidate' | 'live' }, door: AcceptanceDoor, calls: number, diagnostic: string, inquiryId: string | null = null): CollectedCase {
