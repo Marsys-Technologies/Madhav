@@ -466,9 +466,9 @@ describe('chart capability overlay loader', () => {
   it('treats a successful reviewed source query with zero rows as available', async () => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const yogaCatalog = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
-    mocks.query
-      .mockResolvedValueOnce({ rows: [serviceProbeAnchor([])] })
-      .mockResolvedValueOnce({ rows: [] })
+    mocks.query.mockImplementation(async (sql) => sql.includes('WITH latest_build AS')
+      ? { rows: [serviceProbeAnchor([])] }
+      : { rows: [] })
 
     const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
       .find((item) => item.scu_id === yogaCatalog.scu_id)
@@ -479,16 +479,19 @@ describe('chart capability overlay loader', () => {
       asset_receipts: [],
       gaps: [],
     })
-    expect(mocks.query.mock.calls[1]?.[0]).toContain('FROM brahma_yoga_catalog')
-    expect(mocks.query.mock.calls[1]?.[1]).toEqual([])
+    const sourceCall = mocks.query.mock.calls.find((call) => call[0].includes('FROM brahma_yoga_catalog'))
+    expect(sourceCall?.[0]).toContain('FROM brahma_yoga_catalog')
+    expect(sourceCall?.[1]).toEqual([])
   })
 
   it('keeps a reviewed source-query binding dark when its authenticated query fails', async () => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const yogaCatalog = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
-    mocks.query
-      .mockResolvedValueOnce({ rows: [serviceProbeAnchor([])] })
-      .mockRejectedValueOnce(new Error('permission denied'))
+    mocks.query.mockImplementation(async (sql) => {
+      if (sql.includes('WITH latest_build AS')) return { rows: [serviceProbeAnchor([])] }
+      if (sql.includes('FROM brahma_yoga_catalog')) throw new Error('permission denied')
+      return { rows: [] }
+    })
 
     const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
       .find((item) => item.scu_id === yogaCatalog.scu_id)

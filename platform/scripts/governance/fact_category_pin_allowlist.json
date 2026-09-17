@@ -2,8 +2,20 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 51,
+  "entry_count": 53,
   "entries": [
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": null,
+      "pattern": "WITH handler_page AS \\( SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, ayanamsha_id, citation_ref FROM chart_f",
+      "justification": "AUDITED source-query availability probe for get_ayurdaya, not a value read or one-row reduction. `handler_page` deliberately reproduces the handler's complete `fact_category='ayurdaya'` source scope while `LIMIT 0` guarantees that no fact row is selected; the sibling `handler_count` is an aggregate over that same complete scope, and the outer CROSS JOIN returns zero rows. Availability is earned solely by authenticated query success, including a legitimate empty category set. Adding an arbitrary fact_key predicate would narrow the real handler contract and could report availability for only one measurement while other ayurdaya keys remain unreadable. The exact chart_id + active build_id binding and zero-row semantics are covered by availability_coverage.test.ts; availability_contracts.test.ts locks this intentional no-fact_key, LIMIT-0/count shape."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": null,
+      "pattern": "WITH handler_page AS \\( SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, ayanamsha_id, verificati",
+      "justification": "AUDITED source-query availability probe for get_sensitive_degrees, not a value read or one-row reduction. `handler_page` deliberately reproduces the handler's complete two-category source scope (`sensitive_degree_check` plus `sensitive_point_yogi`) while `LIMIT 0` guarantees that no fact row is selected; the sibling `handler_count` is an aggregate over that same complete scope, and the outer CROSS JOIN returns zero rows. Availability is earned solely by authenticated query success, including a legitimate empty category set. A fact_key predicate would falsely reduce the handler's optional check_type surface and omit valid keys/categories from the source contract. The exact chart_id + active build_id binding and zero-row semantics are covered by availability_coverage.test.ts; availability_contracts.test.ts locks this intentional no-fact_key, LIMIT-0/count shape."
+    },
     {
       "file": "platform/python-sidecar/brahmagyan/chart_reader_v4.py",
       "line": null,

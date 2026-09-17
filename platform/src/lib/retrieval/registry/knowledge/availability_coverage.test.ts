@@ -536,43 +536,77 @@ describe('first-slice availability coverage', () => {
     {
       scuId: 'scu.catalog.get_ayurdaya',
       bindingId: 'registry:marsys://tool/L1/get_ayurdaya',
-      assetId: 'ga_ayurdaya',
-      specSha256: '0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a',
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-93',
-      sourceRef: 'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
+      contractId: 'source-query:get-ayurdaya:v1',
+      sqlMarker: "fact_category = 'ayurdaya'",
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95',
     },
     {
       scuId: 'scu.catalog.get_sensitive_degrees',
       bindingId: 'registry:marsys://tool/L1/get_sensitive_degrees',
-      assetId: 'ga_sensitive_degree',
-      specSha256: 'd68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b',
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-119',
-      sourceRef: 'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
+      contractId: 'source-query:get-sensitive-degrees:v1',
+      sqlMarker: "fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])",
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120',
     },
-  ])('keeps $scuId dark when a canonical-chart digest receipt is attached to a noncanonical chart', async ({
-    scuId, bindingId, assetId, specSha256, handlerRef, sourceRef,
+  ])('probes $scuId against the selected chart and active build, with honest zero-row availability', async ({
+    scuId, bindingId, contractId, sqlMarker, handlerRef,
   }) => {
     const scu = findScu(scuId)
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
       binding_id: bindingId,
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('pins chart_facts to one canonical chart_id'),
-      source_refs: expect.arrayContaining([handlerRef, sourceRef]),
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: contractId,
+        contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        scope: 'chart',
+        source_ref: expect.stringContaining(handlerRef),
+      })],
     })])
+    expect(scu.availability_dispositions ?? []).toEqual([])
 
-    // The receipt is fresh and pins the exact reviewed SHA, but it is for the
-    // selected test chart/build rather than the fixed chart_id embedded in the
-    // digest specification. The current loader has no selected-chart binding
-    // for that embedded constraint, so the route must remain fail-closed.
-    const noncanonicalReceipt = adjacentProducerReceipt(assetId, specSha256)
-    expect(noncanonicalReceipt.chart_id).toBe(CHART_ID)
-    expect(noncanonicalReceipt.chart_id).not.toBe('482012f1-710e-4a25-994a-93821f5871aa')
-    const overlay = await overlayFor([noncanonicalReceipt])
+    const calls: Array<{ sql: string; params: readonly unknown[] }> = []
+    let initialQuery = true
+    const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
+      calls.push({ sql, params })
+      if (initialQuery) {
+        initialQuery = false
+        return { rows: [transitProbeAnchor()] }
+      }
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
     expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available',
+      available_binding_ids: [bindingId],
+      asset_receipts: [],
+      gaps: [],
+    })
+
+    const sourceCall = calls.find((call) => call.sql.includes(sqlMarker))
+    expect(sourceCall).toBeDefined()
+    expect(sourceCall?.sql).toContain('FROM chart_facts')
+    expect(sourceCall?.sql).toContain('chart_id = $1::uuid')
+    expect(sourceCall?.sql).toContain('build_id = $2::uuid')
+    expect(sourceCall?.params).toEqual([CHART_ID, BUILD_ID])
+
+    initialQuery = true
+    const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, _params = []) => {
+      if (initialQuery) {
+        initialQuery = false
+        return { rows: [transitProbeAnchor()] }
+      }
+      if (sql.includes(sqlMarker)) throw new Error('permission denied')
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+      gaps: [`${contractId} could not execute its authenticated source query.`],
+    })
+
+    const noBuild = await loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [] }))
+    expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [`${contractId} cannot bind the selected chart to an active completed build.`],
     })
   })
 

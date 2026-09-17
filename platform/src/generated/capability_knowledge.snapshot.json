@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T22:59:00.000Z",
-  "content_hash": "sha256:123a7b504c0a1068af774f1de85ee1be1d5104eaf23e5debd70fb51736e05c57",
+  "content_hash": "sha256:d2352abd4fc8d8a803a8a73b563ea97ed356fb5407c6af49820e19f345386824",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:c2e53dd550371ef5946f6119d3b70462c34af7a8ea7e25603357ee06ad59e55e",
+  "semantic_review_fingerprint": "sha256:59923e71810a087c106760b867d38216c01f3267fa03d9a454be94b25e81abf4",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -4695,14 +4695,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L1/get_ayurdaya",
-          "status": "deliberately_dark",
-          "reason": "The handler is chart-scoped, but the reviewed ga_ayurdaya digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-93",
-            "platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-ayurdaya:v1",
+              "capability_uri": "marsys://tool/L1/get_ayurdaya",
+              "contract_sha256": "sha256:9e1fd421c8ff3b4ddeba11b5804817c1daf713105a8bac52e782bd5bed9a65b6",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
+            }
           ]
         }
       ],
@@ -8300,14 +8304,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L1/get_sensitive_degrees",
-          "status": "deliberately_dark",
-          "reason": "The handler is chart-scoped, but the reviewed ga_sensitive_degree digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-119",
-            "platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-sensitive-degrees:v1",
+              "capability_uri": "marsys://tool/L1/get_sensitive_degrees",
+              "contract_sha256": "sha256:b45a95f75b69353cdbc3fe3c80090c4e078c20e736024ced20737f19be35effa",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
+            }
           ]
         }
       ],

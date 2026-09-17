@@ -35,14 +35,15 @@ function contractFingerprint(contract: SourceQueryAvailabilityContract): string 
  * descriptor family or table name: a review is admitted only after the handler
  * relation, scope/build binding, and honest-empty behavior have all been read.
  */
-const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [{
-  contract_id: 'source-query:query-yoga-catalog:v1',
-  descriptor_name: 'query_yoga_catalog',
-  capability_uri: 'marsys://tool/L0/query_yoga_catalog',
-  scope: 'global',
-  parameter_binding: 'global',
-  empty_semantics: 'query_success_is_available',
-  sql: `WITH handler_page AS (
+const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
+  {
+    contract_id: 'source-query:query-yoga-catalog:v1',
+    descriptor_name: 'query_yoga_catalog',
+    capability_uri: 'marsys://tool/L0/query_yoga_catalog',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
           SELECT *
             FROM brahma_yoga_catalog
            WHERE name_en IS NOT NULL OR school IS NULL OR category IS NULL
@@ -55,11 +56,78 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [{
         )
         SELECT handler_page.*, handler_count.total
           FROM handler_page CROSS JOIN handler_count`,
-  source_refs: [
-    'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:52-62',
-    'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:63-75',
-  ],
-}]
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:52-62',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:63-75',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-ayurdaya:v1',
+    descriptor_name: 'get_ayurdaya',
+    capability_uri: 'marsys://tool/L1/get_ayurdaya',
+    scope: 'chart',
+    parameter_binding: 'chart_and_active_build',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
+                   fact_value_jsonb, unit, ayanamsha_id, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND build_id = $2::uuid
+               AND fact_category = 'ayurdaya'
+             ORDER BY ayanamsha_id, fact_subject, fact_key
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND build_id = $2::uuid
+               AND fact_category = 'ayurdaya'
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310',
+      'platform/python-sidecar/ga_writers/_idempotency.py:54-78',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-sensitive-degrees:v1',
+    descriptor_name: 'get_sensitive_degrees',
+    capability_uri: 'marsys://tool/L1/get_sensitive_degrees',
+    scope: 'chart',
+    parameter_binding: 'chart_and_active_build',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
+                   fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND build_id = $2::uuid
+               AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
+             ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND build_id = $2::uuid
+               AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971',
+      'platform/python-sidecar/ga_writers/_idempotency.py:54-78',
+    ],
+  },
+]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
 const CONTRACT_BY_DESCRIPTOR = new Map(CONTRACTS.map((contract) => [contract.descriptor_name, contract]))

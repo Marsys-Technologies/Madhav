@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compiler'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
 import type { CapabilityKnowledgeSnapshot } from './types'
 
 const catalog = getCatalog()
@@ -61,6 +62,40 @@ describe('binding availability contracts', () => {
       subject: `${yoga.scu_id}:${yoga.availability_contracts![0]!.binding_id}`,
       detail: expect.stringContaining('source-query'),
     }))
+  })
+
+  it.each([
+    ['scu.catalog.get_ayurdaya', 'source-query:get-ayurdaya:v1'],
+    ['scu.catalog.get_sensitive_degrees', 'source-query:get-sensitive-degrees:v1'],
+  ])('binds %s to its exact chart-and-active-build source-query contract', (scuId, contractId) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    const requirement = scu.availability_contracts![0]!.requirements[0]!
+
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: contractId,
+      scope: 'chart',
+      contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      source_ref: expect.stringContaining('platform/supabase/migrations/204_chart_facts.sql:10-29'),
+    })
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
+    }))
+  })
+
+  it.each([
+    ['source-query:get-ayurdaya:v1', "fact_category = 'ayurdaya'"],
+    ['source-query:get-sensitive-degrees:v1', "fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])"],
+  ])('keeps %s as a non-reducing query-success probe across the handler category set', (contractId, categoryPredicate) => {
+    const contract = getSourceQueryAvailabilityContract(contractId)!
+
+    expect(contract.empty_semantics).toBe('query_success_is_available')
+    expect(contract.sql).toContain(categoryPredicate)
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).toContain('SELECT COUNT(*)::text AS total')
+    expect(contract.sql).not.toMatch(/\b(?:WHERE|AND)\s+fact_key\s*(?:=|IN|LIKE)\b/i)
   })
 
   it('reports a non-array availability contract without throwing', () => {
