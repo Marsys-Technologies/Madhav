@@ -17,7 +17,7 @@ import {
   type ProducerSemanticBinding,
 } from './types'
 import { canonicalize, deepFreeze, stableFingerprint } from './stable'
-import { getDescriptorEditorialReview, getReviewedDescriptorNames } from './editorial_review'
+import { getDescriptorAvailabilityReview, getDescriptorEditorialReview, getReviewedDescriptorNames } from './editorial_review'
 import { getProducerSemanticReview } from './producer_editorial_review'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 
@@ -157,6 +157,7 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
   const review = getDescriptorEditorialReview(cap.name)
   if (!review) throw new Error(`UNREVIEWED_DESCRIPTOR_SEMANTICS:${cap.name}`)
   const kind = cap.tool_role === 'synthesizer' ? 'synthesis_support' : review.kind ?? kindFor(cap)
+  const availabilityReview = getDescriptorAvailabilityReview(cap.name)
   const sourceDescription = cap.description.trim().replace(/[.。]+$/, '')
   return {
     scu_id: `scu.catalog.${slug(cap.name)}`,
@@ -192,6 +193,14 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
       ? ['Mutation-capable: execution requires explicit authorization and audit receipt.']
       : ['Read-only evidence surface; planner must not interpret returned chart facts.'],
     known_gaps: cap.calibration_context_only ? ['Calibration-context-only; excluded from planner addressability.'] : [],
+    ...(availabilityReview ? {
+      availability_dispositions: [{
+        binding_id: `registry:${cap.uri}`,
+        status: 'deliberately_dark' as const,
+        reason: availabilityReview.reason,
+        source_refs: availabilityReview.source_refs,
+      }],
+    } : {}),
     editorial: true,
   }
 }
@@ -712,6 +721,28 @@ export function inspectCapabilityKnowledge(
     }
     for (const [bindingId, count] of contractCounts) if (count > 1) {
       findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${bindingId}`, detail: 'A binding may have only one availability contract; duplicate contracts are ambiguous.' })
+    }
+    const dispositions = scu.availability_dispositions
+    const dispositionArray = Array.isArray(dispositions) ? dispositions : []
+    if (dispositions !== undefined && !Array.isArray(dispositions)) {
+      findings.push({ code: 'BAD_BINDING_AVAILABILITY_DISPOSITION', severity: 'error', subject: scu.scu_id, detail: 'Binding availability dispositions must be an array.' })
+    }
+    const dispositionCounts = new Map<string, number>()
+    for (const disposition of dispositionArray) {
+      if (!isRecord(disposition) || typeof disposition.binding_id !== 'string'
+        || disposition.status !== 'deliberately_dark' || typeof disposition.reason !== 'string'
+        || !Array.isArray(disposition.source_refs) || disposition.source_refs.some((source) => typeof source !== 'string' || !source)) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_DISPOSITION', severity: 'error', subject: scu.scu_id, detail: 'A deliberate-dark disposition must name an executable binding, reason, and non-empty source references.' })
+        continue
+      }
+      dispositionCounts.set(disposition.binding_id, (dispositionCounts.get(disposition.binding_id) ?? 0) + 1)
+      const binding = scu.bindings.find((candidate) => candidate.binding_id === disposition.binding_id)
+      if (!binding?.executable || !disposition.reason || disposition.source_refs.length === 0 || contractCounts.has(disposition.binding_id)) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_DISPOSITION', severity: 'error', subject: `${scu.scu_id}:${disposition.binding_id}`, detail: 'A deliberate-dark disposition must name one executable binding, have an evidence-backed reason, and cannot coexist with an availability contract.' })
+      }
+    }
+    for (const [bindingId, count] of dispositionCounts) if (count > 1) {
+      findings.push({ code: 'BAD_BINDING_AVAILABILITY_DISPOSITION', severity: 'error', subject: `${scu.scu_id}:${bindingId}`, detail: 'A binding may have only one deliberate-dark disposition.' })
     }
     for (const claim of scu.producer_output_claims ?? []) {
       if (claim.disposition === 'reviewed_output' && !/^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? '')) {

@@ -164,6 +164,20 @@ export interface BindingAvailabilityContract {
   readonly unavailable_reason?: string
 }
 
+/**
+ * A reviewed decision not to offer an otherwise executable binding yet.
+ *
+ * This is deliberately separate from an empty availability contract: an empty
+ * contract is malformed, whereas this records the concrete handler dependency
+ * that lacks a receipt contract and keeps the binding fail-closed.
+ */
+export interface BindingAvailabilityDisposition {
+  readonly binding_id: string
+  readonly status: 'deliberately_dark'
+  readonly reason: string
+  readonly source_refs: readonly string[]
+}
+
 export interface SemanticCapabilityBinding {
   readonly binding_id: string
   readonly kind: ExecutionBindingKind
@@ -221,6 +235,8 @@ export interface SemanticCapabilityDeclaration {
   readonly producer_output_claims?: readonly ProducerOutputClaim[]
   /** Binding-specific evidence. Snapshots without this use reviewed SCU claims as a legacy fallback. */
   readonly availability_contracts?: readonly BindingAvailabilityContract[]
+  /** Reviewed fail-closed decisions for executable bindings without an evidence contract. */
+  readonly availability_dispositions?: readonly BindingAvailabilityDisposition[]
   /** false means the compiler conservatively derived this from a descriptor. */
   readonly editorial: boolean
 }
@@ -346,6 +362,7 @@ export interface KnowledgeIntegrityFinding {
     | 'BAD_PAGINATION_CONTRACT'
     | 'BAD_PRODUCER_OUTPUT_CLAIM'
     | 'BAD_BINDING_AVAILABILITY_CONTRACT'
+    | 'BAD_BINDING_AVAILABILITY_DISPOSITION'
     | 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT'
     | 'ORPHAN_DESCRIPTOR'
     | 'UNBOUND_CONCEPT'

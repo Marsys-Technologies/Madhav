@@ -17,6 +17,64 @@ export interface DescriptorEditorialFamily {
   readonly evidence_use: string
 }
 
+/**
+ * First-slice availability decisions whose handlers are composite/source-backed
+ * but have no complete, exact reviewed receipt contract yet.  Do not replace a
+ * missing full contract with an adjacent producer digest: these entries keep
+ * the route deliberately dark until the actual handler inputs are coverable.
+ */
+export interface DescriptorAvailabilityReview {
+  readonly reason: string
+  readonly source_refs: readonly string[]
+}
+
+const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  assess_career: {
+    reason: 'The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957',
+    ],
+  },
+  assess_marriage: {
+    reason: 'The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957',
+    ],
+  },
+  judgment_query: {
+    reason: 'The checklist resolves chart facts and combines divisional, dasha, signal, and mechanism reads. No existing reviewed producer receipt covers that complete dynamic checklist.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
+    ],
+  },
+  query_classical_texts: {
+    reason: 'The handler serves corpus text, summaries, topics, and hybrid ranking from classical_text_chunks. bg_texts and bg_text_index digest narrower field sets, so neither is an exact receipt for this route.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:191',
+      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:26',
+      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44',
+    ],
+  },
+  query_contradictions: {
+    reason: 'The route reads bodha_contradictions plus optional discovery/anomaly rows. bo_karanajala\'s reviewed digest covers bodha_cgm_edges, not bodha_contradictions; bo_anveshana only covers the optional tables.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101',
+      'platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65',
+      'platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71',
+    ],
+  },
+}
+
+export function getDescriptorAvailabilityReview(name: string): DescriptorAvailabilityReview | undefined {
+  return AVAILABILITY_REVIEWS[name]
+}
+
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {
   assessment: {
     family_id: 'assessment', domains: ['cross_domain'],

@@ -110,6 +110,16 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       { asset_id: 'ka_yojaka', component: 'kala_activation_predicates rows', output_digest_spec_sha256: '9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5', disposition: 'reviewed_output', evidence: 'platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80' },
       { asset_id: 'ka_bhavishya_lekha', component: 'kala_bhavishya forward windows', output_digest_spec_sha256: 'a66795f7fbf0a2713dbb860dd986128586b8b48830f3902f20bca0bcb12fccf2', disposition: 'reviewed_output', evidence: 'platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232' },
     ],
+    availability_dispositions: [{
+      binding_id: 'registry:marsys://tool/L3/query_temporal_activation',
+      status: 'deliberately_dark',
+      reason: 'The handler reads kala_activation, but ka_kalasutra has only route evidence and no reviewed digest component for that relation. The reviewed predicate and forward-window receipts cannot substitute for the missing activation output receipt.',
+      source_refs: [
+        'platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts',
+        'platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80',
+        'platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232',
+      ],
+    }],
     editorial: true,
   },
 ]

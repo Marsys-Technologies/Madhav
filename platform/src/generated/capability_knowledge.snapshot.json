@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T03:18:00.000Z",
-  "content_hash": "sha256:b3cf91c10d1d7156047179eb1821ab362f5a3cc61f80e82d49d9521fde03e9ca",
-  "source_catalog_fingerprint": "sha256:6e26824df889a8890a8f3f24e3bd833944f485294ff404aabf798f1364cdafad",
+  "generated_at": "2026-09-17T03:31:53.000Z",
+  "content_hash": "sha256:2c6eb31e9463488469fccf48c657f36a925ec00e350c733dc02fab19090b085f",
+  "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -320,6 +320,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_career",
+          "status": "deliberately_dark",
+          "reason": "The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -700,6 +712,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_marriage",
+          "status": "deliberately_dark",
+          "reason": "The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:953",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1957"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -10364,6 +10388,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-JUDGMENT/judgment_query",
+          "status": "deliberately_dark",
+          "reason": "The checklist resolves chart facts and combines divisional, dasha, signal, and mechanism reads. No existing reviewed producer receipt covers that complete dynamic checklist.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -14144,6 +14180,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_classical_texts",
+          "status": "deliberately_dark",
+          "reason": "The handler serves corpus text, summaries, topics, and hybrid ranking from classical_text_chunks. bg_texts and bg_text_index digest narrower field sets, so neither is an exact receipt for this route.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:191",
+            "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:26",
+            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -14816,6 +14864,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_contradictions",
+          "status": "deliberately_dark",
+          "reason": "The route reads bodha_contradictions plus optional discovery/anomaly rows. bo_karanajala's reviewed digest covers bodha_cgm_edges, not bodha_contradictions; bo_anveshana only covers the optional tables.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101",
+            "platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65",
+            "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -30861,6 +30921,18 @@
           "output_digest_spec_sha256": "a66795f7fbf0a2713dbb860dd986128586b8b48830f3902f20bca0bcb12fccf2",
           "disposition": "reviewed_output",
           "evidence": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
+        }
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/query_temporal_activation",
+          "status": "deliberately_dark",
+          "reason": "The handler reads kala_activation, but ka_kalasutra has only route evidence and no reviewed digest component for that relation. The reviewed predicate and forward-window receipts cannot substitute for the missing activation output receipt.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+            "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80",
+            "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
+          ]
         }
       ],
       "editorial": true,

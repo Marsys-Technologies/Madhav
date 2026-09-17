@@ -4,6 +4,7 @@ import { stableFingerprint } from './stable'
 import type {
   AvailabilityRequirement,
   BindingAvailabilityContract,
+  BindingAvailabilityDisposition,
   CapabilityKnowledgeSnapshot,
   ChartAssetCapabilityReceipt,
   ChartCapabilityOverlay,
@@ -127,6 +128,14 @@ function contractForBinding(
 
 function hasAuthoredContracts(scu: SemanticCapabilityUnit): boolean {
   return (scu.availability_contracts?.length ?? 0) > 0
+}
+
+function deliberateDarkDisposition(
+  scu: SemanticCapabilityUnit,
+  binding: SemanticCapabilityBinding,
+): BindingAvailabilityDisposition | null {
+  const matches = scu.availability_dispositions?.filter((disposition) => disposition.binding_id === binding.binding_id) ?? []
+  return matches.length === 1 ? matches[0]! : null
 }
 
 function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
@@ -269,6 +278,14 @@ function evidenceForBinding(
       receipts,
       gaps,
     }
+  }
+
+  const deliberatelyDark = deliberateDarkDisposition(scu, binding)
+  if (deliberatelyDark) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: [`Binding is deliberately dark: ${deliberatelyDark.reason}`],
   }
 
   const claims = scu.producer_output_claims ?? []
