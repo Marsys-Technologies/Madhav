@@ -58,14 +58,16 @@ describe('platform durable managed-job client', () => {
     const inquiryId = 'dddddddd-1111-4000-8000-000000000001'
     fetchMock
       .mockRejectedValueOnce(new Error('response lost after commit'))
-      .mockResolvedValueOnce(response({ ok: true, job: job({ inquiry_id: inquiryId }) }))
+      .mockResolvedValueOnce(response({ ok: true, job: job({
+        request: { inquiry_id: inquiryId, question: 'wealth?', response_format: 'standard' },
+      }) }))
 
     const created = await new PlatformManagedPrashnaJobStore().create(principal, {
       job_id: jobId, chart_id: chartId, inquiry_id: inquiryId,
       request: { question: 'wealth?', response_format: 'standard' },
     } as never)
 
-    expect((created as unknown as { inquiry_id?: string }).inquiry_id).toBe(inquiryId)
+    expect(created.request?.inquiry_id).toBe(inquiryId)
     const firstBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
     const retryBody = JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string)
     expect(firstBody.inquiry_id).toBe(inquiryId)
