@@ -269,19 +269,39 @@ export function validationAdminProxyConfig(
   databaseUrl: string,
   binding: { proxyPort: string },
 ): Readonly<PoolConfig> {
+  const diagnostic = inspectDataPlaneAdminCredential(databaseUrl, binding)
+  if (!diagnostic.parseable) throw new Error('Data-plane admin credential is not a valid connection string.')
+  if (!diagnostic.safeToRoute) {
+    throw new Error(`Data-plane admin credential cannot be safely routed to the isolated validation proxy; missing or invalid components: ${diagnostic.invalidComponents.join(',')}.`)
+  }
+  const parsed = parsePgConnectionString(databaseUrl)
+  return Object.freeze({
+    host: '127.0.0.1', port: Number(binding.proxyPort), user: parsed.user,
+    password: parsed.password, database: parsed.database, max: 1,
+  })
+}
+
+/** Non-secret component diagnostic for the isolated administrator connector. */
+export function inspectDataPlaneAdminCredential(
+  databaseUrl: string,
+  binding: { proxyPort: string },
+): Readonly<{ parseable: boolean; safeToRoute: boolean; invalidComponents: readonly string[] }> {
   let parsed: ReturnType<typeof parsePgConnectionString>
   try {
     parsed = parsePgConnectionString(databaseUrl)
   } catch {
-    throw new Error('Data-plane admin credential is not a valid connection string.')
+    return Object.freeze({ parseable: false, safeToRoute: false, invalidComponents: Object.freeze(['connection_string']) })
   }
-  if (!parsed.user || !parsed.password || !parsed.database || !/^\d{2,5}$/.test(binding.proxyPort)
-      || Number(binding.proxyPort) > 65535) {
-    throw new Error('Data-plane admin credential cannot be safely routed to the isolated validation proxy.')
-  }
+  const invalidComponents = [
+    !parsed.user && 'user',
+    !parsed.password && 'password',
+    !parsed.database && 'database',
+    (!/^\d{2,5}$/.test(binding.proxyPort) || Number(binding.proxyPort) > 65535) && 'proxy_port',
+  ].filter((component): component is string => Boolean(component))
   return Object.freeze({
-    host: '127.0.0.1', port: Number(binding.proxyPort), user: parsed.user,
-    password: parsed.password, database: parsed.database, max: 1,
+    parseable: true,
+    safeToRoute: invalidComponents.length === 0,
+    invalidComponents: Object.freeze(invalidComponents),
   })
 }
 
