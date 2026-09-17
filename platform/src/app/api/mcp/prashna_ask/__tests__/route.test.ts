@@ -147,6 +147,7 @@ import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
+import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
 import {
   expectedW5DoorParityProjection,
@@ -164,6 +165,11 @@ const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 // native's real chart), per the repo's test-data law. Auth/DB are fully mocked
 // in this file regardless, so this distinction is belt-and-suspenders.
 const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+
+function requireInquiryContract(contract: InquiryContract | undefined): InquiryContract {
+  if (!contract) throw new Error('Managed-session fixture was read before open() supplied its contract')
+  return contract
+}
 
 function makeReq(body: object, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/mcp/prashna_ask', {
@@ -336,17 +342,18 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       chart_id: CHART,
       request_jsonb: { inquiry_id: inquiryId, question: 'managed page test', response_format: 'standard' },
     })
-    let current: any
+    let current: InquiryContract | undefined
     const session = {
-      get currentContract() { return current },
-      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]),
       beginAction: vi.fn().mockResolvedValue('acquired'),
       persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
         const nextPage = session.persistAcceptedObservation.mock.calls.length === 1
+        const contract = requireInquiryContract(current)
         current = {
-          ...current,
-          plan_items: current.plan_items.map((item: any) => item.item_id === plan_item_id
+          ...contract,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
             ? {
                 ...item,
                 state: nextPage ? 'ready' : 'observed',
@@ -357,11 +364,11 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
         }
       }),
       failClosedAmbiguity: vi.fn(),
-      failClosed: vi.fn(async (contract: any) => contract),
-      finalizeWhenNoReady: vi.fn(async () => ({ ...current, status: 'COMPLETE' })),
+      failClosed: vi.fn(async (contract: InquiryContract) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'COMPLETE' as const })),
     }
-    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
-      current = { ...(contract as any), max_iterations: 3 }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 3 }
       return session
     })
 
@@ -391,27 +398,28 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       results: [{ id: 'one' }], served_from_cache: false, latency_ms: 1, result_hash: 'sha256:one', schema_version: '1.0',
     })
     mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
-    let current: any
+    let current: InquiryContract | undefined
     const session = {
-      get currentContract() { return current },
-      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]),
       beginAction: vi.fn().mockResolvedValue('acquired'),
       persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const contract = requireInquiryContract(current)
         current = {
-          ...current,
+          ...contract,
           iteration: 1,
-          plan_items: current.plan_items.map((item: any) => item.item_id === plan_item_id
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
             ? { ...item, state: 'ready', args: { ...item.args, page_cursor: 'page-2' }, observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
             : item),
         }
       }),
       failClosedAmbiguity: vi.fn(),
-      failClosed: vi.fn(async (contract: any) => { current = contract; return contract }),
-      finalizeWhenNoReady: vi.fn(async () => current),
+      failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
+      finalizeWhenNoReady: vi.fn(async () => requireInquiryContract(current)),
     }
-    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
-      current = { ...(contract as any), max_iterations: 1 }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 1 }
       return session
     })
 
@@ -450,12 +458,12 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       recoveredEvidence: vi.fn().mockResolvedValue([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }]),
       beginAction: vi.fn(), persistAcceptedObservation: vi.fn(), failClosedAmbiguity: vi.fn(), failClosed: vi.fn(),
       finalizeWhenNoReady: vi.fn(), readyActionIds: [],
-      currentContract: null as any,
+      currentContract: null as InquiryContract | null,
     }
-    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
       session.currentContract = {
-        ...(contract as any), status: 'COMPLETE',
-        plan_items: (contract as any).plan_items.map((item: any) => ({
+        ...contract, status: 'COMPLETE',
+        plan_items: contract.plan_items.map((item) => ({
           ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null },
         })),
       }
@@ -493,17 +501,17 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
     const retrieve = vi.fn()
     mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
-    let current: any
+    let current: InquiryContract | undefined
     const session = {
-      get currentContract() { return current },
-      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
       failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
-      failClosed: vi.fn(async (contract: any) => { current = contract; return contract }),
+      failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
     }
-    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
       current = {
-        ...(contract as any), status: 'INCOMPLETE',
+        ...contract, status: 'INCOMPLETE',
         capability_content_hash: 'sha256:persisted-old', capability_compatibility_version: 'planner-scu-old',
         chart_availability_version: 'sha256:overlay-old', chart_build_id: 'build-old',
       }
@@ -537,16 +545,16 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
     const retrieve = vi.fn()
     mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
-    let current: any
+    let current: InquiryContract | undefined
     const session = {
-      get currentContract() { return current },
-      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
       failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
-      failClosed: vi.fn(async (contract: any) => { current = contract; return contract }),
+      failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
     }
-    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
-      current = { ...(contract as any), status: 'INCOMPLETE', ...drift }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, status: 'INCOMPLETE', ...drift }
       return session
     })
 
