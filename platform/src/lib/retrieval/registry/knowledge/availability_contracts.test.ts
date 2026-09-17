@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compiler'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
 import type { CapabilityKnowledgeSnapshot } from './types'
 
 const catalog = getCatalog()
@@ -82,6 +83,19 @@ describe('binding availability contracts', () => {
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
       subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
     }))
+  })
+
+  it.each([
+    ['source-query:get-ayurdaya:v1', "fact_category = 'ayurdaya'"],
+    ['source-query:get-sensitive-degrees:v1', "fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])"],
+  ])('keeps %s as a non-reducing query-success probe across the handler category set', (contractId, categoryPredicate) => {
+    const contract = getSourceQueryAvailabilityContract(contractId)!
+
+    expect(contract.empty_semantics).toBe('query_success_is_available')
+    expect(contract.sql).toContain(categoryPredicate)
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).toContain('SELECT COUNT(*)::text AS total')
+    expect(contract.sql).not.toMatch(/\b(?:WHERE|AND)\s+fact_key\s*(?:=|IN|LIKE)\b/i)
   })
 
   it('reports a non-array availability contract without throwing', () => {
