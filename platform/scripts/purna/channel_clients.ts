@@ -38,6 +38,15 @@ function receiptRefsFrom(value: unknown): string[] {
   return [...strings(data.receipt_refs), ...strings(data.evidence_refs), ...strings(receipt.refs), ...[receipt.receipt_hash, closure.receipt_hash].filter((item): item is string => typeof item === 'string')]
 }
 
+function responseAccountabilityFrom(value: unknown): unknown | null {
+  const data = record(value)
+  if (data.response_accountability && typeof data.response_accountability === 'object') return data.response_accountability
+  const result = record(data.result)
+  return result.response_accountability && typeof result.response_accountability === 'object'
+    ? result.response_accountability
+    : null
+}
+
 function terminalFrom(value: unknown): CollectionTerminal {
   const data = record(value)
   const status = String(data.status ?? record(data.receipt).status ?? record(data.closure).status ?? record(data.contract ?? record(data.result).inquiry_contract).status ?? '').toLowerCase()
@@ -164,11 +173,11 @@ export async function parsePortalSse(stream: ReadableStream<Uint8Array>): Promis
 function normalize(input: { test: AcceptanceCase; expectedRevision: string; source: 'candidate' | 'live' }, door: AcceptanceDoor, payload: unknown, calls: number, inquiryId: string | null, answerOverride?: string): CollectedCase {
   const data = record(payload)
   const closure = record(data.closure)
-  return { caseId: input.test.id, door, inquiryId, expectedRevision: input.expectedRevision, observedRevision: revisionFrom(data), snapshotHash: typeof data.snapshot_hash === 'string' ? data.snapshot_hash : null, chartBuildId: typeof data.chart_build_id === 'string' ? data.chart_build_id : typeof closure.chart_build_id === 'string' ? closure.chart_build_id as string : null, answer: answerOverride ?? answerFrom(data), receiptRefs: receiptRefsFrom(data), materialFactIds: strings(data.material_fact_ids), deliveredFactIds: strings(data.delivered_fact_ids), unresolvedObligationIds: strings(data.unresolved_obligation_ids), networkCallCount: calls, source: input.source, terminal: terminalFrom(data), diagnostic: null }
+  return { caseId: input.test.id, door, inquiryId, expectedRevision: input.expectedRevision, observedRevision: revisionFrom(data), snapshotHash: typeof data.snapshot_hash === 'string' ? data.snapshot_hash : null, chartBuildId: typeof data.chart_build_id === 'string' ? data.chart_build_id : typeof closure.chart_build_id === 'string' ? closure.chart_build_id as string : null, answer: answerOverride ?? answerFrom(data), responseAccountability: responseAccountabilityFrom(data), receiptRefs: receiptRefsFrom(data), materialFactIds: strings(data.material_fact_ids), deliveredFactIds: strings(data.delivered_fact_ids), unresolvedObligationIds: strings(data.unresolved_obligation_ids), networkCallCount: calls, source: input.source, terminal: terminalFrom(data), diagnostic: null }
 }
 
 function failed(input: { test: AcceptanceCase; expectedRevision: string; source: 'candidate' | 'live' }, door: AcceptanceDoor, calls: number, diagnostic: string, inquiryId: string | null = null): CollectedCase {
-  return { caseId: input.test.id, door, inquiryId, expectedRevision: input.expectedRevision, observedRevision: null, snapshotHash: null, chartBuildId: null, answer: '', receiptRefs: [], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: [], networkCallCount: calls, source: input.source, terminal: 'transport_error', diagnostic }
+  return { caseId: input.test.id, door, inquiryId, expectedRevision: input.expectedRevision, observedRevision: null, snapshotHash: null, chartBuildId: null, answer: '', responseAccountability: null, receiptRefs: [], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: [], networkCallCount: calls, source: input.source, terminal: 'transport_error', diagnostic }
 }
 
 export function clientsForRun(clients: Record<AcceptanceDoor, DoorClient>): readonly DoorClient[] { return Object.values(clients) }

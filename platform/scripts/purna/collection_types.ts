@@ -19,6 +19,8 @@ export interface CollectedCase {
   readonly snapshotHash: string | null
   readonly chartBuildId: string | null
   readonly answer: string
+  /** Typed server envelope retained for independent answer assessment. */
+  readonly responseAccountability: unknown | null
   readonly receiptRefs: readonly string[]
   readonly materialFactIds: readonly string[]
   readonly deliveredFactIds: readonly string[]

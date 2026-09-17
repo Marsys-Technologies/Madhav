@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.21.0
+version: 0.22.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0094
-last_updated: 2026-09-17T23:30:00+05:30
+last_event: PA-E0095
+last_updated: 2026-09-17T23:35:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -71,6 +71,14 @@ layer state, queue or authority.
   least 4; malformed judge output or missing accountability yields an incomplete result. Focused
   Pūrṇa tests pass 26/26, TypeScript and both capability-codegen freshness checks pass. No judge
   call, candidate/live collection, or acceptance verdict has been recorded.
+
+- Collection-to-assessment bridge: each door row now retains the response-accountability envelope
+  returned by the channel, and `answers_from_collection.ts` constructs the exact per-door answer
+  input for the judge and acceptance scorer. It rejects duplicate/missing door rows and fixtures.
+  It passes only closure, accountability, and material-delivery gates directly demonstrated by the
+  collected row; required-dimension and bounded-insufficiency gates remain explicit failures until
+  channels expose their typed semantic receipts. This makes the missing channel proof actionable
+  without turning an absent field into acceptance evidence.
 
 - Product evidence M1: the new real three-door collector has passed focused source checks
   (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without

@@ -7,7 +7,7 @@ const base = { test, expectedRevision: 'candidate-a', source: 'candidate' as con
 
 describe('Purna real three-door collector', () => {
   it('rejects a supposedly live answer with no real channel execution', () => {
-    expect(() => assertLiveEvidence({ caseId: test.id, door: 'portal', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [], networkCallCount: 0, source: 'live', terminal: 'complete', diagnostic: null })).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
+    expect(() => assertLiveEvidence({ caseId: test.id, door: 'portal', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null, receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [], networkCallCount: 0, source: 'live', terminal: 'complete', diagnostic: null })).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
   })
   it('keeps a truncated SSE stream incomplete', async () => {
     const stream = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode('data: {"type":"block.commit","text":"partial"}\n\n')); controller.close() } })
@@ -51,6 +51,13 @@ describe('Purna real three-door collector', () => {
       ? { job_id: 'job-1' }
       : { status: 'complete', deployed_revision: 'candidate-a', result: { reading: 'complete response', receipt_refs: ['r-1'] } } } })
     expect(row).toMatchObject({ observedRevision: 'candidate-a', terminal: 'complete', receiptRefs: ['r-1'] })
+  })
+  it('retains the managed response-accountability envelope for independent assessment', async () => {
+    const envelope = { accountability_version: 'inquiry-response-accountability-v1' }
+    const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask'
+      ? { job_id: 'job-1' }
+      : { status: 'complete', deployed_revision: 'candidate-a', result: { reading: 'complete response', response_accountability: envelope } } } })
+    expect(row.responseAccountability).toBe(envelope)
   })
   it('rejects raw lifecycle pagination that does not advance', async () => {
     const row = await collectRawCase({ ...base, maxActions: 3, invoker: { call: async (name) => name === 'inquiry_start' ? { inquiry_id: 'i-1', lifecycle_token: 'same', next_action_ids: ['item-001'] } : { lifecycle_token: 'same', next_action_ids: ['item-001'] } } })
