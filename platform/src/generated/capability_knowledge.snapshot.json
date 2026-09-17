@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T03:09:00.000Z",
-  "content_hash": "sha256:d0c73a1383753852c5005b09c1c81bb3016da82895629862c76cc2e4a4182454",
-  "source_catalog_fingerprint": "sha256:f812c6f2488af29e7e837bccd926233727bbf7a9d65417cd92b3e3aadcbc4a17",
+  "generated_at": "2026-09-17T03:14:00.000Z",
+  "content_hash": "sha256:b3cf91c10d1d7156047179eb1821ab362f5a3cc61f80e82d49d9521fde03e9ca",
+  "source_catalog_fingerprint": "sha256:6e26824df889a8890a8f3f24e3bd833944f485294ff404aabf798f1364cdafad",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -30805,10 +30805,10 @@
           "total_path": "content.total_matching",
           "more_available_path": "content.more_available",
           "deterministic_order": [
-            "dasha_activation_proximity_score DESC",
-            "orb_strength DESC",
-            "activation_start",
-            "id"
+            "dasha_activation_proximity_score DESC NULLS LAST",
+            "orb_strength DESC NULLS LAST",
+            "activation_start ASC",
+            "id ASC"
           ]
         },
         "execution_channels": [
@@ -30896,10 +30896,10 @@
             "total_path": "content.total_matching",
             "more_available_path": "content.more_available",
             "deterministic_order": [
-              "dasha_activation_proximity_score DESC",
-              "orb_strength DESC",
-              "activation_start",
-              "id"
+              "dasha_activation_proximity_score DESC NULLS LAST",
+              "orb_strength DESC NULLS LAST",
+              "activation_start ASC",
+              "id ASC"
             ]
           },
           "execution_channels": [

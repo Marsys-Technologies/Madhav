@@ -59,6 +59,13 @@ function normalizeMinStrength(value: unknown): number {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
 }
 
+/** Optional text filters are blank-insensitive across SQL, echoes, and hashes. */
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  return normalized || undefined
+}
+
 type ForwardWindowState =
   | 'not_needed'
   | 'served'
@@ -176,15 +183,17 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     const explicitAyanamsha   = args['ayanamsha_id'] !== undefined && args['ayanamsha_id'] !== null
     // WP-1.3(e): track whether the caller supplied an explicit window so the echo can
     // honestly disclose when a default (today..+1y) was silently applied.
-    const explicitFrom        = args['date_from'] !== undefined && args['date_from'] !== null
-    const explicitTo          = args['date_to'] !== undefined && args['date_to'] !== null
-    const as_of               = args['as_of'] as string | undefined
-    const date_from           = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
-    const date_to             = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
+    const requestedDateFrom   = normalizeOptionalText(args['date_from'])
+    const requestedDateTo     = normalizeOptionalText(args['date_to'])
+    const explicitFrom        = requestedDateFrom !== undefined
+    const explicitTo          = requestedDateTo !== undefined
+    const as_of               = normalizeOptionalText(args['as_of'])
+    const date_from           = requestedDateFrom ?? new Date().toISOString().split('T')[0]
+    const date_to             = requestedDateTo ?? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
     const signal_ids          = normalizeSignalIds(args['signal_ids'])
     const top_k               = normalizeTopK(args['top_k'])
     const min_strength        = normalizeMinStrength(args['min_activation_strength'])
-    const domain              = args['domain'] as string | undefined
+    const domain              = normalizeOptionalText(args['domain'])
 
     // The response is intentionally a bounded, ranked window read rather than
     // an unbounded temporal search. Keep the query identity independent of
@@ -286,7 +295,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         -- secondary tiebreak (real signal for the small fraction of rows ka_sangam does
         -- cover); activation_start/id remain the final deterministic tiebreak (§N.7 item 2).
         ORDER BY dasha_activation_proximity_score DESC NULLS LAST,
-                 orb_strength DESC NULLS LAST, activation_start, id
+                 orb_strength DESC NULLS LAST, activation_start ASC, id ASC
         LIMIT ${topKPh}
       `
 

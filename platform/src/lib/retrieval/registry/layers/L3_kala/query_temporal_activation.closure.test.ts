@@ -105,12 +105,18 @@ describe('query_temporal_activation bounded temporal closure', () => {
       },
     })
     const activationSql = String(queryMock.mock.calls.find(([sql]) => String(sql).includes('SELECT id, signal_id, ayanamsha_id, signature_class'))![0])
-    expect(activationSql).toMatch(/ORDER BY dasha_activation_proximity_score DESC NULLS LAST,\s*orb_strength DESC NULLS LAST, activation_start, id/)
+    expect(activationSql).toMatch(/ORDER BY dasha_activation_proximity_score DESC NULLS LAST,\s*orb_strength DESC NULLS LAST, activation_start ASC, id ASC/)
     expect(activationSql).toContain('COUNT(*) OVER()::int AS total_matching')
     expect(activationSql).toContain('activation_end >=')
     expect(activationSql).toContain('activation_start <=')
     expect(queryMock.mock.calls.some(([sql]) => sql === undefined)).toBe(false)
     expect((result.content['activations'] as Array<Record<string, unknown>>)[0]).not.toHaveProperty('total_matching')
+    expect(temporalBinding().pagination_contract?.deterministic_order).toEqual([
+      'dasha_activation_proximity_score DESC NULLS LAST',
+      'orb_strength DESC NULLS LAST',
+      'activation_start ASC',
+      'id ASC',
+    ])
   })
 
   it('marks a capped response incomplete instead of equating page length with exhaustion', async () => {
@@ -150,6 +156,36 @@ describe('query_temporal_activation bounded temporal closure', () => {
     const secondClosure = second.content['temporal_closure'] as Record<string, unknown>
     expect(secondClosure['filter_identity']).not.toBe(firstClosure['filter_identity'])
     expect(secondClosure['query_identity']).not.toBe(firstClosure['query_identity'])
+  })
+
+  it('normalizes blank optional filters before SQL predicates, echoes, and closure fingerprints', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-17T00:00:00.000Z'))
+    try {
+      routeQueries({ activations: ROWS, totalMatching: 2 })
+      const blank = await handler({
+        chart_id: CHART_ID,
+        date_from: '  ',
+        date_to: '',
+        domain: '   ',
+        top_k: 2,
+      })
+      routeQueries({ activations: ROWS, totalMatching: 2 })
+      const omitted = await handler({ chart_id: CHART_ID, top_k: 2 })
+
+      const blankClosure = blank.content['temporal_closure'] as Record<string, unknown>
+      const omittedClosure = omitted.content['temporal_closure'] as Record<string, unknown>
+      expect(blank.content['date_filter']).toMatchObject({ range_defaulted: true })
+      expect(blank.content['filters']).toMatchObject({ domain: null })
+      expect(blankClosure['filters']).toMatchObject({ domain: null })
+      expect(blankClosure['filter_identity']).toBe(omittedClosure['filter_identity'])
+      expect(blankClosure['query_identity']).toBe(omittedClosure['query_identity'])
+      expect(JSON.stringify(blank.content)).not.toContain('   ')
+      const activationSql = String(queryMock.mock.calls.find(([sql]) => String(sql).includes('SELECT id, signal_id, ayanamsha_id, signature_class'))![0])
+      expect(activationSql).not.toContain('domains_affected_array))')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('keeps a required temporal result unresolved in the inquiry lifecycle when the bounded window is trimmed', async () => {

@@ -88,7 +88,12 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
         result_collection_path: 'content.activations',
         total_path: 'content.total_matching',
         more_available_path: 'content.more_available',
-        deterministic_order: ['dasha_activation_proximity_score DESC', 'orb_strength DESC', 'activation_start', 'id'],
+        deterministic_order: [
+          'dasha_activation_proximity_score DESC NULLS LAST',
+          'orb_strength DESC NULLS LAST',
+          'activation_start ASC',
+          'id ASC',
+        ],
       },
       execution_channels: ['platform_internal', 'mcp_full'],
       public_tool_name: 'kala_windows_get',
