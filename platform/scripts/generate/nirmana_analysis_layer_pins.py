@@ -298,6 +298,32 @@ SOURCE_ACCEPTANCE_BINDINGS = {
     },
 }
 
+# Post-integration acceptance records cover privileged route corrections that
+# intentionally do not move a writer generation. Keeping them distinct from
+# per-layer successor admissions prevents a no-writer-delta repair from
+# rewriting L1/L2 receipt history merely to preserve review provenance.
+POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS = {
+    "ea9b27bfeba607c5332c51e10b037e100e97b717": {
+        "schema_version": SOURCE_ACCEPTANCE_SCHEMA_VERSION,
+        "reviewed_source_commit": "ea9b27bfeba607c5332c51e10b037e100e97b717",
+        "integrated_equivalent_commit": "ea9b27bfeba607c5332c51e10b037e100e97b717",
+        "common_base_commit": "7982524fde1b210dea72eb38e1704aa2b0514eb2",
+        "source_surface_sha256": "89fdc9c7ef43031faffcf7e9d633114bed4892e7b401703d7d9bb951bcb2dde1",
+        "reviewed_surface": [
+            {"path": "platform/scripts/data-plane-migration-attestation.ts", "blob_oid": "ae225a2d5c3ac1eb03938c8338191e21a8a56fd7"},
+            {"path": "platform/scripts/data-plane-ownership-preflight.ts", "blob_oid": "3fc5f7d7f296fd6c79c0e8650154fa51df66b342"},
+            {"path": "platform/scripts/data-plane-protected-cutover.ts", "blob_oid": "bad228594eb620d68e6ddbd79267af94499315f0"},
+            {"path": "platform/tests/unit/data_plane_security_contract.test.ts", "blob_oid": "f3ea6d49d191dad280390edd6aed76391a37a64f"},
+        ],
+        "record_artifact": {
+            "commit": "3fcf972e1f2e3b3d9994b361902048276c1aff3b",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_1.md",
+            "sha256": "fc2ac7c157d4222337ccaff5b4ea5425c1d297bbd96d8220ca83a4251c27d3fb",
+            "decision_binding": "status: SECURITY_CLEAR_SOURCE_ACCEPTED",
+        },
+    },
+}
+
 # L0's reviewed convergence, carried forward verbatim from the pre-generalisation
 # nirmana-l0-analysis-receipts.ts.  Changing either value re-computes every L0
 # analysis digest and invalidates the frozen L0 capsules — see --check.
@@ -460,23 +486,53 @@ def _commit_is_ancestor_of_head(commit: str) -> bool:
     ).returncode == 0
 
 
+def _commit_is_ancestor_of_commit(ancestor: str, descendant: str) -> bool:
+    if not re.fullmatch(r"[a-f0-9]{40}", ancestor) or not re.fullmatch(
+        r"[a-f0-9]{40}", descendant
+    ):
+        return False
+    return subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        cwd=REPO_ROOT,
+        capture_output=True,
+    ).returncode == 0
+
+
 def _require_reachable_commit(commit: str, label: str) -> None:
     _validate_sha(commit, label)
     if not _commit_is_ancestor_of_head(commit):
         raise SystemExit(f"{label} commit {commit} must be an ancestor of HEAD")
 
 
+def _direct_parent(commit: str, label: str) -> str:
+    _require_reachable_commit(commit, label)
+    parents = subprocess.run(
+        ["git", "rev-list", "--parents", "-n", "1", commit],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip().split()[1:]
+    if len(parents) != 1 or not re.fullmatch(r"[a-f0-9]{40}", parents[0]):
+        raise SystemExit(f"{label} commit {commit} must have exactly one direct parent")
+    return parents[0]
+
+
 def _blob_at_commit(commit: str, path: str) -> bytes:
     _require_reachable_commit(commit, "artifact")
+    return _blob_at_revision(commit, path, "commit")
+
+
+def _blob_at_revision(revision: str, path: str, label: str) -> bytes:
     try:
         return subprocess.run(
-            ["git", "show", f"{commit}:{path}"],
+            ["git", "show", f"{revision}:{path}"],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
         ).stdout
     except subprocess.CalledProcessError as exc:
-        raise SystemExit(f"commit {commit} does not carry {path}") from exc
+        raise SystemExit(f"{label} {revision} does not carry {path}") from exc
 
 
 def _blob_oid_at_commit(commit: str, path: str) -> str:
@@ -614,7 +670,9 @@ def build_definition_bindings(snapshot_commit: str) -> dict[str, Any]:
     return bindings
 
 
-def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
+def _artifact_metadata(
+    artifact: dict[str, Any], label: str
+) -> tuple[str, str, str, str]:
     try:
         commit = artifact["commit"]
         path = artifact["path"]
@@ -625,11 +683,47 @@ def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
     _validate_sha(commit, f"{label} commit")
     if not path or not decision_binding or not re.fullmatch(r"[a-f0-9]{64}", digest):
         raise SystemExit(f"{label} metadata is invalid")
-    content = _blob_at_commit(commit, path)
+    return commit, path, digest, decision_binding
+
+
+def _validate_artifact_content(
+    artifact: dict[str, Any], label: str, content: bytes
+) -> None:
+    commit, path, digest, decision_binding = _artifact_metadata(artifact, label)
     if hashlib.sha256(content).hexdigest() != digest:
         raise SystemExit(f"{label} content digest does not match {commit}:{path}")
     if decision_binding.encode("utf-8") not in content:
         raise SystemExit(f"{label} does not contain its expected decision binding")
+
+
+def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
+    commit, path, _, _ = _artifact_metadata(artifact, label)
+    content = _blob_at_commit(commit, path)
+    _validate_artifact_content(artifact, label, content)
+
+
+def validate_delivered_artifact_binding(
+    artifact: dict[str, Any],
+    label: str,
+    *,
+    required_content_bindings: tuple[str, ...] = (),
+) -> None:
+    """Validate exact evidence packaged by a squash-style delivery commit.
+
+    GitHub's merge queue carries the source PR tree in a synthetic single-parent
+    commit, so source-only commits are not ancestors of delivery HEAD. The
+    source-topology check must still dereference those commits. Delivery instead
+    re-hashes the exact path packaged at HEAD and binds it to the reviewed source
+    identities recorded inside the artifact.
+    """
+    _, path, _, _ = _artifact_metadata(artifact, label)
+    content = _blob_at_revision("HEAD", path, "delivery")
+    _validate_artifact_content(artifact, label, content)
+    for binding in required_content_bindings:
+        if binding.encode("utf-8") not in content:
+            raise SystemExit(
+                f"{label} delivered content does not contain {binding!r}"
+            )
 
 
 def validate_authority_binding(decision: str, commit: str) -> None:
@@ -724,6 +818,55 @@ def validate_source_acceptance(
         raise SystemExit(
             "reviewed/integrated source-surface digest does not match its immutable binding"
         )
+
+
+def validate_post_integration_source_acceptance_bindings(
+    *, delivery_topology: bool = False
+) -> None:
+    """Re-derive privileged no-writer-delta acceptance records offline."""
+    for source_commit, binding in POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS.items():
+        expected_keys = {
+            "schema_version", "reviewed_source_commit", "integrated_equivalent_commit",
+            "common_base_commit", "source_surface_sha256", "reviewed_surface", "record_artifact",
+        }
+        if set(binding) != expected_keys or binding["schema_version"] != SOURCE_ACCEPTANCE_SCHEMA_VERSION:
+            raise SystemExit(f"post-integration source acceptance {source_commit} is malformed")
+        if binding["reviewed_source_commit"] != source_commit:
+            raise SystemExit(f"post-integration source acceptance {source_commit} has the wrong reviewed tip")
+        _require_reachable_commit(source_commit, "post-integration reviewed source")
+        common_base = binding["common_base_commit"]
+        _require_reachable_commit(common_base, "post-integration common base")
+        if _direct_parent(source_commit, "post-integration reviewed source") != common_base:
+            raise SystemExit(
+                f"post-integration source acceptance {source_commit} common base is not its direct parent"
+            )
+        _, derived_digest = _source_surface_mapping(
+            binding["reviewed_surface"], binding["integrated_equivalent_commit"]
+        )
+        if derived_digest != binding["source_surface_sha256"]:
+            raise SystemExit(
+                f"post-integration source acceptance {source_commit} has the wrong source-surface digest"
+            )
+        artifact = binding["record_artifact"]
+        artifact_label = f"post-integration source acceptance {source_commit}"
+        if delivery_topology:
+            validate_delivered_artifact_binding(
+                artifact,
+                artifact_label,
+                required_content_bindings=(
+                    f"reviewed_branch_tip: {source_commit}",
+                    "integrated_equivalent_tip: "
+                    f"{binding['integrated_equivalent_commit']}",
+                ),
+            )
+        else:
+            validate_artifact_binding(artifact, artifact_label)
+            if not _commit_is_ancestor_of_commit(
+                source_commit, artifact["commit"]
+            ):
+                raise SystemExit(
+                    f"{artifact_label} record does not descend from its reviewed source"
+                )
 
 
 def validate_review_artifacts(
@@ -955,6 +1098,12 @@ def check(
     pin file — the exact failure mode the missing generator allowed.
     """
     failures: list[str] = []
+    try:
+        validate_post_integration_source_acceptance_bindings(
+            delivery_topology=delivery_topology
+        )
+    except SystemExit as exc:
+        failures.append(str(exc))
     baseline_pins: dict[str, Any] | None = None
     baseline_inventory: dict[str, str] | None = None
     baseline_nodes_by_layer: dict[
