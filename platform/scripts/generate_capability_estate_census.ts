@@ -26,6 +26,7 @@ import { pathToFileURL } from 'node:url'
 
 import { getCatalog } from '../src/lib/retrieval/registry/catalog'
 import type { CapabilityDescriptor } from '../src/lib/retrieval/registry/types'
+import { hasReviewedExhaustion } from '../src/lib/retrieval/registry/knowledge/pagination_review'
 import {
   extractRegistrarCapabilityBindings,
 } from './manifest/extract_registrar_capability_bridge'
@@ -821,7 +822,7 @@ export async function buildCapabilityEstateCensus(options: {
     const publicToolNames = sortedUnique(publicRoutes.map((route) => route.tool_name))
     const exclusion = plannerExcluded.find((entry) => entry.capability_uri === cap.uri)
     const loader = (cap as CapabilityDescriptor & { loader?: unknown }).loader
-    const paginationVerified = cap.semantic_capabilities?.some((declaration) => declaration.primary_binding_details?.pagination_verified === true) ?? false
+    const paginationVerified = cap.semantic_capabilities?.some((declaration) => hasReviewedExhaustion(declaration.primary_binding_details)) ?? false
     const declaredPaginated = cap.density_contract?.paginated === true
     return {
       capability_uri: cap.uri,

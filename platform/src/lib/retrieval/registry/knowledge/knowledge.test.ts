@@ -79,6 +79,45 @@ describe('planner capability knowledge', () => {
     expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(93)
   })
 
+  it('derives reviewed pagination only from an evidence-bearing continuation contract', () => {
+    const bindingById = new Map(snapshot.scus.flatMap((scu) => scu.bindings).map((binding) => [binding.binding_id, binding]))
+    expect(bindingById.get('registry:marsys://tool/L2/query_mechanisms')).toMatchObject({
+      pagination_verified: true,
+      result_collection_verified: true,
+    })
+    expect(bindingById.get('registry:marsys://tool/L1/get_divisionals')).toMatchObject({
+      pagination_verified: true,
+      result_collection_verified: true,
+    })
+    expect(bindingById.get('registry:marsys://tool/L1/get_dashas')).toMatchObject({
+      pagination_verified: true,
+      result_collection_verified: true,
+    })
+    expect(bindingById.get('registry:marsys://tool/L3/query_temporal_activation')).toMatchObject({
+      pagination_verified: false,
+      result_collection_verified: true,
+    })
+
+    const changedCatalog = catalog.map((cap) => {
+      if (cap.uri !== 'marsys://tool/L1/get_dashas') return cap
+      const declaration = cap.semantic_capabilities?.[0]!
+      const details = declaration.primary_binding_details!
+      const { next_path: _discardedContinuation, ...incompleteContract } = details.pagination_contract!
+      return {
+        ...cap,
+        semantic_capabilities: [{
+          ...declaration,
+          primary_binding_details: { ...details, pagination_contract: incompleteContract },
+        }],
+      } as CapabilityDescriptor
+    })
+    const changed = compileCapabilityKnowledge(changedCatalog, '2026-09-13T00:00:00.000Z')
+    expect(changed.scus.find((scu) => scu.scu_id === 'scu.catalog.get_dashas')?.bindings[0]).toMatchObject({
+      pagination_verified: false,
+      result_collection_verified: true,
+    })
+  })
+
   it('keeps SCUs distinct from tools with many-to-many executable bindings', () => {
     const finance = snapshot.scus.find((scu) => scu.scu_id === 'scu.finance.prosperity_assessment')
     const yoga = snapshot.scus.find((scu) => scu.scu_id === 'scu.yoga.firing_and_cancellation')

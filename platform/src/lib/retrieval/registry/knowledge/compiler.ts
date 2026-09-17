@@ -18,6 +18,7 @@ import {
   type ProducerSemanticBinding,
 } from './types'
 import { canonicalize, deepFreeze, stableFingerprint } from './stable'
+import { hasReviewedExhaustion, hasReviewedResultCollection } from './pagination_review'
 import {
   getDescriptorAvailabilityContractReview,
   getDescriptorAvailabilityReview,
@@ -40,6 +41,17 @@ interface DescriptorRouteContract {
 
 const DESCRIPTOR_ROUTE_CONTRACTS = (estateCensus.details.descriptor_route_contracts as readonly DescriptorRouteContract[])
 const DESCRIPTOR_ROUTE_BY_URI = new Map(DESCRIPTOR_ROUTE_CONTRACTS.map((contract) => [contract.capability_uri, contract]))
+
+function applyReviewedPaginationDetails(
+  details: SemanticCapabilityDeclaration['primary_binding_details'],
+): SemanticCapabilityDeclaration['primary_binding_details'] {
+  if (!details) return details
+  return {
+    ...details,
+    pagination_verified: hasReviewedExhaustion(details),
+    result_collection_verified: hasReviewedResultCollection(details),
+  }
+}
 
 function applyReviewedRouteContract(binding: SemanticCapabilityBinding): SemanticCapabilityBinding {
   if (binding.kind !== 'registry_capability') return binding
@@ -153,7 +165,7 @@ function primaryBinding(
     pagination_verified: null,
     executable,
     route_evidence: `CapabilityDescriptor:${cap.uri}`,
-    ...details,
+    ...applyReviewedPaginationDetails(details),
     ...(executable ? {} : { unavailable_reason: 'CapabilityDescriptor has no executable handler or loader.' }),
   })
 }

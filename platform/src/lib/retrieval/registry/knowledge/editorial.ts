@@ -25,8 +25,6 @@ export const MECHANISM_SCUS: readonly SemanticCapabilityDeclaration[] = [
     primary_binding_uri: 'marsys://tool/L2/query_mechanisms',
     primary_binding_details: {
       pagination: 'cursor',
-      pagination_verified: true,
-      result_collection_verified: true,
       pagination_contract: {
         request_position_path: 'page_cursor', request_limit_path: 'limit', effective_maximum: 50,
         result_collection_path: 'content.rows', total_path: 'content.total_matching',
@@ -81,8 +79,6 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       // The response now proves whether its exact filtered window was trimmed,
       // but it intentionally offers no continuation. A required inquiry must
       // therefore retain a frontier when that bounded window is incomplete.
-      pagination_verified: false,
-      result_collection_verified: true,
       pagination_contract: {
         request_limit_path: 'top_k', effective_maximum: 500,
         result_collection_path: 'content.activations',
@@ -140,8 +136,6 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
     primary_binding_uri: 'marsys://tool/L1/get_divisionals',
     primary_binding_details: {
       pagination: 'offset',
-      pagination_verified: true,
-      result_collection_verified: true,
       pagination_contract: {
         request_position_path: 'offset', request_limit_path: 'limit', effective_maximum: 2000,
         result_collection_path: 'content.rows',
@@ -199,8 +193,6 @@ export const DASHA_SCUS: readonly SemanticCapabilityDeclaration[] = [
     primary_binding_uri: 'marsys://tool/L1/get_dashas',
     primary_binding_details: {
       pagination: 'cursor',
-      pagination_verified: true,
-      result_collection_verified: true,
       pagination_contract: {
         request_position_path: 'page_cursor',
         request_limit_path: 'limit',
@@ -295,7 +287,7 @@ export const YOGA_SCUS: readonly SemanticCapabilityDeclaration[] = [
     outputs: ['firings', 'strength', 'bhanga', 'activation_dasha_periods', 'grounds'],
     primary_binding_uri: 'marsys://tool/L1/get_yoga_firings',
     primary_binding_details: {
-      pagination: 'offset', pagination_verified: true, result_collection_verified: true,
+      pagination: 'offset',
       pagination_contract: {
         request_position_path: 'offset', request_limit_path: 'limit', effective_maximum: 50,
         result_collection_path: 'content.rows', total_path: 'content.total_matching',
