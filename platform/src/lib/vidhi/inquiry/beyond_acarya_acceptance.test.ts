@@ -233,6 +233,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         },
       },
       claim_ceiling: report.claim_ceiling,
+      expert_domain_review: report.expert_domain_review,
       empirical_answer_quality: report.empirical_answer_quality,
       production_validation: report.production_validation,
       source_status: 'SOURCE_ONLY_NOT_LIVE',
@@ -243,6 +244,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         generated_at: snapshot.generated_at,
         capability_content_hash: snapshot.content_hash,
         snapshot_file_sha256: snapshotFileSha256,
+        source_catalog_fingerprint: snapshot.source_catalog_fingerprint,
+        semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
+        producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
       evaluated_source_revision: '25669184e53979f093b2a226e420981b30406427',
     })
