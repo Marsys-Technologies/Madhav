@@ -2,7 +2,7 @@
 import { attestDataPlaneMigrations } from './data-plane-migration-attestation'
 import { runDataPlaneOwnershipPreflight } from './data-plane-ownership-preflight'
 import { readDataPlaneOwnershipStatus } from './data-plane-ownership-status'
-import { withDataPlaneCutoverLease } from './data-plane-cutover-preflight'
+import { validationAdminProxyConfig, withDataPlaneCutoverLease } from './data-plane-cutover-preflight'
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
@@ -13,6 +13,13 @@ function required(name: string): string {
 export async function executeProtectedDataPlaneCutover(): Promise<void> {
   const adminUrl = required('DATA_PLANE_ADMIN_DATABASE_URL')
   const migratorUrl = required('DATA_PLANE_MIGRATOR_DATABASE_URL')
+  // Validate the protected administrator credential before consuming any
+  // backup/restore evidence or attempting the native cutover. The actual
+  // connection remains pinned to the authenticated validation proxy inside
+  // withDataPlaneCutoverLease.
+  validationAdminProxyConfig(adminUrl, {
+    proxyPort: required('DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT'),
+  })
   await withDataPlaneCutoverLease(async () => {
     await runDataPlaneOwnershipPreflight(adminUrl)
     await attestDataPlaneMigrations(migratorUrl)
