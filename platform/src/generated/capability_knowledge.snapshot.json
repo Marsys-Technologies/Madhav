@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:bd8d06f5732c7c87223b1efbd5e93d026b31de02a4cb98bb239c71f6ac892bd1",
-  "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
+  "generated_at": "2026-09-17T07:28:59.000Z",
+  "content_hash": "sha256:509f3eb0372c0d1095f5ca8d51c7cc28635b564b006cc958f647ced0536164ca",
+  "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
   "semantic_review_fingerprint": "sha256:8110291398f3b61392117ea93a257ade130c43d20ee65d6e6ce5092b01c38325",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -59,8 +59,6 @@
       "primary_binding_uri": "marsys://tool/L2/query_mechanisms",
       "primary_binding_details": {
         "pagination": "cursor",
-        "pagination_verified": true,
-        "result_collection_verified": true,
         "pagination_contract": {
           "request_position_path": "page_cursor",
           "request_limit_path": "limit",
@@ -151,7 +149,6 @@
           "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get",
-          "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "page_cursor",
             "request_limit_path": "limit",
@@ -173,6 +170,7 @@
             "mcp_full"
           ],
           "public_tool_name": "bodha_mechanisms_get",
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "exhaustible_reviewed",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_mechanisms"
@@ -5541,8 +5539,6 @@
       "primary_binding_uri": "marsys://tool/L1/get_dashas",
       "primary_binding_details": {
         "pagination": "cursor",
-        "pagination_verified": true,
-        "result_collection_verified": true,
         "pagination_contract": {
           "request_position_path": "page_cursor",
           "request_limit_path": "limit",
@@ -5631,7 +5627,6 @@
           "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
-          "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "page_cursor",
             "request_limit_path": "limit",
@@ -5651,6 +5646,7 @@
           "execution_channels": [
             "platform_internal"
           ],
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "exhaustible_reviewed",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_dashas"
@@ -6283,8 +6279,6 @@
       "primary_binding_uri": "marsys://tool/L1/get_divisionals",
       "primary_binding_details": {
         "pagination": "offset",
-        "pagination_verified": true,
-        "result_collection_verified": true,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
@@ -6413,7 +6407,6 @@
           "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
-          "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -6431,6 +6424,7 @@
           "execution_channels": [
             "platform_internal"
           ],
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "exhaustible_reviewed",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_divisionals"
@@ -30920,7 +30914,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": null,
+          "pagination_verified": false,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/registry_bridge.ts:3504 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_wealth | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_wealth",
           "execution_channels": [
@@ -30928,6 +30922,7 @@
             "mcp_full"
           ],
           "public_tool_name": "assess_wealth",
+          "result_collection_verified": false,
           "pagination_review": {
             "disposition": "not_paginated",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L-DOMAIN/assess_wealth"
@@ -31082,8 +31077,6 @@
       "primary_binding_uri": "marsys://tool/L3/query_temporal_activation",
       "primary_binding_details": {
         "pagination": "bounded_unverified",
-        "pagination_verified": false,
-        "result_collection_verified": true,
         "pagination_contract": {
           "request_limit_path": "top_k",
           "effective_maximum": 500,
@@ -31186,7 +31179,6 @@
           "pagination_verified": false,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1076 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_windows_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_windows_get",
-          "result_collection_verified": true,
           "pagination_contract": {
             "request_limit_path": "top_k",
             "effective_maximum": 500,
@@ -31205,6 +31197,7 @@
             "mcp_full"
           ],
           "public_tool_name": "kala_windows_get",
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "non_exhaustible",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/query_temporal_activation",
@@ -31346,8 +31339,6 @@
       "primary_binding_uri": "marsys://tool/L1/get_yoga_firings",
       "primary_binding_details": {
         "pagination": "offset",
-        "pagination_verified": true,
-        "result_collection_verified": true,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
@@ -31485,7 +31476,6 @@
           "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:970 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_yoga_firings_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_yoga_firings_get",
-          "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -31505,6 +31495,7 @@
             "mcp_full"
           ],
           "public_tool_name": "ganita_yoga_firings_get",
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "exhaustible_reviewed",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_yoga_firings"
