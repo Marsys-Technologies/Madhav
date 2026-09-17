@@ -454,6 +454,72 @@ describe('first-slice availability coverage', () => {
 
   it.each([
     {
+      scuId: 'scu.catalog.query_medical_mappings',
+      bindingId: 'registry:marsys://tool/L0/query_medical_mappings',
+      assetId: 'bg_medical_mappings',
+      component: 'medical_mappings',
+      specSha256: '914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da',
+      sourceRef: 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27',
+    },
+    {
+      scuId: 'scu.catalog.query_nakshatra_medical',
+      bindingId: 'registry:marsys://tool/L0/query_nakshatra_medical',
+      assetId: 'bg_nakshatra_medical',
+      component: 'nakshatra_medical',
+      specSha256: 'ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1',
+      sourceRef: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33',
+    },
+    {
+      scuId: 'scu.catalog.query_sign_medical',
+      bindingId: 'registry:marsys://tool/L0/query_sign_medical',
+      assetId: 'bg_sign_medical',
+      component: 'sign_medical',
+      specSha256: '44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7',
+      sourceRef: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25',
+    },
+  ])('activates $scuId only from its own fresh, matching global medical-reference receipt', async ({
+    scuId, bindingId, assetId, component, specSha256, sourceRef,
+  }) => {
+    const scu = findScu(scuId)
+    const [requirement] = producerRequirements(scuId)
+
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.producer_output_claims).toEqual([{
+      asset_id: assetId,
+      component,
+      output_digest_spec_sha256: specSha256,
+      disposition: 'reviewed_output',
+      evidence: sourceRef,
+    }])
+    expect(requirement).toEqual({
+      kind: 'producer_output',
+      asset_id: assetId,
+      spec_sha256: specSha256,
+      scope: 'global',
+      source_ref: sourceRef,
+    })
+
+    const available = await overlayFor([globalProducerReceipt(assetId, specSha256)])
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available',
+      available_binding_ids: [bindingId],
+    })
+
+    for (const [rows, state] of [
+      [[], 'dark'],
+      [[globalProducerReceipt(assetId, 'c'.repeat(64))], 'incompatible'],
+      [[globalProducerReceipt(assetId, specSha256, { freshness_state: 'stale' })], 'dark'],
+    ] as const) {
+      const unavailable = await overlayFor(rows)
+      expect(unavailable.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state,
+        available_binding_ids: [],
+      })
+    }
+  })
+
+  it.each([
+    {
       scuId: 'scu.catalog.get_ayurdaya',
       bindingId: 'registry:marsys://tool/L1/get_ayurdaya',
       assetId: 'ga_ayurdaya',

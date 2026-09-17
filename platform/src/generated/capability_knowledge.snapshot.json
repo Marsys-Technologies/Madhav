@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:8e4c167ee5d8f72d45331e5ef932c022adf93bc14a8a7247c1e39dff306fc5f9",
+  "content_hash": "sha256:bd8d06f5732c7c87223b1efbd5e93d026b31de02a4cb98bb239c71f6ac892bd1",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:6739fb216ea2200a89d971f3ae327ab52790b00e599ffeeeb60773637de8bc76",
+  "semantic_review_fingerprint": "sha256:8110291398f3b61392117ea93a257ade130c43d20ee65d6e6ce5092b01c38325",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -18876,6 +18876,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_medical_mappings",
+          "component": "medical_mappings",
+          "output_digest_spec_sha256": "914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_medical_mappings",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_medical_mappings",
+              "spec_sha256": "914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -19878,6 +19901,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_nakshatra_medical",
+          "component": "nakshatra_medical",
+          "output_digest_spec_sha256": "ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_nakshatra_medical",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_nakshatra_medical",
+              "spec_sha256": "ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1",
+              "scope": "global",
+              "source_ref": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -25144,6 +25190,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_sign_medical",
+          "component": "sign_medical",
+          "output_digest_spec_sha256": "44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sign_medical",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_sign_medical",
+              "spec_sha256": "44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7",
+              "scope": "global",
+              "source_ref": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -36160,8 +36229,8 @@
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 12,
-    "reviewed_output_claims": 11,
+    "producer_output_claims": 15,
+    "reviewed_output_claims": 14,
     "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,

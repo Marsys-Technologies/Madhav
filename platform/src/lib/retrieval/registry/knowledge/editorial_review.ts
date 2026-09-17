@@ -201,6 +201,54 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
     }],
   },
+  query_medical_mappings: {
+    producer_output_claims: [{
+      asset_id: 'bg_medical_mappings',
+      component: 'medical_mappings',
+      output_digest_spec_sha256: '914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_medical_mappings',
+      spec_sha256: '914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27',
+    }],
+  },
+  query_nakshatra_medical: {
+    producer_output_claims: [{
+      asset_id: 'bg_nakshatra_medical',
+      component: 'nakshatra_medical',
+      output_digest_spec_sha256: 'ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_nakshatra_medical',
+      spec_sha256: 'ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1',
+      scope: 'global',
+      source_ref: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33',
+    }],
+  },
+  query_sign_medical: {
+    producer_output_claims: [{
+      asset_id: 'bg_sign_medical',
+      component: 'sign_medical',
+      output_digest_spec_sha256: '44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_sign_medical',
+      spec_sha256: '44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7',
+      scope: 'global',
+      source_ref: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25',
+    }],
+  },
 }
 
 export function getDescriptorAvailabilityReview(name: string): DescriptorAvailabilityReview | undefined {
