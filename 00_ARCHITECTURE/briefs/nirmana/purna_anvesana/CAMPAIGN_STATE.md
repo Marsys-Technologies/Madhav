@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0088
-last_updated: 2026-09-17T22:55:00+05:30
+last_event: PA-E0089
+last_updated: 2026-09-17T23:00:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -67,6 +67,12 @@ layer state, queue or authority.
   a source coverage deficit, not evidence that the 157 routes are unavailable or acceptable to
   omit. Product completion remains blocked until every supported capability is given an executable,
   evidence-backed contract or a governed scope disposition.
+
+- M2 first repair: `scu.catalog.get_positions` now has an authored `ga_positions` chart-build
+  producer-output contract, pinned to migration 875's exact digest specification and tested for
+  healthy overlay promotion. The generated snapshot and estate census are current at this source
+  revision. The executable-SCU deficit is reduced to 156; this is one genuine contract repair,
+  not a completion claim or evidence of a live chart receipt.
 
 - Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
   independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,
