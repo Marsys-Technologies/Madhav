@@ -41,6 +41,11 @@ on:
         type: boolean
         required: false
         default: false
+      data_plane_cutover:
+        description: 'Explicitly authorize the protected data-plane bootstrap/cutover path for this exact SHA'
+        type: boolean
+        required: false
+        default: false
 
 # CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
 #   - pull_request  -> the `build-check` job only, which builds with `push: false`
@@ -526,13 +531,15 @@ jobs:
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
   # DP-SD-019/020: bootstrap-only credentials and the authenticated,
-  # protected-branch-only environment exist only on this job. When all protected
-  # states are established, GitHub skips the entire one-time bootstrap job.
+  # protected-branch-only environment exist only on this job. Automatic deploys
+  # may inspect state but may never infer authorization to mutate it: a separate
+  # exact-SHA manual dispatch is required, preventing unrelated main changes
+  # from entering the privileged path merely because a legacy state is unmarked.
   privileged-bootstrap:
     name: One-time Protected DB Bootstrap
     needs: [changes, migration-state]
     if: >-
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      github.event_name == 'workflow_dispatch' && inputs.data_plane_cutover == true &&
       (
         needs.migration-state.outputs.data_plane == 'unmarked' ||
         needs.migration-state.outputs.data_plane_isolation != 'strict' ||

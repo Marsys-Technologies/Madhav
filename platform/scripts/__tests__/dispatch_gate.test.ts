@@ -149,16 +149,17 @@ describe('deploy.yml wiring', () => {
     expect(on).toHaveProperty('workflow_dispatch')
   })
 
-  it('workflow_dispatch declares the ci_gate / emergency_reason / force_all_services inputs', () => {
+  it('workflow_dispatch declares the guarded deployment inputs', () => {
     const on = yml.on ?? yml.true
     if (!on) throw new Error('deploy workflow is missing its event configuration')
     const inputs = on.workflow_dispatch.inputs
     expect(Object.keys(inputs).sort()).toEqual(
-      ['ci_gate', 'emergency_reason', 'force_all_services'].sort()
+      ['ci_gate', 'emergency_reason', 'force_all_services', 'data_plane_cutover'].sort()
     )
     expect(inputs.ci_gate.default).toBe(REQUIRE_CI_GREEN)
     expect(inputs.ci_gate.options).toContain(EMERGENCY_OVERRIDE_TOKEN)
     expect(inputs.force_all_services.default).toBe(false)
+    expect(inputs.data_plane_cutover.default).toBe(false)
   })
 
   it('the changes job runs the dispatch gate', () => {

@@ -23,10 +23,10 @@ const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/dep
 const workflowJobs = (load(workflow) as { jobs: Record<string, WorkflowJob> }).jobs
 const iamTerraform = readFileSync(resolve(__dirname, '../../../infra/iam/main.tf'), 'utf8')
 
-function evaluateWorkflowCondition(expression: string, values: Record<string, string>): boolean {
+function evaluateWorkflowCondition(expression: string, values: Record<string, string | boolean>): boolean {
   let executable = expression.replace(/always\(\)/g, 'true')
-  executable = executable.replace(/\b(?:github|needs)\.[A-Za-z0-9_.-]+\b/g, (token) => JSON.stringify(values[token] ?? ''))
-  if (/\b(?:github|needs)\./.test(executable) || !/^[\s()&|!='".A-Za-z0-9_-]+$/.test(executable)) {
+  executable = executable.replace(/\b(?:github|needs|inputs)\.[A-Za-z0-9_.-]+\b/g, (token) => JSON.stringify(values[token] ?? ''))
+  if (/\b(?:github|needs|inputs)\./.test(executable) || !/^[\s()&|!='".A-Za-z0-9_-]+$/.test(executable)) {
     throw new Error(`Unsupported workflow expression: ${expression}`)
   }
   return Boolean(runInNewContext(executable, Object.create(null)))
@@ -446,6 +446,9 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(bootstrap.needs).toEqual(['changes', 'migration-state'])
     expect(bootstrap.environment).toBe('data-plane-production-cutover')
     expect(bootstrap.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
+    expect(workflow).toMatch(/data_plane_cutover:[\s\S]*?default: false/)
+    expect(bootstrap.if).toContain("github.event_name == 'workflow_dispatch'")
+    expect(bootstrap.if).toContain('inputs.data_plane_cutover == true')
     expect(bootstrap.if).toContain("needs.migration-state.outputs.data_plane == 'unmarked'")
     expect(bootstrap.if).toContain("needs.migration-state.outputs.data_plane_isolation != 'strict'")
     expect(bootstrap.if).toContain("needs.migration-state.outputs.nirmana == 'unmarked'")
@@ -522,6 +525,7 @@ describe('DP-SD-018 deployment ordering', () => {
     const base = {
       'github.event_name': 'workflow_run',
       'github.event.workflow_run.conclusion': 'success',
+      'inputs.data_plane_cutover': false,
       'needs.changes.result': 'success',
       'needs.migration-state.result': 'success',
     }
@@ -542,13 +546,18 @@ describe('DP-SD-018 deployment ordering', () => {
 
     expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped'))).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped'))).toBe(true)
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('unmarked', 'marked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('unmarked', 'marked', 'marked', 'skipped'))).toBe(false)
+    expect(evaluateWorkflowCondition(bootstrapIf, {
+      ...scenario('unmarked', 'marked', 'marked', 'skipped'),
+      'github.event_name': 'workflow_dispatch',
+      'inputs.data_plane_cutover': true,
+    })).toBe(true)
     expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'marked', 'success'))).toBe(true)
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'unmarked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'unmarked', 'marked', 'skipped'))).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'unmarked', 'marked', 'success'))).toBe(true)
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'armed', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'armed', 'skipped'))).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'armed', 'success'))).toBe(true)
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'success', 'repair_required'))).toBe(true)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(false)
 
