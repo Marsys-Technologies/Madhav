@@ -137,6 +137,30 @@ describe('callPipelinePlanner — plan outcome', () => {
     expect(payload).toHaveProperty('capability_knowledge')
     expect(payload).not.toHaveProperty('manifest')
   })
+
+  it('uses the deep planner slot and enabled reasoning for an explicit deep inquiry', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+    const suppliedDeepScope = {
+      intent: 'domain_assessment' as const, domains: ['wealth' as const], width: 'broad' as const,
+      depth: 'deep' as const, horizon: 'far' as const, intervention: 'none' as const, entitlement: 'native' as const,
+    }
+
+    await callPipelinePlanner('Explain this wealth outlook.', [], 'fast-model', 'chart-1', undefined, undefined, undefined, suppliedDeepScope, 'deep-model', 'deep-fallback')
+
+    expect(runAdapter.mock.calls[0]?.[0]).toMatchObject({ callType: 'planner_deep', reasoning: 'enable', modelOverride: { modelId: 'deep-model' } })
+  })
+
+  it('keeps a focused lookup on the proportionate planner path', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+    const suppliedFocusedScope = {
+      intent: 'dasha_timing' as const, domains: ['general' as const], width: 'narrow' as const,
+      depth: 'shallow' as const, horizon: 'present' as const, intervention: 'none' as const, entitlement: 'reference' as const,
+    }
+
+    await callPipelinePlanner(CLASSIFIED_QUERY, [], 'test-model', 'chart-1', undefined, undefined, undefined, suppliedFocusedScope)
+
+    expect(runAdapter.mock.calls[0]?.[0]).toMatchObject({ callType: 'planner_fast', reasoning: 'auto' })
+  })
 })
 
 describe('callPipelinePlanner — repair-retry then fault (the 422-bug fix)', () => {

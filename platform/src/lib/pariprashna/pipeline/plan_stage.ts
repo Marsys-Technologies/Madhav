@@ -162,9 +162,11 @@ export async function runPlanStage(args: {
     }))
     .filter((m) => m.content.length > 0)
 
-  const [plannerModelId, plannerFallbackModelId] = await Promise.all([
+  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
     getEffectiveModel(params.selectedStack, 'planner_fast', 'primary', request),
     getEffectiveModel(params.selectedStack, 'planner_fast', 'fallback', request),
+    getEffectiveModel(params.selectedStack, 'planner_deep', 'primary', request),
+    getEffectiveModel(params.selectedStack, 'planner_deep', 'fallback', request),
   ])
 
   // ── INJECTION CONTAINMENT: the planner's own inputs (lane G1-G · PPR-13). ──
@@ -207,6 +209,9 @@ export async function runPlanStage(args: {
     },
     queryId,
     plannerFallbackModelId,
+    undefined,
+    deepPlannerModelId,
+    deepPlannerFallbackModelId,
   )
 
   if (plannerOutcome.outcome === 'clarification_needed') {

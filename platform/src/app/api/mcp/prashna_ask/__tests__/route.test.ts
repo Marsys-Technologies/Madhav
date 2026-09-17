@@ -769,7 +769,9 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
       undefined,
       expect.any(String),
       expect.any(String),
-      suppliedTuple
+      suppliedTuple,
+      expect.any(String),
+      expect.any(String),
     )
   })
 
@@ -778,6 +780,8 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     await POST(makeReq({ chart_id: CHART, question: 'test?' }))
     const lastCallArgs = mockCallPipelinePlanner.mock.calls[mockCallPipelinePlanner.mock.calls.length - 1]
     expect(lastCallArgs[7]).toBeUndefined()
+    expect(lastCallArgs[8]).toEqual(expect.any(String))
+    expect(lastCallArgs[9]).toEqual(expect.any(String))
   })
 
   it('propagates a clarification_needed outcome without dispatching any tools', async () => {

@@ -37,6 +37,7 @@ import {
   type ClarificationRequest,
 } from './types'
 import { classifyScope, type ScopeClassification, type ScopeTuple } from '@/lib/vidhi/scope_classifier'
+import { selectInquiryPlanningPolicy } from '@/lib/vidhi/inquiry/planning_policy'
 import { buildPlannerContext } from '@/lib/pipeline/planner_context_builder'
 import type { TraceEvent } from '@/lib/trace/types'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
@@ -343,6 +344,8 @@ export async function callPipelinePlanner(
   queryId?: string,
   fallbackModelId?: string,
   suppliedScopeTuple?: ScopeTuple,
+  deepPlannerModelId?: string,
+  deepFallbackModelId?: string,
 ): Promise<PlannerOutcome> {
   // ── Step 1: deterministic scope classification (BEFORE the LLM call) ────────
   // W4 core step 1. Runs on the raw incoming query text. A low-confidence /
@@ -396,13 +399,20 @@ export async function callPipelinePlanner(
   }
 
   const knowledgeSnapshot = getPinnedCapabilityKnowledgeSnapshot()
+  const planningPolicy = selectInquiryPlanningPolicy(scopeTuple.depth)
+  const selectedPlannerModelId = planningPolicy.callType === 'planner_deep'
+    ? (deepPlannerModelId ?? plannerModelId)
+    : plannerModelId
+  const selectedFallbackModelId = planningPolicy.callType === 'planner_deep'
+    ? (deepFallbackModelId ?? fallbackModelId)
+    : fallbackModelId
   const capabilityKnowledge = buildPlannerCapabilityKnowledgeProjection(knowledgeSnapshot, query, scopeTuple)
   const capabilityRouteCount = capabilityKnowledge.capabilities.reduce(
     (count, capability) => count + capability.routes.length,
     0,
   )
 
-  const ctx = await buildPlannerContext(query, conversationHistory, plannerModelId, queryId)
+  const ctx = await buildPlannerContext(query, conversationHistory, selectedPlannerModelId, queryId)
 
   const userPayload = {
     native_id: nativeId,
@@ -431,7 +441,7 @@ export async function callPipelinePlanner(
       status: 'running',
       started_at: plannerStepStart,
       data_summary: {
-        model: plannerModelId,
+        model: selectedPlannerModelId,
         planner_active: true,
         tool_count: capabilityRouteCount,
       },
@@ -442,23 +452,23 @@ export async function callPipelinePlanner(
   emitTrace?.({
     event: 'planning_start',
     query_id: nativeId,
-    planner_model_id: plannerModelId,
+    planner_model_id: selectedPlannerModelId,
     capability_route_count: capabilityRouteCount,
   })
 
   const start = Date.now()
   let interaction: Awaited<ReturnType<typeof runAdapter>> | undefined
   let lastErr: unknown
-  let activeModelId = plannerModelId
+  let activeModelId = selectedPlannerModelId
   let fallbackWasUsed = false
   for (let attempt = 0; attempt <= MAX_PLANNER_RETRIES; attempt++) {
-    activeModelId = (attempt > 0 && fallbackModelId && (isRateLimitError(lastErr) || isServerError(lastErr)))
-      ? fallbackModelId
-      : plannerModelId
-    fallbackWasUsed = activeModelId !== plannerModelId
+    activeModelId = (attempt > 0 && selectedFallbackModelId && (isRateLimitError(lastErr) || isServerError(lastErr)))
+      ? selectedFallbackModelId
+      : selectedPlannerModelId
+    fallbackWasUsed = activeModelId !== selectedPlannerModelId
     try {
       interaction = await runAdapter({
-        callType: 'planner_fast',
+        callType: planningPolicy.callType,
         modelOverride: { modelId: activeModelId },
         systemPrompt: getSystemPrompt(),
         messages: [
@@ -467,15 +477,15 @@ export async function callPipelinePlanner(
         ],
         temperature: 0,
         disableSdkRetry: true,
-        reasoning: 'disable',
+        reasoning: planningPolicy.reasoning,
         responseSchema: PipelinePlanInputJsonSchema,
       })
       break
     } catch (err) {
       lastErr = err
-      if ((isRateLimitError(err) || isServerError(err)) && attempt === 0 && fallbackModelId) {
+      if ((isRateLimitError(err) || isServerError(err)) && attempt === 0 && selectedFallbackModelId) {
         console.warn(
-          `[pipeline_planner] ${isRateLimitError(err) ? '429' : '500/503'} on primary ${plannerModelId}, retrying with fallback ${fallbackModelId}`,
+          `[pipeline_planner] ${isRateLimitError(err) ? '429' : '500/503'} on primary ${selectedPlannerModelId}, retrying with fallback ${selectedFallbackModelId}`,
         )
         continue
       }
@@ -696,7 +706,7 @@ export async function callPipelinePlanner(
     let repairInteraction: Awaited<ReturnType<typeof runAdapter>> | undefined
     try {
       repairInteraction = await runAdapter({
-        callType: 'planner_fast',
+        callType: planningPolicy.callType,
         modelOverride: { modelId: activeModelId },
         systemPrompt: getSystemPrompt(),
         messages: [
@@ -707,7 +717,7 @@ export async function callPipelinePlanner(
         ],
         temperature: 0,
         disableSdkRetry: true,
-        reasoning: 'disable',
+        reasoning: planningPolicy.reasoning,
         responseSchema: PipelinePlanInputJsonSchema,
       })
     } catch (repairErr) {
@@ -883,7 +893,7 @@ export async function callPipelinePlanner(
       ' model=%s query_class=%s query_id=%s.' +
       ' B.11 floor will inject floor tools but planner intent is lost.' +
       ' Check PLANNER_PROMPT compliance for this model.',
-      plannerModelId,
+      selectedPlannerModelId,
       parsed.data.query_class,
       queryId ?? 'unknown',
     )
@@ -891,7 +901,7 @@ export async function callPipelinePlanner(
 
   if (process.env.NODE_ENV !== 'production') {
     console.log(
-      `[pipeline_planner] callPipelinePlanner ok model=${plannerModelId} ` +
+      `[pipeline_planner] callPipelinePlanner ok model=${selectedPlannerModelId} ` +
         `latency_ms=${latency_ms} tool_calls=${parsed.data.tool_calls.length} ` +
         `query_class=${parsed.data.query_class}`,
     )
