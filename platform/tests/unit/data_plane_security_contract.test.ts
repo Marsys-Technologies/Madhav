@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt, validationAdminProxyConfig } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
@@ -41,6 +41,24 @@ describe('DP-SD-018 protected migration routing', () => {
   it('strips only the exact outer transaction wrapper', () => {
     expect(stripTransactionWrapper('\nBEGIN;\nSELECT 1;\nCOMMIT;\n')).toContain('SELECT 1;')
     expect(() => stripTransactionWrapper('SELECT 1')).toThrow(/wrapper/)
+  })
+})
+
+describe('DP-SD-020 isolated validation bootstrap', () => {
+  it('pins the admin credential to the authenticated validation proxy', () => {
+    const hostileRoute = new URL('postgresql://rogue.example:6543/amjis?sslmode=require')
+    hostileRoute.username = 'admin'
+    hostileRoute.password = ['test', 'proxy'].join('-')
+    expect(validationAdminProxyConfig(hostileRoute.toString(), {
+      proxyPort: '5433',
+    })).toEqual({
+      host: '127.0.0.1', port: 5433, user: 'admin', password: 'test-proxy', database: 'amjis', max: 1,
+    })
+  })
+
+  it('rejects an admin credential without the minimum locally routed identity', () => {
+    expect(() => validationAdminProxyConfig('postgresql://admin@rogue.example/amjis', { proxyPort: '5433' }))
+      .toThrow(/cannot be safely routed/)
   })
 })
 

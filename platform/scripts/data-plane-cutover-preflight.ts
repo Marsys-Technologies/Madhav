@@ -261,6 +261,47 @@ export function assertValidationConnectorBinding(
   })
 }
 
+/**
+ * Routes the protected admin credential only to the already-authenticated
+ * isolated validation proxy. Its original route is intentionally discarded.
+ */
+export function validationAdminProxyConfig(
+  databaseUrl: string,
+  binding: { proxyPort: string },
+): Readonly<PoolConfig> {
+  let parsed: ReturnType<typeof parsePgConnectionString>
+  try {
+    parsed = parsePgConnectionString(databaseUrl)
+  } catch {
+    throw new Error('Data-plane admin credential is not a valid connection string.')
+  }
+  if (!parsed.user || !parsed.password || !parsed.database || !/^\d{2,5}$/.test(binding.proxyPort)
+      || Number(binding.proxyPort) > 65535) {
+    throw new Error('Data-plane admin credential cannot be safely routed to the isolated validation proxy.')
+  }
+  return Object.freeze({
+    host: '127.0.0.1', port: Number(binding.proxyPort), user: parsed.user,
+    password: parsed.password, database: parsed.database, max: 1,
+  })
+}
+
+async function grantValidationVerifierBootstrapReadAccess(
+  adminDatabaseUrl: string,
+  binding: { proxyPort: string },
+): Promise<void> {
+  const pool = new Pool(validationAdminProxyConfig(adminDatabaseUrl, binding))
+  try {
+    // This is intentionally limited to the restored validation copy. The same
+    // terminal ACLs are installed atomically on production by the subsequent
+    // locked ownership preflight; the grant merely lets the verifier attest the
+    // unmarked restored state before that transition.
+    await pool.query('GRANT USAGE ON SCHEMA public TO data_plane_verifier')
+    await pool.query('GRANT SELECT ON TABLE public._migrations_applied TO data_plane_verifier')
+  } finally {
+    await pool.end()
+  }
+}
+
 export function assertRestoreAuditBinding(
   entries: CloudSqlRestoreAuditEntry[],
   binding: {
@@ -376,6 +417,9 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
     instance, validationInstance, connectionName: validationConnectionName,
     proxyPort: validationProxyPort, project,
   })
+  await grantValidationVerifierBootstrapReadAccess(
+    requireValue('DATA_PLANE_ADMIN_DATABASE_URL'), { proxyPort: validationProxyPort },
+  )
   if (await readDataPlaneOwnershipStatus(validationPoolConfig) !== 'unmarked') {
     throw new Error('Isolated restore does not attest the expected pre-cutover protected state.')
   }
