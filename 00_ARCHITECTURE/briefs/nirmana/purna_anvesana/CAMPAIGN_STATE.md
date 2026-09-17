@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0090
-last_updated: 2026-09-17T23:10:00+05:30
+last_event: PA-E0091
+last_updated: 2026-09-17T23:15:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -42,6 +42,14 @@ layer state, queue or authority.
   gates, and expected completion class. The collector accepts the product suite and preserves those
   fields; focused source checks pass 23/23. This closes a source-denominator defect only: no
   candidate or live product case has been collected or accepted for the successor revision.
+
+- Deep-planning source repair: `ScopeTuple.depth === deep` now resolves the selected model stack's
+  `planner_deep` primary/fallback pair and sends an enabled-reasoning adapter request; standard and
+  shallow scopes remain on the proportionate `planner_fast` path. This is wired through Portal,
+  managed MCP, and the governed raw-MCP engine route, with an adapter-level regression proving the
+  actual deep model override. Focused planner/MCP tests pass 72/72, TypeScript passes, and lint has
+  no new errors. Candidate and live execution are still required before this becomes an operational
+  deep-reasoning acceptance result.
 
 - Product evidence M1: the new real three-door collector has passed focused source checks
   (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without
