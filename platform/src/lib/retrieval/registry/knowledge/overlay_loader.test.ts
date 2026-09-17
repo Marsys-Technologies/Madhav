@@ -28,6 +28,10 @@ const bindingContractSnapshot = () => ({
   ...snapshot,
   scus: [{
     ...snapshot.scus[0]!,
+    producer_output_claims: [
+      { asset_id: 'ga_primary', component: 'primary rows', output_digest_spec_sha256: claimHash, disposition: 'reviewed_output', evidence: 'fixture:primary' },
+      { asset_id: 'ga_alternate', component: 'alternate rows', output_digest_spec_sha256: claimHash, disposition: 'reviewed_output', evidence: 'fixture:alternate' },
+    ],
     bindings: [
       snapshot.scus[0]!.bindings[0]!,
       {
@@ -47,6 +51,37 @@ const bindingContractSnapshot = () => ({
     ],
   }],
 } as CapabilityKnowledgeSnapshot)
+
+const mixedValidUnknownBindingContractSnapshot = () => {
+  const base = bindingContractSnapshot()
+  return {
+    ...base,
+    scus: [{
+      ...base.scus[0]!,
+      availability_contracts: [...base.scus[0]!.availability_contracts!, {
+        binding_id: 'registry:marsys://tool/L1/missing',
+        requirements: [{ kind: 'producer_output', asset_id: 'ga_primary', spec_sha256: claimHash, scope: 'chart_build', source_ref: 'fixture:missing' }],
+      }],
+    }],
+  } as CapabilityKnowledgeSnapshot
+}
+
+const mixedValidUnreviewedClaimContractSnapshot = () => {
+  const base = bindingContractSnapshot()
+  return {
+    ...base,
+    scus: [{
+      ...base.scus[0]!,
+      availability_contracts: [
+        base.scus[0]!.availability_contracts![0]!,
+        {
+          binding_id: 'registry:marsys://tool/L1/alternate',
+          requirements: [{ kind: 'producer_output', asset_id: 'ga_unreviewed', spec_sha256: claimHash, scope: 'chart_build', source_ref: 'fixture:unreviewed' }],
+        },
+      ],
+    }],
+  } as CapabilityKnowledgeSnapshot
+}
 
 const primaryOnlyContractSnapshot = () => ({
   ...bindingContractSnapshot(),
@@ -366,6 +401,28 @@ describe('chart capability overlay loader', () => {
 
     expect((await loadChartCapabilityOverlay(duplicateBindingContractSnapshot(), 'chart-1')).availability[0])
       .toMatchObject({ state: 'dark', available_binding_ids: [] })
+  })
+
+  it('fails the whole SCU closed when a sibling contract names an unknown binding', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_alternate')] })
+
+    expect((await loadChartCapabilityOverlay(mixedValidUnknownBindingContractSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: ['Binding availability contract names an unknown or non-executable local binding.'],
+      })
+  })
+
+  it('fails the whole SCU closed when a sibling producer requirement lacks its reviewed claim', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_unreviewed')] })
+
+    expect((await loadChartCapabilityOverlay(mixedValidUnreviewedClaimContractSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: ['Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'],
+      })
   })
 
   it('treats a duplicate executable binding ID as ambiguous and dark', async () => {

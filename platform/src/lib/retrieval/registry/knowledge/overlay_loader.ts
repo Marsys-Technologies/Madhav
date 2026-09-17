@@ -160,6 +160,45 @@ function contractForBinding(
   return matches.length === 1 ? matches[0] : matches.length > 1 ? null : undefined
 }
 
+function authoredContractIntegrityGap(scu: SemanticCapabilityUnit): string | null {
+  const contracts = scu.availability_contracts
+  if (contracts === undefined) return null
+  if (!Array.isArray(contracts)
+    || contracts.some((contract) => !isRecord(contract)
+      || typeof contract.binding_id !== 'string'
+      || !Array.isArray(contract.requirements))) {
+    return 'Malformed binding availability contracts prevent a safe evidence selection.'
+  }
+  const contractBindingIds = new Set<string>()
+  for (const contract of contracts) {
+    if (contractBindingIds.has(contract.binding_id)) {
+      return 'Duplicate binding availability contracts prevent a safe evidence selection.'
+    }
+    contractBindingIds.add(contract.binding_id)
+    if (scu.bindings.filter((binding) => binding.binding_id === contract.binding_id && binding.executable).length !== 1) {
+      return 'Binding availability contract names an unknown or non-executable local binding.'
+    }
+    if (contract.requirements.length === 0) {
+      return 'Binding availability contract has no requirements.'
+    }
+    for (const requirement of contract.requirements) {
+      if (producerOutputRequirement(requirement)) {
+        const reviewedClaim = (scu.producer_output_claims ?? []).some((claim) => claim.disposition === 'reviewed_output'
+          && claim.asset_id === requirement.asset_id
+          && claim.output_digest_spec_sha256 === requirement.spec_sha256)
+        if (!reviewedClaim) {
+          return 'Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'
+        }
+        continue
+      }
+      if (!serviceProbeRequirement(requirement) && !usableDerivedRequirement(requirement)) {
+        return 'Binding availability contract contains a malformed or unsupported requirement.'
+      }
+    }
+  }
+  return null
+}
+
 function hasAuthoredContracts(scu: SemanticCapabilityUnit): boolean {
   return (scu.availability_contracts?.length ?? 0) > 0
 }
@@ -214,6 +253,7 @@ function requirementsForBindingTree(
 function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   const index = executableBindingIndex(snapshot)
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
+    if (authoredContractIntegrityGap(scu)) return []
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (contract === null) return []
@@ -226,6 +266,7 @@ function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
 function serviceProbeAssetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   const index = executableBindingIndex(snapshot)
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
+    if (authoredContractIntegrityGap(scu)) return []
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (!contract) return []
@@ -429,6 +470,17 @@ function evidenceForSnapshot(
 ): ChartCapabilityEvidence[] {
   const bindingIndex = executableBindingIndex(snapshot)
   return snapshot.scus.map((scu) => {
+    const contractIntegrityGap = authoredContractIntegrityGap(scu)
+    if (contractIntegrityGap) return {
+      scu_id: scu.scu_id,
+      build_status: build.status,
+      build_id: build.build_id,
+      freshness: null,
+      available_binding_ids: [],
+      state: 'dark' as const,
+      gaps: [contractIntegrityGap],
+      asset_receipts: [],
+    }
     const executableBindings = scu.bindings.filter((binding) => binding.executable)
     const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(
       scu, binding, rows, build.build_id, probeRows, now, bindingIndex,
