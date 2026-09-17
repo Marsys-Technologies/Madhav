@@ -119,8 +119,27 @@ export function w5DoorParityToolResult(toolName: string, args: Readonly<Record<s
 
 export function expectedW5DoorParityProjection(executionChannel: 'platform_internal' | 'mcp_full') {
   let contract = compileW5DoorParityContract(executionChannel)
+  // The evidence stage dispatches every initially authorized item in pass one,
+  // then follows only observed continuation items. Mirror that ordering here so
+  // the shared fixture projects the real managed route rather than a serial
+  // one-item-at-a-time approximation.
+  for (const item of [...contract.plan_items]) {
+    if (item.state !== 'ready' || !item.binding_id) continue
+    const binding = bindingForInquiryItem(W5_DOOR_PARITY_SNAPSHOT, contract, item.item_id)
+    if (!binding) continue
+    const toolName = item.binding_id.replace(/^registry:/, '')
+    const raw = w5DoorParityToolResult(toolName, item.args)
+    contract = recordInquiryExecution(contract, {
+      item_id: item.item_id,
+      disposition: classifyInquiryResult(binding, raw),
+      evidence_refs: [`retrieval:${toolName}:pass-1:${stableFingerprint(raw)}`],
+      pagination: deriveInquiryPaginationReceipt(binding, raw, item.args),
+      request_position_path: binding.pagination_contract?.request_position_path,
+    })
+  }
+  let pass = 2
   while (contract.iteration < contract.max_iterations) {
-    const item = contract.plan_items.find((candidate) => candidate.state === 'ready')
+    const item = contract.plan_items.find((candidate) => candidate.state === 'ready' && candidate.observation !== null)
     if (!item?.binding_id) break
     const binding = bindingForInquiryItem(W5_DOOR_PARITY_SNAPSHOT, contract, item.item_id)
     if (!binding) break
@@ -129,10 +148,11 @@ export function expectedW5DoorParityProjection(executionChannel: 'platform_inter
     contract = recordInquiryExecution(contract, {
       item_id: item.item_id,
       disposition: classifyInquiryResult(binding, raw),
-      evidence_refs: [`fixture:${stableFingerprint(raw)}`],
+      evidence_refs: [`retrieval:${toolName}:pass-${pass}:${stableFingerprint(raw)}`],
       pagination: deriveInquiryPaginationReceipt(binding, raw, item.args),
       request_position_path: binding.pagination_contract?.request_position_path,
     })
+    pass += 1
   }
   return buildInquiryDoorParityProjection(finalizeInquiryContract(contract))
 }
