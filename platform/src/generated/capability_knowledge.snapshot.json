@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T07:46:00.000Z",
-  "content_hash": "sha256:0a56bede3992c17ee5ea4673ce88cbf61d5e31317992c4edb2778560ef4fcc82",
-  "source_catalog_fingerprint": "sha256:364fbeefff60ea3fda98c5e56742643b4eabe9f6ce1e802c5a10fbb3b82d2a08",
+  "generated_at": "2026-09-17T02:27:39.000Z",
+  "content_hash": "sha256:20c909f45c80c6fbc16a0900b951f60993fefd7241e06ee58bb1498a87bc1172",
+  "source_catalog_fingerprint": "sha256:7962497e516e938bec3224c01365747de302a071e6035b934454cfed7b81db7b",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -20518,6 +20518,22 @@
         "engine_version"
       ],
       "freshness_policy": "Current-state planning requires an explicit receipted date and all nine canonical component outcomes.",
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_planet_transit",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_ephemeris_engine",
+              "probe_id": "ephemeris_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
+              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "max_age_seconds": 900,
+              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "entitlement": "native",
       "safety_notes": [
         "Read-only computed evidence. Partial aggregate results are failures and cannot close a transit obligation."

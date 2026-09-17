@@ -116,11 +116,25 @@ export interface ProducerOutputAvailabilityRequirement {
   readonly source_ref: string
 }
 
-/** Reserved contracts stay explicit until a runtime evaluator is implemented. */
+/**
+ * A successful, authenticated service-health probe for an executable binding.
+ *
+ * `endpoint_identity` is the persisted trusted-provenance identity, rather than
+ * an environment URL: the real runner URL contains deployment-specific host
+ * details and must never be copied into the knowledge snapshot.  The runtime
+ * evaluator requires that exact identity together with its server-reconstructed
+ * source kind, so a similarly named asset or an anonymous health result cannot
+ * satisfy this contract.
+ */
 export interface ServiceProbeAvailabilityRequirement {
   readonly kind: 'service_probe'
   readonly asset_id: string
   readonly probe_id: string
+  readonly endpoint_identity: string
+  /** SHA-256 of the exact registry-owned health-probe configuration. */
+  readonly probe_contract_sha256: string
+  /** Evidence older than this cannot represent current service readiness. */
+  readonly max_age_seconds: number
   readonly source_ref: string
 }
 

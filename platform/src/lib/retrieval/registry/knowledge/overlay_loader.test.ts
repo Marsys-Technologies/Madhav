@@ -87,6 +87,26 @@ const duplicateBindingContractSnapshot = () => ({
   }],
 } as CapabilityKnowledgeSnapshot)
 
+const serviceProbeContractSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    producer_output_claims: [],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/test',
+      requirements: [{
+        kind: 'service_probe' as const,
+        asset_id: 'bg_ephemeris_engine',
+        probe_id: 'ephemeris_engine',
+        endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+        probe_contract_sha256: claimHash,
+        max_age_seconds: 900,
+        source_ref: 'fixture:authenticated-probe',
+      }],
+    }],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
 function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
   return {
     active_build_id: 'build-1', active_build_status: 'completed',
@@ -94,6 +114,70 @@ function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> =
     output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
     ...overrides,
   }
+}
+
+function validServiceProbePayload() {
+  return {
+    registry_fingerprint_sha256: 'c'.repeat(64),
+    analysis_digest: 'd'.repeat(64),
+    probe_contract_sha256: claimHash,
+    response_digest: 'e'.repeat(64),
+    detector_observation: {
+      probe_type: 'ephemeris_engine',
+      runner_revision: 'candidate-sha',
+      request_started_at: '2026-09-16T23:59:59.000Z',
+      request_ended_at: '2026-09-17T00:00:01.000Z',
+      result: { status: 'GREEN', checks: [{ check: 'forensic-anchor', passed: true }] },
+    },
+  }
+}
+
+function serviceProbeEvidence(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    asset_id: 'bg_ephemeris_engine',
+    source_kind: 'server_reconstructed',
+    source_ref: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+    observed_at: '2026-09-17T00:00:00.000Z',
+    evidence_payload: validServiceProbePayload(),
+    ...overrides,
+  }
+}
+
+function serviceProbeAnchor(service_probe_evidence: unknown) {
+  return {
+    active_build_id: 'build-1', active_build_status: 'completed',
+    asset_id: null, chart_id: null, build_id: null, receipt_version: null, receipt_state: null,
+    output_digest_spec_sha256: null, observed_at: null, freshness_state: null, unknown_reasons: [], freshness_reasons: [],
+    service_probe_evidence,
+  }
+}
+
+function failedServiceProbeEvidence() {
+  const payload = validServiceProbePayload()
+  return serviceProbeEvidence({
+    evidence_payload: {
+      ...payload,
+      detector_observation: {
+        ...payload.detector_observation,
+        result: { status: 'degraded', checks: [{ check: 'forensic-anchor', passed: false }] },
+      },
+    },
+  })
+}
+
+function staleServiceProbeEvidence() {
+  const payload = validServiceProbePayload()
+  return serviceProbeEvidence({
+    observed_at: '2026-09-16T23:40:00.000Z',
+    evidence_payload: {
+      ...payload,
+      detector_observation: {
+        ...payload.detector_observation,
+        request_started_at: '2026-09-16T23:39:59.000Z',
+        request_ended_at: '2026-09-16T23:40:01.000Z',
+      },
+    },
+  })
 }
 
 beforeEach(() => {
@@ -164,6 +248,35 @@ describe('chart capability overlay loader', () => {
 
     expect((await loadChartCapabilityOverlay(duplicateBindingContractSnapshot(), 'chart-1')).availability[0])
       .toMatchObject({ state: 'dark', available_binding_ids: [] })
+  })
+
+  it('enables a binding only from a fresh, exact, authenticated service-probe receipt', async () => {
+    mocks.query.mockResolvedValue({ rows: [serviceProbeAnchor([serviceProbeEvidence()])] })
+
+    const availability = (await loadChartCapabilityOverlay(
+      serviceProbeContractSnapshot(), 'chart-1', undefined, new Date('2026-09-17T00:05:00.000Z'),
+    )).availability[0]
+
+    expect(availability).toMatchObject({
+      state: 'available',
+      available_binding_ids: ['registry:marsys://tool/L1/test'],
+    })
+    expect(mocks.query.mock.calls[0]?.[0]).toContain('nirmana_elevation_campaign_events')
+    expect(mocks.query.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([[], 'chart-1', ['bg_ephemeris_engine']]))
+  })
+
+  it.each([
+    ['wrong endpoint identity', serviceProbeEvidence({ source_ref: 'nirmana-elevation:health-probe:bg_other_engine' })],
+    ['wrong configuration version', serviceProbeEvidence({ evidence_payload: { ...validServiceProbePayload(), probe_contract_sha256: 'b'.repeat(64) } })],
+    ['failed check', failedServiceProbeEvidence()],
+    ['stale observation', staleServiceProbeEvidence()],
+    ['malformed evidence', serviceProbeEvidence({ evidence_payload: { probe_contract_sha256: claimHash, detector_observation: { probe_type: 'ephemeris_engine', runner_revision: '', result: { status: 'GREEN', checks: [] } } } })],
+  ])('fails closed on %s service-probe evidence', async (_case, evidence) => {
+    mocks.query.mockResolvedValue({ rows: [serviceProbeAnchor([evidence])] })
+
+    expect((await loadChartCapabilityOverlay(
+      serviceProbeContractSnapshot(), 'chart-1', undefined, new Date('2026-09-17T00:05:00.000Z'),
+    )).availability[0]).toMatchObject({ state: 'dark', available_binding_ids: [] })
   })
 
   it('exposes executable bindings only from their own exact producer receipts', async () => {

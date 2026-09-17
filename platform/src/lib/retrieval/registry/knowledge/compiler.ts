@@ -673,19 +673,37 @@ export function inspectCapabilityKnowledge(
           findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'An availability requirement must declare a supported kind.' })
           continue
         }
-        if (requirement.kind !== 'producer_output') {
-          findings.push({ code: 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `${requirement.kind} availability requirements are declared but not implemented.` })
+        if (requirement.kind === 'producer_output') {
+          const assetId = typeof requirement.asset_id === 'string' ? requirement.asset_id : ''
+          const spec = typeof requirement.spec_sha256 === 'string' ? requirement.spec_sha256 : ''
+          const scope = requirement.scope
+          const sourceRef = typeof requirement.source_ref === 'string' ? requirement.source_ref : ''
+          const reviewedClaim = (scu.producer_output_claims ?? []).some((claim) => claim.disposition === 'reviewed_output'
+            && claim.asset_id === assetId && claim.output_digest_spec_sha256 === spec)
+          if (!assetId || !/^[a-f0-9]{64}$/.test(spec) || (scope !== 'chart_build' && scope !== 'global') || !sourceRef || !reviewedClaim) {
+            findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A producer-output availability requirement must pin a source-referenced reviewed claim with exact asset, SHA-256, and supported scope.' })
+          }
           continue
         }
-        const assetId = typeof requirement.asset_id === 'string' ? requirement.asset_id : ''
-        const spec = typeof requirement.spec_sha256 === 'string' ? requirement.spec_sha256 : ''
-        const scope = requirement.scope
-        const sourceRef = typeof requirement.source_ref === 'string' ? requirement.source_ref : ''
-        const reviewedClaim = (scu.producer_output_claims ?? []).some((claim) => claim.disposition === 'reviewed_output'
-          && claim.asset_id === assetId && claim.output_digest_spec_sha256 === spec)
-        if (!assetId || !/^[a-f0-9]{64}$/.test(spec) || (scope !== 'chart_build' && scope !== 'global') || !sourceRef || !reviewedClaim) {
-          findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A producer-output availability requirement must pin a source-referenced reviewed claim with exact asset, SHA-256, and supported scope.' })
+        if (requirement.kind === 'service_probe') {
+          const assetId = typeof requirement.asset_id === 'string' ? requirement.asset_id : ''
+          const probeId = typeof requirement.probe_id === 'string' ? requirement.probe_id : ''
+          const endpointIdentity = typeof requirement.endpoint_identity === 'string' ? requirement.endpoint_identity : ''
+          const probeContractSha256 = typeof requirement.probe_contract_sha256 === 'string' ? requirement.probe_contract_sha256 : ''
+          const maxAgeSeconds = requirement.max_age_seconds
+          const sourceRef = typeof requirement.source_ref === 'string' ? requirement.source_ref : ''
+          const validMaxAgeSeconds = typeof maxAgeSeconds === 'number' && Number.isSafeInteger(maxAgeSeconds)
+            && maxAgeSeconds > 0 && maxAgeSeconds <= 86_400
+          if (!assetId || !/^[a-z][a-z0-9_]{1,127}$/.test(probeId)
+            || !/^nirmana-elevation:health-probe:[a-z][a-z0-9_]{1,255}$/.test(endpointIdentity)
+            || !/^[a-f0-9]{64}$/.test(probeContractSha256)
+            || !validMaxAgeSeconds
+            || !sourceRef) {
+            findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A service-probe availability requirement must pin an asset, probe identity, authenticated endpoint identity, exact configuration SHA-256, positive bounded freshness window, and source reference.' })
+          }
+          continue
         }
+        findings.push({ code: 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `${requirement.kind} availability requirements are declared but not implemented.` })
       }
     }
     const contractCounts = new Map<string, number>()

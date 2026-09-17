@@ -9,6 +9,7 @@ import type {
   ChartCapabilityOverlay,
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
+  ServiceProbeAvailabilityRequirement,
   SemanticCapabilityBinding,
   SemanticCapabilityUnit,
 } from './types'
@@ -29,6 +30,7 @@ interface ReceiptRow {
 export interface OverlayQueryRow extends ReceiptRow {
   active_build_id: string | null
   active_build_status: string | null
+  service_probe_evidence?: unknown
 }
 
 export type OverlayQueryExecutor = (
@@ -111,6 +113,10 @@ function producerOutputRequirement(requirement: AvailabilityRequirement): requir
   return requirement.kind === 'producer_output'
 }
 
+function serviceProbeRequirement(requirement: AvailabilityRequirement): requirement is ServiceProbeAvailabilityRequirement {
+  return requirement.kind === 'service_probe'
+}
+
 function contractForBinding(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
@@ -134,6 +140,15 @@ function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   })))].sort()
 }
 
+function serviceProbeAssetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
+  return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
+    if (!binding.executable) return []
+    const contract = contractForBinding(scu, binding)
+    if (!contract) return []
+    return contract.requirements.filter(serviceProbeRequirement).map((requirement) => requirement.asset_id)
+  })))].sort()
+}
+
 interface BindingEvidence {
   readonly binding_id: string
   readonly passed: boolean
@@ -149,11 +164,79 @@ function gapsForReceipts(receipts: readonly ChartAssetCapabilityReceipt[], rows:
   })
 }
 
+interface ServiceProbeEvidenceRow {
+  readonly asset_id: string
+  readonly source_kind: string
+  readonly source_ref: string
+  readonly observed_at: string
+  readonly evidence_payload: unknown
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function serviceProbeRows(value: unknown): ServiceProbeEvidenceRow[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((row): row is ServiceProbeEvidenceRow => isRecord(row)
+    && typeof row.asset_id === 'string'
+    && typeof row.source_kind === 'string'
+    && typeof row.source_ref === 'string'
+    && typeof row.observed_at === 'string')
+}
+
+function serviceProbeGaps(
+  requirement: ServiceProbeAvailabilityRequirement,
+  rows: readonly ServiceProbeEvidenceRow[],
+  now: Date,
+): string[] {
+  const candidates = rows.filter((row) => row.asset_id === requirement.asset_id)
+  if (!candidates.length) return [`${requirement.asset_id} has no authenticated service-probe evidence.`]
+  const endpointRows = candidates.filter((row) => row.source_kind === 'server_reconstructed'
+    && row.source_ref === requirement.endpoint_identity)
+  if (!endpointRows.length) return [`${requirement.asset_id} has no evidence from authenticated probe endpoint ${requirement.endpoint_identity}.`]
+  const configuredRows = endpointRows.filter((row) => {
+    const payload = isRecord(row.evidence_payload) ? row.evidence_payload : null
+    return payload?.probe_contract_sha256 === requirement.probe_contract_sha256
+  })
+  if (!configuredRows.length) return [`${requirement.asset_id} has no probe evidence for the pinned configuration version.`]
+  const successfulRows = configuredRows.filter((row) => {
+    const payload = isRecord(row.evidence_payload) ? row.evidence_payload : null
+    const observation = payload && isRecord(payload.detector_observation) ? payload.detector_observation : null
+    const result = observation && isRecord(observation.result) ? observation.result : null
+    const checks = result?.checks
+    const requestStarted = observation?.request_started_at
+    const requestEnded = observation?.request_ended_at
+    const observedAt = Date.parse(row.observed_at)
+    const startedAt = typeof requestStarted === 'string' ? Date.parse(requestStarted) : Number.NaN
+    const endedAt = typeof requestEnded === 'string' ? Date.parse(requestEnded) : Number.NaN
+    return typeof payload?.registry_fingerprint_sha256 === 'string' && /^[a-f0-9]{64}$/.test(payload.registry_fingerprint_sha256)
+      && typeof payload?.analysis_digest === 'string' && /^[a-f0-9]{64}$/.test(payload.analysis_digest)
+      && typeof payload?.response_digest === 'string' && /^[a-f0-9]{64}$/.test(payload.response_digest)
+      && observation?.probe_type === requirement.probe_id
+      && typeof observation?.runner_revision === 'string' && observation.runner_revision.length > 0
+      && result?.status === 'GREEN'
+      && Array.isArray(checks) && checks.length > 0
+      && checks.every((check) => isRecord(check) && check.passed === true)
+      && Number.isFinite(observedAt) && Number.isFinite(startedAt) && Number.isFinite(endedAt)
+      && startedAt <= observedAt && observedAt <= endedAt
+  })
+  if (!successfulRows.length) return [`${requirement.asset_id} probe evidence is malformed or did not record a successful authenticated probe.`]
+  const freshRows = successfulRows.filter((row) => {
+    const observedAt = Date.parse(row.observed_at)
+    const ageMs = now.getTime() - observedAt
+    return ageMs >= 0 && ageMs <= requirement.max_age_seconds * 1_000
+  })
+  return freshRows.length ? [] : [`${requirement.asset_id} authenticated probe evidence is stale or has an invalid observation time.`]
+}
+
 function evidenceForBinding(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
   rows: readonly ReceiptRow[],
   activeBuildId: string | null,
+  probeRows: readonly ServiceProbeEvidenceRow[],
+  now: Date,
 ): BindingEvidence {
   const contract = contractForBinding(scu, binding)
   if (contract === null) return {
@@ -170,14 +253,22 @@ function evidenceForBinding(
   }
   if (contract) {
     const producerRequirements = contract.requirements.filter(producerOutputRequirement)
-    const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement))
+    const serviceRequirements = contract.requirements.filter(serviceProbeRequirement)
+    const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement) && !serviceProbeRequirement(requirement))
     const receipts = producerRequirements.map((requirement) => receiptForRequirement(requirement, rows, activeBuildId))
     const gaps = [
       ...(contract.requirements.length === 0 ? ['Binding availability contract has no requirements.'] : []),
       ...unsupported.map((requirement) => `${requirement.kind} availability requirements are not implemented.`),
       ...gapsForReceipts(receipts, rows),
+      ...serviceRequirements.flatMap((requirement) => serviceProbeGaps(requirement, probeRows, now)),
     ]
-    return { binding_id: binding.binding_id, passed: receipts.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed'), receipts, gaps }
+    return {
+      binding_id: binding.binding_id,
+      passed: contract.requirements.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed')
+        && serviceRequirements.every((requirement) => serviceProbeGaps(requirement, probeRows, now).length === 0),
+      receipts,
+      gaps,
+    }
   }
 
   const claims = scu.producer_output_claims ?? []
@@ -205,10 +296,12 @@ function evidenceForSnapshot(
   snapshot: CapabilityKnowledgeSnapshot,
   rows: readonly ReceiptRow[],
   build: { build_id: string | null; status: string | null },
+  probeRows: readonly ServiceProbeEvidenceRow[],
+  now: Date,
 ): ChartCapabilityEvidence[] {
   return snapshot.scus.map((scu) => {
     const executableBindings = scu.bindings.filter((binding) => binding.executable)
-    const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(scu, binding, rows, build.build_id))
+    const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(scu, binding, rows, build.build_id, probeRows, now))
     const availableBindingIds = bindingEvidence.filter((evidence) => evidence.passed).map((evidence) => evidence.binding_id)
     const assetReceipts = bindingEvidence.flatMap((evidence) => evidence.receipts)
     const allPassed = executableBindings.length > 0 && availableBindingIds.length === executableBindings.length
@@ -236,10 +329,12 @@ export async function loadChartCapabilityOverlay(
   snapshot: CapabilityKnowledgeSnapshot,
   chartId: string,
   query: OverlayQueryExecutor = defaultQuery as OverlayQueryExecutor,
+  now: Date = new Date(),
 ): Promise<ChartCapabilityOverlay> {
   let build: { build_id: string | null; status: string | null } = { build_id: null, status: null }
   try {
     const assetIds = assetIdsForSnapshot(snapshot)
+    const serviceProbeAssetIds = serviceProbeAssetIdsForSnapshot(snapshot)
     const { rows: queryRows } = await query(
         `WITH latest_build AS (
            SELECT id AS build_id, state AS status
@@ -247,12 +342,26 @@ export async function loadChartCapabilityOverlay(
             WHERE chart_id=$2::uuid AND state='completed'
             ORDER BY ended_at DESC NULLS LAST, id DESC
             LIMIT 1
+         ), service_probe_evidence AS (
+           SELECT event.entity_id AS asset_id, event.source_kind, event.source_ref,
+                  event.observed_at::text AS observed_at, event.evidence_payload
+             FROM nirmana_evidence.nirmana_elevation_campaign_events event
+            WHERE event.event_type = 'probe_accepted'
+              AND event.entity_type = 'asset'
+              AND event.entity_id = ANY($3::text[])
          )
          SELECT latest_build.build_id::text AS active_build_id,
                 latest_build.status AS active_build_status,
                 p.asset_id, p.chart_id::text, p.build_id::text, p.receipt_version,
                 p.receipt_state, p.output_digest_spec_sha256, p.observed_at::text,
-                f.freshness_state, p.unknown_reasons, f.reasons AS freshness_reasons
+                f.freshness_state, p.unknown_reasons, f.reasons AS freshness_reasons,
+                COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                  'asset_id', service.asset_id,
+                  'source_kind', service.source_kind,
+                  'source_ref', service.source_ref,
+                  'observed_at', service.observed_at,
+                  'evidence_payload', service.evidence_payload
+                ) ORDER BY service.observed_at DESC)), '[]'::jsonb) AS service_probe_evidence
            FROM (SELECT 1) anchor
            LEFT JOIN latest_build ON true
            LEFT JOIN asset_provenance_receipts p
@@ -264,14 +373,14 @@ export async function loadChartCapabilityOverlay(
            LEFT JOIN asset_freshness f
              ON f.asset_id=p.asset_id AND f.scope_key=p.scope_key AND f.partition_key=p.partition_key
           ORDER BY p.asset_id, (p.chart_id IS NOT NULL) DESC, p.observed_at DESC`,
-        [assetIds, chartId],
+        [assetIds, chartId, serviceProbeAssetIds],
       )
     build = { build_id: queryRows[0]?.active_build_id ?? null, status: queryRows[0]?.active_build_status ?? null }
     const rows = queryRows.filter((row): row is OverlayQueryRow & { asset_id: string } => typeof row.asset_id === 'string')
     return compileChartCapabilityOverlay({
       snapshot, chart_id: chartId, build_id: build.build_id,
       code_revision: process.env['K_REVISION'] ?? process.env['GIT_SHA'] ?? null,
-      evidence: evidenceForSnapshot(snapshot, rows, build),
+      evidence: evidenceForSnapshot(snapshot, rows, build, serviceProbeRows(queryRows[0]?.service_probe_evidence), now),
     })
   } catch (error) {
     console.error('[capability-overlay] availability evidence unavailable', error)

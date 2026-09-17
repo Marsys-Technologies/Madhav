@@ -65,14 +65,52 @@ const snapshot = (expectedHash = claimHash): CapabilityKnowledgeSnapshot => ({
   }],
 })
 
+const serviceProbeSnapshot = (): CapabilityKnowledgeSnapshot => ({
+  ...snapshot(),
+  scus: [{
+    ...snapshot().scus[0]!,
+    producer_output_claims: [],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/overlay_db',
+      requirements: [{
+        kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
+        endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+        probe_contract_sha256: claimHash, max_age_seconds: 900, source_ref: 'disposable fixture',
+      }],
+    }],
+  }],
+})
+
 run('chart capability overlay disposable schema replay', () => {
   let admin: Pool
   let scoped: Pool
   let query: OverlayQueryExecutor
+  let createdProbeEvidenceSchema = false
+  let createdProbeEvidenceTable = false
 
   beforeAll(async () => {
     assertDisposableDatabase(DATABASE_URL!)
     admin = new Pool({ connectionString: DATABASE_URL!, max: 1 })
+    const probeSchemaExists = await admin.query<{ exists: boolean }>("SELECT to_regnamespace('nirmana_evidence') IS NOT NULL AS exists")
+    if (!probeSchemaExists.rows[0]?.exists) {
+      await admin.query('CREATE SCHEMA nirmana_evidence')
+      createdProbeEvidenceSchema = true
+    }
+    const probeTableExists = await admin.query<{ exists: boolean }>("SELECT to_regclass('nirmana_evidence.nirmana_elevation_campaign_events') IS NOT NULL AS exists")
+    if (!probeTableExists.rows[0]?.exists) {
+      await admin.query(`
+        CREATE TABLE nirmana_evidence.nirmana_elevation_campaign_events (
+          entity_id text NOT NULL,
+          entity_type text NOT NULL,
+          event_type text NOT NULL,
+          source_kind text NOT NULL,
+          source_ref text NOT NULL,
+          observed_at timestamptz NOT NULL,
+          evidence_payload jsonb NOT NULL
+        )
+      `)
+      createdProbeEvidenceTable = true
+    }
     await admin.query(`CREATE SCHEMA ${schema}`)
     scoped = new Pool({
       connectionString: DATABASE_URL!, max: 1,
@@ -132,6 +170,8 @@ run('chart capability overlay disposable schema replay', () => {
     await scoped?.end()
     if (admin) {
       await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)
+      if (createdProbeEvidenceTable) await admin.query('DROP TABLE nirmana_evidence.nirmana_elevation_campaign_events')
+      if (createdProbeEvidenceSchema) await admin.query('DROP SCHEMA nirmana_evidence')
       await admin.end()
     }
   })
@@ -142,6 +182,32 @@ run('chart capability overlay disposable schema replay', () => {
     expect(overlay.availability[0]).toMatchObject({
       state: 'available',
       asset_receipts: [expect.objectContaining({ state: 'passed', build_id: currentBuildId })],
+    })
+  })
+
+  it('uses an authenticated, exact, fresh service-probe event for a service-bound binding', async () => {
+    await admin.query(
+      `INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events
+         (entity_id, entity_type, event_type, source_kind, source_ref, observed_at, evidence_payload)
+       VALUES ($1, 'asset', 'probe_accepted', 'server_reconstructed', $2, $3, $4::jsonb)`,
+      [
+        'bg_ephemeris_engine', 'nirmana-elevation:health-probe:bg_ephemeris_engine', '2026-09-17T00:00:00.000Z',
+        JSON.stringify({
+          registry_fingerprint_sha256: 'c'.repeat(64), analysis_digest: 'd'.repeat(64),
+          probe_contract_sha256: claimHash, response_digest: 'e'.repeat(64),
+          detector_observation: {
+            probe_type: 'ephemeris_engine', runner_revision: 'candidate-sha',
+            request_started_at: '2026-09-16T23:59:59.000Z', request_ended_at: '2026-09-17T00:00:01.000Z',
+            result: { status: 'GREEN', checks: [{ check: 'forensic-anchor', passed: true }] },
+          },
+        }),
+      ],
+    )
+    const overlay = await loadChartCapabilityOverlay(
+      serviceProbeSnapshot(), chartId, query, new Date('2026-09-17T00:05:00.000Z'),
+    )
+    expect(overlay.availability[0]).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/L1/overlay_db'],
     })
   })
 

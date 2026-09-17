@@ -146,3 +146,22 @@ describe('ROOT CAUSE A — the sidecar URL default matches the real local bench 
     expect(seenUrl).not.toContain('8001')
   })
 })
+
+describe('transit availability contract', () => {
+  it('pins the primary handler to the authenticated ephemeris probe, not a transit materialization', async () => {
+    const { queryPlanetTransitCapability } = await import('../query_planet_transit')
+    const declaration = queryPlanetTransitCapability.semantic_capabilities?.[0]
+    const requirement = declaration?.availability_contracts?.[0]?.requirements[0]
+
+    expect(requirement).toEqual({
+      kind: 'service_probe',
+      asset_id: 'bg_ephemeris_engine',
+      probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      max_age_seconds: 900,
+      source_ref: expect.stringContaining('/internal/nirmana/probe'),
+    })
+    expect(JSON.stringify(requirement)).not.toContain('ka_gochara')
+  })
+})

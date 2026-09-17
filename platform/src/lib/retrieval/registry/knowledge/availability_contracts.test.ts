@@ -68,4 +68,35 @@ describe('binding availability contracts', () => {
       detail: expect.stringContaining('duplicate'),
     }))
   })
+
+  it('validates service-probe readiness requirements instead of treating them as unsupported', () => {
+    const valid = {
+      kind: 'service_probe' as const,
+      asset_id: 'bg_ephemeris_engine',
+      probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'a'.repeat(64),
+      max_age_seconds: 900,
+      source_ref: 'fixture:authenticated-probe',
+    }
+    const validReport = inspectCapabilityKnowledge(catalog, withContracts([{ binding_id: knownBindingId, requirements: [valid] }]))
+    expect(validReport.findings).not.toContainEqual(expect.objectContaining({
+      code: 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT',
+      subject: `${source.scu_id}:${knownBindingId}`,
+    }))
+    expect(validReport.findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${source.scu_id}:${knownBindingId}`,
+    }))
+
+    const invalidReport = inspectCapabilityKnowledge(catalog, withContracts([{
+      binding_id: knownBindingId,
+      requirements: [{ ...valid, endpoint_identity: 'https://untrusted.example/probe', probe_contract_sha256: 'bad', max_age_seconds: 0 }],
+    }]))
+    expect(invalidReport.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      severity: 'error',
+      subject: `${source.scu_id}:${knownBindingId}`,
+    }))
+  })
 })
