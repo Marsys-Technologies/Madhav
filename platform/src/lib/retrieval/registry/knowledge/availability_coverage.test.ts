@@ -304,7 +304,7 @@ describe('first-slice availability coverage', () => {
       status: 'deliberately_dark',
       reason: expect.stringContaining('SELECT * rows from brahma_dosha_catalog, including created_at'),
       source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:70',
+        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75',
         'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
       ]),
     })])
