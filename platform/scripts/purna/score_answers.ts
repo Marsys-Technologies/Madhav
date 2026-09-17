@@ -1,8 +1,8 @@
-import type { AcceptanceAnswer, AcceptanceCaseInput, DeterministicEvidence } from './acceptance_cases'
+import type { AcceptanceAnswer, AcceptanceCaseInput, DeterministicEvidence, QualitativeAssessment } from './acceptance_cases'
 
 export interface CaseScore {
   readonly case_id: string
-  readonly qualitative_score: number | null
+  readonly qualitative_assessment: QualitativeAssessment | null
   readonly deterministic_failures: readonly DeterministicEvidence[]
   readonly verdict: 'PASS' | 'FAIL_DETERMINISTIC_EVIDENCE' | 'FAIL_QUALITATIVE' | 'INCOMPLETE'
 }
@@ -12,7 +12,7 @@ export interface AcceptanceFailure {
   readonly kind: 'deterministic' | 'qualitative' | 'incomplete'
   readonly gate_id: string | null
   readonly detail: string
-  readonly qualitative_score: number | null
+  readonly qualitative_assessment: QualitativeAssessment | null
 }
 
 export interface AcceptanceScore {
@@ -37,27 +37,31 @@ function deterministicFailures(
   })
 }
 
-/** Deterministic evidence always overrides a qualitative score, including 1.0. */
+function assessmentPasses(assessment: QualitativeAssessment): boolean {
+  const scores = [assessment.relevance, assessment.evidence_based_explanation, assessment.contradiction_handling, assessment.usefulness]
+  return scores.every((score) => score >= 3) && scores.reduce((total, score) => total + score, 0) / scores.length >= 4
+}
+
+/** Deterministic evidence always overrides an independent assessment. */
 export function scoreAnswers(
   inputs: readonly AcceptanceCaseInput[],
   answers: readonly AcceptanceAnswer[],
-  minimumQualitativeScore = 0.7,
 ): AcceptanceScore {
   const answersByCase = new Map(answers.map((answer) => [answer.case_id, answer]))
   const cases = inputs.map((input): CaseScore => {
     const answer = answersByCase.get(input.case_id)
     const failures = deterministicFailures(input, answer)
-    const qualitative = answer?.qualitative_score ?? null
+    const qualitative = answer?.qualitative_assessment ?? null
     if (failures.length > 0) return {
-      case_id: input.case_id, qualitative_score: qualitative, deterministic_failures: failures,
+      case_id: input.case_id, qualitative_assessment: qualitative, deterministic_failures: failures,
       verdict: 'FAIL_DETERMINISTIC_EVIDENCE',
     }
     if (qualitative === null) return {
-      case_id: input.case_id, qualitative_score: null, deterministic_failures: [], verdict: 'INCOMPLETE',
+      case_id: input.case_id, qualitative_assessment: null, deterministic_failures: [], verdict: 'INCOMPLETE',
     }
     return {
-      case_id: input.case_id, qualitative_score: qualitative, deterministic_failures: [],
-      verdict: qualitative >= minimumQualitativeScore ? 'PASS' : 'FAIL_QUALITATIVE',
+      case_id: input.case_id, qualitative_assessment: qualitative, deterministic_failures: [],
+      verdict: assessmentPasses(qualitative) ? 'PASS' : 'FAIL_QUALITATIVE',
     }
   })
   const deterministicFailureCount = cases.reduce((total, item) => total + item.deterministic_failures.length, 0)
@@ -67,21 +71,21 @@ export function scoreAnswers(
       kind: 'deterministic',
       gate_id: failure.gate_id,
       detail: failure.detail ?? 'evidence_failed_or_unreceipted',
-      qualitative_score: item.qualitative_score,
+      qualitative_assessment: item.qualitative_assessment,
     }))
     if (item.verdict === 'FAIL_QUALITATIVE') return [{
       case_id: item.case_id,
       kind: 'qualitative',
       gate_id: null,
-      detail: 'qualitative_score_below_threshold',
-      qualitative_score: item.qualitative_score,
+      detail: 'independent_assessment_below_threshold',
+      qualitative_assessment: item.qualitative_assessment,
     }]
     if (item.verdict === 'INCOMPLETE') return [{
       case_id: item.case_id,
       kind: 'incomplete',
       gate_id: null,
-      detail: 'qualitative_score_missing',
-      qualitative_score: null,
+      detail: 'independent_assessment_missing',
+      qualitative_assessment: null,
     }]
     return []
   })

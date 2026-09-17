@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.20.0
-status: LIVE_WRAPUP_IMPLEMENTATION_SEALED
+version: 0.22.0
+status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0079
-last_updated: 2026-09-16T02:41:04+05:30
+last_event: PA-E0095
+last_updated: 2026-09-17T23:35:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,105 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- Successor execution: the Native approved the complete planner and inquiry product-delivery plan
+  at `docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md`; its exact transferred
+  copy has SHA-256 `6cc17144f3877bdac7048f9a7cba5caf15e1f7ca59306289c0f13ec94eb1b666`. Sole execution
+  ownership is task `01a0afe3-2832-7692-b133-d1e6b6bfcdf6` on
+  `codex/purna-product-completion-v2`, created from protected main
+  `0f2d9cc0259ac5983fda7f5e10d75ce189e7440f`, which contains PR #2626 merge
+  `079e77ef92f25217921f02e4956162f43fe3f824`. The fixed release denominator is the original
+  five cases/34 route obligations plus 30 product scenarios across Portal, managed MCP and
+  governed raw MCP. Product delivery now uses real collection, deterministic gates and independent
+  automated assessment; human-expert empirical research remains separately `NOT_RUN` and is not a
+  product-release gate. The predecessor is stood down and preserved. The shared data-plane boundary
+  is idle, but a protected environment owner must replace the structurally unusable
+  `DATA_PLANE_ADMIN_DATABASE_URL` with a valid password-bearing administrator URL before a later
+  data-plane cutover; no secret was accessed, changed or reconstructed here.
+
+- Product acceptance denominator: the protocol now freezes the full 30-case six-family matrix
+  from approved-plan §13 (wealth, career, marriage, family, health, and life events; each with
+  focused, deep, contradiction, time-bounded, and deliberately-insufficient modes). Every emitted
+  product input retains its question, scope tuple, required evidence dimensions, deterministic
+  gates, and expected completion class. The collector accepts the product suite and preserves those
+  fields; focused source checks pass 23/23. This closes a source-denominator defect only: no
+  candidate or live product case has been collected or accepted for the successor revision.
+
+- Deep-planning source repair: `ScopeTuple.depth === deep` now resolves the selected model stack's
+  `planner_deep` primary/fallback pair and sends an enabled-reasoning adapter request; standard and
+  shallow scopes remain on the proportionate `planner_fast` path. This is wired through Portal,
+  managed MCP, and the governed raw-MCP engine route, with an adapter-level regression proving the
+  actual deep model override. Focused planner/MCP tests pass 72/72, TypeScript passes, and lint has
+  no new errors. Candidate and live execution are still required before this becomes an operational
+  deep-reasoning acceptance result.
+
+- Current full source verification: the positions availability-contract change had left the current
+  V4 Beyond-Acarya provenance artifact, reviewed-output census assertion, and two fixed-clock
+  Portal receipt baselines on their prior snapshot. All were regenerated from the current checked
+  snapshot (`sha256:ace22…a8ec4`, 182 SCUs, 15 reviewed output claims) and revalidated. Full platform
+  test gate: 12,052 passed, 704 skipped, 2 todo; TypeScript and both capability-codegen freshness
+  checks pass. This proves local source consistency only, not candidate/live product acceptance.
+
+- MCP source verification: the required managed-job/runtime/lifecycle/status subset passes 24/24;
+  `platform-mcp` typecheck and generated-envelope/registry-shim freshness also pass. This preserves
+  a source-level recovery and lifecycle claim only. It does not prove a cross-instance candidate
+  restart, a served revision, or any three-door product case.
+
+- Independent answer assessment source repair: acceptance no longer admits a caller-provided
+  qualitative scalar. `judge_answers.ts` invokes the governed `eval_judge` model route only with
+  an explicit non-secret approval ID, requires the typed response-accountability envelope, and
+  stores relevance, evidence-based explanation, contradiction handling, and usefulness as separate
+  integer 1–5 scores. A pass requires every dimension to be at least 3 and their average to be at
+  least 4; malformed judge output or missing accountability yields an incomplete result. Focused
+  Pūrṇa tests pass 26/26, TypeScript and both capability-codegen freshness checks pass. No judge
+  call, candidate/live collection, or acceptance verdict has been recorded.
+
+- Collection-to-assessment bridge: each door row now retains the response-accountability envelope
+  returned by the channel, and `answers_from_collection.ts` constructs the exact per-door answer
+  input for the judge and acceptance scorer. It rejects duplicate/missing door rows and fixtures.
+  It passes only closure, accountability, and material-delivery gates directly demonstrated by the
+  collected row; required-dimension and bounded-insufficiency gates remain explicit failures until
+  channels expose their typed semantic receipts. This makes the missing channel proof actionable
+  without turning an absent field into acceptance evidence.
+
+- Product evidence M1: the new real three-door collector has passed focused source checks
+  (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without
+  manufacturing a pass. Portal reached terminal `ok` but supplied no observed source revision
+  and no consumed facts; managed MCP initially rejected the corpus's compiler-family intent,
+  which the collector now translates narrowly to the managed classifier vocabulary and has
+  re-proven dispatches a durable pending job; raw MCP starts and finalizes but its contract is
+  `INCOMPLETE`, with 33/33 plan items blocked and eight required obligations dark. The measured
+  raw blockers are availability/evidence and binding conditions, not a lifecycle transport error.
+  The core source knowledge suite remains green (107 tests) and both capability generators are
+  current at 182 SCUs. No product acceptance gate is earned.
+
+- Deployment-integrity finding: live Cloud Run traffic for both `amjis-web` and `amjis-mcp`
+  currently serves `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1` (revision suffix
+  `35069281039-1`). The approved protected baseline `0f2d9cc0259ac5983fda7f5e10d75ce189e7440f`
+  is not an ancestor of that deployed commit. Therefore M1's live behavior is a valid observation
+  of the older deployment, but cannot prove or refute this successor source candidate. Protected
+  deployment must precede any acceptance claim for this branch.
+
+- Managed-M1 terminal evidence: a durable job created for the synthetic wealth case was later
+  polled to terminal `complete` after 130133 ms and returned its structured plan/result envelope.
+  Its inquiry contract and closure remained `INCOMPLETE`, with the same eight dark required
+  obligations, `partial` completeness, zero dispatched tools, and a present prose reading. This
+  proves job persistence/polling for the served older revision, but not accountable product
+  completion; its deployment mismatch remains disqualifying for successor acceptance.
+
+- Catalogue-contract census: the current generated knowledge snapshot contains 182 SCUs and 186
+  executable bindings, but only 12 SCUs have authored availability contracts and 13 have explicit
+  deliberately-dark dispositions. The remaining 157 executable SCUs have neither. The only
+  currently authored requirement kinds are 12 `producer_output` and one `service_probe`; this is
+  a source coverage deficit, not evidence that the 157 routes are unavailable or acceptable to
+  omit. Product completion remains blocked until every supported capability is given an executable,
+  evidence-backed contract or a governed scope disposition.
+
+- M2 first repair: `scu.catalog.get_positions` now has an authored `ga_positions` chart-build
+  producer-output contract, pinned to migration 875's exact digest specification and tested for
+  healthy overlay promotion. The generated snapshot and estate census are current at this source
+  revision. The executable-SCU deficit is reduced to 156; this is one genuine contract repair,
+  not a completion claim or evidence of a live chart receipt.
 
 - Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
   independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,

@@ -271,9 +271,11 @@ export async function POST(request: Request) {
   const queryId = crypto.randomUUID()
 
   // ── Engine invocation: callPipelinePlanner (same call consult/route.ts makes) ─
-  const [plannerModelId, plannerFallbackModelId] = await Promise.all([
+  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
     getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'primary'),
     getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'fallback'),
+    getEffectiveModel(DEFAULT_STACK_ID, 'planner_deep', 'primary'),
+    getEffectiveModel(DEFAULT_STACK_ID, 'planner_deep', 'fallback'),
   ])
 
   // ── NCD-8 pre-dispatch limits (MCP door — the second of the two doors) ──────
@@ -448,6 +450,8 @@ export async function POST(request: Request) {
     queryId,
     plannerFallbackModelId,
     suppliedScopeTuple,
+    deepPlannerModelId,
+    deepPlannerFallbackModelId,
   )
   const planningLatencyMs = Date.now() - planStartedAtMs
 

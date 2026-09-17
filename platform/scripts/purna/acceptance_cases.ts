@@ -2,6 +2,7 @@ import { BEYOND_ACARYA_ACCEPTANCE_CASES, BEYOND_ACARYA_CORPUS_VERSION, type Beyo
 import type { InquiryResponseAccountability } from '../../src/lib/vidhi/inquiry/types'
 import { stableFingerprint } from '../../src/lib/retrieval/registry/knowledge/stable'
 import { createHash } from 'node:crypto'
+import { FROZEN_PRODUCT_CASES } from './product_cases'
 
 export const PRODUCT_ACCEPTANCE_PROTOCOL_VERSION = 'purna-product-acceptance-v2' as const
 export const PRODUCT_ACCEPTANCE_PROTOCOL_SCHEMA_VERSION = 'madhav-purna-anvesana/product-acceptance-protocol/v2' as const
@@ -10,35 +11,18 @@ export const PRODUCT_ACCEPTANCE_RUN_VERSION = 'madhav-purna-anvesana/product-acc
 export type AcceptanceSuite = 'beyond_acarya' | 'product'
 export type AcceptanceEnvironment = 'candidate' | 'live'
 
-const EXPECTED_PRODUCT_SCENARIOS = [
-  {
-    scenario_id: 'three_door_semantic_equivalence',
-    description: 'Portal, managed MCP, and raw MCP answers have matching normalized inquiry closure and accountability receipts.',
-    deterministic_gates: ['inquiry_closure_receipt', 'response_accountability', 'door_parity_projection'],
-  },
-  {
-    scenario_id: 'pagination_truthfulness',
-    description: 'First, middle, final, and empty pages retain a truthful exhaustion proof and continuation receipt.',
-    deterministic_gates: ['pagination_receipt', 'no_false_total', 'continuation_exhaustion'],
-  },
-  {
-    scenario_id: 'managed_recovery_safety',
-    description: 'A recovered managed inquiry returns stored accepted evidence or an explicit blocked state without protected-action replay.',
-    deterministic_gates: ['reservation_receipt', 'recovery_state', 'no_replay'],
-  },
-  {
-    scenario_id: 'availability_fail_closed',
-    description: 'Dark or changed availability cannot be represented as a complete answer.',
-    deterministic_gates: ['capability_overlay', 'availability_contract', 'incomplete_or_blocked'],
-  },
-] as const satisfies readonly ProductAcceptanceScenario[]
+const EXPECTED_PRODUCT_SCENARIOS = FROZEN_PRODUCT_CASES.map((item) => ({
+  scenario_id: item.case_id,
+  description: item.description,
+  deterministic_gates: item.deterministic_gates,
+})) satisfies readonly ProductAcceptanceScenario[]
 
 const EXPECTED_HARD_GATES = [
   'explicit_suite_and_environment',
   'approved_non_secret_environment_configuration',
   'https_url_and_revision_for_each_arm',
   'case_input_and_evidence_receipt_retention',
-  'deterministic_evidence_failure_overrides_qualitative_score',
+  'deterministic_evidence_failure_overrides_independent_four_axis_assessment',
   'fixtures_are_never_live_evidence',
 ] as const
 
@@ -75,6 +59,9 @@ export interface AcceptanceCaseInput {
   readonly question: string | null
   readonly scope_tuple: BeyondAcaryaAcceptanceCase['scope_tuple'] | null
   readonly deterministic_gates: readonly string[]
+  /** Frozen semantic denominator for independent answer assessment. */
+  readonly required_dimensions: readonly string[]
+  readonly expected: 'supported_complete' | 'honest_insufficient' | null
 }
 
 export interface DeterministicEvidence {
@@ -88,10 +75,20 @@ export interface AcceptanceAnswer {
   readonly case_id: string
   readonly answer: string | null
   readonly evidence: readonly DeterministicEvidence[]
-  /** Optional qualitative input; it cannot override deterministic gate failure. */
-  readonly qualitative_score?: number | null
+  /** Independent four-axis assessment; a scalar self-score is not accepted. */
+  readonly qualitative_assessment?: QualitativeAssessment | null
   /** Reuses the governed response-accountability shape when supplied by a real run. */
   readonly response_accountability?: InquiryResponseAccountability | null
+}
+
+export interface QualitativeAssessment {
+  readonly assessor: 'independent_eval_judge'
+  readonly model_id: string
+  readonly relevance: number
+  readonly evidence_based_explanation: number
+  readonly contradiction_handling: number
+  readonly usefulness: number
+  readonly rationale: string
 }
 
 export interface ApprovedEnvironmentConfig {
@@ -121,6 +118,16 @@ function isString(value: unknown): value is string {
 
 function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every(isString)
+}
+
+function isQualitativeAssessment(value: unknown): value is QualitativeAssessment {
+  if (!isObject(value)
+    || !hasOnlyKeys(value, ['assessor', 'model_id', 'relevance', 'evidence_based_explanation', 'contradiction_handling', 'usefulness', 'rationale'])
+    || value.assessor !== 'independent_eval_judge'
+    || !isString(value.model_id)
+    || !isString(value.rationale)) return false
+  return ['relevance', 'evidence_based_explanation', 'contradiction_handling', 'usefulness']
+    .every((key) => Number.isInteger(value[key]) && (value[key] as number) >= 1 && (value[key] as number) <= 5)
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
@@ -439,14 +446,18 @@ export function casesForSuite(protocol: ProductAcceptanceProtocol, suite: Accept
       question: item.question,
       scope_tuple: item.scope_tuple,
       deterministic_gates: ['immutable_case_input', 'source_acceptance_denominator'],
+      required_dimensions: item.expected_required_scu_ids,
+      expected: 'supported_complete',
     }))
   }
-  return protocol.product_scenarios.map((scenario) => ({
-    case_id: scenario.scenario_id,
+  return FROZEN_PRODUCT_CASES.map((scenario) => ({
+    case_id: scenario.case_id,
     kind: 'product' as const,
-    question: null,
-    scope_tuple: null,
+    question: scenario.question,
+    scope_tuple: scenario.scope_tuple,
     deterministic_gates: scenario.deterministic_gates,
+    required_dimensions: scenario.required_dimensions,
+    expected: scenario.expected,
   }))
 }
 
@@ -484,12 +495,9 @@ export function validateAcceptanceAnswers(
       || typeof candidate.case_id !== 'string'
       || (candidate.answer !== null && typeof candidate.answer !== 'string')
       || !Array.isArray(candidate.evidence)
-      || (candidate.qualitative_score !== undefined
-        && candidate.qualitative_score !== null
-        && (typeof candidate.qualitative_score !== 'number'
-          || !Number.isFinite(candidate.qualitative_score)
-          || candidate.qualitative_score < 0
-          || candidate.qualitative_score > 1))
+      || (candidate.qualitative_assessment !== undefined
+        && candidate.qualitative_assessment !== null
+        && !isQualitativeAssessment(candidate.qualitative_assessment))
       || (candidate.response_accountability !== undefined
         && candidate.response_accountability !== null
         && !isObject(candidate.response_accountability))) {
@@ -525,7 +533,7 @@ export function validateAcceptanceAnswers(
       case_id: candidate.case_id,
       answer: candidate.answer as string | null,
       evidence,
-      ...(candidate.qualitative_score === undefined ? {} : { qualitative_score: candidate.qualitative_score as number | null }),
+      ...(candidate.qualitative_assessment === undefined ? {} : { qualitative_assessment: candidate.qualitative_assessment as QualitativeAssessment | null }),
       ...(responseAccountability === undefined
         ? {}
         : { response_accountability: responseAccountability }),

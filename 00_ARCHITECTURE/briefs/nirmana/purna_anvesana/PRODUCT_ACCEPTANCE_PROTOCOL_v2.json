@@ -2,8 +2,8 @@
   "schema_version": "madhav-purna-anvesana/product-acceptance-protocol/v2",
   "protocol_version": "purna-product-acceptance-v2",
   "campaign_id": "madhav-purna-anvesana",
-  "status": "HARNESS_READY_NOT_EXECUTED",
-  "claim_ceiling": "HARNESS_AND_DETERMINISTIC_GATES_ONLY",
+  "status": "SUCCESSOR_AUTOMATED_PRODUCT_ACCEPTANCE_ACTIVE",
+  "claim_ceiling": "REAL_THREE_DOOR_COLLECTION_PLUS_DETERMINISTIC_AND_INDEPENDENT_AUTOMATED_GATES_REQUIRED",
   "execution_authority": "An explicit candidate or live environment configuration approved for this protocol. This artifact authorizes no network call by itself.",
   "immutable_beyond_acarya": {
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
@@ -21,33 +21,43 @@
     "retention_rule": "These source-local cases are immutable denominator inputs. Product scenarios may add gates but may not replace, delete, or reclassify them."
   },
   "product_scenarios": [
-    {
-      "scenario_id": "three_door_semantic_equivalence",
-      "description": "Portal, managed MCP, and raw MCP answers have matching normalized inquiry closure and accountability receipts.",
-      "deterministic_gates": ["inquiry_closure_receipt", "response_accountability", "door_parity_projection"]
-    },
-    {
-      "scenario_id": "pagination_truthfulness",
-      "description": "First, middle, final, and empty pages retain a truthful exhaustion proof and continuation receipt.",
-      "deterministic_gates": ["pagination_receipt", "no_false_total", "continuation_exhaustion"]
-    },
-    {
-      "scenario_id": "managed_recovery_safety",
-      "description": "A recovered managed inquiry returns stored accepted evidence or an explicit blocked state without protected-action replay.",
-      "deterministic_gates": ["reservation_receipt", "recovery_state", "no_replay"]
-    },
-    {
-      "scenario_id": "availability_fail_closed",
-      "description": "Dark or changed availability cannot be represented as a complete answer.",
-      "deterministic_gates": ["capability_overlay", "availability_contract", "incomplete_or_blocked"]
-    }
+    {"scenario_id":"wealth_1","description":"Wealth focused fact","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"wealth_2","description":"Wealth deep family inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"wealth_3","description":"Wealth cross-domain contradiction","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"wealth_4","description":"Wealth time-bounded inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"wealth_5","description":"Wealth deliberately insufficient evidence","deterministic_gates":["inquiry_closure_receipt","response_accountability","named_missing_evidence","bounded_insufficiency"]},
+    {"scenario_id":"career_1","description":"Career focused fact","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"career_2","description":"Career deep family inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"career_3","description":"Career cross-domain contradiction","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"career_4","description":"Career time-bounded inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"career_5","description":"Career deliberately insufficient evidence","deterministic_gates":["inquiry_closure_receipt","response_accountability","named_missing_evidence","bounded_insufficiency"]},
+    {"scenario_id":"marriage_1","description":"Marriage focused fact","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"marriage_2","description":"Marriage deep family inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"marriage_3","description":"Marriage cross-domain contradiction","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"marriage_4","description":"Marriage time-bounded inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"marriage_5","description":"Marriage deliberately insufficient evidence","deterministic_gates":["inquiry_closure_receipt","response_accountability","named_missing_evidence","bounded_insufficiency"]},
+    {"scenario_id":"family_1","description":"Family focused fact","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"family_2","description":"Family deep family inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"family_3","description":"Family cross-domain contradiction","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"family_4","description":"Family time-bounded inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"family_5","description":"Family deliberately insufficient evidence","deterministic_gates":["inquiry_closure_receipt","response_accountability","named_missing_evidence","bounded_insufficiency"]},
+    {"scenario_id":"health_1","description":"Health focused fact","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"health_2","description":"Health deep family inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"health_3","description":"Health cross-domain contradiction","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"health_4","description":"Health time-bounded inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"health_5","description":"Health deliberately insufficient evidence","deterministic_gates":["inquiry_closure_receipt","response_accountability","named_missing_evidence","bounded_insufficiency"]},
+    {"scenario_id":"events_1","description":"Events focused fact","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"events_2","description":"Events deep family inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"events_3","description":"Events cross-domain contradiction","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"events_4","description":"Events time-bounded inquiry","deterministic_gates":["inquiry_closure_receipt","response_accountability","citation_resolution","required_evidence_dimensions"]},
+    {"scenario_id":"events_5","description":"Events deliberately insufficient evidence","deterministic_gates":["inquiry_closure_receipt","response_accountability","named_missing_evidence","bounded_insufficiency"]}
   ],
   "hard_gates": [
     "explicit_suite_and_environment",
     "approved_non_secret_environment_configuration",
     "https_url_and_revision_for_each_arm",
     "case_input_and_evidence_receipt_retention",
-    "deterministic_evidence_failure_overrides_qualitative_score",
+    "deterministic_evidence_failure_overrides_independent_four_axis_assessment",
     "fixtures_are_never_live_evidence"
   ],
   "run_record": {
@@ -60,5 +70,11 @@
     "human_expert_review_required_for_empirical_claims": true,
     "fixtures_count_as_live_evidence": false,
     "current_verdict": "NOT_RUN"
+  },
+  "successor_product_delivery": {
+    "approved_plan": "docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md",
+    "frozen_execution_denominator": {"original_cases": 5, "product_cases": 30, "doors": 3},
+    "human_expert_research": "NOT_RUN_SEPARATE_FROM_PRODUCT_RELEASE_GATE",
+    "source_or_fixture_only_is_not_a_pass": true
   }
 }

@@ -534,9 +534,11 @@ export async function POST(request: Request) {
     .filter(m => m.content.length > 0)
 
   const preAllocatedQueryId = crypto.randomUUID()
-  const [plannerModelId, plannerFallbackModelId] = await Promise.all([
+  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
     getEffectiveModel(selectedStack, 'planner_fast', 'primary', request),
     getEffectiveModel(selectedStack, 'planner_fast', 'fallback', request),
+    getEffectiveModel(selectedStack, 'planner_deep', 'primary', request),
+    getEffectiveModel(selectedStack, 'planner_deep', 'fallback', request),
   ])
 
   // UQE-9 — atomic per-request step_seq counter. Declared before the planner
@@ -563,6 +565,9 @@ export async function POST(request: Request) {
     emit,
     preAllocatedQueryId,
     plannerFallbackModelId,
+    undefined,
+    deepPlannerModelId,
+    deepPlannerFallbackModelId,
   )
 
   if (plannerOutcome.outcome === 'clarification_needed') {
@@ -1289,4 +1294,3 @@ export async function POST(request: Request) {
   return res.internal(msg)
 }
 }
-
