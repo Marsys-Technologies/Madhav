@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { Pool } from 'pg'
+import { Pool, type PoolConfig } from 'pg'
 import { sqlIdentityOf } from './migrate'
 import { readDataPlaneOwnershipStatus } from './data-plane-ownership-status'
 
@@ -19,13 +19,17 @@ export function stripTransactionWrapper(sql: string): string {
   return `${sql.slice(0, begin)}\n${sql.slice(beginEnd, commit)}${sql.slice(commit + '\nCOMMIT;'.length)}`
 }
 
-export async function attestDataPlaneMigrations(databaseUrl = process.env.DATA_PLANE_MIGRATOR_DATABASE_URL): Promise<void> {
+export async function attestDataPlaneMigrations(
+  databaseUrl: string | PoolConfig | undefined = process.env.DATA_PLANE_MIGRATOR_DATABASE_URL,
+): Promise<void> {
   if (!databaseUrl) throw new Error('DATA_PLANE_MIGRATOR_DATABASE_URL is required for protected migration attestation.')
   const migrations = PROTECTED_DATA_PLANE_MIGRATIONS.map(([filename, owner]) => {
     const sql = readFileSync(resolve(__dirname, '../supabase/migrations', filename), 'utf8')
     return { filename, owner, sql, sha256: createHash('sha256').update(sql).digest('hex'), identity: sqlIdentityOf(sql) }
   })
-  const pool = new Pool({ connectionString: databaseUrl, max: 1 })
+  const pool = new Pool(typeof databaseUrl === 'string'
+    ? { connectionString: databaseUrl, max: 1 }
+    : { ...databaseUrl, max: 1 })
   const client = await pool.connect()
   try {
     const actor = await client.query<{ session_user: string; current_user: string }>('SELECT session_user, current_user')
@@ -48,7 +52,9 @@ export async function attestDataPlaneMigrations(databaseUrl = process.env.DATA_P
           throw new Error(`${migration.filename} has a missing, duplicate, or mismatched protected identity.`)
         }
       }
-      await readDataPlaneOwnershipStatus(databaseUrl)
+      await readDataPlaneOwnershipStatus(typeof databaseUrl === 'string'
+        ? databaseUrl
+        : { ...databaseUrl, max: 1 })
       return
     }
     await client.query('BEGIN')
@@ -64,7 +70,9 @@ export async function attestDataPlaneMigrations(databaseUrl = process.env.DATA_P
       }
       await client.query('COMMIT')
     } catch (error) { await client.query('ROLLBACK'); throw error }
-    await readDataPlaneOwnershipStatus(databaseUrl)
+    await readDataPlaneOwnershipStatus(typeof databaseUrl === 'string'
+      ? databaseUrl
+      : { ...databaseUrl, max: 1 })
   } finally { client.release(); await pool.end() }
 }
 

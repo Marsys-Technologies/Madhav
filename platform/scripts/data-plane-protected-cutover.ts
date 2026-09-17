@@ -18,24 +18,33 @@ function required(name: string): string {
  * supplied host, port, database, or libpq query override may select its
  * destination.
  */
-export function ownershipAdminProxyConfig(databaseUrl: string): Readonly<PoolConfig> {
+export function productionRoleProxyConfig(
+  databaseUrl: string,
+  expectedUser: 'postgres' | 'data_plane_migrator',
+): Readonly<PoolConfig> {
   let route: URL
   try {
     route = new URL(databaseUrl)
   } catch {
-    throw new Error('Data-plane ownership credential is not a valid production-proxy connection string.')
+    throw new Error('Data-plane protected credential is not a valid production-proxy connection string.')
   }
   if (!['postgres:', 'postgresql:'].includes(route.protocol)
       || route.hostname !== '127.0.0.1' || route.port !== '5432'
       || route.pathname !== '/amjis' || route.search) {
-    throw new Error('Data-plane ownership credential is not pinned to the authenticated production proxy route.')
+    throw new Error('Data-plane protected credential is not pinned to the authenticated production proxy route.')
   }
   const config = validationAdminProxyConfig(databaseUrl, { proxyPort: '5432' })
-  if (config.user !== 'postgres' || config.database !== 'amjis') {
-    throw new Error('Data-plane ownership credential must authenticate as postgres to the production amjis database.')
+  if (config.user !== expectedUser || config.database !== 'amjis') {
+    throw new Error(`Data-plane protected credential must authenticate as ${expectedUser} to the production amjis database.`)
   }
   return config
 }
+
+export const ownershipAdminProxyConfig = (databaseUrl: string): Readonly<PoolConfig> =>
+  productionRoleProxyConfig(databaseUrl, 'postgres')
+
+export const migratorProxyConfig = (databaseUrl: string): Readonly<PoolConfig> =>
+  productionRoleProxyConfig(databaseUrl, 'data_plane_migrator')
 
 export async function executeProtectedDataPlaneCutover(): Promise<void> {
   const validationAdminUrl = required('DATA_PLANE_ADMIN_DATABASE_URL')
@@ -49,10 +58,11 @@ export async function executeProtectedDataPlaneCutover(): Promise<void> {
     proxyPort: required('DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT'),
   })
   const ownershipAdminProxy = ownershipAdminProxyConfig(ownershipAdminUrl)
+  const migratorProxy = migratorProxyConfig(migratorUrl)
   await withDataPlaneCutoverLease(async () => {
     await runDataPlaneOwnershipPreflight(ownershipAdminProxy)
-    await attestDataPlaneMigrations(migratorUrl)
-    if (await readDataPlaneOwnershipStatus(migratorUrl) !== 'marked') {
+    await attestDataPlaneMigrations(migratorProxy)
+    if (await readDataPlaneOwnershipStatus(migratorProxy) !== 'marked') {
       throw new Error('Protected data-plane cutover did not earn semantic marked status.')
     }
   })

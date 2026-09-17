@@ -9,7 +9,7 @@ import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsola
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, inspectDataPlaneAdminCredential, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt, validationAdminProxyConfig } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
-import { ownershipAdminProxyConfig } from '../../scripts/data-plane-protected-cutover'
+import { migratorProxyConfig, ownershipAdminProxyConfig } from '../../scripts/data-plane-protected-cutover'
 
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
 type WorkflowJob = {
@@ -52,6 +52,7 @@ describe('DP-SD-020 isolated validation bootstrap', () => {
     const credentialCheck = cutover.indexOf('validationAdminProxyConfig(validationAdminUrl')
     const ownershipCredential = cutover.indexOf("required('DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL')")
     const ownershipRoute = cutover.indexOf('ownershipAdminProxyConfig(ownershipAdminUrl)')
+    const migratorRoute = cutover.indexOf('migratorProxyConfig(migratorUrl)')
     const lease = cutover.indexOf('await withDataPlaneCutoverLease')
     expect(credentialCheck).toBeGreaterThan(-1)
     expect(credentialCheck).toBeLessThan(lease)
@@ -59,7 +60,11 @@ describe('DP-SD-020 isolated validation bootstrap', () => {
     expect(ownershipCredential).toBeLessThan(lease)
     expect(ownershipRoute).toBeGreaterThan(ownershipCredential)
     expect(ownershipRoute).toBeLessThan(lease)
+    expect(migratorRoute).toBeGreaterThan(ownershipCredential)
+    expect(migratorRoute).toBeLessThan(lease)
     expect(cutover).toContain('runDataPlaneOwnershipPreflight(ownershipAdminProxy)')
+    expect(cutover).toContain('attestDataPlaneMigrations(migratorProxy)')
+    expect(cutover).toContain('readDataPlaneOwnershipStatus(migratorProxy)')
   })
 
   it('pins the admin credential to the authenticated validation proxy', () => {
@@ -95,6 +100,21 @@ describe('DP-SD-020 isolated validation bootstrap', () => {
   it('pins the ownership credential to the authenticated production proxy', () => {
     expect(ownershipAdminProxyConfig('postgresql://postgres:test-proxy@127.0.0.1:5432/amjis'))
       .toEqual({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'test-proxy', database: 'amjis', max: 1 })
+  })
+
+  it.each([
+    'postgresql://data_plane_migrator:test@rogue.example:5432/amjis',
+    'postgresql://data_plane_migrator:test@127.0.0.1:6543/amjis',
+    'postgresql://data_plane_migrator:test@127.0.0.1:5432/other',
+    'postgresql://data_plane_migrator:test@127.0.0.1:5432/amjis?application_name=override',
+    'postgresql://postgres:test@127.0.0.1:5432/amjis',
+  ])('rejects an invalid migrator production route: %s', (url) => {
+    expect(() => migratorProxyConfig(url)).toThrow(/production proxy route|authenticate as data_plane_migrator/)
+  })
+
+  it('pins the migrator credential to the authenticated production proxy', () => {
+    expect(migratorProxyConfig('postgresql://data_plane_migrator:test-proxy@127.0.0.1:5432/amjis'))
+      .toEqual({ host: '127.0.0.1', port: 5432, user: 'data_plane_migrator', password: 'test-proxy', database: 'amjis', max: 1 })
   })
 
   it('reports only missing connector components without exposing a credential value', () => {
