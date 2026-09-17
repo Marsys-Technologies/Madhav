@@ -277,7 +277,7 @@ export function validationAdminProxyConfig(
   const parsed = parsePgConnectionString(databaseUrl)
   return Object.freeze({
     host: '127.0.0.1', port: Number(binding.proxyPort), user: parsed.user,
-    password: parsed.password, database: parsed.database, max: 1,
+    password: parsed.password, database: parsed.database ?? undefined, max: 1,
   })
 }
 
