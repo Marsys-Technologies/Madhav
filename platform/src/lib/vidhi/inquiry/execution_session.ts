@@ -99,7 +99,9 @@ export class ManagedInquiryExecutionSession {
     const blocked = failInquiryForAmbiguousDispatch(this.contract, planItemId)
     await failCloseAmbiguousInquiryAction({
       row: this.row,
-      expected_source_jti_hash: this.row.current_jti_hash,
+      // On recovery this is the stored reservation hash. The original source
+      // JTI was consumed before dispatch and must never be reconstructed.
+      expected_reservation_hash: this.row.current_jti_hash,
       plan_item_id: planItemId,
       contract: blocked,
     })

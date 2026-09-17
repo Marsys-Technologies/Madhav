@@ -473,6 +473,53 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect((body?.inquiry_contract as { status: string }).status).toBe('COMPLETE')
     expect(body?.results).toEqual([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }])
   })
+
+  it('fails a recovered incomplete contract closed before any action when the current overlay is dark', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000014'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000014'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    knowledgeState.overlay = {
+      chart_id: CHART, overlay_version: 'sha256:overlay-dark', capability_compatibility_version: 'planner-scu-v1',
+      catalog_content_hash: 'sha256:test', build_id: 'build-dark', code_revision: null, writer_inventory_hash: null,
+      generated_at: '2026-09-13T00:00:00.000Z', availability: [{
+        scu_id: 'scu.test.wealth', state: 'dark', build_status: 'completed', build_id: 'build-dark', freshness: 'stale',
+        available_binding_ids: [], gaps: ['receipt_missing'], asset_receipts: [],
+      }],
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const retrieve = vi.fn()
+    mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
+    let current: any
+    const session = {
+      get currentContract() { return current },
+      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosed: vi.fn(async (contract: any) => { current = contract; return contract }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+      current = {
+        ...(contract as any), status: 'INCOMPLETE',
+        capability_content_hash: 'sha256:persisted-old', capability_compatibility_version: 'planner-scu-old',
+        chart_availability_version: 'sha256:overlay-old', chart_build_id: 'build-old',
+      }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'recover changed availability', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const body = (await readNdjson(res)).at(-1)
+    expect(session.failClosed).toHaveBeenCalledTimes(1)
+    expect(session.beginAction).not.toHaveBeenCalled()
+    expect(retrieve).not.toHaveBeenCalled()
+    expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
+  })
 })
 
 /**

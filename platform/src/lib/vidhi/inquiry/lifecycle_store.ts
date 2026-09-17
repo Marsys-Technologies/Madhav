@@ -118,7 +118,15 @@ export async function reserveInquiryAction(args: {
       return { status: 'acquired', reservation_hash: args.reservation_hash, recovered: false }
     }
 
-    if (existing.source_jti_hash !== args.expected_jti_hash) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
+    // A recovered managed worker has only the lifecycle's current durable
+    // reservation hash, not the original pre-reservation source JTI. Accept
+    // that exact current hash solely for this existing reservation; it cannot
+    // authorize a different action or mint a new dispatch.
+    const resumesExistingReservation = existing.reservation_hash === args.expected_jti_hash
+      && current.current_jti_hash === existing.reservation_hash
+    if (existing.source_jti_hash !== args.expected_jti_hash && !resumesExistingReservation) {
+      throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
+    }
     if (existing.state === 'dispatched') {
       if (!existing.lease_expired) {
         return {
@@ -185,18 +193,24 @@ export async function markInquiryActionDispatched(args: {
 /** Close an action whose prior process crossed the dispatch boundary but lost its result. */
 export async function failCloseAmbiguousInquiryAction(args: {
   row: InquiryLifecycleRow
-  expected_source_jti_hash: string
+  /** The lifecycle's current stored reservation hash, never a reconstructed source JTI. */
+  expected_reservation_hash?: string
+  /** Legacy raw-MCP callers still prove the original source JTI. */
+  expected_source_jti_hash?: string
   plan_item_id: string
   contract: InquiryContract
 }): Promise<void> {
   await withInquiryStoreContext(args.row.principal_uid, args.row.chart_id, async (client) => {
+    const expectedHash = args.expected_reservation_hash ?? args.expected_source_jti_hash
+    if (!expectedHash) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
     const reservation = await client.query<{ reservation_hash: string }>(
       `UPDATE planner_inquiry_action_reservations
           SET state='failed_closed', committed_at=now()
         WHERE inquiry_id=$1 AND revision=$2 AND plan_item_id=$3
-          AND source_jti_hash=$4 AND state='dispatched' AND lease_expires_at <= now()
+          AND (reservation_hash=$4 OR source_jti_hash=$4)
+          AND state='dispatched' AND lease_expires_at <= now()
         RETURNING reservation_hash`,
-      [args.row.inquiry_id, args.row.revision, args.plan_item_id, args.expected_source_jti_hash],
+      [args.row.inquiry_id, args.row.revision, args.plan_item_id, expectedHash],
     )
     const reservationHash = reservation.rows[0]?.reservation_hash
     if (!reservationHash) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')

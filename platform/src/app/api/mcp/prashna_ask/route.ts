@@ -571,6 +571,7 @@ export async function POST(request: Request) {
     if (!initialInquiryContract) {
       return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry requires a resolved scope tuple' }), { status: 409 })
     }
+    const resolvedInquiryContract = initialInquiryContract
     const managedJob = await getManagedPrashnaJob({
       job_id: body.managed_job_id,
       principal_uid: userUid,
@@ -588,6 +589,18 @@ export async function POST(request: Request) {
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
     initialInquiryContract = managedInquirySession.currentContract
+    // An INCOMPLETE contract is executable authority only for the exact
+    // snapshot and chart overlay from which it was compiled. Recovering it
+    // against a changed/dark current view must fail closed before plan adoption
+    // reaches beginAction or a tool adapter. Terminal lifecycles intentionally
+    // bypass this comparison: their persisted result is replayed, not rerun.
+    if (initialInquiryContract.status === 'INCOMPLETE'
+      && (initialInquiryContract.capability_content_hash !== resolvedInquiryContract.capability_content_hash
+        || initialInquiryContract.capability_compatibility_version !== resolvedInquiryContract.capability_compatibility_version
+        || initialInquiryContract.chart_availability_version !== resolvedInquiryContract.chart_availability_version
+        || initialInquiryContract.chart_build_id !== resolvedInquiryContract.chart_build_id)) {
+      initialInquiryContract = await managedInquirySession.failClosed(failInquiryForOverlayDrift(initialInquiryContract))
+    }
     // A recovered capped lifecycle must become terminal before this fresh HTTP
     // request adopts any ready action. Otherwise recovery would reinterpret a
     // ready continuation as authorization to dispatch beyond max_iterations.

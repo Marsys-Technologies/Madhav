@@ -23,7 +23,7 @@ vi.mock('./index', () => ({
       ? { ...item, state: 'observed' as const, observation: { disposition: 'served' as const, evidence_refs: ['managed:receipt'], gap_reason: null } }
       : item),
   })),
-  failInquiryForAmbiguousDispatch: vi.fn((contract: InquiryContract) => contract),
+  failInquiryForAmbiguousDispatch: vi.fn((contract: InquiryContract) => ({ ...contract, status: 'BLOCKED' as const })),
 }))
 
 import { ManagedInquiryExecutionSession } from './execution_session'
@@ -97,5 +97,29 @@ describe('managed inquiry execution session', () => {
     expect(await recovered.recoveredEvidence()).toEqual([{ tool_name: 'test_tool', bundle: { results: [{ id: 'one' }] } }])
     expect(lifecycle.finalize).not.toHaveBeenCalled()
     expect(lifecycle.create).not.toHaveBeenCalled()
+  })
+
+  it('closes an expired dispatched reservation by its stored hash without replaying the action', async () => {
+    lifecycle.get.mockResolvedValueOnce(null)
+    lifecycle.reserve
+      .mockResolvedValueOnce({ status: 'acquired', reservation_hash: 'managed:dispatch', recovered: false })
+      .mockResolvedValueOnce({ status: 'ambiguous', reservation_hash: 'managed:dispatch' })
+    const first = await ManagedInquiryExecutionSession.open({
+      inquiry_id: inquiryId, principal_uid: 'user-1', contract, expires_at: '2026-09-18T00:00:00.000Z',
+    })
+    expect(await first.beginAction('item-001')).toBe('acquired')
+
+    lifecycle.get.mockResolvedValueOnce(row('managed:dispatch', contract))
+    const recovered = await ManagedInquiryExecutionSession.open({
+      inquiry_id: inquiryId, principal_uid: 'user-1', contract, expires_at: '2026-09-18T00:00:00.000Z',
+    })
+    expect(await recovered.beginAction('item-001')).toBe('ambiguous')
+    await recovered.failClosedAmbiguity('item-001')
+
+    expect(lifecycle.mark).toHaveBeenCalledTimes(1)
+    expect(lifecycle.failClose).toHaveBeenCalledWith(expect.objectContaining({
+      expected_reservation_hash: 'managed:dispatch', plan_item_id: 'item-001',
+    }))
+    expect(recovered.currentContract.status).toBe('BLOCKED')
   })
 })
