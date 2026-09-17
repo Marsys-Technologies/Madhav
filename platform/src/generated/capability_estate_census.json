@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "6b237bbff71e40297b7ca93bf64b4dcc4a824340d9c4edf8f6a8f056bf282b10",
+  "content_sha256": "02ad596cd274c5c91b8b0f2644ce151a344a7329e690837c74f2c006b92cf87e",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20658,7 +20658,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-17T06:14:43.000Z",
+  "generated_at": "2026-09-17T07:27:29.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20675,7 +20675,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "4b6cec7e0152e367bbd209481368464008682f347046a4ea63a51cb4b2afe7d4"
+        "sha256": "03b9dd57dd1f897d62119d3bdf2fec691c9ba4143be2b2b2766157e7f4d88948"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -21251,7 +21251,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 198,
+        "member_count": 199,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21283,7 +21283,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "754ae1e706ef9830758dd49ac816b57789ff44759effaef15106c28aaf0d9e99"
+            "sha256": "d86639d23195c408e0d062007c8cd5ef2e99a3a53c0fcfc771842c8817f18a54"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
@@ -21291,7 +21291,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "08db156148993a8356b0e2fdf28af82d7bd9e01e7125bcd4c1a9c567ada554f5"
+            "sha256": "13c81880aee951b2e60da398d26dcd6e3d8ee5a562e125f927ddcca856a6235e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21304,6 +21304,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
             "sha256": "035f8e6ee2d4843db2c0515acc86b60bb1637914ed0c7d4ebe02325709f4dcee"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/pagination_review.ts",
+            "sha256": "86120df3fdc2112a4c6da44eceb485694afed1dc8fe4765e601e04fcce6b4052"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/planner_projection.ts",
@@ -22047,7 +22051,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "3629659e263ed0c11821be943f4eda35115254bf73c46d5fa109b009c7cd173f"
+        "sha256": "8573c9f06114abe94dca632936a1f34cf543a7a95c35525fa49251fa68d00793"
       },
       {
         "id": "service_effect_contracts",
@@ -22072,5 +22076,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "ff5498365ee4cda412016f258f0a62f82d21216a"
+  "source_revision": "30f75bd74bff47dff37df743c546b78847a3c1eb"
 }
