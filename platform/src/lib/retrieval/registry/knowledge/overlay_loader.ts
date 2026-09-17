@@ -152,18 +152,76 @@ function contractForBinding(
 ): BindingAvailabilityContract | null | undefined {
   const contracts = scu.availability_contracts
   if (contracts === undefined) return undefined
-  if (!Array.isArray(contracts)
-    || contracts.some((contract) => !isRecord(contract)
-      || typeof contract.binding_id !== 'string'
-      || !Array.isArray(contract.requirements))) return null
-  const matches = contracts.filter((contract) => contract.binding_id === binding.binding_id)
-  return matches.length === 1 ? matches[0] : matches.length > 1 ? null : undefined
+  if (!Array.isArray(contracts)) return null
+  const matches = contracts.filter((contract) => isRecord(contract) && contract.binding_id === binding.binding_id)
+  if (matches.length !== 1) return matches.length > 1 ? null : undefined
+  return Array.isArray(matches[0]?.requirements) ? matches[0] as BindingAvailabilityContract : null
+}
+
+type ContractValidationMemo = Map<string, string | null>
+
+function contractValidationKey(scu: SemanticCapabilityUnit, binding: SemanticCapabilityBinding): string {
+  return `${scu.scu_id}\u0000${binding.binding_id}`
+}
+
+function bindingContractIntegrityGap(
+  scu: SemanticCapabilityUnit,
+  binding: SemanticCapabilityBinding,
+  bindingIndex: ReadonlyMap<string, BindingTarget | null>,
+  memo: ContractValidationMemo,
+  visiting: Set<string>,
+): string | null {
+  const key = contractValidationKey(scu, binding)
+  if (visiting.has(key)) return 'Derived availability contracts contain a cycle.'
+  if (memo.has(key)) return memo.get(key)!
+  const contract = contractForBinding(scu, binding)
+  if (!contract) return null
+  visiting.add(key)
+  let gap: string | null = null
+  for (const requirement of contract.requirements) {
+    if (producerOutputRequirement(requirement)) {
+      const reviewedClaim = (scu.producer_output_claims ?? []).some((claim) => claim.disposition === 'reviewed_output'
+        && claim.asset_id === requirement.asset_id
+        && claim.output_digest_spec_sha256 === requirement.spec_sha256)
+      if (!reviewedClaim) {
+        gap = 'Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'
+        break
+      }
+      continue
+    }
+    if (usableDerivedRequirement(requirement)) {
+      for (const childBindingId of requirement.required_binding_ids) {
+        const childTarget = bindingIndex.get(childBindingId)
+        if (!childTarget || childTarget.scu.scope !== requirement.scope || scu.scope !== requirement.scope) {
+          gap = `Derived availability leg ${childBindingId} has no scope-compatible executable binding.`
+          break
+        }
+        if (!contractForBinding(childTarget.scu, childTarget.binding)) {
+          gap = `Derived availability leg ${childBindingId} has no exact authored availability contract.`
+          break
+        }
+        const childGap = bindingContractIntegrityGap(childTarget.scu, childTarget.binding, bindingIndex, memo, visiting)
+        if (childGap) {
+          gap = `Derived availability leg ${childBindingId}: ${childGap}`
+          break
+        }
+      }
+      if (gap) break
+      continue
+    }
+    if (!serviceProbeRequirement(requirement)) {
+      gap = 'Binding availability contract contains a malformed or unsupported requirement.'
+      break
+    }
+  }
+  visiting.delete(key)
+  memo.set(key, gap)
+  return gap
 }
 
 function authoredContractIntegrityGap(
   scu: SemanticCapabilityUnit,
   bindingIndex: ReadonlyMap<string, BindingTarget | null>,
-  visiting = new Set<string>(),
 ): string | null {
   const contracts = scu.availability_contracts
   if (contracts === undefined) return null
@@ -179,45 +237,18 @@ function authoredContractIntegrityGap(
       return 'Duplicate binding availability contracts prevent a safe evidence selection.'
     }
     contractBindingIds.add(contract.binding_id)
-    const nextVisiting = new Set(visiting)
-    nextVisiting.add(contract.binding_id)
     if (scu.bindings.filter((binding) => binding.binding_id === contract.binding_id && binding.executable).length !== 1) {
       return 'Binding availability contract names an unknown or non-executable local binding.'
     }
     if (contract.requirements.length === 0) {
       return 'Binding availability contract has no requirements.'
     }
-    for (const requirement of contract.requirements) {
-      if (producerOutputRequirement(requirement)) {
-        const reviewedClaim = (scu.producer_output_claims ?? []).some((claim) => claim.disposition === 'reviewed_output'
-          && claim.asset_id === requirement.asset_id
-          && claim.output_digest_spec_sha256 === requirement.spec_sha256)
-        if (!reviewedClaim) {
-          return 'Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'
-        }
-        continue
-      }
-      if (usableDerivedRequirement(requirement)) {
-        for (const childBindingId of requirement.required_binding_ids) {
-          if (nextVisiting.has(childBindingId)) {
-            return 'Derived availability contracts contain a cycle.'
-          }
-          const childTarget = bindingIndex.get(childBindingId)
-          if (!childTarget || childTarget.scu.scope !== requirement.scope || scu.scope !== requirement.scope) {
-            return `Derived availability leg ${childBindingId} has no scope-compatible executable binding.`
-          }
-          if (!contractForBinding(childTarget.scu, childTarget.binding)) {
-            return `Derived availability leg ${childBindingId} has no exact authored availability contract.`
-          }
-          const childGap = authoredContractIntegrityGap(childTarget.scu, bindingIndex, nextVisiting)
-          if (childGap) return `Derived availability leg ${childBindingId}: ${childGap}`
-        }
-        continue
-      }
-      if (!serviceProbeRequirement(requirement)) {
-        return 'Binding availability contract contains a malformed or unsupported requirement.'
-      }
-    }
+  }
+  const memo: ContractValidationMemo = new Map()
+  for (const contract of contracts) {
+    const binding = scu.bindings.find((candidate) => candidate.binding_id === contract.binding_id && candidate.executable)!
+    const gap = bindingContractIntegrityGap(scu, binding, bindingIndex, memo, new Set())
+    if (gap) return gap
   }
   return null
 }
@@ -389,7 +420,7 @@ function evidenceForBinding(
   visiting = new Set<string>(),
   requireExplicitContract = false,
 ): BindingEvidence {
-  const contractIntegrityGap = authoredContractIntegrityGap(scu, bindingIndex, visiting)
+  const contractIntegrityGap = bindingContractIntegrityGap(scu, binding, bindingIndex, new Map(), new Set())
   if (contractIntegrityGap) return {
     binding_id: binding.binding_id,
     passed: false,

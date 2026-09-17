@@ -105,6 +105,58 @@ const mixedValidInvalidDerivedContractSnapshot = () => {
   } as CapabilityKnowledgeSnapshot
 }
 
+const sameScuDerivedLegSnapshot = () => {
+  const base = bindingContractSnapshot()
+  return {
+    ...base,
+    scus: [{
+      ...base.scus[0]!,
+      availability_contracts: [
+        base.scus[0]!.availability_contracts![0]!,
+        {
+          binding_id: 'registry:marsys://tool/L1/alternate',
+          requirements: [{
+            kind: 'derived',
+            scope: 'chart',
+            required_binding_ids: ['registry:marsys://tool/L1/test'],
+            source_ref: 'fixture:same-scu-derived-leg',
+          }],
+        },
+      ],
+    }],
+  } as CapabilityKnowledgeSnapshot
+}
+
+const sameScuDerivedCycleSnapshot = () => {
+  const base = bindingContractSnapshot()
+  return {
+    ...base,
+    scus: [{
+      ...base.scus[0]!,
+      availability_contracts: [
+        {
+          binding_id: 'registry:marsys://tool/L1/test',
+          requirements: [{
+            kind: 'derived',
+            scope: 'chart',
+            required_binding_ids: ['registry:marsys://tool/L1/alternate'],
+            source_ref: 'fixture:same-scu-cycle-primary',
+          }],
+        },
+        {
+          binding_id: 'registry:marsys://tool/L1/alternate',
+          requirements: [{
+            kind: 'derived',
+            scope: 'chart',
+            required_binding_ids: ['registry:marsys://tool/L1/test'],
+            source_ref: 'fixture:same-scu-cycle-alternate',
+          }],
+        },
+      ],
+    }],
+  } as CapabilityKnowledgeSnapshot
+}
+
 const primaryOnlyContractSnapshot = () => ({
   ...bindingContractSnapshot(),
   scus: [{
@@ -474,6 +526,30 @@ describe('chart capability overlay loader', () => {
         state: 'dark',
         available_binding_ids: [],
         gaps: ['Derived availability leg registry:marsys://tool/L1/missing-derived-leg has no scope-compatible executable binding.'],
+      })
+  })
+
+  it('evaluates a valid same-SCU derived leg when its exact evidence is sufficient', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary')] })
+
+    expect((await loadChartCapabilityOverlay(sameScuDerivedLegSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({
+        state: 'available',
+        available_binding_ids: [
+          'registry:marsys://tool/L1/alternate',
+          'registry:marsys://tool/L1/test',
+        ],
+      })
+  })
+
+  it('darkens a same-SCU two-binding derived cycle without recursing indefinitely', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_alternate')] })
+
+    expect((await loadChartCapabilityOverlay(sameScuDerivedCycleSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: ['Derived availability leg registry:marsys://tool/L1/alternate: Derived availability leg registry:marsys://tool/L1/test: Derived availability contracts contain a cycle.'],
       })
   })
 
