@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:d51a68221befd06dd9584a1212f2367c3112dc688ebb21e741f4a17f66149fc2",
+  "content_hash": "sha256:841263b6d61a2c14c39a3e7520dce57dddd0328728b49ef26a82af3970ef599b",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:a0191eb8cc727834a851e51e69bfe54a589d8e8ad77b78bfad5177321c89bb7e",
+  "semantic_review_fingerprint": "sha256:1076dc4caa92cb1ca9e68667b23c63dd95e6f0b713baee0b80b1d99f86841fa9",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -14880,9 +14880,11 @@
         {
           "binding_id": "registry:marsys://tool/L2/query_contradictions",
           "status": "deliberately_dark",
-          "reason": "The route reads bodha_contradictions plus optional discovery/anomaly rows. bo_karanajala's reviewed digest covers bodha_cgm_edges, not bodha_contradictions; bo_anveshana only covers the optional tables.",
+          "reason": "Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala's reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.",
           "source_refs": [
             "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140",
             "platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65",
             "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71"
           ]

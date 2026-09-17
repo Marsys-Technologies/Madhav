@@ -185,6 +185,34 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps query_contradictions dark when adjacent graph and discovery receipts cannot attest its required contradiction relation', async () => {
+    const scu = findScu('scu.catalog.query_contradictions')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L2/query_contradictions',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('Every invocation reads bodha_contradictions'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101',
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125',
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140',
+      ]),
+    })])
+
+    // bo_karanajala attests its graph-edge output and bo_anveshana attests
+    // discovery/anomaly output. Neither receipt represents the mandatory
+    // bodha_contradictions relation read by this handler on every invocation.
+    const overlay = await overlayFor([
+      adjacentProducerReceipt('bo_karanajala', '2d474e10daf4319b71b664cde18c51dab74d8227a7092b488a28bf36aa25ddfb'),
+      adjacentProducerReceipt('bo_anveshana', '4debaff16035da221a7c234b5fc7cd8d819d680d5f44cf615cfaac7f56215885'),
+    ])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the

@@ -74,9 +74,11 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
     ],
   },
   query_contradictions: {
-    reason: 'The route reads bodha_contradictions plus optional discovery/anomaly rows. bo_karanajala\'s reviewed digest covers bodha_cgm_edges, not bodha_contradictions; bo_anveshana only covers the optional tables.',
+    reason: 'Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala\'s reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.',
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140',
       'platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65',
       'platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71',
     ],
