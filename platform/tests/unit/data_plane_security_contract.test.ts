@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt, validationAdminProxyConfig } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, inspectDataPlaneAdminCredential, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt, validationAdminProxyConfig } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
@@ -68,6 +68,21 @@ describe('DP-SD-020 isolated validation bootstrap', () => {
   it('rejects an admin credential without the minimum locally routed identity', () => {
     expect(() => validationAdminProxyConfig('postgresql://admin@rogue.example/amjis', { proxyPort: '5433' }))
       .toThrow(/cannot be safely routed/)
+  })
+
+  it('reports only missing connector components without exposing a credential value', () => {
+    expect(inspectDataPlaneAdminCredential('postgresql://admin@rogue.example/amjis', { proxyPort: '5433' }))
+      .toEqual({ parseable: true, safeToRoute: false, invalidComponents: ['password'] })
+  })
+
+  it('keeps the manual credential diagnostic isolated from deployment and cutover workflows', () => {
+    const diagnostic = readFileSync(resolve(__dirname, '../../../.github/workflows/data-plane-credential-preflight.yml'), 'utf8')
+    expect(diagnostic).toContain('workflow_dispatch:')
+    expect(diagnostic).toContain('data-plane-production-cutover')
+    expect(diagnostic).toContain('data-plane-admin-credential-diagnostic.ts')
+    expect(diagnostic).not.toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
+    expect(diagnostic).not.toContain('DATA_PLANE_CUTOVER_LEASE')
+    expect(diagnostic).not.toContain('gcloud run jobs update')
   })
 })
 
