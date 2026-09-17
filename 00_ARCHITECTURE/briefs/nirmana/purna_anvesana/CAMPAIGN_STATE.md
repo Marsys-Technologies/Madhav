@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0091
-last_updated: 2026-09-17T23:15:00+05:30
+last_event: PA-E0092
+last_updated: 2026-09-17T23:20:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -50,6 +50,13 @@ layer state, queue or authority.
   actual deep model override. Focused planner/MCP tests pass 72/72, TypeScript passes, and lint has
   no new errors. Candidate and live execution are still required before this becomes an operational
   deep-reasoning acceptance result.
+
+- Current full source verification: the positions availability-contract change had left the current
+  V4 Beyond-Acarya provenance artifact, reviewed-output census assertion, and two fixed-clock
+  Portal receipt baselines on their prior snapshot. All were regenerated from the current checked
+  snapshot (`sha256:ace22…a8ec4`, 182 SCUs, 15 reviewed output claims) and revalidated. Full platform
+  test gate: 12,052 passed, 704 skipped, 2 todo; TypeScript and both capability-codegen freshness
+  checks pass. This proves local source consistency only, not candidate/live product acceptance.
 
 - Product evidence M1: the new real three-door collector has passed focused source checks
   (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without
