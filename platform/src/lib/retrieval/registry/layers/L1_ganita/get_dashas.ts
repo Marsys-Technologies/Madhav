@@ -638,9 +638,10 @@ export const getDashasCapability: CapabilityDescriptor = {
       // the same PostgreSQL statement snapshot. A completed build alone is not proof: only a
       // chart-scoped ga_dashas receipt with this reviewed digest spec and matching fresh state
       // may select the build. The fence covers an active replacement AND a terminal ga_dashas
-      // run started after the selected receipt that lacks its own fresh/proven receipt. The
-      // latter is the post-delete receipt-failure case: never reinterpret its empty old-build
-      // page as exhaustion. Older failures pre-dating the selected receipt do not block it.
+      // run whose mutation/terminal time is at-or-after the selected receipt but lacks its own
+      // fresh/proven receipt. A run can start before a later successful run and still mutate
+      // afterwards, so started_at is not a safe ordering boundary. NULL ended_at fences
+      // conservatively; terminal runs known to have ended before the receipt do not block it.
       let pageResult: { rows: Array<{
         replacement_in_progress: boolean
         eligible_build_id: string | null
@@ -684,7 +685,7 @@ export const getDashasCapability: CapabilityDescriptor = {
                   OR (
                     EXISTS (
                       SELECT 1 FROM eligible_receipt eligible
-                       WHERE fenced_run.started_at >= eligible.observed_at
+                       WHERE fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at
                     )
                     AND NOT EXISTS (
                       SELECT 1

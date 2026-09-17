@@ -31,7 +31,8 @@ function args(overrides: Record<string, unknown> = {}) {
 function mockBuildPages(state: {
   eligibleBuild: string | null
   replacementInProgress?: boolean
-  unreceiptedNewerRun?: 'completed' | 'error' | null
+  unreceiptedTerminalRun?: 'completed' | 'error' | null
+  terminalRunEndedAfterReceipt?: boolean
   unrelatedCompletedBuild?: string | null
   rowsByBuild: Record<string, readonly Record<string, unknown>[]>
 }) {
@@ -42,8 +43,8 @@ function mockBuildPages(state: {
       const buildId = state.eligibleBuild
       const offset = Number(params[2])
       const fetchLimit = Number(params[1])
-      const terminalRunIsFenced = Boolean(state.unreceiptedNewerRun)
-        && sql.includes('fenced_run.started_at >= eligible.observed_at')
+      const terminalRunIsFenced = Boolean(state.unreceiptedTerminalRun && state.terminalRunEndedAfterReceipt)
+        && sql.includes('fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at')
         && sql.includes('proven_receipt.build_id = fenced_run.id')
       pageCalls.push({ sql, params })
       return Promise.resolve({ rows: [{
@@ -265,11 +266,12 @@ describe('get_dashas build-pinned cursor pagination', () => {
   })
 
   it.each(['completed', 'error'] as const)(
-    'requires restart when a newer %s ga_dashas run has no fresh/proven exact-build receipt',
-    async (unreceiptedNewerRun) => {
+    'requires restart when run A starts before B but ends %s after B minted the selected receipt',
+    async (unreceiptedTerminalRun) => {
       const database = mockBuildPages({
         eligibleBuild: 'build-old',
-        unreceiptedNewerRun,
+        unreceiptedTerminalRun,
+        terminalRunEndedAfterReceipt: true,
         rowsByBuild: { 'build-old': [] },
       })
 
@@ -279,10 +281,27 @@ describe('get_dashas build-pinned cursor pagination', () => {
         is_error: true,
         content: { code: 'ga_dashas_replacement_in_progress', restart_required: true },
       })
-      expect(database.pageCalls[0]?.sql).toContain('fenced_run.started_at >= eligible.observed_at')
+      expect(database.pageCalls[0]?.sql).toContain('fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at')
       expect(database.pageCalls[0]?.sql).toContain('proven_receipt.build_id = fenced_run.id')
     },
   )
+
+  it('does not permanently fence an old terminal failure that ended before the selected receipt', async () => {
+    const database = mockBuildPages({
+      eligibleBuild: 'build-new',
+      unreceiptedTerminalRun: 'error',
+      terminalRunEndedAfterReceipt: false,
+      rowsByBuild: { 'build-new': [dasha('n')] },
+    })
+
+    const result = await getDashasCapability.handler(args(), undefined)
+
+    expect(result).toMatchObject({
+      is_error: false,
+      content: { build_id: 'build-new', rows: [expect.objectContaining({ dasha_row_id: 'n' })] },
+    })
+    expect(database.pageCalls[0]?.sql).toContain('fenced_run.ended_at IS NULL OR fenced_run.ended_at >= eligible.observed_at')
+  })
 
   it('clears the post-clean fence when the latest fresh/proven receipt belongs to the new run', async () => {
     const database = mockBuildPages({
