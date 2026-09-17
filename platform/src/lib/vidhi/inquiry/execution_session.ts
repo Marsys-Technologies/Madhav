@@ -162,6 +162,10 @@ export class ManagedInquiryExecutionSession {
   }
 
   async finalizeWhenNoReady(): Promise<InquiryContract> {
+    // The outer managed-job write can be lost after this lifecycle CAS. A
+    // recovering worker must reuse the terminal lifecycle/evidence, not try a
+    // second finalization against its terminal JTI.
+    if (this.row.status !== 'INCOMPLETE' || this.row.current_jti_hash === 'terminal') return this.contract
     if (this.contract.plan_items.some((item) => item.state === 'ready')) return this.contract
     const final = (await import('./compiler')).finalizeInquiryContract(this.contract)
     await commitInquiryFinalization({

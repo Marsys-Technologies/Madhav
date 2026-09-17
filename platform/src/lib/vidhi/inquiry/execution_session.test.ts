@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { InquiryContract } from './types'
 
 const lifecycle = vi.hoisted(() => ({
-  create: vi.fn(), get: vi.fn(), list: vi.fn(), reserve: vi.fn(), mark: vi.fn(), commit: vi.fn(), failClose: vi.fn(),
+  create: vi.fn(), get: vi.fn(), list: vi.fn(), reserve: vi.fn(), mark: vi.fn(), commit: vi.fn(), finalize: vi.fn(), failClose: vi.fn(),
 }))
 
 vi.mock('./lifecycle_store', () => ({
@@ -12,6 +12,7 @@ vi.mock('./lifecycle_store', () => ({
   reserveInquiryAction: lifecycle.reserve,
   markInquiryActionDispatched: lifecycle.mark,
   commitInquiryObservation: lifecycle.commit,
+  commitInquiryFinalization: lifecycle.finalize,
   failCloseAmbiguousInquiryAction: lifecycle.failClose,
 }))
 
@@ -82,5 +83,19 @@ describe('managed inquiry execution session', () => {
     expect(lifecycle.create).toHaveBeenCalledTimes(1)
     expect(lifecycle.reserve).toHaveBeenCalledTimes(1)
     expect(lifecycle.commit).toHaveBeenCalledTimes(1)
+  })
+
+  it('reuses an already-finalized lifecycle after an outer-job completion gap without a second finalization CAS', async () => {
+    const terminal = { ...contract, status: 'COMPLETE' as const, plan_items: [{ ...contract.plan_items[0], state: 'observed' as const }] } as unknown as InquiryContract
+    lifecycle.get.mockResolvedValueOnce(row('terminal', terminal))
+    lifecycle.list.mockResolvedValueOnce([{ inquiry_id: inquiryId, revision: 1, evidence_jsonb: { tool_name: 'test_tool', bundle: { results: [{ id: 'one' }] } } }])
+
+    const recovered = await ManagedInquiryExecutionSession.open({
+      inquiry_id: inquiryId, principal_uid: 'user-1', contract, expires_at: '2026-09-18T00:00:00.000Z',
+    })
+    expect(await recovered.finalizeWhenNoReady()).toBe(terminal)
+    expect(await recovered.recoveredEvidence()).toEqual([{ tool_name: 'test_tool', bundle: { results: [{ id: 'one' }] } }])
+    expect(lifecycle.finalize).not.toHaveBeenCalled()
+    expect(lifecycle.create).not.toHaveBeenCalled()
   })
 })

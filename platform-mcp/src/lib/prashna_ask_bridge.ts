@@ -90,6 +90,8 @@ export interface PrashnaAskPlanOutcome {
   completeness: PrashnaAskCompleteness
   judgment_flags: string[]
   results: Array<{ tool_name: string; bundle: unknown }>
+  /** Managed continuation keeps the durable job non-terminal until this is not INCOMPLETE. */
+  inquiry_contract?: { status?: 'INCOMPLETE' | 'COMPLETE' | 'BLOCKED' }
   persistence?: { status: string; job_id?: string; detail: string }
 }
 

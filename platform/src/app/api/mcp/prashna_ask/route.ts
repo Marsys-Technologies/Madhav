@@ -892,6 +892,83 @@ export async function POST(request: Request) {
         if (terminalResultBudgetStopped) break
       }
 
+      // A verified pagination continuation is a new protected action on the
+      // same item. It must therefore use the same reservation → dispatch →
+      // evidence-CAS path as page one; stopping here would let the outer job
+      // claim completion while the persisted Inquiry remains incomplete.
+      if (managedInquirySession && inquirySnapshot) {
+        while (managedInquirySession.readyActionIds.length > 0
+          && managedInquirySession.currentContract.iteration < managedInquirySession.currentContract.max_iterations
+          && costCapTripped === null) {
+          const item = managedInquirySession.currentContract.plan_items.find((candidate) => candidate.state === 'ready'
+            && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
+          if (!item?.binding_id) break
+          const capabilityUri = item.binding_id.slice('registry:'.length)
+          const toolName = dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
+          const tool = toolName ? getToolByName(toolName) : undefined
+          const binding = bindingForInquiryItem(inquirySnapshot, managedInquirySession.currentContract, item.item_id)
+          if (!toolName || !tool || !binding) {
+            judgmentFlags.push('managed_inquiry_continuation_unavailable')
+            break
+          }
+          const check = tracker.checkAndRecordCall(tool.dispatch_units)
+          if (check.stopped) {
+            costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
+            judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
+            break
+          }
+          const begin = await managedInquirySession.beginAction(item.item_id)
+          if (begin === 'in_progress') {
+            judgmentFlags.push('managed_inquiry_action_in_progress')
+            break
+          }
+          if (begin === 'ambiguous') {
+            await managedInquirySession.failClosedAmbiguity(item.item_id)
+            judgmentFlags.push('managed_inquiry_dispatch_ambiguous')
+            break
+          }
+          const started = Date.now()
+          try {
+            const bundle = await tool.retrieve(queryPlanLike, item.args)
+            await managedInquirySession.persistAcceptedObservation({
+              plan_item_id: item.item_id,
+              obligation_ids: item.obligation_ids,
+              scu_id: item.scu_id,
+              binding_id: item.binding_id,
+              tool_name: toolName,
+              bundle,
+              disposition: classifyInquiryResult(binding, bundle),
+              pagination: deriveInquiryPaginationReceipt(binding, bundle, item.args),
+              invocation_args: item.args,
+            })
+            toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
+            if (!retainToolResult(toolName, bundle)) {
+              if (!unservedTools.includes(toolName)) unservedTools.push(toolName)
+              break
+            }
+          } catch (error) {
+            console.error(`[mcp:prashna_ask] managed inquiry continuation failed for ${toolName}`, error)
+            await managedInquirySession.persistAcceptedObservation({
+              plan_item_id: item.item_id,
+              obligation_ids: item.obligation_ids,
+              scu_id: item.scu_id,
+              binding_id: item.binding_id,
+              tool_name: toolName,
+              bundle: { ok: false, error: 'TOOL_DISPATCH_FAILED' },
+              disposition: 'failed',
+              pagination: { semantics: binding.pagination, exhausted: true, next: null },
+              gap_reason: 'dispatch_error',
+              invocation_args: item.args,
+            })
+            toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
+          }
+          emitProgress(toolName)
+        }
+        if (managedInquirySession.readyActionIds.length > 0 && managedInquirySession.currentContract.status === 'INCOMPLETE') {
+          judgmentFlags.push('managed_inquiry_continuation_incomplete')
+        }
+      }
+
       if (leakedTools.length > 0) {
         judgmentFlags.push('no_leakage_capabilities_stripped')
       }

@@ -192,6 +192,15 @@ export async function resumeManagedPrashnaJob(
     return
   }
 
+  // A managed continuation that reached this request's wall-clock/cost bound
+  // is an honest non-terminal lifecycle state. Keep the existing job lease
+  // recoverable; marking the outer job complete here would sever status from
+  // its remaining protected actions.
+  if (result.ok && result.outcome === 'plan' && result.inquiry_contract?.status === 'INCOMPLETE') {
+    await retainRetryableFailure(jobId, principal, workerId)
+    return
+  }
+
   let terminalCommitted = false
   let deliveredResult: PrashnaAskEngineResponse = result
   if (result.ok === false) {

@@ -454,6 +454,49 @@ describe('registerPrashnaAskTool', () => {
     expect((await prashnaAskJobs.get(makePrincipal(), result.structuredContent.job_id))?.attempt_count).toBe(2)
   })
 
+  it('keeps a paginated managed lifecycle recoverable, then completes the same job on status recovery', async () => {
+    const engine = vi.spyOn(bridge, 'callPrashnaAskEngine')
+      .mockResolvedValueOnce({
+        ok: true, trace_id: 'page-one', chart_id: CHART_ID, outcome: 'plan',
+        query_class: 'dasha_timing', query_intent_summary: 'next page pending', reading: null, chart_header: null,
+        completeness: {
+          status: 'partial', tools_dispatched: [], unserved_tools: [], unresolved_tools: [],
+          stripped_leaked_capabilities: [], empty_result_tools: [], cap_tripped: 'wall_clock',
+        },
+        inquiry_contract: { status: 'INCOMPLETE' as const },
+        judgment_flags: ['managed_inquiry_continuation_incomplete'], results: [],
+      })
+      .mockResolvedValueOnce({
+        ok: true, trace_id: 'page-two', chart_id: CHART_ID, outcome: 'plan',
+        query_class: 'dasha_timing', query_intent_summary: 'exhausted', reading: 'complete', chart_header: null,
+        completeness: {
+          status: 'complete', tools_dispatched: [], unserved_tools: [], unresolved_tools: [],
+          stripped_leaked_capabilities: [], empty_result_tools: [], cap_tripped: null,
+        },
+        inquiry_contract: { status: 'COMPLETE' as const },
+        judgment_flags: [], results: [],
+      })
+    const { server, getHandler } = makeMockServer()
+    registerPrashnaAskTool(server, makePrincipal(), 'full')
+    const result = await getHandler()(
+      { chart_id: CHART_ID, question: 'continue my dasha page', response_format: 'standard' }, makeExtra(),
+    ) as { structuredContent: { job_id: string } }
+    const jobId = result.structuredContent.job_id
+
+    await vi.waitFor(async () => expect(await prashnaAskJobs.get(makePrincipal(), jobId)).toMatchObject({
+      status: 'running', attempt_count: 1,
+      progress: { message: expect.stringContaining('retry waits for lease expiry') },
+    }))
+    expect(engine).toHaveBeenCalledTimes(1)
+
+    testJobs.expireLease(jobId)
+    await resumeManagedPrashnaJob(jobId, makePrincipal())
+
+    expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('complete')
+    expect(engine).toHaveBeenCalledTimes(2)
+    expect(engine.mock.calls[0][0]).toMatchObject({ jobId, inquiryId: engine.mock.calls[1][0].inquiryId })
+  })
+
   it('turns an oversized successful envelope into an explicit terminal storage failure without rerunning', async () => {
     const engine = vi.spyOn(bridge, 'callPrashnaAskEngine').mockResolvedValue({
       ok: true, trace_id: 'oversize', chart_id: CHART_ID, outcome: 'plan',

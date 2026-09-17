@@ -81,7 +81,12 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
   mockGetToolByName: vi.fn(),
 }))
+const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
+vi.mock('@/lib/vidhi/inquiry/managed_job_store', () => ({ getManagedPrashnaJob: managedInquiry.getJob }))
+vi.mock('@/lib/vidhi/inquiry/execution_session', () => ({
+  ManagedInquiryExecutionSession: { open: managedInquiry.open },
+}))
 
 vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
   compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false, llm_extension_note: '' })),
@@ -199,6 +204,7 @@ function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  managedInquiry.getJob.mockResolvedValue(null)
   knowledgeState.snapshot = null
   knowledgeState.overlay = null
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
@@ -304,6 +310,61 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
     expect(body.persistence.status).toBe('caller_required')
 
     safetyFlagState.on = false
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
+  it('routes a non-exhausted page through the same managed reservation and evidence checkpoint before serving page two', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000011'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000011'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'managed page test', response_format: 'standard' },
+    })
+    let current: any
+    const session = {
+      get currentContract() { return current },
+      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const nextPage = session.persistAcceptedObservation.mock.calls.length === 1
+        current = {
+          ...current,
+          plan_items: current.plan_items.map((item: any) => item.item_id === plan_item_id
+            ? {
+                ...item,
+                state: nextPage ? 'ready' : 'observed',
+                args: nextPage ? { ...item.args, page_cursor: 'page-2' } : item.args,
+                observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null },
+              }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: any) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...current, status: 'COMPLETE' })),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+      current = { ...(contract as any), max_iterations: 3 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'managed page test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    expect(lines.at(-1)?.event).toBe('final')
+    expect(mockGetToolByName).toHaveBeenCalledWith('authorized_test')
+    expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
+    expect(session.beginAction).toHaveBeenCalledTimes(2)
+    expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
   })
 })
 
