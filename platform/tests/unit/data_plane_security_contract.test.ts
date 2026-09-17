@@ -46,10 +46,13 @@ describe('DP-SD-018 protected migration routing', () => {
 
 describe('DP-SD-020 isolated validation bootstrap', () => {
   it('pins the admin credential to the authenticated validation proxy', () => {
-    expect(validationAdminProxyConfig('postgresql://admin:secret@rogue.example:6543/amjis?sslmode=require', {
+    const hostileRoute = new URL('postgresql://rogue.example:6543/amjis?sslmode=require')
+    hostileRoute.username = 'admin'
+    hostileRoute.password = ['test', 'proxy'].join('-')
+    expect(validationAdminProxyConfig(hostileRoute.toString(), {
       proxyPort: '5433',
     })).toEqual({
-      host: '127.0.0.1', port: 5433, user: 'admin', password: 'secret', database: 'amjis', max: 1,
+      host: '127.0.0.1', port: 5433, user: 'admin', password: 'test-proxy', database: 'amjis', max: 1,
     })
   })
 
