@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 53,
+  "entry_count": 59,
   "entries": [
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -21,6 +21,36 @@
       "line": null,
       "pattern": "WITH handler_page AS \\( SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, verification_pass_status",
       "justification": "AUDITED source-query availability probe for get_tara_chandra_bala, not a value read or one-row reduction. `handler_page` deliberately reproduces the handler's complete two-category source scope (`tara_bala_natal_baseline` plus `chandra_bala_natal_baseline`) while `LIMIT 0` guarantees that no fact row is selected; the sibling `handler_count` is an aggregate over that same complete scope, and the outer CROSS JOIN returns zero rows. Availability is earned solely by authenticated query success, including a legitimate empty category set. Adding an arbitrary fact_key predicate would narrow the real handler contract and could report availability while a valid baseline measurement is unreadable. The chart binding and intentional zero-row/count semantics are exercised by the source-query availability contract tests."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": 121,
+      "pattern": null,
+      "justification": "AUDITED zero-row source-query availability probe for get_bhava_bala. It mirrors the handler's full multi-category and optional fact_key filter surface, but LIMIT 0 guarantees no fact row is consumed or reduced. Requiring a concrete fact_key here would make the availability contract narrower than the handler and mask unreadable valid categories."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": 182,
+      "pattern": null,
+      "justification": "AUDITED zero-row/count source-query availability probe for get_dignity. It validates the handler's complete category set and optional fact_key surface without selecting any fact row; it is not a value lookup or reduction."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": 219,
+      "pattern": null,
+      "justification": "AUDITED zero-row source-query availability probe for get_aspects. The complete handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": 244,
+      "pattern": null,
+      "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. The complete default handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": 269,
+      "pattern": null,
+      "justification": "AUDITED zero-row/count source-query availability probe for get_avasthas. It validates the complete handler category set without selecting or reducing a fact row; the count is only a source-access witness."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/chart_reader_v4.py",
