@@ -621,6 +621,47 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-dasha-systems:v1',
+    descriptor_name: 'query_dasha_systems',
+    capability_uri: 'marsys://tool/L0/query_dasha_systems',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT canonical_id, name_sa, name_en, total_cycle_years, base_unit, sequence_jsonb,
+                 computation_method, computation_pseudocode, conditions_for_use, school,
+                 classical_citations
+            FROM brahma_dasha_systems
+           WHERE 1=1
+             AND (NULL::text IS NULL OR canonical_id = NULL::text)
+             AND (NULL::text IS NULL OR LOWER(school) = LOWER(NULL::text))
+           ORDER BY canonical_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-formula-constants:v1',
+    descriptor_name: 'query_formula_constants',
+    capability_uri: 'marsys://tool/L0/query_formula_constants',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT constant_id, value_jsonb, class, consumer_assets, citation_or_ratification,
+                 calibratable, bounds, version
+            FROM brahma_formula_constants
+           WHERE 1=1
+             AND (NULL::text IS NULL OR constant_id = NULL::text)
+             AND (NULL::text IS NULL OR class = NULL::text)
+           ORDER BY constant_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
+      'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

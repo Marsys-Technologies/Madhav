@@ -206,6 +206,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_transit_moorti', 'source-query:query-transit-moorti:v1', 'platform/supabase/migrations/401_bg_transit_moorti.sql:10-20'],
     ['scu.catalog.query_transit_engine', 'source-query:query-transit-engine:v1', 'platform/migrations/266_bg_transit_tables.sql:21-32'],
     ['scu.catalog.query_transit_av_gates', 'source-query:query-transit-av-gates:v1', 'platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38'],
+    ['scu.catalog.query_dasha_systems', 'source-query:query-dasha-systems:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49'],
+    ['scu.catalog.query_formula_constants', 'source-query:query-formula-constants:v1', 'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -548,6 +550,51 @@ describe('binding availability contracts', () => {
     expect(contract.source_refs.join(' | ')).not.toContain('gochara_')
   })
 
+  it('preserves only the dasha-system reference query and its case-insensitive school filter without claiming computed periods or chart results', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-dasha-systems:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT canonical_id, name_sa, name_en, total_cycle_years, base_unit, sequence_jsonb,')
+    expect(contract.sql).toContain('computation_method, computation_pseudocode, conditions_for_use, school,')
+    expect(contract.sql).toContain('classical_citations')
+    expect(contract.sql).toContain('canonical_id = NULL::text')
+    expect(contract.sql).toContain('LOWER(school) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY canonical_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/(?<!LOWER\()school\s*=\s*NULL::text/i)
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_dashas|kala_[a-z0-9_]+)\b/i)
+    expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
+    expect(contract.source_refs.join(' | ')).not.toContain('bg_dasha_systems.py')
+  })
+
+  it('preserves only the formula-constants reference query and its case-sensitive class filter without claiming formula correctness or consumer use', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-formula-constants:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT constant_id, value_jsonb, class, consumer_assets, citation_or_ratification,')
+    expect(contract.sql).toContain('calibratable, bounds, version')
+    expect(contract.sql).toContain('constant_id = NULL::text')
+    expect(contract.sql).toContain('class = NULL::text')
+    expect(contract.sql).not.toMatch(/LOWER\(class\)|UPPER\(class\)/i)
+    expect(contract.sql).toContain('ORDER BY constant_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_facts|mimamsa_[a-z0-9_]+)\b/i)
+    expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
+    expect(contract.source_refs.join(' | ')).not.toContain('bg_formula_constants.py')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
@@ -565,6 +612,8 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_transit_moorti',
     'scu.catalog.query_transit_engine',
     'scu.catalog.query_transit_av_gates',
+    'scu.catalog.query_dasha_systems',
+    'scu.catalog.query_formula_constants',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])
