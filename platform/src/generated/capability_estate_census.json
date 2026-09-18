@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "f5e7aca2e94cb68c61b311ead076dfd0331d54389cd4d75c6f60938be41854a8",
+  "content_sha256": "bfd86295976d773191b337faa654ecaba9bab30446513e2f92f4ae0fa9cfc511",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21367,7 +21367,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "ff4c7abdd7fbecc5dba09733d61dca838cd020bdbcc613495a615f2031947dce"
+            "sha256": "14312e5fc00ffa31623d647d21a6839bf889cf8d3dca0f69856c92ae907048f5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21527,7 +21527,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts",
-            "sha256": "b36d72bea0bab4929f83de22acfb9662b02466cff935e949eebde8f0f77efd97"
+            "sha256": "7a2549f5f51cc1b12a07f449f5d63adadf76269861b5baeccad09cf60c90727f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts",
@@ -22095,7 +22095,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "1bbc0c06f156e3ca319370f555b86958d82b7d5f02972a7ff075075c2d77402c"
+        "sha256": "641cafac553a6bd338dd6d819dccf978f5a4006d4205e666e0ffbf2d4d22ae71"
       },
       {
         "id": "service_effect_contracts",
@@ -22120,5 +22120,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "683dda4edcf1406e0c90d3d0a0a842d34629c37d"
+  "source_revision": "4ed4b3eb4e77ac24abf6a7bb4850affdc2b11ce8"
 }

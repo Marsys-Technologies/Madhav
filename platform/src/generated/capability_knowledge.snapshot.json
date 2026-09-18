@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-19T00:00:00.000Z",
-  "content_hash": "sha256:3c1abcf2eb3367db55a4dd4b4faca07ea9941dfaf741677d1f959af5bf84b130",
-  "source_catalog_fingerprint": "sha256:e4e877e8fa972377855703eafe6aaf75a9c8ad8929206b49ceb6eaf37227686c",
-  "semantic_review_fingerprint": "sha256:60c5479e394e6a0ce740a49eaa2db82a4960ab27bebb2f14849d650a70f44fcb",
+  "content_hash": "sha256:e562346e3360e5c0f3b96909ff70bbb454f1096e058c6ff4ab0c8c05ba3977be",
+  "source_catalog_fingerprint": "sha256:2de47a872689e7b563458b821d34f11fa72c7f0068fba7a7f5c3dce6a3c7ff24",
+  "semantic_review_fingerprint": "sha256:42b4c603169f635b992426ec6f7b3a19216a3044d25f22150b514d4c10846eee",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -26036,7 +26036,7 @@
       "scu_id": "scu.catalog.query_sky_calendar",
       "version": 1,
       "label": "Query Sky Calendar",
-      "description": "Read the global chart-independent sky-event diary (bg_sky_events) for a time interval. Five event families: ingress (sign-boundary crossings, 9 grahas), station (retro/direct stations for Mars/Mercury/Jupiter/Venus/Saturn -- Sun/Moon never station, Rahu/Ketu are deliberately excluded), eclipse_solar / eclipse_lunar (TIMING only -- max/begin/end instant and classical type; per-location visibility/magnitude is NOT computed here), and double_transit (slow-mover conjunction geometry, e.g. Jupiter-Saturn). Every row carries its own source_citation (computational provenance, not a classical text citation -- this is instrument-emergent ephemeris output). Chart-contact/natal-join questions (\"does this event touch a specific chart\") are explicitly OUT of scope -- that is a separate, chart-scoped consumer's job, not this global diary's. Global reference: no chart_id needed. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "description": "Read the global chart-independent sky-event diary (bg_sky_calendar) for a time interval. Five event families: ingress (sign-boundary crossings, 9 grahas), station (retro/direct stations for Mars/Mercury/Jupiter/Venus/Saturn -- Sun/Moon never station, Rahu/Ketu are deliberately excluded), eclipse_solar / eclipse_lunar (TIMING only -- max/begin/end instant and classical type; per-location visibility/magnitude is NOT computed here), and double_transit (slow-mover conjunction geometry, e.g. Jupiter-Saturn). Every row carries its own source_citation (computational provenance, not a classical text citation -- this is instrument-emergent ephemeris output). Chart-contact/natal-join questions (\"does this event touch a specific chart\") are explicitly OUT of scope -- that is a separate, chart-scoped consumer's job, not this global diary's. Global reference: no chart_id needed. Evidence use: establish dated sequence, activation, or timing evidence.",
       "kind": "temporal",
       "domains": [
         "timing"
@@ -26092,9 +26092,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-sky-calendar:v1",
               "capability_uri": "marsys://tool/L0/query_sky_calendar",
-              "contract_sha256": "sha256:07133364256c4bc31a81deff7e5dc5f9f2ca7c3f8f268ab60a6b238a5e0a91a2",
+              "contract_sha256": "sha256:7748cafa514761df1e166322591aaedfd73fdbf970c58b958be9f2f728bd12c2",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156 | platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62"
             }
           ]
         }
