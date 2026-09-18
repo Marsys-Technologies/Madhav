@@ -700,6 +700,53 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-mantras:v1',
+    descriptor_name: 'query_mantras',
+    capability_uri: 'marsys://tool/L0/query_mantras',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT remedy_id, planet, deity,
+                 mantra_sanskrit, mantra_transliteration, mantra_text,
+                 prescription_text, timing_rules_jsonb,
+                 source_canonical_id, classical_attestation_text, classical_ref
+            FROM brahma_remedy_corpus
+           WHERE (LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')
+             AND scaffold_status = 'live'
+             AND (NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))
+           ORDER BY planet, remedy_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+      'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-tantric-remedies:v1',
+    descriptor_name: 'query_tantric_remedies',
+    capability_uri: 'marsys://tool/L0/query_tantric_remedies',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT remedy_id, planet, domain, deity,
+                 prescription_text, mantra_sanskrit, mantra_transliteration,
+                 ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,
+                 source_canonical_id, source_citation, classical_attestation_text
+            FROM brahma_remedy_corpus
+           WHERE (LOWER(remedy_type) = 'tantric' OR LOWER(category) = 'tantric')
+             AND (NULL::text IS NULL OR deity ILIKE '%' || NULL::text || '%')
+             AND (NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))
+           ORDER BY planet, remedy_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

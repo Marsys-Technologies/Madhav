@@ -658,6 +658,40 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
     },
+    {
+      scuId: 'scu.catalog.query_mantras',
+      bindingId: 'registry:marsys://tool/L0/query_mantras',
+      contractId: 'source-query:query-mantras:v1',
+      relation: 'brahma_remedy_corpus',
+      sqlMarkers: [
+        'SELECT remedy_id, planet, deity',
+        'mantra_sanskrit, mantra_transliteration, mantra_text',
+        'prescription_text, timing_rules_jsonb',
+        'source_canonical_id, classical_attestation_text, classical_ref',
+        "(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')",
+        "scaffold_status = 'live'",
+        '(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))',
+        'ORDER BY planet, remedy_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936',
+    },
+    {
+      scuId: 'scu.catalog.query_tantric_remedies',
+      bindingId: 'registry:marsys://tool/L0/query_tantric_remedies',
+      contractId: 'source-query:query-tantric-remedies:v1',
+      relation: 'brahma_remedy_corpus',
+      sqlMarkers: [
+        'SELECT remedy_id, planet, domain, deity',
+        'prescription_text, mantra_sanskrit, mantra_transliteration',
+        'ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications',
+        'source_canonical_id, source_citation, classical_attestation_text',
+        "(LOWER(remedy_type) = 'tantric' OR LOWER(category) = 'tantric')",
+        "deity ILIKE '%' || NULL::text || '%'",
+        '(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))',
+        'ORDER BY planet, remedy_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -692,7 +726,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_dasha_systems'
       || scuId === 'scu.catalog.query_formula_constants'
       || scuId === 'scu.catalog.query_vichara_constants'
-      || scuId === 'scu.catalog.query_remedies_by_planet') {
+      || scuId === 'scu.catalog.query_remedies_by_planet'
+      || scuId === 'scu.catalog.query_mantras'
+      || scuId === 'scu.catalog.query_tantric_remedies') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
