@@ -69,6 +69,7 @@ describe('binding availability contracts', () => {
   it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
     expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
     expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)
+    expect(sourceQueryParameterBindingMatchesScope('global', 'global_with_chart_fallback')).toBe(true)
   })
 
   it('fingerprints active-build context separately from row-level active-build binding', () => {

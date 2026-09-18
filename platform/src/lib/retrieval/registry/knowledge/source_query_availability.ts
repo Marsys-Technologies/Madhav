@@ -3,6 +3,7 @@ import { stableFingerprint } from './stable'
 
 export type SourceQueryParameterBinding =
   | 'global'
+  | 'global_with_chart_fallback'
   | 'chart_and_active_build'
   | 'chart_with_active_build_context'
 export type SourceQueryEmptySemantics = 'query_success_is_available'
@@ -39,7 +40,10 @@ export function sourceQueryParameterBindingMatchesScope(
   scope: SourceQueryAvailabilityContract['scope'],
   parameterBinding: SourceQueryParameterBinding,
 ): boolean {
-  return (scope === 'global' && parameterBinding === 'global')
+  return (scope === 'global' && (
+    parameterBinding === 'global'
+    || parameterBinding === 'global_with_chart_fallback'
+  ))
     || (scope === 'chart' && (
       parameterBinding === 'chart_and_active_build'
       || parameterBinding === 'chart_with_active_build_context'
@@ -2157,6 +2161,24 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:600-724',
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:946-962',
       'platform/migrations/003_ganita_dashas.sql:1-80',
+    ],
+  },
+  {
+    contract_id: 'source-query:concept-locate:v1',
+    descriptor_name: 'concept_locate',
+    capability_uri: 'marsys://tool/L1/concept_locate',
+    scope: 'global',
+    parameter_binding: 'global_with_chart_fallback',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT DISTINCT fact_category
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+           ORDER BY fact_category
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
 ]
