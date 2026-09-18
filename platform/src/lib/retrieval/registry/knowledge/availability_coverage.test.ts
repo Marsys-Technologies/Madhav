@@ -312,32 +312,6 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('keeps query_dosha_catalog dark when its related digest omits a served catalog field', async () => {
-    const scu = findScu('scu.catalog.query_dosha_catalog')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
-      binding_id: 'registry:marsys://tool/L0/query_dosha_catalog',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('SELECT * rows from brahma_dosha_catalog, including created_at'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75',
-        'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
-      ]),
-    })])
-
-    // bg_doshas is the reviewed producer linked to this catalog, but its
-    // digest leaves out created_at even though the handler's SELECT * serves
-    // it. A plausible fresh matching receipt cannot fill that route gap.
-    const overlay = await overlayFor([
-      globalProducerReceipt('bg_doshas', 'c4c570057c4d29495acb44cf3eff9ea907872a0e17eaf7e8878deea987a67346'),
-    ])
-    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      state: 'dark',
-      available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
-    })
-  })
-
   it('uses the reviewed yoga-catalog source query instead of an incomplete adjacent digest', async () => {
     const scu = findScu('scu.catalog.query_yoga_catalog')
     expect(scu.availability_contracts).toEqual([expect.objectContaining({
@@ -362,29 +336,67 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('keeps query_compendium_index dark when its related digest omits a served index field', async () => {
-    const scu = findScu('scu.catalog.query_compendium_index')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
-      binding_id: 'registry:marsys://tool/L0/query_compendium_index',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('handler returns index_id'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82',
-        'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
-      ]),
+  it.each([
+    {
+      scuId: 'scu.catalog.query_dosha_catalog',
+      bindingId: 'registry:marsys://tool/L0/query_dosha_catalog',
+      contractId: 'source-query:query-dosha-catalog:v1',
+      relation: 'brahma_dosha_catalog',
+      sqlMarkers: ['SELECT *', 'name_en ILIKE', 'severity_grades ?', 'category = NULL::text'],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99',
+    },
+    {
+      scuId: 'scu.catalog.query_compendium_index',
+      bindingId: 'registry:marsys://tool/L0/query_compendium_index',
+      contractId: 'source-query:query-compendium-index:v1',
+      relation: 'brahma_compendium_index',
+      sqlMarkers: ['SELECT index_id, text_id', 'chapter_num = NULL::integer', 'topic_id = NULL::text'],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107',
+    },
+  ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
+    scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
+  }) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: contractId,
+        contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        scope: 'global',
+        source_ref: expect.stringContaining(handlerRef),
+      })],
     })])
+    expect(scu.availability_dispositions ?? []).toEqual([])
 
-    // bg_compendium_index is the reviewed producer linked to this route, but
-    // its two content components omit the handler's served index_id. A fresh
-    // matching receipt cannot attest the complete filtered index response.
-    const overlay = await overlayFor([
-      globalProducerReceipt('bg_compendium_index', 'f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806'),
-    ])
-    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+    const calls: Array<{ sql: string; params: readonly unknown[] }> = []
+    const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
+      calls.push({ sql, params })
+      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available',
+      available_binding_ids: [bindingId],
+      asset_receipts: [],
+      gaps: [],
+    })
+
+    const sourceCall = calls.find((call) => call.sql.includes(`FROM ${relation}`))
+    expect(sourceCall).toBeDefined()
+    for (const marker of sqlMarkers) expect(sourceCall?.sql).toContain(marker)
+    expect(sourceCall?.sql).toContain('LIMIT 0')
+    expect(sourceCall?.params).toEqual([])
+
+    const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes(`FROM ${relation}`)) throw new Error('permission denied')
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+      gaps: [`${contractId} could not execute its authenticated source query.`],
     })
   })
 

@@ -98,6 +98,27 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toMatch(/\b(?:WHERE|AND)\s+fact_key\s*(?:=|IN|LIKE)\b/i)
   })
 
+  it.each([
+    ['scu.catalog.query_dosha_catalog', 'source-query:query-dosha-catalog:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71'],
+    ['scu.catalog.query_compendium_index', 'source-query:query-compendium-index:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93'],
+  ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    const requirement = scu.availability_contracts![0]!.requirements[0]!
+
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: contractId,
+      scope: 'global',
+      contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      source_ref: expect.stringContaining(schemaRef),
+    })
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
+    }))
+  })
+
   it('reports a non-array availability contract without throwing', () => {
     const inspect = () => inspectCapabilityKnowledge(catalog, withContracts({ binding_id: knownBindingId }))
 

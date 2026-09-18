@@ -62,6 +62,78 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-dosha-catalog:v1',
+    descriptor_name: 'query_dosha_catalog',
+    capability_uri: 'marsys://tool/L0/query_dosha_catalog',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+          SELECT *
+            FROM brahma_dosha_catalog
+           WHERE 1=1
+             AND (NULL::text IS NULL OR name_en ILIKE NULL::text
+                  OR name_sa ILIKE NULL::text OR canonical_id ILIKE NULL::text)
+             AND (NULL::text IS NULL OR severity_grades ? NULL::text)
+             AND (NULL::text IS NULL OR category = NULL::text)
+           ORDER BY category, name_en
+           LIMIT 0 OFFSET 0
+        ), handler_count AS (
+          SELECT COUNT(*)::text AS total
+            FROM brahma_dosha_catalog
+           WHERE 1=1
+             AND (NULL::text IS NULL OR name_en ILIKE NULL::text
+                  OR name_sa ILIKE NULL::text OR canonical_id ILIKE NULL::text)
+             AND (NULL::text IS NULL OR severity_grades ? NULL::text)
+             AND (NULL::text IS NULL OR category = NULL::text)
+        )
+        SELECT handler_page.*, handler_count.total
+          FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36',
+      'platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047',
+      'platform/supabase/migrations/622_nirmana_l0_doshas_integrity_contract.sql:1-84',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-compendium-index:v1',
+    descriptor_name: 'query_compendium_index',
+    capability_uri: 'marsys://tool/L0/query_compendium_index',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+          SELECT index_id, text_id, chapter_num, chapter_title_en, chapter_title_sa, topic_id,
+                 verse_start, verse_end, chunk_ids, summary_text, significance,
+                 classical_significance_score
+            FROM brahma_compendium_index
+           WHERE 1=1
+             AND (NULL::text IS NULL OR text_id = NULL::text)
+             AND (NULL::integer IS NULL OR chapter_num = NULL::integer)
+             AND (NULL::text IS NULL OR topic_id = NULL::text)
+           ORDER BY text_id, chapter_num, verse_start
+           LIMIT 0
+        ), handler_count AS (
+          SELECT COUNT(*)::int AS total
+            FROM brahma_compendium_index
+           WHERE 1=1
+             AND (NULL::text IS NULL OR text_id = NULL::text)
+             AND (NULL::integer IS NULL OR chapter_num = NULL::integer)
+             AND (NULL::text IS NULL OR topic_id = NULL::text)
+        )
+        SELECT handler_page.*, handler_count.total
+          FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211',
+      'platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

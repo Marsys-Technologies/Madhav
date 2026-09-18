@@ -12,8 +12,8 @@ describe('Purna capability coverage projection', () => {
     expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(186)
     expect(new Set(rows.map((row) => row.scu_id)).size).toBe(182)
     expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(160)
-    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(16)
-    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(10)
+    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(18)
+    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(8)
   })
 
   it('keeps semantic outputs, bindings, and exact evidence dependencies together', () => {

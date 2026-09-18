@@ -463,41 +463,49 @@ beforeEach(() => {
 })
 
 describe('chart capability overlay loader', () => {
-  it('treats a successful reviewed source query with zero rows as available', async () => {
+  it.each([
+    ['scu.catalog.query_yoga_catalog', 'registry:marsys://tool/L0/query_yoga_catalog', 'brahma_yoga_catalog'],
+    ['scu.catalog.query_dosha_catalog', 'registry:marsys://tool/L0/query_dosha_catalog', 'brahma_dosha_catalog'],
+    ['scu.catalog.query_compendium_index', 'registry:marsys://tool/L0/query_compendium_index', 'brahma_compendium_index'],
+  ])('treats a successful reviewed source query with zero rows as available for %s', async (scuId, bindingId, relation) => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
-    const yogaCatalog = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
+    const sourceScu = sourceSnapshot.scus.find((scu) => scu.scu_id === scuId)!
     mocks.query.mockImplementation(async (sql) => sql.includes('WITH latest_build AS')
       ? { rows: [serviceProbeAnchor([])] }
       : { rows: [] })
 
     const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
-      .find((item) => item.scu_id === yogaCatalog.scu_id)
+      .find((item) => item.scu_id === sourceScu.scu_id)
 
     expect(availability).toMatchObject({
       state: 'available',
-      available_binding_ids: ['registry:marsys://tool/L0/query_yoga_catalog'],
+      available_binding_ids: [bindingId],
       asset_receipts: [],
       gaps: [],
     })
-    const sourceCall = mocks.query.mock.calls.find((call) => call[0].includes('FROM brahma_yoga_catalog'))
-    expect(sourceCall?.[0]).toContain('FROM brahma_yoga_catalog')
+    const sourceCall = mocks.query.mock.calls.find((call) => call[0].includes(`FROM ${relation}`))
+    expect(sourceCall?.[0]).toContain(`FROM ${relation}`)
     expect(sourceCall?.[1]).toEqual([])
   })
 
-  it('keeps a reviewed source-query binding dark when its authenticated query fails', async () => {
+  it.each([
+    ['scu.catalog.query_yoga_catalog', 'source-query:query-yoga-catalog:v1', 'brahma_yoga_catalog'],
+    ['scu.catalog.query_dosha_catalog', 'source-query:query-dosha-catalog:v1', 'brahma_dosha_catalog'],
+    ['scu.catalog.query_compendium_index', 'source-query:query-compendium-index:v1', 'brahma_compendium_index'],
+  ])('keeps %s dark when its authenticated source query fails', async (scuId, contractId, relation) => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
-    const yogaCatalog = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
+    const sourceScu = sourceSnapshot.scus.find((scu) => scu.scu_id === scuId)!
     mocks.query.mockImplementation(async (sql) => {
       if (sql.includes('WITH latest_build AS')) return { rows: [serviceProbeAnchor([])] }
-      if (sql.includes('FROM brahma_yoga_catalog')) throw new Error('permission denied')
+      if (sql.includes(`FROM ${relation}`)) throw new Error('permission denied')
       return { rows: [] }
     })
 
     const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
-      .find((item) => item.scu_id === yogaCatalog.scu_id)
+      .find((item) => item.scu_id === sourceScu.scu_id)
 
     expect(availability).toMatchObject({ state: 'dark', available_binding_ids: [] })
-    expect(availability?.gaps).toContain('source-query:query-yoga-catalog:v1 could not execute its authenticated source query.')
+    expect(availability?.gaps).toContain(`${contractId} could not execute its authenticated source query.`)
   })
 
   it('enables only the reviewed dasha and gestalt primary bindings from their exact receipts', async () => {
