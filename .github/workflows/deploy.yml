@@ -1017,6 +1017,12 @@ jobs:
             exit 1
           fi
           cd platform && test "$(npx tsx scripts/nirmana-evidence-ownership-status.ts)" = marked
+
+      - name: Restore ordinary migration schema capability
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/restore-ordinary-migration-schema-capability.ts
+
       - name: Run general database migrations
         id: general-migrations
         env:
