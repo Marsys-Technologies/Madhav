@@ -725,6 +725,35 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776',
     },
+    {
+      scuId: 'scu.catalog.query_parihara_graph',
+      bindingId: 'registry:marsys://tool/L0/query_parihara_graph',
+      contractId: 'source-query:query-parihara-graph:v1',
+      relation: 'bg_parihara_rules',
+      sqlMarkers: [
+        'parihara_rules_probe AS',
+        'SELECT dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index',
+        'cancellation_condition_text, net_standing, scope',
+        'source_text_id, source_chapter, source_citation, extraction_context',
+        '(NULL::text IS NULL OR dosha_canonical_id = NULL::text)',
+        'ORDER BY dosha_canonical_id, cancellation_index',
+        'density_split_probe AS',
+        'FROM brahma_dosha_catalog',
+        "elem->>'text_id' <> 'classical_tradition'",
+        'activity_rules_probe AS',
+        'FROM bg_muhurta_activity_rules',
+        '(NULL::text IS NULL OR activity_class = NULL::text)',
+        'ORDER BY activity_class, factor_type, factor_id',
+        'factor_census_probe AS',
+        'FROM bg_muhurta_factor_census',
+        '(NULL::text IS NULL OR disposition = NULL::text)',
+        'ORDER BY factor_family, factor_name',
+        'CROSS JOIN density_split_probe',
+        'CROSS JOIN activity_rules_probe',
+        'CROSS JOIN factor_census_probe',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -763,7 +792,8 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_remedies_by_planet'
       || scuId === 'scu.catalog.read_remedy'
       || scuId === 'scu.catalog.query_mantras'
-      || scuId === 'scu.catalog.query_tantric_remedies') {
+      || scuId === 'scu.catalog.query_tantric_remedies'
+      || scuId === 'scu.catalog.query_parihara_graph') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 

@@ -242,6 +242,7 @@ describe('binding availability contracts', () => {
     ['scu.catalog.read_remedy', 'source-query:read-remedy:v1', 'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20'],
     ['scu.catalog.query_mantras', 'source-query:query-mantras:v1', 'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20'],
     ['scu.catalog.query_tantric_remedies', 'source-query:query-tantric-remedies:v1', 'platform/migrations/ws2_l0_remedy_corpus.sql:16-33'],
+    ['scu.catalog.query_parihara_graph', 'source-query:query-parihara-graph:v1', 'platform/supabase/migrations/485_bg_parihara_rules.sql:63-138'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -782,6 +783,53 @@ describe('binding availability contracts', () => {
     expect(contract.source_refs.join(' | ')).not.toContain('l0_remedy_corpus.py')
   })
 
+  it('preserves all four parihara graph handler legs in one atomic zero-row source probe', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-parihara-graph:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    for (const marker of [
+      'parihara_rules_probe AS',
+      'SELECT dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index',
+      'cancellation_condition_text, net_standing, scope',
+      'source_text_id, source_chapter, source_citation, extraction_context',
+      'FROM bg_parihara_rules',
+      '(NULL::text IS NULL OR dosha_canonical_id = NULL::text)',
+      'ORDER BY dosha_canonical_id, cancellation_index',
+      'density_split_probe AS',
+      'COUNT(*) FILTER',
+      "elem->>'text_id' <> 'classical_tradition'",
+      'AS real_cited',
+      'AS placeholder_only',
+      'FROM brahma_dosha_catalog',
+      'activity_rules_probe AS',
+      'SELECT activity_class, factor_type, factor_id, quality_score, source_citation',
+      'FROM bg_muhurta_activity_rules',
+      '(NULL::text IS NULL OR activity_class = NULL::text)',
+      'ORDER BY activity_class, factor_type, factor_id',
+      'factor_census_probe AS',
+      'SELECT factor_family, factor_name, disposition, citation_or_gap_note',
+      'evidence_pointer, school_tag',
+      'FROM bg_muhurta_factor_census',
+      '(NULL::text IS NULL OR disposition = NULL::text)',
+      'ORDER BY factor_family, factor_name',
+      'CROSS JOIN density_split_probe',
+      'CROSS JOIN activity_rules_probe',
+      'CROSS JOIN factor_census_probe',
+      'LIMIT 0',
+    ]) expect(contract.sql).toContain(marker)
+    expect(contract.source_refs).toEqual([
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227',
+      'platform/supabase/migrations/485_bg_parihara_rules.sql:63-138',
+      'platform/scripts/ci/migration_renumber_disclosed.json:30-36',
+      'platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66',
+    ])
+  })
+
   it('binds query_falsifiers to the exact chart-only phala_pramana query with active-build admission context', () => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === 'scu.catalog.query_falsifiers')!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -849,6 +897,7 @@ describe('binding availability contracts', () => {
     'scu.catalog.read_remedy',
     'scu.catalog.query_mantras',
     'scu.catalog.query_tantric_remedies',
+    'scu.catalog.query_parihara_graph',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])

@@ -809,6 +809,75 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-parihara-graph:v1',
+    descriptor_name: 'query_parihara_graph',
+    capability_uri: 'marsys://tool/L0/query_parihara_graph',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH parihara_rules_probe AS (
+            SELECT dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index,
+                   cancellation_condition_text, net_standing, scope,
+                   source_text_id, source_chapter, source_citation, extraction_context
+              FROM bg_parihara_rules
+             WHERE 1=1
+               AND (NULL::text IS NULL OR dosha_canonical_id = NULL::text)
+             ORDER BY dosha_canonical_id, cancellation_index
+             LIMIT 0
+          ), density_split_probe AS (
+            SELECT
+              COUNT(*) FILTER (
+                WHERE cancellation_conditions IS NOT NULL
+                  AND classical_citations IS NOT NULL
+                  AND jsonb_typeof(classical_citations) = 'array'
+                  AND EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(classical_citations) elem
+                    WHERE elem->>'text_id' IS NOT NULL
+                      AND elem->>'text_id' <> 'classical_tradition')
+              ) AS real_cited,
+              COUNT(*) FILTER (
+                WHERE cancellation_conditions IS NOT NULL
+                  AND NOT (
+                    classical_citations IS NOT NULL
+                    AND jsonb_typeof(classical_citations) = 'array'
+                    AND EXISTS (
+                      SELECT 1 FROM jsonb_array_elements(classical_citations) elem
+                      WHERE elem->>'text_id' IS NOT NULL
+                        AND elem->>'text_id' <> 'classical_tradition'))
+              ) AS placeholder_only
+              FROM brahma_dosha_catalog
+             LIMIT 0
+          ), activity_rules_probe AS (
+            SELECT activity_class, factor_type, factor_id, quality_score, source_citation
+              FROM bg_muhurta_activity_rules
+             WHERE 1=1
+               AND (NULL::text IS NULL OR activity_class = NULL::text)
+             ORDER BY activity_class, factor_type, factor_id
+             LIMIT 0
+          ), factor_census_probe AS (
+            SELECT factor_family, factor_name, disposition, citation_or_gap_note,
+                   evidence_pointer, school_tag
+              FROM bg_muhurta_factor_census
+             WHERE 1=1
+               AND (NULL::text IS NULL OR disposition = NULL::text)
+             ORDER BY factor_family, factor_name
+             LIMIT 0
+          )
+          SELECT 1 AS source_query_available
+            FROM parihara_rules_probe
+            CROSS JOIN density_split_probe
+            CROSS JOIN activity_rules_probe
+            CROSS JOIN factor_census_probe
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227',
+      'platform/supabase/migrations/485_bg_parihara_rules.sql:63-138',
+      'platform/scripts/ci/migration_renumber_disclosed.json:30-36',
+      'platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66',
+    ],
+  },
+  {
     contract_id: 'source-query:query-falsifiers:v1',
     descriptor_name: 'query_falsifiers',
     capability_uri: 'marsys://tool/L4/query_falsifiers',
