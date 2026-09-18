@@ -485,7 +485,7 @@ const readSutravaliRuleTool: CapabilityDescriptor = {
   description: [
     'Fetch a single sutravali rule by its UUID rule_id.',
     'Returns antecedent, predicate, prediction, confidence, text_id, and provenance.',
-    'SQL-only via Python sidecar. Zero LLM.',
+    'SQL-only via the platform database client. Zero LLM.',
     'rule_id is required.',
     'Registry equivalent of lib/retrieve/sutravali_tools.ts::read_rule (D7 gap fill).',
   ].join(' '),
@@ -520,18 +520,42 @@ const readSutravaliRuleTool: CapabilityDescriptor = {
       return { content: { error: 'rule_id is required' }, is_error: true }
     }
     try {
-      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
-
-      const res = await fetch(`${sidecarUrl}/api/brahma/sutravali/read_rule/${encodeURIComponent(rule_id)}`, {
-        headers: { 'x-api-key': sidecarKey },
-        signal: AbortSignal.timeout(10_000),
-      })
-      if (!res.ok) {
-        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}` }, is_error: true }
+      const result = await query<{
+        rule_id: string
+        text_id: string
+        verse_ref: string
+        antecedent_jsonb: unknown
+        predicate_jsonb: unknown
+        prediction_jsonb: unknown
+        confidence: number | string | null
+        extracted_by: string
+      }>(
+        `SELECT r.rule_id, r.text_id, r.verse_ref,
+                r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                r.confidence, r.extracted_by
+           FROM sutravali_rules r
+          WHERE r.rule_id::text = $1`,
+        [rule_id],
+      )
+      const row = result.rows[0]
+      if (!row) {
+        return { content: { error: `Rule '${rule_id}' not found` }, is_error: true }
       }
-      const row = await res.json()
-      return { content: { rule: row }, is_error: false }
+      return {
+        content: {
+          rule: {
+            rule_id: String(row.rule_id),
+            text_id: row.text_id,
+            verse_ref: row.verse_ref,
+            antecedent: row.antecedent_jsonb,
+            predicate: row.predicate_jsonb,
+            prediction: row.prediction_jsonb,
+            confidence: row.confidence === null ? null : Number(row.confidence),
+            extracted_by: row.extracted_by,
+          },
+        },
+        is_error: false,
+      }
     } catch (err) {
       return { content: { error: String(err) }, is_error: true }
     }

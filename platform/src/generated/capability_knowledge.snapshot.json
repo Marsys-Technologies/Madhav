@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T14:39:30.000Z",
-  "content_hash": "sha256:8d46e421e42f999b1755ddcec933dee8caecdffe7274e8e46f7f240ce54c4371",
-  "source_catalog_fingerprint": "sha256:6667406eb0a673f74e6678a72a109fd5d69cf56b97f2f2566fa95faabc522f1e",
+  "generated_at": "2026-09-18T16:47:25.000Z",
+  "content_hash": "sha256:14f7970c4a136990b264574205804d2432920f964823577a1f7f452c7f79191a",
+  "source_catalog_fingerprint": "sha256:e4e877e8fa972377855703eafe6aaf75a9c8ad8929206b49ceb6eaf37227686c",
   "semantic_review_fingerprint": "sha256:325d6f1ab17ec77473b994e86a7abcd12ea07f2385b916f59aca00b3cef529b6",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -29786,7 +29786,7 @@
       "scu_id": "scu.catalog.read_sutravali_rule",
       "version": 1,
       "label": "Read Sutravali Rule",
-      "description": "Fetch a single sutravali rule by its UUID rule_id. Returns antecedent, predicate, prediction, confidence, text_id, and provenance. SQL-only via Python sidecar. Zero LLM. rule_id is required. Registry equivalent of lib/retrieve/sutravali_tools.ts::read_rule (D7 gap fill). Evidence use: ground a claim in retrievable classical source material.",
+      "description": "Fetch a single sutravali rule by its UUID rule_id. Returns antecedent, predicate, prediction, confidence, text_id, and provenance. SQL-only via the platform database client. Zero LLM. rule_id is required. Registry equivalent of lib/retrieve/sutravali_tools.ts::read_rule (D7 gap fill). Evidence use: ground a claim in retrievable classical source material.",
       "kind": "citation",
       "domains": [
         "classical_grounding"
