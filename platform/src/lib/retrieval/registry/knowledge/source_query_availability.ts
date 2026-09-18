@@ -367,6 +367,44 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-graha-dik:v1',
+    descriptor_name: 'query_graha_dik',
+    capability_uri: 'marsys://tool/L0/query_graha_dik',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT graha, peak_house, peak_direction, debility_house, paired_graha, school_note,
+                 classical_citation
+            FROM bg_graha_dik
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+           ORDER BY graha
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts:53-57',
+      'platform/migrations/304_bg_graha_dik.sql:22-32',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-shashtiamsha-deities:v1',
+    descriptor_name: 'query_shashtiamsha_deities',
+    capability_uri: 'marsys://tool/L0/query_shashtiamsha_deities',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT amsa_number, quality, deity_name, classical_citation, rule_notes
+            FROM bg_shashtiamsha_deities
+           WHERE 1=1
+             AND (NULL::integer IS NULL OR amsa_number = NULL::integer)
+             AND (NULL::text IS NULL OR LOWER(quality) = LOWER(NULL::text))
+           ORDER BY amsa_number
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts:62-66',
+      'platform/supabase/migrations/430_bg_shashtiamsha_deities.sql:34-42',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

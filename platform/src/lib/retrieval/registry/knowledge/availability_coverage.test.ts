@@ -440,6 +440,32 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:45-64',
     },
+    {
+      scuId: 'scu.catalog.query_graha_dik',
+      bindingId: 'registry:marsys://tool/L0/query_graha_dik',
+      contractId: 'source-query:query-graha-dik:v1',
+      relation: 'bg_graha_dik',
+      sqlMarkers: [
+        'SELECT graha, peak_house, peak_direction, debility_house, paired_graha, school_note',
+        'classical_citation',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'ORDER BY graha',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts:53-57',
+    },
+    {
+      scuId: 'scu.catalog.query_shashtiamsha_deities',
+      bindingId: 'registry:marsys://tool/L0/query_shashtiamsha_deities',
+      contractId: 'source-query:query-shashtiamsha-deities:v1',
+      relation: 'bg_shashtiamsha_deities',
+      sqlMarkers: [
+        'SELECT amsa_number, quality, deity_name, classical_citation, rule_notes',
+        'NULL::integer IS NULL OR amsa_number = NULL::integer',
+        'LOWER(quality) = LOWER(NULL::text)',
+        'ORDER BY amsa_number',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts:62-66',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -458,7 +484,9 @@ describe('first-slice availability coverage', () => {
     if (scuId === 'scu.catalog.query_graha_naisargika_friendship'
       || scuId === 'scu.catalog.query_motion_state_thresholds'
       || scuId === 'scu.catalog.query_vastu_directions'
-      || scuId === 'scu.catalog.query_vastu_direction_remedials') {
+      || scuId === 'scu.catalog.query_vastu_direction_remedials'
+      || scuId === 'scu.catalog.query_graha_dik'
+      || scuId === 'scu.catalog.query_shashtiamsha_deities') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
