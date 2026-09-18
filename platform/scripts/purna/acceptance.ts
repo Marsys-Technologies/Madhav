@@ -148,11 +148,14 @@ export async function writeAcceptanceRun(args: {
     door: input.provenance.door,
     collection,
   })
-  if (accountableAnswersHash(derivedAnswers) !== input.provenance.accountable_answers_hash) {
+  if (accountableAnswersHash(
+    derivedAnswers, collection.collection_hash, input.provenance.door,
+  ) !== input.provenance.accountable_answers_hash) {
     throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_ANSWER_MISMATCH')
   }
   const answers = validateAcceptanceAnswers(input.answers, inputs)
-  if (accountableAnswersHash(answers) !== accountableAnswersHash(derivedAnswers)) {
+  if (accountableAnswersHash(answers, collection.collection_hash, input.provenance.door)
+    !== accountableAnswersHash(derivedAnswers, collection.collection_hash, input.provenance.door)) {
     throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_ANSWER_MISMATCH')
   }
   const score = scoreAnswers(inputs, answers)

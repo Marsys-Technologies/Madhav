@@ -77,7 +77,7 @@ describe('Purna collection answer bridge', () => {
     expect(artifact.provenance).toMatchObject({
       door: 'managed_mcp', collection_hash: source.collection_hash,
       collection_manifest_hash: source.manifest_hash,
-      accountable_answers_hash: accountableAnswersHash(artifact.answers),
+      accountable_answers_hash: accountableAnswersHash(artifact.answers, source.collection_hash, 'managed_mcp'),
     })
   })
 

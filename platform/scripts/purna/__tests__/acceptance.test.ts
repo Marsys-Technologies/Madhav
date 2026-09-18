@@ -309,7 +309,12 @@ describe('Purna product acceptance harness', () => {
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
         input: {
           ...bound,
-          provenance: { ...bound.provenance, accountable_answers_hash: accountableAnswersHash(forgedAnswers) },
+          provenance: {
+            ...bound.provenance,
+            accountable_answers_hash: accountableAnswersHash(
+              forgedAnswers, bound.provenance.collection_hash, bound.provenance.door,
+            ),
+          },
           answers: forgedAnswers,
         },
         artifactDir,

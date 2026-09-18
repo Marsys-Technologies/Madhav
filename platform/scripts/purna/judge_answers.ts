@@ -116,6 +116,7 @@ async function main(argv = process.argv.slice(2)): Promise<void> {
   const protocol = validateProtocol(JSON.parse(protocolValue))
   const inputs = casesForSuite(protocol, args.suite)
   const input = validateAccountableAnswersArtifact(JSON.parse(inputValue), inputs)
+  if (input.provenance.suite !== args.suite) throw new Error('PURNA_ANSWER_JUDGE_PROVENANCE_MISMATCH')
   const answers = validateAcceptanceAnswers(input.answers, inputs)
   const modelId = await getEffectiveModel(DEFAULT_STACK_ID, 'eval_judge', 'primary')
   const judged = await judgeAnswers({

@@ -128,13 +128,21 @@ function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function accountableAnswersHash(answers: readonly AcceptanceAnswer[]): string {
-  return stableFingerprint(answers.map((answer) => ({
-    case_id: answer.case_id,
-    answer: answer.answer,
-    evidence: answer.evidence,
-    response_accountability: answer.response_accountability ?? null,
-  })))
+export function accountableAnswersHash(
+  answers: readonly AcceptanceAnswer[],
+  collectionHash: string,
+  door: AcceptanceDoor,
+): string {
+  return stableFingerprint({
+    collection_hash: collectionHash,
+    door,
+    answers: answers.map((answer) => ({
+      case_id: answer.case_id,
+      answer: answer.answer,
+      evidence: answer.evidence,
+      response_accountability: answer.response_accountability ?? null,
+    })),
+  })
 }
 
 export function createAccountableAnswersArtifact(args: {
@@ -156,7 +164,7 @@ export function createAccountableAnswersArtifact(args: {
       environment: collection.manifest.environment,
       expected_revision: collection.manifest.expected_revision,
       authorization_approval_id: collection.manifest.authorization_approval_id,
-      accountable_answers_hash: accountableAnswersHash(answers),
+      accountable_answers_hash: accountableAnswersHash(answers, collection.collection_hash, args.door),
     },
     answers,
   }
@@ -201,7 +209,11 @@ export function validateAccountableAnswersArtifact(
     throw new Error('PURNA_ACCOUNTABLE_ANSWERS_INVALID')
   }
   const answers = validateAcceptanceAnswers(value.answers, inputs)
-  if (accountableAnswersHash(answers) !== provenance.accountable_answers_hash) {
+  if (accountableAnswersHash(
+    answers,
+    provenance.collection_hash as string,
+    provenance.door as AcceptanceDoor,
+  ) !== provenance.accountable_answers_hash) {
     throw new Error('PURNA_ACCOUNTABLE_ANSWERS_HASH_MISMATCH')
   }
   return {
