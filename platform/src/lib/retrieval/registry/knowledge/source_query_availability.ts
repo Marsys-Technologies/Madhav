@@ -1871,6 +1871,27 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:chart-snapshot:v1',
+    descriptor_name: 'chart_snapshot',
+    capability_uri: 'marsys://tool/L1/chart_snapshot',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT DISTINCT ON (varga, graha) varga, graha, sign, degree_in_sign, id
+            FROM chart_divisionals
+           WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
+             AND fact_category = 'varga_position'
+             AND varga = ANY(ARRAY['D1']::text[])
+             AND graha <> 'ALL'
+           ORDER BY varga, graha
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts:205-215',
+      'platform/migrations/002_ganita_divisionals.sql:31-65',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
