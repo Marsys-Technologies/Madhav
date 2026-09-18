@@ -353,6 +353,22 @@ describe('first-slice availability coverage', () => {
       sqlMarkers: ['SELECT index_id, text_id', 'chapter_num = NULL::integer', 'topic_id = NULL::text'],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107',
     },
+    {
+      scuId: 'scu.catalog.list_entities',
+      bindingId: 'registry:marsys://tool/L0/list_entities',
+      contractId: 'source-query:list-entities:v1',
+      relation: 'brahma_ontology',
+      sqlMarkers: ['SELECT canonical_id, entity_class', 'ORDER BY entity_class, canonical_name_en', 'SELECT COUNT(*)::int AS total'],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:136-160',
+    },
+    {
+      scuId: 'scu.catalog.list_classical_texts',
+      bindingId: 'registry:marsys://tool/L0/list_classical_texts',
+      contractId: 'source-query:list-classical-texts:v1',
+      relation: 'classical_texts t',
+      sqlMarkers: ['COUNT(c.chunk_id) AS chunk_count', 'LEFT JOIN classical_text_chunks', 'LEFT JOIN classical_texts_source', 'GROUP BY t.text_id'],
+      handlerRef: 'platform/src/lib/tools/classical_text_tools.ts:77-116',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
