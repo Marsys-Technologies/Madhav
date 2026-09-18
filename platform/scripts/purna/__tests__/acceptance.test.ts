@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -15,6 +15,8 @@ import {
 import { parseCliArgs, writeAcceptanceRun } from '../acceptance'
 import { scoreAnswers } from '../score_answers'
 import { FROZEN_PRODUCT_CASES } from '../product_cases'
+import { accountableAnswersHash, createAccountableAnswersArtifact } from '../answers_from_collection'
+import { createCollectionArtifact, type CollectedCase } from '../collection_types'
 
 let protocol: ProductAcceptanceProtocol
 
@@ -202,6 +204,54 @@ function accountabilityWithCompleteProse(answer: string) {
   return { ...base, delivery_parts: [...base.delivery_parts, prosePart], response_coverage_receipt: coverage }
 }
 
+async function boundInput(args: {
+  artifactDir: string
+  caseInput: AcceptanceCaseInput
+  answer?: string
+  responseAccountability?: unknown | null
+  qualitativeAssessment?: typeof passingAssessment | null
+  name?: string
+}) {
+  const row: CollectedCase = {
+    caseId: args.caseInput.case_id,
+    door: 'managed_mcp',
+    inquiryId: 'inquiry-1',
+    expectedRevision: candidateConfig.revision,
+    observedRevision: candidateConfig.revision,
+    snapshotHash: 'snapshot-1',
+    chartBuildId: 'build-1',
+    answer: args.answer ?? 'answer',
+    responseAccountability: args.responseAccountability ?? null,
+    receiptRefs: ['receipt-1'],
+    materialFactIds: ['fact-1'],
+    deliveredFactIds: ['fact-1'],
+    unresolvedObligationIds: [],
+    networkCallCount: 2,
+    source: 'candidate',
+    terminal: 'complete',
+    diagnostic: null,
+  }
+  const collection = createCollectionArtifact({
+    suite: args.caseInput.kind === 'product' ? 'product' : 'beyond_acarya',
+    environment: 'candidate',
+    expectedRevision: candidateConfig.revision,
+    authorizationApprovalId: candidateConfig.authorization.approval_id,
+    caseInputs: [args.caseInput],
+    rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...row, door })),
+  })
+  const collectionPath = join(args.artifactDir, `collection-${args.name ?? args.caseInput.case_id}.json`)
+  await writeFile(collectionPath, `${JSON.stringify(collection)}\n`, { flag: 'wx' })
+  const artifact = createAccountableAnswersArtifact({
+    inputs: [args.caseInput], door: 'managed_mcp', collection, collectionArtifact: collectionPath,
+  })
+  return args.qualitativeAssessment === undefined
+    ? artifact
+    : {
+        ...artifact,
+        answers: artifact.answers.map((answer) => ({ ...answer, qualitative_assessment: args.qualitativeAssessment })),
+      }
+}
+
 describe('Purna product acceptance harness', () => {
   beforeAll(async () => {
     protocol = JSON.parse(await readFile(new URL(
@@ -244,6 +294,38 @@ describe('Purna product acceptance harness', () => {
     ])).toThrow('PRODUCT_ACCEPTANCE_CLI_INVALID')
   })
 
+  it('rejects unbound answers, forged answer hashes, and changed collection artifacts', async () => {
+    const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-binding-'))
+    const firstCase = casesForSuite(protocol, 'product')[0]
+    try {
+      const bound = await boundInput({ artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment })
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: { answers: bound.answers }, artifactDir,
+      })).rejects.toThrow('PURNA_ACCOUNTABLE_ANSWERS_INVALID')
+
+      const forgedAnswers = bound.answers.map((answer) => ({ ...answer, answer: 'caller-forged answer' }))
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: {
+          ...bound,
+          provenance: { ...bound.provenance, accountable_answers_hash: accountableAnswersHash(forgedAnswers) },
+          answers: forgedAnswers,
+        },
+        artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_COLLECTION_ANSWER_MISMATCH')
+
+      const persistedCollection = JSON.parse(await readFile(bound.provenance.collection_artifact, 'utf8')) as Record<string, unknown>
+      await writeFile(bound.provenance.collection_artifact, `${JSON.stringify({ ...persistedCollection, collection_hash: `sha256:${'f'.repeat(64)}` })}\n`)
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: bound, artifactDir,
+      })).rejects.toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
+    } finally {
+      await rm(artifactDir, { recursive: true, force: true })
+    }
+  })
+
   it('makes failed deterministic evidence override a passing independent assessment', () => {
     const score = scoreAnswers([scoreInput], [{
       case_id: 'deterministic_product_case', answer: 'unsupported', qualitative_assessment: passingAssessment,
@@ -271,34 +353,32 @@ describe('Purna product acceptance harness', () => {
   it('rejects coercive JSON and duplicate or unknown answer and gate IDs before persistence', async () => {
     const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
     const firstCase = casesForSuite(protocol, 'product')[0]
-    const answer = {
-      case_id: firstCase.case_id, answer: 'answer', qualitative_assessment: passingAssessment,
-      evidence: [{ gate_id: firstCase.deterministic_gates[0], passed: true, receipt_ref: 'r1' }],
-    }
     try {
+      const bound = await boundInput({ artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment })
+      const answer = bound.answers[0]!
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, qualitative_assessment: { ...passingAssessment, relevance: '4' } }] }, artifactDir,
+        input: { ...bound, answers: [{ ...answer, qualitative_assessment: { ...passingAssessment, relevance: '4' } }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, qualitative_assessment: { ...passingAssessment, untrusted_extra: true } }] }, artifactDir,
+        input: { ...bound, answers: [{ ...answer, qualitative_assessment: { ...passingAssessment, untrusted_extra: true } }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [answer, answer] }, artifactDir,
+        input: { ...bound, answers: [answer, answer] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_DUPLICATE_ANSWER_ID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, case_id: 'unknown_case' }] }, artifactDir,
+        input: { ...bound, answers: [{ ...answer, case_id: 'unknown_case' }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_UNKNOWN_ANSWER_ID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, evidence: [...answer.evidence, { gate_id: 'unknown_gate', passed: true, receipt_ref: 'r2' }] }] }, artifactDir,
+        input: { ...bound, answers: [{ ...answer, evidence: [...answer.evidence, { gate_id: 'unknown_gate', passed: true, receipt_ref: 'r2' }] }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_UNKNOWN_GATE_ID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, evidence: [...answer.evidence, answer.evidence[0]] }] }, artifactDir,
+        input: { ...bound, answers: [{ ...answer, evidence: [...answer.evidence, answer.evidence[0]] }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_DUPLICATE_GATE_ID')
     } finally {
       await rm(artifactDir, { recursive: true, force: true })
@@ -308,20 +388,16 @@ describe('Purna product acceptance harness', () => {
   it('rejects malformed response accountability before persistence and retains a complete typed envelope', async () => {
     const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
     const firstCase = casesForSuite(protocol, 'product')[0]
-    const answer = {
-      case_id: firstCase.case_id,
-      answer: 'answer',
-      qualitative_assessment: passingAssessment,
-      evidence: [{ gate_id: firstCase.deterministic_gates[0], passed: true, receipt_ref: 'r1' }],
-    }
     try {
+      const bound = await boundInput({ artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment })
+      const answer = bound.answers[0]!
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, response_accountability: {} }] }, artifactDir,
+        input: { ...bound, answers: [{ ...answer, response_accountability: {} }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{
+        input: { ...bound, answers: [{
           ...answer,
           response_accountability: {
             ...validResponseAccountability,
@@ -334,14 +410,18 @@ describe('Purna product acceptance harness', () => {
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
       await expect(writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{
+        input: { ...bound, answers: [{
           ...answer,
           response_accountability: { ...validResponseAccountability, untyped_forgery: true },
         }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+      const validBound = await boundInput({
+        artifactDir, caseInput: firstCase, responseAccountability: validResponseAccountability,
+        qualitativeAssessment: passingAssessment, name: 'valid-accountability',
+      })
       const written = await writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{ ...answer, response_accountability: validResponseAccountability }] }, artifactDir,
+        input: validBound, artifactDir,
       })
       expect(written.record.answers[0]?.response_accountability).toMatchObject({
         accountability_version: 'inquiry-response-accountability-v1',
@@ -357,18 +437,19 @@ describe('Purna product acceptance harness', () => {
     const firstCase = casesForSuite(protocol, 'product')[0]
     const answer = 'Complete accountable response'
     try {
+      const input = await boundInput({
+        artifactDir,
+        caseInput: firstCase,
+        answer,
+        responseAccountability: accountabilityWithCompleteProse(answer),
+        qualitativeAssessment: passingAssessment,
+      })
       const written = await writeAcceptanceRun({
         protocol,
         suite: 'product',
         environment: 'candidate',
         environmentConfig: candidateConfig,
-        input: { answers: [{
-          case_id: firstCase.case_id,
-          answer,
-          qualitative_assessment: passingAssessment,
-          evidence: [{ gate_id: firstCase.deterministic_gates[0], passed: true, receipt_ref: 'receipt-1' }],
-          response_accountability: accountabilityWithCompleteProse(answer),
-        }] },
+        input,
         artifactDir,
       })
       expect(written.record.answers[0]?.response_accountability?.response_coverage_receipt.status).toBe('COMPLETE')
@@ -491,21 +572,25 @@ describe('Purna product acceptance harness', () => {
     const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
     const firstCase = casesForSuite(protocol, 'product')[0]
     try {
+      const input = await boundInput({
+        artifactDir,
+        caseInput: firstCase,
+        answer: 'answer retained despite failed evidence',
+        qualitativeAssessment: passingAssessment,
+      })
       const written = await writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
-        input: { answers: [{
-          case_id: firstCase.case_id, answer: 'answer retained despite failed evidence', qualitative_assessment: passingAssessment,
-          evidence: firstCase.deterministic_gates.map((gate_id, index) => ({
-            gate_id, passed: index !== 0, receipt_ref: index === 0 ? null : `receipt-${gate_id}`,
-            ...(index === 0 ? { detail: 'receipt unavailable' } : {}),
-          })),
-        }] },
+        input,
         artifactDir, now: new Date('2026-09-17T00:00:00.000Z'), runId: 'run-test',
       })
       const persisted = JSON.parse(await readFile(written.path, 'utf8')) as Record<string, unknown>
       expect(persisted).toMatchObject({
         schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION, run_id: 'run-test', environment: 'candidate',
-        revision: 'candidate-revision-123', verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
+        revision: 'candidate-revision-123', door: 'managed_mcp',
+        collection_hash: input.provenance.collection_hash,
+        collection_manifest_hash: input.provenance.collection_manifest_hash,
+        accountable_answers_hash: input.provenance.accountable_answers_hash,
+        verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
       })
       expect(persisted.case_inputs).toHaveLength(30)
       expect(persisted.answers).toHaveLength(1)

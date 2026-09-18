@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { buildJudgePrompt, judgeAnswers, parseJudgeOutput } from '../judge_answers'
+import { buildJudgePrompt, judgeAnswers, judgedAnswersArtifact, parseJudgeOutput } from '../judge_answers'
 import type { AcceptanceAnswer, AcceptanceCaseInput } from '../acceptance_cases'
+import { PURNA_ACCOUNTABLE_ANSWERS_VERSION } from '../collection_types'
 
 const input: AcceptanceCaseInput = {
   case_id: 'case-1', kind: 'product', question: 'What should I do?', scope_tuple: null,
@@ -15,6 +16,27 @@ const answer: AcceptanceAnswer = {
 }
 
 describe('independent Purna answer judge', () => {
+  it('preserves collection and door provenance when attaching the assessment', () => {
+    const provenance = {
+      collection_artifact: '/restricted/collection.json',
+      collection_hash: `sha256:${'a'.repeat(64)}`,
+      collection_manifest_hash: `sha256:${'b'.repeat(64)}`,
+      suite: 'product' as const,
+      door: 'portal' as const,
+      environment: 'candidate' as const,
+      expected_revision: 'candidate-a',
+      authorization_approval_id: 'collection-approval',
+      accountable_answers_hash: `sha256:${'c'.repeat(64)}`,
+    }
+    expect(judgedAnswersArtifact({
+      input: { schema_version: PURNA_ACCOUNTABLE_ANSWERS_VERSION, provenance, answers: [] },
+      answers: [], approvalId: 'judge-approval', modelId: 'judge-model',
+    })).toMatchObject({
+      provenance,
+      assessment: { approval_id: 'judge-approval', assessor: 'independent_eval_judge', model_id: 'judge-model' },
+    })
+  })
+
   it('requires all four integer rubric scores', () => {
     expect(parseJudgeOutput({ relevance: 5, evidence_based_explanation: 4, contradiction_handling: 3, usefulness: 4, rationale: 'grounded' }))
       .toMatchObject({ usefulness: 4 })

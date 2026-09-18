@@ -1,11 +1,36 @@
 import { describe, expect, it, vi } from 'vitest'
-import { assertLiveEvidence, type AcceptanceCase } from '../collection_types'
+import { assertLiveEvidence, createCollectionArtifact, validateCollectionArtifact, type AcceptanceCase, type CollectedCase } from '../collection_types'
+import type { AcceptanceCaseInput } from '../acceptance_cases'
 import { collectManagedCase, collectPortalCase, collectRawCase, parsePortalSse } from '../channel_clients'
 
 const test: AcceptanceCase = { id: 'wealth_mechanism_timing_contradiction', question: 'Explain wealth with supporting evidence.', scope_tuple: { intent: 'wealth_deepdive', domains: ['wealth'], width: 'broad', depth: 'deep', horizon: 'near', intervention: 'none', entitlement: 'reference' }, requiredDimensions: ['wealth'], expected: 'supported_complete' }
 const base = { test, expectedRevision: 'candidate-a', source: 'candidate' as const, chartId: '11111111-1111-4111-8111-111111111111' }
 
 describe('Purna real three-door collector', () => {
+  it('seals the exact suite case inputs and three door rows into a tamper-evident collection', () => {
+    const input: AcceptanceCaseInput = {
+      case_id: test.id, kind: 'beyond_acarya', question: test.question, scope_tuple: test.scope_tuple,
+      deterministic_gates: ['immutable_case_input', 'source_acceptance_denominator'],
+      required_dimensions: test.requiredDimensions, expected: test.expected,
+    }
+    const baseRow: CollectedCase = {
+      caseId: test.id, door: 'portal', inquiryId: 'i-1', expectedRevision: 'candidate-a', observedRevision: 'candidate-a',
+      snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null,
+      receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [],
+      networkCallCount: 1, source: 'candidate', terminal: 'complete', diagnostic: null,
+    }
+    const artifact = createCollectionArtifact({
+      suite: 'beyond_acarya', environment: 'candidate', expectedRevision: 'candidate-a',
+      authorizationApprovalId: 'approval-1', caseInputs: [input],
+      rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...baseRow, door })),
+    })
+    expect(validateCollectionArtifact(artifact)).toEqual(artifact)
+    expect(artifact.manifest_hash).toMatch(/^sha256:/)
+    expect(artifact.collection_hash).toMatch(/^sha256:/)
+    expect(() => validateCollectionArtifact({ ...artifact, rows: artifact.rows.map((row, index) => index ? row : { ...row, answer: 'forged' }) }))
+      .toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
+  })
+
   it('rejects a supposedly live answer with no real channel execution', () => {
     expect(() => assertLiveEvidence({ caseId: test.id, door: 'portal', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null, receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [], networkCallCount: 0, source: 'live', terminal: 'complete', diagnostic: null })).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
   })
