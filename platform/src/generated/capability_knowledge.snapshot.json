@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T08:32:44.000Z",
-  "content_hash": "sha256:c71fd7e3af69eb04e5a2608a4abe2cecbd8b2b2ab0cd41901ffe38babc0c9466",
+  "generated_at": "2026-09-18T09:16:24.000Z",
+  "content_hash": "sha256:29d675ab1aa9bd1b38d369433dfe5eecd34d8e14df4eb760914ad2b003f1912b",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:f65eacad73098f8153eae2b7b216c8526c5ddd1d8bd6f97a15797ee52389052b",
+  "semantic_review_fingerprint": "sha256:677b5dde3448e3ff022d008e76d65060cca6674cca2e903eb45923f477802daf",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -15734,25 +15734,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "producer_output_claims": [
-        {
-          "asset_id": "bg_dasha_systems",
-          "component": "dasha_system_catalog",
-          "output_digest_spec_sha256": "b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593",
-          "disposition": "reviewed_output",
-          "evidence": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39"
-        }
-      ],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_dasha_systems",
           "requirements": [
             {
-              "kind": "producer_output",
-              "asset_id": "bg_dasha_systems",
-              "spec_sha256": "b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593",
+              "kind": "source_query",
+              "contract_id": "source-query:query-dasha-systems:v1",
+              "capability_uri": "marsys://tool/L0/query_dasha_systems",
+              "contract_sha256": "sha256:c99e4594cab27edcc26116d6c70188146d640dff339327f03ef03a1796e07b05",
               "scope": "global",
-              "source_ref": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49"
             }
           ]
         }
@@ -16782,25 +16774,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "producer_output_claims": [
-        {
-          "asset_id": "bg_formula_constants",
-          "component": "formula_constants",
-          "output_digest_spec_sha256": "126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b",
-          "disposition": "reviewed_output",
-          "evidence": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43"
-        }
-      ],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_formula_constants",
           "requirements": [
             {
-              "kind": "producer_output",
-              "asset_id": "bg_formula_constants",
-              "spec_sha256": "126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b",
+              "kind": "source_query",
+              "contract_id": "source-query:query-formula-constants:v1",
+              "capability_uri": "marsys://tool/L0/query_formula_constants",
+              "contract_sha256": "sha256:4d97f2603f5521b4c6388d42e6d460e05d23587d0881235d826fce791fb4a44b",
               "scope": "global",
-              "source_ref": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69 | platform/supabase/migrations/389_brahma_formula_constants.sql:9-27"
             }
           ]
         }
@@ -36586,8 +36570,8 @@
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 16,
-    "reviewed_output_claims": 15,
+    "producer_output_claims": 14,
+    "reviewed_output_claims": 13,
     "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,
