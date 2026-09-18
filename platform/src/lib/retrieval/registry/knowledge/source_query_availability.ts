@@ -898,6 +898,38 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:get-condition-composite:v1',
+    descriptor_name: 'get_condition_composite',
+    capability_uri: 'marsys://tool/L1/get_condition_composite',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT graha, ayanamsha_id, dignity_d1, dignity_score_d1, varga_dignity_spread,
+                   varga_dignity_composite, avastha_baladi, avastha_jagradadi, avastha_deeptaadi,
+                   avastha_lajjitaadi, avastha_sayanadi, motion_state, speed_degrees_per_day,
+                   is_retrograde, combustion_arc_from_sun, is_combust, is_deeply_combust,
+                   naisargika_relation, tatkalika_relation, panchadha_relation, graha_yuddha_with,
+                   graha_yuddha_result, condition_score, condition_formula_version,
+                   condition_score_breakdown, peak_dasha_periods, weak_dasha_periods, computed_at
+              FROM ga_condition_composite
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR graha = NULL::text)
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY graha, ayanamsha_id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM ga_condition_composite
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR graha = NULL::text)
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:75-107',
+      'platform/migrations/251_ga_condition_composite.sql:1-73',
+    ],
+  },
+  {
     contract_id: 'source-query:get-bhava-bala:v1',
     descriptor_name: 'get_bhava_bala',
     capability_uri: 'marsys://tool/L1/get_bhava_bala',
