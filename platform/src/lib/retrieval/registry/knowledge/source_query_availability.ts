@@ -1036,7 +1036,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     empty_semantics: 'query_success_is_available',
     sql: `SELECT event_type, primary_body, secondary_body, event_datetime_utc, sign, nakshatra,
                  longitude_deg, speed_dps, detail, ayanamsha_key, sampling_method, source_citation
-            FROM bg_sky_events
+            FROM bg_sky_calendar
            WHERE event_datetime_utc >= NULL::timestamptz
              AND event_datetime_utc < NULL::timestamptz
            ORDER BY event_datetime_utc, event_type, primary_body
@@ -1044,6 +1044,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121',
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156',
+      'platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62',
     ],
   },
   {

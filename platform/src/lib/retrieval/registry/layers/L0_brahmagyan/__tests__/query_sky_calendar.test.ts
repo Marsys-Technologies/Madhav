@@ -41,7 +41,7 @@ describe('querySkyCalendarCapability', () => {
     const params = mockQuery.mock.calls[0][1] as unknown[]
     expect(sql).toContain('event_datetime_utc >= $1')
     expect(sql).toContain('event_datetime_utc < $2')
-    expect(sql).toContain('FROM bg_sky_events')
+    expect(sql).toContain('FROM bg_sky_calendar')
     expect(params[0]).toBe(START)
     expect(params[1]).toBe(END)
   })

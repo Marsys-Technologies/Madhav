@@ -244,7 +244,7 @@ describe('binding availability contracts', () => {
 
   it.each([
     ['source-query:query-remedy-corpus:v1', 'brahma_remedy_corpus'],
-    ['source-query:query-sky-calendar:v1', 'bg_sky_events'],
+    ['source-query:query-sky-calendar:v1', 'bg_sky_calendar'],
     ['source-query:query-transit-vedha:v1', 'bg_transit_vedha'],
   ])('keeps %s as a global, exact zero-row source probe', (contractId, relation) => {
     const contract = getSourceQueryAvailabilityContract(contractId)!
