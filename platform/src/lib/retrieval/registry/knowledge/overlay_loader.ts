@@ -20,6 +20,7 @@ import {
   getSourceQueryAvailabilityContract,
   sourceQueryAvailabilityContractMatches,
 } from './source_query_availability'
+import type { SourceQueryAvailabilityContract } from './source_query_availability'
 
 interface ReceiptRow {
   asset_id: string
@@ -394,6 +395,33 @@ function sourceQueryEvidenceKey(requirement: SourceQueryAvailabilityRequirement)
   return `${requirement.contract_id}\u0000${requirement.contract_sha256}`
 }
 
+export async function probeSourceQueryAvailabilityContract(
+  contract: SourceQueryAvailabilityContract,
+  chartId: string,
+  activeBuildId: string | null,
+  query: OverlayQueryExecutor,
+): Promise<readonly string[]> {
+  if (contract.parameter_binding === 'chart_and_active_build' && !activeBuildId) {
+    return [`${contract.contract_id} cannot bind the selected chart to an active completed build.`]
+  }
+  if (contract.parameter_binding === 'chart_with_active_build_context' && !activeBuildId) {
+    return [`${contract.contract_id} requires an active completed build context for the selected chart.`]
+  }
+  const params = contract.parameter_binding === 'global'
+    ? []
+    : contract.parameter_binding === 'chart_and_active_build'
+      ? [chartId, activeBuildId]
+      : [chartId]
+  try {
+    // Query success is the availability signal. Zero rows are intentionally a
+    // healthy source: result emptiness belongs to the handler response.
+    await query(contract.sql, params)
+    return []
+  } catch {
+    return [`${contract.contract_id} could not execute its authenticated source query.`]
+  }
+}
+
 async function sourceQueryEvidenceForSnapshot(
   snapshot: CapabilityKnowledgeSnapshot,
   chartId: string,
@@ -413,19 +441,7 @@ async function sourceQueryEvidenceForSnapshot(
       evidence.set(key, ['Source-query availability requirement does not match its registry-owned reviewed query contract.'])
       return
     }
-    if (contract.parameter_binding === 'chart_and_active_build' && !activeBuildId) {
-      evidence.set(key, [`${contract.contract_id} cannot bind the selected chart to an active completed build.`])
-      return
-    }
-    try {
-      const params = contract.parameter_binding === 'chart_and_active_build' ? [chartId, activeBuildId] : []
-      // Query success is the availability signal. Zero rows are intentionally a
-      // healthy source: result emptiness belongs to the handler response.
-      await query(contract.sql, params)
-      evidence.set(key, [])
-    } catch {
-      evidence.set(key, [`${contract.contract_id} could not execute its authenticated source query.`])
-    }
+    evidence.set(key, await probeSourceQueryAvailabilityContract(contract, chartId, activeBuildId, query))
   }))
   return evidence
 }

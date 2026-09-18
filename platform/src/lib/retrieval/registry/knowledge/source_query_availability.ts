@@ -1,7 +1,10 @@
 import type { SourceQueryAvailabilityRequirement } from './types'
 import { stableFingerprint } from './stable'
 
-export type SourceQueryParameterBinding = 'global' | 'chart_and_active_build'
+export type SourceQueryParameterBinding =
+  | 'global'
+  | 'chart_and_active_build'
+  | 'chart_with_active_build_context'
 export type SourceQueryEmptySemantics = 'query_success_is_available'
 
 /**
@@ -26,14 +29,27 @@ export interface DescriptorSourceQueryAvailabilityReview {
   readonly requirement: SourceQueryAvailabilityRequirement
 }
 
-function contractFingerprint(contract: SourceQueryAvailabilityContract): string {
+export function sourceQueryAvailabilityContractFingerprint(
+  contract: SourceQueryAvailabilityContract,
+): string {
   return stableFingerprint(contract)
+}
+
+export function sourceQueryParameterBindingMatchesScope(
+  scope: SourceQueryAvailabilityContract['scope'],
+  parameterBinding: SourceQueryParameterBinding,
+): boolean {
+  return (scope === 'global' && parameterBinding === 'global')
+    || (scope === 'chart' && (
+      parameterBinding === 'chart_and_active_build'
+      || parameterBinding === 'chart_with_active_build_context'
+    ))
 }
 
 /*
  * Reviews are intentionally source-by-source. Do not infer membership from a
  * descriptor family or table name: a review is admitted only after the handler
- * relation, scope/build binding, and honest-empty behavior have all been read.
+ * relation, scope/parameter binding, and honest-empty behavior have all been read.
  */
 const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
   {
@@ -879,7 +895,7 @@ export function getDescriptorSourceQueryAvailabilityReview(
       kind: 'source_query',
       contract_id: contract.contract_id,
       capability_uri: contract.capability_uri,
-      contract_sha256: contractFingerprint(contract),
+      contract_sha256: sourceQueryAvailabilityContractFingerprint(contract),
       scope: contract.scope,
       source_ref: contract.source_refs.join(' | '),
     },
@@ -891,12 +907,11 @@ export function sourceQueryAvailabilityContractMatches(
 ): boolean {
   const contract = getSourceQueryAvailabilityContract(requirement.contract_id)
   return Boolean(contract
-    && requirement.contract_sha256 === contractFingerprint(contract)
+    && requirement.contract_sha256 === sourceQueryAvailabilityContractFingerprint(contract)
     && requirement.capability_uri === contract.capability_uri
     && requirement.scope === contract.scope
     && requirement.source_ref === contract.source_refs.join(' | ')
-    && ((contract.scope === 'global' && contract.parameter_binding === 'global')
-      || (contract.scope === 'chart' && contract.parameter_binding === 'chart_and_active_build')))
+    && sourceQueryParameterBindingMatchesScope(contract.scope, contract.parameter_binding))
 }
 
 export function getSourceQueryAvailabilityReviews(): readonly DescriptorSourceQueryAvailabilityReview[] {

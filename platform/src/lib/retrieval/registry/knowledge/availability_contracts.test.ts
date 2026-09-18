@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compiler'
-import { getSourceQueryAvailabilityContract } from './source_query_availability'
+import {
+  getSourceQueryAvailabilityContract,
+  sourceQueryAvailabilityContractFingerprint,
+  sourceQueryParameterBindingMatchesScope,
+} from './source_query_availability'
 import type { CapabilityKnowledgeSnapshot } from './types'
 
 const catalog = getCatalog()
@@ -34,6 +38,31 @@ function withBindings(bindings: unknown): CapabilityKnowledgeSnapshot {
 }
 
 describe('binding availability contracts', () => {
+  it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
+    expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
+    expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)
+  })
+
+  it('fingerprints active-build context separately from row-level active-build binding', () => {
+    const contract = {
+      contract_id: 'source-query:test-chart-context:v1',
+      descriptor_name: 'test_chart_context',
+      capability_uri: 'marsys://tool/L4/test_chart_context',
+      scope: 'chart' as const,
+      parameter_binding: 'chart_with_active_build_context' as const,
+      empty_semantics: 'query_success_is_available' as const,
+      sql: 'SELECT source_id FROM source_table WHERE chart_id = $1::uuid LIMIT 0',
+      source_refs: ['fixture:chart-context'],
+    }
+
+    expect(sourceQueryAvailabilityContractFingerprint(contract)).not.toBe(
+      sourceQueryAvailabilityContractFingerprint({
+        ...contract,
+        parameter_binding: 'chart_and_active_build',
+      }),
+    )
+  })
+
   it('accepts the exact registry-owned source-query contract and rejects a fingerprint change', () => {
     const yoga = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
     const requirement = yoga.availability_contracts![0]!.requirements[0]!
