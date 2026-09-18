@@ -1378,6 +1378,83 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112',
     ],
   },
+  {
+    contract_id: 'source-query:get-kp-cusps:v1',
+    descriptor_name: 'get_kp_cusps',
+    capability_uri: 'marsys://tool/L1/get_kp_cusps',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_subject, fact_key,
+                 fact_value_text, fact_value_num, fact_value_jsonb
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'krishnamurti'
+             AND fact_category = ANY(ARRAY[
+               'cusp_kp_lords', 'kp_cuspal_significators', 'bhava_cusps',
+               'kp_ruling_planets_natal'
+             ]::text[])
+           ORDER BY fact_category, fact_subject, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-nakshatra:v1',
+    descriptor_name: 'get_nakshatra',
+    capability_uri: 'marsys://tool/L1/get_nakshatra',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'graha_nakshatra_join', 'graha_pada_join', 'graha_kp_lords',
+               'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor',
+               'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity',
+               'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha',
+               'kp_house_significators', 'kp_planet_significations'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-sensitive-points:v1',
+    descriptor_name: 'get_sensitive_points',
+    capability_uri: 'marsys://tool/L1/get_sensitive_points',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, formula_id, formula_provenance_text,
+                 verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
+               'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta',
+               'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva',
+               'esoteric_point_sphuta_fertility', 'esoteric_point_sri_yantra_position',
+               'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta',
+               'esoteric_point_vishnu', 'esoteric_point_yogi', 'esoteric_point_yogi_system',
+               'bhrigu_nadi_point', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint',
+               'saham_position', 'saturn_derived_point', 'nakshatra_pada_sensitive'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key, formula_id
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
