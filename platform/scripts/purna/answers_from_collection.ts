@@ -120,6 +120,7 @@ export interface AccountableAnswersArtifact {
     readonly approval_id: string
     readonly assessor: 'independent_eval_judge'
     readonly model_id: string
+    readonly judged_artifact_hash: string
   }
   readonly answers: readonly AcceptanceAnswer[]
 }
@@ -141,6 +142,36 @@ export function accountableAnswersHash(
       answer: answer.answer,
       evidence: answer.evidence,
       response_accountability: answer.response_accountability ?? null,
+    })),
+  })
+}
+
+/**
+ * Bind the independent approval to the immutable accountable-answer identity
+ * and every case assessment. This is deliberately a second identity boundary:
+ * the base hash excludes judgment so the collection bridge remains judge-free.
+ */
+export function judgedArtifactHash(
+  answers: readonly AcceptanceAnswer[],
+  provenance: CollectionProvenance,
+  approval: { readonly approval_id: string; readonly assessor: 'independent_eval_judge'; readonly model_id: string },
+): string {
+  return stableFingerprint({
+    schema_version: 'purna-judged-answers/v1',
+    accountable_identity: {
+      collection_hash: provenance.collection_hash,
+      collection_manifest_hash: provenance.collection_manifest_hash,
+      suite: provenance.suite,
+      door: provenance.door,
+      environment: provenance.environment,
+      expected_revision: provenance.expected_revision,
+      authorization_approval_id: provenance.authorization_approval_id,
+      accountable_answers_hash: provenance.accountable_answers_hash,
+    },
+    approval,
+    qualitative_assessments: answers.map((answer) => ({
+      case_id: answer.case_id,
+      qualitative_assessment: answer.qualitative_assessment ?? null,
     })),
   })
 }
@@ -186,15 +217,8 @@ export function validateAccountableAnswersArtifact(
   const allowedTopLevelKeys = value.assessment === undefined
     ? ['schema_version', 'provenance', 'answers']
     : ['schema_version', 'provenance', 'assessment', 'answers']
-  const validAssessment = value.assessment === undefined || (object(value.assessment)
-    && Object.keys(value.assessment).length === 3
-    && Object.keys(value.assessment).every((key) => ['approval_id', 'assessor', 'model_id'].includes(key))
-    && typeof value.assessment.approval_id === 'string' && value.assessment.approval_id.length > 0
-    && value.assessment.assessor === 'independent_eval_judge'
-    && typeof value.assessment.model_id === 'string' && value.assessment.model_id.length > 0)
   if (Object.keys(value).length !== allowedTopLevelKeys.length
     || Object.keys(value).some((key) => !allowedTopLevelKeys.includes(key))
-    || !validAssessment
     || Object.keys(provenance).length !== exactProvenanceKeys.length
     || Object.keys(provenance).some((key) => !exactProvenanceKeys.includes(key))
     || typeof provenance.collection_artifact !== 'string' || provenance.collection_artifact.length === 0
@@ -215,6 +239,38 @@ export function validateAccountableAnswersArtifact(
     provenance.door as AcceptanceDoor,
   ) !== provenance.accountable_answers_hash) {
     throw new Error('PURNA_ACCOUNTABLE_ANSWERS_HASH_MISMATCH')
+  }
+  if (value.assessment === undefined) {
+    if (answers.some((answer) => answer.qualitative_assessment !== undefined && answer.qualitative_assessment !== null)) {
+      throw new Error('PURNA_JUDGED_ANSWERS_APPROVAL_REQUIRED')
+    }
+  } else {
+    if (!object(value.assessment)
+      || Object.keys(value.assessment).length !== 4
+      || Object.keys(value.assessment).some((key) => !['approval_id', 'assessor', 'model_id', 'judged_artifact_hash'].includes(key))
+      || typeof value.assessment.approval_id !== 'string' || value.assessment.approval_id.length === 0
+      || value.assessment.assessor !== 'independent_eval_judge'
+      || typeof value.assessment.model_id !== 'string' || value.assessment.model_id.length === 0
+      || typeof value.assessment.judged_artifact_hash !== 'string'
+      || !/^sha256:[a-f0-9]{64}$/.test(value.assessment.judged_artifact_hash)) {
+      throw new Error('PURNA_JUDGED_ANSWERS_INVALID')
+    }
+    if (answers.some((answer) => !answer.qualitative_assessment
+      || answer.qualitative_assessment.assessor !== value.assessment!.assessor)) {
+      throw new Error('PURNA_JUDGED_ANSWERS_ASSESSOR_MISMATCH')
+    }
+    if (answers.some((answer) => answer.qualitative_assessment?.model_id !== value.assessment!.model_id)) {
+      throw new Error('PURNA_JUDGED_ANSWERS_MODEL_MISMATCH')
+    }
+    const approval = {
+      approval_id: value.assessment.approval_id,
+      assessor: value.assessment.assessor,
+      model_id: value.assessment.model_id,
+    } as const
+    if (judgedArtifactHash(answers, provenance as unknown as CollectionProvenance, approval)
+      !== value.assessment.judged_artifact_hash) {
+      throw new Error('PURNA_JUDGED_ANSWERS_HASH_MISMATCH')
+    }
   }
   return {
     schema_version: PURNA_ACCOUNTABLE_ANSWERS_VERSION,

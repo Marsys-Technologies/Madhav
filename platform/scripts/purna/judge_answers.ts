@@ -13,7 +13,12 @@ import {
   validateAcceptanceAnswers,
   validateProtocol,
 } from './acceptance_cases'
-import { validateAccountableAnswersArtifact, type AccountableAnswersArtifact } from './answers_from_collection'
+import {
+  accountableAnswersHash,
+  judgedArtifactHash,
+  validateAccountableAnswersArtifact,
+  type AccountableAnswersArtifact,
+} from './answers_from_collection'
 
 const AXES = ['relevance', 'evidence_based_explanation', 'contradiction_handling', 'usefulness'] as const
 
@@ -84,13 +89,29 @@ export function judgedAnswersArtifact(args: {
   readonly approvalId: string
   readonly modelId: string
 }): AccountableAnswersArtifact {
+  if (!args.approvalId || !args.modelId
+    || args.answers.some((answer) => !answer.qualitative_assessment
+      || answer.qualitative_assessment.assessor !== 'independent_eval_judge'
+      || answer.qualitative_assessment.model_id !== args.modelId)) {
+    throw new Error('PURNA_JUDGED_ANSWERS_INVALID')
+  }
+  if (accountableAnswersHash(args.input.answers, args.input.provenance.collection_hash, args.input.provenance.door)
+      !== args.input.provenance.accountable_answers_hash
+    || accountableAnswersHash(args.answers, args.input.provenance.collection_hash, args.input.provenance.door)
+      !== args.input.provenance.accountable_answers_hash) {
+    throw new Error('PURNA_ACCOUNTABLE_ANSWERS_HASH_MISMATCH')
+  }
+  const approval = {
+    approval_id: args.approvalId,
+    assessor: 'independent_eval_judge' as const,
+    model_id: args.modelId,
+  }
   return {
     schema_version: args.input.schema_version,
     provenance: args.input.provenance,
     assessment: {
-      approval_id: args.approvalId,
-      assessor: 'independent_eval_judge',
-      model_id: args.modelId,
+      ...approval,
+      judged_artifact_hash: judgedArtifactHash(args.answers, args.input.provenance, approval),
     },
     answers: args.answers,
   }
