@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T19:07:17.000Z",
-  "content_hash": "sha256:ca2703a7714b1f398f01c28c6e2fa47eb68cb57c09edceffe6cfa43cbc3c7f1f",
-  "source_catalog_fingerprint": "sha256:e4e877e8fa972377855703eafe6aaf75a9c8ad8929206b49ceb6eaf37227686c",
-  "semantic_review_fingerprint": "sha256:a55d798b976b1180731777942937f3cdaeb5b51a508793c303bb34db902e6291",
+  "generated_at": "2026-09-19T00:00:00.000Z",
+  "content_hash": "sha256:fa24620ff0e35a070641bf33361b618cb248f062a203975e781c4903337083d7",
+  "source_catalog_fingerprint": "sha256:18bb7114a2ece5f78c77d068fa8cbb02519ff957502511e521baf5dd2bca8935",
+  "semantic_review_fingerprint": "sha256:a7411806633c11dd1f969e7e88dc2685f940fff0b07cf0dd384219ec9da43e76",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -6362,6 +6362,19 @@
               "spec_sha256": "5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51",
               "scope": "chart_build",
               "source_ref": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28"
+            }
+          ]
+        },
+        {
+          "binding_id": "mcp:ganita_chart_facts_get:divisional_chart",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:ganita-chart-facts-divisional:v1",
+              "capability_uri": "mcp://tool/ganita_chart_facts_get",
+              "contract_sha256": "sha256:70d9a3bc7efa27ab779293946f3ba0c5435de05c392e35ac598f84dd72974e5f",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
           ]
         }
@@ -31324,6 +31337,19 @@
               "source_ref": "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44"
             }
           ]
+        },
+        {
+          "binding_id": "registry:finance-mechanisms",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_mechanisms"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial.ts:51-58"
+            }
+          ]
         }
       ],
       "editorial": true,
@@ -31889,6 +31915,19 @@
               "spec_sha256": "fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246",
               "scope": "chart_build",
               "source_ref": "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128"
+            }
+          ]
+        },
+        {
+          "binding_id": "mcp:yoga_activation_by_dasha",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:yoga-activation-by-dasha:v1",
+              "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+              "contract_sha256": "sha256:c49df0f4f9d47fbd11dca0a694a06f523edb5b5b3e7d48becee083b2f0fe6a5b",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039"
             }
           ]
         }

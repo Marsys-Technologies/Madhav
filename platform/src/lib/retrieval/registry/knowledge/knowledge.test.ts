@@ -149,8 +149,8 @@ describe('planner capability knowledge', () => {
       const reviewedClaims = scu.producer_output_claims!.filter((claim) => claim.disposition === 'reviewed_output')
 
       expect(primary).toMatchObject({ binding_id: expectedBindingId, executable: true })
-      expect(scu.availability_contracts).toHaveLength(1)
-      expect(scu.availability_contracts![0]).toEqual({
+      const primaryContract = scu.availability_contracts?.find((contract) => contract.binding_id === primary.binding_id)
+      expect(primaryContract).toEqual({
         binding_id: primary.binding_id,
         requirements: reviewedClaims.map((claim) => ({
           kind: 'producer_output',
