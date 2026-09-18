@@ -898,6 +898,97 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:get-aspects:v1',
+    descriptor_name: 'get_aspects',
+    capability_uri: 'marsys://tool/L1/get_aspects',
+    scope: 'chart',
+    // The handler itself reads the chart's currently served facts by chart_id;
+    // an active completed build is still required as the chart context, but the
+    // route does not (and must not pretend to) filter a historical build_id.
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'aspect_parashari_given', 'aspect_parashari_received', 'aspect_parashari_per_varga',
+               'aspect_jaimini', 'aspect_jaimini_per_varga', 'aspect_matrix_summary', 'aspect_tajik',
+               'conjunction_within_orb', 'conjunction_per_varga',
+               'lord_aspects_lord_per_varga', 'lord_in_house_per_varga'
+             ]::text[])
+             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-ashtakavarga:v1',
+    descriptor_name: 'get_ashtakavarga',
+    capability_uri: 'marsys://tool/L1/get_ashtakavarga',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'ashtakavarga_bindu', 'ashtakavarga_anubindu', 'ashtakavarga_bindu_sign',
+               'ashtakavarga_pinda_bhinna', 'ashtakavarga_pinda_sarva', 'ashtakavarga_pinda_sodhita',
+               'ashtakavarga_pinda_raasi', 'ashtakavarga_trikona_shodhana',
+               'ashtakavarga_ekadhipathya_shodhana', 'ashtakavarga_kakshya_boundary'
+             ]::text[])
+             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:88-124',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-avasthas:v1',
+    descriptor_name: 'get_avasthas',
+    capability_uri: 'marsys://tool/L1/get_avasthas',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'graha_avastha_baladi', 'graha_avastha_deepta', 'graha_avastha_jagrad',
+                 'graha_avastha_lajjitadi', 'graha_avastha_lifetime_exposure_summary',
+                 'graha_avastha_sayanadi'
+               ]::text[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY fact_category, ayanamsha_id, fact_key
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'graha_avastha_baladi', 'graha_avastha_deepta', 'graha_avastha_jagrad',
+                 'graha_avastha_lajjitadi', 'graha_avastha_lifetime_exposure_summary',
+                 'graha_avastha_sayanadi'
+               ]::text[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

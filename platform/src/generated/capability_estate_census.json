@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "11c609d75332e8c46be4d693abf22c095035a3f7bae0b8441d2b486193c0c38a",
+  "content_sha256": "8bc7a166c7ca17383b62c02ff6d08d55eb792aaf4c34f479b7473312d9c3bf6c",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -3780,6 +3780,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts"
         ],
@@ -3843,6 +3844,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts"
         ],
@@ -3978,6 +3980,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
@@ -20701,7 +20704,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-18T21:59:47.000Z",
+  "generated_at": "2026-09-18T22:04:54.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21370,7 +21373,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "383d05ea319eb75da35851c53dbceeda5fb6ccd5da9543ef93065c8226192302"
+            "sha256": "f7ccfb28dc027f3470cb09b3e85f4b51876929c15da6f881b96c4bfee5bcab56"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22098,7 +22101,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "52f1580d8f20ed8591f586e22cd558db294a60977c521db2c2b965cd8f643cee"
+        "sha256": "ae5191acaf714c122e13d8afd00ebee83e231a2a164b3fcf71293a3580400d2a"
       },
       {
         "id": "service_effect_contracts",
@@ -22123,5 +22126,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "ffe94f4e4d8bb9d397f683c159abe117a4cfb01d"
+  "source_revision": "d3ea10e9d43271c6b31aa4d55f2838f3e2fcae3f"
 }
