@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T22:24:58.000Z",
-  "content_hash": "sha256:b14bfcb485f81860b5a79f96bfd2776259ad8b906f4c7e499ffdf0e5b85b62e3",
+  "generated_at": "2026-09-18T22:32:47.000Z",
+  "content_hash": "sha256:fcd3b65be0ee04d435970a565121d2c017d87644c337b58782abf400dc895a57",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:cb6fedbd0bf3fd8c7cc6303aadadada6b158da8b4c3c5427907c348b78ef3e42",
+  "semantic_review_fingerprint": "sha256:79ab0f8db1eb0e8b7bc08a4aec8bbb5f25ac7a5a0bfd6c04cdbd1c6f734e0e7e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -3833,6 +3833,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_argala",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-argala:v1",
+              "capability_uri": "marsys://tool/L1/get_argala",
+              "contract_sha256": "sha256:429ee05fc2a9e928e87f3530637eff8cabf2b9fce3e1cbbdb1edba4453e01f12",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -6203,6 +6218,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_dispositors",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-dispositors:v1",
+              "capability_uri": "marsys://tool/L1/get_dispositors",
+              "contract_sha256": "sha256:65e3e013834ebb7ad933ee60a6024be32d94c8cf22090516b962f3d2f0d04c9c",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -6655,6 +6685,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_eclipse_flags",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-eclipse-flags:v1",
+              "capability_uri": "marsys://tool/L1/get_eclipse_flags",
+              "contract_sha256": "sha256:5807f661835279fc855ce3f26b3223fde38ff538082a6ebdcddc183bc082d254",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
