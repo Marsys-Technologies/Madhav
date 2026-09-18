@@ -487,12 +487,14 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(transfer).not.toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE/)
   })
 
-  it('restores only the ordinary migration login public-schema capability after the protected handoff', () => {
+  it('keeps ordinary public-schema CREATE absent after the protected handoff', () => {
     const repair = readFileSync(resolve(__dirname, '../../supabase/migrations/1041_data_plane_public_schema_migration_grant.sql'), 'utf8')
-    expect(repair).toContain('SET LOCAL ROLE data_plane_schema_owner;')
-    expect(repair).toContain('GRANT USAGE, CREATE ON SCHEMA public TO amjis_app;')
-    expect(repair).toContain('RESET ROLE;')
-    expect(repair).not.toContain('data_plane_migrator')
+    const runner = readFileSync(resolve(__dirname, '../../scripts/migrate.ts'), 'utf8')
+    expect(repair).toContain('SELECT 1;')
+    expect(repair).not.toContain('SET LOCAL ROLE')
+    expect(repair).not.toContain('GRANT USAGE, CREATE')
+    expect(runner).toContain("to_regclass('public._migrations_applied')")
+    expect(runner).toContain('if (tracker.rows[0]?.present !== true) await client.query(TRACKER_DDL)')
   })
   it('publishes builder DML only after protected guards are installed', () => {
     for (const file of ['1035_data_plane_l1_producer_history.sql', '1036_data_plane_l2_producer_generations.sql']) {
@@ -614,10 +616,7 @@ describe('DP-SD-018 deployment ordering', () => {
       .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
     expect(routineStepNames.indexOf('Re-attest Nirmana evidence ownership state with routine credential'))
       .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
-    expect(routineStepNames.indexOf('Restore ordinary migration schema capability'))
-      .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
-    expect(migrate.steps?.find((step) => step.name === 'Restore ordinary migration schema capability')?.run)
-      .toContain('restore-ordinary-migration-schema-capability.ts')
+    expect(routineStepNames).not.toContain('Restore ordinary migration schema capability')
     expect(migrate.steps?.find((step) => step.name === 'Run general database migrations')?.if).toBeUndefined()
 
     for (const secret of [

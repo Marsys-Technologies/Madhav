@@ -48,9 +48,8 @@ CREATE TABLE IF NOT EXISTS _migrations_applied (
 
 /**
  * Second, additive tracker DDL — the filename-independent content identity that makes the
- * renumber guard possible. Kept separate from TRACKER_DDL (which is `CREATE TABLE IF NOT
- * EXISTS` and therefore a no-op against the long-existing production table) so an already-
- * provisioned tracker actually gains the column. Nullable by design: rows applied before this
+ * renumber guard possible. It remains separate from TRACKER_DDL so an already-provisioned
+ * tracker actually gains the column. Nullable by design: rows applied before this
  * column existed have no identity until the opportunistic backfill fills them in, and rows whose
  * file is no longer on disk (or whose content has drifted past its recorded sha256) never can be
  * backfilled — an honest NULL, not a fabricated value (CLAUDE.md §N.8).
@@ -62,6 +61,18 @@ CREATE TABLE IF NOT EXISTS _migrations_applied (
 export const TRACKER_IDENTITY_DDL = `
 ALTER TABLE _migrations_applied ADD COLUMN IF NOT EXISTS sql_identity TEXT;
 `
+
+/**
+ * Strict protected ownership deliberately withholds public-schema CREATE from
+ * the ordinary migration login.  Reissuing CREATE TABLE IF NOT EXISTS still
+ * demands that privilege even when the long-lived tracker already exists.
+ */
+async function ensureMigrationTracker(client: PoolClient): Promise<void> {
+  const tracker = await client.query<{ present: boolean }>(
+    "SELECT to_regclass('public._migrations_applied') IS NOT NULL AS present",
+  )
+  if (tracker.rows[0]?.present !== true) await client.query(TRACKER_DDL)
+}
 
 export interface MigrationFile {
   name: string
@@ -690,7 +701,7 @@ export async function runMigrations(
   const disclosures = options.disclosures ?? loadHashDisclosures()
   const renumbers = options.renumberDisclosures ?? loadRenumberDisclosures()
 
-  await client.query(TRACKER_DDL)
+  await ensureMigrationTracker(client)
   await client.query(TRACKER_IDENTITY_DDL)
   const allFiles = collectMigrationFiles(dirs)
   if (only && only.size === 0) throw new Error('--only requires at least one migration filename')
