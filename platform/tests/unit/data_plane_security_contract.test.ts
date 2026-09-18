@@ -600,6 +600,8 @@ describe('DP-SD-018 deployment ordering', () => {
     const routineIsolation = migrate.steps?.find((step) => step.name === 'Verify data-plane secret and runtime isolation')
     expect(routineIsolation?.env?.GOOGLE_CLOUD_REGION).toBe('${{ env.GCP_REGION }}')
     expect(routineIsolation?.env?.GCP_REGION).toBeUndefined()
+    expect(routineIsolation?.env?.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL)
+      .toBe('${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}')
     expect(routineStepNames.indexOf('Re-attest protected data-plane semantic state with routine credential'))
       .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
     expect(routineStepNames.indexOf('Re-attest Nirmana evidence ownership state with routine credential'))
