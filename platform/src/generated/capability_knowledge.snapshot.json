@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T07:02:36.000Z",
-  "content_hash": "sha256:7da94f9633593e74a250efe26e2974c019d0c8b85944e17a48a237200d2036a9",
+  "generated_at": "2026-09-18T07:47:15.000Z",
+  "content_hash": "sha256:e668d7f7260a147968934b936edd0eefd497e8b582a0a1b1b3058f2a5a6ea533",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:09465ddb58e6c00317b5cb672802e654626373b66df9ec200a17bad293031c1f",
+  "semantic_review_fingerprint": "sha256:2e6e017680866302ab8c0258fc531731044c01377ea2aedc73ccfad056c07ad3",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -19883,6 +19883,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_muhurta_lattice",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-muhurta-lattice:v1",
+              "capability_uri": "marsys://tool/L0/query_muhurta_lattice",
+              "contract_sha256": "sha256:652838a0e6794ee6cb60fe8a75bad793c6926693965e4a4bea13109105c886fa",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147 | platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85 | platform/supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql:77-93"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -27835,6 +27850,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_transit_moorti",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-transit-moorti:v1",
+              "capability_uri": "marsys://tool/L0/query_transit_moorti",
+              "contract_sha256": "sha256:91e9069d3a44e9830af83e00de97efae8d37698706df1c5e3e5ca2eb18c1ef71",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73 | platform/supabase/migrations/401_bg_transit_moorti.sql:10-20"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

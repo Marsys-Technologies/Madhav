@@ -202,6 +202,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_prashna_fructification_rules', 'source-query:query-prashna-fructification-rules:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:45-52'],
     ['scu.catalog.query_prashna_special_techniques', 'source-query:query-prashna-special-techniques:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:54-62'],
     ['scu.catalog.query_class_priors', 'source-query:query-class-priors:v1', 'platform/supabase/migrations/387_brahma_class_priors.sql:18-31'],
+    ['scu.catalog.query_muhurta_lattice', 'source-query:query-muhurta-lattice:v1', 'platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85'],
+    ['scu.catalog.query_transit_moorti', 'source-query:query-transit-moorti:v1', 'platform/supabase/migrations/401_bg_transit_moorti.sql:10-20'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -454,6 +456,51 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toContain('chart_id')
   })
 
+  it('preserves the muhūrta overlap projection without claiming horizon coverage, population, or citation density', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-muhurta-lattice:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT factor_family, factor_key, start_utc, end_utc, detail,')
+    expect(contract.sql).toContain('source_citation, corpus_status')
+    expect(contract.sql).toContain('start_utc < NULL::timestamp')
+    expect(contract.sql).toContain('end_utc > NULL::timestamp')
+    expect(contract.sql).toContain('factor_family = NULL::text')
+    expect(contract.sql).toContain('factor_key = NULL::text')
+    expect(contract.sql).toContain('ORDER BY start_utc, factor_family, factor_key')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\bcorpus_status\s*(?:=|IN)\b/i)
+    expect(contract.sql).not.toContain('computed_cited')
+    expect(contract.sql).not.toContain('computed_uncited_convention')
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
+  it('preserves the Transit Moorti source query without borrowing the composite transit-rules digest', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-transit-moorti:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT nakshatra_offset, moorti_name, quality_tier, phala_brief, classical_citation, rule_notes')
+    expect(contract.sql).toContain('nakshatra_offset = NULL::integer')
+    expect(contract.sql).toContain('LOWER(moorti_name) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY nakshatra_offset')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toContain('bg_transit_rules')
+    expect(contract.source_refs.join(' | ')).not.toContain('600_nirmana_l0_wave0_output_digest_specs.sql')
+    expect(contract.source_refs.join(' | ')).not.toContain('bg_transit_rules.py')
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
@@ -467,6 +514,8 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_prashna_fructification_rules',
     'scu.catalog.query_prashna_special_techniques',
     'scu.catalog.query_class_priors',
+    'scu.catalog.query_muhurta_lattice',
+    'scu.catalog.query_transit_moorti',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])
