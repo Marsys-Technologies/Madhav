@@ -414,7 +414,8 @@ describe('first-slice availability coverage', () => {
       gaps: [],
     })
 
-    const sourceCall = calls.find((call) => call.sql.includes(`FROM ${relation}`))
+    const sourceCall = calls.find((call) => call.sql.includes(`FROM ${relation}`)
+      && sqlMarkers.every((marker) => call.sql.includes(marker)))
     expect(sourceCall).toBeDefined()
     for (const marker of sqlMarkers) expect(sourceCall?.sql).toContain(marker)
     expect(sourceCall?.sql).toContain('LIMIT 0')
@@ -422,7 +423,9 @@ describe('first-slice availability coverage', () => {
 
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
       if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
-      if (sql.includes(`FROM ${relation}`)) throw new Error('permission denied')
+      if (sql.includes(`FROM ${relation}`) && sqlMarkers.every((marker) => sql.includes(marker))) {
+        throw new Error('permission denied')
+      }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
     expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
