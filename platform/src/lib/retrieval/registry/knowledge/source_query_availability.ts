@@ -1892,6 +1892,41 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/002_ganita_divisionals.sql:31-65',
     ],
   },
+  {
+    contract_id: 'source-query:get-vichara:v1',
+    descriptor_name: 'get_vichara',
+    capability_uri: 'marsys://tool/L1/get_vichara',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, chart_id, ayanamsha_id, build_id, vichara_family, subject, domain, varga_id,
+                   value_num, value_text, value_jsonb, constituent_fact_ids, formula_version,
+                   source_citation, computed_at
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+             ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+          ), family_counts_probe AS (
+            SELECT vichara_family, COUNT(*)::text AS n
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+             GROUP BY vichara_family
+             LIMIT 0
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count
+            CROSS JOIN family_counts_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:151-176',
+      'platform/migrations/435_ga_vichara.sql:44-83',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
