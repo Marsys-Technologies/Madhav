@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildNativeSurrogateHandoff,
   DEFAULT_CI_RUNTIME_POLICY,
   evaluateQueueObservation,
   type QueueSupervisorObservation,
@@ -88,12 +89,25 @@ describe('merge-queue supervisor', () => {
   })
 
   it('escalates a repeated deterministic fingerprint to the Native Surrogate', () => {
-    const result = evaluateQueueObservation(observation({
+    const sourceObservation = observation({
       failureFingerprint: 'migration:1040:owner-membership',
       identicalFailureAttempts: DEFAULT_CI_RUNTIME_POLICY.maxIdenticalFailureAttempts,
-    }))
+    })
+    const result = evaluateQueueObservation(sourceObservation)
 
     expect(result.action).toBe('dispatch_native_surrogate')
+    expect(buildNativeSurrogateHandoff(sourceObservation, result)).toMatchObject({
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'high',
+      exactSha: SHA,
+      failureFingerprint: 'migration:1040:owner-membership',
+      resumeState: 'ci_running',
+    })
+  })
+
+  it('does not emit a surrogate handoff for ordinary CI waiting', () => {
+    const sourceObservation = observation()
+    expect(buildNativeSurrogateHandoff(sourceObservation)).toBeUndefined()
   })
 
   it('keeps an authority absence scoped to release and does not call it a general failure', () => {
