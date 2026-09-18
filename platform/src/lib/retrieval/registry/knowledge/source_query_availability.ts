@@ -1455,6 +1455,32 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-sade-sati:v1',
+    descriptor_name: 'get_sade_sati',
+    capability_uri: 'marsys://tool/L1/get_sade_sati',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',
+               'sade_sati_modifier_overlay', 'sade_sati_cancellation_check',
+               'sade_sati_concurrent_dasha_overlay', 'sade_sati_downstream_cross_reference',
+               'sade_sati_saturn_retrograde_subset', 'janma_shani_period',
+               'anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period',
+               'dhaiya_period', 'vishakha_shani_period', 'kantaka_shani_period'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, fact_id
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
