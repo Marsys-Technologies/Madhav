@@ -235,6 +235,49 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-avastha-schemes:v1',
+    descriptor_name: 'query_avastha_schemes',
+    capability_uri: 'marsys://tool/L0/query_avastha_schemes',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT scheme_name, state_name, state_order, determination_rule,
+                 classical_citation, notes
+            FROM bg_avastha_schemes
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(scheme_name) = LOWER(NULL::text))
+             AND (NULL::text IS NULL OR LOWER(state_name) = LOWER(NULL::text))
+           ORDER BY scheme_name, state_order
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:48-66',
+      'platform/migrations/250_bg_dignity_reference.sql:239-256',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:474-499',
+      'platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-combustion-orbs:v1',
+    descriptor_name: 'query_combustion_orbs',
+    capability_uri: 'marsys://tool/L0/query_combustion_orbs',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT graha, orb_degrees, deep_orb_degrees, retrograde_note,
+                 classical_citation
+            FROM bg_combustion_orbs
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+           ORDER BY graha
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts:51-68',
+      'platform/migrations/250_bg_dignity_reference.sql:484-497',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:501-516',
+      'platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:187',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

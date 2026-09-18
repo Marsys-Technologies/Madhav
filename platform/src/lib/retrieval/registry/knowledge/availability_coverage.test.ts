@@ -435,6 +435,79 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it.each([
+    {
+      scuId: 'scu.catalog.query_avastha_schemes',
+      bindingId: 'registry:marsys://tool/L0/query_avastha_schemes',
+      contractId: 'source-query:query-avastha-schemes:v1',
+      relationMarker: 'FROM bg_avastha_schemes',
+      sqlMarkers: [
+        'SELECT scheme_name, state_name, state_order, determination_rule',
+        'classical_citation, notes',
+        'LOWER(scheme_name) = LOWER(NULL::text)',
+        'LOWER(state_name) = LOWER(NULL::text)',
+        'ORDER BY scheme_name, state_order',
+      ],
+    },
+    {
+      scuId: 'scu.catalog.query_combustion_orbs',
+      bindingId: 'registry:marsys://tool/L0/query_combustion_orbs',
+      contractId: 'source-query:query-combustion-orbs:v1',
+      relationMarker: 'FROM bg_combustion_orbs',
+      sqlMarkers: [
+        'SELECT graha, orb_degrees, deep_orb_degrees, retrograde_note',
+        'classical_citation',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'ORDER BY graha',
+      ],
+    },
+  ])('probes $scuId with honest zero-row availability and fails closed on source errors', async ({
+    scuId, bindingId, contractId, relationMarker, sqlMarkers,
+  }) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: contractId,
+        contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        scope: 'global',
+      })],
+    })])
+    expect(scu.producer_output_claims ?? []).toEqual([])
+    expect(scu.availability_dispositions ?? []).toEqual([])
+
+    const calls: Array<{ sql: string; params: readonly unknown[] }> = []
+    const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
+      calls.push({ sql, params })
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available',
+      available_binding_ids: [bindingId],
+      asset_receipts: [],
+      gaps: [],
+    })
+
+    const sourceCall = calls.find((call) => call.sql.includes(relationMarker))
+    expect(sourceCall).toBeDefined()
+    for (const marker of sqlMarkers) expect(sourceCall?.sql).toContain(marker)
+    expect(sourceCall?.sql).toContain('LIMIT 0')
+    expect(sourceCall?.params).toEqual([])
+
+    for (const errorMessage of ['permission denied', 'relation does not exist', 'syntax error']) {
+      const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (sql.includes(relationMarker)) throw new Error(errorMessage)
+        return { rows: [] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+      expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: [`${contractId} could not execute its authenticated source query.`],
+      })
+    }
+  })
+
   it('activates query_formula_constants only from a fresh, matching global formula-constants receipt', async () => {
     const scu = findScu('scu.catalog.query_formula_constants')
     const bindingId = 'registry:marsys://tool/L0/query_formula_constants'
