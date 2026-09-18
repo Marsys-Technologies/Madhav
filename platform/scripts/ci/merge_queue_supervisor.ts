@@ -81,6 +81,41 @@ export interface SupervisorDecision {
   stallConfirmed: boolean
 }
 
+/**
+ * An executable handoff envelope for the task runtime.  This is deliberately a
+ * data contract, rather than an in-process model call: CI runs must not receive
+ * an ambient model credential or acquire permission to perform a release.
+ *
+ * A conductor dispatches this envelope only when `SupervisorDecision.action` is
+ * `dispatch_native_surrogate`, waits for the bounded ruling, then resumes the
+ * original task at `resumeState`.  The surrogate is an adjudicator, not a new
+ * owner of the campaign.
+ */
+export interface NativeSurrogateHandoff {
+  model: 'gpt-5.6-sol'
+  reasoningEffort: 'high'
+  goal: string
+  exactSha: string
+  state: CampaignExecutionState
+  failureFingerprint: string
+  attemptHistory: {
+    identicalFailureAttempts: number
+    transientRetries: number
+  }
+  evidence: string[]
+  safeActions: string[]
+  authorityBoundary: string
+  requiredReturnFields: Array<
+    'decision'
+    | 'rationale'
+    | 'authorized_next_action'
+    | 'disallowed_actions'
+    | 'required_verifier'
+    | 'resume_state'
+  >
+  resumeState: CampaignExecutionState
+}
+
 function parseTime(value: string | undefined, label: string): number | undefined {
   if (!value) return undefined
   const parsed = Date.parse(value)
@@ -93,6 +128,51 @@ function minutesSince(now: string, then: string | undefined, label: string): num
   const thenMs = parseTime(then, label)
   if (nowMs === undefined || thenMs === undefined) return undefined
   return Math.max(0, (nowMs - thenMs) / 60_000)
+}
+
+/**
+ * Builds the complete, least-privilege packet the task runtime can send to the
+ * configured GPT-5.6 Sol/high Native Surrogate.  It refuses non-surrogate
+ * decisions so ordinary CI latency cannot accidentally create a handoff.
+ */
+export function buildNativeSurrogateHandoff(
+  observation: QueueSupervisorObservation,
+  decision = evaluateQueueObservation(observation),
+): NativeSurrogateHandoff | undefined {
+  if (decision.action !== 'dispatch_native_surrogate' || !observation.failureFingerprint) return undefined
+
+  return {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'high',
+    goal: 'Resolve the bounded campaign ambiguity without expanding authority; return a decision packet so the original task can resume.',
+    exactSha: observation.sha,
+    state: observation.state,
+    failureFingerprint: observation.failureFingerprint,
+    attemptHistory: {
+      identicalFailureAttempts: observation.identicalFailureAttempts ?? 0,
+      transientRetries: observation.transientRetries ?? 0,
+    },
+    evidence: [
+      `supervisor_reason:${decision.reason}`,
+      `observed_at:${observation.now}`,
+      `progress_fingerprint:${observation.progressFingerprint ?? 'not-recorded'}`,
+    ],
+    safeActions: [
+      'inspect exact-SHA evidence and governing constraints',
+      'select one reversible, charter-scoped next action',
+      'name an independent verifier before resumption',
+    ],
+    authorityBoundary: 'Do not create credentials, grant IAM, deploy, alter traffic, or substitute for an unprovisioned external authority.',
+    requiredReturnFields: [
+      'decision',
+      'rationale',
+      'authorized_next_action',
+      'disallowed_actions',
+      'required_verifier',
+      'resume_state',
+    ],
+    resumeState: observation.state,
+  }
 }
 
 /**
