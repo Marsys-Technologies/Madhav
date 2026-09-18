@@ -1561,6 +1561,44 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68',
     ],
   },
+  {
+    contract_id: 'source-query:get-graha-yuddha:v1',
+    descriptor_name: 'get_graha_yuddha',
+    capability_uri: 'marsys://tool/L1/get_graha_yuddha',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH floor_facts_probe AS (
+            SELECT fact_id, fact_subject, fact_key, ayanamsha_id, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = 'graha_yuddha'
+             ORDER BY ayanamsha_id, fact_subject, fact_key
+             LIMIT 0
+          ), birth_date_probe AS (
+            SELECT birth_date
+              FROM charts
+             WHERE id = $1::uuid
+             LIMIT 0
+          ), latitude_probe AS (
+            SELECT e.body, e.latitude
+              FROM charts c
+              JOIN ephemeris_daily e ON e.date = c.birth_date
+             WHERE c.id = $1::uuid
+               AND e.ayanamsha_id = 'tropical'
+             LIMIT 0
+          )
+          SELECT 1
+            FROM floor_facts_probe
+            CROSS JOIN birth_date_probe
+            CROSS JOIN latitude_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:165-218',
+      'platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/migrations/ws2_l0_ephemeris.sql:18-45',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
