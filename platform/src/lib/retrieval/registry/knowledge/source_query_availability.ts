@@ -405,6 +405,52 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-prashna-lagna-methods:v1',
+    descriptor_name: 'query_prashna_lagna_methods',
+    capability_uri: 'marsys://tool/L0/query_prashna_lagna_methods',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT method_id, method_name, method_name_sa, derivation_rule, derivation_rule_jsonb,
+                 classical_citation, is_primary, tradition
+            FROM bg_prashna_lagna_methods
+           WHERE 1=1
+             AND (NULL::text IS NULL OR method_id = NULL::text)
+             AND (NULL::text IS NULL OR LOWER(tradition) = LOWER(NULL::text))
+           ORDER BY method_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63',
+      'platform/migrations/261_bg_prashna_rules_schema.sql:6-16',
+      'platform/python-sidecar/brahmagyan/l0_prashna.py:804-831',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
+      'platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:27-34',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-prashna-tajik-yogas:v1',
+    descriptor_name: 'query_prashna_tajik_yogas',
+    capability_uri: 'marsys://tool/L0/query_prashna_tajik_yogas',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT yoga_id, yoga_name, yoga_name_sa, judgment_meaning, formation_rule,
+                 formation_rule_jsonb, classical_citation, is_fructification_indicator
+            FROM bg_prashna_tajik_yogas
+           WHERE 1=1
+             AND (NULL::text IS NULL OR yoga_id = NULL::text)
+             AND (NULL::boolean IS NULL OR is_fructification_indicator = NULL::boolean)
+           ORDER BY yoga_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64',
+      'platform/migrations/261_bg_prashna_rules_schema.sql:19-29',
+      'platform/python-sidecar/brahmagyan/l0_prashna.py:833-860',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
+      'platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:35-43',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
