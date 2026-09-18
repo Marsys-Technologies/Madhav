@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T03:04:13.000Z",
-  "content_hash": "sha256:b694f859b3c083424829018c85f1ede3a8abdce9e7d2585ca851e5a36bbd3653",
+  "generated_at": "2026-09-18T03:40:18.000Z",
+  "content_hash": "sha256:8a46b20dff321bf8eda54f8b9529876e402e5440ab9bd337155ede6bbf0841a4",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:de750c726d4fbb1382fba5626433e0ab5cb257463c223e15b6f01e1c0953131f",
+  "semantic_review_fingerprint": "sha256:8d2a1f52c9d856b5c27a3308d398e15176686ae35483a75e25c010c155b13456",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -28381,6 +28381,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_vastu_direction_remedials",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-vastu-direction-remedials:v1",
+              "capability_uri": "marsys://tool/L0/query_vastu_direction_remedials",
+              "contract_sha256": "sha256:991bccbb12315c3c841ca636a844d838ab855e15635fc4e1faa0745209d2b00d",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:45-64 | platform/migrations/284_bg_vastu_directions.sql:37-89 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:31-38"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28534,6 +28549,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_vastu_directions",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-vastu-directions:v1",
+              "capability_uri": "marsys://tool/L0/query_vastu_directions",
+              "contract_sha256": "sha256:e70a26e6a4c68a0aac1188c108bcca080d20ea464d49edc2b2012d484c080095",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
