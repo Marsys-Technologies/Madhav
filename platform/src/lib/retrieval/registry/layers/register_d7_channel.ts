@@ -1661,14 +1661,14 @@ const readRemedyCapability: CapabilityDescriptor = {
   description: [
     'Fetch the full record for a single remedy by remedy_id from brahma_remedy_corpus.',
     'Returns all columns including ingredients_jsonb and timing_rules_jsonb.',
-    'remedy_id is required (UUID).',
+    'remedy_id is required (stable TEXT remedy slug, e.g. sat_career_mantra_01).',
     'Registry equivalent of lib/retrieve/remedy_tools.ts::read_remedy (D7 gap fill).',
   ].join(' '),
 
   input_schema: {
     remedy_id: {
       type: 'string',
-      description: 'UUID of the remedy to fetch. Required.',
+      description: 'Stable TEXT remedy slug to fetch (for example, sat_career_mantra_01). Required.',
       required: true,
     },
   },
@@ -1697,7 +1697,18 @@ const readRemedyCapability: CapabilityDescriptor = {
     try {
       // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
-      const result = await query('SELECT * FROM brahma_remedy_corpus WHERE remedy_id = $1', [remedy_id])
+      const result = await query(
+        `SELECT id, remedy_id, planet, domain, remedy_type,
+                prescription_text, mantra_text, gemstone, charity_action,
+                day_of_week, color_associated, confidence,
+                source_canonical_id, source_citation, classical_ref, created_at,
+                category, deity, mantra_sanskrit, mantra_transliteration,
+                ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,
+                classical_attestation_text, scaffold_status
+           FROM brahma_remedy_corpus
+          WHERE remedy_id = $1`,
+        [remedy_id],
+      )
       const row = result.rows[0] ?? null
       return {
         content: { remedy_id, remedy: row, found: row !== null },
