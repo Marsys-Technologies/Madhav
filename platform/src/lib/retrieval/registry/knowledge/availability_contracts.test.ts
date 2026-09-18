@@ -196,6 +196,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_vastu_direction_remedials', 'source-query:query-vastu-direction-remedials:v1', 'platform/migrations/284_bg_vastu_directions.sql:37-89'],
     ['scu.catalog.query_graha_dik', 'source-query:query-graha-dik:v1', 'platform/migrations/304_bg_graha_dik.sql:22-32'],
     ['scu.catalog.query_shashtiamsha_deities', 'source-query:query-shashtiamsha-deities:v1', 'platform/supabase/migrations/430_bg_shashtiamsha_deities.sql:34-42'],
+    ['scu.catalog.query_prashna_lagna_methods', 'source-query:query-prashna-lagna-methods:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:6-16'],
+    ['scu.catalog.query_prashna_tajik_yogas', 'source-query:query-prashna-tajik-yogas:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:19-29'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -330,6 +332,46 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toContain('chart_id')
   })
 
+  it('preserves the complete Prashna-lagna method projection and open tradition filter', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-prashna-lagna-methods:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT method_id, method_name, method_name_sa, derivation_rule, derivation_rule_jsonb,')
+    expect(contract.sql).toContain('classical_citation, is_primary, tradition')
+    expect(contract.sql).toContain('method_id = NULL::text')
+    expect(contract.sql).toContain('LOWER(tradition) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY method_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\btradition\s+IN\s*\(/i)
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
+  it('preserves the complete Tajik-yoga projection and typed false-capable indicator filter', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-prashna-tajik-yogas:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT yoga_id, yoga_name, yoga_name_sa, judgment_meaning, formation_rule,')
+    expect(contract.sql).toContain('formation_rule_jsonb, classical_citation, is_fructification_indicator')
+    expect(contract.sql).toContain('yoga_id = NULL::text')
+    expect(contract.sql).toContain('NULL::boolean IS NULL OR is_fructification_indicator = NULL::boolean')
+    expect(contract.sql).toContain('ORDER BY yoga_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toContain('COALESCE(is_fructification_indicator')
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
@@ -337,6 +379,8 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_vastu_direction_remedials',
     'scu.catalog.query_graha_dik',
     'scu.catalog.query_shashtiamsha_deities',
+    'scu.catalog.query_prashna_lagna_methods',
+    'scu.catalog.query_prashna_tajik_yogas',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])

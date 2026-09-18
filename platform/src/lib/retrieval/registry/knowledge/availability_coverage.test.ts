@@ -466,6 +466,34 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts:62-66',
     },
+    {
+      scuId: 'scu.catalog.query_prashna_lagna_methods',
+      bindingId: 'registry:marsys://tool/L0/query_prashna_lagna_methods',
+      contractId: 'source-query:query-prashna-lagna-methods:v1',
+      relation: 'bg_prashna_lagna_methods',
+      sqlMarkers: [
+        'SELECT method_id, method_name, method_name_sa, derivation_rule, derivation_rule_jsonb',
+        'classical_citation, is_primary, tradition',
+        'method_id = NULL::text',
+        'LOWER(tradition) = LOWER(NULL::text)',
+        'ORDER BY method_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63',
+    },
+    {
+      scuId: 'scu.catalog.query_prashna_tajik_yogas',
+      bindingId: 'registry:marsys://tool/L0/query_prashna_tajik_yogas',
+      contractId: 'source-query:query-prashna-tajik-yogas:v1',
+      relation: 'bg_prashna_tajik_yogas',
+      sqlMarkers: [
+        'SELECT yoga_id, yoga_name, yoga_name_sa, judgment_meaning, formation_rule',
+        'formation_rule_jsonb, classical_citation, is_fructification_indicator',
+        'yoga_id = NULL::text',
+        'NULL::boolean IS NULL OR is_fructification_indicator = NULL::boolean',
+        'ORDER BY yoga_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -486,7 +514,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_vastu_directions'
       || scuId === 'scu.catalog.query_vastu_direction_remedials'
       || scuId === 'scu.catalog.query_graha_dik'
-      || scuId === 'scu.catalog.query_shashtiamsha_deities') {
+      || scuId === 'scu.catalog.query_shashtiamsha_deities'
+      || scuId === 'scu.catalog.query_prashna_lagna_methods'
+      || scuId === 'scu.catalog.query_prashna_tajik_yogas') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 

@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T04:19:12.000Z",
-  "content_hash": "sha256:20b912db428a52b4a80ed4c07c858ba7be3904a8a060b4a8465cbff01c4ed715",
+  "generated_at": "2026-09-18T05:00:01.000Z",
+  "content_hash": "sha256:b1b58d4d6e4b1f99afc6b82916e81005d06992797bd84a342a2e0e98d2432c1c",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:2aa95713cfbe8903edcf05d4e9d81555e84147426e9162005e47306933a4937f",
+  "semantic_review_fingerprint": "sha256:bd1ba30d090ba0bdd80e212c7849c89d5b5014f7cd51e4fe813bbba1842a2a48",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -21263,6 +21263,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_prashna_lagna_methods",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-prashna-lagna-methods:v1",
+              "capability_uri": "marsys://tool/L0/query_prashna_lagna_methods",
+              "contract_sha256": "sha256:6f1f42400e170887ab43956114839416076ae3e967f30055f2862f4202be9c7e",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63 | platform/migrations/261_bg_prashna_rules_schema.sql:6-16 | platform/python-sidecar/brahmagyan/l0_prashna.py:804-831 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:27-34"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -21726,6 +21741,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_prashna_tajik_yogas",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-prashna-tajik-yogas:v1",
+              "capability_uri": "marsys://tool/L0/query_prashna_tajik_yogas",
+              "contract_sha256": "sha256:03d996c2842e5a22859e88fd8cf284d0a2a44549f6fd63885ee6d8952fd42c36",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64 | platform/migrations/261_bg_prashna_rules_schema.sql:19-29 | platform/python-sidecar/brahmagyan/l0_prashna.py:833-860 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:35-43"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
