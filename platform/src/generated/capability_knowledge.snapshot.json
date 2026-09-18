@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T22:10:27.000Z",
-  "content_hash": "sha256:254d673fd004c1eecca963739a3a848d3b6293e82eed5bb0257312f79992f75e",
+  "generated_at": "2026-09-18T22:13:13.000Z",
+  "content_hash": "sha256:b8cad5712e35a4e2d823e5ff92ddb4ece83b8204a7ca81a5973d85f762ad7881",
   "source_catalog_fingerprint": "sha256:3e8a6c033915aef75dec1ae0b7cf80927bacf05fc0ee220cdf7eb04743946985",
-  "semantic_review_fingerprint": "sha256:3004afb90d3ba948ad6240755949425673843c5ee580d8c0ed0846bcef6d11b5",
+  "semantic_review_fingerprint": "sha256:2034121ad2f66c9ae1c6b58bfaad01e8e7418f4d8eacd1a6b268ab94fb7ca04e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -9363,6 +9363,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_tara_chandra_bala",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-tara-chandra-bala:v1",
+              "capability_uri": "marsys://tool/L1/get_tara_chandra_bala",
+              "contract_sha256": "sha256:9947cadeb0500ae99b69c522ac5ed3f36e137e8847175db715f2462783276271",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
