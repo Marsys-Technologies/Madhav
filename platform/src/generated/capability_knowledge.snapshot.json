@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T00:54:40.000Z",
-  "content_hash": "sha256:1ad250287ba028222a8f30660948b5c1f49fed20af44be5ed622dd47a3e5b443",
+  "generated_at": "2026-09-18T01:27:15.000Z",
+  "content_hash": "sha256:f3414de526368cb52e822235ed7456264ae641a4f4aee32b7a1eb89b7ea99efc",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:952a8e7bff58328cc39f79503abc540ed20ca9c8f0977bd70cd411a92c8c19f1",
+  "semantic_review_fingerprint": "sha256:3e1e0a94256ed486f8ecd0e9c08262805bd1b4f1e39470b9fc2b674b06496ee2",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -10797,6 +10797,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/list_classical_texts",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:list-classical-texts:v1",
+              "capability_uri": "marsys://tool/L0/list_classical_texts",
+              "contract_sha256": "sha256:9f063320847dccd2d97052402bc8abe76a42efe2a48437d9a6c19780ce55faef",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -10951,6 +10966,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/list_entities",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:list-entities:v1",
+              "capability_uri": "marsys://tool/L0/list_entities",
+              "contract_sha256": "sha256:b78f7dfa07b2a34387b9d830e8d4eafd96f007684152233b5aa0b8889b763510",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:136-160 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:17 | platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
