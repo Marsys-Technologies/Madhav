@@ -1927,6 +1927,33 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/435_ga_vichara.sql:44-83',
     ],
   },
+  {
+    contract_id: 'source-query:get-structural:v1',
+    descriptor_name: 'get_structural',
+    capability_uri: 'marsys://tool/L1/get_structural',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
+               'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy',
+               'graha_centrality', 'chart_cluster', 'chart_center_of_gravity', 'significator_path',
+               'aspect_received_by_special_point', 'nway_config_per_varga', 'graha_yuddha_per_varga',
+               'kendradhipati_dosha', 'bhava_significance_link', 'net_argala_per_varga', 'panchadha_maitri',
+               'tara_bala'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
