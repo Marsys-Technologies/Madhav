@@ -12,6 +12,10 @@ vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 
 import { queryPariharaGraphCapability } from '../query_parihara_graph'
 
+function normalizedSql(sql: string): string {
+  return sql.replace(/\s+/g, ' ').trim()
+}
+
 function pariharaRow(over: Record<string, unknown> = {}) {
   return {
     dosha_canonical_id: 'manglik_dosha',
@@ -31,6 +35,108 @@ function pariharaRow(over: Record<string, unknown> = {}) {
 
 describe('queryPariharaGraphCapability', () => {
   beforeEach(() => { mockQuery.mockReset() })
+
+  it('freezes the exact filtered parihara projection, predicate, parameters, and ordering', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ real_cited: '0', placeholder_only: '0' }] })
+
+    await queryPariharaGraphCapability.handler({
+      section: 'parihara_rules',
+      dosha_canonical_id: 'manglik_dosha',
+    }, undefined)
+
+    expect(normalizedSql(mockQuery.mock.calls[0][0] as string)).toBe(normalizedSql(`
+      SELECT dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index,
+             cancellation_condition_text, net_standing, scope,
+             source_text_id, source_chapter, source_citation, extraction_context
+        FROM bg_parihara_rules
+       WHERE 1=1 AND dosha_canonical_id = $1
+       ORDER BY dosha_canonical_id, cancellation_index
+    `))
+    expect(mockQuery.mock.calls[0][1]).toEqual(['manglik_dosha'])
+  })
+
+  it('freezes the exact filtered activity projection, predicate, parameters, and ordering', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await queryPariharaGraphCapability.handler({
+      section: 'activity_rules',
+      activity_class: 'vivah',
+    }, undefined)
+
+    expect(normalizedSql(mockQuery.mock.calls[0][0] as string)).toBe(normalizedSql(`
+      SELECT activity_class, factor_type, factor_id, quality_score, source_citation
+        FROM bg_muhurta_activity_rules
+       WHERE 1=1 AND activity_class = $1
+       ORDER BY activity_class, factor_type, factor_id
+    `))
+    expect(mockQuery.mock.calls[0][1]).toEqual(['vivah'])
+  })
+
+  it('freezes the exact filtered census projection, predicate, parameters, and ordering', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await queryPariharaGraphCapability.handler({
+      section: 'factor_census',
+      disposition: 'not_in_corpus',
+    }, undefined)
+
+    expect(normalizedSql(mockQuery.mock.calls[0][0] as string)).toBe(normalizedSql(`
+      SELECT factor_family, factor_name, disposition, citation_or_gap_note,
+             evidence_pointer, school_tag
+        FROM bg_muhurta_factor_census
+       WHERE 1=1 AND disposition = $1
+       ORDER BY factor_family, factor_name
+    `))
+    expect(mockQuery.mock.calls[0][1]).toEqual(['not_in_corpus'])
+  })
+
+  it('freezes the unqualified all-section path and exact density-split query', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ real_cited: '0', placeholder_only: '0' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const result = await queryPariharaGraphCapability.handler({}, undefined)
+
+    expect((result.content as Record<string, unknown>)['sections_returned']).toEqual([
+      'parihara_rules', 'activity_rules', 'factor_census',
+    ])
+    expect(mockQuery).toHaveBeenCalledTimes(4)
+    expect(mockQuery.mock.calls.map((call) => call[1])).toEqual([[], [], [], []])
+    expect(normalizedSql(mockQuery.mock.calls[0][0] as string)).toContain(
+      'FROM bg_parihara_rules WHERE 1=1 ORDER BY dosha_canonical_id, cancellation_index',
+    )
+    expect(normalizedSql(mockQuery.mock.calls[1][0] as string)).toBe(normalizedSql(`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE cancellation_conditions IS NOT NULL
+            AND classical_citations IS NOT NULL
+            AND jsonb_typeof(classical_citations) = 'array'
+            AND EXISTS (
+              SELECT 1 FROM jsonb_array_elements(classical_citations) elem
+              WHERE elem->>'text_id' IS NOT NULL AND elem->>'text_id' <> 'classical_tradition')
+        ) AS real_cited,
+        COUNT(*) FILTER (
+          WHERE cancellation_conditions IS NOT NULL
+            AND NOT (
+              classical_citations IS NOT NULL
+              AND jsonb_typeof(classical_citations) = 'array'
+              AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(classical_citations) elem
+                WHERE elem->>'text_id' IS NOT NULL AND elem->>'text_id' <> 'classical_tradition'))
+        ) AS placeholder_only
+      FROM brahma_dosha_catalog
+    `))
+    expect(normalizedSql(mockQuery.mock.calls[2][0] as string)).toContain(
+      'FROM bg_muhurta_activity_rules WHERE 1=1 ORDER BY activity_class, factor_type, factor_id',
+    )
+    expect(normalizedSql(mockQuery.mock.calls[3][0] as string)).toContain(
+      'FROM bg_muhurta_factor_census WHERE 1=1 ORDER BY factor_family, factor_name',
+    )
+  })
 
   it('reports the placeholder/real-cited doṣa split from a LIVE query, not a literal', async () => {
     mockQuery
