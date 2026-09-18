@@ -1705,6 +1705,34 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/435_ga_vichara.sql:44-83',
     ],
   },
+  {
+    contract_id: 'source-query:get-medical-indications:v1',
+    descriptor_name: 'get_medical_indications',
+    capability_uri: 'marsys://tool/L1/get_medical_indications',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, graha, ayanamsha_id, natal_sign, natal_nakshatra, indication_strength,
+                   dosha_aggravated, organ_watch, body_part_watch, nakshatra_body_part,
+                   indication_tier, not_diagnosis, classical_citation
+              FROM ga_medical
+             WHERE chart_id = $1::uuid
+             ORDER BY graha, ayanamsha_id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_medical
+             WHERE chart_id = $1::uuid
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:76-95',
+      'platform/migrations/279_ga_medical.sql:21-55',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
