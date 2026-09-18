@@ -92,13 +92,25 @@ export interface QualitativeAssessment {
 }
 
 export interface ApprovedEnvironmentConfig {
-  readonly schema_version: 'purna-product-acceptance-environment/v1'
+  readonly schema_version: 'purna-product-acceptance-environment/v2'
   readonly environment: AcceptanceEnvironment
   readonly base_url: string
   readonly revision: string
   readonly authorization: {
     readonly mode: 'approved_non_secret'
     readonly approval_id: string
+  }
+  /**
+   * Independent acceptance-side anchor. This config is governed separately
+   * from the judged artifact; artifact-supplied authority is never sufficient.
+   * This is not a signature: trust terminates at the externally approved
+   * config, and source validation must not be reported as external approval.
+   */
+  readonly judge_authority: {
+    readonly mode: 'approved_non_secret'
+    readonly approval_id: string
+    readonly model_id: string
+    readonly judged_artifact_hash: string
   }
   /** A fixture may support deterministic tests but is never live/candidate evidence. */
   readonly evidence_mode: 'candidate_or_live' | 'fixture'
@@ -464,12 +476,18 @@ export function casesForSuite(protocol: ProductAcceptanceProtocol, suite: Accept
 export function validateEnvironmentConfig(value: unknown, environment: AcceptanceEnvironment): ApprovedEnvironmentConfig {
   if (!isObject(value)) throw new Error('PRODUCT_ACCEPTANCE_ENV_CONFIG_INVALID')
   const config = value as unknown as ApprovedEnvironmentConfig
-  if (config.schema_version !== 'purna-product-acceptance-environment/v1'
+  if (config.schema_version !== 'purna-product-acceptance-environment/v2'
     || config.environment !== environment
     || typeof config.revision !== 'string' || config.revision.trim().length < 7
     || !isObject(config.authorization)
     || config.authorization.mode !== 'approved_non_secret'
     || typeof config.authorization.approval_id !== 'string' || config.authorization.approval_id.trim().length === 0
+    || !isObject(config.judge_authority)
+    || config.judge_authority.mode !== 'approved_non_secret'
+    || typeof config.judge_authority.approval_id !== 'string' || config.judge_authority.approval_id.trim().length === 0
+    || typeof config.judge_authority.model_id !== 'string' || config.judge_authority.model_id.trim().length === 0
+    || typeof config.judge_authority.judged_artifact_hash !== 'string'
+    || !/^sha256:[a-f0-9]{64}$/.test(config.judge_authority.judged_artifact_hash)
     || (config.evidence_mode !== 'candidate_or_live' && config.evidence_mode !== 'fixture')) {
     throw new Error('PRODUCT_ACCEPTANCE_ENV_CONFIG_INVALID')
   }

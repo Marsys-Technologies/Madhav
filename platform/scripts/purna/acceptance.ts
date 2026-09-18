@@ -13,10 +13,15 @@ import {
   validateProtocol,
 } from './acceptance_cases'
 import { scoreAnswers, type AcceptanceFailure, type CaseScore } from './score_answers'
+import {
+  accountableAnswersHash,
+  answersFromCollection,
+  validateAccountableAnswersArtifact,
+  type AccountableAnswersArtifact,
+} from './answers_from_collection'
+import { validateCollectionArtifact, type AcceptanceDoor } from './collection_types'
 
-export interface AcceptanceInputFile {
-  readonly answers: readonly AcceptanceAnswer[]
-}
+export type AcceptanceInputFile = AccountableAnswersArtifact
 
 export interface AcceptanceRunRecord {
   readonly schema_version: typeof PRODUCT_ACCEPTANCE_RUN_VERSION
@@ -26,7 +31,16 @@ export interface AcceptanceRunRecord {
   readonly suite: AcceptanceSuite
   readonly environment: AcceptanceEnvironment
   readonly revision: string
-  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'base_url' | 'revision' | 'authorization' | 'evidence_mode'>
+  readonly door: AcceptanceDoor
+  readonly collection_artifact: string
+  readonly collection_hash: string
+  readonly collection_manifest_hash: string
+  readonly accountable_answers_hash: string
+  readonly judge_approval_id: string
+  readonly judge_assessor: 'independent_eval_judge'
+  readonly judge_model_id: string
+  readonly judged_artifact_hash: string
+  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'base_url' | 'revision' | 'authorization' | 'judge_authority' | 'evidence_mode'>
   readonly case_inputs: readonly unknown[]
   readonly evidence: readonly unknown[]
   readonly answers: readonly AcceptanceAnswer[]
@@ -106,9 +120,54 @@ export async function writeAcceptanceRun(args: {
   assertNoSecrets(args.input)
   const protocol = validateProtocol(args.protocol)
   const config = validateEnvironmentConfig(args.environmentConfig, args.environment)
-  if (!object(args.input) || !Array.isArray(args.input.answers)) throw new Error('PRODUCT_ACCEPTANCE_INPUT_INVALID')
   const inputs = casesForSuite(protocol, args.suite)
-  const answers = validateAcceptanceAnswers(args.input.answers, inputs)
+  const input = validateAccountableAnswersArtifact(args.input, inputs)
+  if (!input.assessment) throw new Error('PRODUCT_ACCEPTANCE_JUDGED_ARTIFACT_REQUIRED')
+  if (input.assessment.approval_id !== config.judge_authority.approval_id
+    || input.assessment.model_id !== config.judge_authority.model_id
+    || input.assessment.judged_artifact_hash !== config.judge_authority.judged_artifact_hash) {
+    throw new Error('PRODUCT_ACCEPTANCE_JUDGE_AUTHORITY_MISMATCH')
+  }
+  if (input.provenance.suite !== args.suite
+    || input.provenance.environment !== args.environment
+    || input.provenance.expected_revision !== config.revision
+    || input.provenance.authorization_approval_id !== config.authorization.approval_id
+    || resolve(input.provenance.collection_artifact) !== input.provenance.collection_artifact) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_PROVENANCE_MISMATCH')
+  }
+  let collectionValue: unknown
+  try { collectionValue = JSON.parse(await readFile(input.provenance.collection_artifact, 'utf8')) } catch {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_ARTIFACT_INVALID')
+  }
+  const collection = validateCollectionArtifact(collectionValue)
+  if (collection.collection_hash !== input.provenance.collection_hash
+    || collection.manifest_hash !== input.provenance.collection_manifest_hash
+    || collection.manifest.suite !== args.suite
+    || collection.manifest.environment !== args.environment
+    || collection.manifest.expected_revision !== config.revision
+    || collection.manifest.authorization_approval_id !== config.authorization.approval_id) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_PROVENANCE_MISMATCH')
+  }
+  const canonicalInputsById = new Map(inputs.map((caseInput) => [caseInput.case_id, caseInput]))
+  const collectedInputs = collection.manifest.case_inputs.map((caseInput) => canonicalInputsById.get(caseInput.case_id))
+  if (collectedInputs.some((caseInput) => caseInput === undefined)) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_PROVENANCE_MISMATCH')
+  }
+  const derivedAnswers = answersFromCollection({
+    inputs: collectedInputs as typeof inputs,
+    door: input.provenance.door,
+    collection,
+  })
+  if (accountableAnswersHash(
+    derivedAnswers, collection.collection_hash, input.provenance.door,
+  ) !== input.provenance.accountable_answers_hash) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_ANSWER_MISMATCH')
+  }
+  const answers = validateAcceptanceAnswers(input.answers, inputs)
+  if (accountableAnswersHash(answers, collection.collection_hash, input.provenance.door)
+    !== accountableAnswersHash(derivedAnswers, collection.collection_hash, input.provenance.door)) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_ANSWER_MISMATCH')
+  }
   const score = scoreAnswers(inputs, answers)
   const fixture = config.evidence_mode === 'fixture'
   const createdAt = (args.now ?? new Date()).toISOString()
@@ -120,6 +179,15 @@ export async function writeAcceptanceRun(args: {
     suite: args.suite,
     environment: args.environment,
     revision: config.revision,
+    door: input.provenance.door,
+    collection_artifact: input.provenance.collection_artifact,
+    collection_hash: input.provenance.collection_hash,
+    collection_manifest_hash: input.provenance.collection_manifest_hash,
+    accountable_answers_hash: input.provenance.accountable_answers_hash,
+    judge_approval_id: input.assessment.approval_id,
+    judge_assessor: input.assessment.assessor,
+    judge_model_id: input.assessment.model_id,
+    judged_artifact_hash: input.assessment.judged_artifact_hash,
     environment_config: config,
     case_inputs: inputs,
     evidence: answers.flatMap((answer) => answer.evidence.map((evidence) => ({ case_id: answer.case_id, ...evidence }))),

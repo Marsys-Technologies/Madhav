@@ -13,6 +13,12 @@ import {
   validateAcceptanceAnswers,
   validateProtocol,
 } from './acceptance_cases'
+import {
+  accountableAnswersHash,
+  judgedArtifactHash,
+  validateAccountableAnswersArtifact,
+  type AccountableAnswersArtifact,
+} from './answers_from_collection'
 
 const AXES = ['relevance', 'evidence_based_explanation', 'contradiction_handling', 'usefulness'] as const
 
@@ -77,6 +83,40 @@ export async function judgeAnswers(args: {
   }))
 }
 
+export function judgedAnswersArtifact(args: {
+  readonly input: AccountableAnswersArtifact
+  readonly answers: readonly AcceptanceAnswer[]
+  readonly approvalId: string
+  readonly modelId: string
+}): AccountableAnswersArtifact {
+  if (!args.approvalId || !args.modelId
+    || args.answers.some((answer) => !answer.qualitative_assessment
+      || answer.qualitative_assessment.assessor !== 'independent_eval_judge'
+      || answer.qualitative_assessment.model_id !== args.modelId)) {
+    throw new Error('PURNA_JUDGED_ANSWERS_INVALID')
+  }
+  if (accountableAnswersHash(args.input.answers, args.input.provenance.collection_hash, args.input.provenance.door)
+      !== args.input.provenance.accountable_answers_hash
+    || accountableAnswersHash(args.answers, args.input.provenance.collection_hash, args.input.provenance.door)
+      !== args.input.provenance.accountable_answers_hash) {
+    throw new Error('PURNA_ACCOUNTABLE_ANSWERS_HASH_MISMATCH')
+  }
+  const approval = {
+    approval_id: args.approvalId,
+    assessor: 'independent_eval_judge' as const,
+    model_id: args.modelId,
+  }
+  return {
+    schema_version: args.input.schema_version,
+    provenance: args.input.provenance,
+    assessment: {
+      ...approval,
+      judged_artifact_hash: judgedArtifactHash(args.answers, args.input.provenance, approval),
+    },
+    answers: args.answers,
+  }
+}
+
 function parseCliArgs(argv: readonly string[]): { suite: AcceptanceSuite; inputPath: string; artifactDir: string; approvalId: string } {
   const values = new Map<string, string>()
   for (let index = 0; index < argv.length; index += 2) {
@@ -96,7 +136,8 @@ async function main(argv = process.argv.slice(2)): Promise<void> {
   const [protocolValue, inputValue] = await Promise.all([readFile(protocolPath, 'utf8'), readFile(args.inputPath, 'utf8')])
   const protocol = validateProtocol(JSON.parse(protocolValue))
   const inputs = casesForSuite(protocol, args.suite)
-  const input = JSON.parse(inputValue) as { answers?: unknown }
+  const input = validateAccountableAnswersArtifact(JSON.parse(inputValue), inputs)
+  if (input.provenance.suite !== args.suite) throw new Error('PURNA_ANSWER_JUDGE_PROVENANCE_MISMATCH')
   const answers = validateAcceptanceAnswers(input.answers, inputs)
   const modelId = await getEffectiveModel(DEFAULT_STACK_ID, 'eval_judge', 'primary')
   const judged = await judgeAnswers({
@@ -117,7 +158,9 @@ async function main(argv = process.argv.slice(2)): Promise<void> {
   const directory = resolve(args.artifactDir)
   await mkdir(directory, { recursive: true })
   const path = resolve(directory, `judged-answers-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.json`)
-  await writeFile(path, `${JSON.stringify({ schema_version: 'purna-independent-answer-assessment/v1', approval_id: args.approvalId, suite: args.suite, assessor: 'independent_eval_judge', model_id: modelId, answers: judged }, null, 2)}\n`, { flag: 'wx' })
+  await writeFile(path, `${JSON.stringify(judgedAnswersArtifact({
+    input, answers: judged, approvalId: args.approvalId, modelId,
+  }), null, 2)}\n`, { flag: 'wx' })
   process.stdout.write(`${JSON.stringify({ artifact: path, answers: judged.length, model_id: modelId })}\n`)
 }
 
