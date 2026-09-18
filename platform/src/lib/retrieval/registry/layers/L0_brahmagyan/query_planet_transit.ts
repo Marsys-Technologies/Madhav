@@ -146,6 +146,20 @@ export const queryPlanetTransitCapability: ToolCapability = {
         max_age_seconds: 900,
         source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
       }],
+    }, {
+      // The aggregate invokes only the exact primary route above; it cannot
+      // substitute a transit materialization receipt for authenticated scalar
+      // sidecar availability.
+      binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      requirements: [{
+        kind: 'service_probe',
+        asset_id: 'bg_ephemeris_engine',
+        probe_id: 'ephemeris_engine',
+        endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+        probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+        max_age_seconds: 900,
+        source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
+      }],
     }],
     entitlement: 'native',
     safety_notes: ['Read-only computed evidence. Partial aggregate results are failures and cannot close a transit obligation.'],

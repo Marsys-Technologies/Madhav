@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T21:41:49.000Z",
-  "content_hash": "sha256:2b6b1a0b40e7a9f4b9cc46abb7bd6f9d975810759a25e9df1ea5428fda893593",
-  "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:316fb0685c7bf9ed839a6b908e7be6ee5419697c228f5c1b326151a59224a8c4",
+  "generated_at": "2026-09-18T21:49:42.000Z",
+  "content_hash": "sha256:f63369f899fbfd970359a9006e6bcaaf5e201d2917e47686b8c229546bc3b7f0",
+  "source_catalog_fingerprint": "sha256:3e8a6c033915aef75dec1ae0b7cf80927bacf05fc0ee220cdf7eb04743946985",
+  "semantic_review_fingerprint": "sha256:56263213ab30e88656fed0d2bee34c73a2f74b28b9a9bf188e241b4a82c76784",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -15428,6 +15428,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_current_transit_snapshot",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_ephemeris_engine",
+              "probe_id": "ephemeris_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
+              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "max_age_seconds": 900,
+              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -20991,6 +21008,20 @@
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_planet_transit",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_ephemeris_engine",
+              "probe_id": "ephemeris_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
+              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "max_age_seconds": 900,
+              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        },
+        {
+          "binding_id": "registry:marsys://tool/L0/query_current_transit_snapshot",
           "requirements": [
             {
               "kind": "service_probe",
