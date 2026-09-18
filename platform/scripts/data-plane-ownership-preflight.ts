@@ -251,6 +251,11 @@ export async function runDataPlaneOwnershipPreflight(
   try {
     await client.query('BEGIN')
     await assertRoles(client)
+    // The protected migrations use gen_random_uuid().  Provision this standard
+    // PostgreSQL extension within the same transaction as the ownership stage:
+    // a later preflight failure rolls back both the extension and all role or
+    // ownership work, while an already-provisioned database remains unchanged.
+    await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto')
     const pgcrypto = await client.query(`SELECT 1 FROM pg_extension WHERE extname='pgcrypto'`)
     if (pgcrypto.rowCount !== 1) throw new Error('DBA prerequisite pgcrypto is absent; install it before protected-owner cutover.')
     const legacyOwners = await client.query<{ owner: string }>(`
