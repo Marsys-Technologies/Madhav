@@ -97,6 +97,7 @@ def package_immutable_unit_fixtures(monkeypatch, request) -> None:
     if request.node.name == "test_side_ref_only_historical_snapshot_is_rejected":
         return
     real_require = pins_module._require_reachable_commit
+    real_is_ancestor_of_head = pins_module._commit_is_ancestor_of_head
     real_exists = pins_module._commit_exists
     real_inventory = pins_module._inventory_at_commit
     real_pins = pins_module._pins_at_commit
@@ -146,6 +147,24 @@ def package_immutable_unit_fixtures(monkeypatch, request) -> None:
                 (item["commit"], item["path"], item["sha256"], item["decision_binding"])
                 for item in expected
             )
+    for binding in pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS.values():
+        artifact = binding["record_artifact"]
+        valid_artifacts.add(
+            (
+                artifact["commit"],
+                artifact["path"],
+                artifact["sha256"],
+                artifact["decision_binding"],
+            )
+        )
+        fixture_commits.update(
+            {
+                binding["reviewed_source_commit"],
+                binding["integrated_equivalent_commit"],
+                binding["common_base_commit"],
+                artifact["commit"],
+            }
+        )
     authority_content: dict[tuple[str, str], bytes] = {}
     for binding in pins_module.AUTHORITY_BINDINGS.values():
         valid_artifacts.add(
@@ -177,6 +196,9 @@ def package_immutable_unit_fixtures(monkeypatch, request) -> None:
 
     def commit_exists(commit: str) -> bool:
         return commit in fixture_commits or real_exists(commit)
+
+    def commit_is_ancestor_of_head(commit: str) -> bool:
+        return commit in fixture_commits or real_is_ancestor_of_head(commit)
 
     def inventory_at_commit(commit: str) -> dict[str, str]:
         if commit in fixture_inventories:
@@ -212,6 +234,9 @@ def package_immutable_unit_fixtures(monkeypatch, request) -> None:
         real_validate_artifact(artifact, label)
 
     monkeypatch.setattr(pins_module, "_require_reachable_commit", require_fixture_or_ancestor)
+    monkeypatch.setattr(
+        pins_module, "_commit_is_ancestor_of_head", commit_is_ancestor_of_head
+    )
     monkeypatch.setattr(pins_module, "_commit_exists", commit_exists)
     monkeypatch.setattr(pins_module, "_inventory_at_commit", inventory_at_commit)
     monkeypatch.setattr(pins_module, "_pins_at_commit", pins_at_commit)
@@ -705,8 +730,97 @@ def test_post_integration_delivery_accepts_squashed_exact_artifact(
     pins_module.validate_post_integration_source_acceptance_bindings(
         delivery_topology=True
     )
+    real_validate_artifact = pins_module.validate_artifact_binding
+
+    def reject_unreachable_artifact(artifact: dict, label: str) -> None:
+        if artifact.get("commit") == artifact_commit:
+            raise SystemExit(
+                f"artifact commit {artifact_commit} must be an ancestor of HEAD"
+            )
+        real_validate_artifact(artifact, label)
+
+    monkeypatch.setattr(
+        pins_module, "validate_artifact_binding", reject_unreachable_artifact
+    )
     with pytest.raises(SystemExit, match="must be an ancestor of HEAD"):
         pins_module.validate_post_integration_source_acceptance_bindings()
+
+
+def test_post_integration_source_rejects_artifact_not_yet_on_protected_baseline(
+    monkeypatch,
+) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    artifact_commit = pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source][
+        "record_artifact"
+    ]["commit"]
+    real_is_ancestor = pins_module._commit_is_ancestor_of_head
+
+    monkeypatch.setattr(
+        pins_module,
+        "_commit_is_ancestor_of_head",
+        lambda commit: False if commit == artifact_commit else real_is_ancestor(commit),
+    )
+
+    with pytest.raises(SystemExit, match="protected one-parent delivery"):
+        pins_module.validate_post_integration_source_acceptance_bindings(
+            protected_baseline_commit="4855fff4af1466719a3eb642a35fa5fa6c8b6379"
+        )
+
+
+def test_post_integration_source_accepts_exact_protected_squash_delivery(
+    monkeypatch,
+) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    artifact_commit = pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source][
+        "record_artifact"
+    ]["commit"]
+    real_is_ancestor = pins_module._commit_is_ancestor_of_head
+
+    monkeypatch.setattr(
+        pins_module,
+        "_commit_is_ancestor_of_head",
+        lambda commit: False if commit == artifact_commit else real_is_ancestor(commit),
+    )
+
+    pins_module.validate_post_integration_source_acceptance_bindings(
+        protected_baseline_commit="8f62b44708a60ab7e5dbb91aa68e2d7e987d7a02"
+    )
+
+
+def test_post_integration_protected_squash_rejects_unbound_artifact(
+    monkeypatch,
+) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    binding = copy.deepcopy(
+        pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source]
+    )
+    artifact = binding["record_artifact"]
+    delivered = b"status: SECURITY_CLEAR_SOURCE_ACCEPTED\nunbound record\n"
+    artifact["sha256"] = pins_module.hashlib.sha256(delivered).hexdigest()
+    artifact_path = artifact["path"]
+    artifact_commit = artifact["commit"]
+    real_is_ancestor = pins_module._commit_is_ancestor_of_head
+    real_blob_at_revision = pins_module._blob_at_revision
+
+    monkeypatch.setitem(
+        pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS, source, binding
+    )
+    monkeypatch.setattr(
+        pins_module,
+        "_commit_is_ancestor_of_head",
+        lambda commit: False if commit == artifact_commit else real_is_ancestor(commit),
+    )
+
+    def unbound_delivery(revision: str, path: str, label: str) -> bytes:
+        if revision == "8f62b44708a60ab7e5dbb91aa68e2d7e987d7a02" and path == artifact_path:
+            return delivered
+        return real_blob_at_revision(revision, path, label)
+
+    monkeypatch.setattr(pins_module, "_blob_at_revision", unbound_delivery)
+    with pytest.raises(SystemExit, match="reviewed_branch_tip"):
+        pins_module.validate_post_integration_source_acceptance_bindings(
+            protected_baseline_commit="8f62b44708a60ab7e5dbb91aa68e2d7e987d7a02"
+        )
 
 
 def test_post_integration_delivery_rejects_unrelated_packaged_artifact(
