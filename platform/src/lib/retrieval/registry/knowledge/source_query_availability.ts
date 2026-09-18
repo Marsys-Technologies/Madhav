@@ -1065,6 +1065,37 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112',
     ],
   },
+  {
+    contract_id: 'source-query:list-remedies-by-category:v1',
+    descriptor_name: 'list_remedies_by_category',
+    capability_uri: 'marsys://tool/L0/list_remedies_by_category',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT remedy_id, planet, domain, category, remedy_type, deity,
+                   prescription_text, mantra_text, mantra_sanskrit,
+                   cost_tier, source_canonical_id, classical_attestation_text
+              FROM brahma_remedy_corpus
+             WHERE LOWER(remedy_type) = NULL::text
+                OR LOWER(category) = NULL::text
+                OR LOWER(category) = NULL::text
+             ORDER BY planet, remedy_id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::int AS total
+              FROM brahma_remedy_corpus
+             WHERE LOWER(remedy_type) = NULL::text
+                OR LOWER(category) = NULL::text
+                OR LOWER(category) = NULL::text
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1604-1650',
+      'platform/supabase/migrations/608_nirmana_bg_remedies_integrity_contract.sql:38-78',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

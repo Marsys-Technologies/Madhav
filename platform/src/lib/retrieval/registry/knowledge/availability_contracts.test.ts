@@ -145,6 +145,7 @@ describe('binding availability contracts', () => {
   it.each([
     ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
     ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
+    ['source-query:list-remedies-by-category:v1', 'FROM brahma_remedy_corpus', 'ORDER BY planet, remedy_id'],
   ])('keeps %s as an exact, zero-row-safe handler source probe', (contractId, relationMarker, orderMarker) => {
     const contract = getSourceQueryAvailabilityContract(contractId)!
 
