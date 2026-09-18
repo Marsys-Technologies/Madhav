@@ -198,6 +198,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_shashtiamsha_deities', 'source-query:query-shashtiamsha-deities:v1', 'platform/supabase/migrations/430_bg_shashtiamsha_deities.sql:34-42'],
     ['scu.catalog.query_prashna_lagna_methods', 'source-query:query-prashna-lagna-methods:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:6-16'],
     ['scu.catalog.query_prashna_tajik_yogas', 'source-query:query-prashna-tajik-yogas:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:19-29'],
+    ['scu.catalog.query_prashna_significators', 'source-query:query-prashna-significators:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:32-42'],
+    ['scu.catalog.query_prashna_fructification_rules', 'source-query:query-prashna-fructification-rules:v1', 'platform/migrations/261_bg_prashna_rules_schema.sql:45-52'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -372,6 +374,44 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toContain('chart_id')
   })
 
+  it('preserves the complete Prashna-significator projection and nullable house and planet fields', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-prashna-significators:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT question_class, querent_house, querent_planet, quesited_house, quesited_planet,')
+    expect(contract.sql).toContain('significator_rule, classical_citation')
+    expect(contract.sql).toContain('LOWER(question_class) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY question_class')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/COALESCE\((?:querent_house|querent_planet|quesited_planet)/)
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
+  it('preserves the complete Prashna-fructification projection and open time-unit filter', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-prashna-fructification-rules:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT rule_id, time_unit, degree_conversion_rule, applicable_when, classical_citation')
+    expect(contract.sql).toContain('rule_id = NULL::text')
+    expect(contract.sql).toContain('LOWER(time_unit) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY rule_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\btime_unit\s+IN\s*\(/i)
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
@@ -381,6 +421,8 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_shashtiamsha_deities',
     'scu.catalog.query_prashna_lagna_methods',
     'scu.catalog.query_prashna_tajik_yogas',
+    'scu.catalog.query_prashna_significators',
+    'scu.catalog.query_prashna_fructification_rules',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])

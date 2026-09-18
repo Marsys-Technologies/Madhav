@@ -494,6 +494,32 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64',
     },
+    {
+      scuId: 'scu.catalog.query_prashna_significators',
+      bindingId: 'registry:marsys://tool/L0/query_prashna_significators',
+      contractId: 'source-query:query-prashna-significators:v1',
+      relation: 'bg_prashna_significators',
+      sqlMarkers: [
+        'SELECT question_class, querent_house, querent_planet, quesited_house, quesited_planet',
+        'significator_rule, classical_citation',
+        'LOWER(question_class) = LOWER(NULL::text)',
+        'ORDER BY question_class',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56',
+    },
+    {
+      scuId: 'scu.catalog.query_prashna_fructification_rules',
+      bindingId: 'registry:marsys://tool/L0/query_prashna_fructification_rules',
+      contractId: 'source-query:query-prashna-fructification-rules:v1',
+      relation: 'bg_prashna_fructification_rules',
+      sqlMarkers: [
+        'SELECT rule_id, time_unit, degree_conversion_rule, applicable_when, classical_citation',
+        'rule_id = NULL::text',
+        'LOWER(time_unit) = LOWER(NULL::text)',
+        'ORDER BY rule_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -516,7 +542,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_graha_dik'
       || scuId === 'scu.catalog.query_shashtiamsha_deities'
       || scuId === 'scu.catalog.query_prashna_lagna_methods'
-      || scuId === 'scu.catalog.query_prashna_tajik_yogas') {
+      || scuId === 'scu.catalog.query_prashna_tajik_yogas'
+      || scuId === 'scu.catalog.query_prashna_significators'
+      || scuId === 'scu.catalog.query_prashna_fructification_rules') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
