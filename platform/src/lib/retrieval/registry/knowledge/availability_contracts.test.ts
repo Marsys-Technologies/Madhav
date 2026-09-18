@@ -194,6 +194,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_motion_state_thresholds', 'source-query:query-motion-state-thresholds:v1', 'platform/migrations/250_bg_dignity_reference.sql:406-423'],
     ['scu.catalog.query_vastu_directions', 'source-query:query-vastu-directions:v1', 'platform/migrations/284_bg_vastu_directions.sql:10-33'],
     ['scu.catalog.query_vastu_direction_remedials', 'source-query:query-vastu-direction-remedials:v1', 'platform/migrations/284_bg_vastu_directions.sql:37-89'],
+    ['scu.catalog.query_graha_dik', 'source-query:query-graha-dik:v1', 'platform/migrations/304_bg_graha_dik.sql:22-32'],
+    ['scu.catalog.query_shashtiamsha_deities', 'source-query:query-shashtiamsha-deities:v1', 'platform/supabase/migrations/430_bg_shashtiamsha_deities.sql:34-42'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -290,11 +292,51 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toContain('chart_id')
   })
 
+  it('preserves the exact Dig Bala projection and nullable paired graha without chart or producer inference', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-graha-dik:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT graha, peak_house, peak_direction, debility_house, paired_graha, school_note,')
+    expect(contract.sql).toContain('classical_citation')
+    expect(contract.sql).toContain('LOWER(graha) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY graha')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toContain('COALESCE(paired_graha')
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
+  it('preserves the exact Shashtiamsha projection, nullable deity name, and optional typed predicates', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-shashtiamsha-deities:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT amsa_number, quality, deity_name, classical_citation, rule_notes')
+    expect(contract.sql).toContain('NULL::integer IS NULL OR amsa_number = NULL::integer')
+    expect(contract.sql).toContain('LOWER(quality) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY amsa_number')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toContain('COALESCE(deity_name')
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
     'scu.catalog.query_vastu_directions',
     'scu.catalog.query_vastu_direction_remedials',
+    'scu.catalog.query_graha_dik',
+    'scu.catalog.query_shashtiamsha_deities',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])
