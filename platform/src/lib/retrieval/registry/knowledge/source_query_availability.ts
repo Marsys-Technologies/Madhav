@@ -680,6 +680,28 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-remedies-for-chart:v1',
+    descriptor_name: 'query_remedies_for_chart',
+    capability_uri: 'marsys://tool/L0/query_remedies_for_chart',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT remedy_id, planet, domain, category, deity,
+                 prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
+                 cost_tier, contraindications, source_canonical_id, source_citation,
+                 classical_attestation_text
+            FROM brahma_remedy_corpus
+           WHERE planet ILIKE '%' || NULL::text || '%'
+              OR domain ILIKE '%' || NULL::text || '%'
+           ORDER BY confidence DESC NULLS LAST, cost_tier ASC
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+    ],
+  },
+  {
     contract_id: 'source-query:query-remedies-by-planet:v1',
     descriptor_name: 'query_remedies_by_planet',
     capability_uri: 'marsys://tool/L0/query_remedies_by_planet',

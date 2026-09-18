@@ -645,6 +645,22 @@ describe('first-slice availability coverage', () => {
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59',
     },
     {
+      scuId: 'scu.catalog.query_remedies_for_chart',
+      bindingId: 'registry:marsys://tool/L0/query_remedies_for_chart',
+      contractId: 'source-query:query-remedies-for-chart:v1',
+      relation: 'brahma_remedy_corpus',
+      sqlMarkers: [
+        'SELECT remedy_id, planet, domain, category, deity',
+        'prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration',
+        'cost_tier, contraindications, source_canonical_id, source_citation',
+        'classical_attestation_text',
+        "planet ILIKE '%' || NULL::text || '%'",
+        "OR domain ILIKE '%' || NULL::text || '%'",
+        'ORDER BY confidence DESC NULLS LAST, cost_tier ASC',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+    },
+    {
       scuId: 'scu.catalog.query_remedies_by_planet',
       bindingId: 'registry:marsys://tool/L0/query_remedies_by_planet',
       contractId: 'source-query:query-remedies-by-planet:v1',
@@ -726,6 +742,7 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_dasha_systems'
       || scuId === 'scu.catalog.query_formula_constants'
       || scuId === 'scu.catalog.query_vichara_constants'
+      || scuId === 'scu.catalog.query_remedies_for_chart'
       || scuId === 'scu.catalog.query_remedies_by_planet'
       || scuId === 'scu.catalog.query_mantras'
       || scuId === 'scu.catalog.query_tantric_remedies') {
