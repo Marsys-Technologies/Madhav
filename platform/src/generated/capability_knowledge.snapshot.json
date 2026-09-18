@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T07:47:15.000Z",
-  "content_hash": "sha256:e668d7f7260a147968934b936edd0eefd497e8b582a0a1b1b3058f2a5a6ea533",
+  "generated_at": "2026-09-18T08:32:44.000Z",
+  "content_hash": "sha256:c71fd7e3af69eb04e5a2608a4abe2cecbd8b2b2ab0cd41901ffe38babc0c9466",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:2e6e017680866302ab8c0258fc531731044c01377ea2aedc73ccfad056c07ad3",
+  "semantic_review_fingerprint": "sha256:f65eacad73098f8153eae2b7b216c8526c5ddd1d8bd6f97a15797ee52389052b",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -27540,6 +27540,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_transit_av_gates",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-transit-av-gates:v1",
+              "capability_uri": "marsys://tool/L0/query_transit_av_gates",
+              "contract_sha256": "sha256:9172f2afbbe45439b1fbb5b638d0679fff640166880413a39b798cd0818fce72",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85 | platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -27695,6 +27710,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_transit_engine",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-transit-engine:v1",
+              "capability_uri": "marsys://tool/L0/query_transit_engine",
+              "contract_sha256": "sha256:a21d5616a2cbbcf885368608382a9e4f1afd9bd910a2dd29d93e225db26df28f",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75 | platform/migrations/266_bg_transit_tables.sql:21-32"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
