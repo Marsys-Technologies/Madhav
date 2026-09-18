@@ -662,6 +662,44 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-vichara-constants:v1',
+    descriptor_name: 'query_vichara_constants',
+    capability_uri: 'marsys://tool/L0/query_vichara_constants',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT constant_key, value_jsonb, citation, version, updated_at
+            FROM brahma_vichara_constants
+           WHERE 1=1
+             AND (NULL::text IS NULL OR constant_key = NULL::text)
+           ORDER BY constant_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59',
+      'platform/migrations/435_ga_vichara.sql:83-89',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-remedies-by-planet:v1',
+    descriptor_name: 'query_remedies_by_planet',
+    capability_uri: 'marsys://tool/L0/query_remedies_by_planet',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT remedy_id, planet, domain, category, deity,
+                 prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
+                 cost_tier, contraindications, source_canonical_id, classical_attestation_text
+            FROM brahma_remedy_corpus
+           WHERE LOWER(planet) = LOWER(NULL::text)
+           ORDER BY category, remedy_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

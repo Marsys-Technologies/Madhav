@@ -632,6 +632,32 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
     },
+    {
+      scuId: 'scu.catalog.query_vichara_constants',
+      bindingId: 'registry:marsys://tool/L0/query_vichara_constants',
+      contractId: 'source-query:query-vichara-constants:v1',
+      relation: 'brahma_vichara_constants',
+      sqlMarkers: [
+        'SELECT constant_key, value_jsonb, citation, version, updated_at',
+        'constant_key = NULL::text',
+        'ORDER BY constant_key',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59',
+    },
+    {
+      scuId: 'scu.catalog.query_remedies_by_planet',
+      bindingId: 'registry:marsys://tool/L0/query_remedies_by_planet',
+      contractId: 'source-query:query-remedies-by-planet:v1',
+      relation: 'brahma_remedy_corpus',
+      sqlMarkers: [
+        'SELECT remedy_id, planet, domain, category, deity',
+        'prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration',
+        'cost_tier, contraindications, source_canonical_id, classical_attestation_text',
+        'LOWER(planet) = LOWER(NULL::text)',
+        'ORDER BY category, remedy_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -664,7 +690,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_transit_engine'
       || scuId === 'scu.catalog.query_transit_av_gates'
       || scuId === 'scu.catalog.query_dasha_systems'
-      || scuId === 'scu.catalog.query_formula_constants') {
+      || scuId === 'scu.catalog.query_formula_constants'
+      || scuId === 'scu.catalog.query_vichara_constants'
+      || scuId === 'scu.catalog.query_remedies_by_planet') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
