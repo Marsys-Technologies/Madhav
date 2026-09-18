@@ -642,6 +642,35 @@ describe('binding availability contracts', () => {
     expect(contract.source_refs.join(' | ')).not.toContain('bg_remedies.py')
   })
 
+  it('preserves only the affliction-scoped remedy query and its exact substring and ordering semantics without claiming rows, content, citations, top-k correctness, or consumer use', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-remedies-for-chart:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT remedy_id, planet, domain, category, deity,')
+    expect(contract.sql).toContain('prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,')
+    expect(contract.sql).toContain('cost_tier, contraindications, source_canonical_id, source_citation,')
+    expect(contract.sql).toContain('classical_attestation_text')
+    expect(contract.sql).toContain("planet ILIKE '%' || NULL::text || '%'")
+    expect(contract.sql).toContain("OR domain ILIKE '%' || NULL::text || '%'")
+    expect(contract.sql).toContain('ORDER BY confidence DESC NULLS LAST, cost_tier ASC')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/LOWER\((?:planet|domain)\)|UPPER\((?:planet|domain)\)/i)
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:GROUP\s+BY|HAVING|OFFSET)\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:source_canonical_id|source_citation|classical_attestation_text)\s+IS\s+NOT\s+NULL\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_facts|bodha_[a-z0-9_]+)\b/i)
+    expect(contract.source_refs).toEqual([
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+    ])
+  })
+
   it('preserves only the live-scaffold mantra registry query and its exact category and optional planet filters without claiming rows, content, citation correctness, or consumer use', () => {
     const contract = getSourceQueryAvailabilityContract('source-query:query-mantras:v1')!
 
@@ -712,6 +741,7 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_dasha_systems',
     'scu.catalog.query_formula_constants',
     'scu.catalog.query_vichara_constants',
+    'scu.catalog.query_remedies_for_chart',
     'scu.catalog.query_remedies_by_planet',
     'scu.catalog.query_mantras',
     'scu.catalog.query_tantric_remedies',
