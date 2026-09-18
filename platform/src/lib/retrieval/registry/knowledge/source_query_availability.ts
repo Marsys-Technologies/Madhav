@@ -1599,6 +1599,60 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/ws2_l0_ephemeris.sql:18-45',
     ],
   },
+  {
+    contract_id: 'source-query:get-panchanga:v1',
+    descriptor_name: 'get_panchanga',
+    capability_uri: 'marsys://tool/L1/get_panchanga',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
+                 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
+                 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam',
+                 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca',
+                 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi',
+                 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya',
+                 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya',
+                 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics',
+                 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara',
+                 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati',
+                 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga'
+               ]::text[])
+             ORDER BY fact_category, ayanamsha_id, fact_key
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
+                 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
+                 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam',
+                 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca',
+                 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi',
+                 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya',
+                 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya',
+                 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics',
+                 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara',
+                 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati',
+                 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga'
+               ]::text[])
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
