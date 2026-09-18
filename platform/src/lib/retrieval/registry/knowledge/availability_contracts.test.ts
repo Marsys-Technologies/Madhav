@@ -196,6 +196,24 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
+    'scu.catalog.query_aspects_at_time',
+    'scu.catalog.query_planet_position',
+    'scu.catalog.query_retrograde_periods',
+  ])('binds %s to the shared authenticated ephemeris probe without a producer-output claim', (scuId) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    expect(scu.availability_contracts![0]!.requirements[0]).toMatchObject({
+      kind: 'service_probe',
+      asset_id: 'bg_ephemeris_engine',
+      probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      max_age_seconds: 900,
+      source_ref: expect.stringContaining('624_nirmana_l0_ephemeris_probe_contract.sql'),
+    })
+    expect(scu.producer_output_claims ?? []).toEqual([])
+  })
+
+  it.each([
     {
       contractId: 'source-query:query-avastha-schemes:v1',
       markers: [

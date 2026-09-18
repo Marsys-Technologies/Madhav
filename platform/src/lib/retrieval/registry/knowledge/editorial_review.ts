@@ -151,6 +151,42 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
     }],
   },
+  query_aspects_at_time: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'service_probe',
+      asset_id: 'bg_ephemeris_engine',
+      probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      max_age_seconds: 900,
+      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
+    }],
+  },
+  query_planet_position: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'service_probe',
+      asset_id: 'bg_ephemeris_engine',
+      probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      max_age_seconds: 900,
+      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
+    }],
+  },
+  query_retrograde_periods: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'service_probe',
+      asset_id: 'bg_ephemeris_engine',
+      probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      max_age_seconds: 900,
+      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
+    }],
+  },
   get_positions: {
     producer_output_claims: [{
       asset_id: 'ga_positions',
