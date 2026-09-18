@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T10:03:46.000Z",
-  "content_hash": "sha256:c173ce84cbffab81706c24161c9bc358a9cf5662d3a671297a9487ce77f5cb37",
+  "generated_at": "2026-09-18T11:34:00.000Z",
+  "content_hash": "sha256:23cdc07b3eadcb355dd41366bcbf5f8f6c4586f9e4c5952a0f24f2f90724c500",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:566917fff989ffc1fdad5be8df7e7a9e2e8d747c967048d7327c6b36f3502c67",
+  "semantic_review_fingerprint": "sha256:eb55a52d761260ea59156f3523e6be6ee3815b7046baeeece53f28c11454e8e6",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -18840,6 +18840,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_mantras",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-mantras:v1",
+              "capability_uri": "marsys://tool/L0/query_mantras",
+              "contract_sha256": "sha256:e2f06a65ce5898f20872ddf8dbde535d18f96d2077eee0535ff15ded7625cd8e",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -27029,6 +27044,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_tantric_remedies",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-tantric-remedies:v1",
+              "capability_uri": "marsys://tool/L0/query_tantric_remedies",
+              "contract_sha256": "sha256:ea660f769971021cf30faad57b558d6cdae2fd8761ced05f99eb1be3c0c6832f",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
