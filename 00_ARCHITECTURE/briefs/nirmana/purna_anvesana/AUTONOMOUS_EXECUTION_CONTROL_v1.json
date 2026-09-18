@@ -1,0 +1,40 @@
+{
+  "schema_version": "madhav-purna-anvesana/autonomous-execution-control/v1",
+  "status": "SOURCE_IMPLEMENTED_AWAITING_PROTECTED_INTEGRATION",
+  "purpose": "Prevent normal CI and merge-queue waiting from being treated as a campaign-wide blocker while preserving fail-closed release authority.",
+  "authorities": {
+    "queue_truth": "GitHub mergeQueueEntry for the exact head SHA",
+    "merge_truth": "protected main merge commit",
+    "release_truth": "Cloud Run latestReadyRevisionName plus revision-level NIRMANA_DEPLOYED_SHA",
+    "authority_truth": "protected ownership detector and environment-bound release authorization"
+  },
+  "states": {
+    "ci_running": "Monitor and continue independent ready work.",
+    "merge_queue_wait": "A real queue entry exists; do not cancel or mark the campaign blocked.",
+    "merge_ready": "All required checks are green and no queue entry exists; queue the exact head.",
+    "merged_release_pending": "The protected merge exists but the deployed revision is not yet proven.",
+    "release_authority_pending": "Only the release dependency cone awaits its provisioned authority broker.",
+    "release_running": "Observe the protected exact-SHA workflow; never cancel it.",
+    "live_revision_unverified": "Read the deployed revision directly before proceeding to acceptance.",
+    "acceptance_running": "Run the frozen three-door product matrix and preserve all receipts.",
+    "blocked_authority": "Record the absent external authority precisely while independent work continues."
+  },
+  "ci_policy": {
+    "soft_wait_minutes": 15,
+    "hard_stall_minutes": 20,
+    "confirmation_minutes": 5,
+    "max_transient_retries": 2,
+    "max_identical_failure_attempts": 2,
+    "never_infer_stall_from": ["log_silence", "a stale PR field", "a single observation", "an observation for another SHA"],
+    "required_stall_evidence": ["same exact SHA", "same workflow/job/step fingerprint", "no meaningful transition past hard threshold", "two observations at least confirmation_minutes apart"]
+  },
+  "native_surrogate": {
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high",
+    "triggers": ["second identical deterministic failure", "exhausted transient retry budget", "conflicting governing evidence", "charter-scoped material ambiguity"],
+    "packet_fields": ["goal", "exact_sha", "state", "failure_fingerprint", "attempt_history", "evidence", "safe_actions", "authority_boundary"],
+    "return_fields": ["decision", "rationale", "authorized_next_action", "disallowed_actions", "required_verifier", "resume_state"],
+    "lifecycle": "The surrogate returns a bounded decision packet and exits; the original task model and effort resume execution."
+  },
+  "hard_boundary": "A surrogate may resolve in-charter ambiguity but cannot create credentials, grant IAM, or substitute for an unprovisioned external authority."
+}
