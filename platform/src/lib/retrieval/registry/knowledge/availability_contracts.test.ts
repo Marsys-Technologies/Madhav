@@ -101,6 +101,8 @@ describe('binding availability contracts', () => {
   it.each([
     ['scu.catalog.query_dosha_catalog', 'source-query:query-dosha-catalog:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71'],
     ['scu.catalog.query_compendium_index', 'source-query:query-compendium-index:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93'],
+    ['scu.catalog.list_entities', 'source-query:list-entities:v1', 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:17'],
+    ['scu.catalog.list_classical_texts', 'source-query:list-classical-texts:v1', 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!

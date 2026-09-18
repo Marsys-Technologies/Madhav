@@ -134,6 +134,61 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:list-entities:v1',
+    descriptor_name: 'list_entities',
+    capability_uri: 'marsys://tool/L0/list_entities',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+          SELECT canonical_id, entity_class, canonical_name_en, canonical_name_sa, synonyms
+            FROM brahma_ontology
+           ORDER BY entity_class, canonical_name_en
+           LIMIT 0 OFFSET 0
+        ), handler_count AS (
+          SELECT COUNT(*)::int AS total
+            FROM brahma_ontology
+        )
+        SELECT handler_page.*, handler_count.total
+          FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:136-160',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:17',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30',
+      'platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102',
+    ],
+  },
+  {
+    contract_id: 'source-query:list-classical-texts:v1',
+    descriptor_name: 'list_classical_texts',
+    capability_uri: 'marsys://tool/L0/list_classical_texts',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT
+          t.text_id,
+          t.title_en,
+          t.author,
+          t.school,
+          t.tradition,
+          COUNT(c.chunk_id) AS chunk_count,
+          s.source_url,
+          t.license
+        FROM classical_texts t
+        LEFT JOIN classical_text_chunks c ON c.text_id = t.text_id
+        LEFT JOIN classical_texts_source s ON s.text_id = t.text_id
+        GROUP BY t.text_id, t.title_en, t.author, t.school, t.tradition, s.source_url, t.license
+        ORDER BY t.text_id
+        LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075',
+      'platform/src/lib/tools/classical_text_tools.ts:77-116',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59',
+      'platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
