@@ -1516,6 +1516,51 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-chart-header:v1',
+    descriptor_name: 'get_chart_header',
+    capability_uri: 'marsys://tool/L1/get_chart_header',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH name_probe AS (
+            SELECT name
+              FROM charts
+             WHERE chart_id = $1::uuid OR id = $1::uuid
+             LIMIT 0
+          ), position_probe AS (
+            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND fact_category = 'graha_position'
+               AND fact_subject IN ('LAGNA', 'MOON', 'SUN')
+               AND fact_key IN ('sign', 'longitude_sidereal')
+             LIMIT 0
+          ), dasha_probe AS (
+            SELECT lord_graha, level_n
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND system_id = 'vimshottari'
+               AND level_n IN (1, 2)
+               AND start_date <= CURRENT_DATE
+               AND end_date >= CURRENT_DATE
+             ORDER BY level_n
+             LIMIT 0
+          )
+          SELECT 1
+            FROM name_probe
+            CROSS JOIN position_probe
+            CROSS JOIN dasha_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/chart_header.ts:72-94',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55',
+      'platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
