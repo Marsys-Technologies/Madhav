@@ -2213,6 +2213,28 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/002_ganita_divisionals.sql:31-65',
     ],
   },
+  {
+    contract_id: 'source-query:get-database-schema:v1',
+    descriptor_name: 'get_database_schema',
+    capability_uri: 'marsys://tool/L1/get_database_schema',
+    scope: 'global',
+    parameter_binding: 'global_with_chart_fallback',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_category, fact_subject,
+                 array_agg(DISTINCT fact_key ORDER BY fact_key) AS fact_keys,
+                 count(*)::text AS row_count,
+                 (array_agg(fact_id ORDER BY fact_id))[1:3] AS sample_fact_ids
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+           GROUP BY fact_category, fact_subject
+           ORDER BY fact_category, fact_subject
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
