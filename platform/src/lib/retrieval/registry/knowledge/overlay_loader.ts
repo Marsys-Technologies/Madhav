@@ -651,6 +651,9 @@ function evidenceForSnapshot(
     const assetReceipts = bindingEvidence.flatMap((evidence) => evidence.receipts)
     const allPassed = executableBindings.length > 0 && availableBindingIds.length === executableBindings.length
     const gaps = bindingEvidence.flatMap((evidence) => evidence.gaps)
+    const hasSourceQueryRequirement = executableBindings.some((binding) =>
+      requirementsForBindingTree(binding.binding_id, bindingIndex).some(sourceQueryRequirement),
+    )
     const hasPartialReceipt = assetReceipts.some((receipt) => receipt.state === 'partial')
     const hasFailedReceipt = assetReceipts.some((receipt) => receipt.state === 'failed')
     const state = availableBindingIds.length > 0
@@ -660,7 +663,9 @@ function evidenceForSnapshot(
       scu_id: scu.scu_id,
       build_status: build.status,
       build_id: build.build_id,
-      freshness: allPassed ? 'fresh' : hasPartialReceipt ? 'unknown' : null,
+      // A successful LIMIT 0 source query proves only schema/query
+      // reachability. It carries no row timestamp or content-freshness proof.
+      freshness: allPassed ? hasSourceQueryRequirement ? 'unknown' : 'fresh' : hasPartialReceipt ? 'unknown' : null,
       available_binding_ids: availableBindingIds,
       state,
       gaps: gaps.length ? gaps : allPassed ? [] : ['No reviewed producer-output receipt is joined to this semantic capability.'],

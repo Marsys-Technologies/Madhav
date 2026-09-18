@@ -479,6 +479,7 @@ describe('chart capability overlay loader', () => {
 
     expect(availability).toMatchObject({
       state: 'available',
+      freshness: 'unknown',
       available_binding_ids: [bindingId],
       asset_receipts: [],
       gaps: [],

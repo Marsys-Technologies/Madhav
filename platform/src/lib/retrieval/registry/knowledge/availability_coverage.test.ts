@@ -704,6 +704,7 @@ describe('first-slice availability coverage', () => {
     }, new Date('2026-09-17T00:05:00.000Z'))
     expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'available',
+      freshness: 'unknown',
       available_binding_ids: [bindingId],
       asset_receipts: [],
       gaps: [],
