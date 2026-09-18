@@ -614,6 +614,10 @@ describe('DP-SD-018 deployment ordering', () => {
       .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
     expect(routineStepNames.indexOf('Re-attest Nirmana evidence ownership state with routine credential'))
       .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
+    expect(routineStepNames.indexOf('Restore ordinary migration schema capability'))
+      .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
+    expect(migrate.steps?.find((step) => step.name === 'Restore ordinary migration schema capability')?.run)
+      .toContain('restore-ordinary-migration-schema-capability.ts')
     expect(migrate.steps?.find((step) => step.name === 'Run general database migrations')?.if).toBeUndefined()
 
     for (const secret of [
