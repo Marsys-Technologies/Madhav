@@ -208,6 +208,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_transit_av_gates', 'source-query:query-transit-av-gates:v1', 'platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38'],
     ['scu.catalog.query_dasha_systems', 'source-query:query-dasha-systems:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49'],
     ['scu.catalog.query_formula_constants', 'source-query:query-formula-constants:v1', 'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27'],
+    ['scu.catalog.query_vichara_constants', 'source-query:query-vichara-constants:v1', 'platform/migrations/435_ga_vichara.sql:83-89'],
+    ['scu.catalog.query_remedies_by_planet', 'source-query:query-remedies-by-planet:v1', 'platform/migrations/ws2_l0_remedy_corpus.sql:16-33'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -595,6 +597,49 @@ describe('binding availability contracts', () => {
     expect(contract.source_refs.join(' | ')).not.toContain('bg_formula_constants.py')
   })
 
+  it('preserves only the Vichara constants registry query and its exact case-sensitive key filter without claiming rows, content, or consumer use', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-vichara-constants:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT constant_key, value_jsonb, citation, version, updated_at')
+    expect(contract.sql).toContain('constant_key = NULL::text')
+    expect(contract.sql).not.toMatch(/LOWER\(constant_key\)|UPPER\(constant_key\)|ILIKE/i)
+    expect(contract.sql).toContain('ORDER BY constant_key')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_vichara)\b/i)
+    expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
+    expect(contract.source_refs.join(' | ')).not.toContain('ga_vichara_writer.py')
+  })
+
+  it('preserves only the planet-scoped remedy registry query and its case-insensitive filter without claiming rows, completeness, content, or citation correctness', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-remedies-by-planet:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT remedy_id, planet, domain, category, deity,')
+    expect(contract.sql).toContain('prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,')
+    expect(contract.sql).toContain('cost_tier, contraindications, source_canonical_id, classical_attestation_text')
+    expect(contract.sql).toContain('LOWER(planet) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY category, remedy_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:GROUP\s+BY|HAVING)\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:source_canonical_id|classical_attestation_text)\s+IS\s+NOT\s+NULL\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_facts|bodha_[a-z0-9_]+)\b/i)
+    expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
+    expect(contract.source_refs.join(' | ')).not.toContain('bg_remedies.py')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
@@ -614,6 +659,8 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_transit_av_gates',
     'scu.catalog.query_dasha_systems',
     'scu.catalog.query_formula_constants',
+    'scu.catalog.query_vichara_constants',
+    'scu.catalog.query_remedies_by_planet',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])
