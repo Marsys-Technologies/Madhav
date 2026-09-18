@@ -883,7 +883,7 @@ jobs:
         if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GCP_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
@@ -993,7 +993,7 @@ jobs:
       - name: Verify data-plane secret and runtime isolation
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GCP_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 

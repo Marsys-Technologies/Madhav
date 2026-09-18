@@ -585,6 +585,8 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(strictIndex).toBeGreaterThan(transitionIndex)
     expect(bootstrap.steps?.[strictIndex]?.run).toContain('data-plane-secret-isolation-preflight.ts')
     expect(bootstrap.steps?.[strictIndex]?.env?.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
+    expect(bootstrap.steps?.[strictIndex]?.env?.GOOGLE_CLOUD_REGION).toBe('${{ env.GCP_REGION }}')
+    expect(bootstrap.steps?.[strictIndex]?.env?.GCP_REGION).toBeUndefined()
     expect(bootstrap.steps?.[transitionIndex]?.if).toContain("needs.migration-state.outputs.data_plane_isolation != 'strict'")
     for (const stepName of [
       'Execute Native-authorized automated cutover under backup, restore, lease and quiescence',
@@ -595,6 +597,9 @@ describe('DP-SD-018 deployment ordering', () => {
     }
     expect(routineStepNames.indexOf('Verify data-plane secret and runtime isolation'))
       .toBeLessThan(routineStepNames.indexOf('Re-attest protected data-plane semantic state with routine credential'))
+    const routineIsolation = migrate.steps?.find((step) => step.name === 'Verify data-plane secret and runtime isolation')
+    expect(routineIsolation?.env?.GOOGLE_CLOUD_REGION).toBe('${{ env.GCP_REGION }}')
+    expect(routineIsolation?.env?.GCP_REGION).toBeUndefined()
     expect(routineStepNames.indexOf('Re-attest protected data-plane semantic state with routine credential'))
       .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
     expect(routineStepNames.indexOf('Re-attest Nirmana evidence ownership state with routine credential'))
