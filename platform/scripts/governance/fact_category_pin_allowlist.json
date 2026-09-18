@@ -24,85 +24,85 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 121,
+      "line": 125,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_bhava_bala. It mirrors the handler's full multi-category and optional fact_key filter surface, but LIMIT 0 guarantees no fact row is consumed or reduced. Requiring a concrete fact_key here would make the availability contract narrower than the handler and mask unreadable valid categories."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 182,
+      "line": 186,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_dignity. It validates the handler's complete category set and optional fact_key surface without selecting any fact row; it is not a value lookup or reduction."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 219,
+      "line": 223,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_aspects. The complete handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 244,
+      "line": 248,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. The complete default handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 269,
+      "line": 273,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_avasthas. It validates the complete handler category set without selecting or reducing a fact row; the count is only a source-access witness."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 304,
+      "line": 308,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_argala. It mirrors the complete handler category and optional ayanamsha/varga-filter surface, but LIMIT 0 prevents selecting or reducing any matrix fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 333,
+      "line": 337,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_dispositors. It verifies the handler's complete five-category source scope and optional ayanamsha filter without selecting a fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 356,
+      "line": 360,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_eclipse_flags. It reproduces the handler's one-category source scope with LIMIT 0 and consumes no fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1079,
+      "line": 1392,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_kp_cusps. It mirrors the handler's KP-default ayanamsha and unconditional category set, but LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1102,
+      "line": 1415,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_nakshatra. It reproduces the handler's complete default category set and pagination order with LIMIT 0, so it witnesses source access without reading or reducing a fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1127,
+      "line": 1440,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_sensitive_points. It preserves the handler's complete category set and multi-formula projection while LIMIT 0 prevents selecting, collapsing, or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1156,
+      "line": 1469,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_sade_sati. It preserves the handler's complete category family and its stable pagination order while LIMIT 0 prevents selecting, filtering, or reducing a period fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1182,
+      "line": 1495,
       "pattern": null,
       "justification": "AUDITED zero-row composite source-query availability probe for get_tajik. It reaches each of the handler's chart_facts, annual-lord, and birth-date source tables, while every CTE has LIMIT 0 and therefore cannot select or reduce a fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1262,
+      "line": 1575,
       "pattern": null,
       "justification": "AUDITED zero-row composite source-query availability probe for get_graha_yuddha. It preserves the handler's complete floored graha_yuddha fact family and separately validates the chart birth-date and tropical ephemeris sources; every CTE has LIMIT 0, so no fact row is selected or reduced."
     },
@@ -114,19 +114,19 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1628,
+      "line": 1941,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_structural. It preserves the handler's complete residual structural-signal category family and deterministic pagination order while LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1707,
+      "line": 2020,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. It preserves the complete default and advertised opt-in Ashtakavarga category family with the handler's deterministic pagination order, while LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1760,
+      "line": 2073,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_positions. It preserves the handler's default graha-position source and stable category-priority order while LIMIT 0 prevents selecting or reducing a fact row. Optional upagraha and non-default category requests are deliberately not implied by this default-source contract."
     },
