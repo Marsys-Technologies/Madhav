@@ -1733,6 +1733,46 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/279_ga_medical.sql:21-55',
     ],
   },
+  {
+    contract_id: 'source-query:get-vastu-directions:v1',
+    descriptor_name: 'get_vastu_directions',
+    capability_uri: 'marsys://tool/L1/get_vastu_directions',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT m.id, m.graha, m.ayanamsha_id, m.direction, m.condition_score, m.dignity_d1,
+                   m.direction_impact, m.indication_tier, m.classical_citation,
+                   COALESCE(r.direction_remedies, '[]'::jsonb) AS direction_remedies
+              FROM ga_vastu_planet_direction_map m
+              LEFT JOIN LATERAL (
+                SELECT jsonb_agg(
+                         jsonb_build_object(
+                           'remedy_type', remedy_type,
+                           'remedy_description', remedy_description,
+                           'classical_citation', classical_citation
+                         ) ORDER BY remedy_type
+                       ) AS direction_remedies
+                  FROM bg_vastu_direction_remedials
+                 WHERE direction = m.direction
+              ) r ON true
+             WHERE m.chart_id = $1::uuid
+             ORDER BY m.graha, m.ayanamsha_id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_vastu_planet_direction_map m
+             WHERE m.chart_id = $1::uuid
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts:91-117',
+      'platform/migrations/284_bg_vastu_directions.sql:37-66',
+      'platform/migrations/286_ga_vastu_planet_direction_map.sql:8-38',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
