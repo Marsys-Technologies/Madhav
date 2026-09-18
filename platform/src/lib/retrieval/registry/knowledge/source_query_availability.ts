@@ -809,6 +809,26 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-falsifiers:v1',
+    descriptor_name: 'query_falsifiers',
+    capability_uri: 'marsys://tool/L4/query_falsifiers',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT pramana_id, anchor_id, evidence_type, evidence_strength_label,
+                 falsifier_text, observable_criteria_jsonb, window_status,
+                 lel_entry_id, linked_sodhana_id, source_citation
+            FROM phala_pramana
+           WHERE chart_id = $1::uuid
+           ORDER BY array_position(ARRAY['open', 'pending', 'past_window']::text[], window_status) NULLS LAST, pramana_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250',
+      'platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts:43-64',
+      'platform/supabase/migrations/338_phala_pramana.sql:23-67',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

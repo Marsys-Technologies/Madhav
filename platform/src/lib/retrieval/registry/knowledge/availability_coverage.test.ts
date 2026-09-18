@@ -802,6 +802,70 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('probes query_falsifiers with chart-only SQL after active-build context admission and otherwise fails closed', async () => {
+    const scuId = 'scu.catalog.query_falsifiers'
+    const bindingId = 'registry:marsys://tool/L4/query_falsifiers'
+    const contractId = 'source-query:query-falsifiers:v1'
+    const scu = findScu(scuId)
+
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: contractId,
+        contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        scope: 'chart',
+        source_ref: expect.stringContaining('platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250'),
+      })],
+    })])
+    expect(scu.producer_output_claims ?? []).toEqual([])
+    expect(scu.availability_dispositions ?? []).toEqual([])
+
+    const calls: Array<{ sql: string; params: readonly unknown[] }> = []
+    const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
+      calls.push({ sql, params })
+      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available',
+      freshness: 'unknown',
+      available_binding_ids: [bindingId],
+      asset_receipts: [],
+      gaps: [],
+    })
+
+    const sourceCall = calls.find((call) => call.sql.includes('FROM phala_pramana'))
+    expect(sourceCall).toBeDefined()
+    expect(sourceCall?.sql).toContain('SELECT pramana_id, anchor_id, evidence_type, evidence_strength_label,')
+    expect(sourceCall?.sql).toContain('falsifier_text, observable_criteria_jsonb, window_status,')
+    expect(sourceCall?.sql).toContain('lel_entry_id, linked_sodhana_id, source_citation')
+    expect(sourceCall?.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(sourceCall?.sql).toContain("ORDER BY array_position(ARRAY['open', 'pending', 'past_window']::text[], window_status) NULLS LAST, pramana_id")
+    expect(sourceCall?.sql).toContain('LIMIT 0')
+    expect(sourceCall?.sql).not.toContain('$2')
+    expect(sourceCall?.sql).not.toContain('build_id')
+    expect(sourceCall?.params).toEqual([CHART_ID])
+
+    const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('FROM phala_pramana')) throw new Error('permission denied')
+      return { rows: [] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [`${contractId} could not execute its authenticated source query.`],
+    })
+
+    const noBuild = await loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [] }))
+    expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [`${contractId} requires an active completed build context for the selected chart.`],
+    })
+  })
+
   it.each([
     {
       scuId: 'scu.catalog.query_avastha_schemes',
