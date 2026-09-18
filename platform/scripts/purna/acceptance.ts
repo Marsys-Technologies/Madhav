@@ -40,7 +40,7 @@ export interface AcceptanceRunRecord {
   readonly judge_assessor: 'independent_eval_judge'
   readonly judge_model_id: string
   readonly judged_artifact_hash: string
-  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'base_url' | 'revision' | 'authorization' | 'evidence_mode'>
+  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'base_url' | 'revision' | 'authorization' | 'judge_authority' | 'evidence_mode'>
   readonly case_inputs: readonly unknown[]
   readonly evidence: readonly unknown[]
   readonly answers: readonly AcceptanceAnswer[]
@@ -123,6 +123,11 @@ export async function writeAcceptanceRun(args: {
   const inputs = casesForSuite(protocol, args.suite)
   const input = validateAccountableAnswersArtifact(args.input, inputs)
   if (!input.assessment) throw new Error('PRODUCT_ACCEPTANCE_JUDGED_ARTIFACT_REQUIRED')
+  if (input.assessment.approval_id !== config.judge_authority.approval_id
+    || input.assessment.model_id !== config.judge_authority.model_id
+    || input.assessment.judged_artifact_hash !== config.judge_authority.judged_artifact_hash) {
+    throw new Error('PRODUCT_ACCEPTANCE_JUDGE_AUTHORITY_MISMATCH')
+  }
   if (input.provenance.suite !== args.suite
     || input.provenance.environment !== args.environment
     || input.provenance.expected_revision !== config.revision

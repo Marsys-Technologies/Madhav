@@ -27,11 +27,17 @@ const scoreInput: AcceptanceCaseInput = {
 }
 
 const candidateConfig = {
-  schema_version: 'purna-product-acceptance-environment/v1' as const,
+  schema_version: 'purna-product-acceptance-environment/v2' as const,
   environment: 'candidate' as const,
   base_url: 'https://candidate.example.invalid',
   revision: 'candidate-revision-123',
   authorization: { mode: 'approved_non_secret' as const, approval_id: 'approval-123' },
+  judge_authority: {
+    mode: 'approved_non_secret' as const,
+    approval_id: 'unbound-judge-approval',
+    model_id: 'unbound-judge-model',
+    judged_artifact_hash: `sha256:${'0'.repeat(64)}`,
+  },
   evidence_mode: 'candidate_or_live' as const,
 }
 
@@ -39,6 +45,23 @@ const passingAssessment = {
   assessor: 'independent_eval_judge' as const, model_id: 'judge-test',
   relevance: 4, evidence_based_explanation: 4, contradiction_handling: 4, usefulness: 4,
   rationale: 'independent assessment',
+}
+
+function configAnchoredTo(input: { readonly assessment?: {
+  readonly approval_id: string
+  readonly model_id: string
+  readonly judged_artifact_hash: string
+} }) {
+  if (!input.assessment) return candidateConfig
+  return {
+    ...candidateConfig,
+    judge_authority: {
+      mode: 'approved_non_secret' as const,
+      approval_id: input.assessment.approval_id,
+      model_id: input.assessment.model_id,
+      judged_artifact_hash: input.assessment.judged_artifact_hash,
+    },
+  }
 }
 
 const validFactRegister = {
@@ -306,7 +329,7 @@ describe('Purna product acceptance harness', () => {
     try {
       const bound = await boundInput({ artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment })
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { answers: bound.answers }, artifactDir,
       })).rejects.toThrow('PURNA_ACCOUNTABLE_ANSWERS_INVALID')
 
@@ -323,7 +346,7 @@ describe('Purna product acceptance harness', () => {
         model_id: bound.assessment!.model_id,
       }
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: {
           ...bound,
           provenance: forgedProvenance,
@@ -334,12 +357,12 @@ describe('Purna product acceptance harness', () => {
           answers: forgedAnswers,
         },
         artifactDir,
-      })).rejects.toThrow('PRODUCT_ACCEPTANCE_COLLECTION_ANSWER_MISMATCH')
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_JUDGE_AUTHORITY_MISMATCH')
 
       const persistedCollection = JSON.parse(await readFile(bound.provenance.collection_artifact, 'utf8')) as Record<string, unknown>
       await writeFile(bound.provenance.collection_artifact, `${JSON.stringify({ ...persistedCollection, collection_hash: `sha256:${'f'.repeat(64)}` })}\n`)
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: bound, artifactDir,
       })).rejects.toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
     } finally {
@@ -371,9 +394,16 @@ describe('Purna product acceptance harness', () => {
       const judged = await boundInput({
         artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment, name: 'judged',
       })
+      const trustedConfig = configAnchoredTo(judged)
       const answer = judged.answers[0]!
+      const missingAuthority = structuredClone(trustedConfig) as Record<string, unknown>
+      delete missingAuthority.judge_authority
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: missingAuthority,
+        input: judged, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_ENV_CONFIG_INVALID')
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: trustedConfig,
         input: {
           ...judged,
           answers: [{
@@ -385,7 +415,7 @@ describe('Purna product acceptance harness', () => {
       })).rejects.toThrow('PURNA_JUDGED_ANSWERS_HASH_MISMATCH')
 
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: trustedConfig,
         input: {
           ...judged,
           answers: [{
@@ -397,13 +427,88 @@ describe('Purna product acceptance harness', () => {
       })).rejects.toThrow('PURNA_JUDGED_ANSWERS_MODEL_MISMATCH')
 
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: trustedConfig,
         input: {
           ...judged,
           assessment: { ...judged.assessment!, approval_id: 'forged-approval' },
         },
         artifactDir,
       })).rejects.toThrow('PURNA_JUDGED_ANSWERS_HASH_MISMATCH')
+    } finally {
+      await rm(artifactDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects recomputed caller-forged approval, model, and assessment values against trusted authority', async () => {
+    const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-authority-'))
+    const firstCase = casesForSuite(protocol, 'product')[0]
+    try {
+      const judged = await boundInput({
+        artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment,
+      })
+      const trustedConfig = configAnchoredTo(judged)
+      const answer = judged.answers[0]!
+
+      const forgedApproval = {
+        approval_id: 'caller-forged-approval',
+        assessor: 'independent_eval_judge' as const,
+        model_id: judged.assessment!.model_id,
+      }
+      const forgedApprovalArtifact = {
+        ...judged,
+        assessment: {
+          ...forgedApproval,
+          judged_artifact_hash: judgedArtifactHash(judged.answers, judged.provenance, forgedApproval),
+        },
+      }
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: trustedConfig,
+        input: forgedApprovalArtifact, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_JUDGE_AUTHORITY_MISMATCH')
+
+      const forgedModelAnswers = [{
+        ...answer,
+        qualitative_assessment: { ...answer.qualitative_assessment!, model_id: 'caller-forged-model' },
+      }]
+      const forgedModelApproval = {
+        approval_id: judged.assessment!.approval_id,
+        assessor: 'independent_eval_judge' as const,
+        model_id: 'caller-forged-model',
+      }
+      const forgedModelArtifact = {
+        ...judged,
+        assessment: {
+          ...forgedModelApproval,
+          judged_artifact_hash: judgedArtifactHash(forgedModelAnswers, judged.provenance, forgedModelApproval),
+        },
+        answers: forgedModelAnswers,
+      }
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: trustedConfig,
+        input: forgedModelArtifact, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_JUDGE_AUTHORITY_MISMATCH')
+
+      const forgedScoreAnswers = [{
+        ...answer,
+        qualitative_assessment: { ...answer.qualitative_assessment!, relevance: 5 },
+      }]
+      const originalApproval = {
+        approval_id: judged.assessment!.approval_id,
+        assessor: judged.assessment!.assessor,
+        model_id: judged.assessment!.model_id,
+      }
+      const forgedScoreArtifact = {
+        ...judged,
+        assessment: {
+          ...originalApproval,
+          judged_artifact_hash: judgedArtifactHash(forgedScoreAnswers, judged.provenance, originalApproval),
+        },
+        answers: forgedScoreAnswers,
+      }
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: trustedConfig,
+        input: forgedScoreArtifact, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_JUDGE_AUTHORITY_MISMATCH')
     } finally {
       await rm(artifactDir, { recursive: true, force: true })
     }
@@ -440,27 +545,27 @@ describe('Purna product acceptance harness', () => {
       const bound = await boundInput({ artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment })
       const answer = bound.answers[0]!
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{ ...answer, qualitative_assessment: { ...passingAssessment, relevance: '4' } }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{ ...answer, qualitative_assessment: { ...passingAssessment, untrusted_extra: true } }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [answer, answer] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_DUPLICATE_ANSWER_ID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{ ...answer, case_id: 'unknown_case' }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_UNKNOWN_ANSWER_ID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{ ...answer, evidence: [...answer.evidence, { gate_id: 'unknown_gate', passed: true, receipt_ref: 'r2' }] }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_UNKNOWN_GATE_ID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{ ...answer, evidence: [...answer.evidence, answer.evidence[0]] }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_DUPLICATE_GATE_ID')
     } finally {
@@ -475,11 +580,11 @@ describe('Purna product acceptance harness', () => {
       const bound = await boundInput({ artifactDir, caseInput: firstCase, qualitativeAssessment: passingAssessment })
       const answer = bound.answers[0]!
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{ ...answer, response_accountability: {} }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{
           ...answer,
           response_accountability: {
@@ -492,7 +597,7 @@ describe('Purna product acceptance harness', () => {
         }] }, artifactDir,
       })).rejects.toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
       await expect(writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(bound),
         input: { ...bound, answers: [{
           ...answer,
           response_accountability: { ...validResponseAccountability, untyped_forgery: true },
@@ -503,7 +608,7 @@ describe('Purna product acceptance harness', () => {
         qualitativeAssessment: passingAssessment, name: 'valid-accountability',
       })
       const written = await writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(validBound),
         input: validBound, artifactDir,
       })
       expect(written.record.answers[0]?.response_accountability).toMatchObject({
@@ -531,7 +636,7 @@ describe('Purna product acceptance harness', () => {
         protocol,
         suite: 'product',
         environment: 'candidate',
-        environmentConfig: candidateConfig,
+        environmentConfig: configAnchoredTo(input),
         input,
         artifactDir,
       })
@@ -662,7 +767,7 @@ describe('Purna product acceptance harness', () => {
         qualitativeAssessment: passingAssessment,
       })
       const written = await writeAcceptanceRun({
-        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: configAnchoredTo(input),
         input,
         artifactDir, now: new Date('2026-09-17T00:00:00.000Z'), runId: 'run-test',
       })
@@ -677,6 +782,7 @@ describe('Purna product acceptance harness', () => {
         judge_assessor: input.assessment!.assessor,
         judge_model_id: input.assessment!.model_id,
         judged_artifact_hash: input.assessment!.judged_artifact_hash,
+        environment_config: { judge_authority: configAnchoredTo(input).judge_authority },
         verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
       })
       expect(persisted.case_inputs).toHaveLength(30)
