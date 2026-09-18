@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T06:04:57.000Z",
-  "content_hash": "sha256:9d1ea56fb558dfa33374a6f00f67168f934062b20cf87de1051201940b90f721",
+  "generated_at": "2026-09-18T07:02:36.000Z",
+  "content_hash": "sha256:7da94f9633593e74a250efe26e2974c019d0c8b85944e17a48a237200d2036a9",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:812ddfad1d8d43a323732365df03559f437175b671ab86e3b8e5b901850921b2",
+  "semantic_review_fingerprint": "sha256:09465ddb58e6c00317b5cb672802e654626373b66df9ec200a17bad293031c1f",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -14132,6 +14132,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_class_priors",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-class-priors:v1",
+              "capability_uri": "marsys://tool/L0/query_class_priors",
+              "contract_sha256": "sha256:dbde3686623c676b2b984a5c17b9a9187731e921ae8ffa3f23f7414099c83a6f",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115 | platform/supabase/migrations/387_brahma_class_priors.sql:18-31 | platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100 | platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39 | platform/supabase/migrations/615_nirmana_l0_governance_integrity_contracts.sql:1-45"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -21613,6 +21628,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_prashna_special_techniques",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-prashna-special-techniques:v1",
+              "capability_uri": "marsys://tool/L0/query_prashna_special_techniques",
+              "contract_sha256": "sha256:bbbf08c7e0323f2d1e96de7da6487a8cd1bf65cd88830b026919e8be4915bb61",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55 | platform/migrations/261_bg_prashna_rules_schema.sql:54-62 | platform/python-sidecar/brahmagyan/l0_prashna.py:911-931 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:59-65"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

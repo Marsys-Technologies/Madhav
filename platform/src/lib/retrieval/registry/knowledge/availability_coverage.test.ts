@@ -520,6 +520,34 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59',
     },
+    {
+      scuId: 'scu.catalog.query_prashna_special_techniques',
+      bindingId: 'registry:marsys://tool/L0/query_prashna_special_techniques',
+      contractId: 'source-query:query-prashna-special-techniques:v1',
+      relation: 'bg_prashna_special_techniques',
+      sqlMarkers: [
+        'SELECT technique_id, technique_name, technique_name_sa, application_rule, classical_citation',
+        'technique_id = NULL::text',
+        'ORDER BY technique_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55',
+    },
+    {
+      scuId: 'scu.catalog.query_class_priors',
+      bindingId: 'registry:marsys://tool/L0/query_class_priors',
+      contractId: 'source-query:query-class-priors:v1',
+      relation: 'brahma_class_priors',
+      sqlMarkers: [
+        'SELECT prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition',
+        'class_prior, varga_weights, contested, citation, ratified_by',
+        "fact_kind <> 'lifetime_count_per_100y'",
+        'prior_version = NULL::text',
+        'signal_type_class = NULL::text',
+        'source_subsystem = NULL::text',
+        'ORDER BY prior_version, signal_type_class, source_subsystem',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -544,7 +572,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_prashna_lagna_methods'
       || scuId === 'scu.catalog.query_prashna_tajik_yogas'
       || scuId === 'scu.catalog.query_prashna_significators'
-      || scuId === 'scu.catalog.query_prashna_fructification_rules') {
+      || scuId === 'scu.catalog.query_prashna_fructification_rules'
+      || scuId === 'scu.catalog.query_prashna_special_techniques'
+      || scuId === 'scu.catalog.query_class_priors') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 

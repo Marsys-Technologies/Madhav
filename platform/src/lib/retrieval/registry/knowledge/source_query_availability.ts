@@ -495,6 +495,51 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-prashna-special-techniques:v1',
+    descriptor_name: 'query_prashna_special_techniques',
+    capability_uri: 'marsys://tool/L0/query_prashna_special_techniques',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT technique_id, technique_name, technique_name_sa, application_rule, classical_citation
+            FROM bg_prashna_special_techniques
+           WHERE 1=1
+             AND (NULL::text IS NULL OR technique_id = NULL::text)
+           ORDER BY technique_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55',
+      'platform/migrations/261_bg_prashna_rules_schema.sql:54-62',
+      'platform/python-sidecar/brahmagyan/l0_prashna.py:911-931',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
+      'platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:59-65',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-class-priors:v1',
+    descriptor_name: 'query_class_priors',
+    capability_uri: 'marsys://tool/L0/query_class_priors',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition,
+                 class_prior, varga_weights, contested, citation, ratified_by
+            FROM brahma_class_priors
+           WHERE fact_kind <> 'lifetime_count_per_100y'
+             AND (NULL::text IS NULL OR prior_version = NULL::text)
+             AND (NULL::text IS NULL OR signal_type_class = NULL::text)
+             AND (NULL::text IS NULL OR source_subsystem = NULL::text)
+           ORDER BY prior_version, signal_type_class, source_subsystem
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115',
+      'platform/supabase/migrations/387_brahma_class_priors.sql:18-31',
+      'platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39',
+      'platform/supabase/migrations/615_nirmana_l0_governance_integrity_contracts.sql:1-45',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
