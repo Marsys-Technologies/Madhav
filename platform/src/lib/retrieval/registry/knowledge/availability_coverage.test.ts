@@ -548,6 +548,35 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115',
     },
+    {
+      scuId: 'scu.catalog.query_muhurta_lattice',
+      bindingId: 'registry:marsys://tool/L0/query_muhurta_lattice',
+      contractId: 'source-query:query-muhurta-lattice:v1',
+      relation: 'bg_muhurta_lattice',
+      sqlMarkers: [
+        'SELECT factor_family, factor_key, start_utc, end_utc, detail',
+        'source_citation, corpus_status',
+        'start_utc < NULL::timestamp',
+        'end_utc > NULL::timestamp',
+        'factor_family = NULL::text',
+        'factor_key = NULL::text',
+        'ORDER BY start_utc, factor_family, factor_key',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147',
+    },
+    {
+      scuId: 'scu.catalog.query_transit_moorti',
+      bindingId: 'registry:marsys://tool/L0/query_transit_moorti',
+      contractId: 'source-query:query-transit-moorti:v1',
+      relation: 'bg_transit_moorti',
+      sqlMarkers: [
+        'SELECT nakshatra_offset, moorti_name, quality_tier, phala_brief, classical_citation, rule_notes',
+        'nakshatra_offset = NULL::integer',
+        'LOWER(moorti_name) = LOWER(NULL::text)',
+        'ORDER BY nakshatra_offset',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -574,7 +603,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_prashna_significators'
       || scuId === 'scu.catalog.query_prashna_fructification_rules'
       || scuId === 'scu.catalog.query_prashna_special_techniques'
-      || scuId === 'scu.catalog.query_class_priors') {
+      || scuId === 'scu.catalog.query_class_priors'
+      || scuId === 'scu.catalog.query_muhurta_lattice'
+      || scuId === 'scu.catalog.query_transit_moorti') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 

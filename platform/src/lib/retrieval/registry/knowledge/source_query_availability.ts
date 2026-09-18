@@ -540,6 +540,49 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-muhurta-lattice:v1',
+    descriptor_name: 'query_muhurta_lattice',
+    capability_uri: 'marsys://tool/L0/query_muhurta_lattice',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT factor_family, factor_key, start_utc, end_utc, detail,
+                 reference_lat, reference_lon, reference_tz_offset_minutes,
+                 reference_location_key, ayanamsha_key, sampling_method,
+                 source_citation, corpus_status
+            FROM bg_muhurta_lattice
+           WHERE start_utc < NULL::timestamp
+             AND end_utc > NULL::timestamp
+             AND (NULL::text IS NULL OR factor_family = NULL::text)
+             AND (NULL::text IS NULL OR factor_key = NULL::text)
+           ORDER BY start_utc, factor_family, factor_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147',
+      'platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85',
+      'platform/supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql:77-93',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-transit-moorti:v1',
+    descriptor_name: 'query_transit_moorti',
+    capability_uri: 'marsys://tool/L0/query_transit_moorti',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT nakshatra_offset, moorti_name, quality_tier, phala_brief, classical_citation, rule_notes
+            FROM bg_transit_moorti
+           WHERE 1=1
+             AND (NULL::integer IS NULL OR nakshatra_offset = NULL::integer)
+             AND (NULL::text IS NULL OR LOWER(moorti_name) = LOWER(NULL::text))
+           ORDER BY nakshatra_offset
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73',
+      'platform/supabase/migrations/401_bg_transit_moorti.sql:10-20',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
