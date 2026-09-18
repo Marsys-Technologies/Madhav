@@ -603,6 +603,35 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85',
     },
+    {
+      scuId: 'scu.catalog.query_dasha_systems',
+      bindingId: 'registry:marsys://tool/L0/query_dasha_systems',
+      contractId: 'source-query:query-dasha-systems:v1',
+      relation: 'brahma_dasha_systems',
+      sqlMarkers: [
+        'SELECT canonical_id, name_sa, name_en, total_cycle_years, base_unit, sequence_jsonb',
+        'computation_method, computation_pseudocode, conditions_for_use, school',
+        'classical_citations',
+        'canonical_id = NULL::text',
+        'LOWER(school) = LOWER(NULL::text)',
+        'ORDER BY canonical_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66',
+    },
+    {
+      scuId: 'scu.catalog.query_formula_constants',
+      bindingId: 'registry:marsys://tool/L0/query_formula_constants',
+      contractId: 'source-query:query-formula-constants:v1',
+      relation: 'brahma_formula_constants',
+      sqlMarkers: [
+        'SELECT constant_id, value_jsonb, class, consumer_assets, citation_or_ratification',
+        'calibratable, bounds, version',
+        'constant_id = NULL::text',
+        'class = NULL::text',
+        'ORDER BY constant_id',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -633,7 +662,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_muhurta_lattice'
       || scuId === 'scu.catalog.query_transit_moorti'
       || scuId === 'scu.catalog.query_transit_engine'
-      || scuId === 'scu.catalog.query_transit_av_gates') {
+      || scuId === 'scu.catalog.query_transit_av_gates'
+      || scuId === 'scu.catalog.query_dasha_systems'
+      || scuId === 'scu.catalog.query_formula_constants') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
@@ -740,84 +771,6 @@ describe('first-slice availability coverage', () => {
         state: 'dark',
         available_binding_ids: [],
         gaps: [`${contractId} could not execute its authenticated source query.`],
-      })
-    }
-  })
-
-  it('activates query_formula_constants only from a fresh, matching global formula-constants receipt', async () => {
-    const scu = findScu('scu.catalog.query_formula_constants')
-    const bindingId = 'registry:marsys://tool/L0/query_formula_constants'
-    const [requirement] = producerRequirements(scu.scu_id)
-
-    expect(scu.availability_dispositions ?? []).toEqual([])
-    expect(scu.producer_output_claims).toEqual([{
-      asset_id: 'bg_formula_constants',
-      component: 'formula_constants',
-      output_digest_spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
-      disposition: 'reviewed_output',
-      evidence: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
-    }])
-    expect(requirement).toEqual({
-      kind: 'producer_output',
-      asset_id: 'bg_formula_constants',
-      spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
-      scope: 'global',
-      source_ref: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
-    })
-
-    const available = await overlayFor([globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256)])
-    expect(available.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      available_binding_ids: [bindingId],
-    })
-
-    for (const [rows, state] of [
-      [[], 'dark'],
-      [[globalProducerReceipt(requirement!.asset_id, 'b'.repeat(64))], 'incompatible'],
-      [[globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256, { freshness_state: 'stale' })], 'dark'],
-    ] as const) {
-      const unavailable = await overlayFor(rows)
-      expect(unavailable.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-        state,
-        available_binding_ids: [],
-      })
-    }
-  })
-
-  it('activates query_dasha_systems only from a fresh, matching global dasha-system receipt', async () => {
-    const scu = findScu('scu.catalog.query_dasha_systems')
-    const bindingId = 'registry:marsys://tool/L0/query_dasha_systems'
-    const [requirement] = producerRequirements(scu.scu_id)
-
-    expect(scu.availability_dispositions ?? []).toEqual([])
-    expect(scu.producer_output_claims).toEqual([{
-      asset_id: 'bg_dasha_systems',
-      component: 'dasha_system_catalog',
-      output_digest_spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
-      disposition: 'reviewed_output',
-      evidence: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
-    }])
-    expect(requirement).toEqual({
-      kind: 'producer_output',
-      asset_id: 'bg_dasha_systems',
-      spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
-      scope: 'global',
-      source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
-    })
-
-    const available = await overlayFor([globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256)])
-    expect(available.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      available_binding_ids: [bindingId],
-    })
-
-    for (const [rows, state] of [
-      [[], 'dark'],
-      [[globalProducerReceipt(requirement!.asset_id, 'a'.repeat(64))], 'incompatible'],
-      [[globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256, { freshness_state: 'stale' })], 'dark'],
-    ] as const) {
-      const unavailable = await overlayFor(rows)
-      expect(unavailable.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-        state,
-        available_binding_ids: [],
       })
     }
   })

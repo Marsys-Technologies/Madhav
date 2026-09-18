@@ -143,38 +143,6 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       source_ref: 'platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql:74-77',
     }],
   },
-  query_formula_constants: {
-    producer_output_claims: [{
-      asset_id: 'bg_formula_constants',
-      component: 'formula_constants',
-      output_digest_spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
-      disposition: 'reviewed_output',
-      evidence: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
-    }],
-    requirements: [{
-      kind: 'producer_output',
-      asset_id: 'bg_formula_constants',
-      spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
-      scope: 'global',
-      source_ref: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
-    }],
-  },
-  query_dasha_systems: {
-    producer_output_claims: [{
-      asset_id: 'bg_dasha_systems',
-      component: 'dasha_system_catalog',
-      output_digest_spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
-      disposition: 'reviewed_output',
-      evidence: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
-    }],
-    requirements: [{
-      kind: 'producer_output',
-      asset_id: 'bg_dasha_systems',
-      spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
-      scope: 'global',
-      source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
-    }],
-  },
   query_medical_mappings: {
     producer_output_claims: [{
       asset_id: 'bg_medical_mappings',
