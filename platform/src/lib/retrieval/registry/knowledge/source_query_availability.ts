@@ -2112,6 +2112,53 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-dashas:v1',
+    descriptor_name: 'get_dashas',
+    capability_uri: 'marsys://tool/L1/get_dashas',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH eligible_receipt AS (
+            SELECT receipt.build_id::text AS build_id
+              FROM asset_provenance_receipts receipt
+              JOIN asset_freshness freshness
+                ON freshness.asset_id = receipt.asset_id
+               AND freshness.scope_key = receipt.scope_key
+               AND freshness.partition_key = receipt.partition_key
+               AND freshness.receipt_version = receipt.receipt_version
+              JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+             WHERE receipt.asset_id = 'ga_dashas'
+               AND receipt.chart_id = $1::uuid
+               AND receipt.receipt_state = 'proven'
+               AND receipt.output_digest_spec_sha256 = '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14'
+               AND freshness.freshness_state = 'fresh'
+               AND receipt_run.chart_id = $1::uuid
+               AND receipt_run.state = 'completed'
+             ORDER BY receipt.observed_at DESC
+             LIMIT 1
+          ), handler_page AS (
+            SELECT d.dasha_row_id, d.system_id, d.ayanamsha_id, d.start_date, d.level_n, d.start_iso
+              FROM chart_dashas d
+              JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
+             WHERE d.chart_id = $1::uuid
+               AND d.ayanamsha_id = 'lahiri_chitrapaksha'
+               AND d.system_id = 'vimshottari'
+             ORDER BY d.system_id, d.ayanamsha_id, d.start_date, d.level_n, d.start_iso, d.dasha_row_id
+             LIMIT 0
+          ), level_probe AS (
+            SELECT MAX(level_n)::int AS max_level
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+             LIMIT 0
+          )
+          SELECT 1 FROM handler_page CROSS JOIN level_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:600-724',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:946-962',
+      'platform/migrations/003_ganita_dashas.sql:1-80',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
