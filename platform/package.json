@@ -38,6 +38,8 @@
     "tap:7-distribution-gates": "tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts",
     "tap:static-all": "npm run tap:6-method-grep && npm run tap:pointer-validation",
     "guard:migration-numbers": "tsx scripts/ci/migration_number_guard.ts",
+    "ci:merge-queue-supervisor:test": "vitest run scripts/__tests__/merge_queue_supervisor.test.ts",
+    "ci:merge-queue-supervisor": "tsx scripts/ci/merge_queue_supervisor_cli.ts",
     "migration:next": "tsx scripts/ci/migration_number_guard.ts --next",
     "checkpoint:eval": "tsx src/scripts/checkpoints/eval.ts",
     "eval:planner": "tsx --env-file-if-exists=.env.local --conditions=react-server tests/eval/planner_smoke_runner.ts",

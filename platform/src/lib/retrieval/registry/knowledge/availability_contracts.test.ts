@@ -243,6 +243,18 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
+    ['source-query:query-remedy-corpus:v1', 'brahma_remedy_corpus'],
+    ['source-query:query-sky-calendar:v1', 'bg_sky_calendar'],
+    ['source-query:query-transit-vedha:v1', 'bg_transit_vedha'],
+  ])('keeps %s as a global, exact zero-row source probe', (contractId, relation) => {
+    const contract = getSourceQueryAvailabilityContract(contractId)!
+
+    expect(contract).toMatchObject({ scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available' })
+    expect(contract.sql).toContain(`FROM ${relation}`)
+    expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it.each([
     ['scu.catalog.query_dosha_catalog', 'source-query:query-dosha-catalog:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71'],
     ['scu.catalog.query_compendium_index', 'source-query:query-compendium-index:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93'],
     ['scu.catalog.list_entities', 'source-query:list-entities:v1', 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:17'],

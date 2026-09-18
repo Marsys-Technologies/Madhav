@@ -8,7 +8,7 @@
  * unlike its sibling bg_muhurta_lattice. This capability closes that gap, mirroring
  * query_muhurta_lattice.ts's structure.
  *
- * Substrate: table `bg_sky_events`, writer `bg_sky_calendar.py`, migration 473. This
+ * Substrate: table `bg_sky_calendar`, writer `bg_sky_calendar.py`, migration 473. This
  * capability computes NOTHING astrological of its own -- it is the read path only.
  *
  * WHAT IT SERVES: every sky-event row whose event_datetime_utc falls inside the
@@ -45,7 +45,7 @@ export const querySkyCalendarCapability: CapabilityDescriptor = {
   name:  'query_sky_calendar',
 
   description: [
-    'Read the global chart-independent sky-event diary (bg_sky_events) for a time interval.',
+    'Read the global chart-independent sky-event diary (bg_sky_calendar) for a time interval.',
     'Five event families: ingress (sign-boundary crossings, 9 grahas), station (retro/direct',
     'stations for Mars/Mercury/Jupiter/Venus/Saturn -- Sun/Moon never station, Rahu/Ketu are',
     'deliberately excluded), eclipse_solar / eclipse_lunar (TIMING only -- max/begin/end instant',
@@ -115,7 +115,7 @@ export const querySkyCalendarCapability: CapabilityDescriptor = {
       SELECT event_type, primary_body, secondary_body, event_datetime_utc,
              sign, nakshatra, longitude_deg, speed_dps, detail,
              ayanamsha_key, sampling_method, source_citation
-      FROM bg_sky_events
+      FROM bg_sky_calendar
       WHERE ${filters.join(' AND ')}
       ORDER BY event_datetime_utc, event_type, primary_body
       LIMIT $${p}`
@@ -154,7 +154,7 @@ export const querySkyCalendarCapability: CapabilityDescriptor = {
             'double-transit events, not a per-chart contact or election verdict. Whether any ' +
             'event here touches a specific chart is a separate, chart-scoped question this ' +
             'capability does not answer.',
-          provenance: { tables: ['bg_sky_events'], asset_id: 'bg_sky_calendar' },
+          provenance: { tables: ['bg_sky_calendar'], asset_id: 'bg_sky_calendar' },
         },
         is_error: false,
       }

@@ -1004,6 +1004,67 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039',
     ],
   },
+  {
+    contract_id: 'source-query:query-remedy-corpus:v1',
+    descriptor_name: 'query_remedy_corpus',
+    capability_uri: 'marsys://tool/L0/query_remedy_corpus',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT remedy_id, planet, remedy_type, category, deity, prescription_text, mantra_text,
+                   source_canonical_id, source_citation, cost_tier, confidence
+              FROM brahma_remedy_corpus
+             WHERE 1=1
+             ORDER BY planet, remedy_type
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::int AS total FROM brahma_remedy_corpus WHERE 1=1
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:92-108',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/608_nirmana_bg_remedies_integrity_contract.sql:38-78',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-sky-calendar:v1',
+    descriptor_name: 'query_sky_calendar',
+    capability_uri: 'marsys://tool/L0/query_sky_calendar',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT event_type, primary_body, secondary_body, event_datetime_utc, sign, nakshatra,
+                 longitude_deg, speed_dps, detail, ayanamsha_key, sampling_method, source_citation
+            FROM bg_sky_calendar
+           WHERE event_datetime_utc >= NULL::timestamptz
+             AND event_datetime_utc < NULL::timestamptz
+           ORDER BY event_datetime_utc, event_type, primary_body
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156',
+      'platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-transit-vedha:v1',
+    descriptor_name: 'query_transit_vedha',
+    capability_uri: 'marsys://tool/L0/query_transit_vedha',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT primary_graha, primary_transit_house, vedha_graha, vedha_house, vedha_type,
+                 classical_note, classical_citation
+            FROM bg_transit_vedha
+           WHERE 1=1
+           ORDER BY primary_graha, primary_transit_house
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:81-112',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
