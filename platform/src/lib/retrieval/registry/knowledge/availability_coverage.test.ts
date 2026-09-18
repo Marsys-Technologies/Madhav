@@ -577,6 +577,32 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73',
     },
+    {
+      scuId: 'scu.catalog.query_transit_engine',
+      bindingId: 'registry:marsys://tool/L0/query_transit_engine',
+      contractId: 'source-query:query-transit-engine:v1',
+      relation: 'bg_transit_engine',
+      sqlMarkers: [
+        'SELECT graha, avg_daily_motion_deg, zodiac_period_days, sign_residence_days, classical_citation',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'ORDER BY graha',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75',
+    },
+    {
+      scuId: 'scu.catalog.query_transit_av_gates',
+      bindingId: 'registry:marsys://tool/L0/query_transit_av_gates',
+      contractId: 'source-query:query-transit-av-gates:v1',
+      relation: 'bg_transit_av_gates',
+      sqlMarkers: [
+        'SELECT gate_kind, graha, house_from_moon, kakshya_lord, min_av_score, min_sav_score',
+        'effect, classical_citation, rule_notes',
+        'gate_kind = NULL::text',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'ORDER BY gate_kind, graha, house_from_moon',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -605,7 +631,9 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_prashna_special_techniques'
       || scuId === 'scu.catalog.query_class_priors'
       || scuId === 'scu.catalog.query_muhurta_lattice'
-      || scuId === 'scu.catalog.query_transit_moorti') {
+      || scuId === 'scu.catalog.query_transit_moorti'
+      || scuId === 'scu.catalog.query_transit_engine'
+      || scuId === 'scu.catalog.query_transit_av_gates') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
