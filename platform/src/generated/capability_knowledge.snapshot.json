@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T12:22:00.000Z",
-  "content_hash": "sha256:e02a3489c1320a2aa536890800c75d38bc2fd58eed533e8667a5f49d565736aa",
-  "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
+  "generated_at": "2026-09-18T13:59:39.000Z",
+  "content_hash": "sha256:da6bb5ae756db2b2688e4391b5d92224eff7bb07e446d04f495cf4a4d4467c40",
+  "source_catalog_fingerprint": "sha256:6667406eb0a673f74e6678a72a109fd5d69cf56b97f2f2566fa95faabc522f1e",
   "semantic_review_fingerprint": "sha256:62914f145ec54f6f0a26bb426bbd1b841187347c13afaafa1be53e87da90dab4",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -29617,7 +29617,7 @@
       "scu_id": "scu.catalog.read_remedy",
       "version": 1,
       "label": "Read Remedy",
-      "description": "Fetch the full record for a single remedy by remedy_id from brahma_remedy_corpus. Returns all columns including ingredients_jsonb and timing_rules_jsonb. remedy_id is required (UUID). Registry equivalent of lib/retrieve/remedy_tools.ts::read_remedy (D7 gap fill). Evidence use: retrieve remedial options together with their grounding and applicability constraints.",
+      "description": "Fetch the full record for a single remedy by remedy_id from brahma_remedy_corpus. Returns all columns including ingredients_jsonb and timing_rules_jsonb. remedy_id is required (stable TEXT remedy slug, e.g. sat_career_mantra_01). Registry equivalent of lib/retrieve/remedy_tools.ts::read_remedy (D7 gap fill). Evidence use: retrieve remedial options together with their grounding and applicability constraints.",
       "kind": "intervention",
       "domains": [
         "remediation"
