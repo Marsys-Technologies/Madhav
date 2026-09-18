@@ -159,6 +159,29 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:resolve-entity:v1',
+    descriptor_name: 'resolve_entity',
+    capability_uri: 'marsys://tool/L0/resolve_entity',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT canonical_id, entity_class, canonical_name_en, canonical_name_sa,
+                 synonyms, description, source_citation
+            FROM brahma_ontology
+           WHERE NULL::text = ANY(synonyms)
+              OR lower(canonical_name_en) = lower(NULL::text)
+              OR lower(canonical_name_sa) = lower(NULL::text)
+           ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:45-92',
+      'platform/migrations/ws2_l0_ontology.sql:15-37',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30',
+      'platform/python-sidecar/brahmagyan/l0_ontology.py:1094-1173',
+      'platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102',
+    ],
+  },
+  {
     contract_id: 'source-query:list-classical-texts:v1',
     descriptor_name: 'list_classical_texts',
     capability_uri: 'marsys://tool/L0/list_classical_texts',
@@ -186,6 +209,29 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59',
       'platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110',
+    ],
+  },
+  {
+    contract_id: 'source-query:read-chapter:v1',
+    descriptor_name: 'read_chapter',
+    capability_uri: 'marsys://tool/L0/read_chapter',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT chunk_id, verse_ref, content_en, content_sa
+            FROM classical_text_chunks
+           WHERE text_id = NULL::text
+             AND chapter = NULL::integer
+           ORDER BY verse_start, chunk_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026',
+      'platform/src/lib/tools/classical_text_tools.ts:35-58',
+      'platform/migrations/ws2_l0_texts.sql:42-65',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683',
+      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27',
+      'platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128',
     ],
   },
   {

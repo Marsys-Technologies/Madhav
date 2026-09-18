@@ -65,6 +65,40 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
+    ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
+    ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'platform/migrations/ws2_l0_texts.sql:42-65'],
+  ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    const requirement = scu.availability_contracts![0]!.requirements[0]!
+
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: contractId,
+      scope: 'global',
+      contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      source_ref: expect.stringContaining(schemaRef),
+    })
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
+    }))
+  })
+
+  it.each([
+    ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
+    ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
+  ])('keeps %s as an exact, zero-row-safe handler source probe', (contractId, relationMarker, orderMarker) => {
+    const contract = getSourceQueryAvailabilityContract(contractId)!
+
+    expect(contract.parameter_binding).toBe('global')
+    expect(contract.empty_semantics).toBe('query_success_is_available')
+    expect(contract.sql).toContain(relationMarker)
+    expect(contract.sql).toContain(orderMarker)
+    expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it.each([
     ['scu.catalog.get_ayurdaya', 'source-query:get-ayurdaya:v1'],
     ['scu.catalog.get_sensitive_degrees', 'source-query:get-sensitive-degrees:v1'],
   ])('binds %s to its exact chart-and-active-build source-query contract', (scuId, contractId) => {

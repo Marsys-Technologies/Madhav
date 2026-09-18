@@ -369,6 +369,22 @@ describe('first-slice availability coverage', () => {
       sqlMarkers: ['COUNT(c.chunk_id) AS chunk_count', 'LEFT JOIN classical_text_chunks', 'LEFT JOIN classical_texts_source', 'GROUP BY t.text_id'],
       handlerRef: 'platform/src/lib/tools/classical_text_tools.ts:77-116',
     },
+    {
+      scuId: 'scu.catalog.resolve_entity',
+      bindingId: 'registry:marsys://tool/L0/resolve_entity',
+      contractId: 'source-query:resolve-entity:v1',
+      relation: 'brahma_ontology',
+      sqlMarkers: ["ORDER BY (entity_class = 'varga') DESC", 'synonyms, description, source_citation'],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:45-92',
+    },
+    {
+      scuId: 'scu.catalog.read_chapter',
+      bindingId: 'registry:marsys://tool/L0/read_chapter',
+      contractId: 'source-query:read-chapter:v1',
+      relation: 'classical_text_chunks',
+      sqlMarkers: ['SELECT chunk_id, verse_ref, content_en, content_sa', 'ORDER BY verse_start, chunk_id'],
+      handlerRef: 'platform/src/lib/tools/classical_text_tools.ts:35-58',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
