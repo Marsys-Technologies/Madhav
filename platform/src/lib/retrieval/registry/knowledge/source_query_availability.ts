@@ -583,6 +583,44 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-transit-engine:v1',
+    descriptor_name: 'query_transit_engine',
+    capability_uri: 'marsys://tool/L0/query_transit_engine',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT graha, avg_daily_motion_deg, zodiac_period_days, sign_residence_days, classical_citation
+            FROM bg_transit_engine
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+           ORDER BY graha
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75',
+      'platform/migrations/266_bg_transit_tables.sql:21-32',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-transit-av-gates:v1',
+    descriptor_name: 'query_transit_av_gates',
+    capability_uri: 'marsys://tool/L0/query_transit_av_gates',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT gate_kind, graha, house_from_moon, kakshya_lord, min_av_score, min_sav_score,
+                 effect, classical_citation, rule_notes
+            FROM bg_transit_av_gates
+           WHERE 1=1
+             AND (NULL::text IS NULL OR gate_kind = NULL::text)
+             AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+           ORDER BY gate_kind, graha, house_from_moon
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85',
+      'platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
