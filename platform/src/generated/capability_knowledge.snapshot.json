@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:00:00.000Z",
-  "content_hash": "sha256:3ddcc499b29c67e530a9be0b47242982cc6482b28e001748e10eeaf2d1fc71e4",
+  "generated_at": "2026-09-18T21:33:01.000Z",
+  "content_hash": "sha256:acb9e2459cfdfb05ffb813d09357ff9c95ce47fb46e4e177c9b0d8d31abd6048",
   "source_catalog_fingerprint": "sha256:73c933e282822f748c88f02fba753235578a1908898b2eef8388ccbde993ef63",
-  "semantic_review_fingerprint": "sha256:4415c22df4abb3211668bcfb49b9fb6c357c31333332250d152a93f32d88615e",
+  "semantic_review_fingerprint": "sha256:835d889a4e9c358ec6d441b8c30cfc17fd414c5fe5c54418490e3ac4380caf3b",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -23813,6 +23813,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_remedy_corpus",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-remedy-corpus:v1",
+              "capability_uri": "marsys://tool/L0/query_remedy_corpus",
+              "contract_sha256": "sha256:39fb291704e0503f3684117c925159e11e5cafb027d4efe2271f2ab46e309b6e",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:92-108 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/608_nirmana_bg_remedies_integrity_contract.sql:38-78"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -26082,6 +26097,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sky_calendar",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sky-calendar:v1",
+              "capability_uri": "marsys://tool/L0/query_sky_calendar",
+              "contract_sha256": "sha256:07133364256c4bc31a81deff7e5dc5f9f2ca7c3f8f268ab60a6b238a5e0a91a2",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28138,6 +28168,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_transit_vedha",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-transit-vedha:v1",
+              "capability_uri": "marsys://tool/L0/query_transit_vedha",
+              "contract_sha256": "sha256:c71775082ae48fde4d6a5552e441b2e2fdf43e6152ebd32707e199ef066e2cae",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:81-112 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
