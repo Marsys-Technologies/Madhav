@@ -1,7 +1,10 @@
 /** Read-only state detector for the one-shot Pūrṇa protected-owner handoff. */
 import { Pool } from 'pg'
 
-const MARKER = '1039_purna_inquiry_protected_ownership.sql'
+// 1040 is the current protected-owner release boundary.  A database marked
+// through 1039 but missing 1040 must re-enter the explicit one-shot bootstrap
+// path; the routine migration runner never receives this authority.
+const MARKER = '1040_planner_inquiry_successor_lifecycle.sql'
 const TABLES = [
   'planner_inquiry_lifecycles',
   'planner_inquiry_evidence_receipts',
@@ -21,6 +24,7 @@ const FUNCTIONS = [
   'update_planner_managed_prashna_job_progress',
   'complete_planner_managed_prashna_job',
   'fail_planner_managed_prashna_job',
+  'create_planner_inquiry_successor_lifecycle',
 ]
 
 export type PurnaOwnershipState = 'armed' | 'rearm_required' | 'interrupted' | 'cleanup_required' | 'marked' | 'invalid'
