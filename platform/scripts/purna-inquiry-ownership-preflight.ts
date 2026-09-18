@@ -93,8 +93,9 @@ export async function runPurnaInquiryOwnershipPreflight(
       GRANT SELECT (access_token_hash, uid, expires_at), UPDATE (expires_at)
         ON TABLE public.mcp_oauth_tokens TO purna_inquiry_owner;
 
-      -- ADMIN OPTION on the owner exists only so migration 1039 can revoke its
-      -- exact edge transactionally. amjis_app membership is in the safe
+      -- ADMIN OPTION on the owner exists only so the terminal protected
+      -- ownership migration (1039 or its successor) can revoke its exact edge
+      -- transactionally. amjis_app membership is in the safe
       -- direction (deployment login is the member, runtime role is the parent)
       -- and supplies migration 1034's existing-table write privileges.
       RESET ROLE;

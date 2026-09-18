@@ -751,7 +751,7 @@ jobs:
             exit 1
           fi
           cd platform && npx tsx scripts/migrate.ts --only \
-            1033_planner_inquiry_lifecycle.sql,1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql,1037_planner_inquiry_action_reservations.sql,1038_planner_managed_prashna_jobs.sql,1039_purna_inquiry_protected_ownership.sql
+            1033_planner_inquiry_lifecycle.sql,1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql,1037_planner_inquiry_action_reservations.sql,1038_planner_managed_prashna_jobs.sql,1039_purna_inquiry_protected_ownership.sql,1040_planner_inquiry_successor_lifecycle.sql
 
       # Run immediately after the protected set, before any unrelated migration.
       # If a prior runner died after preflight COMMIT, `interrupted` makes the next

@@ -96,6 +96,17 @@ describe('Nirmana ownership deployment attestation', () => {
     expect(dataPlaneCutoverIndex).toBeGreaterThan(nirmanaMarkerIndex)
   })
 
+  it('routes the successor lifecycle migration through the one-shot protected-owner runner', () => {
+    const bootstrap = jobs['privileged-bootstrap']
+    const protectedMigrations = bootstrap.steps.find((step) => step.name === 'Apply exact Pūrṇa protected-owner migrations')
+
+    expect(protectedMigrations?.env).toEqual({ DATABASE_URL: '${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}' })
+    expect(protectedMigrations?.run).toContain('1040_planner_inquiry_successor_lifecycle.sql')
+    expect(purnaStatus).toContain("const MARKER = '1040_planner_inquiry_successor_lifecycle.sql'")
+    expect(purnaStatus).toContain("'create_planner_inquiry_successor_lifecycle'")
+    expect(JSON.stringify(jobs.migrate)).not.toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL')
+  })
+
   it('retires the watchdog secret bridge and explicitly removes serialized comment variables', () => {
     const deployWeb = workflow.match(/- name: Deploy web to Cloud Run \(no traffic\)[\s\S]*?(?=\n      - name: Resolve web candidate URL)/)?.[0]
     const envVars = deployWeb?.match(/          env_vars: \|\n([\s\S]*?)(?=          secrets: \|)/)?.[1]

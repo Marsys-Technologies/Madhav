@@ -4,6 +4,8 @@ const harness = vi.hoisted(() => ({
   queries: [] as string[],
   failOnAclRevoke: false,
   statusAclDependencies: 0,
+  statusMarker: true,
+  statusFunctions: 13,
 }))
 
 vi.mock('pg', () => ({
@@ -27,11 +29,11 @@ vi.mock('pg', () => ({
       }
       if (sql.includes('AS marker')) {
         return { rows: [{
-          marker: true,
+          marker: harness.statusMarker,
           tables_total: 4,
           tables_owned: 4,
-          functions_total: 12,
-          functions_owned: 12,
+          functions_total: harness.statusFunctions,
+          functions_owned: harness.statusFunctions,
           owner_normalized: true,
           owner_memberships: 0,
           owner_can_create_public: false,
@@ -59,6 +61,8 @@ describe('Pūrṇa ownership postflight recovery path', () => {
     harness.queries.length = 0
     harness.failOnAclRevoke = false
     harness.statusAclDependencies = 0
+    harness.statusMarker = true
+    harness.statusFunctions = 13
   })
 
   it('re-establishes only the app role, revokes ACL residue, and removes membership before commit', async () => {
@@ -88,5 +92,11 @@ describe('Pūrṇa ownership postflight recovery path', () => {
     await expect(purnaOwnershipState('postgresql://fixture')).resolves.toBe('rearm_required')
     harness.statusAclDependencies = 0
     await expect(purnaOwnershipState('postgresql://fixture')).resolves.toBe('marked')
+  })
+
+  it('requires explicit rearm to apply the successor migration after the 1039 seal', async () => {
+    harness.statusMarker = false
+    harness.statusFunctions = 12
+    await expect(purnaOwnershipState('postgresql://fixture')).resolves.toBe('rearm_required')
   })
 })
