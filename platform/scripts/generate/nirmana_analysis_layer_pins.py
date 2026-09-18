@@ -726,6 +726,70 @@ def validate_delivered_artifact_binding(
             )
 
 
+def validate_protected_squash_artifact_binding(
+    artifact: dict[str, Any],
+    label: str,
+    protected_baseline_commit: str,
+    *,
+    required_content_bindings: tuple[str, ...] = (),
+) -> None:
+    """Validate evidence already squash-delivered on the protected baseline.
+
+    Source PRs still require reachable source artifacts unless the trusted base
+    already carries the exact record. In that case, find the first-parent commit
+    that introduced those bytes, require GitHub's one-parent delivery shape, and
+    revalidate the digest plus every immutable decision/source binding there.
+    """
+    _require_reachable_commit(protected_baseline_commit, "protected baseline")
+    _, path, digest, _ = _artifact_metadata(artifact, label)
+    try:
+        candidates = subprocess.run(
+            [
+                "git",
+                "rev-list",
+                "--first-parent",
+                protected_baseline_commit,
+                "--",
+                path,
+            ],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(
+            f"{label} protected baseline history cannot be inspected"
+        ) from exc
+
+    for delivery_commit in candidates:
+        try:
+            parent = _direct_parent(delivery_commit, f"{label} delivery")
+            content = _blob_at_revision(delivery_commit, path, "delivery")
+        except SystemExit:
+            continue
+        if hashlib.sha256(content).hexdigest() != digest:
+            continue
+        try:
+            parent_content = _blob_at_revision(parent, path, "delivery parent")
+        except SystemExit:
+            parent_content = None
+        if parent_content == content:
+            continue
+        _validate_artifact_content(artifact, label, content)
+        for binding in required_content_bindings:
+            if binding.encode("utf-8") not in content:
+                raise SystemExit(
+                    f"{label} delivered content does not contain {binding!r}"
+                )
+        return
+
+    raise SystemExit(
+        f"{label} is not an exact protected one-parent delivery at or before "
+        f"{protected_baseline_commit}"
+    )
+
+
 def validate_authority_binding(decision: str, commit: str) -> None:
     expected = AUTHORITY_BINDINGS.get(decision)
     if expected is None or expected["authority_commit"] != commit:
@@ -821,7 +885,9 @@ def validate_source_acceptance(
 
 
 def validate_post_integration_source_acceptance_bindings(
-    *, delivery_topology: bool = False
+    *,
+    delivery_topology: bool = False,
+    protected_baseline_commit: str | None = None,
 ) -> None:
     """Re-derive privileged no-writer-delta acceptance records offline."""
     for source_commit, binding in POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS.items():
@@ -849,15 +915,26 @@ def validate_post_integration_source_acceptance_bindings(
             )
         artifact = binding["record_artifact"]
         artifact_label = f"post-integration source acceptance {source_commit}"
+        required_content_bindings = (
+            f"reviewed_branch_tip: {source_commit}",
+            "integrated_equivalent_tip: "
+            f"{binding['integrated_equivalent_commit']}",
+        )
         if delivery_topology:
             validate_delivered_artifact_binding(
                 artifact,
                 artifact_label,
-                required_content_bindings=(
-                    f"reviewed_branch_tip: {source_commit}",
-                    "integrated_equivalent_tip: "
-                    f"{binding['integrated_equivalent_commit']}",
-                ),
+                required_content_bindings=required_content_bindings,
+            )
+        elif (
+            not _commit_is_ancestor_of_head(artifact["commit"])
+            and protected_baseline_commit is not None
+        ):
+            validate_protected_squash_artifact_binding(
+                artifact,
+                artifact_label,
+                protected_baseline_commit,
+                required_content_bindings=required_content_bindings,
             )
         else:
             validate_artifact_binding(artifact, artifact_label)
@@ -1100,7 +1177,8 @@ def check(
     failures: list[str] = []
     try:
         validate_post_integration_source_acceptance_bindings(
-            delivery_topology=delivery_topology
+            delivery_topology=delivery_topology,
+            protected_baseline_commit=protected_baseline_commit,
         )
     except SystemExit as exc:
         failures.append(str(exc))
