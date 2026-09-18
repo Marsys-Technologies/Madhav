@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "13c03bb986bdcaf19a27aae6d2423430123cab295514943da6e21c786fa5d7c5",
+  "content_sha256": "1bf43bfd893f91392f718db6c026b54a8f801d6c18f44c71307413a7151e1ead",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -1386,6 +1386,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts"
         ],
         "output_contract": null,
@@ -2380,6 +2381,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts"
         ],
         "output_contract": null,
@@ -20679,7 +20681,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-18T06:04:57.000Z",
+  "generated_at": "2026-09-18T07:02:36.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21348,7 +21350,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "b88a185afd6fa44f9982ce82b42fa8fffdcf6efadfcb78c8896d49b1142f2ef3"
+            "sha256": "be9ce5d18b6c6eeacbb10f59849988f0e9d9f6dc35746e1e50b27212adb99f00"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22076,7 +22078,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "36bba873ede9479a00ea68aa5baba100a572a150866561a939b2e6981f94873d"
+        "sha256": "159e6bc0fc710109d89c48884cc45fbc0869e1a581282db29b910aeaa210c32b"
       },
       {
         "id": "service_effect_contracts",
@@ -22101,5 +22103,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "b7bd47f890b66884da7560e92ffd445e4fdfe0da"
+  "source_revision": "15c356fe952b9876444ee9615be6533d8861aed8"
 }
