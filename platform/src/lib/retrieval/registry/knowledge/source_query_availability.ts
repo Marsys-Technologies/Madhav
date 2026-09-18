@@ -722,6 +722,30 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:read-remedy:v1',
+    descriptor_name: 'read_remedy',
+    capability_uri: 'marsys://tool/L0/read_remedy',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT id, remedy_id, planet, domain, remedy_type,
+                 prescription_text, mantra_text, gemstone, charity_action,
+                 day_of_week, color_associated, confidence,
+                 source_canonical_id, source_citation, classical_ref, created_at,
+                 category, deity, mantra_sanskrit, mantra_transliteration,
+                 ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,
+                 classical_attestation_text, scaffold_status
+            FROM brahma_remedy_corpus
+           WHERE remedy_id = NULL::text
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+      'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20',
+    ],
+  },
+  {
     contract_id: 'source-query:query-mantras:v1',
     descriptor_name: 'query_mantras',
     capability_uri: 'marsys://tool/L0/query_mantras',

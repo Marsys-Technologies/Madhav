@@ -210,6 +210,7 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_formula_constants', 'source-query:query-formula-constants:v1', 'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27'],
     ['scu.catalog.query_vichara_constants', 'source-query:query-vichara-constants:v1', 'platform/migrations/435_ga_vichara.sql:83-89'],
     ['scu.catalog.query_remedies_by_planet', 'source-query:query-remedies-by-planet:v1', 'platform/migrations/ws2_l0_remedy_corpus.sql:16-33'],
+    ['scu.catalog.read_remedy', 'source-query:read-remedy:v1', 'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20'],
     ['scu.catalog.query_mantras', 'source-query:query-mantras:v1', 'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20'],
     ['scu.catalog.query_tantric_remedies', 'source-query:query-tantric-remedies:v1', 'platform/migrations/ws2_l0_remedy_corpus.sql:16-33'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
@@ -671,6 +672,37 @@ describe('binding availability contracts', () => {
     ])
   })
 
+  it('preserves only the single-remedy source query and its exact 26-column projection without claiming a row, content, citation correctness, freshness, or consumer use', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:read-remedy:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT id, remedy_id, planet, domain, remedy_type,')
+    expect(contract.sql).toContain('prescription_text, mantra_text, gemstone, charity_action,')
+    expect(contract.sql).toContain('day_of_week, color_associated, confidence,')
+    expect(contract.sql).toContain('source_canonical_id, source_citation, classical_ref, created_at,')
+    expect(contract.sql).toContain('category, deity, mantra_sanskrit, mantra_transliteration,')
+    expect(contract.sql).toContain('ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,')
+    expect(contract.sql).toContain('classical_attestation_text, scaffold_status')
+    expect(contract.sql).toContain('WHERE remedy_id = NULL::text')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/LOWER\(remedy_id\)|UPPER\(remedy_id\)|ILIKE/i)
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:GROUP\s+BY|HAVING|ORDER\s+BY|OFFSET)\b/i)
+    expect(contract.sql).not.toMatch(/\bscaffold_status\s*=/i)
+    expect(contract.sql).not.toMatch(/\b(?:chart_id|build_id|chart_facts|bodha_[a-z0-9_]+)\b/i)
+    expect(contract.source_refs).toEqual([
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+      'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
+      'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20',
+    ])
+  })
+
   it('preserves only the live-scaffold mantra registry query and its exact category and optional planet filters without claiming rows, content, citation correctness, or consumer use', () => {
     const contract = getSourceQueryAvailabilityContract('source-query:query-mantras:v1')!
 
@@ -743,6 +775,7 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_vichara_constants',
     'scu.catalog.query_remedies_for_chart',
     'scu.catalog.query_remedies_by_planet',
+    'scu.catalog.read_remedy',
     'scu.catalog.query_mantras',
     'scu.catalog.query_tantric_remedies',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
