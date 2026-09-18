@@ -1653,6 +1653,58 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-dasha-lord-capability:v1',
+    descriptor_name: 'get_dasha_lord_capability',
+    capability_uri: 'marsys://tool/L1/get_dasha_lord_capability',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH dasha_lords_probe AS (
+            SELECT DISTINCT lord_graha
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND system_id = 'vimshottari'
+               AND level_n = 1
+             LIMIT 0
+          ), shadbala_probe AS (
+            SELECT fact_id, fact_subject, fact_value_num AS rupa
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND fact_category = 'graha_shadbala_total'
+               AND fact_key = 'rupa'
+             LIMIT 0
+          ), valence_probe AS (
+            SELECT subject, value_jsonb, constituent_fact_ids
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND varga = 'D1'
+               AND vichara_family = 'valence_pass'
+             LIMIT 0
+          ), ratification_probe AS (
+            SELECT subject, ratification_factor, domain
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND vichara_family = 'varga_ratification'
+               AND ratification_factor IS NOT NULL
+             LIMIT 0
+          )
+          SELECT 1
+            FROM dasha_lords_probe
+            CROSS JOIN shadbala_probe
+            CROSS JOIN valence_probe
+            CROSS JOIN ratification_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68',
+      'platform/migrations/435_ga_vichara.sql:44-83',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
