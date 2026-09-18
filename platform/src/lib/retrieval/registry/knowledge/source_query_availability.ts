@@ -278,6 +278,52 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-graha-naisargika-friendship:v1',
+    descriptor_name: 'query_graha_naisargika_friendship',
+    capability_uri: 'marsys://tool/L0/query_graha_naisargika_friendship',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT graha, other_graha, relation, classical_citation
+            FROM bg_graha_naisargika_friendship
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+             AND (NULL::text IS NULL OR LOWER(other_graha) = LOWER(NULL::text))
+             AND (NULL::text IS NULL OR relation = NULL::text)
+           ORDER BY graha, other_graha
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts:51-69',
+      'platform/migrations/250_bg_dignity_reference.sql:128-140',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:64-149',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:442-455',
+      'platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:166-179',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-motion-state-thresholds:v1',
+    descriptor_name: 'query_motion_state_thresholds',
+    capability_uri: 'marsys://tool/L0/query_motion_state_thresholds',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT graha, motion_state, speed_threshold_low, speed_threshold_high, threshold_type,
+                 typical_speed_dps, classical_citation, notes
+            FROM bg_motion_state_thresholds
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+             AND (NULL::text IS NULL OR LOWER(motion_state) = LOWER(NULL::text))
+           ORDER BY graha, motion_state
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66',
+      'platform/migrations/250_bg_dignity_reference.sql:406-423',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:274-323',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:475-499',
+      'platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184-186',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
