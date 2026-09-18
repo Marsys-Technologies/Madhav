@@ -963,6 +963,47 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/python-sidecar/ga_writers/_idempotency.py:54-78',
     ],
   },
+  {
+    contract_id: 'source-query:ganita-chart-facts-divisional:v1',
+    // This is the MCP-only divisional section, not the broader chart_facts
+    // query. Its handler reads chart_divisionals directly and intentionally
+    // does not claim that the pivoted chart_facts relation is available.
+    descriptor_name: 'ganita_chart_facts_get_divisional',
+    capability_uri: 'mcp://tool/ganita_chart_facts_get',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT id
+            FROM chart_divisionals
+           WHERE chart_id = $1::uuid
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376',
+      'platform-mcp/src/tools/register_p1_aliases.ts:1546-1581',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:yoga-activation-by-dasha:v1',
+    descriptor_name: 'yoga_activation_by_dasha_source',
+    capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT m.signal_id
+            FROM bodha_msr_signals m
+            JOIN kala_activation ka ON ka.signal_id = m.signal_id
+              AND ka.ayanamsha_id = m.ayanamsha_id
+              AND ka.chart_id = m.chart_id
+           WHERE m.chart_id = $1::uuid
+             AND ka.chart_id = $1::uuid
+             AND m.signal_type_class = 'yoga'
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
@@ -972,6 +1013,26 @@ export function getSourceQueryAvailabilityContract(
   contractId: string,
 ): SourceQueryAvailabilityContract | undefined {
   return CONTRACT_BY_ID.get(contractId)
+}
+
+/**
+ * Materialize a source-owned requirement for an explicit non-primary binding.
+ * The contract's exact URI and fingerprint stay centralized with its SQL, so
+ * an editorial alias cannot drift from the reviewed handler relation.
+ */
+export function sourceQueryAvailabilityRequirement(
+  contractId: string,
+): SourceQueryAvailabilityRequirement | undefined {
+  const contract = getSourceQueryAvailabilityContract(contractId)
+  if (!contract) return undefined
+  return {
+    kind: 'source_query',
+    contract_id: contract.contract_id,
+    capability_uri: contract.capability_uri,
+    contract_sha256: sourceQueryAvailabilityContractFingerprint(contract),
+    scope: contract.scope,
+    source_ref: contract.source_refs.join(' | '),
+  }
 }
 
 export function getDescriptorSourceQueryAvailabilityReview(
