@@ -1,7 +1,10 @@
 import type { SourceQueryAvailabilityRequirement } from './types'
 import { stableFingerprint } from './stable'
 
-export type SourceQueryParameterBinding = 'global' | 'chart_and_active_build'
+export type SourceQueryParameterBinding =
+  | 'global'
+  | 'chart_and_active_build'
+  | 'chart_with_active_build_context'
 export type SourceQueryEmptySemantics = 'query_success_is_available'
 
 /**
@@ -26,14 +29,27 @@ export interface DescriptorSourceQueryAvailabilityReview {
   readonly requirement: SourceQueryAvailabilityRequirement
 }
 
-function contractFingerprint(contract: SourceQueryAvailabilityContract): string {
+export function sourceQueryAvailabilityContractFingerprint(
+  contract: SourceQueryAvailabilityContract,
+): string {
   return stableFingerprint(contract)
+}
+
+export function sourceQueryParameterBindingMatchesScope(
+  scope: SourceQueryAvailabilityContract['scope'],
+  parameterBinding: SourceQueryParameterBinding,
+): boolean {
+  return (scope === 'global' && parameterBinding === 'global')
+    || (scope === 'chart' && (
+      parameterBinding === 'chart_and_active_build'
+      || parameterBinding === 'chart_with_active_build_context'
+    ))
 }
 
 /*
  * Reviews are intentionally source-by-source. Do not infer membership from a
  * descriptor family or table name: a review is admitted only after the handler
- * relation, scope/build binding, and honest-empty behavior have all been read.
+ * relation, scope/parameter binding, and honest-empty behavior have all been read.
  */
 const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
   {
@@ -793,6 +809,26 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-falsifiers:v1',
+    descriptor_name: 'query_falsifiers',
+    capability_uri: 'marsys://tool/L4/query_falsifiers',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT pramana_id, anchor_id, evidence_type, evidence_strength_label,
+                 falsifier_text, observable_criteria_jsonb, window_status,
+                 lel_entry_id, linked_sodhana_id, source_citation
+            FROM phala_pramana
+           WHERE chart_id = $1::uuid
+           ORDER BY array_position(ARRAY['open', 'pending', 'past_window']::text[], window_status) NULLS LAST, pramana_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250',
+      'platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts:43-64',
+      'platform/supabase/migrations/338_phala_pramana.sql:23-67',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
@@ -879,7 +915,7 @@ export function getDescriptorSourceQueryAvailabilityReview(
       kind: 'source_query',
       contract_id: contract.contract_id,
       capability_uri: contract.capability_uri,
-      contract_sha256: contractFingerprint(contract),
+      contract_sha256: sourceQueryAvailabilityContractFingerprint(contract),
       scope: contract.scope,
       source_ref: contract.source_refs.join(' | '),
     },
@@ -891,12 +927,11 @@ export function sourceQueryAvailabilityContractMatches(
 ): boolean {
   const contract = getSourceQueryAvailabilityContract(requirement.contract_id)
   return Boolean(contract
-    && requirement.contract_sha256 === contractFingerprint(contract)
+    && requirement.contract_sha256 === sourceQueryAvailabilityContractFingerprint(contract)
     && requirement.capability_uri === contract.capability_uri
     && requirement.scope === contract.scope
     && requirement.source_ref === contract.source_refs.join(' | ')
-    && ((contract.scope === 'global' && contract.parameter_binding === 'global')
-      || (contract.scope === 'chart' && contract.parameter_binding === 'chart_and_active_build')))
+    && sourceQueryParameterBindingMatchesScope(contract.scope, contract.parameter_binding))
 }
 
 export function getSourceQueryAvailabilityReviews(): readonly DescriptorSourceQueryAvailabilityReview[] {

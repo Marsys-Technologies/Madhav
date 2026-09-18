@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compiler'
-import { getSourceQueryAvailabilityContract } from './source_query_availability'
+import {
+  getSourceQueryAvailabilityContract,
+  sourceQueryAvailabilityContractFingerprint,
+  sourceQueryParameterBindingMatchesScope,
+} from './source_query_availability'
 import type { CapabilityKnowledgeSnapshot } from './types'
 
 const catalog = getCatalog()
@@ -34,6 +38,31 @@ function withBindings(bindings: unknown): CapabilityKnowledgeSnapshot {
 }
 
 describe('binding availability contracts', () => {
+  it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
+    expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
+    expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)
+  })
+
+  it('fingerprints active-build context separately from row-level active-build binding', () => {
+    const contract = {
+      contract_id: 'source-query:test-chart-context:v1',
+      descriptor_name: 'test_chart_context',
+      capability_uri: 'marsys://tool/L4/test_chart_context',
+      scope: 'chart' as const,
+      parameter_binding: 'chart_with_active_build_context' as const,
+      empty_semantics: 'query_success_is_available' as const,
+      sql: 'SELECT source_id FROM source_table WHERE chart_id = $1::uuid LIMIT 0',
+      source_refs: ['fixture:chart-context'],
+    }
+
+    expect(sourceQueryAvailabilityContractFingerprint(contract)).not.toBe(
+      sourceQueryAvailabilityContractFingerprint({
+        ...contract,
+        parameter_binding: 'chart_and_active_build',
+      }),
+    )
+  })
+
   it('accepts the exact registry-owned source-query contract and rejects a fingerprint change', () => {
     const yoga = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
     const requirement = yoga.availability_contracts![0]!.requirements[0]!
@@ -751,6 +780,48 @@ describe('binding availability contracts', () => {
     expect(contract.sql).not.toMatch(/\b(?:source_canonical_id|source_citation|classical_attestation_text)\s+IS\s+NOT\s+NULL\b/i)
     expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
     expect(contract.source_refs.join(' | ')).not.toContain('l0_remedy_corpus.py')
+  })
+
+  it('binds query_falsifiers to the exact chart-only phala_pramana query with active-build admission context', () => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === 'scu.catalog.query_falsifiers')!
+    const requirement = scu.availability_contracts![0]!.requirements[0]!
+    const contract = getSourceQueryAvailabilityContract('source-query:query-falsifiers:v1')!
+
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: 'source-query:query-falsifiers:v1',
+      scope: 'chart',
+      contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      source_ref: expect.stringContaining('platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250'),
+    })
+    expect(scu.producer_output_claims ?? []).toEqual([])
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
+    }))
+
+    expect(contract).toMatchObject({
+      scope: 'chart',
+      parameter_binding: 'chart_with_active_build_context',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT pramana_id, anchor_id, evidence_type, evidence_strength_label,')
+    expect(contract.sql).toContain('falsifier_text, observable_criteria_jsonb, window_status,')
+    expect(contract.sql).toContain('lel_entry_id, linked_sodhana_id, source_citation')
+    expect(contract.sql).toContain('FROM phala_pramana')
+    expect(contract.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(contract.sql).toContain("ORDER BY array_position(ARRAY['open', 'pending', 'past_window']::text[], window_status) NULLS LAST, pramana_id")
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toContain('$2')
+    expect(contract.sql).not.toContain('build_id')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.source_refs).toEqual([
+      'platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250',
+      'platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts:43-64',
+      'platform/supabase/migrations/338_phala_pramana.sql:23-67',
+    ])
   })
 
   it.each([

@@ -5,7 +5,10 @@ import generatedCapabilityKnowledge from '../../../../generated/capability_knowl
 const mocks = vi.hoisted(() => ({ query: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mocks.query }))
 
-import { loadChartCapabilityOverlay } from './overlay_loader'
+import {
+  loadChartCapabilityOverlay,
+  probeSourceQueryAvailabilityContract,
+} from './overlay_loader'
 import { getPinnedCapabilityKnowledgeSnapshot } from './snapshot'
 
 const claimHash = 'a'.repeat(64)
@@ -460,6 +463,54 @@ function staleServiceProbeEvidence() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+})
+
+describe('source-query parameter binding', () => {
+  const contextContract = {
+    contract_id: 'source-query:test-chart-context:v1',
+    descriptor_name: 'test_chart_context',
+    capability_uri: 'marsys://tool/L4/test_chart_context',
+    scope: 'chart' as const,
+    parameter_binding: 'chart_with_active_build_context' as const,
+    empty_semantics: 'query_success_is_available' as const,
+    sql: 'SELECT source_id FROM source_table WHERE chart_id = $1::uuid LIMIT 0',
+    source_refs: ['fixture:chart-context'],
+  }
+
+  it('keeps a chart-context source query dark when no active completed build exists', async () => {
+    const query = vi.fn()
+
+    const gaps = await probeSourceQueryAvailabilityContract(contextContract, 'chart-1', null, query)
+
+    expect(gaps).toEqual([
+      'source-query:test-chart-context:v1 requires an active completed build context for the selected chart.',
+    ])
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('executes a chart-context source query with chart_id only', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] })
+
+    const gaps = await probeSourceQueryAvailabilityContract(contextContract, 'chart-1', 'build-1', query)
+
+    expect(gaps).toEqual([])
+    expect(query).toHaveBeenCalledExactlyOnceWith(contextContract.sql, ['chart-1'])
+  })
+
+  it('preserves row-bound chart-and-active-build query parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] })
+    const rowBoundContract = {
+      ...contextContract,
+      contract_id: 'source-query:test-chart-build:v1',
+      parameter_binding: 'chart_and_active_build' as const,
+      sql: 'SELECT source_id FROM source_table WHERE chart_id = $1::uuid AND build_id = $2::uuid LIMIT 0',
+    }
+
+    const gaps = await probeSourceQueryAvailabilityContract(rowBoundContract, 'chart-1', 'build-1', query)
+
+    expect(gaps).toEqual([])
+    expect(query).toHaveBeenCalledExactlyOnceWith(rowBoundContract.sql, ['chart-1', 'build-1'])
+  })
 })
 
 describe('chart capability overlay loader', () => {
