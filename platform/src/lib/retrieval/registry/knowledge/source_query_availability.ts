@@ -2006,6 +2006,32 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-ashtakavarga:v1',
+    descriptor_name: 'get_ashtakavarga',
+    capability_uri: 'marsys://tool/L1/get_ashtakavarga',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'ashtakavarga_bindu', 'ashtakavarga_anubindu', 'ashtakavarga_bindu_sign',
+               'ashtakavarga_pinda_bhinna', 'ashtakavarga_pinda_sarva', 'ashtakavarga_pinda_sodhita',
+               'ashtakavarga_pinda_raasi', 'ashtakavarga_trikona_shodhana',
+               'ashtakavarga_ekadhipathya_shodhana', 'ashtakavarga_kakshya_boundary',
+               'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
