@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T21:51:44.000Z",
-  "content_hash": "sha256:f63369f899fbfd970359a9006e6bcaaf5e201d2917e47686b8c229546bc3b7f0",
+  "generated_at": "2026-09-18T21:54:52.000Z",
+  "content_hash": "sha256:7219bf46a5d364b2df4345a2e7b4e52b90b906bff7488c7f5a94cfbfc9c15985",
   "source_catalog_fingerprint": "sha256:3e8a6c033915aef75dec1ae0b7cf80927bacf05fc0ee220cdf7eb04743946985",
-  "semantic_review_fingerprint": "sha256:56263213ab30e88656fed0d2bee34c73a2f74b28b9a9bf188e241b4a82c76784",
+  "semantic_review_fingerprint": "sha256:97674fb60e7a1b01ed8c31245279bf780fe11a72bf47bc862e09f82f9bef3a96",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -29959,6 +29959,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/read_sutravali_rule",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:read-sutravali-rule:v1",
+              "capability_uri": "marsys://tool/L0/read_sutravali_rule",
+              "contract_sha256": "sha256:1288e3cca0d19845e64dbc36f8e5a62a3190b2e58e9cee32a8fe70005ae35949",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

@@ -1096,6 +1096,24 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/608_nirmana_bg_remedies_integrity_contract.sql:38-78',
     ],
   },
+  {
+    contract_id: 'source-query:read-sutravali-rule:v1',
+    descriptor_name: 'read_sutravali_rule',
+    capability_uri: 'marsys://tool/L0/read_sutravali_rule',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.rule_id::text = NULL::text
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
