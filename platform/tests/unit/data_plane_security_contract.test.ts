@@ -486,6 +486,14 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     const transfer = preflight.slice(preflight.indexOf('async function transferTables'), preflight.indexOf('export async function runDataPlaneOwnershipPreflight'))
     expect(transfer).not.toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE/)
   })
+
+  it('restores only the ordinary migration login public-schema capability after the protected handoff', () => {
+    const repair = readFileSync(resolve(__dirname, '../../supabase/migrations/1041_data_plane_public_schema_migration_grant.sql'), 'utf8')
+    expect(repair).toContain('SET LOCAL ROLE data_plane_schema_owner;')
+    expect(repair).toContain('GRANT USAGE, CREATE ON SCHEMA public TO amjis_app;')
+    expect(repair).toContain('RESET ROLE;')
+    expect(repair).not.toContain('data_plane_migrator')
+  })
   it('publishes builder DML only after protected guards are installed', () => {
     for (const file of ['1035_data_plane_l1_producer_history.sql', '1036_data_plane_l2_producer_generations.sql']) {
       const sql = readFileSync(resolve(__dirname, '../../supabase/migrations', file), 'utf8')
