@@ -1481,6 +1481,41 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-tajik:v1',
+    descriptor_name: 'get_tajik',
+    capability_uri: 'marsys://tool/L1/get_tajik',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH chart_facts_probe AS (
+            SELECT fact_id
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific'
+               ]::text[])
+             LIMIT 0
+          ), varsha_probe AS (
+            SELECT chart_id
+              FROM l1_tajik_varsha_year_lords
+             WHERE chart_id = $1::uuid
+             LIMIT 0
+          ), birth_date_probe AS (
+            SELECT id
+              FROM charts
+             WHERE id = $1::uuid
+             LIMIT 0
+          )
+          SELECT 1
+            FROM chart_facts_probe
+            CROSS JOIN varsha_probe
+            CROSS JOIN birth_date_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
