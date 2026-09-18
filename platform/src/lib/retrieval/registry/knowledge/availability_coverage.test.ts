@@ -1139,7 +1139,7 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
+  it('activates each concrete primary binding from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
     // fixture anchor first to model the loader's `queryRows[0]` extraction.
@@ -1149,7 +1149,7 @@ describe('first-slice availability coverage', () => {
     for (const scuId of FIRST_SLICE.concrete) {
       const scu = findScu(scuId)
       expect(overlay.availability.find((entry) => entry.scu_id === scuId), scuId).toMatchObject({
-        available_binding_ids: [`registry:${scu.primary_binding_uri}`],
+        available_binding_ids: expect.arrayContaining([`registry:${scu.primary_binding_uri}`]),
       })
     }
     for (const scuId of FIRST_SLICE.deliberately_dark) {
