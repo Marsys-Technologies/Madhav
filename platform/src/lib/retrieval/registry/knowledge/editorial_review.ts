@@ -127,6 +127,18 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  call_panchanga_service: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'service_probe',
+      asset_id: 'bg_panchanga',
+      probe_id: 'panchanga_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_panchanga',
+      probe_contract_sha256: 'febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2',
+      max_age_seconds: 900,
+      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#bg_panchanga; platform/supabase/migrations/203_register_service_assets.sql:74-89',
+    }],
+  },
   query_current_transit_snapshot: {
     producer_output_claims: [],
     requirements: [{

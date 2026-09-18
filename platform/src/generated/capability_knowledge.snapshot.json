@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T21:55:14.000Z",
-  "content_hash": "sha256:7219bf46a5d364b2df4345a2e7b4e52b90b906bff7488c7f5a94cfbfc9c15985",
+  "generated_at": "2026-09-18T21:57:28.000Z",
+  "content_hash": "sha256:001b8645e837d33535737437e22e3a6b36f56dc015c21b5b0fcd6f393fce84f9",
   "source_catalog_fingerprint": "sha256:3e8a6c033915aef75dec1ae0b7cf80927bacf05fc0ee220cdf7eb04743946985",
-  "semantic_review_fingerprint": "sha256:97674fb60e7a1b01ed8c31245279bf780fe11a72bf47bc862e09f82f9bef3a96",
+  "semantic_review_fingerprint": "sha256:1d1f393c5a20cd2dac65f49eb826a34c8c8b19028543cb04a895444a2a086757",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -1727,6 +1727,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/call_panchanga_service",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_panchanga",
+              "probe_id": "panchanga_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_panchanga",
+              "probe_contract_sha256": "febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2",
+              "max_age_seconds": 900,
+              "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#bg_panchanga; platform/supabase/migrations/203_register_service_assets.sql:74-89"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
