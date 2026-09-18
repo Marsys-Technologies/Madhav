@@ -2181,6 +2181,38 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:chart-facts-query:v1',
+    descriptor_name: 'chart_facts_query',
+    capability_uri: 'marsys://tool/L1/chart_facts_query',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH fact_page_probe AS (
+            SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
+             ORDER BY fact_category, fact_subject, fact_key
+             LIMIT 0
+          ), divisional_page_probe AS (
+            SELECT id, chart_id, ayanamsha_id, varga, graha, sign, house, fact_category, fact_key
+              FROM chart_divisionals
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY varga, graha, fact_category, fact_key
+             LIMIT 0
+          )
+          SELECT 1 FROM fact_page_probe CROSS JOIN divisional_page_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/migrations/002_ganita_divisionals.sql:31-65',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
