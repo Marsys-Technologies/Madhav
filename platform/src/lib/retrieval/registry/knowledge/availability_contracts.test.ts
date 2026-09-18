@@ -210,6 +210,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_formula_constants', 'source-query:query-formula-constants:v1', 'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27'],
     ['scu.catalog.query_vichara_constants', 'source-query:query-vichara-constants:v1', 'platform/migrations/435_ga_vichara.sql:83-89'],
     ['scu.catalog.query_remedies_by_planet', 'source-query:query-remedies-by-planet:v1', 'platform/migrations/ws2_l0_remedy_corpus.sql:16-33'],
+    ['scu.catalog.query_mantras', 'source-query:query-mantras:v1', 'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20'],
+    ['scu.catalog.query_tantric_remedies', 'source-query:query-tantric-remedies:v1', 'platform/migrations/ws2_l0_remedy_corpus.sql:16-33'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -640,6 +642,56 @@ describe('binding availability contracts', () => {
     expect(contract.source_refs.join(' | ')).not.toContain('bg_remedies.py')
   })
 
+  it('preserves only the live-scaffold mantra registry query and its exact category and optional planet filters without claiming rows, content, citation correctness, or consumer use', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-mantras:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT remedy_id, planet, deity,')
+    expect(contract.sql).toContain('mantra_sanskrit, mantra_transliteration, mantra_text,')
+    expect(contract.sql).toContain('prescription_text, timing_rules_jsonb,')
+    expect(contract.sql).toContain('source_canonical_id, classical_attestation_text, classical_ref')
+    expect(contract.sql).toContain("(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')")
+    expect(contract.sql).toContain("scaffold_status = 'live'")
+    expect(contract.sql).toContain('(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))')
+    expect(contract.sql).toContain('ORDER BY planet, remedy_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/LOWER\(scaffold_status\)|UPPER\(scaffold_status\)|scaffold_status\s+ILIKE/i)
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:source_canonical_id|classical_attestation_text|classical_ref)\s+IS\s+NOT\s+NULL\b/i)
+    expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
+    expect(contract.source_refs.join(' | ')).not.toContain('l0_remedy_corpus.py')
+  })
+
+  it('preserves only the tantric registry query and its exact category, deity, and optional planet filters without claiming rows, careful inclusion, content, or citation correctness', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-tantric-remedies:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT remedy_id, planet, domain, deity,')
+    expect(contract.sql).toContain('prescription_text, mantra_sanskrit, mantra_transliteration,')
+    expect(contract.sql).toContain('ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,')
+    expect(contract.sql).toContain('source_canonical_id, source_citation, classical_attestation_text')
+    expect(contract.sql).toContain("(LOWER(remedy_type) = 'tantric' OR LOWER(category) = 'tantric')")
+    expect(contract.sql).toContain("deity ILIKE '%' || NULL::text || '%'")
+    expect(contract.sql).toContain('(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))')
+    expect(contract.sql).toContain('ORDER BY planet, remedy_id')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toMatch(/\b(?:INNER|LEFT|RIGHT|FULL|CROSS)?\s*JOIN\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:GROUP\s+BY|HAVING)\b/i)
+    expect(contract.sql).not.toMatch(/\b(?:source_canonical_id|source_citation|classical_attestation_text)\s+IS\s+NOT\s+NULL\b/i)
+    expect(contract.source_refs.join(' | ')).not.toContain('output_digest_specs')
+    expect(contract.source_refs.join(' | ')).not.toContain('l0_remedy_corpus.py')
+  })
+
   it.each([
     'scu.catalog.query_graha_naisargika_friendship',
     'scu.catalog.query_motion_state_thresholds',
@@ -661,6 +713,8 @@ describe('binding availability contracts', () => {
     'scu.catalog.query_formula_constants',
     'scu.catalog.query_vichara_constants',
     'scu.catalog.query_remedies_by_planet',
+    'scu.catalog.query_mantras',
+    'scu.catalog.query_tantric_remedies',
   ])('does not infer a producer-output claim for %s from its shared source writer', (scuId) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     expect(scu.producer_output_claims ?? []).toEqual([])
