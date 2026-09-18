@@ -67,6 +67,16 @@ describe('DP-SD-020 isolated validation bootstrap', () => {
     expect(cutover).toContain('readDataPlaneOwnershipStatus(migratorProxy)')
   })
 
+  it('provisions pgcrypto transactionally before the protected-owner prerequisite check', () => {
+    const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-ownership-preflight.ts'), 'utf8')
+    const begin = preflight.indexOf("await client.query('BEGIN')")
+    const provision = preflight.indexOf("await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto')")
+    const assertion = preflight.indexOf("SELECT 1 FROM pg_extension WHERE extname='pgcrypto'")
+    expect(begin).toBeGreaterThan(-1)
+    expect(provision).toBeGreaterThan(begin)
+    expect(assertion).toBeGreaterThan(provision)
+  })
+
   it('pins the admin credential to the authenticated validation proxy', () => {
     const hostileRoute = new URL('postgresql://rogue.example:6543/amjis?sslmode=require')
     hostileRoute.username = 'admin'
