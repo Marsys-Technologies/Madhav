@@ -2032,6 +2032,86 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-divisionals:v1',
+    descriptor_name: 'get_divisionals',
+    capability_uri: 'marsys://tool/L1/get_divisionals',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT * FROM chart_divisionals
+             WHERE chart_id = $1::uuid
+             ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key
+             LIMIT 0
+          ), own_varga_lagna_probe AS (
+            SELECT varga, ayanamsha_id, sign
+              FROM chart_divisionals
+             WHERE chart_id = $1::uuid
+               AND graha = 'Lagna'
+               AND formula_provenance_text = 'whole_sign'
+             LIMIT 0
+          )
+          SELECT 1 FROM handler_page CROSS JOIN own_varga_lagna_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:80-101',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:112-120',
+      'platform/migrations/002_ganita_divisionals.sql:31-65',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-positions:v1',
+    descriptor_name: 'get_positions',
+    capability_uri: 'marsys://tool/L1/get_positions',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = 'graha_position'
+           ORDER BY ayanamsha_id,
+                    CASE fact_category WHEN 'graha_position' THEN 0 WHEN 'upagraha_position' THEN 1
+                                       WHEN 'aprakasha_position' THEN 2 ELSE 3 END,
+                    fact_category, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-yoga-firings:v1',
+    descriptor_name: 'get_yoga_firings',
+    capability_uri: 'marsys://tool/L1/get_yoga_firings',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength,
+                   c.classical_citations AS catalog_classical_citations
+              FROM ga_yoga_firings f
+              LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
+             WHERE f.chart_id = $1::uuid
+               AND f.fired = true
+             ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, f.ayanamsha_id, f.id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_yoga_firings f
+             WHERE f.chart_id = $1::uuid
+               AND f.fired = true
+          )
+          SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:171-179',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200-213',
+      'platform/migrations/240_ga_yoga.sql:4-48',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
