@@ -385,6 +385,34 @@ describe('first-slice availability coverage', () => {
       sqlMarkers: ['SELECT chunk_id, verse_ref, content_en, content_sa', 'ORDER BY verse_start, chunk_id'],
       handlerRef: 'platform/src/lib/tools/classical_text_tools.ts:35-58',
     },
+    {
+      scuId: 'scu.catalog.query_graha_naisargika_friendship',
+      bindingId: 'registry:marsys://tool/L0/query_graha_naisargika_friendship',
+      contractId: 'source-query:query-graha-naisargika-friendship:v1',
+      relation: 'bg_graha_naisargika_friendship',
+      sqlMarkers: [
+        'SELECT graha, other_graha, relation, classical_citation',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'LOWER(other_graha) = LOWER(NULL::text)',
+        'relation = NULL::text',
+        'ORDER BY graha, other_graha',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts:51-69',
+    },
+    {
+      scuId: 'scu.catalog.query_motion_state_thresholds',
+      bindingId: 'registry:marsys://tool/L0/query_motion_state_thresholds',
+      contractId: 'source-query:query-motion-state-thresholds:v1',
+      relation: 'bg_motion_state_thresholds',
+      sqlMarkers: [
+        'SELECT graha, motion_state, speed_threshold_low, speed_threshold_high, threshold_type',
+        'typical_speed_dps, classical_citation, notes',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'LOWER(motion_state) = LOWER(NULL::text)',
+        'ORDER BY graha, motion_state',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -400,6 +428,10 @@ describe('first-slice availability coverage', () => {
       })],
     })])
     expect(scu.availability_dispositions ?? []).toEqual([])
+    if (scuId === 'scu.catalog.query_graha_naisargika_friendship'
+      || scuId === 'scu.catalog.query_motion_state_thresholds') {
+      expect(scu.producer_output_claims ?? []).toEqual([])
+    }
 
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {

@@ -190,6 +190,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_compendium_index', 'source-query:query-compendium-index:v1', 'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93'],
     ['scu.catalog.list_entities', 'source-query:list-entities:v1', 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:17'],
     ['scu.catalog.list_classical_texts', 'source-query:list-classical-texts:v1', 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16'],
+    ['scu.catalog.query_graha_naisargika_friendship', 'source-query:query-graha-naisargika-friendship:v1', 'platform/migrations/250_bg_dignity_reference.sql:128-140'],
+    ['scu.catalog.query_motion_state_thresholds', 'source-query:query-motion-state-thresholds:v1', 'platform/migrations/250_bg_dignity_reference.sql:406-423'],
   ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -206,6 +208,52 @@ describe('binding availability contracts', () => {
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
       subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
     }))
+  })
+
+  it('preserves directed natural-friendship pairs and the exact case-sensitive relation predicate', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-graha-naisargika-friendship:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT graha, other_graha, relation, classical_citation')
+    expect(contract.sql).toContain('LOWER(graha) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('LOWER(other_graha) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('relation = NULL::text')
+    expect(contract.sql).not.toContain('LOWER(relation)')
+    expect(contract.sql).toContain('ORDER BY graha, other_graha')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+  })
+
+  it('preserves nullable, nonuniform global motion thresholds without chart or count inference', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-motion-state-thresholds:v1')!
+
+    expect(contract).toMatchObject({
+      scope: 'global',
+      parameter_binding: 'global',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('SELECT graha, motion_state, speed_threshold_low, speed_threshold_high, threshold_type,')
+    expect(contract.sql).toContain('typical_speed_dps, classical_citation, notes')
+    expect(contract.sql).toContain('LOWER(graha) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('LOWER(motion_state) = LOWER(NULL::text)')
+    expect(contract.sql).toContain('ORDER BY graha, motion_state')
+    expect(contract.sql).toContain('LIMIT 0')
+    expect(contract.sql).not.toMatch(/\bCOUNT\s*\(/i)
+    expect(contract.sql).not.toContain('COALESCE(speed_threshold_')
+    expect(contract.sql).not.toMatch(/\bmotion_state\s+IN\s*\(/i)
+    expect(contract.sql).not.toContain('chart_id')
+  })
+
+  it.each([
+    'scu.catalog.query_graha_naisargika_friendship',
+    'scu.catalog.query_motion_state_thresholds',
+  ])('does not infer a producer-output claim for %s from the shared bg_dignity_reference writer', (scuId) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    expect(scu.producer_output_claims ?? []).toEqual([])
   })
 
   it('reports a non-array availability contract without throwing', () => {
