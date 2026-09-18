@@ -324,6 +324,49 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-vastu-directions:v1',
+    descriptor_name: 'query_vastu_directions',
+    capability_uri: 'marsys://tool/L0/query_vastu_directions',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT direction, direction_deg, ruling_graha, secondary_graha, favorable_color, element,
+                 classical_citation
+            FROM bg_vastu_directions
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(direction) = LOWER(NULL::text))
+             AND (NULL::text IS NULL OR LOWER(ruling_graha) = LOWER(NULL::text))
+           ORDER BY direction_deg
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68',
+      'platform/migrations/284_bg_vastu_directions.sql:10-33',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40',
+      'platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-vastu-direction-remedials:v1',
+    descriptor_name: 'query_vastu_direction_remedials',
+    capability_uri: 'marsys://tool/L0/query_vastu_direction_remedials',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT direction, remedy_type, remedy_description, classical_citation
+            FROM bg_vastu_direction_remedials
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(direction) = LOWER(NULL::text))
+             AND (NULL::text IS NULL OR LOWER(remedy_type) = LOWER(NULL::text))
+           ORDER BY direction, remedy_type
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:45-64',
+      'platform/migrations/284_bg_vastu_directions.sql:37-89',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40',
+      'platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:31-38',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',

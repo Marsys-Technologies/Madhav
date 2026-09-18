@@ -413,6 +413,33 @@ describe('first-slice availability coverage', () => {
       ],
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66',
     },
+    {
+      scuId: 'scu.catalog.query_vastu_directions',
+      bindingId: 'registry:marsys://tool/L0/query_vastu_directions',
+      contractId: 'source-query:query-vastu-directions:v1',
+      relation: 'bg_vastu_directions',
+      sqlMarkers: [
+        'SELECT direction, direction_deg, ruling_graha, secondary_graha, favorable_color, element',
+        'classical_citation',
+        'LOWER(direction) = LOWER(NULL::text)',
+        'LOWER(ruling_graha) = LOWER(NULL::text)',
+        'ORDER BY direction_deg',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68',
+    },
+    {
+      scuId: 'scu.catalog.query_vastu_direction_remedials',
+      bindingId: 'registry:marsys://tool/L0/query_vastu_direction_remedials',
+      contractId: 'source-query:query-vastu-direction-remedials:v1',
+      relation: 'bg_vastu_direction_remedials',
+      sqlMarkers: [
+        'SELECT direction, remedy_type, remedy_description, classical_citation',
+        'LOWER(direction) = LOWER(NULL::text)',
+        'LOWER(remedy_type) = LOWER(NULL::text)',
+        'ORDER BY direction, remedy_type',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:45-64',
+    },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,
   }) => {
@@ -429,7 +456,9 @@ describe('first-slice availability coverage', () => {
     })])
     expect(scu.availability_dispositions ?? []).toEqual([])
     if (scuId === 'scu.catalog.query_graha_naisargika_friendship'
-      || scuId === 'scu.catalog.query_motion_state_thresholds') {
+      || scuId === 'scu.catalog.query_motion_state_thresholds'
+      || scuId === 'scu.catalog.query_vastu_directions'
+      || scuId === 'scu.catalog.query_vastu_direction_remedials') {
       expect(scu.producer_output_claims ?? []).toEqual([])
     }
 
