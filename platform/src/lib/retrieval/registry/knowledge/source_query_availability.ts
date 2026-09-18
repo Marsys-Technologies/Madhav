@@ -980,7 +980,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376',
       'platform-mcp/src/tools/register_p1_aliases.ts:1546-1581',
-      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/migrations/002_ganita_divisionals.sql:31-59',
     ],
   },
   {

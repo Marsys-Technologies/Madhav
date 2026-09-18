@@ -47,6 +47,7 @@ describe('binding availability contracts', () => {
       capability_uri: 'mcp://tool/ganita_chart_facts_get', scope: 'chart',
       source_ref: expect.stringContaining('register_d7_channel.ts'),
     })
+    expect(divisional.source_ref).toContain('002_ganita_divisionals.sql:31-59')
     expect(activation).toMatchObject({
       capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha', scope: 'chart',
       source_ref: expect.stringContaining('register_d8_assess_domain.ts'),

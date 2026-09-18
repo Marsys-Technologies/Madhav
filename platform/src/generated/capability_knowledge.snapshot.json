@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-19T00:00:00.000Z",
-  "content_hash": "sha256:fa24620ff0e35a070641bf33361b618cb248f062a203975e781c4903337083d7",
-  "source_catalog_fingerprint": "sha256:18bb7114a2ece5f78c77d068fa8cbb02519ff957502511e521baf5dd2bca8935",
-  "semantic_review_fingerprint": "sha256:a7411806633c11dd1f969e7e88dc2685f940fff0b07cf0dd384219ec9da43e76",
+  "content_hash": "sha256:3ddcc499b29c67e530a9be0b47242982cc6482b28e001748e10eeaf2d1fc71e4",
+  "source_catalog_fingerprint": "sha256:73c933e282822f748c88f02fba753235578a1908898b2eef8388ccbde993ef63",
+  "semantic_review_fingerprint": "sha256:4415c22df4abb3211668bcfb49b9fb6c357c31333332250d152a93f32d88615e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -6372,9 +6372,9 @@
               "kind": "source_query",
               "contract_id": "source-query:ganita-chart-facts-divisional:v1",
               "capability_uri": "mcp://tool/ganita_chart_facts_get",
-              "contract_sha256": "sha256:70d9a3bc7efa27ab779293946f3ba0c5435de05c392e35ac598f84dd72974e5f",
+              "contract_sha256": "sha256:ee175a72b4d86ef5260883268e3e638e7ee1b3f332a73679eb3ffd53c3cd0e97",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/migrations/002_ganita_divisionals.sql:31-59"
             }
           ]
         }
