@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "8bc7a166c7ca17383b62c02ff6d08d55eb792aaf4c34f479b7473312d9c3bf6c",
+  "content_sha256": "befbae354e6e83a9ddc596c5dfa781d721a6abacc787a1913631eb77ebd7ee7a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -4096,6 +4096,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts"
         ],
@@ -4442,6 +4443,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
@@ -4704,6 +4706,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts"
         ],
@@ -20704,7 +20707,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-18T22:04:54.000Z",
+  "generated_at": "2026-09-18T22:08:27.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21373,7 +21376,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "f7ccfb28dc027f3470cb09b3e85f4b51876929c15da6f881b96c4bfee5bcab56"
+            "sha256": "62a6c6674d52bbd204f9156a0c1c48ba17897ae2e74cf2be04e354ca3a2ba959"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22101,7 +22104,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "ae5191acaf714c122e13d8afd00ebee83e231a2a164b3fcf71293a3580400d2a"
+        "sha256": "5757f3b607516c9e87a6f7b1c4befd0578b8cdbbda31ec84f2fa37b641188561"
       },
       {
         "id": "service_effect_contracts",
@@ -22126,5 +22129,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "d3ea10e9d43271c6b31aa4d55f2838f3e2fcae3f"
+  "source_revision": "2c28230a7ff242c9c1dba597066c60cb7e3d8fa2"
 }
