@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T21:34:01.000Z",
-  "content_hash": "sha256:78f4d5e2c2ec7a5c738c58de4ccc6be6d14cd03dc4c7153db5abd72b4eede740",
+  "generated_at": "2026-09-18T22:24:58.000Z",
+  "content_hash": "sha256:b14bfcb485f81860b5a79f96bfd2776259ad8b906f4c7e499ffdf0e5b85b62e3",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:d40a192b0cbe2c210032276d673d20261d2df9cf2d6841d18f90e9632672b8db",
+  "semantic_review_fingerprint": "sha256:cb6fedbd0bf3fd8c7cc6303aadadada6b158da8b4c3c5427907c348b78ef3e42",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -4006,6 +4006,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_ashtakavarga",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-ashtakavarga:v1",
+              "capability_uri": "marsys://tool/L1/get_ashtakavarga",
+              "contract_sha256": "sha256:b14b9cfe7db3dabf8935aaf011acf6bc056ac52af0fe76bb9d9684059cb04bb2",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:88-124 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -4177,6 +4192,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_aspects",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-aspects:v1",
+              "capability_uri": "marsys://tool/L1/get_aspects",
+              "contract_sha256": "sha256:b5fc6a4bfc7b41b181ba5cd1f7f7363c86d0904442bc658b0e17e51c26079e5d",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -4524,6 +4554,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_avasthas",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-avasthas:v1",
+              "capability_uri": "marsys://tool/L1/get_avasthas",
+              "contract_sha256": "sha256:36b1758c541570f56f5952f8b85b6a48cbb1c0d7e96bea66d4cdeefc85a38990",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -4885,6 +4930,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_bhava_bala",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-bhava-bala:v1",
+              "capability_uri": "marsys://tool/L1/get_bhava_bala",
+              "contract_sha256": "sha256:13ac7c06be7bf7842900dfef26a45cb4ee8bb8e074720263554fe2ff8dbec0d7",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -5211,6 +5271,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_condition_composite",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-condition-composite:v1",
+              "capability_uri": "marsys://tool/L1/get_condition_composite",
+              "contract_sha256": "sha256:09638aae4dc6b93887488b19017a2b68b3360881b5e623b9dfe0551aae8b95c0",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:75-107 | platform/migrations/251_ga_condition_composite.sql:1-73"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -5938,6 +6013,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_dignity",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-dignity:v1",
+              "capability_uri": "marsys://tool/L1/get_dignity",
+              "contract_sha256": "sha256:7e807f7f897ff0be33bcd56ce1f871aee204a0854c27e43654dca6ca15fc28c5",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -6892,6 +6982,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_karakas",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-karakas:v1",
+              "capability_uri": "marsys://tool/L1/get_karakas",
+              "contract_sha256": "sha256:3db0d5d4f01e2927ed330e73cf6105c559b7dd94a5f6a645bb9e2c270cd295f5",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -9241,6 +9346,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_tara_chandra_bala",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-tara-chandra-bala:v1",
+              "capability_uri": "marsys://tool/L1/get_tara_chandra_bala",
+              "contract_sha256": "sha256:9947cadeb0500ae99b69c522ac5ed3f36e137e8847175db715f2462783276271",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

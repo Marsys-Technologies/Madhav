@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "7e5d90b0493186690a071fadeaa45f65f0ae01c2df0181ab88e347746392671c",
+  "content_sha256": "7c1edf30d7699bf1e7a52c9e81627a88e439f90ec50d72e58b27b46012b0a62b",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -3778,6 +3778,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts"
         ],
@@ -3841,6 +3842,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts"
         ],
@@ -3976,6 +3978,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
@@ -4091,6 +4094,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts"
         ],
@@ -4178,6 +4182,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts"
         ],
         "output_contract": null,
@@ -4437,6 +4442,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
@@ -4699,6 +4705,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts"
         ],
@@ -5568,6 +5575,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -20699,7 +20707,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-18T21:34:01.000Z",
+  "generated_at": "2026-09-18T22:24:58.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21368,7 +21376,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "1c51be7479d6ffef2effa63c899ab5a65f8094adf4d2caa68ac3ac8f4cc47336"
+            "sha256": "f6f6b62850eec607a0c25ca3585307e28c488a95d684fbfb95029d6a689ea6d0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22096,7 +22104,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "b37a8476ed029533471f14b8e6d278eaafa9fc37b6b9a705ae569b2d195cdb8d"
+        "sha256": "44804da0fff6c7ebf5101704e17cd5c200b693997ef63029adcb13b59d4dae9b"
       },
       {
         "id": "service_effect_contracts",
@@ -22121,5 +22129,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "8e6ab3550cf2e3a28f756a48d886f790be359fcf"
+  "source_revision": "979349ab17e529efb86ff9bb0b8d13359534eda0"
 }
