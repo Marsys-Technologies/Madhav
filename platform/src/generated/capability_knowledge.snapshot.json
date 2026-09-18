@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-18T13:59:39.000Z",
-  "content_hash": "sha256:da6bb5ae756db2b2688e4391b5d92224eff7bb07e446d04f495cf4a4d4467c40",
+  "generated_at": "2026-09-18T14:39:30.000Z",
+  "content_hash": "sha256:8d46e421e42f999b1755ddcec933dee8caecdffe7274e8e46f7f240ce54c4371",
   "source_catalog_fingerprint": "sha256:6667406eb0a673f74e6678a72a109fd5d69cf56b97f2f2566fa95faabc522f1e",
-  "semantic_review_fingerprint": "sha256:62914f145ec54f6f0a26bb426bbd1b841187347c13afaafa1be53e87da90dab4",
+  "semantic_review_fingerprint": "sha256:325d6f1ab17ec77473b994e86a7abcd12ea07f2385b916f59aca00b3cef529b6",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -29657,6 +29657,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/read_remedy",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:read-remedy:v1",
+              "capability_uri": "marsys://tool/L0/read_remedy",
+              "contract_sha256": "sha256:7bb04e2eb6b77e75134aa5f49f7d83c39cdcca632e648532e6c5f4f56864a7d8",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

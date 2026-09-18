@@ -675,6 +675,23 @@ describe('first-slice availability coverage', () => {
       handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
     },
     {
+      scuId: 'scu.catalog.read_remedy',
+      bindingId: 'registry:marsys://tool/L0/read_remedy',
+      contractId: 'source-query:read-remedy:v1',
+      relation: 'brahma_remedy_corpus',
+      sqlMarkers: [
+        'SELECT id, remedy_id, planet, domain, remedy_type',
+        'prescription_text, mantra_text, gemstone, charity_action',
+        'day_of_week, color_associated, confidence',
+        'source_canonical_id, source_citation, classical_ref, created_at',
+        'category, deity, mantra_sanskrit, mantra_transliteration',
+        'ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications',
+        'classical_attestation_text, scaffold_status',
+        'remedy_id = NULL::text',
+      ],
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+    },
+    {
       scuId: 'scu.catalog.query_mantras',
       bindingId: 'registry:marsys://tool/L0/query_mantras',
       contractId: 'source-query:query-mantras:v1',
@@ -744,6 +761,7 @@ describe('first-slice availability coverage', () => {
       || scuId === 'scu.catalog.query_vichara_constants'
       || scuId === 'scu.catalog.query_remedies_for_chart'
       || scuId === 'scu.catalog.query_remedies_by_planet'
+      || scuId === 'scu.catalog.read_remedy'
       || scuId === 'scu.catalog.query_mantras'
       || scuId === 'scu.catalog.query_tantric_remedies') {
       expect(scu.producer_output_claims ?? []).toEqual([])
