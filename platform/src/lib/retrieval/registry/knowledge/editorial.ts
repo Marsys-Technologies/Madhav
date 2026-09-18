@@ -1,4 +1,5 @@
 import type { SemanticCapabilityDeclaration } from './types'
+import { sourceQueryAvailabilityRequirement } from './source_query_availability'
 
 const common = {
   version: 1,
@@ -171,6 +172,9 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
         scope: 'chart_build',
         source_ref: 'platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28',
       }],
+    }, {
+      binding_id: 'mcp:ganita_chart_facts_get:divisional_chart',
+      requirements: [sourceQueryAvailabilityRequirement('source-query:ganita-chart-facts-divisional:v1')!],
     }],
     editorial: true,
   },
@@ -329,6 +333,9 @@ export const YOGA_SCUS: readonly SemanticCapabilityDeclaration[] = [
         scope: 'chart_build',
         source_ref: 'platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128',
       }],
+    }, {
+      binding_id: 'mcp:yoga_activation_by_dasha',
+      requirements: [sourceQueryAvailabilityRequirement('source-query:yoga-activation-by-dasha:v1')!],
     }],
     editorial: true,
   },
@@ -400,6 +407,17 @@ export const FINANCE_SCUS: readonly SemanticCapabilityDeclaration[] = [
           source_ref: 'platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44',
         },
       ],
+    }, {
+      // This is the same executable mechanism route as the mechanism SCU's
+      // primary binding. Its availability therefore derives from that exact
+      // receipt-gated route instead of borrowing a wealth producer receipt.
+      binding_id: 'registry:finance-mechanisms',
+      requirements: [{
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: ['registry:marsys://tool/L2/query_mechanisms'],
+        source_ref: 'platform/src/lib/retrieval/registry/knowledge/editorial.ts:51-58',
+      }],
     }],
     editorial: true,
   },

@@ -3,6 +3,7 @@ import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compiler'
 import {
   getSourceQueryAvailabilityContract,
+  sourceQueryAvailabilityRequirement,
   sourceQueryAvailabilityContractFingerprint,
   sourceQueryParameterBindingMatchesScope,
 } from './source_query_availability'
@@ -38,6 +39,33 @@ function withBindings(bindings: unknown): CapabilityKnowledgeSnapshot {
 }
 
 describe('binding availability contracts', () => {
+  it('binds only the reviewed source relations for MCP divisional facts and yoga activation', () => {
+    const divisional = sourceQueryAvailabilityRequirement('source-query:ganita-chart-facts-divisional:v1')!
+    const activation = sourceQueryAvailabilityRequirement('source-query:yoga-activation-by-dasha:v1')!
+
+    expect(divisional).toMatchObject({
+      capability_uri: 'mcp://tool/ganita_chart_facts_get', scope: 'chart',
+      source_ref: expect.stringContaining('register_d7_channel.ts'),
+    })
+    expect(divisional.source_ref).toContain('002_ganita_divisionals.sql:31-59')
+    expect(activation).toMatchObject({
+      capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha', scope: 'chart',
+      source_ref: expect.stringContaining('register_d8_assess_domain.ts'),
+    })
+    expect(getSourceQueryAvailabilityContract(divisional.contract_id)?.sql).toContain('FROM chart_divisionals')
+    expect(getSourceQueryAvailabilityContract(activation.contract_id)?.sql).toContain('JOIN kala_activation')
+  })
+
+  it('binds the finance mechanism alias only through the canonical receipt-gated mechanism binding', () => {
+    const finance = snapshot.scus.find((scu) => scu.scu_id === 'scu.finance.prosperity_assessment')!
+    const contract = finance.availability_contracts?.find((item) => item.binding_id === 'registry:finance-mechanisms')
+    expect(contract?.requirements).toEqual([{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ['registry:marsys://tool/L2/query_mechanisms'],
+      source_ref: 'platform/src/lib/retrieval/registry/knowledge/editorial.ts:51-58',
+    }])
+  })
   it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
     expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
     expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)

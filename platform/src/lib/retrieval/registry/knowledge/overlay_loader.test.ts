@@ -599,7 +599,7 @@ describe('chart capability overlay loader', () => {
       .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/test'] })
   })
 
-  it('keeps generated temporal and alternate bindings dark without complete exact contracts', async () => {
+  it('keeps generated temporal bindings dark while admitting alternate bindings with complete exact contracts', async () => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const temporal = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')!
     const wealth = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.finance.prosperity_assessment')!
@@ -615,7 +615,7 @@ describe('chart capability overlay loader', () => {
     expect(availability.find((item) => item.scu_id === wealth.scu_id))
       .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L-DOMAIN/assess_wealth'] })
     expect(availability.find((item) => item.scu_id === yoga.scu_id))
-      .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/get_yoga_firings'] })
+      .toMatchObject({ available_binding_ids: ['mcp:yoga_activation_by_dasha', 'registry:marsys://tool/L1/get_yoga_firings'] })
   })
 
   it('fails closed when duplicate contracts name one binding with different producer assets', async () => {
@@ -838,17 +838,12 @@ describe('chart capability overlay loader', () => {
     expect(mocks.query.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([['ga_alternate', 'ga_primary']]))
   })
 
-  it('does not let one reviewed editorial route receipt enable another route binding in the generated snapshot', async () => {
+  it('does not let one reviewed editorial route receipt enable the wealth routes in the generated snapshot', async () => {
     const generatedSnapshot = getPinnedCapabilityKnowledgeSnapshot()
     const source = generatedSnapshot.scus.find((scu) => scu.scu_id === 'scu.bodha.mechanism.network')!
     const sourceContract = source.availability_contracts![0]!
     const sourceRequirement = sourceContract.requirements.find((requirement) => requirement.kind === 'producer_output')!
-    const targetBindingIds = [
-      'scu.catalog.get_divisionals',
-      'scu.finance.prosperity_assessment',
-      'scu.yoga.firing_and_cancellation',
-    ].flatMap((scuId) => generatedSnapshot.scus.find((scu) => scu.scu_id === scuId)!
-      .bindings.filter((binding) => binding.executable).map((binding) => binding.binding_id))
+    const targetBindingIds = ['registry:marsys://tool/L-DOMAIN/assess_wealth']
 
     mocks.query.mockResolvedValue({ rows: [receipt(sourceRequirement.asset_id, {
       output_digest_spec_sha256: sourceRequirement.spec_sha256,
