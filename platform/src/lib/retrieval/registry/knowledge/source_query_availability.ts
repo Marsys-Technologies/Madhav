@@ -53,6 +53,33 @@ export function sourceQueryParameterBindingMatchesScope(
  */
 const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
   {
+    contract_id: 'source-query:get-tara-chandra-bala:v1',
+    descriptor_name: 'get_tara_chandra_bala',
+    capability_uri: 'marsys://tool/L1/get_tara_chandra_bala',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY['tara_bala_natal_baseline', 'chandra_bala_natal_baseline']::text[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY fact_category, ayanamsha_id, fact_key
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY['tara_bala_natal_baseline', 'chandra_bala_natal_baseline']::text[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
     contract_id: 'source-query:query-yoga-catalog:v1',
     descriptor_name: 'query_yoga_catalog',
     capability_uri: 'marsys://tool/L0/query_yoga_catalog',
