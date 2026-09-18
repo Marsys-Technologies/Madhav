@@ -451,6 +451,50 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-prashna-significators:v1',
+    descriptor_name: 'query_prashna_significators',
+    capability_uri: 'marsys://tool/L0/query_prashna_significators',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT question_class, querent_house, querent_planet, quesited_house, quesited_planet,
+                 significator_rule, classical_citation
+            FROM bg_prashna_significators
+           WHERE 1=1
+             AND (NULL::text IS NULL OR LOWER(question_class) = LOWER(NULL::text))
+           ORDER BY question_class
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56',
+      'platform/migrations/261_bg_prashna_rules_schema.sql:32-42',
+      'platform/python-sidecar/brahmagyan/l0_prashna.py:862-887',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
+      'platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:44-51',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-prashna-fructification-rules:v1',
+    descriptor_name: 'query_prashna_fructification_rules',
+    capability_uri: 'marsys://tool/L0/query_prashna_fructification_rules',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT rule_id, time_unit, degree_conversion_rule, applicable_when, classical_citation
+            FROM bg_prashna_fructification_rules
+           WHERE 1=1
+             AND (NULL::text IS NULL OR rule_id = NULL::text)
+             AND (NULL::text IS NULL OR LOWER(time_unit) = LOWER(NULL::text))
+           ORDER BY rule_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59',
+      'platform/migrations/261_bg_prashna_rules_schema.sql:45-52',
+      'platform/python-sidecar/brahmagyan/l0_prashna.py:889-909',
+      'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
+      'platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:52-58',
+    ],
+  },
+  {
     contract_id: 'source-query:get-ayurdaya:v1',
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
