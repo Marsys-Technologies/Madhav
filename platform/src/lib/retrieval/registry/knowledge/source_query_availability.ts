@@ -1954,6 +1954,58 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-yoga-dosha:v1',
+    descriptor_name: 'get_yoga_dosha',
+    capability_uri: 'marsys://tool/L1/get_yoga_dosha',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag'
+               ]::text[])
+               AND NOT (fact_category = 'dosha_label' AND (fact_value_jsonb->>'fire_reason') = 'requires_pass')
+             ORDER BY fact_category, ayanamsha_id, fact_key
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag'
+               ]::text[])
+          ), firings_probe AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_yoga_firings
+             WHERE chart_id = $1::uuid
+               AND fired = true
+          ), kala_sarpa_probe AS (
+            SELECT fact_id, ayanamsha_id, fact_value_jsonb, fact_value_text,
+                   verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = 'kala_sarpa_per_varga'
+               AND fact_key = 'ks_detection'
+             ORDER BY ayanamsha_id, (fact_value_jsonb->>'varga')
+             LIMIT 0
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN firings_probe
+            CROSS JOIN kala_sarpa_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218',
+      'platform/migrations/240_ga_yoga.sql:4-48',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
