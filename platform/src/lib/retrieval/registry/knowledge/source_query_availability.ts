@@ -1773,6 +1773,37 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/286_ga_vastu_planet_direction_map.sql:8-38',
     ],
   },
+  {
+    contract_id: 'source-query:get-transit-anchors:v1',
+    descriptor_name: 'get_transit_anchors',
+    capability_uri: 'marsys://tool/L1/get_transit_anchors',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH anchors_probe AS (
+            SELECT id, chart_id, ayanamsha_id, graha,
+                   natal_sign, natal_house_from_moon, natal_degree_absolute, computed_at
+              FROM ga_transit_anchors
+             WHERE chart_id = $1::uuid
+             ORDER BY ayanamsha_id, graha
+             LIMIT 0
+          ), constituent_facts_probe AS (
+            SELECT ayanamsha_id, fact_subject, fact_id
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY['graha_position', 'graha_sign_attributes']::text[])
+               AND fact_key = ANY(ARRAY['sign', 'longitude_sidereal', 'nakshatra']::text[])
+             LIMIT 0
+          )
+          SELECT 1
+            FROM anchors_probe
+            CROSS JOIN constituent_facts_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109',
+      'platform/migrations/267_ga_transit_anchors.sql:20-49',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
