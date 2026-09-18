@@ -295,6 +295,77 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:get-argala:v1',
+    descriptor_name: 'get_argala',
+    capability_uri: 'marsys://tool/L1/get_argala',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, ayanamsha_id, fact_subject, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY['argala_natal_matrix', 'virodha_argala_natal_matrix']::text[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR fact_subject LIKE NULL::text || '%')
+             ORDER BY ayanamsha_id, fact_subject, fact_key
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY['argala_natal_matrix', 'virodha_argala_natal_matrix']::text[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR fact_subject LIKE NULL::text || '%')
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-dispositors:v1',
+    descriptor_name: 'get_dispositors',
+    capability_uri: 'marsys://tool/L1/get_dispositors',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
+               'parivartana_per_varga', 'kala_sarpa_per_varga'
+             ]::text[])
+             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-eclipse-flags:v1',
+    descriptor_name: 'get_eclipse_flags',
+    capability_uri: 'marsys://tool/L1/get_eclipse_flags',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = 'eclipse_proximity_natal'
+           ORDER BY ayanamsha_id, fact_key
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
     contract_id: 'source-query:query-yoga-catalog:v1',
     descriptor_name: 'query_yoga_catalog',
     capability_uri: 'marsys://tool/L0/query_yoga_catalog',
