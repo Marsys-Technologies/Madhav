@@ -99,6 +99,59 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
+    ['scu.catalog.query_avastha_schemes', 'source-query:query-avastha-schemes:v1', 'platform/migrations/250_bg_dignity_reference.sql:239-256'],
+    ['scu.catalog.query_combustion_orbs', 'source-query:query-combustion-orbs:v1', 'platform/migrations/250_bg_dignity_reference.sql:484-497'],
+  ])('binds %s to its exact global source-query contract without a producer-output claim', (scuId, contractId, schemaRef) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    const requirement = scu.availability_contracts![0]!.requirements[0]!
+
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: contractId,
+      scope: 'global',
+      contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      source_ref: expect.stringContaining(schemaRef),
+    })
+    expect(scu.producer_output_claims ?? []).toEqual([])
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
+    }))
+  })
+
+  it.each([
+    {
+      contractId: 'source-query:query-avastha-schemes:v1',
+      markers: [
+        'SELECT scheme_name, state_name, state_order, determination_rule',
+        'classical_citation, notes',
+        'FROM bg_avastha_schemes',
+        'LOWER(scheme_name) = LOWER(NULL::text)',
+        'LOWER(state_name) = LOWER(NULL::text)',
+        'ORDER BY scheme_name, state_order',
+      ],
+    },
+    {
+      contractId: 'source-query:query-combustion-orbs:v1',
+      markers: [
+        'SELECT graha, orb_degrees, deep_orb_degrees, retrograde_note',
+        'classical_citation',
+        'FROM bg_combustion_orbs',
+        'LOWER(graha) = LOWER(NULL::text)',
+        'ORDER BY graha',
+      ],
+    },
+  ])('keeps $contractId as an exact, zero-row-safe handler source probe', ({ contractId, markers }) => {
+    const contract = getSourceQueryAvailabilityContract(contractId)!
+
+    expect(contract.parameter_binding).toBe('global')
+    expect(contract.empty_semantics).toBe('query_success_is_available')
+    for (const marker of markers) expect(contract.sql).toContain(marker)
+    expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it.each([
     ['scu.catalog.get_ayurdaya', 'source-query:get-ayurdaya:v1'],
     ['scu.catalog.get_sensitive_degrees', 'source-query:get-sensitive-degrees:v1'],
   ])('binds %s to its exact chart-and-active-build source-query contract', (scuId, contractId) => {
