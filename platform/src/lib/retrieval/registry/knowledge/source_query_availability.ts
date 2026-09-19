@@ -2444,6 +2444,98 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql:1-80',
     ],
   },
+  {
+    contract_id: 'source-query:query-rm-chart-summary:v1',
+    descriptor_name: 'query_rm_chart_summary',
+    capability_uri: 'marsys://tool/L2/query_rm_chart_summary',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT summary_id, ayanamsha_id, snapshot_type, top_3_resonance_targets_jsonb,
+                   top_10_priority_prescriptions_jsonb, recommended_intensity_class,
+                   recommended_remedy_phase_sequence_jsonb, total_active_dosha_count,
+                   primary_dosha_class, cross_tradition_convergence_jsonb, remedy_chart_typology,
+                   acharya_review_required_count, feasibility_assessment_jsonb,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_chart_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             ORDER BY computed_at DESC
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_chart_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:62-88'],
+  },
+  {
+    contract_id: 'source-query:query-rm-resonances:v1',
+    descriptor_name: 'query_rm_resonances',
+    capability_uri: 'marsys://tool/L2/query_rm_resonances',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT resonance_id, ayanamsha_id, graha, resonance_score, weakness_score,
+                   contradiction_factor, domain_burden, motif_burden, is_yoga_karaka_flag,
+                   is_chara_karaka_role, weakest_rank_in_chart, remedy_priority_class,
+                   associated_doshas_array, associated_motifs_array, associated_cdlm_cells_array,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_resonances
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR graha = NULL::text)
+             ORDER BY resonance_score DESC NULLS LAST, weakness_score DESC NULLS LAST
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_resonances
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR graha = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts:57-82'],
+  },
+  {
+    contract_id: 'source-query:query-rm-prescriptions:v1',
+    descriptor_name: 'query_rm_prescriptions',
+    capability_uri: 'marsys://tool/L2/query_rm_prescriptions',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT prescription_id, ayanamsha_id, target_graha, target_resonance_id,
+                   tradition, sub_tradition, remedy_category, remedy_id_g27, remedy_label_human,
+                   classical_strength_rating, classical_sources_jsonb, resonance_match_score,
+                   feasibility_score, ritual_complexity_class, requires_acharya_review_flag,
+                   acharya_review_reason_array, counter_indications_array, targets_motif_id,
+                   targets_cell_id, targets_dosha_class, cross_tradition_corroboration_count,
+                   phase_sequence_class, phase_duration_days, recommended_facing_direction,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_remedy_prescriptions
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+               AND (NULL::text IS NULL OR remedy_category = NULL::text)
+               AND (NULL::text IS NULL OR target_graha = NULL::text)
+             ORDER BY resonance_match_score DESC NULLS LAST, classical_strength_rating DESC NULLS LAST
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_remedy_prescriptions
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+               AND (NULL::text IS NULL OR remedy_category = NULL::text)
+               AND (NULL::text IS NULL OR target_graha = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts:65-91'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
