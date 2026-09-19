@@ -3301,6 +3301,23 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT * FROM verdict_distribution LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197'],
   },
+  {
+    contract_id: 'source-query:query-anomaly-flags:v1',
+    descriptor_name: 'query_anomaly_flags',
+    capability_uri: 'marsys://tool/L4/query_anomaly_flags',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT sodhana_id, anchor_id, anomaly_type, anomaly_severity, detected_field,
+                 expected_value_text, observed_value_text, leakage_class, recommendation_text,
+                 auto_action
+            FROM phala_sodhana
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR anomaly_type = NULL::text)
+           ORDER BY CASE anomaly_severity
+             WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2
+             WHEN 'low' THEN 3 ELSE 4 END, anomaly_type
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:306-335'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
