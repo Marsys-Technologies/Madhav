@@ -3210,6 +3210,29 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY m.computed_salience DESC NULLS LAST, m.signal_id LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:614-695'],
   },
+  {
+    contract_id: 'source-query:query-attribution:v1',
+    descriptor_name: 'query_attribution',
+    capability_uri: 'marsys://tool/L5/query_attribution',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT match_id, signal_id, family_id, dimension, credit_blame, channel_fired,
+                   attribution_formula_ver
+              FROM mimamsa_attribution
+             WHERE chart_id = $1::uuid
+               AND (NULL::uuid IS NULL OR match_id = NULL::uuid)
+               AND (NULL::uuid IS NULL OR signal_id = NULL::uuid)
+               AND (NULL::text IS NULL OR dimension = NULL::text)
+             ORDER BY ABS(credit_blame) DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_attribution
+             WHERE chart_id = $1::uuid
+               AND (NULL::uuid IS NULL OR match_id = NULL::uuid)
+               AND (NULL::uuid IS NULL OR signal_id = NULL::uuid)
+               AND (NULL::text IS NULL OR dimension = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts:70-106'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
