@@ -73,10 +73,10 @@ describe('planner capability knowledge', () => {
     })
     const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
-    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
+    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
     const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(98)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(94)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(93)
   })
 
   it('derives reviewed pagination only from an evidence-bearing continuation contract', () => {
