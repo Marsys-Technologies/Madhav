@@ -2771,6 +2771,27 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:91-119'],
   },
+  {
+    contract_id: 'source-query:query-obstruction-periods:v1',
+    descriptor_name: 'query_obstruction_periods',
+    capability_uri: 'marsys://tool/L3/query_obstruction_periods',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, convergence_id, signal_id, obstruction_type, severity, severity_score,
+                   override_score, obstruction_detail, source_citation
+              FROM kala_obstruction
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR obstruction_type = NULL::text)
+               AND (NULL::text IS NULL OR severity = NULL::text)
+             ORDER BY severity_score DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_obstruction
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR obstruction_type = NULL::text)
+               AND (NULL::text IS NULL OR severity = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:74-94'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
