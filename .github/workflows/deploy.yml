@@ -1069,7 +1069,17 @@ jobs:
     # migrations still complete before this job's image build — it is simply now a
     # barrier other services can also order against.
     needs: [changes, migrate]
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # `migrate` deliberately crosses an intentionally skipped
+    # `privileged-bootstrap` when every protected ownership marker is already
+    # current. GitHub propagates that skipped ancestor to downstream jobs unless
+    # their condition is evaluated with `always()`, even though `migrate` itself
+    # completed successfully. Evaluate explicitly, then keep the schema barrier
+    # fail-closed by requiring both direct dependencies to have succeeded.
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.migrate.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
 
     permissions:
@@ -1531,14 +1541,17 @@ jobs:
     # `needs: [migrate]` closes the identical ordering race at ~1 minute of
     # shared barrier instead. Do not reintroduce a `deploy-web` dependency here.
     #
-    # No `always()` guard: default `needs` semantics are exactly right. `migrate`
-    # shares this job's trigger `if:`, so it never skips on a deploy-triggering
-    # event — it succeeds (schema current → deploy) or fails (schema state
-    # unknown → MCP correctly held rather than shipping dependent code against
-    # unknown schema). The `always()` in the earlier revision existed only to
-    # service the unreachable `skipped` branch described above.
+    # `always()` is required here only to cross `migrate`'s intentionally skipped
+    # bootstrap ancestor when protected ownership is already current. Direct
+    # dependency results remain explicit and fail-closed: a skipped, failed or
+    # cancelled `changes`/`migrate` job cannot admit an MCP deployment.
     needs: [changes, migrate]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.migrate.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
     permissions:
@@ -1898,7 +1911,15 @@ jobs:
   deploy-pipeline-job:
     name: Build & Deploy Pipeline Job Image
     needs: [changes, migrate]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.pipeline == 'true')
+    # Match the web/MCP schema-barrier contract: evaluate after the optional
+    # bootstrap ancestor, but admit delivery only after both direct dependencies
+    # have succeeded.
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.migrate.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
