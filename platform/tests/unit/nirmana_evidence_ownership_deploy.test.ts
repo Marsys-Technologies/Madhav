@@ -21,8 +21,8 @@ describe('Nirmana ownership deployment attestation', () => {
 
     expect(bootstrap.environment).toBe('data-plane-production-cutover')
     expect(preflight?.if).toBe("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
-    expect(marker?.if).toContain("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
-    expect(marker?.if).toContain("steps.bootstrap-state.outputs.purna != 'marked'")
+    expect(marker?.if).toBe("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
+    expect(marker?.if).not.toContain('purna')
     expect(marker?.run).toContain('npx tsx scripts/nirmana-evidence-ownership-marker.ts')
     expect(routineAttestation?.env).toEqual({ DATABASE_URL: '${{ secrets.PROD_DATABASE_URL }}' })
     expect(routineAttestation?.run).toContain('nirmana-evidence-ownership-status.ts')
