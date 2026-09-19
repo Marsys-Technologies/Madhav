@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.24.0
+version: 0.25.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0098
-last_updated: 2026-09-19T11:07:13+05:30
+last_event: PA-E0099
+last_updated: 2026-09-19T12:29:20+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -56,6 +56,24 @@ layer state, queue or authority.
   This is source-ready evidence only: classical pagination exhaustion, judgment, the remaining
   availability deficit, three-door candidate/live execution, protected release, and automated
   product acceptance remain open.
+
+- Third successor source packet: reviewed implementation head `25801eb44649217e46fde6dba1aae9939a227c9b`
+  and current evidence head `5fb8a389dc6291cb57bc69cfce43a46c99b43332` admit `judgment_query` only when the selected chart's latest
+  completed build has the required D2 wealth constant and default-ayanamsha Lagna fact. Every
+  judgment fact, child query, page/count path, dasha enrichment, and domain-reranking cache is
+  fenced to that build; `as_of_date` now crosses the inquiry compiler and full MCP door. A typed
+  non-paginated closure contract keeps malformed, contradictory, sampled, unserved, budget-trimmed,
+  or materially trimmed checklists open. The current wealth checklist remains honestly
+  salience-sampled, so canonical wealth completion is still `INCOMPLETE`; admission is not being
+  misreported as response closure. The regenerated snapshot remains 182 SCUs / 186 executable
+  bindings and now has 157 availability contracts, 24 uncovered executable bindings, and 5
+  deliberate-dark dispositions. Full platform verification passes 1,139 files / 12,347 tests,
+  with 704 skipped and 2 todo; lint has 0 errors / 590 inherited warnings, TypeScript and both
+  code-generation checks pass, the fact-category scanner reports 62/62 reviewed violations with
+  zero new findings, the governed MCP bridge subset passes 23/23, and independent review found no
+  remaining HIGH, MED, or LOW issue. This remains source-ready evidence only: classical pagination
+  exhaustion, wealth checklist completion, the remaining catalogue deficit, candidate receipts,
+  protected release, and live 5+30 three-door automated acceptance remain open.
 
 - Refreshed live boundary: `amjis-web` and `amjis-mcp` still serve
   `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected run `35419951080` skipped all deployment
