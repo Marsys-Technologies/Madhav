@@ -22,12 +22,12 @@
 | Preservation branches on origin | **9 / 9 ✅** |
 | Integration worktree + branch | ✅ `codex/madhav-l3-claude-code` @ `cdc701afa` |
 | Governing docs staged in worktree | ✅ 4 / 4 extracted + 3 planning docs |
-| Governing docs merged to main (B1) | 🟡 committed on integration branch, PR pending |
+| Governing docs merged to main (B1) | 🟡 PR #2692 green, in protected merge queue |
 | DP-SD-021 authored (B2) | ✅ strategic ledger §13 |
-| Governance surfaces refreshed (B3, main-branch part) | ✅ CLAUDE.md §C.5+§E, CURRENT_STATE §2, CLAUDECODE_BRIEF.md — coordination-branch part pending |
+| Governance surfaces refreshed (B3) | ✅ CLAUDE.md §C.5+§E, CURRENT_STATE §2, CLAUDECODE_BRIEF.md (PR #2692) + CAMPAIGN_COORDINATION.md L3 party row (pushed directly to `campaign-coordination` per its own protocol) — **all done** |
 | Deployment re-verified independently (C1) | ✅ **gate is OPEN — see finding below, corrects the restart notice** |
-| 22-asset baseline (C2) | 🟡 partially blocked — see finding |
-| W1 function contract read (C3) | 🟡 in progress |
+| 22-asset baseline (C2) | ✅ done to the extent credentials allow — live MCP-based serving snapshot (8 assets sampled); raw row counts blocked, recorded as BL-3 |
+| W1 function contract read (C3) | ✅ complete — full dispatch plan ready, see finding |
 | Salvage packets verified (D1–D6) | **6 / 6 ✅ — all already satisfied on `main` via PR #2607, zero PRs needed** |
 | Branch triage record (D7) | ✅ 112 branches classified |
 | Field dossiers | 2 / 22 (ka_graha_sancara, ka_dasha_kala — full field-contract dossier complete) |
