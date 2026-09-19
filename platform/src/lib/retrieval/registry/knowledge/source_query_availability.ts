@@ -3422,6 +3422,22 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/338_phala_pramana.sql:23-67',
     ],
   },
+  {
+    contract_id: 'source-query:query-auspicious-windows:v1',
+    descriptor_name: 'query_auspicious_windows',
+    capability_uri: 'marsys://tool/L4/query_auspicious_windows',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT muhurta_id, action_class, window_start, window_end, hora_lord, panchanga_score,
+                 chart_personalization_score, personal_adversity_penalty, composite_quality,
+                 window_quality_verdict, verdict_reason, linked_anchor_id, classical_citation
+            FROM phala_muhurta
+           WHERE chart_id = $1::uuid
+             AND (NULL::date IS NULL OR window_end >= NULL::date)
+             AND (NULL::date IS NULL OR window_start <= NULL::date)
+             AND (NULL::text IS NULL OR action_class = NULL::text)
+           ORDER BY composite_quality DESC NULLS LAST LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:76-113'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
