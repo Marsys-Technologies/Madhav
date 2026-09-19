@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "4fe16746fb6ff4e32aa8d049ea13bf11a954b9eeba357fc8c350089afc865e72",
+  "content_sha256": "a6691ece9942eab1fc8e9383e13fc12f332af42665b6dadb3fa4d94324bbc043",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -7641,7 +7641,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha (default: 'lahiri').",
+            "description": "Ayanamsha (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -20800,7 +20800,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-19T08:23:04.000Z",
+  "generated_at": "2026-09-20T04:10:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20822,7 +20822,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "5249fd5f74bdfe6d9b96fd4db594ebaee01b5c6d892b97001dc0c3dd69bc6c7e"
+        "sha256": "a54dbbe9c69d7ff7fce7a39ad8e0accd4b600cd615bf5f69bc2daa0ec4574cd0"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21945,7 +21945,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
-            "sha256": "1987d774c001bae2a1c50a2c0325f618c6bdfec56abc68591527d31f1d2b1895"
+            "sha256": "67c94f0201a6ef0029b7dac6204d2e2b1ebc4cc29d85dc033512e7a637a8819c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
@@ -22197,7 +22197,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "ccd2e815865b7da55c05d4d7d44e340cc872ee5a03c14e4a6d27886c82d70052"
+        "sha256": "b1ecd4afe091fe999dc24226fb8154452707f1e1eef41a674c70da0f9fa86e55"
       },
       {
         "id": "service_effect_contracts",
@@ -22222,5 +22222,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "3046dabb6fc61870bb86fce0a31e872f3226194b"
+  "source_revision": "95db0ae17b970dcafe92aa299b517871f55dcd70"
 }
