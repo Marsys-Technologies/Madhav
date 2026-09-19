@@ -197,6 +197,8 @@ this is RELEASED or expired.*
 | 1035 | DATA PLANE L3 / Codex | `1035_data_plane_l1_producer_history.sql` (confirmed-unapplied accepted L1 immutable producer history/generation heads; relocate from legacy directory, filename/header renumber only) | CLAIMED — RI-01 precursor integration; protected main `731e311f0` stops at 1032 and complete open-PR migration sweep finds only planner 1033 and Pūrṇa 1034; authoring not yet started |
 | 1036 | DATA PLANE L3 / Codex | `1036_data_plane_l2_producer_generations.sql` (confirmed-unapplied accepted L2 immutable producer generations/partitions/heads; relocate from legacy directory, filename/header renumber only) | CLAIMED — RI-01 precursor integration; protected main `731e311f0` stops at 1032 and complete open-PR migration sweep finds only planner 1033 and Pūrṇa 1034; authoring not yet started |
 | 1039 | PURNA-ANVESANA / Codex | `1039_purna_inquiry_protected_ownership.sql` (transfer four Pūrṇa stores and their twelve functions to a preprovisioned normalized NOLOGIN owner; revoke the temporary migrator membership and attest the final role/RLS ownership boundary) | **CLAIMED** — live-wrapup successor after fresh `origin/main` tree plus complete open-PR migration sweep on 2026-09-16 found no 1039 claimant; reuses this row's explicitly released number under the active Pūrṇa live-wrapup lease. The file must fail closed unless the exact owner/login preflight exists; no role/shared DB mutation under the source lease. |
+| 1042–1069 | PŪRṆA ANVEṢAṆA / Codex | Reserved range for all remaining Pūrṇa migrations (DP-SD-021, dual-campaign plan §3.3 rule 2) | **RANGE RESERVED** — claim exact numbers within this range at PR-open per the normal convention; supersedes ad hoc per-migration claims for this pair going forward |
+| 1070–1119 | L3 KĀLA / Claude Code | Reserved range for all L3 Kāla data-plane migrations (DP-SD-021, dual-campaign plan §3.3 rule 2) | **RANGE RESERVED** — added 2026-09-20 by the L3 autonomous conductor; claim exact numbers within this range at PR-open; anything cross-cutting both campaigns goes to 1120+ by a logged request here, never into either reserved range |
 | — | NIRMANA / CONDUCTOR RULING (2026-09-09, on issue #2510 Finding 2, decide-and-log per D-NATIVE-12) | — | **§2 of this file is DEPRECATED for the remainder of the NIRMANA campaign.** It has now missed two independent in-flight migration-number collisions (902/905/911 and 990-997 above) despite carrying its own warning text since the first miss — the structural problem is that nothing pushes an update to this table between a PR's open and its merge, so it is stale by construction under high-concurrency autonomous lanes. The **live-PR-sweep method** (`gh pr list --repo Marsys-Technologies/Madhav --state open --json number,headRefName` then `gh pr diff <n> --name-only \| grep migrations` for every open PR, cross-checked against `git ls-tree origin/main --name-only -- platform/migrations` for the true current ceiling) is the standing check for NIRMANA lanes going forward — it has caught every real collision so far and does not depend on any lane remembering to write here. NIRMANA lanes may stop appending migration-claim rows to this table; other concurrent campaigns' use of §2 is unaffected by this ruling (their own territory, own call). |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
@@ -218,6 +220,50 @@ this is RELEASED or expired.*
   **127.0.0.1:5434**. Each campaign connects ONLY through its own port and never
   restarts, kills, or starts a proxy on the other's port. This removes the shared-
   proxy blast radius entirely (the 2026-08-10 incident vector).
+
+## 3a. L3 KĀLA ↔ PŪRṆA ANVEṢAṆA PARTITION (added 2026-09-20, DP-SD-021)
+
+The SAMPŪRTI/UTKARṢA-era §3 territory map above is historical (both campaigns closed). This
+subsection covers the currently-active pair: **Pūrṇa Anveṣaṇa (Codex)** and **L3 Kāla data-plane
+elevation (Claude Code)**. Full rationale and phase plan:
+`briefs/nirmana/MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` §3.3/§3.4; decision record:
+`briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md` §13 (DP-SD-021).
+
+- **L3 territory (may edit):** `platform/python-sidecar/pipeline/orchestrator/writers/ka_*.py`,
+  `services/ka_*/**`, `services/gochara_v3/**`, `services/w2g/**`, `pipeline/transit_search.py`,
+  `tests/l3/**`; `platform/src/lib/retrieval/registry/layers/L3_kala/**`;
+  `platform-mcp/src/tools/kala_views/**`, `platform-mcp/src/lib/promise_spine.ts`; DB tables
+  `kala_*`, `gochara_resonance_map`; L1/L2 data-plane generation tables for W1; the 22 `ka_*` keys
+  in `nirmana-writer-digests.json`, `layers.L3` in `nirmana-analysis-layer-pins.json`.
+- **Pūrṇa territory (may edit):** `retrieval/registry/knowledge/**`, `register_prashna_*`,
+  `purna/**`, `managed_prashna_jobs.ts`, `prashna_ask_bridge.ts`, planner/inquiry lifecycle,
+  Portal/managed-MCP/raw-MCP door code; DB tables `planner_*`, `inquiry_*`.
+- **Shared surface — `registry/layers/L3_kala/**` handlers (rule 4):** L3 owns the directory.
+  Pūrṇa may change availability-contract/knowledge-layer metadata that *references* L3 handlers
+  without touching handler semantics. Any change to an L3 handler's served contract is an L3
+  receipt request (`L3-REQ-nn` below), not a Pūrṇa PR.
+- **Generated artifacts** (`nirmana-analysis-layer-pins.json`, `nirmana-writer-digests.json`,
+  `capability_knowledge.snapshot.json`, `capability_estate_census.json`): regenerate through the
+  real generators, never hand-edit; the loser of a merge race rebases and re-runs the generators.
+- **Pūrṇa must not** build, rebuild, or backfill any `ka_*` producer to light an SCU (its own plan
+  §15 already says so). L3 must not touch `retrieval/registry/knowledge/**`, `purna/**`, or any
+  `planner_*`/`inquiry_*` table.
+- **Production mutation** (migration apply, cutover dispatch, orchestrator build/rebuild of
+  shared-table assets, traffic promotion): serialize via §1's lease table above — one exclusive
+  lease at a time, held only for the minutes of the operation. PR merges, CI, and disposable-DB
+  work are not leased.
+- **Migration numbering:** see the §2 range rows above (Pūrṇa 1042–1069, L3 1070–1119, shared
+  ≥1120). Never edit an applied migration (1033–1041 belong to the now-closed delivery gate).
+
+**Interlock LOG format** — append entries here, do not edit another campaign's row:
+
+- `L3-REQ-nn` (Pūrṇa → L3): when a Pūrṇa product case cannot reach `live_verified` because a
+  `ka_*`-bound SCU lacks an accepted receipt. Format: `L3-REQ-<nn> | <date> | asset: <ka_*> |
+  SCU: <name> | case ids: <...> | status: OPEN/ANSWERED(<packet id or disposition>)`.
+- `PA-REQ-nn` (L3 → Pūrṇa): when L3's `CONSUMER_INTEGRATED`/`VALUE_EVALUATED` proof needs a
+  collector/judge change Pūrṇa owns. Same format, prefix `PA-REQ`.
+
+No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST).
 
 ## 4. STANDING RULINGS / PROPOSALS
 
