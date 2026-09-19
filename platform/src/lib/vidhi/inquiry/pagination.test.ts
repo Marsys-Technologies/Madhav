@@ -21,8 +21,15 @@ function judgmentBinding(): SemanticCapabilityBinding {
     result_collection_verified: false,
     pagination_contract: undefined,
     non_paginated_closure: {
-      closure_version: 'judgment-reading-checklist-v1',
+      closure_version: 'judgment-reading-checklist-v2',
       checklist_path: 'reading_checklist',
+      checklist_contract_id: 'judgment-reading-checklist-v2',
+      required_units: [
+        'bhava_bhavesha_from_lagna', 'bhava_bhavesha_from_chandra', 'karakas',
+        'operative_varga', 'corroborating_vargas', 'ashtakavarga', 'special_lagnas',
+        'sensitive_degree_firings', 'kp_cusp_chain', 'yogi_avayogi', 'bearing_yogas',
+        'bearing_afflictions', 'notably_absent_yogas', 'dasha_levels', 'gochara_sweep', 'tajaka',
+      ],
       material_trim_paths: ['budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated'],
       source_ref: 'test:judgment-reading-checklist',
     },
@@ -44,10 +51,17 @@ function classicalBinding(): SemanticCapabilityBinding {
 }
 
 const completeJudgmentChecklist = {
+  contract_id: 'judgment-reading-checklist-v2',
+  units: [
+    'bhava_bhavesha_from_lagna', 'bhava_bhavesha_from_chandra', 'karakas',
+    'operative_varga', 'corroborating_vargas', 'ashtakavarga', 'special_lagnas',
+    'sensitive_degree_firings', 'kp_cusp_chain', 'yogi_avayogi', 'bearing_yogas',
+    'bearing_afflictions', 'notably_absent_yogas', 'dasha_levels', 'gochara_sweep', 'tajaka',
+  ].map(unit => ({ unit, state: 'served' })),
   exhaustive: true,
   non_exhaustive: false,
-  units_served: 12,
-  units_total: 12,
+  units_served: 16,
+  units_total: 16,
   units_unserved: [],
 }
 
@@ -195,6 +209,10 @@ describe('inquiry pagination receipts', () => {
   it.each([
     ['missing checklist', { content: {} }],
     ['malformed checklist', { content: { reading_checklist: { ...completeJudgmentChecklist, units_served: '12' } } }],
+    ['wrong checklist contract', { content: { reading_checklist: { ...completeJudgmentChecklist, contract_id: 'judgment-reading-checklist-v1' } } }],
+    ['missing mandatory unit', { content: { reading_checklist: { ...completeJudgmentChecklist, units: completeJudgmentChecklist.units.slice(0, -1), units_served: 15, units_total: 15 } } }],
+    ['duplicate mandatory unit', { content: { reading_checklist: { ...completeJudgmentChecklist, units: [...completeJudgmentChecklist.units.slice(0, -1), completeJudgmentChecklist.units[0]] } } }],
+    ['unsettled mandatory unit', { content: { reading_checklist: { ...completeJudgmentChecklist, units: completeJudgmentChecklist.units.map(unit => unit.unit === 'notably_absent_yogas' ? { ...unit, state: 'not_computed' } : unit) } } }],
     ['contradictory counts', { content: { reading_checklist: { ...completeJudgmentChecklist, units_served: 11 } } }],
     ['non-exhaustive marker', { content: { reading_checklist: { ...completeJudgmentChecklist, non_exhaustive: 'salience_sampled' } } }],
     ['unserved units', { content: { reading_checklist: { ...completeJudgmentChecklist, exhaustive: false, units_served: 11, units_unserved: ['tajaka'] } } }],

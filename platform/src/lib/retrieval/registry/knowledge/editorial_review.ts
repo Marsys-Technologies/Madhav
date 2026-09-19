@@ -10,6 +10,7 @@ import type {
   SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
+import { JUDGMENT_READING_CHECKLIST_V2_CONTRACT } from '../layers/reading_checklist'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -108,8 +109,10 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
   judgment_query: {
     pagination: 'none',
     non_paginated_closure: {
-      closure_version: 'judgment-reading-checklist-v1',
+      closure_version: 'judgment-reading-checklist-v2',
       checklist_path: 'reading_checklist',
+      checklist_contract_id: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.contract_id,
+      required_units: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.required_units,
       material_trim_paths: [
         'budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated',
       ],

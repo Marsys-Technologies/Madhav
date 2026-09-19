@@ -31,10 +31,14 @@ import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 export type ChecklistState =
   | 'served' //               this unit's data is present in THIS response
   | 'empty_for_this_chart' //  computed, but no rows fired/exist for this chart (a finding, not a gap)
+  | 'not_applicable' //        this classical unit does not apply to the resolved domain
   | 'not_computed' //          the underlying L1/L2/L3 asset does not exist for this chart yet
   | 'not_joined' //            the data exists but this instrument does not fold it in (drill handle given)
   | 'salience_floored' //      exists + reachable but ranked below the served cut on salience surfaces
   | 'not_yet_available' //     the producing asset is being built in a parallel track (T6 yogi/avayogi)
+  | 'source_unproven' //       a required source leg could not be proven for this response
+  | 'source_incomplete' //     a fixed-shape required source leg was missing or duplicated
+  | 'materially_trimmed' //    response budgeting removed material evidence from this unit
 
 export interface ChecklistUnit {
   unit: string
@@ -44,6 +48,35 @@ export interface ChecklistUnit {
   drill?: string
   count?: number
 }
+
+/**
+ * v2 is deliberately an exact set, rather than a response-controlled denominator.
+ * A handler may disclose that a unit is not applicable, but it may not omit it and
+ * then call a smaller self-selected checklist complete.
+ */
+export const JUDGMENT_READING_CHECKLIST_V2_UNITS = [
+  'bhava_bhavesha_from_lagna',
+  'bhava_bhavesha_from_chandra',
+  'karakas',
+  'operative_varga',
+  'corroborating_vargas',
+  'ashtakavarga',
+  'special_lagnas',
+  'sensitive_degree_firings',
+  'kp_cusp_chain',
+  'yogi_avayogi',
+  'bearing_yogas',
+  'bearing_afflictions',
+  'notably_absent_yogas',
+  'dasha_levels',
+  'gochara_sweep',
+  'tajaka',
+] as const
+
+export const JUDGMENT_READING_CHECKLIST_V2_CONTRACT = {
+  contract_id: 'judgment-reading-checklist-v2',
+  required_units: JUDGMENT_READING_CHECKLIST_V2_UNITS,
+} as const
 
 /**
  * A response is `non_exhaustive: 'salience_sampled'` whenever not every checklist
@@ -57,7 +90,7 @@ export function checklistExhaustiveness(units: ChecklistUnit[]): {
   units_total: number
   units_unserved: string[]
 } {
-  const settled = new Set<ChecklistState>(['served', 'empty_for_this_chart'])
+  const settled = new Set<ChecklistState>(['served', 'empty_for_this_chart', 'not_applicable'])
   const unserved = units.filter(u => !settled.has(u.state)).map(u => u.unit)
   const exhaustive = unserved.length === 0
   return {
