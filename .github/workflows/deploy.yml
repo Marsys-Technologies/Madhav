@@ -1445,6 +1445,11 @@ jobs:
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
             DATABASE_URL=amjis-pipeline-db-url:latest
+          env_vars: |
+            # All serving surfaces expose the immutable source SHA they were
+            # built from; the release verifier reads this independently of the
+            # Cloud Run label before admitting live acceptance evidence.
+            NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
 
       - name: Resolve candidate revision URL
         id: sidecar-candidate-url
