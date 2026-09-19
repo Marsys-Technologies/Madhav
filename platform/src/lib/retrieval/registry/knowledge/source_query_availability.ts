@@ -2975,6 +2975,30 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM handler_page CROSS JOIN families CROSS JOIN source_classification CROSS JOIN build_observation`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:74-137 | platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:209-371'],
   },
+  {
+    contract_id: 'source-query:query-temporal-view:v1',
+    descriptor_name: 'query_temporal_view',
+    capability_uri: 'marsys://tool/L3/query_temporal_view',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, convergence_id, signal_id, effective_score, net_label,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   obstruction_summary, narrative, source_citation
+              FROM kala_darshana
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR net_label = NULL::text)
+               AND (NULL::numeric IS NULL OR effective_score >= NULL::numeric)
+               AND (NULL::date IS NULL OR window_end >= NULL::date)
+               AND (NULL::date IS NULL OR window_start <= NULL::date)
+               AND (NULL::date IS NULL OR (window_start <= NULL::date AND window_end >= NULL::date))
+             ORDER BY effective_score DESC NULLS LAST, peak_date LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_darshana WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:59-112'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
