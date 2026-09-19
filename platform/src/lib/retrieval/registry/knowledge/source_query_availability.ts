@@ -3514,6 +3514,32 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422',
     ],
   },
+  {
+    contract_id: 'source-query:query-triangulation:v1',
+    descriptor_name: 'query_triangulation',
+    capability_uri: 'marsys://tool/L2/query_triangulation',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT triangulation_id, ayanamsha_id, question_class, tradition, verdict_inputs,
+                   concordance_score, signal_ids, formula_version, engine_version,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_triangulation
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_class = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+             ORDER BY question_class, tradition
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_triangulation
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_class = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
