@@ -22,7 +22,7 @@
 | Preservation branches on origin | **9 / 9 ✅** |
 | Integration worktree + branch | ✅ `codex/madhav-l3-claude-code` @ `cdc701afa` |
 | Governing docs staged in worktree | ✅ 4 / 4 extracted + 3 planning docs |
-| Governing docs merged to main (B1) | 🟡 PR #2692 green, in protected merge queue |
+| Governing docs merged to main (B1) | ✅ **MERGED** — PR #2692 → `330cc7a14`, deploy run `35471990635` success (migrate + web deploy ✅, MCP/sidecar/pipeline-job correctly skipped, earned-deployment ✅), web ready revision `amjis-web-probe-330cc7a14e89-35471990635-1` independently confirmed via `gcloud run services describe` |
 | DP-SD-021 authored (B2) | ✅ strategic ledger §13 |
 | Governance surfaces refreshed (B3) | ✅ CLAUDE.md §C.5+§E, CURRENT_STATE §2, CLAUDECODE_BRIEF.md (PR #2692) + CAMPAIGN_COORDINATION.md L3 party row (pushed directly to `campaign-coordination` per its own protocol) — **all done** |
 | Deployment re-verified independently (C1) | ✅ **gate is OPEN — see finding below, corrects the restart notice** |
@@ -71,9 +71,9 @@ All rows start `— / — / — / — / — / NO`.
 | A1 preservation push | strategy session | main checkout | — | **DONE** | 9/9 SHAs match origin (see EVENTS) | — |
 | A2 integration worktree | strategy session | `/Users/Dev/madhav-l3/integration` | `codex/madhav-l3-claude-code` | **DONE** | clean @ `cdc701afa` | — |
 | A3 durable state | strategy session | integration | — | **DONE** | this file + EVENTS.jsonl | — |
-| B1 governing docs → main | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE (committed), PR next** | 10 files at `9e3a9c1c4`, docs-only, verified diff-only vs main | open PR from this branch tip |
-| B2 DP-SD-021 | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE** | `MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md` §13 | include in B1 PR |
-| B3 governance refresh | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE (main-branch part)** | CLAUDE.md v7.5, CURRENT_STATE v6.79, CLAUDECODE_BRIEF.md v1.0 ACTIVE | include in B1 PR; still owe CAMPAIGN_COORDINATION.md L3 row (separate push to `campaign-coordination` branch) |
+| B1 governing docs → main | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE — MERGED** | PR #2692 → `330cc7a14`; deploy run `35471990635` success, web ready revision `amjis-web-probe-330cc7a14e89-…` independently confirmed | — |
+| B2 DP-SD-021 | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE — MERGED** | `MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md` §13, in PR #2692 | — |
+| B3 governance refresh | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE — MERGED** | CLAUDE.md v7.5, CURRENT_STATE v6.79, CLAUDECODE_BRIEF.md v1.0 ACTIVE (PR #2692) + CAMPAIGN_COORDINATION.md L3 party row (pushed directly to `campaign-coordination`) | — |
 | C1 deploy re-verify | conductor (run 2) | read-only | — | **DONE** | see finding below: web@`cdc701afa` 100% traffic, MCP/sidecar@`66b962f29`, builder image@`66b962f29`, both deploy runs' job-level status independently read via `gh run view --json jobs`, Codex lease independently read as RELEASED on `origin/campaign-coordination` | — |
 | C2 22-asset baseline | conductor (run 2) | read-only | — | **PARTIAL / BLOCKED_STRUCTURAL(no-read-role-on-public-schema)** | `retrieval_census_ro` (the only documented read-only DB role, `platform/scripts/harvest/_db.ts`) has USAGE only on `information_schema`/`pg_catalog` — **not** `public`, where `kala_*` and the generation-head tables live. Did not escalate to a stronger credential (out of proportionality/role-separation scope for an ad hoc query). Row-count baseline deferred to the orchestrator's own build-time reporting in Wave E rather than hand-queried. | native ruling optional: authorize a scoped read-only grant on `public` for verification, or accept orchestrator-reported state as sufficient (recommend the latter — matches doctrine that builders/orchestrator, not ad hoc sessions, are the legitimate reader/writer of `public`) |
 | C3 W1 function contract | conductor (run 2) | read-only | — | **DONE (signatures)** | `open_l1_data_plane_generation` (migration 1035) requires literal `session_user = 'data_plane_builder'` — **SECURITY DEFINER but caller-identity-gated**; W1 generation can only be executed by the real `brahma-build-pipeline-job` authenticated as `data_plane_builder`, never by an ad hoc session even with elevated creds. This resolves E1/E2 planning: dispatch the real builder job, do not hand-write SQL. | — |
@@ -93,7 +93,9 @@ All rows start `— / — / — / — / — / NO`.
 
 | Fact | Value | Observed |
 |---|---|---|
-| `origin/main` | `cdc701afad40c1ffe8d83468df5127b26e370fba` (#2691, docs-only) | independently re-read 02:20 IST |
+| `origin/main` | `330cc7a14e89932daddaa47e84b48e67f890e1ca` (#2692, docs-only, this session's own governance PR) | independently re-read ~03:50 IST |
+| web ready revision (latest) | `amjis-web-probe-330cc7a14e89-35471990635-1`, deploy run `35471990635` success (migrate ✅ web ✅, MCP/sidecar/pipeline-job correctly skipped, earned-deployment ✅) | independently read via `gcloud run services describe` + `gh run view --json jobs`, ~03:55 IST |
+| `origin/main` (prior, still relevant to C1) | `cdc701afad40c1ffe8d83468df5127b26e370fba` (#2691, docs-only) | independently re-read 02:20 IST |
 | web ready revision | `amjis-web-probe-cdc701afad40-35467786237-1`, 100% traffic → source `cdc701afa` | **independently read via `gcloud run services describe`, 02:20 IST** |
 | MCP ready revision | `amjis-mcp-probe-66b962f2994f-35464335676-1` → source `66b962f29` | independently read, 02:20 IST |
 | sidecar ready revision | `amjis-sidecar-probe-66b962f2994f-35464335676-1` → source `66b962f29` | independently read, 02:20 IST |
@@ -281,10 +283,10 @@ None yet — claim one on `origin/campaign-coordination` before any Wave E produ
 
 | Resource | Used | Ceiling |
 |---|---|---|
-| Subagent dispatches | 0 | 80 |
-| Worktrees | 1 | 12 |
-| PRs opened | 0 (B1 PR next) | 15 |
-| Merges to main | 0 | 12 |
-| Deploy dispatches | 0 | 4 |
-| Production mutations | 0 | 2 |
-| Surrogate invocations | 0 | 10 |
+| Subagent dispatches | 9 (5 Wave D salvage + 1 W1-research + 1 dossier + 1 ayanamsha-verify fork + 1 MCP-sampling fork) | 80 |
+| Worktrees | 1 integration + 5 ephemeral (Wave D, auto-cleaned) | 12 |
+| PRs opened | 1 (#2692, merged) | 15 |
+| Merges to main | 1 (#2692 → `330cc7a14`) | 12 |
+| Deploy dispatches | 0 (deploys observed were CI-triggered by the merge, not manually dispatched) | 4 |
+| Production mutations | 0 (Wave E deliberately withheld — see finding) | 2 |
+| Surrogate invocations | 0 — all decisions (Wave E withholding, drift_detector fix, framing correction) reasoned through directly with cited evidence, none needed escalation beyond this conductor's own authority | 10 |
