@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:24:15.000Z",
-  "content_hash": "sha256:7c8097011faf9e89cdb6d9ec645ea06a830a2b142b35dcc8d8b0d1614b688b7c",
+  "generated_at": "2026-09-19T00:25:52.000Z",
+  "content_hash": "sha256:cc52b2e1a5d3d7a9d69a0d78b63fe54cded360171c91ddf3e49acdbfcb1ae0a8",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:8998b6012c7d0edba25bc4988796eaea910aa48000c83b45ace7b4018535b04b",
+  "semantic_review_fingerprint": "sha256:23e8eb8a8f91904928578843234d6d3466e90e455cbe2b98088cf12e227b9827",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -25116,6 +25116,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_rm_dasha_windowed_prescriptions",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-rm-dasha-windowed-prescriptions:v1",
+              "capability_uri": "marsys://tool/L2/query_rm_dasha_windowed_prescriptions",
+              "contract_sha256": "sha256:5c6c3eceab89f0d6d2a98a9d5438629a696cc4d82262b8152f1a3322b480cbf9",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:74-102"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -25288,6 +25303,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_rm_dosha_remedy_bundles",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-rm-dosha-remedy-bundles:v1",
+              "capability_uri": "marsys://tool/L2/query_rm_dosha_remedy_bundles",
+              "contract_sha256": "sha256:79b1da32d587800e213ce9c95cb384857319d31c55f21b0aa9502ec8441ed6f3",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -25457,6 +25487,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_rm_pattern_remedies",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-rm-pattern-remedies:v1",
+              "capability_uri": "marsys://tool/L2/query_rm_pattern_remedies",
+              "contract_sha256": "sha256:8f1b46b0a1333e1774b4a8b6cdc2f0b550bbe3405a9eb27dc920b5395a044ccd",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

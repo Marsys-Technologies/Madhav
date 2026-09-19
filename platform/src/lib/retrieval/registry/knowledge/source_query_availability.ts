@@ -2536,6 +2536,73 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts:65-91'],
   },
+  {
+    contract_id: 'source-query:query-rm-dasha-windowed-prescriptions:v1',
+    descriptor_name: 'query_rm_dasha_windowed_prescriptions',
+    capability_uri: 'marsys://tool/L2/query_rm_dasha_windowed_prescriptions',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT window_prescription_id, ayanamsha_id, base_prescription_id, dasha_system,
+                   dasha_level, dasha_lord, window_start_iso, window_end_iso,
+                   window_intensity_multiplier, schedule_jsonb, phase_within_window,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_dasha_windowed_prescriptions
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dasha_system = NULL::text)
+               AND (NULL::text IS NULL OR dasha_lord = NULL::text)
+             ORDER BY window_start_iso LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_dasha_windowed_prescriptions
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dasha_system = NULL::text)
+               AND (NULL::text IS NULL OR dasha_lord = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:74-102'],
+  },
+  {
+    contract_id: 'source-query:query-rm-dosha-remedy-bundles:v1',
+    descriptor_name: 'query_rm_dosha_remedy_bundles',
+    capability_uri: 'marsys://tool/L2/query_rm_dosha_remedy_bundles',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT bundle_id, ayanamsha_id, dosha_class, active_flag, intensity_score,
+                   cancellation_count, prescription_ids_in_bundle_array, bundle_summary_jsonb,
+                   classical_source_citation_id, active_dasha_windows_jsonb,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_dosha_remedy_bundles
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dosha_class = NULL::text)
+             ORDER BY intensity_score DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_dosha_remedy_bundles
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dosha_class = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96'],
+  },
+  {
+    contract_id: 'source-query:query-rm-pattern-remedies:v1',
+    descriptor_name: 'query_rm_pattern_remedies',
+    capability_uri: 'marsys://tool/L2/query_rm_pattern_remedies',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT pattern_remedy_id, ayanamsha_id, source_kind, source_id, remedy_theme,
+                   prescription_ids_array, theme_strength, cross_tradition_unanimity_score,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_pattern_remedies
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR source_kind = NULL::text)
+             ORDER BY theme_strength DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_pattern_remedies
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR source_kind = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
