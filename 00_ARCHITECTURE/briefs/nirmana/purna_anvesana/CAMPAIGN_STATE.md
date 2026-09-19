@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.25.0
+version: 0.26.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0099
-last_updated: 2026-09-19T12:29:20+05:30
+last_event: PA-E0101
+last_updated: 2026-09-19T12:53:21+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -57,8 +57,12 @@ layer state, queue or authority.
   availability deficit, three-door candidate/live execution, protected release, and automated
   product acceptance remain open.
 
-- Third successor source packet: reviewed implementation head `25801eb44649217e46fde6dba1aae9939a227c9b`
-  and current evidence head `5fb8a389dc6291cb57bc69cfce43a46c99b43332` admit `judgment_query` only when the selected chart's latest
+- Third successor source packet: event PA-E0099 was independently refuted after review found that
+  `chart_facts.build_id` is UUID but its new build fences compared it to text. No push, candidate/live
+  collection, merge, or deployment preceded correction. Repaired implementation head
+  `ecb8dd174c3843cd022ab42a3d70bfb342251d48` and evidence head
+  `90a2b8b911631cfd403c40b68ddfb3abeb56bfa9` supersede that invalid milestone and admit
+  `judgment_query` only when the selected chart's latest
   completed build has the required D2 wealth constant and default-ayanamsha Lagna fact. Every
   judgment fact, child query, page/count path, dasha enrichment, and domain-reranking cache is
   fenced to that build; `as_of_date` now crosses the inquiry compiler and full MCP door. A typed
@@ -67,7 +71,7 @@ layer state, queue or authority.
   salience-sampled, so canonical wealth completion is still `INCOMPLETE`; admission is not being
   misreported as response closure. The regenerated snapshot remains 182 SCUs / 186 executable
   bindings and now has 157 availability contracts, 24 uncovered executable bindings, and 5
-  deliberate-dark dispositions. Full platform verification passes 1,139 files / 12,347 tests,
+  deliberate-dark dispositions. Full platform verification passes 1,140 files / 12,350 tests,
   with 704 skipped and 2 todo; lint has 0 errors / 590 inherited warnings, TypeScript and both
   code-generation checks pass, the fact-category scanner reports 62/62 reviewed violations with
   zero new findings, the governed MCP bridge subset passes 23/23, and independent review found no
