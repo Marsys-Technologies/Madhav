@@ -53,6 +53,13 @@ describe('Purna real three-door collector', () => {
     const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', fetchImpl: async () => new Response(stream, { headers: { 'x-madhav-source-revision': 'candidate-a' } }) })
     expect(row.observedRevision).toBe('candidate-a')
   })
+  it('turns a stalled Portal connection into an explicit incomplete receipt', async () => {
+    const fetchImpl: typeof fetch = async (_input, init) => await new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    })
+    const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', timeoutMs: 1, fetchImpl })
+    expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'PORTAL_DEADLINE_EXCEEDED', networkCallCount: 1 })
+  })
   it('enforces a managed polling deadline', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 2, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask' ? { job_id: 'job-1' } : { status: 'running' } } })
     expect(row.diagnostic).toBe('MANAGED_JOB_POLL_DEADLINE')
@@ -71,6 +78,10 @@ describe('Purna real three-door collector', () => {
     const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async () => ({ __purna_tool_error: true }) } })
     expect(row.diagnostic).toBe('MANAGED_MCP_TOOL_ERROR')
   })
+  it('records a managed MCP deadline without falling through to a missing job handle', async () => {
+    const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async () => ({ __purna_timeout: true }) } })
+    expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'MANAGED_MCP_REQUEST_DEADLINE', networkCallCount: 1 })
+  })
   it('retains the managed status response revision with its terminal result', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask'
       ? { job_id: 'job-1' }
@@ -87,6 +98,10 @@ describe('Purna real three-door collector', () => {
   it('rejects raw lifecycle pagination that does not advance', async () => {
     const row = await collectRawCase({ ...base, maxActions: 3, invoker: { call: async (name) => name === 'inquiry_start' ? { inquiry_id: 'i-1', lifecycle_token: 'same', next_action_ids: ['item-001'] } : { lifecycle_token: 'same', next_action_ids: ['item-001'] } } })
     expect(row.diagnostic).toBe('RAW_PAGINATION_DID_NOT_ADVANCE')
+  })
+  it('records a raw MCP deadline at lifecycle start', async () => {
+    const row = await collectRawCase({ ...base, maxActions: 1, invoker: { call: async () => ({ __purna_timeout: true }) } })
+    expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'RAW_MCP_REQUEST_DEADLINE', networkCallCount: 1 })
   })
   it('records a raw lifecycle closure as the terminal contract source', async () => {
     const row = await collectRawCase({ ...base, maxActions: 1, invoker: { call: async (name) => name === 'inquiry_start'

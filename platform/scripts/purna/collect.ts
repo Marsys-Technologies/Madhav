@@ -8,7 +8,17 @@ import { synthesizeRawLifecycleEvidence } from './raw_external_synthesis'
 import { casesForSuite, validateProtocol, type AcceptanceCaseInput, type AcceptanceSuite } from './acceptance_cases'
 import { assertLiveEvidence, createCollectionArtifact, type AcceptanceCase, type CollectedCase } from './collection_types'
 
-interface Config { schema_version: 'purna-collection-config/v1'; environment: 'candidate' | 'live'; expected_revision: string; chart_id: string; portal_url: string; mcp_url: string; authorization_approval_id: string; max_polls?: number; max_actions?: number }
+interface Config { schema_version: 'purna-collection-config/v1'; environment: 'candidate' | 'live'; expected_revision: string; chart_id: string; portal_url: string; mcp_url: string; authorization_approval_id: string; max_polls?: number; max_actions?: number; portal_timeout_ms?: number; mcp_timeout_ms?: number }
+class McpRequestDeadlineError extends Error { constructor() { super('PURNA_COLLECTION_MCP_REQUEST_DEADLINE') } }
+async function withMcpDeadline<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_resolve, reject) => { timer = setTimeout(() => reject(new McpRequestDeadlineError()), timeoutMs) }),
+    ])
+  } finally { if (timer) clearTimeout(timer) }
+}
 function object(value: unknown): Record<string, unknown> { if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('PURNA_COLLECTION_CONFIG_INVALID'); return value as Record<string, unknown> }
 function parseConfig(value: unknown): Config { const data = object(value); if (data.schema_version !== 'purna-collection-config/v1' || !['candidate', 'live'].includes(String(data.environment)) || ![data.expected_revision, data.chart_id, data.portal_url, data.mcp_url, data.authorization_approval_id].every((item) => typeof item === 'string' && item.length > 0)) throw new Error('PURNA_COLLECTION_CONFIG_INVALID'); return data as unknown as Config }
 function asCase(value: AcceptanceCaseInput): AcceptanceCase {
@@ -33,13 +43,17 @@ function bearer(): string {
 export async function collect(config: Config, cases: readonly AcceptanceCase[]): Promise<readonly CollectedCase[]> {
   const mcp = new McpClient(config.mcp_url, bearer()); await mcp.init()
   const invoker = { call: async (name: string, args: Record<string, unknown>) => {
-    const outcome = await mcp.callTool(name, args)
-    return outcome.isToolError ? { __purna_tool_error: true } : outcome.content
+    try {
+      const outcome = await withMcpDeadline(mcp.callTool(name, args), config.mcp_timeout_ms ?? 90_000)
+      return outcome.isToolError ? { __purna_tool_error: true } : outcome.content
+    } catch (error) {
+      return error instanceof McpRequestDeadlineError ? { __purna_timeout: true } : { __purna_tool_error: true }
+    }
   } }
   const sessionCookie = await mintFreshProbeSessionCookie(config.portal_url, process.env.PROBE_UID ?? 'probe-service-account')
   const rows: CollectedCase[] = []
   for (const test of cases) {
-    rows.push(await collectPortalCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie }))
+    rows.push(await collectPortalCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie, timeoutMs: config.portal_timeout_ms }))
     rows.push(await collectManagedCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxPolls: config.max_polls ?? 30, wait: () => new Promise((done) => setTimeout(done, 1000)) }))
     rows.push(await collectRawCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxActions: config.max_actions ?? 64, synthesize: synthesizeRawLifecycleEvidence }))
   }

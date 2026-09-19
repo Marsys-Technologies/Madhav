@@ -87,12 +87,14 @@ export async function collectManagedCase(input: {
     chart_id: input.chartId, question: input.test.question, scope_tuple: managedScopeTuple(input.test.scope_tuple), response_format: 'full',
   }))
   calls += 1
+  if (ask.__purna_timeout === true) return failed(input, 'managed_mcp', calls, 'MANAGED_MCP_REQUEST_DEADLINE')
   if (ask.__purna_tool_error === true) return failed(input, 'managed_mcp', calls, 'MANAGED_MCP_TOOL_ERROR')
   const jobId = typeof ask.job_id === 'string' ? ask.job_id : typeof ask.managed_job_id === 'string' ? ask.managed_job_id : typeof record(ask.result).job_id === 'string' ? record(ask.result).job_id as string : null
   if (!jobId) return failed(input, 'managed_mcp', calls, 'MANAGED_JOB_ID_MISSING')
   for (let attempt = 0; attempt < input.maxPolls; attempt += 1) {
     const status = record(await input.invoker.call('prashna_status', { job_id: jobId }))
     calls += 1
+    if (status.__purna_timeout === true) return failed(input, 'managed_mcp', calls, 'MANAGED_MCP_REQUEST_DEADLINE', jobId)
     const state = String(status.status ?? '')
     if (state === 'complete' || state === 'failed') {
       return normalize(input, 'managed_mcp', { ...status, ...record(status.result) }, calls, jobId)
@@ -116,6 +118,7 @@ export async function collectRawCase(input: {
     chart_id: input.chartId, question: input.test.question, scope_tuple: input.test.scope_tuple,
   }))
   calls += 1
+  if (response.__purna_timeout === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_REQUEST_DEADLINE')
   const inquiryId = typeof response.inquiry_id === 'string' ? response.inquiry_id : null
   let token = typeof response.lifecycle_token === 'string' ? response.lifecycle_token : null
   if (!inquiryId || !token) return failed(input, 'raw_mcp', calls, 'RAW_LIFECYCLE_START_INVALID')
@@ -129,6 +132,7 @@ export async function collectRawCase(input: {
     seen.add(transition)
     response = record(await input.invoker.call('inquiry_execute_next', { lifecycle_token: token, action_id: actionId }))
     calls += 1
+    if (response.__purna_timeout === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_REQUEST_DEADLINE', inquiryId)
     // Preserve the exact payload whose hash the lifecycle committed. The raw
     // client must never synthesize from a reconstructed or convenience-shaped
     // substitute, because that would sever the answer register from receipt
@@ -140,6 +144,7 @@ export async function collectRawCase(input: {
   if (!token) return failed(input, 'raw_mcp', calls, 'RAW_LIFECYCLE_TOKEN_MISSING', inquiryId)
   response = record(await input.invoker.call('inquiry_finalize', { lifecycle_token: token }))
   calls += 1
+  if (response.__purna_timeout === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_REQUEST_DEADLINE', inquiryId)
   if (input.synthesize) {
     const contract = response.contract
     if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
@@ -168,13 +173,18 @@ export async function collectPortalCase(input: {
   readonly chartId: string
   readonly endpoint: string
   readonly sessionCookie: string
+  /** Bounds both connection and SSE completion; expiry is retained as an incomplete receipt. */
+  readonly timeoutMs?: number
   readonly fetchImpl?: typeof fetch
 }): Promise<CollectedCase> {
   const fetcher = input.fetchImpl ?? fetch
   const requestId = randomUUID()
+  const abort = new AbortController()
+  const timer = setTimeout(() => abort.abort(), input.timeoutMs ?? 180_000)
   try {
     const response = await fetcher(`${input.endpoint.replace(/\/$/, '')}/api/pariprashna`, {
       method: 'POST', headers: { 'content-type': 'application/json', cookie: `__session=${input.sessionCookie}` },
+      signal: abort.signal,
       body: JSON.stringify({ chartId: input.chartId, reading_depth: 'auto', length_tier: 'standard', messages: [{ id: `${requestId}-user`, role: 'user', parts: [{ type: 'text', text: input.test.question }] }] }),
     })
     if (!response.ok || !response.body) return failed(input, 'portal', 1, `PORTAL_HTTP_${response.status}`)
@@ -186,7 +196,11 @@ export async function collectPortalCase(input: {
         ? { deployed_revision: response.headers.get('x-madhav-source-revision') }
         : {}),
     }, 1, parsed.inquiryId, parsed.answer)
-  } catch (error) { return failed(input, 'portal', 1, `PORTAL_TRANSPORT:${error instanceof Error ? error.message : 'UNKNOWN'}`) }
+  } catch (error) {
+    return failed(input, 'portal', 1, abort.signal.aborted
+      ? 'PORTAL_DEADLINE_EXCEEDED'
+      : `PORTAL_TRANSPORT:${error instanceof Error ? error.message : 'UNKNOWN'}`)
+  } finally { clearTimeout(timer) }
 }
 
 export async function parsePortalSse(stream: ReadableStream<Uint8Array>): Promise<{ truncated: boolean; inquiryId: string | null; answer: string; payload: Json }> {
