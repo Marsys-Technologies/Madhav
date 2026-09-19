@@ -745,6 +745,16 @@ jobs:
           fi
           cd platform && npx tsx scripts/purna-inquiry-ownership-preflight.ts
 
+      # The data-plane cutover owns the public schema. The application role can
+      # no longer grant CREATE there, so bridge only the Pūrṇa owner through the
+      # existing deployment-only schema-owner delegate for the protected set.
+      - name: Grant temporary Pūrṇa schema capability
+        id: purna-schema-grant
+        if: steps.bootstrap-state.outputs.purna == 'armed'
+        env:
+          DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/purna-inquiry-schema-capability.ts grant
+
       - name: Apply exact Pūrṇa protected-owner migrations
         if: steps.bootstrap-state.outputs.purna == 'armed'
         env:
@@ -756,6 +766,12 @@ jobs:
           fi
           cd platform && npx tsx scripts/migrate.ts --only \
             1033_planner_inquiry_lifecycle.sql,1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql,1037_planner_inquiry_action_reservations.sql,1038_planner_managed_prashna_jobs.sql,1039_purna_inquiry_protected_ownership.sql,1040_planner_inquiry_successor_lifecycle.sql
+
+      - name: Revoke temporary Pūrṇa schema capability
+        if: ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.bootstrap-state.outputs.purna == 'armed' || steps.bootstrap-state.outputs.purna == 'interrupted' || steps.bootstrap-state.outputs.purna == 'cleanup_required') }}
+        env:
+          DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/purna-inquiry-schema-capability.ts revoke
 
       # Run immediately after the protected set, before any unrelated migration.
       # If a prior runner died after preflight COMMIT, `interrupted` makes the next
