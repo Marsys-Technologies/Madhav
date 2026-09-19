@@ -60,6 +60,19 @@ export const ephemerisCacheYearCapability: ResourceCapability = {
     },
     result_max_kb: 256,
   },
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.ephemeris_cache_year', version: 1,
+    label: 'Annual ephemeris-cache evidence', description: 'Retrieve one year of ephemeris coverage through the authenticated ephemeris service.',
+    kind: 'datum', domains: ['timing'], concepts: ['ephemeris', 'cache_coverage'], intents: ['assess', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
+    inputs: ['year'], outputs: ['coverage', 'rows'], primary_binding_uri: 'marsys://resource/ephemeris-cache/year/{yyyy}',
+    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.',
+    entitlement: 'native', safety_notes: ['Read-only service resource.'], known_gaps: [],
+    availability_contracts: [{ binding_id: 'registry:marsys://resource/ephemeris-cache/year/{yyyy}', requirements: [{
+      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine', endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
+      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
+    }] }], editorial: true,
+  }],
   async loader(ctx?: unknown) {
     // Extract year from context or default to current year
     const year = (ctx as { year?: number })?.year ?? new Date().getFullYear()

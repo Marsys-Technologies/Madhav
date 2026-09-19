@@ -169,6 +169,8 @@ describe('transit availability contract', () => {
     ['../query_planet_position', 'queryPlanetPositionCapability'],
     ['../query_aspects_at_time', 'queryAspectsAtTimeCapability'],
     ['../query_retrograde_periods', 'queryRetrogradePeriodsCapability'],
+    ['../ephemeris_cache_year', 'ephemerisCacheYearCapability'],
+    ['../ephemeris_cache_native_lifetime', 'ephemerisCacheNativeLifetimeCapability'],
   ])('%s binds its semantic route to the same exact probe contract', async (module, exportName) => {
     const mod = await import(module) as Record<string, { semantic_capabilities?: readonly { availability_contracts?: readonly { requirements: readonly unknown[] }[] }[] }>
     const requirement = mod[exportName]!.semantic_capabilities?.[0]?.availability_contracts?.[0]?.requirements[0]

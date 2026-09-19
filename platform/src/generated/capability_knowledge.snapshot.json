@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:41:50.000Z",
-  "content_hash": "sha256:94294e3b00568070ab6cdbef16f668b49f0825ef730a80f90e0837adeb66322d",
-  "source_catalog_fingerprint": "sha256:ebdbdab46b44ded3a9527930686f59982993cee681c8d533daed3302792c8a4a",
+  "generated_at": "2026-09-19T01:43:40.000Z",
+  "content_hash": "sha256:236d99a832c367835151bcbd931668c60fc004449dba13921e440b0fb3ff783e",
+  "source_catalog_fingerprint": "sha256:022efb864137881b0cd6e374ac24a9eca1aa10426080208cd218afcabcec5d71",
   "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -3425,45 +3425,58 @@
     {
       "scu_id": "scu.catalog.ephemeris_cache_native_lifetime",
       "version": 1,
-      "label": "Ephemeris Cache Native Lifetime",
-      "description": "Ephemeris coverage statistics for the native's configured lifetime window. Provides: row count, date range, body count, and birth chart context for the active chart. Use as a prefetch sanity check before querying native-lifetime transits. Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "label": "Native-lifetime ephemeris coverage",
+      "description": "Retrieve native-lifetime ephemeris coverage through the authenticated ephemeris service.",
       "kind": "datum",
       "domains": [
-        "planetary_state"
+        "timing"
       ],
       "concepts": [
-        "astronomical_reference",
-        "celestial_state",
-        "ephemeris_cache_native_lifetime",
-        "planetary_position"
+        "cache_coverage",
+        "ephemeris"
       ],
       "intents": [
-        "retrieve",
+        "assess",
         "verify"
       ],
       "horizons": [
         "current",
-        "natal"
+        "future",
+        "historical"
       ],
       "scope": "global",
       "inputs": [],
       "outputs": [
-        "computation_provenance",
-        "planetary_state_evidence"
+        "birth_chart_context",
+        "coverage"
       ],
       "primary_binding_uri": "marsys://resource/ephemeris-cache/native-lifetime",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Must carry computation time and engine version.",
+      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Read-only service resource; it must not fabricate native chart context when unavailable."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://resource/ephemeris-cache/native-lifetime",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_ephemeris_engine",
+              "probe_id": "ephemeris_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
+              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "max_age_seconds": 900,
+              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3491,64 +3504,27 @@
       "source_descriptor_uris": [
         "marsys://resource/ephemeris-cache/native-lifetime"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "astronomical_reference",
+          "concept_id": "cache_coverage",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
         },
         {
-          "concept_id": "celestial_state",
+          "concept_id": "ephemeris",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        },
-        {
-          "concept_id": "ephemeris_cache_native_lifetime",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        },
-        {
-          "concept_id": "planetary_position",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
         }
       ],
       "gap_dispositions": [],
@@ -3556,8 +3532,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
         ]
       },
       "producer_semantic_disposition": {
@@ -3565,53 +3540,68 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.ephemeris_cache_year",
       "version": 1,
-      "label": "Ephemeris Cache Year",
-      "description": "Ephemeris cache for a calendar year — all 9 Jyotish bodies (Sun through Ketu) at daily resolution. Covers 1900-2150. URI parameter {yyyy} is the 4-digit year (e.g. 1984, 2026). Returns up to one row per body per day for the year (9 bodies × ~365 days). Use for bulk-context pre-fetch when querying a whole year of transits. Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "label": "Annual ephemeris-cache evidence",
+      "description": "Retrieve one year of ephemeris coverage through the authenticated ephemeris service.",
       "kind": "datum",
       "domains": [
-        "planetary_state"
+        "timing"
       ],
       "concepts": [
-        "astronomical_reference",
-        "celestial_state",
-        "ephemeris_cache_year",
-        "planetary_position"
+        "cache_coverage",
+        "ephemeris"
       ],
       "intents": [
-        "retrieve",
+        "assess",
         "verify"
       ],
       "horizons": [
         "current",
-        "natal"
+        "future",
+        "historical"
       ],
       "scope": "global",
-      "inputs": [],
+      "inputs": [
+        "year"
+      ],
       "outputs": [
-        "computation_provenance",
-        "planetary_state_evidence"
+        "coverage",
+        "rows"
       ],
       "primary_binding_uri": "marsys://resource/ephemeris-cache/year/{yyyy}",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Must carry computation time and engine version.",
+      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Read-only service resource."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://resource/ephemeris-cache/year/{yyyy}",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_ephemeris_engine",
+              "probe_id": "ephemeris_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
+              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "max_age_seconds": 900,
+              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3639,64 +3629,27 @@
       "source_descriptor_uris": [
         "marsys://resource/ephemeris-cache/year/{yyyy}"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "astronomical_reference",
+          "concept_id": "cache_coverage",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
         },
         {
-          "concept_id": "celestial_state",
+          "concept_id": "ephemeris",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
-        },
-        {
-          "concept_id": "ephemeris_cache_year",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
-        },
-        {
-          "concept_id": "planetary_position",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
         }
       ],
       "gap_dispositions": [],
@@ -3704,8 +3657,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
+          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
         ]
       },
       "producer_semantic_disposition": {
@@ -3713,10 +3665,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
+          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.find_verses_about",
@@ -33942,8 +33894,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -33965,6 +33915,16 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_yoga_firings"
+      ]
+    },
+    {
+      "concept_id": "cache_coverage",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime",
+        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
       ]
     },
     {
@@ -34108,8 +34068,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -34443,27 +34401,11 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime",
+        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}",
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time",
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position",
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
-      ]
-    },
-    {
-      "concept_id": "ephemeris_cache_native_lifetime",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-      ]
-    },
-    {
-      "concept_id": "ephemeris_cache_year",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
       ]
     },
     {
@@ -35186,8 +35128,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -38024,7 +37964,7 @@
     "reviewed_nonpublic_descriptors": 115,
     "producer_output_claims": 14,
     "reviewed_output_claims": 13,
-    "typed_concepts": 258,
+    "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,
     "graph_components": 157,
