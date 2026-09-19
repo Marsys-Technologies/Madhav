@@ -159,16 +159,25 @@ describe('query_classical_texts receipt-pinned pagination', () => {
     for (const marker of [
       'FROM asset_provenance_receipts receipt',
       'JOIN asset_freshness freshness',
+      'freshness.asset_id = receipt.asset_id',
+      'freshness.scope_key = receipt.scope_key',
+      'freshness.partition_key = receipt.partition_key',
+      'freshness.receipt_version = receipt.receipt_version',
       'JOIN asset_output_digest_specs digest_spec',
+      'digest_spec.asset_id = receipt.asset_id',
+      'digest_spec.spec_sha256 = receipt.output_digest_spec_sha256',
       "receipt.receipt_state = 'proven'",
       "freshness.freshness_state = 'fresh'",
       'receipt.chart_id IS NULL',
       "receipt.scope_key = '__global__'",
+      'receipt.output_digest IS NOT NULL',
+      'receipt.output_digest_spec_sha256 = $2::text',
       'digest_spec.retired_at IS NULL',
       'COUNT(*)::text AS eligible_receipt_count',
       "snapshot.eligible_receipt_count = '1'",
       'FROM build_run_assets asset',
       'JOIN build_runs run',
+      'asset.asset_id = $1::text',
       "run.state IN ('planned', 'running', 'paused')",
       "asset.state IN ('queued', 'building')",
       'FROM classical_text_chunks',
@@ -197,6 +206,31 @@ describe('query_classical_texts receipt-pinned pagination', () => {
     expect(sql).toContain("snapshot.eligible_receipt_count = '1'")
     expect(sql).toContain('NOT fence.replacement_in_progress')
     expect(sql).toContain('similarity(topic,')
+    expect(sql).toContain('NOT EXISTS (SELECT 1 FROM page_rows)')
     expect(sql).toContain('LIMIT 5')
+  })
+
+  it('retries the complete receipt-fenced list query without suggestions when pg_trgm is unavailable', async () => {
+    queryMock.mockRejectedValueOnce(new Error('function similarity(text, text) does not exist'))
+      .mockResolvedValueOnce({ rows: [receiptSnapshot({ rows: [] })] })
+
+    const result = await queryClassicalTextsCapability.handler({ keyword: 'dashaa' }, undefined)
+
+    expect(result.is_error).toBe(false)
+    expect(contentOf(result)).toMatchObject({ citations: [], rows: [], nearest_indexed_topics: [] })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    const retrySql = String(queryMock.mock.calls[1]?.[0]).replace(/\s+/g, ' ')
+    expect(retrySql).not.toContain('topic_candidates AS')
+    for (const marker of [
+      'FROM asset_provenance_receipts receipt',
+      'JOIN asset_freshness freshness',
+      'JOIN asset_output_digest_specs digest_spec',
+      "snapshot.eligible_receipt_count = '1'",
+      'NOT fence.replacement_in_progress',
+      'FROM build_run_assets asset',
+      'JOIN build_runs run',
+      'FROM classical_text_chunks c',
+    ]) expect(retrySql).toContain(marker)
+    expect((queryMock.mock.calls[1]?.[1] as unknown[]).slice(0, 3)).toEqual(['bg_texts', SPEC, 'dashaa'])
   })
 })

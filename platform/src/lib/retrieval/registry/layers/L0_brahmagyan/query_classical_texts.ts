@@ -229,6 +229,7 @@ async function fetchHybridPage(args: {
 
 async function fetchListPage(args: {
   keyword: string | null; textSource: string | null; topic: string | null; limit: number; offset: number
+  includeSuggestions: boolean
 }): Promise<PageSnapshot | undefined> {
   const params: unknown[] = [BG_TEXTS_ASSET_ID, BG_TEXTS_OUTPUT_DIGEST_SPEC_SHA256]
   let predicates = ''
@@ -239,12 +240,13 @@ async function fetchListPage(args: {
   const limitParam = `$${params.push(args.limit + 1)}`
   const offsetParam = `$${params.push(args.offset)}`
   const order = 'text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC'
-  const topicSuggestionCtes = keywordParam ? `, topic_candidates AS (
+  const topicSuggestionCtes = keywordParam && args.includeSuggestions ? `, topic_candidates AS (
     SELECT DISTINCT topic
       FROM classical_text_chunks c
       CROSS JOIN LATERAL unnest(c.topics) AS topic
       CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
      WHERE snapshot.eligible_receipt_count = '1' AND NOT fence.replacement_in_progress
+       AND NOT EXISTS (SELECT 1 FROM page_rows)
        AND similarity(topic, ${keywordParam}::text) > 0.15
   ), topic_suggestions AS (
     SELECT topic, similarity(topic, ${keywordParam}::text) AS score
@@ -259,7 +261,7 @@ async function fetchListPage(args: {
      FROM search_rows CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
      WHERE snapshot.eligible_receipt_count = '1' AND NOT fence.replacement_in_progress
      ORDER BY ${order} LIMIT ${limitParam} OFFSET ${offsetParam}
-  )${topicSuggestionCtes}`, keywordParam
+  )${topicSuggestionCtes}`, keywordParam && args.includeSuggestions
     ? `, COALESCE((SELECT jsonb_agg(topic ORDER BY score DESC, topic ASC) FROM topic_suggestions), '[]'::jsonb) AS nearest_indexed_topics`
     : '')
   const result = await query<PageSnapshot>(sql, params)
@@ -355,7 +357,15 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
         }
       } else {
         if (cursor && cursor.ranking_mode !== 'legacy_list') return paginationError('page_cursor_ranking_mode_changed', 'The list ranking mode changed after this cursor was minted.')
-        snapshot = await fetchListPage({ keyword, textSource, topic: topicAlias || null, limit, offset })
+        try {
+          snapshot = await fetchListPage({ keyword, textSource, topic: topicAlias || null, limit, offset, includeSuggestions: Boolean(keyword) })
+        } catch (error) {
+          if (!keyword) throw error
+          // pg_trgm suggestions are ancillary. Retry the complete page query,
+          // including the receipt and replacement fence, without suggestion
+          // CTEs rather than serving rows from an unfenced secondary read.
+          snapshot = await fetchListPage({ keyword, textSource, topic: topicAlias || null, limit, offset, includeSuggestions: false })
+        }
       }
 
       const snapshotError = validateSnapshot(snapshot, cursor)
