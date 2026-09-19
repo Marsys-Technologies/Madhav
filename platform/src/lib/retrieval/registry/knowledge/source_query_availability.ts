@@ -2999,6 +2999,46 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:59-112'],
   },
+  {
+    contract_id: 'source-query:query-temporal-activation:v1',
+    descriptor_name: 'query_temporal_activation',
+    capability_uri: 'marsys://tool/L3/query_temporal_activation',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH activations AS (
+            SELECT id, signal_id, ayanamsha_id, signature_class, activation_start, activation_end,
+                   activation_peak_date, orb_strength, convergence_score,
+                   dasha_activation_proximity_score, active_dasha_periods_jsonb,
+                   activation_predicted_dates_jsonb, source_citation
+              FROM kala_activation
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY dasha_activation_proximity_score DESC NULLS LAST,
+                      orb_strength DESC NULLS LAST, activation_start ASC, id ASC LIMIT 0
+          ), activation_domains AS (
+            SELECT ms.signal_id, ms.domains_affected_array FROM bodha_msr_signals ms
+             WHERE ms.chart_id = $1::uuid LIMIT 0
+          ), predicates AS (
+            SELECT id, signal_id, ayanamsha_id, signature_class, dasha_eligibility_rule_jsonb,
+                   transit_trigger_jsonb, strength_affliction_hook_jsonb,
+                   derivation_ledger_jsonb, template_version
+              FROM kala_activation_predicates
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '') LIMIT 0
+          ), activation_empty_classification AS (
+            SELECT COUNT(*)::int AS total, COUNT(activation_start)::int AS dated
+              FROM kala_activation WHERE chart_id = $1::uuid
+          ), forward_windows AS (
+            SELECT id, signal_id, domain, probability_tier, effective_score, window_start,
+                   window_end, peak_date, narrative, source_citation
+              FROM kala_bhavishya WHERE chart_id = $1::uuid ORDER BY window_start LIMIT 0
+          ), forward_source_classification AS (
+            SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1::uuid
+          ), build_observation AS (
+            SELECT br.id::text FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id
+             WHERE br.chart_id = $1::uuid AND bra.asset_id = 'ka_bhavishya_lekha' LIMIT 0
+          ) SELECT 1 FROM activations CROSS JOIN activation_domains CROSS JOIN predicates
+             CROSS JOIN activation_empty_classification CROSS JOIN forward_windows
+             CROSS JOIN forward_source_classification CROSS JOIN build_observation`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
