@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T04:10:00.000Z",
-  "content_hash": "sha256:7a7be48b4bece11e33fa01a845a235c3dc16eeecf082e861a607767301d1c113",
-  "source_catalog_fingerprint": "sha256:9aa9154a6ef1447429db70d95fd5a3878021a2f21c90723b2fe9c174cc5780c5",
-  "semantic_review_fingerprint": "sha256:93411dc07cd9dd051bb080619406e684d57f7cafd35de0c3634702ff86bfe43c",
+  "generated_at": "2026-09-20T04:25:00.000Z",
+  "content_hash": "sha256:b30900549268b3571f4e52436f291661905c907107a6bb8e49d30592d28717c1",
+  "source_catalog_fingerprint": "sha256:8b32f4675390b4a1a955ec3449a0b2c634890cc201a3f69497ad3ab12fc0d75a",
+  "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -17107,17 +17107,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_domain_reading",
-          "status": "deliberately_dark",
-          "reason": "The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193",
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:201",
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739",
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:778",
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-domain-reading:v1",
+              "capability_uri": "marsys://tool/L2/query_domain_reading",
+              "contract_sha256": "sha256:14e905164f92bbcaac9a7283ee754607543cf3598e065298e38056cdbcc07d92",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111"
+            }
           ]
         }
       ],
