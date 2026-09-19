@@ -3071,6 +3071,25 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM handler_page CROSS JOIN filtered_count CROSS JOIN chart_count CROSS JOIN calibration_summary`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:198-257'],
   },
+  {
+    contract_id: 'source-query:query-signal-families:v1',
+    descriptor_name: 'query_signal_families',
+    capability_uri: 'marsys://tool/L5/query_signal_families',
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT family_id, display_name, layman_name, family_class, evidence_tier,
+                   soundness_basis, binding_kind, default_state, prior_weight,
+                   calibration_status, citation_refs, binding_spec, apply_point, is_active, created_at
+              FROM mimamsa_signal_families
+             WHERE (NULL::text IS NULL OR display_name = NULL::text)
+               AND (NULL::text IS NULL OR family_class = NULL::text)
+               AND (true OR family_class <> 'negative_control')
+             ORDER BY family_class, display_name LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_signal_families
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts:72-143'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
