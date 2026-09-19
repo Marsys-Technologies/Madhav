@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:33:56.000Z",
-  "content_hash": "sha256:043cbfd4d36d2489d2a5028031bcabb81831cdbc539a39e33ae2ef4a151bb29a",
+  "generated_at": "2026-09-19T01:35:52.000Z",
+  "content_hash": "sha256:ffdecef2eb5ff24559dfbd83fad6a0dd74f18a65cd3620ab7a9d01ed3416bb8e",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:94a9783b1dc748577dae26cca5371df8340cb4cd465b255499a5d768423e2ac5",
+  "semantic_review_fingerprint": "sha256:9c5bacaa8ac32fc6051794b68377823278173ac4bf2d275017608eb3df4b15ce",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -32189,6 +32189,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/traverse_chart_graph",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:traverse-chart-graph:v1",
+              "capability_uri": "marsys://tool/L2/traverse_chart_graph",
+              "contract_sha256": "sha256:e3707d50c402035541e943c0fcf26d02e946953fdf312402ba1f8f6282ab4236",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

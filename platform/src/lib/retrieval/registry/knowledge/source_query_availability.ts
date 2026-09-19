@@ -3651,6 +3651,76 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/tools/classical_text_search.ts:72-193',
     ],
   },
+  {
+    contract_id: 'source-query:traverse-chart-graph:v1',
+    descriptor_name: 'traverse_chart_graph',
+    capability_uri: 'marsys://tool/L2/traverse_chart_graph',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH graph_nodes AS (
+            SELECT node_id, node_type, node_subject, node_label_human, msr_signal_id,
+                   pagerank_score, hub_flag, primary_domain, strength_score
+              FROM bodha_cgm_nodes
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             ORDER BY pagerank_score DESC NULLS LAST
+             LIMIT 0
+          ), graph_edges AS (
+            SELECT edge_id, from_node_id, to_node_id, edge_type, valence, computed_strength,
+                   is_cross_subsystem, underlying_msr_signal_ids_array
+              FROM bodha_cgm_edges
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             ORDER BY computed_strength DESC NULLS LAST
+             LIMIT 0
+          ), topology AS (
+            SELECT total_nodes, total_edges, top_5_hub_nodes_jsonb, top_5_central_nodes_jsonb,
+                   graph_density, hub_dominance_score, fragmentation_score, dispositor_cycle_jsonb
+              FROM bodha_cgm_chart_topology_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             LIMIT 0
+          ), contradictions AS (
+            SELECT contradiction_id, signal_a_id, signal_b_id, tension_basis_jsonb,
+                   tension_class, domains_affected_array, combined_salience,
+                   resolution_hint_jsonb, verification_pass_status, ayanamsha_id, build_id
+              FROM bodha_contradictions
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY combined_salience DESC NULLS LAST
+             LIMIT 0
+          ), participant_signals AS (
+            SELECT signal_id, signal_type_id, signal_headline_text, signal_type_class,
+                   computed_salience, valence, domains_affected_array, signature_tier,
+                   constituent_facts_array
+              FROM bodha_msr_signals
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY computed_salience DESC NULLS LAST
+             LIMIT 0
+          ), subgraphs AS (
+            SELECT sub_graph_id, subgraph_type, subgraph_label, node_ids_array, edge_ids_array,
+                   subgraph_density, classical_archetype_match, verification_pass_status,
+                   citation_ref, citation_human
+              FROM bodha_cgm_sub_graphs
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY subgraph_density DESC NULLS LAST
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM graph_nodes) AS nodes,
+                   (SELECT COUNT(*) FROM graph_edges) AS edges,
+                   (SELECT COUNT(*) FROM topology) AS topology,
+                   (SELECT COUNT(*) FROM contradictions) AS contradictions,
+                   (SELECT COUNT(*) FROM participant_signals) AS participant_signals,
+                   (SELECT COUNT(*) FROM subgraphs) AS subgraphs`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
