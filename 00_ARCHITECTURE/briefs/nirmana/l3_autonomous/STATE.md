@@ -129,7 +129,7 @@ None yet — claim one on `origin/campaign-coordination` before any Wave E produ
 |---|---|---|---|
 | BL-1 | `WATCHDOG_SECRET` literal in tagged zero-traffic revision `amjis-web-02826-huf` | **human (native)** | rotate/revoke + audit tag exposure; neither campaign may act |
 | BL-2 | ~~Codex lease active until 04:30 IST~~ **RESOLVED — lease independently confirmed RELEASED at 01:50 IST** | — | none; re-check `origin/campaign-coordination` immediately before claiming L3's own lease, per standing doctrine |
-| BL-3 (new) | No documented read-only DB role can read `public` schema (`kala_*`, generation-head tables) — `retrieval_census_ro` is scoped to `information_schema`/`pg_catalog` only | native (optional) | either authorize a scoped read grant for verification, or accept orchestrator/CI-reported state as the legitimate evidence source (recommended — matches the role-separation doctrine already in force) |
+| BL-3 (new) | No documented read-only DB role can read `public` schema (`kala_*`, generation-head tables) — `retrieval_census_ro` is scoped to `information_schema`/`pg_catalog` only. Confirmed the legitimate app-level route (`GET /api/cockpit/stats`, which reads `asset_registry.count_sql`/`asset_throughput` — the actual §N.4 "cockpit truth" mechanism) requires an authenticated Firebase user session with chart read-permission; no such session is available to this conductor without native-provided browser/API credentials. | native (optional) | either authorize a scoped read grant for verification, provide a session/token for `/api/cockpit/stats`, or accept orchestrator/CI-reported state as the legitimate evidence source (recommended — matches the role-separation doctrine already in force) |
 
 ## Budget consumed
 
