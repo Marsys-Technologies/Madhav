@@ -2278,6 +2278,68 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/665_bo_pratijna_integrity_check.sql:10-91',
     ],
   },
+  {
+    contract_id: 'source-query:query-cdlm-summary:v1',
+    descriptor_name: 'query_cdlm_summary',
+    capability_uri: 'marsys://tool/L2/query_cdlm_summary',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH chart_summary_page AS (
+            SELECT summary_id, ayanamsha_id, snapshot_type, chart_typology_class,
+                   total_chart_linkage, contradiction_density, dominant_3_domains_array,
+                   weakest_3_domains_array, bridge_link_count, asymmetric_link_count,
+                   house_to_domain_strength_jsonb, karaka_to_domain_strength_jsonb,
+                   pattern_cluster_markers_jsonb, verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_chart_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY ayanamsha_id
+             LIMIT 0
+          ), domain_rollups_page AS (
+            SELECT rollup_id, ayanamsha_id, snapshot_type, domain, total_inbound_linkage,
+                   total_outbound_linkage, diagonal_density, signal_count_for_domain,
+                   top_3_linked_domains_jsonb, contradiction_density,
+                   pattern_markers_for_domain_array, verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_domain_rollups
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+             ORDER BY ayanamsha_id, domain
+             LIMIT 0
+          ), pattern_clusters_page AS (
+            SELECT pattern_id, ayanamsha_id, snapshot_type, pattern_marker_type,
+                   involved_domains_array, cluster_strength_total, involved_cells_array,
+                   involved_signals_array, contradicts_other_patterns_array, remedy_theme_jsonb,
+                   classical_archetype_match, predicted_outcome_class, active_dasha_windows_jsonb,
+                   verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_pattern_clusters
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY cluster_strength_total DESC NULLS LAST
+             LIMIT 0
+          ), evolution_gradients_page AS (
+            SELECT gradient_id, ayanamsha_id, dynamic_system_id, domain_row, domain_col,
+                   evolution_class, gradient_score, trend_iso_window_array, peak_period_lord,
+                   peak_period_iso, trough_period_iso, predicted_next_peak_iso,
+                   verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_evolution_gradients
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY ayanamsha_id, domain_row, domain_col
+             LIMIT 0
+          )
+          SELECT 1
+            FROM chart_summary_page
+            CROSS JOIN domain_rollups_page
+            CROSS JOIN pattern_clusters_page
+            CROSS JOIN evolution_gradients_page`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:32-73',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:182-201',
+      'platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:10-86',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
