@@ -46,21 +46,25 @@ export async function setPurnaInquirySchemaCapability(
       await client.query(`
         DO $$ BEGIN
           IF to_regrole('purna_inquiry_owner') IS NOT NULL THEN
-            REVOKE CREATE ON SCHEMA public FROM purna_inquiry_owner;
+            REVOKE USAGE, CREATE ON SCHEMA public FROM purna_inquiry_owner;
           END IF;
         END $$
       `)
     }
     await client.query('RESET ROLE')
 
-    const final = await client.query<{ can_create: boolean }>(`
+    const final = await client.query<{ can_create: boolean; can_use: boolean }>(`
       SELECT coalesce((
         SELECT has_schema_privilege(oid, 'public', 'CREATE')
           FROM pg_roles WHERE rolname='purna_inquiry_owner'
-      ), false) AS can_create
+      ), false) AS can_create,
+      coalesce((
+        SELECT has_schema_privilege(oid, 'public', 'USAGE')
+          FROM pg_roles WHERE rolname='purna_inquiry_owner'
+      ), false) AS can_use
     `)
     const expected = action === 'grant'
-    if (final.rows[0]?.can_create !== expected) {
+    if (final.rows[0]?.can_create !== expected || final.rows[0]?.can_use !== expected) {
       throw new Error(`Pūrṇa owner schema capability did not ${action === 'grant' ? 'arm' : 'close'}.`)
     }
     await client.query('COMMIT')

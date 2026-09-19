@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const harness = vi.hoisted(() => ({
   queries: [] as string[],
   canCreate: false,
+  canUse: false,
   directActor: true,
 }))
 
@@ -27,9 +28,17 @@ vi.mock('pg', () => ({
             }] }
           }
           if (sql.includes('AS normalized')) return { rows: [{ normalized: true }] }
-          if (sql.includes('GRANT USAGE, CREATE ON SCHEMA public')) harness.canCreate = true
-          if (sql.includes('REVOKE CREATE ON SCHEMA public')) harness.canCreate = false
-          if (sql.includes('AS can_create')) return { rows: [{ can_create: harness.canCreate }] }
+          if (sql.includes('GRANT USAGE, CREATE ON SCHEMA public')) {
+            harness.canCreate = true
+            harness.canUse = true
+          }
+          if (sql.includes('REVOKE USAGE, CREATE ON SCHEMA public')) {
+            harness.canCreate = false
+            harness.canUse = false
+          }
+          if (sql.includes('AS can_create')) {
+            return { rows: [{ can_create: harness.canCreate, can_use: harness.canUse }] }
+          }
           return { rows: [] }
         },
         release: () => undefined,
@@ -45,6 +54,7 @@ describe('Pūrṇa temporary schema capability', () => {
   beforeEach(() => {
     harness.queries.length = 0
     harness.canCreate = false
+    harness.canUse = false
     harness.directActor = true
   })
 
@@ -55,13 +65,16 @@ describe('Pūrṇa temporary schema capability', () => {
     expect(joined).toContain('GRANT USAGE, CREATE ON SCHEMA public TO purna_inquiry_owner')
     expect(joined.indexOf('AS can_create')).toBeLessThan(joined.indexOf('COMMIT'))
     expect(harness.canCreate).toBe(true)
+    expect(harness.canUse).toBe(true)
   })
 
-  it('revokes CREATE idempotently through the same protected owner', async () => {
+  it('revokes USAGE and CREATE idempotently through the same protected owner', async () => {
     harness.canCreate = true
+    harness.canUse = true
     await expect(setPurnaInquirySchemaCapability('revoke', 'postgresql://fixture')).resolves.toBeUndefined()
-    expect(harness.queries.join('\n')).toContain('REVOKE CREATE ON SCHEMA public FROM purna_inquiry_owner')
+    expect(harness.queries.join('\n')).toContain('REVOKE USAGE, CREATE ON SCHEMA public FROM purna_inquiry_owner')
     expect(harness.canCreate).toBe(false)
+    expect(harness.canUse).toBe(false)
   })
 
   it('fails closed unless the direct migrator owns the schema-owner edge', async () => {
