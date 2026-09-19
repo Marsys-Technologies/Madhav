@@ -2603,6 +2603,39 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81'],
   },
+  {
+    contract_id: 'source-query:query-discoveries:v1',
+    descriptor_name: 'query_discoveries',
+    capability_uri: 'marsys://tool/L2/query_discoveries',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT discovery_id, ayanamsha_id, discovery_class, discovery_subsystem,
+                   non_obviousness_score, consequence_score, composite_discovery_rank,
+                   novelty_class, corroboration_count, corroborating_methods_array,
+                   affected_domains_array, surface_reading, depth_reading, surface_depth_delta,
+                   hypothesis_text, why_an_acharya_misses_it, meaningfulness_basis,
+                   constituent_refs_jsonb, cross_subsystem_refs_jsonb,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+             ORDER BY composite_discovery_rank ASC NULLS LAST, non_obviousness_score DESC NULLS LAST
+             LIMIT 0 OFFSET 0
+          ), family_page AS (
+            SELECT discovery_class, discovery_subsystem, hypothesis_text, COUNT(*) AS member_count,
+                   COUNT(DISTINCT ayanamsha_id) AS ayanamsha_count
+              FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+             GROUP BY discovery_class, discovery_subsystem, hypothesis_text
+             ORDER BY MIN(composite_discovery_rank) ASC NULLS LAST LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
