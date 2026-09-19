@@ -4,6 +4,8 @@ const harness = vi.hoisted(() => ({
   queries: [] as string[],
   canCreate: false,
   canUse: false,
+  servingCanCreate: false,
+  servingCanUse: false,
   directActor: true,
 }))
 
@@ -36,6 +38,12 @@ vi.mock('pg', () => ({
             harness.canCreate = false
             harness.canUse = false
           }
+          if (sql.includes('GRANT USAGE ON SCHEMA public TO role_web_serve')) {
+            harness.servingCanUse = true
+          }
+          if (sql.includes("has_schema_privilege('role_web_serve'")) {
+            return { rows: [{ can_create: harness.servingCanCreate, can_use: harness.servingCanUse }] }
+          }
           if (sql.includes('AS can_create')) {
             return { rows: [{ can_create: harness.canCreate, can_use: harness.canUse }] }
           }
@@ -48,13 +56,15 @@ vi.mock('pg', () => ({
   },
 }))
 
-const { setPurnaInquirySchemaCapability } = await import('../../scripts/purna-inquiry-schema-capability')
+const { grantPurnaServingSchemaUsage, setPurnaInquirySchemaCapability } = await import('../../scripts/purna-inquiry-schema-capability')
 
 describe('Pūrṇa temporary schema capability', () => {
   beforeEach(() => {
     harness.queries.length = 0
     harness.canCreate = false
     harness.canUse = false
+    harness.servingCanCreate = false
+    harness.servingCanUse = false
     harness.directActor = true
   })
 
@@ -82,5 +92,15 @@ describe('Pūrṇa temporary schema capability', () => {
     await expect(setPurnaInquirySchemaCapability('grant', 'postgresql://fixture'))
       .rejects.toThrow('direct protected data_plane_migrator route')
     expect(harness.queries).not.toContain('COMMIT')
+  })
+
+  it('grants only durable schema USAGE to the serving role', async () => {
+    await expect(grantPurnaServingSchemaUsage('postgresql://fixture')).resolves.toBeUndefined()
+    const joined = harness.queries.join('\n')
+    expect(joined).toContain('SET LOCAL ROLE data_plane_schema_owner')
+    expect(joined).toContain('GRANT USAGE ON SCHEMA public TO role_web_serve')
+    expect(joined).not.toContain('GRANT USAGE, CREATE ON SCHEMA public TO role_web_serve')
+    expect(harness.servingCanUse).toBe(true)
+    expect(harness.servingCanCreate).toBe(false)
   })
 })

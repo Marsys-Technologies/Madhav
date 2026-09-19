@@ -489,7 +489,8 @@ export async function readDataPlaneOwnershipStatus(
         ('data_plane_l1_owner','USAGE'),('data_plane_l1_owner','CREATE'),
         ('data_plane_l2_owner','USAGE'),('data_plane_l2_owner','CREATE'),
         ('data_plane_migrator','USAGE'),('data_plane_builder','USAGE'),
-        ('data_plane_verifier','USAGE'),('amjis_app','USAGE')
+        ('data_plane_verifier','USAGE'),('amjis_app','USAGE'),
+        ('role_web_serve','USAGE')
       )
       SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(grantee,privilege_type)
                      WHERE a.grantee IS NULL OR e.grantee IS NULL) AS unsafe
