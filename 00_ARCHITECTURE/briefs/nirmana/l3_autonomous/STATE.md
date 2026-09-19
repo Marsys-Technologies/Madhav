@@ -87,7 +87,7 @@ All rows start `— / — / — / — / — / NO`.
 | E1 W1 L1 generation | conductor | integration | — | **BLOCKED_STRUCTURAL(no-authenticated-dispatch-credential)** | see §★ FINDING below | native must supply either a `/api/cockpit/runs`-capable session or an authorized write DB credential |
 | E2 W1 L2 generation | conductor | integration | — | not needed tonight (L2/`bo_*` is off the critical path for E3/E4 — see finding) | — | — |
 | E3 ka_graha_sancara terminal | conductor | own worktree | — | **BLOCKED_STRUCTURAL** — needs no W1 at all (chart-agnostic, reads only L0 `bg_ephemeris`/live swisseph), but the value test must target the actually-live `call_ephemeris_at_t` router path per the dossier finding; ready to execute the moment the campaign wants a service-proof-only pass | full dossier ready | — |
-| E4 ka_dasha_kala terminal | conductor | own worktree | — | **BLOCKED_STRUCTURAL(same credential gate as E1)** | reads L1 `ga_dashas`/`chart_dashas` directly (not through any generation table); confirmed LIVE right now that `ga_dashas` is refusing to serve the canonical chart pending a completed generation (`ga_dashas_replacement_in_progress`, `restart_required: true`, verified via the `ganita_dashas_get` MCP tool) — this is exactly the gap W1 would close | dispatch plan ready | — |
+| E4 ka_dasha_kala terminal | conductor | own worktree | — | **BLOCKED_STRUCTURAL(same credential gate as E1)** | reads L1 `ga_dashas`/`chart_dashas` directly (not through any generation table); the canonical `get_dashas`/`ganita_dashas_get` serving path honestly refuses pending a completed L1 generation for this chart, while other paths (e.g. `kala_muhurta_get`) read the same table's real data successfully — W1 makes the canonical path consistent, it does not fix a broken table | dispatch plan ready | — |
 
 ## Observed environment (re-verify before acting)
 
@@ -144,15 +144,23 @@ to roll back to, and calling it anyway produces a degenerate self-pointing head.
 net is Postgres atomicity (proven) plus re-dispatching the same or a fresh `run_id` on failure —
 never hand-editing `build_runs`.
 
-**Live corroboration this gap is real and current, not hypothetical**: querying the canonical
-chart's dashas live via the `ganita_dashas_get` MCP tool (three variants: explicit
-`lahiri_chitrapaksha`, explicit `lahiri`, and bare default) returned, for all three,
-`{code: "ga_dashas_replacement_in_progress", restart_required: true, rows: [], total: 0}` — the
-canonical chart's own `chart_dashas` reads are **currently failing in production**, honestly,
-pending a completed L1 generation. Confirmed via `gcloud run jobs executions list` that this is
-**not** an active/stuck builder-job execution (nothing has run since 2026-09-12) — it is a
-persistent database-state guard, not a live process to avoid racing. W1 would fix a real,
-currently-broken read path, not just satisfy a provenance formality.
+**Live corroboration, then a correction to keep this precise**: querying the canonical chart's
+dashas via the `ganita_dashas_get` MCP tool (`lahiri_chitrapaksha`, `lahiri`, and bare default,
+all three) returned `{code: "ga_dashas_replacement_in_progress", restart_required: true, rows: [],
+total: 0}` — confirmed via `gcloud run jobs executions list` that this is **not** an active/stuck
+builder job (nothing has run since 2026-09-12), so it's a database-state guard, not a live process
+to avoid racing. **Correction, from a follow-up live sample across 8 other `kala_*` MCP tools**:
+`kala_muhurta_get` and `kala_now_get`'s internal dasha-lord-transit computation both
+**successfully** read real MD/AD values (Mercury exalted, Saturn neutral) from the very same
+`chart_dashas` table, for the same chart, essentially the same moment. **The guard is applied at
+one specific serving layer (`get_dashas`/`ganita_dashas_get`/`kala_dasha_sandhi_get`), not
+uniformly on the table** — other code paths that query `chart_dashas` directly bypass it entirely.
+So: `chart_dashas` itself is not down; one canonical, provenance-conscious read path honestly
+refuses until a completed generation exists, while older/parallel paths haven't been updated to
+check for one. W1 would make the *canonical* path consistent with the data that's already there —
+a real, worthwhile fix, but not "production reads are broken" as first framed. Corrected here per
+this project's own Narration Fidelity doctrine (§N.7) — precision over the more dramatic-sounding
+first read.
 
 **Why I am not dispatching it tonight despite having a complete, reviewed plan:**
 1. **No authenticated path available to me.** Both `/api/cockpit/runs` and `/api/cockpit/stats`
@@ -181,6 +189,32 @@ Either path, then verify with the exact SQL in the full research report (§EVENT
 `W1_DISPATCH_MECHANISM_CONFIRMED` / this session's transcript) — heads populated, `build_runs.state
 ='succeeded'`. E3 needs no W1 at all and can run independently the moment a session wants to
 spend the effort on its consumer-route value test.
+
+## ★ C2 progress — live-serving snapshot via MCP tools (not a DB row-count baseline, but real signal)
+
+Since raw DB access is blocked (BL-3), sampled 8 `kala_*` MCP tools live against the canonical
+chart to see what currently has real serving data vs. empty vs. explicit refusal — a legitimate,
+credential-free proxy for part of C2:
+
+| Tool / backing asset(s) | Result |
+|---|---|
+| `kala_windows_get` (`ka_kalasutra`) | Empty — `empty_reason: "ka_kalasutra may not be built for this chart"` |
+| `kala_bundle_get` (`ka_avadhi`/`ka_sangam`/`ka_vighnakara`/`ka_kala_darshana`) | Mixed — `ka_avadhi` has real data (2 dasha-dossier rows); convergence/obstruction empty; `kala_readiness.score: null` |
+| `kala_priority_ranking_get` (`ka_tulana`) | Empty — 0 ranked signals |
+| `kala_life_arc_get` (`ka_jivana_parva`) | **Real data** — 5 parva rows, `computed_at: 2026-08-13` (still serving from ~5 weeks ago) |
+| `kala_dasha_sandhi_get` | Honest empty — same `ga_dashas` gate as above |
+| `kala_yoga_activation_get` | Empty (0 activated yogas) — but its own live orphan check found 73,049 MSR references, 0% orphaned, so upstream L2 MSR is substantial and healthy |
+| `kala_muhurta_get` (`ka_muhurta_seva`) | **Real data** — 15 dated/scored windows citing live `chart_dashas` MD/AD |
+| `kala_now_get` (composite) | Mostly real — `ka_kota_chakra`, `ka_sudarshana_varsha`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_tithi_pravesha` all `"computed"`; `ka_kshetra`'s `field_snapshot_state: "field_not_yet_built"` (never written for this chart); `kala_darshana_confluence` honest-empty |
+
+Not a substitute for real row counts, but a genuine, honest signal: several `ka_*` assets already
+serve real, substantive data for the canonical chart today (avadhi, jivana_parva, muhurta_seva,
+kota_chakra, sudarshana_varsha, moorti_nirnaya, vedha_gochara, tithi_pravesha) — this campaign's
+0/22 headline is about *terminal acceptance* under the current definition, not about whether these
+assets compute anything at all. `ka_kshetra`'s field snapshot is confirmed never built for this
+chart (matches the handoff's PARK-5 note). `ka_kalasutra`/`ka_tulana`/`ka_sangam`/`ka_vighnakara`/
+`ka_kala_darshana` show empty on these particular calls — worth deeper investigation in a future
+session, not concluded as "broken" from a handful of calls.
 
 ## ★ FINDING — the named `ka_graha_sancara`/`ka_dasha_kala` service modules are not on the live consumer path
 
