@@ -24,10 +24,11 @@ neither predecessor commit is runtime or deployment evidence.
 ## Refreshed delta
 
 - Protected PR #2681 is contained by the successor base with exact tree identity.
-- PR #2676 remains open but is not mergeable wholesale. Current-main
-  reconciliation retains only the missing `read_sutravali_rule` exact source
-  contract and focused assertion; all other substantive deltas are present,
-  superseded, or stale generated evidence.
+- PR #2676 was closed as superseded after current-main reconciliation. Its only
+  retained delta, the missing `read_sutravali_rule` exact source contract and
+  focused assertion, is carried with fresh generated artifacts in successor
+  draft PR #2682; all other substantive deltas are present, superseded, or stale
+  generated evidence.
 - The protected-main baseline regenerates to 182 SCUs, 186 executable bindings,
   152 authored availability contracts, 25 uncovered bindings, and 9 explicit
   deliberate-dark dispositions. These are source-accounting facts, not live

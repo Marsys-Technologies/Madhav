@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0096
-last_updated: 2026-09-19T10:10:45+05:30
+last_event: PA-E0097
+last_updated: 2026-09-19T10:24:23+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -38,7 +38,9 @@ layer state, queue or authority.
   with 4 DB-gated skips; TypeScript and both code-generation freshness checks pass. Independent
   review found no remaining HIGH, MED, or LOW issue. This is source-ready evidence only: classical
   texts, judgment, contradictions, wealth/classical exhaustion, candidate receipts, protected
-  deployment, and all three-door automated acceptance remain open.
+  deployment, and all three-door automated acceptance remain open. Draft PR #2682 is the active
+  review surface. Historical stacked PR #2676 is closed as superseded; only its Sutravali
+  micro-delta was retained after current-main reconciliation.
 
 - Refreshed live boundary: `amjis-web` and `amjis-mcp` still serve
   `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected run `35419951080` skipped all deployment
