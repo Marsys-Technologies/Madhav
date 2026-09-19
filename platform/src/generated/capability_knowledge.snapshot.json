@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T03:08:08.000Z",
-  "content_hash": "sha256:d4e909e3908d6fb881da25864eaaf5f77e6797dbed450232e87f067b84e396cc",
-  "source_catalog_fingerprint": "sha256:cf2f7ef762f569efbc6f919f9dc5ff45d18990b63606e8ca579c61036fa84050",
-  "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
+  "generated_at": "2026-09-19T04:39:30.000Z",
+  "content_hash": "sha256:4874e634ea8d8c34e725660e481bb6a23cb40839fb7b4d30dbe2806ecae51c74",
+  "source_catalog_fingerprint": "sha256:ce711490a392203b07d36db15ca85d0e748ae856e6b54f31850dfb6255d4207a",
+  "semantic_review_fingerprint": "sha256:61a8ba013da851ecc24e270e6e604655d1501f3e8b48581bbb03de06e2396bbe",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -31402,6 +31402,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/read_sutravali_rule",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:read-sutravali-rule:v1",
+              "capability_uri": "marsys://tool/L0/read_sutravali_rule",
+              "contract_sha256": "sha256:1288e3cca0d19845e64dbc36f8e5a62a3190b2e58e9cee32a8fe70005ae35949",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -33135,6 +33150,13 @@
             "id ASC"
           ]
         },
+        "bounded_window_closure": {
+          "receipt_path": "content.temporal_closure",
+          "closure_version": "temporal-activation-closure-v1",
+          "collection": "activations",
+          "maximum_top_k": 500,
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:200-220,578-607"
+        },
         "execution_channels": [
           "platform_internal",
           "mcp_full"
@@ -33187,15 +33209,18 @@
           "evidence": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
         }
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L3/query_temporal_activation",
-          "status": "deliberately_dark",
-          "reason": "The handler reads kala_activation, but ka_kalasutra has only route evidence and no reviewed digest component for that relation. The reviewed predicate and forward-window receipts cannot substitute for the missing activation output receipt.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
-            "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80",
-            "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-temporal-activation:v1",
+              "capability_uri": "marsys://tool/L3/query_temporal_activation",
+              "contract_sha256": "sha256:4ebad1abb375ab717eab683b6639ff1cacabe699f2c7d4532806ecf54839b715",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620"
+            }
           ]
         }
       ],
@@ -33236,6 +33261,13 @@
               "activation_start ASC",
               "id ASC"
             ]
+          },
+          "bounded_window_closure": {
+            "receipt_path": "content.temporal_closure",
+            "closure_version": "temporal-activation-closure-v1",
+            "collection": "activations",
+            "maximum_top_k": 500,
+            "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:200-220,578-607"
           },
           "execution_channels": [
             "platform_internal",
