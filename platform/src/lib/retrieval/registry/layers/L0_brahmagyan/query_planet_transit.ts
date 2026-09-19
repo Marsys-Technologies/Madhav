@@ -146,6 +146,12 @@ export const queryPlanetTransitCapability: ToolCapability = {
         max_age_seconds: 900,
         source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
       }],
+    }, {
+      binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      requirements: [{
+        kind: 'derived', scope: 'global', required_binding_ids: ['registry:marsys://tool/L0/query_planet_transit'],
+        source_ref: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout',
+      }],
     }],
     entitlement: 'native',
     safety_notes: ['Read-only computed evidence. Partial aggregate results are failures and cannot close a transit obligation.'],

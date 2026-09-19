@@ -87,6 +87,18 @@ export const queryCurrentTransitSnapshotCapability: ToolCapability = {
     bulk_context: { pre_fetch_priority: 75, always_include: false, result_size_kb_p50: 12 },
     result_max_kb: 80,
   },
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.query_current_transit_snapshot', version: 1, label: 'Complete current transit snapshot',
+    description: 'Retrieve a complete receipted nine-graha snapshot by strictly composing the scalar transit binding.',
+    kind: 'temporal', domains: ['timing'], concepts: ['transit', 'current_state'], intents: ['assess', 'verify'], horizons: ['current'], scope: 'global',
+    inputs: ['as_of_date'], outputs: ['components', 'component_receipts', 'aggregate_hash', 'missing_planets'], primary_binding_uri: 'marsys://tool/L0/query_current_transit_snapshot',
+    provenance_requirements: ['computed_at', 'engine_version', 'component_receipts'], freshness_policy: 'Availability is derived from the exact scalar transit binding; a missing child receipt keeps the aggregate unavailable.',
+    entitlement: 'native', safety_notes: ['Every canonical component must succeed; partial snapshots are failures.'], known_gaps: [],
+    availability_contracts: [{ binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot', requirements: [{
+      kind: 'derived', scope: 'global', required_binding_ids: ['registry:marsys://tool/L0/query_planet_transit'],
+      source_ref: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout',
+    }] }], editorial: true,
+  }],
   async handler(args: Record<string, unknown>, ctx?: CapabilityContext) {
     const asOfDate = args['as_of_date']
     if (!validTemporalAnchor(asOfDate)) {

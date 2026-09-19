@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:46:00.000Z",
-  "content_hash": "sha256:977da45bb8ee5a8cba5c0d6391835aced75b2e6bd59cfae6ec9a6f0d9eea9f95",
-  "source_catalog_fingerprint": "sha256:3702930af477edb0a28516fad023281ec889bc50a427f5e9fda1cf0365f70462",
+  "generated_at": "2026-09-19T01:48:03.000Z",
+  "content_hash": "sha256:2230ad9ada62db90edaef4334bb2d108fd0977dcfc158d74155bbb888396a9d0",
+  "source_catalog_fingerprint": "sha256:5aa314b7e257ffef3e08a49b3ab3a83a3dfabea13d92ddaa4c245bb47180cf3a",
   "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -15941,56 +15941,60 @@
     {
       "scu_id": "scu.catalog.query_current_transit_snapshot",
       "version": 1,
-      "label": "Query Current Transit Snapshot",
-      "description": "Return the complete nine-graha transit state for one explicit date by invoking the strict scalar planet-transit capability once per canonical Jyotish body. Every component carries immutable argument and result hashes. The aggregate fails if any component is missing or fails. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "label": "Complete current transit snapshot",
+      "description": "Retrieve a complete receipted nine-graha snapshot by strictly composing the scalar transit binding.",
       "kind": "temporal",
       "domains": [
         "timing"
       ],
       "concepts": [
-        "activation_timing",
-        "query_current_transit_snapshot",
-        "temporal_sequence",
-        "timing_window"
+        "current_state",
+        "transit"
       ],
       "intents": [
-        "sequence",
-        "time"
+        "assess",
+        "verify"
       ],
       "horizons": [
-        "current",
-        "future",
-        "historical",
-        "multi_year"
+        "current"
       ],
       "scope": "global",
       "inputs": [
         "as_of_date"
       ],
       "outputs": [
-        "accounted_components",
         "aggregate_hash",
-        "as_of_date",
-        "complete",
         "component_receipts",
         "components",
-        "expected_components",
-        "missing_planets",
-        "ok"
+        "missing_planets"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_current_transit_snapshot",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
         "computed_at",
-        "engine_version"
+        "engine_version",
+        "component_receipts"
       ],
-      "freshness_policy": "Must carry computation time and engine version.",
+      "freshness_policy": "Availability is derived from the exact scalar transit binding; a missing child receipt keeps the aggregate unavailable.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Every canonical component must succeed; partial snapshots are failures."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_current_transit_snapshot",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "global",
+              "required_binding_ids": [
+                "registry:marsys://tool/L0/query_planet_transit"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -16020,64 +16024,27 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/query_current_transit_snapshot"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "activation_timing",
+          "concept_id": "current_state",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
         },
         {
-          "concept_id": "query_current_transit_snapshot",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
-        },
-        {
-          "concept_id": "temporal_sequence",
+          "concept_id": "transit",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
-        },
-        {
-          "concept_id": "timing_window",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
         }
       ],
       "gap_dispositions": [],
@@ -16085,8 +16052,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
+          "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
         ]
       },
       "producer_semantic_disposition": {
@@ -16094,10 +16060,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
+          "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.query_dasha_dossier",
@@ -21762,6 +21728,19 @@
               "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        },
+        {
+          "binding_id": "registry:marsys://tool/L0/query_current_transit_snapshot",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "global",
+              "required_binding_ids": [
+                "registry:marsys://tool/L0/query_planet_transit"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout"
             }
           ]
         }
@@ -33704,7 +33683,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_dossier",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_systems",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_kala_paddhati_profile",
@@ -34181,6 +34159,15 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#chart_evidence:chart_facts_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#chart_evidence:chart_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#chart_evidence:get_chart_header"
+      ]
+    },
+    {
+      "concept_id": "current_state",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
       ]
     },
     {
@@ -35303,15 +35290,6 @@
       ]
     },
     {
-      "concept_id": "query_current_transit_snapshot",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
-      ]
-    },
-    {
       "concept_id": "query_dasha_dossier",
       "types": [
         "capability"
@@ -36276,7 +36254,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_dossier",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_systems",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_kala_paddhati_profile",
@@ -36344,7 +36321,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_dossier",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_systems",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_kala_paddhati_profile",
@@ -36380,6 +36356,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot",
         "SemanticCapabilityDeclaration:marsys://tool/L3/query_temporal_activation"
       ]
     },
