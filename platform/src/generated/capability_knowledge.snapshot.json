@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T07:20:13.000Z",
-  "content_hash": "sha256:5cb031a80a77b0e7d6c45c68d10be1edb37e52e2182473291d5214836506aa11",
-  "source_catalog_fingerprint": "sha256:6356cb02a5b453f11a6a83d48706c8955559f133873cce134d34740683788e8d",
-  "semantic_review_fingerprint": "sha256:4ff3a67130eb17d508cfc47076d2be3d500ac53ddb7bc81d69d78a3546470ec9",
+  "generated_at": "2026-09-19T08:23:04.000Z",
+  "content_hash": "sha256:5e60d6d2987ef7ab2d2cb827936d610ab7cf687154d2ec598bb66a6379ce0574",
+  "source_catalog_fingerprint": "sha256:8b32f4675390b4a1a955ec3449a0b2c634890cc201a3f69497ad3ab12fc0d75a",
+  "semantic_review_fingerprint": "sha256:93411dc07cd9dd051bb080619406e684d57f7cafd35de0c3634702ff86bfe43c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -15123,7 +15123,7 @@
       "scu_id": "scu.catalog.query_classical_texts",
       "version": 1,
       "label": "Query Classical Texts",
-      "description": "Query the classical text corpus (classical_text_chunks) — classical text chunks from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita, Phala Deepika, Jataka Parijata, and other canonical texts. Each chunk is a verse or shloka with: text_id, chapter, verse_ref, topics, tradition_school, and the original Sanskrit + English translation. Use to cite classical sources for astrological observations. Free-text search (query_text/query/topic) runs genuine hybrid vector+keyword ranking and returns verse text IN HAND (content_en/content_sa), not just a citation id — this is the corpus idiom's ref_search / vector_search target. Exact-phrase search (keyword) does ILIKE substring matching with empty-with-reason. Evidence use: ground a claim in retrievable classical source material.",
+      "description": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand. Evidence use: ground a claim in retrievable classical source material.",
       "kind": "citation",
       "domains": [
         "classical_grounding"
@@ -15146,6 +15146,7 @@
         "keyword",
         "limit",
         "offset",
+        "page_cursor",
         "query",
         "query_text",
         "text_source",
@@ -15157,6 +15158,38 @@
         "source_passages"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_classical_texts",
+      "primary_binding_details": {
+        "pagination": "cursor",
+        "pagination_contract": {
+          "request_position_path": "page_cursor",
+          "request_limit_path": "limit",
+          "effective_maximum": 200,
+          "result_collection_path": "content.citations",
+          "next_path": "content.next_page_cursor",
+          "more_available_path": "content.more_available",
+          "deterministic_order": [
+            "hybrid:combined_score DESC",
+            "hybrid:text_id ASC",
+            "hybrid:chapter ASC NULLS LAST",
+            "hybrid:verse_ref ASC NULLS LAST",
+            "hybrid:chunk_id ASC",
+            "hybrid:id ASC",
+            "legacy:text_id ASC",
+            "legacy:chapter ASC NULLS LAST",
+            "legacy:verse_start ASC NULLS LAST",
+            "legacy:chunk_id ASC",
+            "legacy:id ASC"
+          ],
+          "material_trim_paths": [
+            "budget_kb_applied",
+            "trim_report",
+            "material_trimmed",
+            "response_trimmed",
+            "truncated"
+          ]
+        },
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler"
+      },
       "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
@@ -15168,20 +15201,34 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_texts",
+          "component": "classical_texts and classical_text_chunks",
+          "output_digest_spec_sha256": "10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
+        }
       ],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_classical_texts",
           "requirements": [
             {
+              "kind": "producer_output",
+              "asset_id": "bg_texts",
+              "spec_sha256": "10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
+            },
+            {
               "kind": "source_query",
               "contract_id": "source-query:query-classical-texts:v1",
               "capability_uri": "marsys://tool/L0/query_classical_texts",
-              "contract_sha256": "sha256:6662b9d5444086e42beb69ad7ba06bdb4801f15fbd95219a870e6858f0116a4d",
+              "contract_sha256": "sha256:50d2344ef3d3e12ef1f0e4c90b032c1a23dee0a15df6e22b3cf563fe917c2103",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:151-352 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_classical_texts.pagination.test.ts:26-89"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
             }
           ]
         }
@@ -15197,6 +15244,7 @@
             "keyword": "string:optional",
             "limit": "number:optional",
             "offset": "number:optional",
+            "page_cursor": "string:optional",
             "query": "string:optional",
             "query_text": "string:optional",
             "text_source": "string:optional",
@@ -15206,14 +15254,42 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "offset",
-          "pagination_verified": false,
+          "pagination": "cursor",
+          "pagination_verified": true,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_classical_texts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search",
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search",
+          "pagination_contract": {
+            "request_position_path": "page_cursor",
+            "request_limit_path": "limit",
+            "effective_maximum": 200,
+            "result_collection_path": "content.citations",
+            "next_path": "content.next_page_cursor",
+            "more_available_path": "content.more_available",
+            "deterministic_order": [
+              "hybrid:combined_score DESC",
+              "hybrid:text_id ASC",
+              "hybrid:chapter ASC NULLS LAST",
+              "hybrid:verse_ref ASC NULLS LAST",
+              "hybrid:chunk_id ASC",
+              "hybrid:id ASC",
+              "legacy:text_id ASC",
+              "legacy:chapter ASC NULLS LAST",
+              "legacy:verse_start ASC NULLS LAST",
+              "legacy:chunk_id ASC",
+              "legacy:id ASC"
+            ],
+            "material_trim_paths": [
+              "budget_kb_applied",
+              "trim_report",
+              "material_trimmed",
+              "response_trimmed",
+              "truncated"
+            ]
+          },
+          "result_collection_verified": true,
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_classical_texts",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_classical_texts"
           },
           "execution_channels": [
             "platform_internal",
@@ -15285,14 +15361,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:query_classical_texts"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:query_classical_texts"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -38357,16 +38426,16 @@
     "executable_bindings": 186,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 72,
-    "reviewed_pagination_bindings": 4,
+    "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
     "reviewed_paginated_descriptors": 96,
-    "exhaustible_reviewed_descriptors": 4,
-    "non_exhaustible_descriptors": 92,
+    "exhaustible_reviewed_descriptors": 5,
+    "non_exhaustible_descriptors": 91,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 14,
-    "reviewed_output_claims": 13,
+    "producer_output_claims": 15,
+    "reviewed_output_claims": 14,
     "typed_concepts": 259,
     "unbound_concepts": 0,
     "isolated_scus": 156,
