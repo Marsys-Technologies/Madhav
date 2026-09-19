@@ -484,13 +484,18 @@ export async function readDataPlaneOwnershipStatus(
         FROM pg_namespace n
         CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a
         LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE n.nspname='public'
-      ), expected(grantee,privilege_type) AS (VALUES
-        ('data_plane_schema_owner','USAGE'),('data_plane_schema_owner','CREATE'),
-        ('data_plane_l1_owner','USAGE'),('data_plane_l1_owner','CREATE'),
-        ('data_plane_l2_owner','USAGE'),('data_plane_l2_owner','CREATE'),
-        ('data_plane_migrator','USAGE'),('data_plane_builder','USAGE'),
-        ('data_plane_verifier','USAGE'),('amjis_app','USAGE'),
-        ('role_web_serve','USAGE')
+      ), expected(grantee,privilege_type) AS (
+        SELECT * FROM (VALUES
+          ('data_plane_schema_owner','USAGE'),('data_plane_schema_owner','CREATE'),
+          ('data_plane_l1_owner','USAGE'),('data_plane_l1_owner','CREATE'),
+          ('data_plane_l2_owner','USAGE'),('data_plane_l2_owner','CREATE'),
+          ('data_plane_migrator','USAGE'),('data_plane_builder','USAGE'),
+          ('data_plane_verifier','USAGE'),('amjis_app','USAGE'),
+          ('role_web_serve','USAGE')
+        ) base(grantee,privilege_type)
+        UNION ALL
+        SELECT 'purna_inquiry_owner','USAGE'
+         WHERE to_regrole('purna_inquiry_owner') IS NOT NULL
       )
       SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(grantee,privilege_type)
                      WHERE a.grantee IS NULL OR e.grantee IS NULL) AS unsafe
