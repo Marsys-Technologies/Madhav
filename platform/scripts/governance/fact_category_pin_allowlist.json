@@ -114,19 +114,19 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1941,
+      "line": 1874,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_structural. It preserves the handler's complete residual structural-signal category family and deterministic pagination order while LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2020,
+      "line": 1953,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. It preserves the complete default and advertised opt-in Ashtakavarga category family with the handler's deterministic pagination order, while LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2073,
+      "line": 2006,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_positions. It preserves the handler's default graha-position source and stable category-priority order while LIMIT 0 prevents selecting or reducing a fact row. Optional upagraha and non-default category requests are deliberately not implied by this default-source contract."
     },

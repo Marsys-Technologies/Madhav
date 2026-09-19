@@ -2244,6 +2244,40 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts:103-120'],
   },
+  {
+    contract_id: 'source-query:query-pratijna:v1',
+    descriptor_name: 'query_pratijna',
+    capability_uri: 'marsys://tool/L2/query_pratijna',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT pratijna_id, ayanamsha_id, event_class_id, status, grade,
+                   varga_confirmation, supporting_signal_ids, contradicting_signal_ids,
+                   derivation, formula_version,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_pratijna
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR status = NULL::text)
+               AND (NULL::text IS NULL OR event_class_id = NULL::text)
+             ORDER BY event_class_id, ayanamsha_id
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_pratijna
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR status = NULL::text)
+               AND (NULL::text IS NULL OR event_class_id = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:155-177',
+      'platform/migrations/665_bo_pratijna_integrity_check.sql:10-91',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:11:28.000Z",
-  "content_hash": "sha256:f6b399efd116cdcecd2ec7c943623dfaf12f301b59d08e33c869f93b4791bc23",
+  "generated_at": "2026-09-19T00:17:09.000Z",
+  "content_hash": "sha256:0700af95a842670acde9a35379afdd5ced698a48558fde0a741c920395f40db5",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:72673a29e2e8d266ec489efeab7c5ddfe196637d238e7bf1bd6317ea6bbf37c7",
+  "semantic_review_fingerprint": "sha256:8158727186ffcf34d10260856a51aa4fdb5eec80e56b37a0d4186e48bfd32327",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -22551,6 +22551,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_pratijna",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-pratijna:v1",
+              "capability_uri": "marsys://tool/L2/query_pratijna",
+              "contract_sha256": "sha256:3710dce083200c784bc25a25970c0e24bfeb9e09f3fea7c05fac227b86e55381",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:155-177 | platform/migrations/665_bo_pratijna_integrity_check.sql:10-91"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
