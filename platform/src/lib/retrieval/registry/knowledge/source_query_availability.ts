@@ -429,11 +429,53 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                 AND (run.state IN ('planned', 'running', 'paused')
                   OR asset.state IN ('queued', 'building'))
             ) AS replacement_in_progress
+          ), hybrid_source_probe AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics,
+                   (1 - (c.embedding <=> NULL::vector))::float AS vector_score,
+                   similarity(c.content_en, '')::float AS keyword_score,
+                   (0.65 * COALESCE(1 - (c.embedding <=> NULL::vector), 0)
+                     + 0.35 * COALESCE(similarity(c.content_en, ''), 0))::float AS combined_score
+              FROM classical_text_chunks c
+             WHERE 1 = 0
+             ORDER BY combined_score DESC, text_id ASC, chapter ASC NULLS LAST,
+                      verse_ref ASC NULLS LAST, chunk_id ASC, id ASC
+             LIMIT 0
+          ), fallback_source_probe AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics
+              FROM classical_text_chunks c
+             WHERE c.content_en ILIKE ''
+             ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST,
+                      chunk_id ASC, id ASC
+             LIMIT 0
+          ), list_source_probe AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics
+              FROM classical_text_chunks c
+             WHERE (NULL::text IS NULL OR c.content_en ILIKE ('%' || NULL::text || '%'))
+               AND (NULL::text IS NULL OR c.text_id = NULL::text)
+               AND (NULL::text IS NULL OR NULL::text = ANY(c.topics))
+             ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST,
+                      chunk_id ASC, id ASC
+             LIMIT 0
+          ), handler_source_probe AS (
+            SELECT (SELECT COUNT(*) FROM hybrid_source_probe) AS hybrid_probe_rows,
+                   (SELECT COUNT(*) FROM fallback_source_probe) AS fallback_probe_rows,
+                   (SELECT COUNT(*) FROM list_source_probe) AS list_probe_rows
           )
           SELECT 1 AS source_query_available
-            FROM receipt_count count CROSS JOIN replacement_fence fence
+            FROM receipt_count count
+            CROSS JOIN replacement_fence fence
+            CROSS JOIN handler_source_probe handler_probe
            WHERE count.eligible_receipt_count = 1
-             AND NOT fence.replacement_in_progress`,
+             AND NOT fence.replacement_in_progress
+             AND handler_probe.hybrid_probe_rows = 0
+             AND handler_probe.fallback_probe_rows = 0
+             AND handler_probe.list_probe_rows = 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql',
       'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',

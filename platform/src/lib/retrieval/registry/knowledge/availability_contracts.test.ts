@@ -170,6 +170,7 @@ describe('binding availability contracts', () => {
   it('requires a current fresh proven bg_texts receipt for classical search while preserving contradiction closure', () => {
     const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
     const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
+    const classicalSql = normalizedSql(classical.sql)
 
     expect(classical).toMatchObject({ scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist' })
     for (const marker of [
@@ -184,6 +185,22 @@ describe('binding availability contracts', () => {
       'eligible_receipt_count = 1', 'NOT fence.replacement_in_progress', 'source_query_available',
     ]) {
       expect(classical.sql).toContain(marker)
+    }
+    for (const marker of [
+      'hybrid_source_probe AS (', 'fallback_source_probe AS (', 'list_source_probe AS (',
+      'c.embedding <=> NULL::vector', "similarity(c.content_en, '')",
+      "c.content_en ILIKE ''", 'c.verse_start',
+      'c.content_summary', 'c.source_citation', 'c.tradition_school', 'c.topics',
+      'ORDER BY combined_score DESC, text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC LIMIT 0',
+      'ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC LIMIT 0',
+      'ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC LIMIT 0',
+      'handler_source_probe AS ( SELECT (SELECT COUNT(*) FROM hybrid_source_probe) AS hybrid_probe_rows, (SELECT COUNT(*) FROM fallback_source_probe) AS fallback_probe_rows, (SELECT COUNT(*) FROM list_source_probe) AS list_probe_rows )',
+      'CROSS JOIN handler_source_probe handler_probe',
+      'handler_probe.hybrid_probe_rows = 0',
+      'handler_probe.fallback_probe_rows = 0',
+      'handler_probe.list_probe_rows = 0',
+    ]) {
+      expect(classicalSql).toContain(marker)
     }
 
     expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available' })

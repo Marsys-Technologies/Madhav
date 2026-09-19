@@ -324,6 +324,28 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps query_classical_texts dark when its handler source probe fails despite a valid bg_texts receipt', async () => {
+    const scu = findScu('scu.catalog.query_classical_texts')
+    const bgTexts = globalProducerReceipt(
+      'bg_texts',
+      '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+    )
+
+    const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('FROM classical_text_chunks c')) {
+        throw new Error('classical handler relation or search dependency unavailable')
+      }
+      return { rows: [bgTexts, transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      asset_receipts: [expect.objectContaining({ asset_id: 'bg_texts' })],
+      gaps: ['source-query:query-classical-texts:v1 could not execute its authenticated source query.'],
+    })
+  })
+
   it('uses the reviewed yoga-catalog source query instead of an incomplete adjacent digest', async () => {
     const scu = findScu('scu.catalog.query_yoga_catalog')
     expect(scu.availability_contracts).toEqual([expect.objectContaining({

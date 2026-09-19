@@ -364,7 +364,8 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ planet, keyword, limit, offset, page_cursor }) => {
       try {
-        if (planet) {
+        const cursorContinuation = page_cursor != null
+        if (planet && !cursorContinuation) {
           const structured = await platformQuery(
             `SELECT graha, exaltation_sign, exaltation_degree, debilitation_sign, debilitation_degree,
                     moolatrikona_sign, moolatrikona_from, moolatrikona_to, own_signs,
@@ -395,7 +396,9 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
         return dualOutput(envelope({
           source: 'classical_text_fallback',
           structured_filter_applied: false,
-          fallback_reason: planet
+          fallback_reason: cursorContinuation
+            ? 'page_cursor resumes a prior classical-text result; structured dignity lookup is bypassed.'
+            : planet
             ? `No structured bg_dignity_reference row for planet="${planet}" — degraded to classical-text hybrid search.`
             : 'No planet filter given — classical-text hybrid search over dignity corpus.',
           ...dataObj,
@@ -505,7 +508,8 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
         // free-text intent, not a lossy pseudo-WHERE filter over a static catalog.
         const pageLimit = limit ?? 30
         const pageOffset = offset ?? 0
-        const wantsStructuredCatalog = Boolean(nakshatra || lord || !keyword)
+        const cursorContinuation = page_cursor != null
+        const wantsStructuredCatalog = !cursorContinuation && Boolean(nakshatra || lord || !keyword)
         if (wantsStructuredCatalog) {
           const params: unknown[] = []
           const filters: string[] = []
@@ -594,7 +598,9 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
         return dualOutput(envelope({
           source: 'classical_text_fallback',
           structured_filter_applied: false,
-          fallback_reason: wantsStructuredCatalog
+          fallback_reason: cursorContinuation
+            ? 'page_cursor resumes a prior classical-text result; structured nakshatra lookup is bypassed.'
+            : wantsStructuredCatalog
             ? `No structured reference_nakshatra row matched (nakshatra=${nakshatra ?? 'any'}, lord=${lord ?? 'any'}) — classical-text hybrid search is returned instead.`
             : 'No structured catalog filter was requested; this is the classical-text hybrid search path for keyword intent.',
           ...dataObj,

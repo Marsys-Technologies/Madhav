@@ -66,4 +66,64 @@ describe('classical MCP cursor forwarding', () => {
     expect(calls.filter((call) => call.uri === 'marsys://tool/L0/query_classical_texts').map((call) => call.args.page_cursor))
       .toEqual(['alias.cursor', 'bridge.cursor', 'rules.cursor', 'dignity.cursor', 'nakshatra.cursor'])
   })
+
+  it('treats planet and nakshatra cursors as classical continuations even when structured rows exist', async () => {
+    const { server, handlers } = capturingServer()
+    registerP1ReferenceTools(server, principal)
+    const capabilityCalls: Array<{ uri: string; args: Record<string, unknown> }> = []
+    const databaseCalls: Array<{ sql: string; params: unknown[] }> = []
+
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>
+      if (url.includes('/api/mcp/db/query')) {
+        databaseCalls.push({
+          sql: String(body.sql),
+          params: Array.isArray(body.params) ? body.params : [],
+        })
+        return {
+          ok: true,
+          json: async () => ({ ok: true, rows: [{ graha: 'Saturn', nakshatra_id: 4, name_en: 'Rohini' }] }),
+          text: async () => '',
+        }
+      }
+
+      const call = body as { uri: string; args: Record<string, unknown> }
+      capabilityCalls.push(call)
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          content: { content: { citations: [], more_available: false, next_page_cursor: null }, is_error: false },
+        }),
+        text: async () => '',
+      }
+    }))
+
+    await handlers.get('ref_dignity_reference_get')!({
+      planet: 'saturn',
+      page_cursor: 'dignity.structured-row.cursor',
+    })
+    await handlers.get('ref_nakshatra_get')!({
+      nakshatra: 'rohini',
+      page_cursor: 'nakshatra.structured-row.cursor',
+    })
+
+    expect(databaseCalls).toEqual([])
+    expect(capabilityCalls).toEqual([
+      expect.objectContaining({
+        uri: 'marsys://tool/L0/query_classical_texts',
+        args: expect.objectContaining({
+          query_text: 'saturn dignity',
+          page_cursor: 'dignity.structured-row.cursor',
+        }),
+      }),
+      expect.objectContaining({
+        uri: 'marsys://tool/L0/query_classical_texts',
+        args: expect.objectContaining({
+          query_text: 'rohini nakshatra',
+          page_cursor: 'nakshatra.structured-row.cursor',
+        }),
+      }),
+    ])
+  })
 })
