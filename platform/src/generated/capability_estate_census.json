@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "cdf766b56a032447e1e904f0e330622ab1e641a8797d859be5ef8a734c142827",
+  "content_sha256": "8d57aec7eef2605701107116a9eb611fdf185d38cb431ca84c7829b14e93d6aa",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20792,7 +20792,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-19T01:37:18.000Z",
+  "generated_at": "2026-09-19T01:41:50.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21509,7 +21509,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts",
-            "sha256": "d9b518531442ce427176db1a22074daa5645d302dd3eb79b011701d479752dd2"
+            "sha256": "6e6a3630e63b76455b2c2ef5cb5e7065f9d3830af854d36353dc942d6c665ab0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts",
@@ -21577,7 +21577,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
-            "sha256": "4f84313824a3993bb9bbef3e625bb739c14334cc2624e5161d76ebb5e527c612"
+            "sha256": "91bbe7339b992b24bbec0b80b3b393e1cc6cdde4c185f2baf2c5aed8b3c1a80e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
@@ -21609,7 +21609,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
-            "sha256": "2a4e5d726def601399efab3788b9127e2ac25677f25ef6b9fc1a8ff5f5bd7435"
+            "sha256": "11214340331cd787c4cb8d52c546d8648f836b1901a79cfb9a08c10ab6344a98"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts",
@@ -22189,7 +22189,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "7e07db23954636d5f031e610c8972ae8706c88926eabf6457511356ca9adbab1"
+        "sha256": "cca7bfe59ec59cb9621225ec69eb37cf3dea869d29236ffd0dae62c49a42fd2e"
       },
       {
         "id": "service_effect_contracts",
@@ -22214,5 +22214,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "9019098b2b7d32f95a12f2c673a27bd2385ee2ca"
+  "source_revision": "3a3574c844d6ae882414572070fd66cb4f4dbc70"
 }

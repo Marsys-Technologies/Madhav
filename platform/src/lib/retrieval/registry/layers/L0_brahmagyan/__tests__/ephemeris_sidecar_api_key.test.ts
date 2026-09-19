@@ -164,4 +164,20 @@ describe('transit availability contract', () => {
     })
     expect(JSON.stringify(requirement)).not.toContain('ka_gochara')
   })
+
+  it.each([
+    ['../query_planet_position', 'queryPlanetPositionCapability'],
+    ['../query_aspects_at_time', 'queryAspectsAtTimeCapability'],
+    ['../query_retrograde_periods', 'queryRetrogradePeriodsCapability'],
+  ])('%s binds its semantic route to the same exact probe contract', async (module, exportName) => {
+    const mod = await import(module) as Record<string, { semantic_capabilities?: readonly { availability_contracts?: readonly { requirements: readonly unknown[] }[] }[] }>
+    const requirement = mod[exportName]!.semantic_capabilities?.[0]?.availability_contracts?.[0]?.requirements[0]
+
+    expect(requirement).toEqual(expect.objectContaining({
+      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
+      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      max_age_seconds: 900,
+    }))
+  })
 })
