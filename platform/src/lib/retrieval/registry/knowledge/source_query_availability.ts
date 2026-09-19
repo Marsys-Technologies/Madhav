@@ -3618,6 +3618,39 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101',
     ],
   },
+  {
+    contract_id: 'source-query:find-verses-about:v1',
+    descriptor_name: 'find_verses_about',
+    capability_uri: 'marsys://tool/L0/find_verses_about',
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available',
+    sql: `WITH requested_schools AS (
+            SELECT DISTINCT tradition_school
+              FROM classical_text_chunks
+             WHERE text_id = ANY(ARRAY[]::text[]) AND tradition_school IS NOT NULL
+             LIMIT 0
+          ), vector_candidates AS (
+            SELECT c.chunk_id, c.text_id, c.chapter, c.verse_ref, c.content_en,
+                   c.tradition_school
+              FROM classical_text_chunks c
+             WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> NULL::vector
+             LIMIT 0
+          ), full_text_candidates AS (
+            SELECT c.chunk_id, c.text_id, c.chapter, c.verse_ref, c.content_en,
+                   c.tradition_school
+              FROM classical_text_chunks c
+             WHERE to_tsvector('english', c.content_en) @@ plainto_tsquery('english', '')
+             ORDER BY ts_rank(to_tsvector('english', c.content_en), plainto_tsquery('english', '')) DESC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM requested_schools) AS requested_schools,
+                   (SELECT COUNT(*) FROM vector_candidates) AS vector_candidates,
+                   (SELECT COUNT(*) FROM full_text_candidates) AS full_text_candidates`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188',
+      'platform/src/lib/tools/classical_text_tools.ts:133-157',
+      'platform/src/lib/tools/classical_text_search.ts:72-193',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
