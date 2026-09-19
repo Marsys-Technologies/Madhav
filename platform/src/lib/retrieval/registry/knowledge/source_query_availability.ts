@@ -3152,6 +3152,23 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts:67-116'],
   },
+  {
+    contract_id: 'source-query:query-manifestation-grammar:v1',
+    descriptor_name: 'query_manifestation_grammar',
+    capability_uri: 'marsys://tool/L5/query_manifestation_grammar',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT origin_kind, origin_ref, channel_id, domain, fire_count, opportunity_count,
+                   channel_propensity, prior_propensity, propensity_delta, n_support,
+                   confidence_band, evidence_grade, citation_ref, grammar_formula_version, updated_at
+              FROM mimamsa_manifestation_grammar
+             WHERE chart_id = $1::uuid
+             ORDER BY channel_propensity DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_manifestation_grammar WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts:78-145'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
