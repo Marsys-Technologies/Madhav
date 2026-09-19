@@ -42,6 +42,7 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
       owner_normalized: boolean
       owner_memberships: number
       owner_can_create_public: boolean
+      owner_can_use_public: boolean
       serving_normalized: boolean
       bootstrap_disabled: boolean
       bootstrap_armed: boolean
@@ -67,6 +68,8 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
           ON r.oid=m.roleid OR r.oid=m.member WHERE r.rolname='purna_inquiry_owner') AS owner_memberships,
         coalesce((SELECT has_schema_privilege(r.oid,'public','CREATE')
           FROM pg_roles r WHERE r.rolname='purna_inquiry_owner'), false) AS owner_can_create_public,
+        coalesce((SELECT has_schema_privilege(r.oid,'public','USAGE')
+          FROM pg_roles r WHERE r.rolname='purna_inquiry_owner'), false) AS owner_can_use_public,
         EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname='amjis_inquiry_serve'
           AND r.rolcanlogin AND r.rolinherit AND NOT r.rolsuper AND NOT r.rolcreatedb
           AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolbypassrls
@@ -117,7 +120,8 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
     }
     const objectsProtected = row.tables_total === TABLES.length && row.tables_owned === TABLES.length
       && row.functions_total === FUNCTIONS.length && row.functions_owned === FUNCTIONS.length
-      && row.owner_normalized && row.owner_memberships === 0 && row.serving_normalized
+      && row.owner_normalized && row.owner_memberships === 0
+      && row.owner_can_use_public && row.serving_normalized
     if (!objectsProtected) return 'invalid'
     // A prior cleanup may have disabled/password-nulled the one-shot login and
     // removed every membership while leaving direct detector ACLs behind. That

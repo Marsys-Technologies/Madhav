@@ -34,15 +34,23 @@ vi.mock('pg', () => ({
             harness.canCreate = true
             harness.canUse = true
           }
-          if (sql.includes('REVOKE USAGE, CREATE ON SCHEMA public')) {
+          if (sql.includes('REVOKE CREATE ON SCHEMA public')) {
             harness.canCreate = false
-            harness.canUse = false
           }
-          if (sql.includes('GRANT USAGE ON SCHEMA public TO role_web_serve')) {
+          if (sql.includes('GRANT USAGE ON SCHEMA public TO purna_inquiry_owner')) {
+            harness.canUse = true
+          }
+          if (sql.includes('GRANT USAGE ON SCHEMA public TO role_web_serve, purna_inquiry_owner')) {
             harness.servingCanUse = true
+            harness.canUse = true
           }
-          if (sql.includes("has_schema_privilege('role_web_serve'")) {
-            return { rows: [{ can_create: harness.servingCanCreate, can_use: harness.servingCanUse }] }
+          if (sql.includes('AS serving_can_create')) {
+            return { rows: [{
+              serving_can_create: harness.servingCanCreate,
+              serving_can_use: harness.servingCanUse,
+              owner_can_create: harness.canCreate,
+              owner_can_use: harness.canUse,
+            }] }
           }
           if (sql.includes('AS can_create')) {
             return { rows: [{ can_create: harness.canCreate, can_use: harness.canUse }] }
@@ -56,7 +64,7 @@ vi.mock('pg', () => ({
   },
 }))
 
-const { grantPurnaServingSchemaUsage, setPurnaInquirySchemaCapability } = await import('../../scripts/purna-inquiry-schema-capability')
+const { grantPurnaRuntimeSchemaUsage, setPurnaInquirySchemaCapability } = await import('../../scripts/purna-inquiry-schema-capability')
 
 describe('Pūrṇa temporary schema capability', () => {
   beforeEach(() => {
@@ -78,13 +86,14 @@ describe('Pūrṇa temporary schema capability', () => {
     expect(harness.canUse).toBe(true)
   })
 
-  it('revokes USAGE and CREATE idempotently through the same protected owner', async () => {
+  it('revokes CREATE but preserves durable runtime USAGE through the same protected owner', async () => {
     harness.canCreate = true
     harness.canUse = true
     await expect(setPurnaInquirySchemaCapability('revoke', 'postgresql://fixture')).resolves.toBeUndefined()
-    expect(harness.queries.join('\n')).toContain('REVOKE USAGE, CREATE ON SCHEMA public FROM purna_inquiry_owner')
+    expect(harness.queries.join('\n')).toContain('REVOKE CREATE ON SCHEMA public FROM purna_inquiry_owner')
+    expect(harness.queries.join('\n')).toContain('GRANT USAGE ON SCHEMA public TO purna_inquiry_owner')
     expect(harness.canCreate).toBe(false)
-    expect(harness.canUse).toBe(false)
+    expect(harness.canUse).toBe(true)
   })
 
   it('fails closed unless the direct migrator owns the schema-owner edge', async () => {
@@ -94,13 +103,15 @@ describe('Pūrṇa temporary schema capability', () => {
     expect(harness.queries).not.toContain('COMMIT')
   })
 
-  it('grants only durable schema USAGE to the serving role', async () => {
-    await expect(grantPurnaServingSchemaUsage('postgresql://fixture')).resolves.toBeUndefined()
+  it('grants only durable schema USAGE to the serving role and protected definer owner', async () => {
+    await expect(grantPurnaRuntimeSchemaUsage('postgresql://fixture')).resolves.toBeUndefined()
     const joined = harness.queries.join('\n')
     expect(joined).toContain('SET LOCAL ROLE data_plane_schema_owner')
-    expect(joined).toContain('GRANT USAGE ON SCHEMA public TO role_web_serve')
-    expect(joined).not.toContain('GRANT USAGE, CREATE ON SCHEMA public TO role_web_serve')
+    expect(joined).toContain('GRANT USAGE ON SCHEMA public TO role_web_serve, purna_inquiry_owner')
+    expect(joined).not.toContain('GRANT USAGE, CREATE ON SCHEMA public')
     expect(harness.servingCanUse).toBe(true)
     expect(harness.servingCanCreate).toBe(false)
+    expect(harness.canUse).toBe(true)
+    expect(harness.canCreate).toBe(false)
   })
 })
