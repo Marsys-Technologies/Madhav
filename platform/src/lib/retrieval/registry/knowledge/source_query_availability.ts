@@ -3438,6 +3438,33 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY composite_quality DESC NULLS LAST LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:76-113'],
   },
+  {
+    contract_id: 'source-query:query-predictive-anchors:v1',
+    descriptor_name: 'query_predictive_anchors',
+    capability_uri: 'marsys://tool/L4/query_predictive_anchors',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT anchor_id, domain, event_type, direction, horizon_tier, anchor_source,
+                   signal_id, convergence_id, discovery_id, bhavishya_id,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end, magnitude,
+                   magnitude_basis, confidence_low, confidence_high, confidence_basis,
+                   karmic_frame, karmic_note, malleability, dasha_consensus_count,
+                   ayanamsha_robustness, falsifier, source_citation, posterior,
+                   lift_vector_jsonb
+              FROM phala_anchors
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR domain = NULL::text)
+               AND (NULL::text IS NULL OR event_type = NULL::text)
+               AND (NULL::text IS NULL OR direction = NULL::text)
+               AND (NULL::text IS NULL OR horizon_tier = NULL::text)
+             ORDER BY magnitude, peak_date LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::int AS n FROM phala_anchors WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.n AS chart_total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:103-185'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
