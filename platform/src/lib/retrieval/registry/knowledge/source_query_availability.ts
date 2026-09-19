@@ -2403,6 +2403,47 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80',
     ],
   },
+  {
+    contract_id: 'source-query:query-question-lenses:v1',
+    descriptor_name: 'query_question_lenses',
+    capability_uri: 'marsys://tool/L2/query_question_lenses',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT lens_id, ayanamsha_id, question_type,
+                   template_element_ids_jsonb, wildcard_element_ids_jsonb,
+                   points_only_assertion, verification_pass_status,
+                   lens_template_version, lens_formula_version, citation_ref,
+                   COALESCE(
+                     NULLIF(all_relevant_ranked_jsonb->>'total_count','')::int,
+                     CASE WHEN jsonb_typeof(all_relevant_ranked_jsonb->'ranked_signals') = 'array'
+                          THEN jsonb_array_length(all_relevant_ranked_jsonb->'ranked_signals') END,
+                     CASE WHEN jsonb_typeof(all_relevant_ranked_jsonb) = 'array'
+                          THEN jsonb_array_length(all_relevant_ranked_jsonb) END,
+                     0
+                   ) AS ranked_signal_count,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_question_lenses
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_type = NULL::text)
+             ORDER BY question_type, ayanamsha_id
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_question_lenses
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_type = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts:84-117',
+      'platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql:1-80',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
