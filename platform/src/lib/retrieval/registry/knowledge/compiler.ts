@@ -242,6 +242,42 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
   }
 }
 
+/**
+ * Some descriptors expose availability metadata to direct registry consumers while their
+ * planner-facing semantics remain governed by the exhaustive descriptor editorial review.
+ * `editorial: false` is the explicit compatibility marker for that shape: only availability
+ * fields are admitted, and the compiler still derives the SCU's semantic/editorial content.
+ */
+function declarationsFor(cap: CapabilityDescriptor): readonly SemanticCapabilityDeclaration[] {
+  const declarations = cap.semantic_capabilities ?? []
+  if (declarations.length === 0) return [deriveDeclaration(cap)]
+
+  const availabilityOnly = declarations.filter((declaration) => declaration.editorial === false)
+  if (availabilityOnly.length === 0) return declarations
+  if (availabilityOnly.length !== 1 || declarations.length !== 1) {
+    throw new Error(`MIXED_AVAILABILITY_ONLY_SEMANTICS:${cap.name}`)
+  }
+
+  const compatibility = availabilityOnly[0]!
+  const reviewed = deriveDeclaration(cap)
+  if (compatibility.scu_id !== reviewed.scu_id || compatibility.primary_binding_uri !== cap.uri) {
+    throw new Error(`INVALID_AVAILABILITY_ONLY_SEMANTICS:${cap.name}`)
+  }
+  if ((compatibility.edges?.length ?? 0) > 0
+    || (compatibility.additional_bindings?.length ?? 0) > 0
+    || compatibility.primary_binding_details) {
+    throw new Error(`AVAILABILITY_ONLY_SEMANTICS_EXCEEDED:${cap.name}`)
+  }
+
+  return [{
+    ...reviewed,
+    known_gaps: [...new Set([...reviewed.known_gaps, ...compatibility.known_gaps])],
+    ...(compatibility.producer_output_claims ? { producer_output_claims: compatibility.producer_output_claims } : {}),
+    ...(compatibility.availability_contracts ? { availability_contracts: compatibility.availability_contracts } : {}),
+    ...(compatibility.availability_dispositions ? { availability_dispositions: compatibility.availability_dispositions } : {}),
+  }]
+}
+
 function conceptType(concept: string, cap: CapabilityDescriptor): SemanticConceptType {
   if (concept === cap.name) return 'capability'
   if (concept === cap.archetype) return 'retrieval_archetype'
@@ -504,13 +540,13 @@ export function compileCapabilityKnowledge(
   }
   const addressable = catalog.filter((cap) => exclusionReason(cap) === null)
   const scusBase = addressable.flatMap((cap) => {
-    const declarations = cap.semantic_capabilities?.length ? cap.semantic_capabilities : [deriveDeclaration(cap)]
+    const declarations = declarationsFor(cap)
     return declarations.map((declaration) => normalizeDeclaration(declaration, cap))
   }).sort((a, b) => a.scu_id.localeCompare(b.scu_id))
 
   const derivedIdToActual = new Map(addressable.map((cap) => [
     `scu.catalog.${slug(cap.name)}`,
-    (cap.semantic_capabilities?.[0] ?? deriveDeclaration(cap)).scu_id,
+    declarationsFor(cap)[0]!.scu_id,
   ]))
   const edges: SemanticCapabilityEdge[] = scusBase.flatMap((scu) => (scu.edges ?? []).map((edge) => ({
     from_scu_id: scu.scu_id,

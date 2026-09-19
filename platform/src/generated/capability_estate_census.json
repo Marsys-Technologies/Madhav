@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "2069b9f0e990710c1af39371434c82ca1065683df1b8a9c1cdecc1adfd148e7f",
+  "content_sha256": "ae68c20cc48dc324dcf3daec7e2b76ad700f18c54847aef49ab70c0dde383c1f",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -200,6 +200,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -273,6 +274,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -1017,6 +1019,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -1195,6 +1198,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -3549,6 +3553,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -3608,6 +3613,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts"
         ],
         "output_contract": null,
@@ -3652,6 +3658,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts"
         ],
         "output_contract": null,
@@ -4139,6 +4146,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts"
         ],
         "output_contract": null,
@@ -4222,6 +4230,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts"
         ],
         "output_contract": null,
@@ -4327,6 +4336,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
@@ -4378,6 +4388,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts"
         ],
         "output_contract": null,
@@ -4556,6 +4567,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
           "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
@@ -4641,6 +4653,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts"
         ],
         "output_contract": null,
@@ -4752,6 +4765,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts"
         ],
@@ -4809,6 +4823,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -4882,6 +4897,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts"
         ],
@@ -4950,6 +4966,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -5036,6 +5053,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
@@ -5098,6 +5116,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts"
         ],
         "output_contract": null,
@@ -5156,6 +5175,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts"
         ],
@@ -5290,6 +5310,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -5448,6 +5469,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts"
         ],
@@ -5522,6 +5544,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -5639,6 +5662,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts"
         ],
         "output_contract": null,
@@ -5701,6 +5725,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -5782,6 +5807,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts"
         ],
         "output_contract": null,
@@ -5860,6 +5886,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
@@ -5929,6 +5956,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6180,6 +6208,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6225,6 +6254,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6276,6 +6306,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
           "platform/src/lib/retrieval/synthesis/surface_gateway.ts"
@@ -6433,6 +6464,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6662,6 +6694,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6709,6 +6742,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -6767,6 +6801,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6846,6 +6881,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -6902,6 +6938,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts"
         ],
         "output_contract": null,
@@ -6956,6 +6993,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts"
         ],
         "output_contract": null,
@@ -7006,6 +7044,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts"
         ],
         "output_contract": null,
@@ -7052,6 +7091,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts"
         ],
         "output_contract": null,
@@ -7110,6 +7150,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -7161,6 +7202,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -7258,6 +7300,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
@@ -7332,6 +7375,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts"
         ],
         "output_contract": null,
@@ -7402,6 +7446,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/catalog.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
           "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -7542,6 +7587,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
@@ -7611,6 +7657,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -7761,6 +7808,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -7938,6 +7986,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -7989,6 +8038,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts"
         ],
         "output_contract": null,
@@ -8041,6 +8091,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -8107,6 +8158,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -8150,6 +8202,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -8210,6 +8263,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts"
         ],
         "output_contract": null,
@@ -8290,6 +8344,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -8361,6 +8416,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts"
         ],
         "output_contract": null,
@@ -8411,6 +8467,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -8468,6 +8525,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -8528,6 +8586,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts"
         ],
         "output_contract": null,
@@ -8598,6 +8657,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts",
@@ -8671,6 +8731,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -8723,6 +8784,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts"
         ],
         "output_contract": null,
@@ -8793,6 +8855,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts"
         ],
         "output_contract": null,
@@ -8831,6 +8894,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -8876,6 +8940,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -8913,6 +8978,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -8965,6 +9031,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
@@ -9117,6 +9184,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts"
@@ -9173,6 +9241,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts"
         ],
         "output_contract": null,
@@ -9225,6 +9294,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -9284,6 +9354,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -9328,6 +9399,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -9637,6 +9709,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts"
         ],
         "output_contract": null,
@@ -9686,6 +9759,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts",
           "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
@@ -9748,6 +9822,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts"
         ],
         "output_contract": null,
@@ -9807,6 +9882,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts"
         ],
         "output_contract": null,
@@ -9861,6 +9937,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts"
         ],
         "output_contract": null,
@@ -9912,6 +9989,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts"
         ],
         "output_contract": null,
@@ -9962,6 +10040,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -10013,6 +10092,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts"
         ],
         "output_contract": null,
@@ -10071,6 +10151,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts"
         ],
         "output_contract": null,
@@ -10175,6 +10256,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts",
           "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts"
         ],
@@ -20710,7 +20792,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-18T23:26:16.000Z",
+  "generated_at": "2026-09-19T03:08:08.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21335,7 +21417,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "a64d7a1171d3a6b751fd8913019abced4109e1a4343cb64ca57975f8d144328b"
+            "sha256": "b4de739d83b28cf1ef0f8fa7625331fe90152bb753c905f1d7953c2c5c2ea98c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
@@ -21351,7 +21433,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "8a0a137410069ab7ed8dc56af0e7e1630ccb0e68f62fe8a3df0fed4b9bca4537"
+            "sha256": "6aa694b2ebbfb2b68be83884d8989f1e96cac3f35cd46caa36aa674172ebca72"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
@@ -21379,7 +21461,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "5a87becb3fe89626af06540b5326667559a2569208fdd2a19803fe34b60bdc5d"
+            "sha256": "f515e55fbae675d7fddb025566de555ab5f7658d03598d108136b0161f06ffb6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21403,15 +21485,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts",
-            "sha256": "6f533433f0e450592956abfc405719c57a0c9cf6231a1a47643276d3c1902e20"
+            "sha256": "d1ae4f3f31c10444e2e90b477c3b05bc85eff902598e6221002d2289ad6e8d50"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts",
-            "sha256": "3d44ac30e7ad947c1d47b7b5361eb92b33b1d8b57d17c41bf054b18800b8cddb"
+            "sha256": "d2cd0746b4f3c6ddb0f792a0909d2ba027f228cbccbca65427f9600565d6556e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
-            "sha256": "f42a1a254f88e6088c4aaf3cd8c94c0683ef6fa47f816aa5c45cf7e5b1ff9d12"
+            "sha256": "bd69952bd2318a83ca240f106890d1a0678922f3755a08bc08d0e2d142ca77ae"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
@@ -21427,7 +21509,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts",
-            "sha256": "d9b518531442ce427176db1a22074daa5645d302dd3eb79b011701d479752dd2"
+            "sha256": "b4ac2c7fefb52b4a1b1f50da8951e5ef3eb39f7219264826d646e180c0830363"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts",
@@ -21451,7 +21533,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts",
-            "sha256": "fac2379d3bc108c7899b75ebb5eeee1b76422eee6ada735feb031a1a9d9a57d5"
+            "sha256": "ca26c5c2d73d5d3aef175f5373feb99343498f43a7b22c3f88e16d30c4015092"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
@@ -21495,11 +21577,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
-            "sha256": "4f84313824a3993bb9bbef3e625bb739c14334cc2624e5161d76ebb5e527c612"
+            "sha256": "e4d37c87b40c582f90ebf6667a4143cd530905cc88cd283820e058dccdb70993"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
-            "sha256": "86f7284ed96fc4dc93dcc65352672add12c6ccd72b583a6fc87d6c8c6e16fec1"
+            "sha256": "a22c6c60478d597799d4c62084f070fcb73ee95dfe1775f87f24d94e2c9ee3f2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
@@ -21527,7 +21609,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
-            "sha256": "2a4e5d726def601399efab3788b9127e2ac25677f25ef6b9fc1a8ff5f5bd7435"
+            "sha256": "0c349e4e98b931777ff917a633f6e11a6bf9cb4601ea47de367189153315e5c0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts",
@@ -21855,7 +21937,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
-            "sha256": "67a6bdac7379039109112c1f2cf9d038da3c93b22983118625a91ecbcf1702f5"
+            "sha256": "1987d774c001bae2a1c50a2c0325f618c6bdfec56abc68591527d31f1d2b1895"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
@@ -22107,7 +22189,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "66262ffe049857e7fa2cb997746eaf1e65984cb239cdb0d154fb5de8006e710c"
+        "sha256": "5362e24b2857fc719e1a416a80bc2593299018e8d55bb228c783646fbd44d09d"
       },
       {
         "id": "service_effect_contracts",
@@ -22132,5 +22214,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "ca2608bf82fbf963ed0cc1dcb598c5197523b5b8"
+  "source_revision": "16b8bfdf248adabea39329167a1c28fabccdb384"
 }

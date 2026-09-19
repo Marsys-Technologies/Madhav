@@ -90,6 +90,19 @@ export const queryRetrogradePeriodsCapability: ToolCapability = {
     },
     result_max_kb: 16,
   },
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.query_retrograde_periods', version: 1,
+    label: 'Retrograde-period evidence', description: 'Compute station events from the authenticated ephemeris service.',
+    kind: 'temporal', domains: ['timing'], concepts: ['ephemeris', 'retrograde'], intents: ['sequence', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
+    inputs: ['planet', 'start_date', 'end_date'], outputs: ['stations', 'station_count', 'retrograde_days'], primary_binding_uri: 'marsys://tool/L0/query_retrograde_periods',
+    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.',
+    entitlement: 'native', safety_notes: ['Read-only computed evidence.'], known_gaps: [],
+    availability_contracts: [{ binding_id: 'registry:marsys://tool/L0/query_retrograde_periods', requirements: [{
+      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine', endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
+      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
+      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
+    }] }], editorial: false,
+  }],
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const planet = args['planet'] as string
     const start_date = args['start_date'] as string

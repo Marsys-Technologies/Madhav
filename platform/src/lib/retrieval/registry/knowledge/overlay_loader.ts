@@ -411,6 +411,10 @@ export async function probeSourceQueryAvailabilityContract(
     ? []
     : contract.parameter_binding === 'chart_and_active_build'
       ? [chartId, activeBuildId]
+      // Global addresses such as concept_locate can still make an explicitly
+      // documented chart-backed fallback query.  The public capability remains
+      // global; the probe deliberately exercises that fallback with the selected
+      // chart instead of silently certifying only its in-memory path.
       : [chartId]
   try {
     // Query success is the availability signal. Zero rows are intentionally a

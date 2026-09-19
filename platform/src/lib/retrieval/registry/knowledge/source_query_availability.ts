@@ -3,6 +3,7 @@ import { stableFingerprint } from './stable'
 
 export type SourceQueryParameterBinding =
   | 'global'
+  | 'global_with_chart_fallback'
   | 'chart_and_active_build'
   | 'chart_with_active_build_context'
 export type SourceQueryEmptySemantics = 'query_success_is_available'
@@ -39,7 +40,10 @@ export function sourceQueryParameterBindingMatchesScope(
   scope: SourceQueryAvailabilityContract['scope'],
   parameterBinding: SourceQueryParameterBinding,
 ): boolean {
-  return (scope === 'global' && parameterBinding === 'global')
+  return (scope === 'global' && (
+    parameterBinding === 'global'
+    || parameterBinding === 'global_with_chart_fallback'
+  ))
     || (scope === 'chart' && (
       parameterBinding === 'chart_and_active_build'
       || parameterBinding === 'chart_with_active_build_context'
@@ -1376,6 +1380,2410 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:81-112',
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-kp-cusps:v1',
+    descriptor_name: 'get_kp_cusps',
+    capability_uri: 'marsys://tool/L1/get_kp_cusps',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_subject, fact_key,
+                 fact_value_text, fact_value_num, fact_value_jsonb
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'krishnamurti'
+             AND fact_category = ANY(ARRAY[
+               'cusp_kp_lords', 'kp_cuspal_significators', 'bhava_cusps',
+               'kp_ruling_planets_natal'
+             ]::text[])
+           ORDER BY fact_category, fact_subject, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-nakshatra:v1',
+    descriptor_name: 'get_nakshatra',
+    capability_uri: 'marsys://tool/L1/get_nakshatra',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'graha_nakshatra_join', 'graha_pada_join', 'graha_kp_lords',
+               'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor',
+               'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity',
+               'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha',
+               'kp_house_significators', 'kp_planet_significations'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-sensitive-points:v1',
+    descriptor_name: 'get_sensitive_points',
+    capability_uri: 'marsys://tool/L1/get_sensitive_points',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, formula_id, formula_provenance_text,
+                 verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
+               'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta',
+               'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva',
+               'esoteric_point_sphuta_fertility', 'esoteric_point_sri_yantra_position',
+               'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta',
+               'esoteric_point_vishnu', 'esoteric_point_yogi', 'esoteric_point_yogi_system',
+               'bhrigu_nadi_point', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint',
+               'saham_position', 'saturn_derived_point', 'nakshatra_pada_sensitive'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key, formula_id
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-sade-sati:v1',
+    descriptor_name: 'get_sade_sati',
+    capability_uri: 'marsys://tool/L1/get_sade_sati',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',
+               'sade_sati_modifier_overlay', 'sade_sati_cancellation_check',
+               'sade_sati_concurrent_dasha_overlay', 'sade_sati_downstream_cross_reference',
+               'sade_sati_saturn_retrograde_subset', 'janma_shani_period',
+               'anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period',
+               'dhaiya_period', 'vishakha_shani_period', 'kantaka_shani_period'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, fact_id
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-tajik:v1',
+    descriptor_name: 'get_tajik',
+    capability_uri: 'marsys://tool/L1/get_tajik',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH chart_facts_probe AS (
+            SELECT fact_id
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific'
+               ]::text[])
+             LIMIT 0
+          ), varsha_probe AS (
+            SELECT chart_id
+              FROM l1_tajik_varsha_year_lords
+             WHERE chart_id = $1::uuid
+             LIMIT 0
+          ), birth_date_probe AS (
+            SELECT id
+              FROM charts
+             WHERE id = $1::uuid
+             LIMIT 0
+          )
+          SELECT 1
+            FROM chart_facts_probe
+            CROSS JOIN varsha_probe
+            CROSS JOIN birth_date_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-chart-header:v1',
+    descriptor_name: 'get_chart_header',
+    capability_uri: 'marsys://tool/L1/get_chart_header',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH name_probe AS (
+            SELECT name
+              FROM charts
+             WHERE chart_id = $1::uuid OR id = $1::uuid
+             LIMIT 0
+          ), position_probe AS (
+            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND fact_category = 'graha_position'
+               AND fact_subject IN ('LAGNA', 'MOON', 'SUN')
+               AND fact_key IN ('sign', 'longitude_sidereal')
+             LIMIT 0
+          ), dasha_probe AS (
+            SELECT lord_graha, level_n
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND system_id = 'vimshottari'
+               AND level_n IN (1, 2)
+               AND start_date <= CURRENT_DATE
+               AND end_date >= CURRENT_DATE
+             ORDER BY level_n
+             LIMIT 0
+          )
+          SELECT 1
+            FROM name_probe
+            CROSS JOIN position_probe
+            CROSS JOIN dasha_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/chart_header.ts:72-94',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55',
+      'platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-graha-yuddha:v1',
+    descriptor_name: 'get_graha_yuddha',
+    capability_uri: 'marsys://tool/L1/get_graha_yuddha',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH floor_facts_probe AS (
+            SELECT fact_id, fact_subject, fact_key, ayanamsha_id, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = 'graha_yuddha'
+             ORDER BY ayanamsha_id, fact_subject, fact_key
+             LIMIT 0
+          ), birth_date_probe AS (
+            SELECT birth_date
+              FROM charts
+             WHERE id = $1::uuid
+             LIMIT 0
+          ), latitude_probe AS (
+            SELECT e.body, e.latitude
+              FROM charts c
+              JOIN ephemeris_daily e ON e.date = c.birth_date
+             WHERE c.id = $1::uuid
+               AND e.ayanamsha_id = 'tropical'
+             LIMIT 0
+          )
+          SELECT 1
+            FROM floor_facts_probe
+            CROSS JOIN birth_date_probe
+            CROSS JOIN latitude_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:165-218',
+      'platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/migrations/ws2_l0_ephemeris.sql:18-45',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-panchanga:v1',
+    descriptor_name: 'get_panchanga',
+    capability_uri: 'marsys://tool/L1/get_panchanga',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
+                 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
+                 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam',
+                 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca',
+                 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi',
+                 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya',
+                 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya',
+                 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics',
+                 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara',
+                 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati',
+                 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga'
+               ]::text[])
+             ORDER BY fact_category, ayanamsha_id, fact_key
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
+                 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
+                 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam',
+                 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca',
+                 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi',
+                 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya',
+                 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya',
+                 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics',
+                 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara',
+                 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati',
+                 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga'
+               ]::text[])
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-dasha-lord-capability:v1',
+    descriptor_name: 'get_dasha_lord_capability',
+    capability_uri: 'marsys://tool/L1/get_dasha_lord_capability',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH dasha_lords_probe AS (
+            SELECT DISTINCT lord_graha
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND system_id = 'vimshottari'
+               AND level_n = 1
+             LIMIT 0
+          ), shadbala_probe AS (
+            SELECT fact_id, fact_subject, fact_value_num AS rupa
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND fact_category = 'graha_shadbala_total'
+               AND fact_key = 'rupa'
+             LIMIT 0
+          ), valence_probe AS (
+            SELECT subject, value_jsonb, constituent_fact_ids
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND varga = 'D1'
+               AND vichara_family = 'valence_pass'
+             LIMIT 0
+          ), ratification_probe AS (
+            SELECT subject, ratification_factor, domain
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND vichara_family = 'varga_ratification'
+               AND ratification_factor IS NOT NULL
+             LIMIT 0
+          )
+          SELECT 1
+            FROM dasha_lords_probe
+            CROSS JOIN shadbala_probe
+            CROSS JOIN valence_probe
+            CROSS JOIN ratification_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68',
+      'platform/migrations/435_ga_vichara.sql:44-83',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-medical-indications:v1',
+    descriptor_name: 'get_medical_indications',
+    capability_uri: 'marsys://tool/L1/get_medical_indications',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, graha, ayanamsha_id, natal_sign, natal_nakshatra, indication_strength,
+                   dosha_aggravated, organ_watch, body_part_watch, nakshatra_body_part,
+                   indication_tier, not_diagnosis, classical_citation
+              FROM ga_medical
+             WHERE chart_id = $1::uuid
+             ORDER BY graha, ayanamsha_id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_medical
+             WHERE chart_id = $1::uuid
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:76-95',
+      'platform/migrations/279_ga_medical.sql:21-55',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-vastu-directions:v1',
+    descriptor_name: 'get_vastu_directions',
+    capability_uri: 'marsys://tool/L1/get_vastu_directions',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT m.id, m.graha, m.ayanamsha_id, m.direction, m.condition_score, m.dignity_d1,
+                   m.direction_impact, m.indication_tier, m.classical_citation,
+                   COALESCE(r.direction_remedies, '[]'::jsonb) AS direction_remedies
+              FROM ga_vastu_planet_direction_map m
+              LEFT JOIN LATERAL (
+                SELECT jsonb_agg(
+                         jsonb_build_object(
+                           'remedy_type', remedy_type,
+                           'remedy_description', remedy_description,
+                           'classical_citation', classical_citation
+                         ) ORDER BY remedy_type
+                       ) AS direction_remedies
+                  FROM bg_vastu_direction_remedials
+                 WHERE direction = m.direction
+              ) r ON true
+             WHERE m.chart_id = $1::uuid
+             ORDER BY m.graha, m.ayanamsha_id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_vastu_planet_direction_map m
+             WHERE m.chart_id = $1::uuid
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts:91-117',
+      'platform/migrations/284_bg_vastu_directions.sql:37-66',
+      'platform/migrations/286_ga_vastu_planet_direction_map.sql:8-38',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-transit-anchors:v1',
+    descriptor_name: 'get_transit_anchors',
+    capability_uri: 'marsys://tool/L1/get_transit_anchors',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH anchors_probe AS (
+            SELECT id, chart_id, ayanamsha_id, graha,
+                   natal_sign, natal_house_from_moon, natal_degree_absolute, computed_at
+              FROM ga_transit_anchors
+             WHERE chart_id = $1::uuid
+             ORDER BY ayanamsha_id, graha
+             LIMIT 0
+          ), constituent_facts_probe AS (
+            SELECT ayanamsha_id, fact_subject, fact_id
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY['graha_position', 'graha_sign_attributes']::text[])
+               AND fact_key = ANY(ARRAY['sign', 'longitude_sidereal', 'nakshatra']::text[])
+             LIMIT 0
+          )
+          SELECT 1
+            FROM anchors_probe
+            CROSS JOIN constituent_facts_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109',
+      'platform/migrations/267_ga_transit_anchors.sql:20-49',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:chart-snapshot:v1',
+    descriptor_name: 'chart_snapshot',
+    capability_uri: 'marsys://tool/L1/chart_snapshot',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT DISTINCT ON (varga, graha) varga, graha, sign, degree_in_sign, id
+            FROM chart_divisionals
+           WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
+             AND fact_category = 'varga_position'
+             AND varga = ANY(ARRAY['D1']::text[])
+             AND graha <> 'ALL'
+           ORDER BY varga, graha
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts:205-215',
+      'platform/migrations/002_ganita_divisionals.sql:31-65',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-vichara:v1',
+    descriptor_name: 'get_vichara',
+    capability_uri: 'marsys://tool/L1/get_vichara',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, chart_id, ayanamsha_id, build_id, vichara_family, subject, domain, varga_id,
+                   value_num, value_text, value_jsonb, constituent_fact_ids, formula_version,
+                   source_citation, computed_at
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+             ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+          ), family_counts_probe AS (
+            SELECT vichara_family, COUNT(*)::text AS n
+              FROM chart_vichara
+             WHERE chart_id = $1::uuid
+             GROUP BY vichara_family
+             LIMIT 0
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN handler_count
+            CROSS JOIN family_counts_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:151-176',
+      'platform/migrations/435_ga_vichara.sql:44-83',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-structural:v1',
+    descriptor_name: 'get_structural',
+    capability_uri: 'marsys://tool/L1/get_structural',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
+               'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy',
+               'graha_centrality', 'chart_cluster', 'chart_center_of_gravity', 'significator_path',
+               'aspect_received_by_special_point', 'nway_config_per_varga', 'graha_yuddha_per_varga',
+               'kendradhipati_dosha', 'bhava_significance_link', 'net_argala_per_varga', 'panchadha_maitri',
+               'tara_bala'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-yoga-dosha:v1',
+    descriptor_name: 'get_yoga_dosha',
+    capability_uri: 'marsys://tool/L1/get_yoga_dosha',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag'
+               ]::text[])
+               AND NOT (fact_category = 'dosha_label' AND (fact_value_jsonb->>'fire_reason') = 'requires_pass')
+             ORDER BY fact_category, ayanamsha_id, fact_key
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = ANY(ARRAY[
+                 'yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag'
+               ]::text[])
+          ), firings_probe AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_yoga_firings
+             WHERE chart_id = $1::uuid
+               AND fired = true
+          ), kala_sarpa_probe AS (
+            SELECT fact_id, ayanamsha_id, fact_value_jsonb, fact_value_text,
+                   verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = 'kala_sarpa_per_varga'
+               AND fact_key = 'ks_detection'
+             ORDER BY ayanamsha_id, (fact_value_jsonb->>'varga')
+             LIMIT 0
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page
+            CROSS JOIN firings_probe
+            CROSS JOIN kala_sarpa_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218',
+      'platform/migrations/240_ga_yoga.sql:4-48',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-ashtakavarga:v1',
+    descriptor_name: 'get_ashtakavarga',
+    capability_uri: 'marsys://tool/L1/get_ashtakavarga',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = ANY(ARRAY[
+               'ashtakavarga_bindu', 'ashtakavarga_anubindu', 'ashtakavarga_bindu_sign',
+               'ashtakavarga_pinda_bhinna', 'ashtakavarga_pinda_sarva', 'ashtakavarga_pinda_sodhita',
+               'ashtakavarga_pinda_raasi', 'ashtakavarga_trikona_shodhana',
+               'ashtakavarga_ekadhipathya_shodhana', 'ashtakavarga_kakshya_boundary',
+               'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-divisionals:v1',
+    descriptor_name: 'get_divisionals',
+    capability_uri: 'marsys://tool/L1/get_divisionals',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT * FROM chart_divisionals
+             WHERE chart_id = $1::uuid
+             ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key
+             LIMIT 0
+          ), own_varga_lagna_probe AS (
+            SELECT varga, ayanamsha_id, sign
+              FROM chart_divisionals
+             WHERE chart_id = $1::uuid
+               AND graha = 'Lagna'
+               AND formula_provenance_text = 'whole_sign'
+             LIMIT 0
+          )
+          SELECT 1 FROM handler_page CROSS JOIN own_varga_lagna_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:80-101',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:112-120',
+      'platform/migrations/002_ganita_divisionals.sql:31-65',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-positions:v1',
+    descriptor_name: 'get_positions',
+    capability_uri: 'marsys://tool/L1/get_positions',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND fact_category = 'graha_position'
+           ORDER BY ayanamsha_id,
+                    CASE fact_category WHEN 'graha_position' THEN 0 WHEN 'upagraha_position' THEN 1
+                                       WHEN 'aprakasha_position' THEN 2 ELSE 3 END,
+                    fact_category, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-yoga-firings:v1',
+    descriptor_name: 'get_yoga_firings',
+    capability_uri: 'marsys://tool/L1/get_yoga_firings',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength,
+                   c.classical_citations AS catalog_classical_citations
+              FROM ga_yoga_firings f
+              LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
+             WHERE f.chart_id = $1::uuid
+               AND f.fired = true
+             ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, f.ayanamsha_id, f.id
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_yoga_firings f
+             WHERE f.chart_id = $1::uuid
+               AND f.fired = true
+          )
+          SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:171-179',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200-213',
+      'platform/migrations/240_ga_yoga.sql:4-48',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-dashas:v1',
+    descriptor_name: 'get_dashas',
+    capability_uri: 'marsys://tool/L1/get_dashas',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH eligible_receipt AS (
+            SELECT receipt.build_id::text AS build_id
+              FROM asset_provenance_receipts receipt
+              JOIN asset_freshness freshness
+                ON freshness.asset_id = receipt.asset_id
+               AND freshness.scope_key = receipt.scope_key
+               AND freshness.partition_key = receipt.partition_key
+               AND freshness.receipt_version = receipt.receipt_version
+              JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+             WHERE receipt.asset_id = 'ga_dashas'
+               AND receipt.chart_id = $1::uuid
+               AND receipt.receipt_state = 'proven'
+               AND receipt.output_digest_spec_sha256 = '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14'
+               AND freshness.freshness_state = 'fresh'
+               AND receipt_run.chart_id = $1::uuid
+               AND receipt_run.state = 'completed'
+             ORDER BY receipt.observed_at DESC
+             LIMIT 1
+          ), handler_page AS (
+            SELECT d.dasha_row_id, d.system_id, d.ayanamsha_id, d.start_date, d.level_n, d.start_iso
+              FROM chart_dashas d
+              JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
+             WHERE d.chart_id = $1::uuid
+               AND d.ayanamsha_id = 'lahiri_chitrapaksha'
+               AND d.system_id = 'vimshottari'
+             ORDER BY d.system_id, d.ayanamsha_id, d.start_date, d.level_n, d.start_iso, d.dasha_row_id
+             LIMIT 0
+          ), level_probe AS (
+            SELECT MAX(level_n)::int AS max_level
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+             LIMIT 0
+          )
+          SELECT 1 FROM handler_page CROSS JOIN level_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:600-724',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:946-962',
+      'platform/migrations/003_ganita_dashas.sql:1-80',
+    ],
+  },
+  {
+    contract_id: 'source-query:concept-locate:v1',
+    descriptor_name: 'concept_locate',
+    capability_uri: 'marsys://tool/L1/concept_locate',
+    scope: 'global',
+    parameter_binding: 'global_with_chart_fallback',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT DISTINCT fact_category
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+           ORDER BY fact_category
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:chart-facts-query:v1',
+    descriptor_name: 'chart_facts_query',
+    capability_uri: 'marsys://tool/L1/chart_facts_query',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH fact_page_probe AS (
+            SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
+             ORDER BY fact_category, fact_subject, fact_key
+             LIMIT 0
+          ), divisional_page_probe AS (
+            SELECT id, chart_id, ayanamsha_id, varga, graha, sign, house, fact_category, fact_key
+              FROM chart_divisionals
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY varga, graha, fact_category, fact_key
+             LIMIT 0
+          )
+          SELECT 1 FROM fact_page_probe CROSS JOIN divisional_page_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+      'platform/migrations/002_ganita_divisionals.sql:31-65',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-database-schema:v1',
+    descriptor_name: 'get_database_schema',
+    capability_uri: 'marsys://tool/L1/get_database_schema',
+    scope: 'global',
+    parameter_binding: 'global_with_chart_fallback',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_category, fact_subject,
+                 array_agg(DISTINCT fact_key ORDER BY fact_key) AS fact_keys,
+                 count(*)::text AS row_count,
+                 (array_agg(fact_id ORDER BY fact_id))[1:3] AS sample_fact_ids
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+           GROUP BY fact_category, fact_subject
+           ORDER BY fact_category, fact_subject
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:get-prashna-lagna:v1',
+    descriptor_name: 'get_prashna_lagna',
+    capability_uri: 'marsys://tool/L1/get_prashna_lagna',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT chart_id, ayanamsha_id, lagna_method, lagna_rashi, lagna_degree, kp_sub_lord,
+                   is_primary, classical_citation
+              FROM ga_prashna_lagna
+             WHERE chart_id = $1::uuid
+             ORDER BY ayanamsha_id, lagna_method
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_prashna_lagna
+             WHERE chart_id = $1::uuid
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts:70-95',
+      'platform/migrations/289_ga_prashna_lagna.sql',
+    ],
+  },
+  {
+    contract_id: 'source-query:list-remedies-by-category:v1',
+    descriptor_name: 'list_remedies_by_category',
+    capability_uri: 'marsys://tool/L0/list_remedies_by_category',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT remedy_id, planet, domain, category, deity, prescription_text, mantra_text,
+                 mantra_sanskrit, cost_tier, source_canonical_id, classical_attestation_text
+            FROM brahma_remedy_corpus
+           WHERE is_active = TRUE
+             AND category = NULL::text
+           ORDER BY planet, remedy_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieve/remedy_tools.ts:180-200',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+    ],
+  },
+  {
+    contract_id: 'source-query:asset-registry-all:v1',
+    descriptor_name: 'asset_registry_all',
+    capability_uri: 'marsys://resource/asset-registry/all',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT asset_id, layer, sanskrit_name, english_name, target_table, target_floor,
+                 scope, is_active, asset_type, catalog_status, has_writer,
+                 expected_volume_formula, count_sql, depends_on
+            FROM asset_registry
+           ORDER BY layer, asset_id
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts:145-162'],
+  },
+  {
+    contract_id: 'source-query:asset-registry-l0:v1',
+    descriptor_name: 'asset_registry_l0',
+    capability_uri: 'marsys://resource/asset-registry/L0',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT ar.asset_id, ar.layer, ar.sanskrit_name, ar.english_name, ar.target_table,
+                 ar.target_floor, ar.scope, ar.is_active, ar.asset_type, ar.catalog_status,
+                 ar.has_writer, ar.expected_volume_formula, ar.count_sql, ar.depends_on
+            FROM asset_registry ar
+           WHERE ar.layer = 'brahmagyan'
+           ORDER BY ar.asset_id
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts:103-120'],
+  },
+  {
+    contract_id: 'source-query:query-pratijna:v1',
+    descriptor_name: 'query_pratijna',
+    capability_uri: 'marsys://tool/L2/query_pratijna',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT pratijna_id, ayanamsha_id, event_class_id, status, grade,
+                   varga_confirmation, supporting_signal_ids, contradicting_signal_ids,
+                   derivation, formula_version,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_pratijna
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR status = NULL::text)
+               AND (NULL::text IS NULL OR event_class_id = NULL::text)
+             ORDER BY event_class_id, ayanamsha_id
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_pratijna
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR status = NULL::text)
+               AND (NULL::text IS NULL OR event_class_id = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:155-177',
+      'platform/migrations/665_bo_pratijna_integrity_check.sql:10-91',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-cdlm-summary:v1',
+    descriptor_name: 'query_cdlm_summary',
+    capability_uri: 'marsys://tool/L2/query_cdlm_summary',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH chart_summary_page AS (
+            SELECT summary_id, ayanamsha_id, snapshot_type, chart_typology_class,
+                   total_chart_linkage, contradiction_density, dominant_3_domains_array,
+                   weakest_3_domains_array, bridge_link_count, asymmetric_link_count,
+                   house_to_domain_strength_jsonb, karaka_to_domain_strength_jsonb,
+                   pattern_cluster_markers_jsonb, verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_chart_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY ayanamsha_id
+             LIMIT 0
+          ), domain_rollups_page AS (
+            SELECT rollup_id, ayanamsha_id, snapshot_type, domain, total_inbound_linkage,
+                   total_outbound_linkage, diagonal_density, signal_count_for_domain,
+                   top_3_linked_domains_jsonb, contradiction_density,
+                   pattern_markers_for_domain_array, verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_domain_rollups
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+             ORDER BY ayanamsha_id, domain
+             LIMIT 0
+          ), pattern_clusters_page AS (
+            SELECT pattern_id, ayanamsha_id, snapshot_type, pattern_marker_type,
+                   involved_domains_array, cluster_strength_total, involved_cells_array,
+                   involved_signals_array, contradicts_other_patterns_array, remedy_theme_jsonb,
+                   classical_archetype_match, predicted_outcome_class, active_dasha_windows_jsonb,
+                   verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_pattern_clusters
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY cluster_strength_total DESC NULLS LAST
+             LIMIT 0
+          ), evolution_gradients_page AS (
+            SELECT gradient_id, ayanamsha_id, dynamic_system_id, domain_row, domain_col,
+                   evolution_class, gradient_score, trend_iso_window_array, peak_period_lord,
+                   peak_period_iso, trough_period_iso, predicted_next_peak_iso,
+                   verification_pass_status, citation_ref, citation_human
+              FROM bodha_cdlm_evolution_gradients
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY ayanamsha_id, domain_row, domain_col
+             LIMIT 0
+          )
+          SELECT 1
+            FROM chart_summary_page
+            CROSS JOIN domain_rollups_page
+            CROSS JOIN pattern_clusters_page
+            CROSS JOIN evolution_gradients_page`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:32-73',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:182-201',
+      'platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:10-86',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-cgm-motifs:v1',
+    descriptor_name: 'query_cgm_motifs',
+    capability_uri: 'marsys://tool/L2/query_cgm_motifs',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT motif_id, ayanamsha_id, snapshot_type, motif_name, motif_class,
+                   involved_node_ids_array, involved_edge_ids_array, motif_strength,
+                   classical_citation_id, verification_pass_status, citation_ref, citation_human
+              FROM bodha_cgm_motifs
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR motif_class = NULL::text)
+             ORDER BY motif_strength DESC NULLS LAST, motif_name
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_cgm_motifs
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR motif_class = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:67-84',
+      'platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-cgm-paths:v1',
+    descriptor_name: 'query_cgm_paths',
+    capability_uri: 'marsys://tool/L2/query_cgm_paths',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT path_id, ayanamsha_id, snapshot_type, path_type, from_node_id, to_node_id,
+                   path_node_ids_array, path_edge_ids_array, path_length, path_strength,
+                   is_final_dispositor, convergence_count, path_label_human,
+                   verification_pass_status, citation_ref, citation_human
+              FROM bodha_cgm_paths
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR path_type = NULL::text)
+             ORDER BY path_strength DESC NULLS LAST, path_length
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_cgm_paths
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR path_type = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:66-83',
+      'platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-question-lenses:v1',
+    descriptor_name: 'query_question_lenses',
+    capability_uri: 'marsys://tool/L2/query_question_lenses',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT lens_id, ayanamsha_id, question_type,
+                   template_element_ids_jsonb, wildcard_element_ids_jsonb,
+                   points_only_assertion, verification_pass_status,
+                   lens_template_version, lens_formula_version, citation_ref,
+                   COALESCE(
+                     NULLIF(all_relevant_ranked_jsonb->>'total_count','')::int,
+                     CASE WHEN jsonb_typeof(all_relevant_ranked_jsonb->'ranked_signals') = 'array'
+                          THEN jsonb_array_length(all_relevant_ranked_jsonb->'ranked_signals') END,
+                     CASE WHEN jsonb_typeof(all_relevant_ranked_jsonb) = 'array'
+                          THEN jsonb_array_length(all_relevant_ranked_jsonb) END,
+                     0
+                   ) AS ranked_signal_count,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_question_lenses
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_type = NULL::text)
+             ORDER BY question_type, ayanamsha_id
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_question_lenses
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_type = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts:84-117',
+      'platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql:1-80',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-rm-chart-summary:v1',
+    descriptor_name: 'query_rm_chart_summary',
+    capability_uri: 'marsys://tool/L2/query_rm_chart_summary',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT summary_id, ayanamsha_id, snapshot_type, top_3_resonance_targets_jsonb,
+                   top_10_priority_prescriptions_jsonb, recommended_intensity_class,
+                   recommended_remedy_phase_sequence_jsonb, total_active_dosha_count,
+                   primary_dosha_class, cross_tradition_convergence_jsonb, remedy_chart_typology,
+                   acharya_review_required_count, feasibility_assessment_jsonb,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_chart_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             ORDER BY computed_at DESC
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_chart_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:62-88'],
+  },
+  {
+    contract_id: 'source-query:query-rm-resonances:v1',
+    descriptor_name: 'query_rm_resonances',
+    capability_uri: 'marsys://tool/L2/query_rm_resonances',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT resonance_id, ayanamsha_id, graha, resonance_score, weakness_score,
+                   contradiction_factor, domain_burden, motif_burden, is_yoga_karaka_flag,
+                   is_chara_karaka_role, weakest_rank_in_chart, remedy_priority_class,
+                   associated_doshas_array, associated_motifs_array, associated_cdlm_cells_array,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_resonances
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR graha = NULL::text)
+             ORDER BY resonance_score DESC NULLS LAST, weakness_score DESC NULLS LAST
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_resonances
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR graha = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts:57-82'],
+  },
+  {
+    contract_id: 'source-query:query-rm-prescriptions:v1',
+    descriptor_name: 'query_rm_prescriptions',
+    capability_uri: 'marsys://tool/L2/query_rm_prescriptions',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT prescription_id, ayanamsha_id, target_graha, target_resonance_id,
+                   tradition, sub_tradition, remedy_category, remedy_id_g27, remedy_label_human,
+                   classical_strength_rating, classical_sources_jsonb, resonance_match_score,
+                   feasibility_score, ritual_complexity_class, requires_acharya_review_flag,
+                   acharya_review_reason_array, counter_indications_array, targets_motif_id,
+                   targets_cell_id, targets_dosha_class, cross_tradition_corroboration_count,
+                   phase_sequence_class, phase_duration_days, recommended_facing_direction,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_remedy_prescriptions
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+               AND (NULL::text IS NULL OR remedy_category = NULL::text)
+               AND (NULL::text IS NULL OR target_graha = NULL::text)
+             ORDER BY resonance_match_score DESC NULLS LAST, classical_strength_rating DESC NULLS LAST
+             LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_remedy_prescriptions
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+               AND (NULL::text IS NULL OR remedy_category = NULL::text)
+               AND (NULL::text IS NULL OR target_graha = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts:65-91'],
+  },
+  {
+    contract_id: 'source-query:query-rm-dasha-windowed-prescriptions:v1',
+    descriptor_name: 'query_rm_dasha_windowed_prescriptions',
+    capability_uri: 'marsys://tool/L2/query_rm_dasha_windowed_prescriptions',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT window_prescription_id, ayanamsha_id, base_prescription_id, dasha_system,
+                   dasha_level, dasha_lord, window_start_iso, window_end_iso,
+                   window_intensity_multiplier, schedule_jsonb, phase_within_window,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_dasha_windowed_prescriptions
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dasha_system = NULL::text)
+               AND (NULL::text IS NULL OR dasha_lord = NULL::text)
+             ORDER BY window_start_iso LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_dasha_windowed_prescriptions
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dasha_system = NULL::text)
+               AND (NULL::text IS NULL OR dasha_lord = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:74-102'],
+  },
+  {
+    contract_id: 'source-query:query-rm-dosha-remedy-bundles:v1',
+    descriptor_name: 'query_rm_dosha_remedy_bundles',
+    capability_uri: 'marsys://tool/L2/query_rm_dosha_remedy_bundles',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT bundle_id, ayanamsha_id, dosha_class, active_flag, intensity_score,
+                   cancellation_count, prescription_ids_in_bundle_array, bundle_summary_jsonb,
+                   classical_source_citation_id, active_dasha_windows_jsonb,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_dosha_remedy_bundles
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dosha_class = NULL::text)
+             ORDER BY intensity_score DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_dosha_remedy_bundles
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR dosha_class = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96'],
+  },
+  {
+    contract_id: 'source-query:query-rm-pattern-remedies:v1',
+    descriptor_name: 'query_rm_pattern_remedies',
+    capability_uri: 'marsys://tool/L2/query_rm_pattern_remedies',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT pattern_remedy_id, ayanamsha_id, source_kind, source_id, remedy_theme,
+                   prescription_ids_array, theme_strength, cross_tradition_unanimity_score,
+                   verification_pass_status, citation_ref, citation_human,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_rm_pattern_remedies
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR source_kind = NULL::text)
+             ORDER BY theme_strength DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_rm_pattern_remedies
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR source_kind = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81'],
+  },
+  {
+    contract_id: 'source-query:query-discoveries:v1',
+    descriptor_name: 'query_discoveries',
+    capability_uri: 'marsys://tool/L2/query_discoveries',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT discovery_id, ayanamsha_id, discovery_class, discovery_subsystem,
+                   non_obviousness_score, consequence_score, composite_discovery_rank,
+                   novelty_class, corroboration_count, corroborating_methods_array,
+                   affected_domains_array, surface_reading, depth_reading, surface_depth_delta,
+                   hypothesis_text, why_an_acharya_misses_it, meaningfulness_basis,
+                   constituent_refs_jsonb, cross_subsystem_refs_jsonb,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+             ORDER BY composite_discovery_rank ASC NULLS LAST, non_obviousness_score DESC NULLS LAST
+             LIMIT 0 OFFSET 0
+          ), family_page AS (
+            SELECT discovery_class, discovery_subsystem, hypothesis_text, COUNT(*) AS member_count,
+                   COUNT(DISTINCT ayanamsha_id) AS ayanamsha_count
+              FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+             GROUP BY discovery_class, discovery_subsystem, hypothesis_text
+             ORDER BY MIN(composite_discovery_rank) ASC NULLS LAST LIMIT 0 OFFSET 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181'],
+  },
+  {
+    contract_id: 'source-query:query-quality-scorecard:v1',
+    descriptor_name: 'query_quality_scorecard',
+    capability_uri: 'marsys://tool/L2/query_quality_scorecard',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH scorecard_probe AS (
+            SELECT scorecard_id, chart_id, build_id, msr_signal_count, cdlm_cell_count,
+                   cgm_node_count, cgm_edge_count, two_pass_verified_pct,
+                   documented_approximation_pct, msr_citation_ref_coverage_pct,
+                   trap1_authority_inversion_count, trap2_narration_leak_count,
+                   unresolved_constituent_facts_count, scored_at
+              FROM synthesis_quality_scorecard WHERE chart_id = $1::uuid
+             ORDER BY scored_at DESC LIMIT 0
+          ), defect001_probe AS (
+            WITH refs AS (
+              SELECT unnest(m.constituent_facts_array) AS fact_id
+                FROM bodha_msr_signals m
+               WHERE m.chart_id = $1::uuid AND m.constituent_facts_array IS NOT NULL
+                 AND array_length(m.constituent_facts_array, 1) > 0
+            ) SELECT count(*)::text AS total_refs,
+                     count(*) FILTER (WHERE cf.fact_id IS NULL)::text AS orphan_refs
+                FROM refs LEFT JOIN chart_facts cf ON cf.chart_id = $1::uuid AND cf.fact_id = refs.fact_id
+          ) SELECT scorecard_probe.*, defect001_probe.total_refs, defect001_probe.orphan_refs
+              FROM scorecard_probe CROSS JOIN defect001_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97',
+      'platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-active-dashas:v1',
+    descriptor_name: 'query_active_dashas',
+    capability_uri: 'marsys://tool/L3/query_active_dashas',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH systems_present AS (
+            SELECT DISTINCT system_id FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY system_id LIMIT 0
+          ), active_chain AS (
+            SELECT system_id, level_n, lord_graha, lord_sign,
+                   to_char(start_date, 'YYYY-MM-DD') AS start_date,
+                   to_char(end_date, 'YYYY-MM-DD') AS end_date, start_iso, end_iso
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND level_n <= 3
+             ORDER BY system_id, level_n LIMIT 0
+          ) SELECT 1 FROM systems_present CROSS JOIN active_chain`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts:101-126'],
+  },
+  {
+    contract_id: 'source-query:query-kala-paddhati-profile:v1',
+    descriptor_name: 'query_kala_paddhati_profile',
+    capability_uri: 'marsys://tool/L3/query_kala_paddhati_profile',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT factor_family, convention_id, school_tag, constraint_role,
+                 convention_status, provenance, corpus_gap_ref,
+                 native_confirmed, awaiting_native_confirmation, version,
+                 confirmation_provenance, arbitration_role, precedence
+            FROM kala_paddhati_profile
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR factor_family = NULL::text)
+             AND (NULL::text IS NULL OR version = NULL::text)
+           ORDER BY version ASC, factor_family, convention_id
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts:121-143'],
+  },
+  {
+    contract_id: 'source-query:query-life-arc:v1',
+    descriptor_name: 'query_life_arc',
+    capability_uri: 'marsys://tool/L3/query_life_arc',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH leveled AS (
+            SELECT id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year,
+                   parva_quality, theme_keywords, high_convergence_count, avg_effective_score,
+                   narrative, source_citation, computed_at,
+                   CASE WHEN source_citation ~ ':AD=' THEN 'AD'
+                        WHEN source_citation ~ ':PD=' THEN 'PD' ELSE 'MD' END AS parva_level
+              FROM kala_jivana_parva WHERE chart_id = $1::uuid
+          ), deduped AS (
+            SELECT DISTINCT ON (start_year, end_year, dasha_planet, parva_level)
+                   id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year,
+                   parva_quality, theme_keywords, high_convergence_count, avg_effective_score,
+                   narrative, source_citation, computed_at
+              FROM leveled
+             ORDER BY start_year, end_year, dasha_planet, parva_level, parva_index DESC
+          ) SELECT id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year,
+                   parva_quality, theme_keywords, high_convergence_count, avg_effective_score,
+                   narrative, source_citation, computed_at
+              FROM deduped ORDER BY parva_index LIMIT 0 OFFSET 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:119-169'],
+  },
+  {
+    contract_id: 'source-query:query-kota-chakra:v1',
+    descriptor_name: 'query_kota_chakra',
+    capability_uri: 'marsys://tool/L3/query_kota_chakra',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT graha, nakshatra_name, count_from_janma, kota_ring, is_natural_malefic,
+                   posture, severity, to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end, start_truncated, end_truncated,
+                   janma_nakshatra_fact_id, ring_table_citation, uncited_extension,
+                   (window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE) AS is_current
+              FROM kala_kota_chakra
+             WHERE chart_id = $1::uuid
+             ORDER BY graha, window_start LIMIT 0
+          ), current_page AS (
+            SELECT graha FROM kala_kota_chakra
+             WHERE chart_id = $1::uuid AND window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE
+             ORDER BY graha, window_start LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:86-115'],
+  },
+  {
+    contract_id: 'source-query:query-moorti-nirnaya:v1',
+    descriptor_name: 'query_moorti_nirnaya',
+    capability_uri: 'marsys://tool/L3/query_moorti_nirnaya',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT graha, target_sign_idx, target_sign_name,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   start_truncated, end_truncated, moorti_computed,
+                   moon_nakshatra_idx_at_ingress, moon_nakshatra_name_at_ingress,
+                   janma_nakshatra_idx, janma_nakshatra_fact_id, nakshatra_offset,
+                   moorti_name, quality_tier, phala_brief, moorti_classical_citation,
+                   (window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE) AS is_current
+              FROM kala_moorti_nirnaya WHERE chart_id = $1::uuid
+             ORDER BY graha, window_start LIMIT 0
+          ), current_page AS (
+            SELECT graha FROM kala_moorti_nirnaya
+             WHERE chart_id = $1::uuid AND window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE
+             ORDER BY graha, window_start LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:91-119'],
+  },
+  {
+    contract_id: 'source-query:query-obstruction-periods:v1',
+    descriptor_name: 'query_obstruction_periods',
+    capability_uri: 'marsys://tool/L3/query_obstruction_periods',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, convergence_id, signal_id, obstruction_type, severity, severity_score,
+                   override_score, obstruction_detail, source_citation
+              FROM kala_obstruction
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR obstruction_type = NULL::text)
+               AND (NULL::text IS NULL OR severity = NULL::text)
+             ORDER BY severity_score DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_obstruction
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR obstruction_type = NULL::text)
+               AND (NULL::text IS NULL OR severity = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:74-94'],
+  },
+  {
+    contract_id: 'source-query:query-vedha-gochara:v1',
+    descriptor_name: 'query_vedha_gochara',
+    capability_uri: 'marsys://tool/L3/query_vedha_gochara',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT vedha_kind, graha,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   start_truncated, end_truncated, janma_reference_fact_id,
+                   classical_citation, uncited_extension, grid_basis, grid_school_tag, detail,
+                   (window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE) AS is_current
+              FROM kala_vedha_gochara
+             WHERE chart_id = $1::uuid
+             ORDER BY vedha_kind, graha, window_start LIMIT 0
+          ), current_page AS (
+            SELECT vedha_kind FROM kala_vedha_gochara
+             WHERE chart_id = $1::uuid AND window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE
+             ORDER BY vedha_kind, graha, window_start LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts:111-152'],
+  },
+  {
+    contract_id: 'source-query:query-sudarshana-varsha:v1',
+    descriptor_name: 'query_sudarshana_varsha',
+    capability_uri: 'marsys://tool/L3/query_sudarshana_varsha',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT varsha_year, to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   jl_active_sign_name, cl_active_sign_name, sl_active_sign_name,
+                   tri_lagna_convergence, lagna_fact_id, moon_fact_id, sun_fact_id,
+                   (window_start <= CURRENT_DATE AND window_end > CURRENT_DATE) AS is_current
+              FROM kala_sudarshana_varsha
+             WHERE chart_id = $1::uuid AND varsha_year >= 1 AND varsha_year <= 120
+             ORDER BY varsha_year LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_sudarshana_varsha
+             WHERE chart_id = $1::uuid AND varsha_year >= 1 AND varsha_year <= 120
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:66-118'],
+  },
+  {
+    contract_id: 'source-query:query-tithi-pravesha:v1',
+    descriptor_name: 'query_tithi_pravesha',
+    capability_uri: 'marsys://tool/L3/query_tithi_pravesha',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT pravesha_year,
+                   to_char(window_start, 'YYYY-MM-DD"T"HH24:MI:SS') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD"T"HH24:MI:SS') AS window_end,
+                   start_converged, end_converged, pravesha_lagna_sign_idx,
+                   pravesha_lagna_sign_name, pravesha_lagna_degree, graha_positions_jsonb,
+                   natal_moon_longitude_deg, moon_fact_id, ephemeris_audit_jsonb,
+                   verification_pass_status, classical_source_citation,
+                   (window_start <= CURRENT_TIMESTAMP AND window_end > CURRENT_TIMESTAMP) AS is_current
+              FROM kala_tithi_pravesha
+             WHERE chart_id = $1::uuid AND pravesha_year >= 1 AND pravesha_year <= 120
+             ORDER BY pravesha_year LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_tithi_pravesha
+             WHERE chart_id = $1::uuid AND pravesha_year >= 1 AND pravesha_year <= 120
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:65-120'],
+  },
+  {
+    contract_id: 'source-query:query-convergence-windows:v1',
+    descriptor_name: 'query_convergence_windows',
+    capability_uri: 'marsys://tool/L3/query_convergence_windows',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT convergence_id, signal_id,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date, mode, convergence_score,
+                   orb_strength, rarity_years, confidence_score, confidence_label,
+                   independent_current_count, is_off_dasha_discovery, horizon_tier, domain,
+                   constituent_factors, source_citation
+              FROM kala_convergence
+             WHERE chart_id = $1::uuid
+               AND (NULL::date IS NULL OR window_end >= NULL::date)
+               AND (NULL::date IS NULL OR window_start <= NULL::date)
+               AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+             ORDER BY convergence_score DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_convergence
+             WHERE chart_id = $1::uuid
+               AND (NULL::date IS NULL OR window_end >= NULL::date)
+               AND (NULL::date IS NULL OR window_start <= NULL::date)
+               AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176'],
+  },
+  {
+    contract_id: 'source-query:query-activation-waveform:v1',
+    descriptor_name: 'query_activation_waveform',
+    capability_uri: 'marsys://tool/L3/query_activation_waveform',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH filtered AS (
+            SELECT taranga_id, month, scope_kind, scope_id, activation, components, formula_version
+              FROM kala_taranga
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR scope_kind = NULL::text)
+               AND (NULL::text IS NULL OR scope_id = NULL::text)
+               AND (NULL::date IS NULL OR month >= NULL::date)
+               AND (NULL::date IS NULL OR month <= NULL::date)
+          ), drill_page AS (
+            SELECT * FROM filtered ORDER BY month LIMIT 0
+          ), summary AS (
+            SELECT MIN(month) AS first_month, MAX(month) AS last_month,
+                   COUNT(DISTINCT scope_id)::int AS distinct_scopes,
+                   COUNT(DISTINCT scope_kind)::int AS distinct_scope_kinds,
+                   ROUND(AVG(activation)::numeric, 4) AS avg_activation,
+                   ROUND(MAX(activation)::numeric, 4) AS max_activation
+              FROM filtered
+          ), peaks AS (
+            SELECT month, scope_kind, scope_id, activation FROM filtered
+             ORDER BY activation DESC NULLS LAST, month LIMIT 0
+          ) SELECT 1 FROM drill_page CROSS JOIN summary CROSS JOIN peaks`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts:61-147'],
+  },
+  {
+    contract_id: 'source-query:query-dasha-dossier:v1',
+    descriptor_name: 'query_dasha_dossier',
+    capability_uri: 'marsys://tool/L3/query_dasha_dossier',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT avadhi_id, system_id, level_n, lord_graha,
+                   to_char(period_start, 'YYYY-MM-DD') AS period_start,
+                   to_char(period_end, 'YYYY-MM-DD') AS period_end,
+                   dossier, quality, citations, formula_version
+              FROM kala_avadhi
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR system_id = NULL::text)
+               AND (NULL::int IS NULL OR level_n = NULL::int)
+               AND (NULL::text IS NULL OR lord_graha = NULL::text)
+               AND (NULL::date IS NULL OR period_end >= NULL::date)
+               AND (NULL::date IS NULL OR period_start <= NULL::date)
+               AND (NULL::date IS NULL OR (period_start <= NULL::date AND period_end >= NULL::date))
+             ORDER BY period_start, level_n LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_avadhi
+             WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:60-119'],
+  },
+  {
+    contract_id: 'source-query:query-projections:v1',
+    descriptor_name: 'query_projections',
+    capability_uri: 'marsys://tool/L3/query_projections',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH filtered AS (
+            SELECT id, projection_rank, domain, probability_tier, effective_score, peak_date,
+                   window_start, window_end, narrative, falsifiability, convergence_id, signal_id,
+                   source_chain, outcome_recorded, outcome_notes, source_citation, computed_at
+              FROM kala_bhavishya
+             WHERE chart_id = $1::uuid
+               AND (NULL::date IS NULL OR peak_date <= NULL::date)
+               AND (NULL::text IS NULL OR probability_tier = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+          ), handler_page AS (
+            SELECT id, projection_rank, domain, probability_tier, effective_score,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end, narrative, falsifiability,
+                   convergence_id, signal_id, source_chain, outcome_recorded, outcome_notes,
+                   source_citation, computed_at
+              FROM filtered ORDER BY probability_tier, projection_rank LIMIT 0
+          ), families AS (
+            SELECT window_start, window_end, domain, COUNT(*) AS member_count
+              FROM filtered GROUP BY window_start, window_end, domain LIMIT 0
+          ), source_classification AS (
+            SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1::uuid
+          ), build_observation AS (
+            SELECT br.id::text AS build_id, br.state AS build_state, bra.state AS asset_state
+              FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id
+             WHERE br.chart_id = $1::uuid AND bra.asset_id = 'ka_bhavishya_lekha'
+             ORDER BY COALESCE(bra.ended_at, br.ended_at, br.created_at) DESC LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN families CROSS JOIN source_classification CROSS JOIN build_observation`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:74-137 | platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:209-371'],
+  },
+  {
+    contract_id: 'source-query:query-temporal-view:v1',
+    descriptor_name: 'query_temporal_view',
+    capability_uri: 'marsys://tool/L3/query_temporal_view',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT id, convergence_id, signal_id, effective_score, net_label,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   obstruction_summary, narrative, source_citation
+              FROM kala_darshana
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR net_label = NULL::text)
+               AND (NULL::numeric IS NULL OR effective_score >= NULL::numeric)
+               AND (NULL::date IS NULL OR window_end >= NULL::date)
+               AND (NULL::date IS NULL OR window_start <= NULL::date)
+               AND (NULL::date IS NULL OR (window_start <= NULL::date AND window_end >= NULL::date))
+             ORDER BY effective_score DESC NULLS LAST, peak_date LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_darshana WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:59-112'],
+  },
+  {
+    contract_id: 'source-query:query-temporal-activation:v1',
+    descriptor_name: 'query_temporal_activation',
+    capability_uri: 'marsys://tool/L3/query_temporal_activation',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH activations AS (
+            SELECT id, signal_id, ayanamsha_id, signature_class, activation_start, activation_end,
+                   activation_peak_date, orb_strength, convergence_score,
+                   dasha_activation_proximity_score, active_dasha_periods_jsonb,
+                   activation_predicted_dates_jsonb, source_citation
+              FROM kala_activation
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY dasha_activation_proximity_score DESC NULLS LAST,
+                      orb_strength DESC NULLS LAST, activation_start ASC, id ASC LIMIT 0
+          ), activation_domains AS (
+            SELECT ms.signal_id, ms.domains_affected_array FROM bodha_msr_signals ms
+             WHERE ms.chart_id = $1::uuid LIMIT 0
+          ), predicates AS (
+            SELECT id, signal_id, ayanamsha_id, signature_class, dasha_eligibility_rule_jsonb,
+                   transit_trigger_jsonb, strength_affliction_hook_jsonb,
+                   derivation_ledger_jsonb, template_version
+              FROM kala_activation_predicates
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '') LIMIT 0
+          ), activation_empty_classification AS (
+            SELECT COUNT(*)::int AS total, COUNT(activation_start)::int AS dated
+              FROM kala_activation WHERE chart_id = $1::uuid
+          ), forward_windows AS (
+            SELECT id, signal_id, domain, probability_tier, effective_score, window_start,
+                   window_end, peak_date, narrative, source_citation
+              FROM kala_bhavishya WHERE chart_id = $1::uuid ORDER BY window_start LIMIT 0
+          ), forward_source_classification AS (
+            SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1::uuid
+          ), build_observation AS (
+            SELECT br.id::text FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id
+             WHERE br.chart_id = $1::uuid AND bra.asset_id = 'ka_bhavishya_lekha' LIMIT 0
+          ) SELECT 1 FROM activations CROSS JOIN activation_domains CROSS JOIN predicates
+             CROSS JOIN activation_empty_classification CROSS JOIN forward_windows
+             CROSS JOIN forward_source_classification CROSS JOIN build_observation`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620'],
+  },
+  {
+    contract_id: 'source-query:query-insights:v1',
+    descriptor_name: 'query_insights',
+    capability_uri: 'marsys://tool/L5/query_insights',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT insight_id, insight_type, domain, horizon, question_lens, statement,
+                   rank_consequence, confidence_band, n_support, leakage_status, evidence_grade,
+                   freshness_lel_version, last_calibrated_at, provenance_chain, is_negative_knowledge,
+                   surface_formula_version, updated_at
+              FROM mimamsa_insight_units
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR insight_type = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+               AND (0::numeric <= 0 OR rank_consequence >= 0::numeric)
+               AND (true OR is_negative_knowledge = false)
+             ORDER BY rank_consequence DESC NULLS LAST LIMIT 0
+          ), filtered_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE chart_id = $1::uuid
+          ), chart_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE chart_id = $1::uuid
+          ), calibration_summary AS (
+            SELECT COUNT(*)::int AS total_matches,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'CONFIRMED') AS confirmed,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'PARTIAL') AS partial,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'REFUTED') AS refuted,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'UNRESOLVED') AS unresolved,
+                   AVG(composite_score)::numeric(4,3) AS mean_composite_score
+              FROM mimamsa_calibration WHERE chart_id = $1::uuid
+          ) SELECT 1 FROM handler_page CROSS JOIN filtered_count CROSS JOIN chart_count CROSS JOIN calibration_summary`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:198-257'],
+  },
+  {
+    contract_id: 'source-query:query-signal-families:v1',
+    descriptor_name: 'query_signal_families',
+    capability_uri: 'marsys://tool/L5/query_signal_families',
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT family_id, display_name, layman_name, family_class, evidence_tier,
+                   soundness_basis, binding_kind, default_state, prior_weight,
+                   calibration_status, citation_refs, binding_spec, apply_point, is_active, created_at
+              FROM mimamsa_signal_families
+             WHERE (NULL::text IS NULL OR display_name = NULL::text)
+               AND (NULL::text IS NULL OR family_class = NULL::text)
+               AND (true OR family_class <> 'negative_control')
+             ORDER BY family_class, display_name LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_signal_families
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts:72-143'],
+  },
+  {
+    contract_id: 'source-query:query-journal:v1',
+    descriptor_name: 'query_journal',
+    capability_uri: 'marsys://tool/L5/query_journal',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT journal_id, prediction_id, prompt_shown, native_answer,
+                   to_char(answered_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS answered_at,
+                   resulting_event_id, provenance_tag,
+                   to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at
+              FROM mimamsa_journal
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR prediction_id = NULL::text)
+               AND (false OR native_answer IS NOT NULL)
+             ORDER BY created_at DESC LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_journal
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR prediction_id = NULL::text)
+               AND (false OR native_answer IS NOT NULL)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts:59-108'],
+  },
+  {
+    contract_id: 'source-query:query-load-bearing:v1',
+    descriptor_name: 'query_load_bearing',
+    capability_uri: 'marsys://tool/L5/query_load_bearing',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT conclusion_id, signal_id, sensitivity, role, formula_version
+              FROM mimamsa_load_bearing
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR conclusion_id = NULL::text)
+               AND (NULL::text IS NULL OR role = NULL::text)
+             ORDER BY sensitivity DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_load_bearing
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR conclusion_id = NULL::text)
+               AND (NULL::text IS NULL OR role = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts:66-112'],
+  },
+  {
+    contract_id: 'source-query:query-manifestation-sets:v1',
+    descriptor_name: 'query_manifestation_sets',
+    capability_uri: 'marsys://tool/L5/query_manifestation_sets',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT prediction_id, channel_id, domain, source, citation_ref, is_literal,
+                   to_char(frozen_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS frozen_at
+              FROM mimamsa_manifestation_sets
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR prediction_id = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+               AND (NULL::text IS NULL OR channel_id = NULL::text)
+             ORDER BY frozen_at DESC LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_manifestation_sets WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts:67-116'],
+  },
+  {
+    contract_id: 'source-query:query-manifestation-grammar:v1',
+    descriptor_name: 'query_manifestation_grammar',
+    capability_uri: 'marsys://tool/L5/query_manifestation_grammar',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT origin_kind, origin_ref, channel_id, domain, fire_count, opportunity_count,
+                   channel_propensity, prior_propensity, propensity_delta, n_support,
+                   confidence_band, evidence_grade, citation_ref, grammar_formula_version, updated_at
+              FROM mimamsa_manifestation_grammar
+             WHERE chart_id = $1::uuid
+             ORDER BY channel_propensity DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_manifestation_grammar WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts:78-145'],
+  },
+  {
+    contract_id: 'source-query:call-dasha-eligibility:v1',
+    descriptor_name: 'call_dasha_eligibility',
+    capability_uri: 'marsys://tool/L3/call_dasha_eligibility',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT id, chart_id, ayanamsha_id, level_n, lord_graha,
+                 to_char(start_date, 'YYYY-MM-DD') AS start_date,
+                 to_char(end_date, 'YYYY-MM-DD') AS end_date,
+                 start_iso, end_iso
+            FROM chart_dashas
+           WHERE chart_id = $1::uuid
+             AND ayanamsha_id = NULLIF(NULL::text, '')
+             AND end_date >= CURRENT_DATE
+             AND start_date <= CURRENT_DATE
+             AND (NULL::text IS NULL OR lord_graha = NULL::text)
+           ORDER BY start_date, level_n LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:298-325'],
+  },
+  {
+    contract_id: 'source-query:call-priority-ranking:v1',
+    descriptor_name: 'call_priority_ranking',
+    capability_uri: 'marsys://tool/L3/call_priority_ranking',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT m.signal_id, m.signal_headline_text, m.computed_salience,
+                 m.domains_affected_array, m.signal_type_class,
+                 a.orb_strength AS activation_strength,
+                 to_char(a.activation_start, 'YYYY-MM-DD') AS window_start,
+                 to_char(a.activation_end, 'YYYY-MM-DD') AS window_end,
+                 a.signature_class AS trigger_type
+            FROM bodha_msr_signals m
+            JOIN kala_activation a ON m.signal_id = a.signal_id
+              AND a.chart_id = m.chart_id
+              AND a.ayanamsha_id = m.ayanamsha_id
+           WHERE m.chart_id = $1::uuid
+             AND m.ayanamsha_id = NULLIF(NULL::text, '')
+             AND a.activation_end >= CURRENT_DATE
+             AND a.activation_start <= (CURRENT_DATE + INTERVAL '90 days')::date
+             AND (NULL::text[] IS NULL OR m.domains_affected_array && NULL::text[])
+           ORDER BY m.computed_salience DESC NULLS LAST, m.signal_id LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:614-695'],
+  },
+  {
+    contract_id: 'source-query:query-attribution:v1',
+    descriptor_name: 'query_attribution',
+    capability_uri: 'marsys://tool/L5/query_attribution',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT match_id, signal_id, family_id, dimension, credit_blame, channel_fired,
+                   attribution_formula_ver
+              FROM mimamsa_attribution
+             WHERE chart_id = $1::uuid
+               AND (NULL::uuid IS NULL OR match_id = NULL::uuid)
+               AND (NULL::uuid IS NULL OR signal_id = NULL::uuid)
+               AND (NULL::text IS NULL OR dimension = NULL::text)
+             ORDER BY ABS(credit_blame) DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_attribution
+             WHERE chart_id = $1::uuid
+               AND (NULL::uuid IS NULL OR match_id = NULL::uuid)
+               AND (NULL::uuid IS NULL OR signal_id = NULL::uuid)
+               AND (NULL::text IS NULL OR dimension = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts:70-106'],
+  },
+  {
+    contract_id: 'source-query:query-mimamsa-discoveries:v1',
+    descriptor_name: 'query_mimamsa_discoveries',
+    capability_uri: 'marsys://tool/L5/query_mimamsa_discoveries',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT discovery_id, discovery_class, statement, evidence_refs, strength, n_support,
+                   confidence_band, activation_status, citation_required, citation_ref,
+                   discovery_formula_ver
+              FROM mimamsa_discoveries
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+               AND (NULL::text IS NULL OR activation_status = NULL::text)
+             ORDER BY strength DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_discoveries
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR discovery_class = NULL::text)
+               AND (NULL::text IS NULL OR activation_status = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:69-113'],
+  },
+  {
+    contract_id: 'source-query:query-insight-embeddings:v1',
+    descriptor_name: 'query_insight_embeddings',
+    capability_uri: 'marsys://tool/L5/query_insight_embeddings',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT n.insight_id, (n.embedding <=> s.embedding) AS cosine_distance,
+                 u.insight_type, u.statement, u.rank_consequence, u.evidence_grade
+            FROM mimamsa_insight_embeddings n
+            JOIN mimamsa_insight_embeddings s
+              ON s.chart_id = n.chart_id AND s.insight_id = NULL::uuid
+            LEFT JOIN mimamsa_insight_units u
+              ON u.chart_id = n.chart_id AND u.insight_id = n.insight_id
+           WHERE n.chart_id = $1::uuid AND n.insight_id != NULL::uuid
+           ORDER BY cosine_distance ASC LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts:109-168'],
+  },
+  {
+    contract_id: 'source-query:query-calibration:v1',
+    descriptor_name: 'query_calibration',
+    capability_uri: 'marsys://tool/L5/query_calibration',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH verdict_distribution AS (
+            SELECT c.composite_verdict, COUNT(*)::int AS n,
+                   AVG(c.composite_score)::numeric(4,3) AS mean_score
+              FROM mimamsa_calibration c
+              LEFT JOIN mimamsa_predictions p
+                ON p.chart_id = c.chart_id AND p.prediction_id = c.prediction_id
+             WHERE c.chart_id = $1::uuid
+               AND c.leakage_status != 'held_out'
+               AND (NULL::text IS NULL OR p.domain = NULL::text)
+             GROUP BY c.composite_verdict
+          ), reliability_curve AS (
+            SELECT stratum_key, predicted_prob_bin, observed_rate, n, brier_score, ece,
+                   held_out_validity, evidence_grade
+              FROM mimamsa_reliability WHERE chart_id = $1::uuid
+          ), multipliers AS (
+            SELECT weight_id, mechanism, target_kind, target_ref, domain, applied_multiplier,
+                   raw_multiplier, n_observations, promotion_status, gate_passed,
+                   kill_switch_state, divergence_from_classical
+              FROM mimamsa_multipliers WHERE chart_id = $1::uuid
+          ), qa_results AS (
+            SELECT check_id, check_type, target, result_score, status, checked_at
+              FROM mimamsa_qa_eval WHERE chart_id = $1::uuid
+          ) SELECT * FROM verdict_distribution LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197'],
+  },
+  {
+    contract_id: 'source-query:query-anomaly-flags:v1',
+    descriptor_name: 'query_anomaly_flags',
+    capability_uri: 'marsys://tool/L4/query_anomaly_flags',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT sodhana_id, anchor_id, anomaly_type, anomaly_severity, detected_field,
+                 expected_value_text, observed_value_text, leakage_class, recommendation_text,
+                 auto_action
+            FROM phala_sodhana
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR anomaly_type = NULL::text)
+           ORDER BY CASE anomaly_severity
+             WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2
+             WHEN 'low' THEN 3 ELSE 4 END, anomaly_type
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:306-335'],
+  },
+  {
+    contract_id: 'source-query:query-remedy-program:v1',
+    descriptor_name: 'query_remedy_program',
+    capability_uri: 'marsys://tool/L4/query_remedy_program',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT mitigation_id, linked_anchor_id, obstruction_id, afflicting_graha,
+                   obstruction_severity, intensity_tier, program_jsonb,
+                   tradition_options_jsonb, cross_tradition_corroboration,
+                   recommended_tier_jsonb, proportionality_basis, initiation_muhurta_ref,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   to_char(re_evaluation_date, 'YYYY-MM-DD') AS re_evaluation_date,
+                   classical_citation
+              FROM phala_mitigation
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR intensity_tier = NULL::text)
+               AND (NULL::text IS NULL OR EXISTS (
+                 SELECT 1 FROM phala_anchors a
+                  WHERE a.chart_id = phala_mitigation.chart_id
+                    AND a.anchor_id = phala_mitigation.linked_anchor_id
+                    AND a.domain = NULL::text))
+             ORDER BY obstruction_severity, intensity_tier, mitigation_id LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM phala_mitigation WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:388-449'],
+  },
+  {
+    contract_id: 'source-query:query-cleansed-anchors:v1',
+    descriptor_name: 'query_cleansed_anchors',
+    capability_uri: 'marsys://tool/L4/query_cleansed_anchors',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT entry_id, anchor_id, cleanliness_status, critical_flag_count, major_flag_count,
+                 minor_flag_count, flag_ids_jsonb, staged_revision_jsonb, revision_approved_by,
+                 revision_applied_at, confidence_delta_if_applied, magnitude_delta_if_applied
+            FROM phala_suddha_sodhana
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR cleanliness_status = NULL::text)
+           ORDER BY cleanliness_status, critical_flag_count DESC, anchor_id LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:495-530'],
+  },
+  {
+    contract_id: 'source-query:query-rectification:v1',
+    descriptor_name: 'query_rectification',
+    capability_uri: 'marsys://tool/L4/query_rectification',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH candidate_page AS (
+            SELECT id, to_char(candidate_birth_utc, 'YYYY-MM-DD') AS candidate_birth_date,
+                   candidate_birth_utc, offset_minutes, ayanamsha_id, lagna_sign,
+                   lagna_longitude_deg, lagna_degree_in_sign, lel_fit_score,
+                   lel_events_matched, lel_events_tested, lagna_stable,
+                   to_char(scored_at, 'YYYY-MM-DD') AS scored_date
+              FROM phala_rectification
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY lel_fit_score DESC NULLS LAST, offset_minutes, ayanamsha_id LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM phala_rectification
+             WHERE chart_id = $1::uuid
+          ), best AS (
+            SELECT judgment_flags, confidence_label, offset_minutes AS best_offset_minutes,
+                   best_lel_fit_score, confidence_low, confidence_high, win_margin,
+                   lel_training_events, lel_training_matched, leakage_firewall_note,
+                   competing_candidates
+              FROM phala_rectification_best WHERE chart_id = $1::uuid LIMIT 1
+          ) SELECT candidate_page.*, handler_count.total FROM candidate_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:600-652'],
+  },
+  {
+    contract_id: 'source-query:query-spillover-cascades:v1',
+    descriptor_name: 'query_spillover_cascades',
+    capability_uri: 'marsys://tool/L4/query_spillover_cascades',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT sankrama_id, source_anchor_id, cdlm_cell_id, source_domain, target_domain,
+                 relationship_type, linkage_strength, asymmetry_score, mechanism_text,
+                 source_window_start, source_window_end, projected_window_start,
+                 projected_window_end, projected_peak_date, cascade_depth, trajectory,
+                 mitigation_ref, spillover_confidence, confidence_basis, falsifier
+            FROM phala_sankrama
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR source_domain = NULL::text)
+             AND (NULL::text IS NULL OR target_domain = NULL::text)
+           ORDER BY linkage_strength DESC NULLS LAST LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:158-195'],
+  },
+  {
+    contract_id: 'source-query:query-falsifiers:v1',
+    descriptor_name: 'query_falsifiers',
+    capability_uri: 'marsys://tool/L4/query_falsifiers',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT pramana_id, anchor_id, evidence_type, evidence_strength_label,
+                 falsifier_text, observable_criteria_jsonb, window_status,
+                 lel_entry_id, linked_sodhana_id, source_citation
+            FROM phala_pramana
+           WHERE chart_id = $1::uuid
+           ORDER BY array_position(ARRAY['open', 'pending', 'past_window']::text[], window_status) NULLS LAST, pramana_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250',
+      'platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts:43-64',
+      'platform/supabase/migrations/338_phala_pramana.sql:23-67',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-auspicious-windows:v1',
+    descriptor_name: 'query_auspicious_windows',
+    capability_uri: 'marsys://tool/L4/query_auspicious_windows',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT muhurta_id, action_class, window_start, window_end, hora_lord, panchanga_score,
+                 chart_personalization_score, personal_adversity_penalty, composite_quality,
+                 window_quality_verdict, verdict_reason, linked_anchor_id, classical_citation
+            FROM phala_muhurta
+           WHERE chart_id = $1::uuid
+             AND (NULL::date IS NULL OR window_end >= NULL::date)
+             AND (NULL::date IS NULL OR window_start <= NULL::date)
+             AND (NULL::text IS NULL OR action_class = NULL::text)
+           ORDER BY composite_quality DESC NULLS LAST LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:76-113'],
+  },
+  {
+    contract_id: 'source-query:query-predictive-anchors:v1',
+    descriptor_name: 'query_predictive_anchors',
+    capability_uri: 'marsys://tool/L4/query_predictive_anchors',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT anchor_id, domain, event_type, direction, horizon_tier, anchor_source,
+                   signal_id, convergence_id, discovery_id, bhavishya_id,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end, magnitude,
+                   magnitude_basis, confidence_low, confidence_high, confidence_basis,
+                   karmic_frame, karmic_note, malleability, dasha_consensus_count,
+                   ayanamsha_robustness, falsifier, source_citation, posterior,
+                   lift_vector_jsonb
+              FROM phala_anchors
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR domain = NULL::text)
+               AND (NULL::text IS NULL OR event_type = NULL::text)
+               AND (NULL::text IS NULL OR direction = NULL::text)
+               AND (NULL::text IS NULL OR horizon_tier = NULL::text)
+             ORDER BY magnitude, peak_date LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::int AS n FROM phala_anchors WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.n AS chart_total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:103-185'],
+  },
+  {
+    contract_id: 'source-query:query-domain-result:v1',
+    descriptor_name: 'query_domain_result',
+    capability_uri: 'marsys://tool/L4/query_domain_result',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT phaladesa_id, domain, anchor_count, clean_anchor_count, staged_revision_count,
+                 anomaly_flag_count, top_anchor_id,
+                 to_char(prediction_window_start, 'YYYY-MM-DD') AS prediction_window_start,
+                 to_char(prediction_window_end, 'YYYY-MM-DD') AS prediction_window_end,
+                 to_char(peak_date, 'YYYY-MM-DD') AS peak_date, magnitude, confidence_low,
+                 confidence_high, malleability, incoming_spillover_count, mitigation_available,
+                 muhurta_available, pramana_window_status, evidence_type, narration_status,
+                 source_citation
+            FROM phala_phaladesa
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR domain = NULL::text)
+           ORDER BY domain LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:70-114'],
+  },
+  {
+    contract_id: 'source-query:query-remedies:v1',
+    descriptor_name: 'query_remedies',
+    capability_uri: 'marsys://tool/L2/query_remedies',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH resonances AS (
+            SELECT resonance_id, graha, resonance_score, weakness_score, contradiction_factor,
+                   domain_burden, motif_burden, remedy_priority_class, is_yoga_karaka_flag,
+                   weakest_rank_in_chart, associated_doshas_array, associated_motifs_array,
+                   associated_cdlm_cells_array, citation_ref, citation_human, computed_at
+              FROM bodha_rm_resonances
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+             ORDER BY resonance_score DESC NULLS LAST LIMIT 0
+          ), prescriptions AS (
+            SELECT prescription_id, target_resonance_id, target_graha, tradition, sub_tradition,
+                   remedy_category, remedy_label_human, prescription_detail_jsonb,
+                   classical_strength_rating, classical_sources_jsonb, citation_ref, citation_human,
+                   feasibility_score, estimated_cost_inr_range_jsonb,
+                   estimated_time_minutes_daily, ritual_complexity_class,
+                   requires_acharya_review_flag, phase_sequence_class, phase_duration_days, computed_at
+              FROM bodha_rm_remedy_prescriptions
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY phase_sequence_class NULLS LAST, feasibility_score DESC NULLS LAST LIMIT 0
+          ) SELECT * FROM resonances`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-triangulation:v1',
+    descriptor_name: 'query_triangulation',
+    capability_uri: 'marsys://tool/L2/query_triangulation',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT triangulation_id, ayanamsha_id, question_class, tradition, verdict_inputs,
+                   concordance_score, signal_ids, formula_version, engine_version,
+                   to_char(computed_at, 'YYYY-MM-DD') AS computed_date
+              FROM bodha_triangulation
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_class = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+             ORDER BY question_class, tradition
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_triangulation
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR question_class = NULL::text)
+               AND (NULL::text IS NULL OR tradition = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98'],
+  },
+  {
+    contract_id: 'source-query:query-prospective-ledger:v1',
+    descriptor_name: 'query_prospective_ledger',
+    capability_uri: 'marsys://tool/L4/query_prospective_ledger',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT p.prediction_id, p.chart_id, p.claim, p.event_class, p.claim_shape,
+                 p.observation_window::text AS observation_window, p.milestone_set,
+                 p.model, p.formula_version, p.confidence, p.falsifier,
+                 p.as_of, p.generator_class, p.configuration_signature,
+                 p.lifecycle_status, p.matched_event_id, p.matched_at, p.match_note,
+                 p.filed_by, p.filing_method, p.source_citation, p.created_at,
+                 o.domain AS ontology_domain
+            FROM brahma_prospective_ledger p
+            LEFT JOIN brahma_event_ontology o ON o.event_class_id = p.event_class
+           WHERE p.chart_id = $1::uuid AND p.lifecycle_status = NULLIF(NULL::text, '')
+           ORDER BY p.as_of DESC
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226'],
+  },
+  {
+    contract_id: 'source-query:query-signals:v1',
+    descriptor_name: 'query_signals',
+    capability_uri: 'marsys://tool/L2/query_signals',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH optional_elevation_columns AS (
+            SELECT column_name
+              FROM information_schema.columns
+             WHERE table_name = 'bodha_msr_signals'
+               AND column_name = ANY(ARRAY['ratification_factor', 'valence_source']::text[])
+             LIMIT 0
+          ), signal_page AS (
+            SELECT signal_id, chart_id, ayanamsha_id, signal_type_id, signal_type_class,
+                   signal_tradition, signal_summary_text, signal_headline_text,
+                   computed_salience, domains_affected_array, constituent_facts_array,
+                   source_subsystem, valence, verification_pass_status, citation_human,
+                   lel_origin, signature_tier, configuration_jsonb
+              FROM bodha_msr_signals m
+             WHERE m.chart_id = $1::uuid AND m.ayanamsha_id = NULLIF(NULL::text, '')
+               AND (NULL::text IS NULL OR NULL::text = ANY(m.domains_affected_array))
+               AND (NULL::text IS NULL OR m.source_subsystem = NULL::text)
+               AND (NULL::text IS NULL OR m.signal_type_class = NULL::text)
+               AND (NULL::text IS NULL OR m.signal_tradition = NULL::text)
+               AND (NULL::numeric IS NULL OR m.computed_salience >= NULL::numeric)
+               AND (m.lel_origin IS NULL OR m.lel_origin = false)
+             ORDER BY m.computed_salience DESC NULLS LAST
+             LIMIT 0
+          ), l1_ranking_context AS (
+            SELECT fact_category, fact_subject, fact_value_num, fact_value_text, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category IN ('graha_shadbala_total', 'graha_dignity_per_varga')
+             LIMIT 0
+          ), active_dashas AS (
+            SELECT level, dasha_lord
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND level IN (1, 2) AND start_date <= CURRENT_DATE AND end_date > CURRENT_DATE
+             ORDER BY level ASC
+             LIMIT 0
+          ), frame_positions AS (
+            SELECT fact_subject, fact_value_text
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category = 'graha_position' AND fact_key = 'sign'
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM optional_elevation_columns) AS optional_columns,
+                   (SELECT COUNT(*) FROM signal_page) AS signals,
+                   (SELECT COUNT(*) FROM l1_ranking_context) AS ranking_facts,
+                   (SELECT COUNT(*) FROM active_dashas) AS dashas,
+                   (SELECT COUNT(*) FROM frame_positions) AS frame_positions`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649',
+      'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145',
+      'platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101',
+    ],
+  },
+  {
+    contract_id: 'source-query:find-verses-about:v1',
+    descriptor_name: 'find_verses_about',
+    capability_uri: 'marsys://tool/L0/find_verses_about',
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available',
+    sql: `WITH requested_schools AS (
+            SELECT DISTINCT tradition_school
+              FROM classical_text_chunks
+             WHERE text_id = ANY(ARRAY[]::text[]) AND tradition_school IS NOT NULL
+             LIMIT 0
+          ), vector_candidates AS (
+            SELECT c.chunk_id, c.text_id, c.chapter, c.verse_ref, c.content_en,
+                   c.tradition_school
+              FROM classical_text_chunks c
+             WHERE c.embedding IS NOT NULL
+             ORDER BY c.embedding <=> NULL::vector
+             LIMIT 0
+          ), full_text_candidates AS (
+            SELECT c.chunk_id, c.text_id, c.chapter, c.verse_ref, c.content_en,
+                   c.tradition_school
+              FROM classical_text_chunks c
+             WHERE to_tsvector('english', c.content_en) @@ plainto_tsquery('english', '')
+             ORDER BY ts_rank(to_tsvector('english', c.content_en), plainto_tsquery('english', '')) DESC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM requested_schools) AS requested_schools,
+                   (SELECT COUNT(*) FROM vector_candidates) AS vector_candidates,
+                   (SELECT COUNT(*) FROM full_text_candidates) AS full_text_candidates`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188',
+      'platform/src/lib/tools/classical_text_tools.ts:133-157',
+      'platform/src/lib/tools/classical_text_search.ts:72-193',
+    ],
+  },
+  {
+    contract_id: 'source-query:traverse-chart-graph:v1',
+    descriptor_name: 'traverse_chart_graph',
+    capability_uri: 'marsys://tool/L2/traverse_chart_graph',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH graph_nodes AS (
+            SELECT node_id, node_type, node_subject, node_label_human, msr_signal_id,
+                   pagerank_score, hub_flag, primary_domain, strength_score
+              FROM bodha_cgm_nodes
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             ORDER BY pagerank_score DESC NULLS LAST
+             LIMIT 0
+          ), graph_edges AS (
+            SELECT edge_id, from_node_id, to_node_id, edge_type, valence, computed_strength,
+                   is_cross_subsystem, underlying_msr_signal_ids_array
+              FROM bodha_cgm_edges
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             ORDER BY computed_strength DESC NULLS LAST
+             LIMIT 0
+          ), topology AS (
+            SELECT total_nodes, total_edges, top_5_hub_nodes_jsonb, top_5_central_nodes_jsonb,
+                   graph_density, hub_dominance_score, fragmentation_score, dispositor_cycle_jsonb
+              FROM bodha_cgm_chart_topology_summary
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR snapshot_type = NULL::text)
+             LIMIT 0
+          ), contradictions AS (
+            SELECT contradiction_id, signal_a_id, signal_b_id, tension_basis_jsonb,
+                   tension_class, domains_affected_array, combined_salience,
+                   resolution_hint_jsonb, verification_pass_status, ayanamsha_id, build_id
+              FROM bodha_contradictions
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY combined_salience DESC NULLS LAST
+             LIMIT 0
+          ), participant_signals AS (
+            SELECT signal_id, signal_type_id, signal_headline_text, signal_type_class,
+                   computed_salience, valence, domains_affected_array, signature_tier,
+                   constituent_facts_array
+              FROM bodha_msr_signals
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY computed_salience DESC NULLS LAST
+             LIMIT 0
+          ), subgraphs AS (
+            SELECT sub_graph_id, subgraph_type, subgraph_label, node_ids_array, edge_ids_array,
+                   subgraph_density, classical_archetype_match, verification_pass_status,
+                   citation_ref, citation_human
+              FROM bodha_cgm_sub_graphs
+             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY subgraph_density DESC NULLS LAST
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM graph_nodes) AS nodes,
+                   (SELECT COUNT(*) FROM graph_edges) AS edges,
+                   (SELECT COUNT(*) FROM topology) AS topology,
+                   (SELECT COUNT(*) FROM contradictions) AS contradictions,
+                   (SELECT COUNT(*) FROM participant_signals) AS participant_signals,
+                   (SELECT COUNT(*) FROM subgraphs) AS subgraphs`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-ucd:v1',
+    descriptor_name: 'query_ucd',
+    capability_uri: 'marsys://tool/L2/query_ucd',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH digest AS (
+            SELECT msr_signal_count::int AS msr_signal_count, yoga_count::int AS yoga_count,
+                   dosha_count::int AS dosha_count, avg_salience, max_salience,
+                   contradiction_count::int AS contradiction_count, weakest_graha,
+                   top_priority_class, top_convergence_domains, trap1_count, digest_at
+              FROM vw_chart_digest
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             LIMIT 0
+          ), signals AS (
+            SELECT signal_id, signal_type_id, signal_type_class, signal_tradition,
+                   signal_summary_text, signal_headline_text, computed_salience,
+                   top_k_salience_rank, domains_affected_array, constituent_facts_array,
+                   source_subsystem, valence, verification_pass_status,
+                   configuration_jsonb, citation_human, lel_origin, signature_tier
+              FROM bodha_msr_signals
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY computed_salience DESC NULLS LAST
+             LIMIT 0
+          ), convergence AS (
+            SELECT domain, convergence_count, convergence_score, cross_tradition_count,
+                   salience_weighted_sum, contradiction_count
+              FROM bodha_convergence
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND snapshot_type = 'static_natal'
+             ORDER BY convergence_score DESC NULLS LAST
+             LIMIT 0
+          ), shadbala AS (
+            SELECT fact_subject, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'
+               AND fact_value_num IS NOT NULL
+             ORDER BY fact_value_num ASC, fact_subject ASC
+             LIMIT 0
+          ), ranking_context AS (
+            SELECT fact_category, fact_subject, fact_value_num, fact_value_text, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category IN ('graha_shadbala_total', 'graha_dignity_per_varga')
+             LIMIT 0
+          ), active_dashas AS (
+            SELECT level, dasha_lord
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND level IN (1, 2) AND start_date <= CURRENT_DATE AND end_date > CURRENT_DATE
+             ORDER BY level ASC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM digest) AS digest,
+                   (SELECT COUNT(*) FROM signals) AS signals,
+                   (SELECT COUNT(*) FROM convergence) AS convergence,
+                   (SELECT COUNT(*) FROM shadbala) AS shadbala,
+                   (SELECT COUNT(*) FROM ranking_context) AS ranking_context,
+                   (SELECT COUNT(*) FROM active_dashas) AS active_dashas`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360',
+      'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145',
     ],
   },
 ]
