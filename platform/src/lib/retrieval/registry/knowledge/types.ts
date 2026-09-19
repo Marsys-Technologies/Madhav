@@ -132,6 +132,10 @@ export interface BoundedWindowClosureContract {
 export interface NonPaginatedClosureContract {
   readonly closure_version: string
   readonly checklist_path: string
+  /** Stable handler-owned checklist schema, never a response-selected denominator. */
+  readonly checklist_contract_id?: string
+  /** Every unit required by the checklist schema, in its deterministic source order. */
+  readonly required_units?: readonly string[]
   readonly material_trim_paths: readonly string[]
   readonly source_ref: string
 }

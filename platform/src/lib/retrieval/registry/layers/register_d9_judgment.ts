@@ -85,6 +85,7 @@ import {
   getOperativeVargaConstants,
   fetchVargaRatification,
   vargaConfirmedMark,
+  JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
@@ -938,6 +939,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // independent claim (kept SUB-D1 accordingly, see YOGA_MATCH_WEIGHT).
       let yogasChecked = 0
       let bearingYogaFirings: Record<string, unknown>[] = []
+      let yogaFiringsRead = false
       let yogaTerm = 0
       const domainActors = new Set(
         [lordCondition.graha, ...karakaConditions.map(k => k.graha)]
@@ -951,6 +953,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           undefined,
         )
         if (!res.is_error) {
+          yogaFiringsRead = true
           const c = res.content as Record<string, unknown>
           const firedRows = (c['rows'] as Record<string, unknown>[]) ?? []
           yogasChecked = firedRows.length
@@ -1343,6 +1346,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // composite; supporting and threatening layers are served SEPARATELY.
       let bearing_afflictions: Record<string, unknown>[] = []
       let affliction_mechanisms: Record<string, unknown>[] = []
+      let afflictionsRead = false
       // F-165: the mechanisms store's actual domain coverage — reported on EVERY call,
       // populated or not (§N.8: "nothing excluded" must not read as "never evaluated"). Never
       // a hardcoded list of covered/uncovered domains; always a live count against
@@ -1396,6 +1400,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           mechanism_name: r.mechanism_name, mechanism_class: r.mechanism_class,
           valence: r.valence, citation_human: r.citation_human,
         }))
+        afflictionsRead = true
       } catch (e) {
         judgment_flags.push(judgmentFlag('afflictions_fetch_failed', String(e)))
       }
@@ -1539,8 +1544,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         // operative varga into the verdict; a domain like wealth classically carries two
         // (D2 dhana + D11 lābha). Named here as not_joined with a live drill rather than
         // left invisible behind an `operative_varga: served` box that reads as complete.
-        ...(crossVarga.length > 0
-          ? [{
+        {
+          ...(crossVarga.length > 0
+            ? {
               unit: 'corroborating_vargas',
               state: 'not_joined' as const,
               count: crossVarga.length,
@@ -1548,8 +1554,14 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 `${crossVarga.join('+')} — classical for '${spec.signal_domain}' but NOT weighted into this verdict ` +
                 `(only the operative varga ${spec.varga} is). No cross-varga convergence is computed here.`,
               drill: `ganita_vichara_get (family='varga_ratification', domain='${spec.signal_domain}') / assess_${spec.signal_domain} (varga_analysis.per_varga) / ganita_chart_facts_get (divisional_chart=${crossVarga[0]})`,
-            }]
-          : []),
+              }
+            : {
+                unit: 'corroborating_vargas',
+                state: 'not_applicable' as const,
+                count: 0,
+                detail: `no corroborating classical varga is mapped for '${spec.signal_domain}' beyond operative ${spec.varga}`,
+              }),
+        },
         { unit: 'ashtakavarga', state: 'not_joined', detail: 'bhāva AV bindus not folded into judgment_query', drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)' },
         {
           unit: 'special_lagnas',
@@ -1567,14 +1579,33 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
         { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },
+        {
+          unit: 'bearing_yogas',
+          state: yogaFiringsRead ? (bearingYogaFirings.length > 0 ? 'served' : 'empty_for_this_chart') : 'source_unproven',
+          count: bearingYogaFirings.length,
+          detail: 'firings-authoritative ga_yoga_firings bearing layer; a failed source read is not an empty-yoga finding',
+        },
+        {
+          unit: 'bearing_afflictions',
+          state: afflictionsRead ? ((bearing_afflictions.length + affliction_mechanisms.length) > 0 ? 'served' : 'empty_for_this_chart') : 'source_unproven',
+          count: bearing_afflictions.length + affliction_mechanisms.length,
+          detail: 'adverse-valence MSR signals and affliction mechanisms are a separately served threat layer',
+        },
+        {
+          unit: 'notably_absent_yogas',
+          state: 'not_computed',
+          detail: 'near-miss yoga detection is not built; bhaṅga on fired yogas is distinct and already handled above',
+        },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
         { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, canonical domain='${spec.signal_domain}'${domain_resolution.is_exact ? '' : ` (requested '${requestedDomainKey ?? `bhāva ${spec.bhava}`}' — see domain_resolution, F-57)`} (MC-033)` },
         { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },
       ]
       const exhaustiveness = checklistExhaustiveness(reading_checklist_units)
       const reading_checklist = {
+        contract_id: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.contract_id,
         units: reading_checklist_units,
         ...exhaustiveness,
+        required_units: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.required_units,
         note: 'The classical bhāva-adhyāya checklist, served: each unit names whether THIS ' +
           'response carried it and — for every absent box — WHY. not_joined units carry a live ' +
           'drill handle. When not every unit is served/empty, the response self-discloses ' +

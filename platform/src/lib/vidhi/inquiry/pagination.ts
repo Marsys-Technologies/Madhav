@@ -256,12 +256,30 @@ function nonPaginatedClosureExhausted(
 ): boolean | null {
   const review = binding?.non_paginated_closure
   if (!binding || !review) return null
-  if (binding.pagination !== 'none' || review.closure_version !== 'judgment-reading-checklist-v1') return false
+  if (binding.pagination !== 'none') return false
+  const isV1 = review.closure_version === 'judgment-reading-checklist-v1'
+  const isV2 = review.closure_version === 'judgment-reading-checklist-v2'
+  if (!isV1 && !isV2) return false
 
   const objects = nestedValues(raw)
   for (const object of objects) {
     const checklist = record(atPath(object, review.checklist_path))
     if (!checklist) continue
+    if (isV2) {
+      const requiredUnits = review.required_units
+      if (!review.checklist_contract_id || !Array.isArray(requiredUnits) || requiredUnits.length === 0
+        || checklist['contract_id'] !== review.checklist_contract_id) return false
+      const units = checklist['units']
+      if (!Array.isArray(units) || new Set(requiredUnits).size !== requiredUnits.length) return false
+      const observed = units.map(unit => record(unit))
+      if (observed.some(unit => !unit || typeof unit['unit'] !== 'string' || typeof unit['state'] !== 'string')) return false
+      const observedIds = observed.map(unit => unit!['unit'] as string)
+      if (new Set(observedIds).size !== observedIds.length
+        || observedIds.length !== requiredUnits.length
+        || observedIds.some((unit, index) => unit !== requiredUnits[index])) return false
+      const settled = new Set(['served', 'empty_for_this_chart', 'not_applicable'])
+      if (observed.some(unit => !settled.has(unit!['state'] as string))) return false
+    }
     const served = checklist['units_served']
     const total = checklist['units_total']
     const unserved = checklist['units_unserved']

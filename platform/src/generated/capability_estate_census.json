@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "7648a3732948e5fb263c80f600361213ebf4cf75dc12d2033ecc7b7f52940ad8",
+  "content_sha256": "f1f0c6496e5a972186391ed7f4f2dd35d68ad8dec85a7ff84289c61bb4d91bdf",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20728,6 +20728,7 @@
         "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
         "platform/migrations/1028_nirmana_l2_bo_samvada_output_digest_spec.sql",
         "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
+        "platform/migrations/1042_nirmana_purna_wealth_ga_strength_ashtakavarga_digest_spec.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -20801,7 +20802,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-20T04:25:00.000Z",
+  "generated_at": "2026-09-19T22:53:08.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20827,7 +20828,7 @@
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 86,
+        "member_count": 87,
         "members": [
           {
             "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
@@ -20892,6 +20893,10 @@
           {
             "path": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
             "sha256": "9e7db551ed4a289887bdd526c7f02140fc12a2e4638ce7ad8fbc10771b26a9f8"
+          },
+          {
+            "path": "platform/migrations/1042_nirmana_purna_wealth_ga_strength_ashtakavarga_digest_spec.sql",
+            "sha256": "761d441244ccb26d3a358f757372085824b151b41d63aee1e5e9aa1a90eb23b6"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21175,7 +21180,7 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "8d97f46b4d6a4200057b7cbbce2eb7fa22da951a3a866fd96a0f67f6aaa44659"
+        "sha256": "370dfc4abd6d6a6006fecf196d73b185b8d1dd01edf4d8b0f2f83967d45d2da6"
       },
       {
         "id": "producer_asset_seed",
@@ -21430,7 +21435,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "2a8334363c328aa056110d205a7a0e1220c72f925d765d1b2af3c564a20a164b"
+            "sha256": "3cc54c35a91fe1c85481d4f80bb83676ecffa5ef8a243585484c0bd76cd720f7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -21478,7 +21483,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "ed9e790d1566e7f853fae5189a2a58470b11d855d193b81951066d2ef81a7b01"
+            "sha256": "371801d1047348cbb85714784a3fb9767c35628f289826381ce9a6243c72dde4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -22106,7 +22111,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "ce223546f204c23819a9e5f4f8497797c6812347fe00b79b49abaac55ec054f9"
+            "sha256": "1e687c324c08e7369561f61135fe3a31fd5872cccb1eda3891a8474ef76efbd4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
@@ -22130,7 +22135,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "6a6f6d7dad5f9bd47b018a3a9d5c956df8cfa8434caa1d9a5aaacafb074c8ee8"
+            "sha256": "77cce7abe0a476dfe281bdfb669cc7f0a9c74d8753944e7028ebd1c56d4b745b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22198,7 +22203,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "da1034b48957d46b4ee23bd4c83a3726d79b2d9d400d49ef57dd108f54551f09"
+        "sha256": "cf8ce59f88b24111ae8d0a1ec2288ffe46ade3c5a06e02d998ae314aea324bdc"
       },
       {
         "id": "service_effect_contracts",
@@ -22223,5 +22228,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e848b2733cf68b14162f6c329fa01c9d61c34e7f"
+  "source_revision": "1473e7b63f9bf0d483ab4299536b9936303ec8a4"
 }

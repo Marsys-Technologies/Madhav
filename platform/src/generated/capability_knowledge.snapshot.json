@@ -1,8 +1,8 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T04:25:00.000Z",
-  "content_hash": "sha256:b30900549268b3571f4e52436f291661905c907107a6bb8e49d30592d28717c1",
+  "generated_at": "2026-09-19T22:53:08.000Z",
+  "content_hash": "sha256:2855530bc7c62761739307ad89c1d6736df9783cac291537483a49794d699bbf",
   "source_catalog_fingerprint": "sha256:8b32f4675390b4a1a955ec3449a0b2c634890cc201a3f69497ad3ab12fc0d75a",
   "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
@@ -11081,8 +11081,27 @@
       "primary_binding_details": {
         "pagination": "none",
         "non_paginated_closure": {
-          "closure_version": "judgment-reading-checklist-v1",
+          "closure_version": "judgment-reading-checklist-v2",
           "checklist_path": "reading_checklist",
+          "checklist_contract_id": "judgment-reading-checklist-v2",
+          "required_units": [
+            "bhava_bhavesha_from_lagna",
+            "bhava_bhavesha_from_chandra",
+            "karakas",
+            "operative_varga",
+            "corroborating_vargas",
+            "ashtakavarga",
+            "special_lagnas",
+            "sensitive_degree_firings",
+            "kp_cusp_chain",
+            "yogi_avayogi",
+            "bearing_yogas",
+            "bearing_afflictions",
+            "notably_absent_yogas",
+            "dasha_levels",
+            "gochara_sweep",
+            "tajaka"
+          ],
           "material_trim_paths": [
             "budget_kb_applied",
             "trim_report",
@@ -11176,8 +11195,27 @@
           "executable": true,
           "route_evidence": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "non_paginated_closure": {
-            "closure_version": "judgment-reading-checklist-v1",
+            "closure_version": "judgment-reading-checklist-v2",
             "checklist_path": "reading_checklist",
+            "checklist_contract_id": "judgment-reading-checklist-v2",
+            "required_units": [
+              "bhava_bhavesha_from_lagna",
+              "bhava_bhavesha_from_chandra",
+              "karakas",
+              "operative_varga",
+              "corroborating_vargas",
+              "ashtakavarga",
+              "special_lagnas",
+              "sensitive_degree_firings",
+              "kp_cusp_chain",
+              "yogi_avayogi",
+              "bearing_yogas",
+              "bearing_afflictions",
+              "notably_absent_yogas",
+              "dasha_levels",
+              "gochara_sweep",
+              "tajaka"
+            ],
             "material_trim_paths": [
               "budget_kb_applied",
               "trim_report",
