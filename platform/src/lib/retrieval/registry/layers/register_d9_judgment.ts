@@ -88,6 +88,8 @@ import {
   fetchWealthAshtakavarga,
   fetchWealthSpecialLagnas,
   fetchWealthYogiAvayogi,
+  fetchTajakaSourceFence,
+  fetchWealthTajaka,
   fetchWealthReadingSourceFence,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
@@ -964,6 +966,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         ? await fetchWealthYogiAvayogi(chart_id, ayanamsha_id, build_id)
         : null
       for (const fact of wealthYogiAvayogi?.rows ?? []) fact_ids.add(fact.fact_id)
+      const tajakaSourceFence = spec.signal_domain === 'wealth'
+        ? await fetchTajakaSourceFence(chart_id, build_id)
+        : null
+      const wealthTajaka = tajakaSourceFence?.ready
+        ? await fetchWealthTajaka(chart_id, ayanamsha_id, build_id, as_of_date)
+        : null
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
@@ -1676,7 +1684,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
         { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, canonical domain='${spec.signal_domain}'${domain_resolution.is_exact ? '' : ` (requested '${requestedDomainKey ?? `bhāva ${spec.bhava}`}' — see domain_resolution, F-57)`} (MC-033)` },
-        { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },
+        {
+          unit: 'tajaka',
+          state: spec.signal_domain === 'wealth'
+            ? (tajakaSourceFence?.ready ? (wealthTajaka?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthTajaka?.row === null ? 0 : (wealthTajaka?.row ? 1 : 0),
+          detail: spec.signal_domain === 'wealth'
+            ? (tajakaSourceFence?.ready
+              ? `fixed annual Vārṣaphala row containing as_of_date=${as_of_date}`
+              : 'fresh/proven selected-build ga_tajaka receipt is unavailable or a producer replacement is active')
+            : 'annual (varṣaphala/tājaka) not folded into the natal judgment',
+          drill: 'ganita_tajaka_get',
+        },
       ]
       const exhaustiveness = checklistExhaustiveness(reading_checklist_units)
       const reading_checklist = {
@@ -1757,6 +1777,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               wealth_yogi_avayogi: {
                 state: wealthYogiAvayogi?.state ?? 'source_unproven',
                 rows: wealthYogiAvayogi?.rows ?? [],
+              },
+              wealth_tajaka: {
+                source_fence: tajakaSourceFence,
+                state: wealthTajaka?.state ?? 'source_unproven',
+                as_of_date,
+                row: wealthTajaka?.row ?? null,
               },
             }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real

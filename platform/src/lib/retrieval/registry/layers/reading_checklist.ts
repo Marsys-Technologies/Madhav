@@ -134,6 +134,18 @@ export interface WealthReadingSourceFence {
   assets: WealthReadingSourceFenceAsset[]
 }
 
+interface SourceReceiptFenceAsset {
+  asset_id: string
+  receipt_matches_selected_build: boolean
+  replacement_in_progress: boolean
+}
+
+interface SourceReceiptFence {
+  ok: boolean
+  ready: boolean
+  assets: SourceReceiptFenceAsset[]
+}
+
 /**
  * Reads all five producer receipt states and their replacement fences from a
  * single statement snapshot.  A current asset-output digest spec is joined to
@@ -142,14 +154,15 @@ export interface WealthReadingSourceFence {
  * paused producer or a terminal mutation at/after the selected receipt stays
  * unavailable unless that run itself carries a fresh, proven current receipt.
  */
-export async function fetchWealthReadingSourceFence(
+async function fetchSourceReceiptFence(
   chart_id: string,
   build_id: string,
-): Promise<WealthReadingSourceFence> {
-  const unavailable = (ok: boolean): WealthReadingSourceFence => ({
+  requiredAssets: readonly string[],
+): Promise<SourceReceiptFence> {
+  const unavailable = (ok: boolean): SourceReceiptFence => ({
     ok,
     ready: false,
-    assets: WEALTH_READING_REQUIRED_ASSETS.map(asset_id => ({
+    assets: requiredAssets.map(asset_id => ({
       asset_id,
       receipt_matches_selected_build: false,
       replacement_in_progress: false,
@@ -157,7 +170,7 @@ export async function fetchWealthReadingSourceFence(
   })
   try {
     const res = await query<{
-      asset_id: typeof WEALTH_READING_REQUIRED_ASSETS[number]
+      asset_id: string
       receipt_matches_selected_build: boolean
       replacement_in_progress: boolean
     }>(
@@ -222,10 +235,10 @@ export async function fetchWealthReadingSourceFence(
          FROM required_assets required_asset
          LEFT JOIN selected_receipts selected ON selected.asset_id = required_asset.asset_id
         ORDER BY required_asset.asset_id ASC`,
-      [[...WEALTH_READING_REQUIRED_ASSETS], chart_id, build_id],
+      [[...requiredAssets], chart_id, build_id],
     )
     const byAsset = new Map(res.rows.map(row => [row.asset_id, row]))
-    const assets = WEALTH_READING_REQUIRED_ASSETS.map(asset_id => {
+    const assets = requiredAssets.map(asset_id => {
       const row = byAsset.get(asset_id)
       return {
         asset_id,
@@ -241,6 +254,29 @@ export async function fetchWealthReadingSourceFence(
   } catch {
     return unavailable(false)
   }
+}
+
+export async function fetchWealthReadingSourceFence(
+  chart_id: string,
+  build_id: string,
+): Promise<WealthReadingSourceFence> {
+  const fence = await fetchSourceReceiptFence(chart_id, build_id, WEALTH_READING_REQUIRED_ASSETS)
+  return {
+    ...fence,
+    assets: fence.assets.map(asset => ({
+      ...asset,
+      asset_id: asset.asset_id as typeof WEALTH_READING_REQUIRED_ASSETS[number],
+    })),
+  }
+}
+
+/** ga_tajaka is an independent annual producer, so it has its own current-spec receipt
+ * fence rather than borrowing the natal wealth pivot's five-producer fence. */
+export async function fetchTajakaSourceFence(
+  chart_id: string,
+  build_id: string,
+): Promise<SourceReceiptFence> {
+  return fetchSourceReceiptFence(chart_id, build_id, ['ga_tajaka'])
 }
 
 // ── Leg 1: fired sensitive-degree checks (MC-030) ─────────────────────────────
@@ -807,6 +843,60 @@ export async function fetchWealthYogiAvayogi(
       : { state: 'source_incomplete', rows: [] }
   } catch {
     return { state: 'source_unproven', rows: [] }
+  }
+}
+
+export interface WealthTajakaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  row: {
+    varsha_id: string
+    varsha_year: number
+    varsha_start_iso: string
+    varsha_end_iso: string
+    year_lord_method: string
+    year_lord: string
+    candidate_lord_jsonb: Record<string, unknown> | null
+    muntha_position_jsonb: Record<string, unknown> | null
+    applicable_tajik_yogas_array: string[] | null
+    verification_pass_status: string
+    citation_ref: string
+    citation_human: string
+  } | null
+}
+
+/** One annual Tājika row is selected by the caller's explicit as-of date. There is no
+ * oldest/current heuristic here: selected build + ayanāṃśa + half-open annual window
+ * must yield exactly one two-pass-verified Vārṣaphala record. */
+export async function fetchWealthTajaka(
+  chart_id: string,
+  ayanamsha_id: string,
+  build_id: string,
+  as_of_date: string,
+): Promise<WealthTajakaResult> {
+  try {
+    const res = await query<NonNullable<WealthTajakaResult['row']>>(
+      `SELECT varsha_id::text AS varsha_id, varsha_year, varsha_start_iso::text, varsha_end_iso::text,
+              year_lord_method, year_lord, candidate_lord_jsonb, muntha_position_jsonb,
+              applicable_tajik_yogas_array, verification_pass_status, citation_ref, citation_human
+         FROM l1_tajik_varsha_year_lords
+        WHERE chart_id = $1::uuid AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND varsha_start_iso <= $4::date AND varsha_end_iso > $4::date
+        ORDER BY varsha_year ASC, varsha_id ASC`,
+      [chart_id, ayanamsha_id, build_id, as_of_date],
+    )
+    if (res.rows.length !== 1) return { state: 'source_incomplete', row: null }
+    const row = res.rows[0]!
+    if (row.verification_pass_status !== 'two_pass_verified'
+      || row.year_lord_method !== 'tajik_classical'
+      || !row.varsha_id || !Number.isInteger(row.varsha_year)
+      || !row.varsha_start_iso || !row.varsha_end_iso || !row.year_lord
+      || row.candidate_lord_jsonb == null || row.muntha_position_jsonb == null
+      || !row.citation_ref || !row.citation_human) {
+      return { state: 'source_incomplete', row: null }
+    }
+    return { state: 'served', row }
+  } catch {
+    return { state: 'source_unproven', row: null }
   }
 }
 

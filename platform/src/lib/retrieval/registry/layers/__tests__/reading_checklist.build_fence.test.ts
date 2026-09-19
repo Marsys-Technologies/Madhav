@@ -8,6 +8,8 @@ import {
   fetchWealthAshtakavarga,
   fetchWealthSpecialLagnas,
   fetchWealthYogiAvayogi,
+  fetchTajakaSourceFence,
+  fetchWealthTajaka,
   fetchSensitiveDegreeFirings,
   fetchWealthCorroboratingVargas,
   fetchWealthReadingSourceFence,
@@ -191,5 +193,36 @@ describe('reading-checklist selected-build fence', () => {
       ['YOGI', 'AVAYOGI', 'DUPLICATE_YOGI', 'SAHAYOGI'],
       ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
     ])
+  })
+
+  it('fences Tajaka independently and selects exactly one as-of annual record', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{
+        asset_id: 'ga_tajaka', receipt_matches_selected_build: true, replacement_in_progress: false,
+      }] })
+      .mockResolvedValueOnce({ rows: [{
+        varsha_id: 'annual-1', varsha_year: 42,
+        varsha_start_iso: '2026-01-01T00:00:00.000Z', varsha_end_iso: '2027-01-01T00:00:00.000Z',
+        year_lord_method: 'tajik_classical', year_lord: 'Jupiter',
+        candidate_lord_jsonb: { Jupiter: 5 }, muntha_position_jsonb: { sign: 'Aries' },
+        applicable_tajik_yogas_array: [], verification_pass_status: 'two_pass_verified',
+        citation_ref: 'tajaka-ref', citation_human: 'Tajaka citation.',
+      }] })
+
+    const fence = await fetchTajakaSourceFence(CHART_ID, BUILD_ID)
+    const result = await fetchWealthTajaka(CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19')
+
+    expect(fence.ready).toBe(true)
+    expect(fence.assets).toEqual([{ asset_id: 'ga_tajaka', receipt_matches_selected_build: true, replacement_in_progress: false }])
+    expect(result.state).toBe('served')
+    expect(result.row?.varsha_year).toBe(42)
+    const [fenceSql, fenceParams] = queryMock.mock.calls[0]!
+    expect(String(fenceSql)).toContain('asset_provenance_receipts receipt')
+    expect(fenceParams).toEqual([['ga_tajaka'], CHART_ID, BUILD_ID])
+    const [tajakaSql, tajakaParams] = queryMock.mock.calls[1]!
+    expect(String(tajakaSql)).toContain('l1_tajik_varsha_year_lords')
+    expect(String(tajakaSql)).toContain('build_id = $3::uuid')
+    expect(String(tajakaSql)).toContain('varsha_start_iso <= $4::date')
+    expect(tajakaParams).toEqual([CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19'])
   })
 })
