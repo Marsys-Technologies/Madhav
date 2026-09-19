@@ -3169,6 +3169,24 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts:78-145'],
   },
+  {
+    contract_id: 'source-query:call-dasha-eligibility:v1',
+    descriptor_name: 'call_dasha_eligibility',
+    capability_uri: 'marsys://tool/L3/call_dasha_eligibility',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT id, chart_id, ayanamsha_id, level_n, lord_graha,
+                 to_char(start_date, 'YYYY-MM-DD') AS start_date,
+                 to_char(end_date, 'YYYY-MM-DD') AS end_date,
+                 start_iso, end_iso
+            FROM chart_dashas
+           WHERE chart_id = $1::uuid
+             AND ayanamsha_id = NULLIF(NULL::text, '')
+             AND end_date >= CURRENT_DATE
+             AND start_date <= CURRENT_DATE
+             AND (NULL::text IS NULL OR lord_graha = NULL::text)
+           ORDER BY start_date, level_n LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:298-325'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

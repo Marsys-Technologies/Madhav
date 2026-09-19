@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:59:38.000Z",
-  "content_hash": "sha256:55ce11655f1e9fd644410300a6b798acbdd4e17b4688993aaeae621ac0592410",
+  "generated_at": "2026-09-19T01:01:59.000Z",
+  "content_hash": "sha256:0b295ee3d5db19e1264f7db23b581e7c1c9502d83ee4b39ab1635838a672e824",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:118159aeab9ed80655ffb1707538a536b31baab514924548d3bb148ca49f97c9",
+  "semantic_review_fingerprint": "sha256:7e9a1c5073f802553ec54ba7825cde6850b95d07ecfe28568d36fb3c898b5baf",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -1282,6 +1282,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L3/call_dasha_eligibility",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:call-dasha-eligibility:v1",
+              "capability_uri": "marsys://tool/L3/call_dasha_eligibility",
+              "contract_sha256": "sha256:ef71080d3caa78babcefb19eca306ade004b68d17d4366ae604839432035e8b4",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:298-325"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
