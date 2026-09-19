@@ -84,6 +84,8 @@ import {
   ensureDomainDirectVargasLoaded,
   getOperativeVargaConstants,
   fetchVargaRatification,
+  fetchWealthCorroboratingVargas,
+  fetchWealthReadingSourceFence,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
   type ChecklistUnit,
@@ -930,6 +932,21 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // 'abstain_missing'/'no_row' are an honest unknown, never defaulted to ✓ or ✗.
       const vargaConfirmedMarkValue = vargaConfirmedMark(spec.varga, vargaRatificationRelation)
 
+      // Wealth's non-operative D9/D11 pivots are fixed-shape evidence, not a ranked sample.
+      // Do not read any of them until every required producer has a fresh/proven receipt for
+      // this exact build; an unavailable provenance fence is disclosed, never flattened into
+      // an empty corroboration finding.
+      const wealthSourceFence = spec.signal_domain === 'wealth'
+        ? await fetchWealthReadingSourceFence(chart_id, build_id)
+        : null
+      const wealthCorroboratingVargas = wealthSourceFence?.ready
+        ? await fetchWealthCorroboratingVargas(
+          chart_id, ayanamsha_id,
+          grahasToConfirm.map(({ role, code }) => ({ role, code })), build_id,
+        )
+        : null
+      for (const factId of wealthCorroboratingVargas?.fact_ids ?? []) fact_ids.add(factId)
+
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
       // bhaṅga/cancellation state), not the MSR yoga signal projection — see the YOGA_* constants'
@@ -1545,7 +1562,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         // (D2 dhana + D11 lābha). Named here as not_joined with a live drill rather than
         // left invisible behind an `operative_varga: served` box that reads as complete.
         {
-          ...(crossVarga.length > 0
+          ...(spec.signal_domain === 'wealth'
+            ? {
+              unit: 'corroborating_vargas',
+              state: wealthSourceFence?.ready
+                ? (wealthCorroboratingVargas?.state ?? 'source_unproven')
+                : 'source_unproven',
+              count: wealthCorroboratingVargas?.rows.length ?? 0,
+              detail: wealthSourceFence?.ready
+                ? 'fixed D9/D11 ratification pivots for the wealth bhāveśa and Jupiter'
+                : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active',
+              drill: 'ganita_vichara_get',
+            }
+            : crossVarga.length > 0
             ? {
               unit: 'corroborating_vargas',
               state: 'not_joined' as const,
@@ -1662,6 +1691,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             },
             aspecting_grahas: aspectsLagna.grahas,
             varga_confirmation: { varga: spec.varga, rows: vargaConfirmation },
+            ...(wealthSourceFence === null ? {} : {
+              wealth_corroborating_vargas: {
+                source_fence: wealthSourceFence,
+                state: wealthCorroboratingVargas?.state ?? 'source_unproven',
+                rows: wealthCorroboratingVargas?.rows ?? [],
+              },
+            }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real
             // strength + bhaṅga state) and stays a flat array (registry_bridge.ts's response-budget
             // trimmer + the existing integration test both expect `Array.isArray(bearing_yogas)`).

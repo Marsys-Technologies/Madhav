@@ -586,6 +586,57 @@ export function vargaConfirmedMark(varga: string, relation: VargaRatificationRel
   return `${varga}? (varga did not vote)`
 }
 
+export const WEALTH_CORROBORATING_VARGAS = ['D9', 'D11'] as const
+
+export interface WealthCorroboratingVargaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{ role: string; subject: string; varga: typeof WEALTH_CORROBORATING_VARGAS[number]; relation: VargaRatificationRelation; source_id: string; constituent_fact_ids: string[] }>
+  fact_ids: string[]
+}
+
+/** Fixed-shape wealth corroboration: two named actors times D9/D11.  The caller must
+ * establish the shared selected-build receipt fence before calling this reader. */
+export async function fetchWealthCorroboratingVargas(
+  chart_id: string,
+  ayanamsha_id: string,
+  subjects: Array<{ role: string; code: string }>,
+  build_id: string,
+): Promise<WealthCorroboratingVargaResult> {
+  const uniqueSubjects = [...new Map(subjects.map(subject => [subject.code, subject])).values()]
+  const codes = uniqueSubjects.map(subject => subject.code)
+  if (codes.length === 0) return { state: 'source_incomplete', rows: [], fact_ids: [] }
+  try {
+    const res = await query<{ id: string; subject: string; value_jsonb: Record<string, unknown> | null; constituent_fact_ids: string[] | null }>(
+      `SELECT id::text AS id, subject, value_jsonb, constituent_fact_ids
+         FROM chart_vichara
+        WHERE chart_id = $1 AND ayanamsha_id = $2
+          AND build_id = $3::uuid AND vichara_family = 'varga_ratification'
+          AND domain = 'wealth' AND subject = ANY($4)
+        ORDER BY subject ASC, id ASC`,
+      [chart_id, ayanamsha_id, build_id, codes],
+    )
+    const bySubject = new Map<string, typeof res.rows>()
+    for (const row of res.rows) bySubject.set(row.subject, [...(bySubject.get(row.subject) ?? []), row])
+    const rows: WealthCorroboratingVargaResult['rows'] = []
+    for (const subject of uniqueSubjects) {
+      const matches = bySubject.get(subject.code) ?? []
+      if (matches.length !== 1) return { state: 'source_incomplete', rows: [], fact_ids: [] }
+      const row = matches[0]!
+      const perVarga = row.value_jsonb?.['per_varga'] as Record<string, { relation?: string }> | undefined
+      for (const varga of WEALTH_CORROBORATING_VARGAS) {
+        const relation = perVarga?.[varga]?.relation
+        if (!['agree', 'oppose', 'abstain', 'abstain_missing', 'no_row'].includes(String(relation))) {
+          return { state: 'source_incomplete', rows: [], fact_ids: [] }
+        }
+        rows.push({ role: subject.role, subject: subject.code, varga, relation: relation as VargaRatificationRelation, source_id: row.id, constituent_fact_ids: row.constituent_fact_ids ?? [] })
+      }
+    }
+    return { state: 'served', rows, fact_ids: [...new Set(rows.flatMap(row => row.constituent_fact_ids))].sort() }
+  } catch {
+    return { state: 'source_unproven', rows: [], fact_ids: [] }
+  }
+}
+
 export interface KpCuspLink {
   house: number
   sign: unknown
