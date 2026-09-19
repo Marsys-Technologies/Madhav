@@ -2665,6 +2665,26 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107',
     ],
   },
+  {
+    contract_id: 'source-query:query-active-dashas:v1',
+    descriptor_name: 'query_active_dashas',
+    capability_uri: 'marsys://tool/L3/query_active_dashas',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH systems_present AS (
+            SELECT DISTINCT system_id FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY system_id LIMIT 0
+          ), active_chain AS (
+            SELECT system_id, level_n, lord_graha, lord_sign,
+                   to_char(start_date, 'YYYY-MM-DD') AS start_date,
+                   to_char(end_date, 'YYYY-MM-DD') AS end_date, start_iso, end_iso
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
+               AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND level_n <= 3
+             ORDER BY system_id, level_n LIMIT 0
+          ) SELECT 1 FROM systems_present CROSS JOIN active_chain`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts:101-126'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

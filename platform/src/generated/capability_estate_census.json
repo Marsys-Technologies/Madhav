@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "74412073e738cbcb010e9fc3ac60880f0f9f6c39f5c108dd6480d07501b98817",
+  "content_sha256": "a4f886efc1357b09b4252bed2061b7b80038457f5a297a85fcb5c33c02b4c7fe",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -8029,6 +8029,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts"
         ],
         "output_contract": null,
@@ -20750,7 +20751,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-19T00:28:58.000Z",
+  "generated_at": "2026-09-19T00:30:37.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21419,7 +21420,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "aa0061219d2171b7e82ced7a4baa890bbbc47f39978ca8eca4fef039a2fa7c8b"
+            "sha256": "b3a5efa4bda9205987e3034a9de8714f922890a3f21f050c9f02e89717965ab7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22147,7 +22148,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "28c2bb827fb827924dcc47a6ea29864369a930477455b645dbd1cc3ce92540ca"
+        "sha256": "8a21734f14d6805b0ad9d5486d990a10108f6588ccb10915322ceae684fbf757"
       },
       {
         "id": "service_effect_contracts",
@@ -22172,5 +22173,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "3e31d25c104b1c7f6d01b1f2dd12b5cf749d69ca"
+  "source_revision": "161e4237b17519f2d83ea7fed937adf873846a71"
 }
