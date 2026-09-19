@@ -7,6 +7,7 @@ import {
   sourceQueryAvailabilityContractFingerprint,
   sourceQueryParameterBindingMatchesScope,
 } from './source_query_availability'
+import { probeSourceQueryAvailabilityContract } from './overlay_loader'
 import type { CapabilityKnowledgeSnapshot } from './types'
 
 const catalog = getCatalog()
@@ -126,6 +127,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'global', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
     ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'global', 'platform/migrations/ws2_l0_texts.sql:42-65'],
     ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'chart', 'query_temporal_activation.ts:176-620'],
+    ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts:151-352'],
+    ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:151-225'],
   ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -156,6 +159,47 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain(relationMarker)
     expect(contract.sql).toContain(orderMarker)
     expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it('keeps classical search and contradiction source probes exact while preserving their distinct closure boundaries', () => {
+    const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
+    const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
+
+    expect(classical).toMatchObject({ scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available' })
+    for (const marker of ['classical_text_chunks', 'c.embedding <=> NULL::vector', "similarity(c.content_en, '')", 'c.content_en ILIKE', 'content_summary', 'topics', 'LIMIT 0']) {
+      expect(classical.sql).toContain(marker)
+    }
+
+    expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available' })
+    for (const marker of ['FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
+      expect(contradictions.sql).toContain(marker)
+    }
+
+    const classicalScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_classical_texts')!
+    const contradictionScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_contradictions')!
+    expect(classicalScu.availability_dispositions ?? []).toEqual([])
+    expect(classicalScu.bindings[0]).toMatchObject({ pagination: 'offset', pagination_verified: false, result_collection_verified: false })
+    expect(contradictionScu.availability_dispositions ?? []).toEqual([])
+    expect(contradictionScu.bindings[0]).toMatchObject({
+      result_collection_verified: true,
+      pagination_contract: { result_collection_path: 'content.contradictions', deterministic_order: ['combined_salience DESC NULLS LAST', 'contradiction_id ASC'] },
+    })
+  })
+
+  it('treats zero rows as source availability but fails closed on missing chart-build context or source execution failure', async () => {
+    const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
+    const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
+    const successfulZeroRows = async () => ({ rows: [] })
+
+    await expect(probeSourceQueryAvailabilityContract(classical, 'chart-a', null, successfulZeroRows)).resolves.toEqual([])
+    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
+      'source-query:query-contradictions:v1 requires an active completed build context for the selected chart.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', 'build-a', async () => {
+      throw new Error('selected relation unavailable')
+    })).resolves.toEqual([
+      'source-query:query-contradictions:v1 could not execute its authenticated source query.',
+    ])
   })
 
   it.each([

@@ -11,6 +11,23 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { sourceQueryAvailabilityRequirement } from '../../knowledge/source_query_availability'
+
+const DEFAULT_DISCOVERY_LIMIT = 20
+const MAX_DISCOVERY_LIMIT = 200
+
+function normalizeDiscoveryLimit(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_DISCOVERY_LIMIT
+  const normalized = Math.floor(parsed)
+  return normalized >= 1 ? Math.min(normalized, MAX_DISCOVERY_LIMIT) : DEFAULT_DISCOVERY_LIMIT
+}
+
+function normalizeMinimumNovelty(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.min(Math.max(parsed, 0), 1)
+}
 
 export const queryContradictionsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_contradictions',
@@ -39,6 +56,43 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
   // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
   // Band phase 4 ("Reading the whole chart") — B.11 whole-chart-read (CDLM contradictions).
   register: { reader_label: 'Reading the whole chart' },
+
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.query_contradictions',
+    version: 1,
+    label: 'Chart contradiction evidence',
+    description: 'Retrieve formal chart-scoped contradiction pairs. Discoveries and anomalies are supplemental and do not satisfy contradiction closure.',
+    kind: 'contradiction',
+    domains: ['cross_domain'],
+    concepts: ['query_contradictions', 'contradiction', 'tension', 'evidence_reconciliation'],
+    intents: ['assess', 'reconcile', 'verify'],
+    horizons: ['natal', 'current'],
+    scope: 'chart',
+    inputs: ['chart_id', 'ayanamsha_id?', 'include_discoveries?', 'include_anomalies?', 'top_k_discoveries?', 'min_novelty?'],
+    outputs: ['contradictions', 'contradiction_count', 'signal_id_refs'],
+    primary_binding_uri: 'marsys://tool/L2/query_contradictions',
+    primary_binding_details: {
+      pagination: 'bounded_complete',
+      pagination_contract: {
+        result_collection_path: 'content.contradictions',
+        deterministic_order: ['combined_salience DESC NULLS LAST', 'contradiction_id ASC'],
+      },
+      route_evidence: 'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:151-225',
+    },
+    provenance_requirements: ['chart_id', 'build_id', 'formula_or_writer_version'],
+    freshness_policy: 'Requires a source query against the selected chart and active completed build context.',
+    entitlement: 'native',
+    safety_notes: ['Read-only evidence surface; planner must not interpret returned chart facts.'],
+    known_gaps: [
+      'Discoveries and anomalies are supplemental result legs; their caps and empty states do not prove contradiction exhaustion or closure.',
+      'No public MCP alias is asserted by this declaration.',
+    ],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L2/query_contradictions',
+      requirements: [sourceQueryAvailabilityRequirement('source-query:query-contradictions:v1')!],
+    }],
+    editorial: true,
+  }],
 
   required_inputs: ['chart_id'],
 
@@ -89,8 +143,8 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
     const include_discoveries  = args['include_discoveries'] !== false
     const include_anomalies    = Boolean(args['include_anomalies'] ?? false)
-    const top_k_discoveries    = Math.min(Number(args['top_k_discoveries'] ?? 20), 200)
-    const min_novelty          = Number(args['min_novelty'] ?? 0)
+    const top_k_discoveries    = normalizeDiscoveryLimit(args['top_k_discoveries'] ?? DEFAULT_DISCOVERY_LIMIT)
+    const min_novelty          = normalizeMinimumNovelty(args['min_novelty'] ?? 0)
 
     void _ctx
     try {
@@ -100,7 +154,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
                resolution_hint_jsonb, ayanamsha_id
         FROM bodha_contradictions
         WHERE chart_id = $1 AND ayanamsha_id = $2
-        ORDER BY combined_salience DESC NULLS LAST
+        ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC
       `
 
       const promises: Array<Promise<{ rows: unknown[] }>> = [

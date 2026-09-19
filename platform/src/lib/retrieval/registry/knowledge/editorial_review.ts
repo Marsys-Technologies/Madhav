@@ -7,6 +7,7 @@
 import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
+  SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
 
@@ -82,27 +83,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013',
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
-    ],
-  },
-  query_classical_texts: {
-    reason: 'The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler\'s corpus query and ranking response.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286',
-      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27',
-      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44',
-    ],
-  },
-  query_contradictions: {
-    reason: 'Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala\'s reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140',
-      'platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65',
-      'platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71',
     ],
   },
   query_domain_reading: {
@@ -199,6 +179,21 @@ export function getDescriptorAvailabilityReview(name: string): DescriptorAvailab
 
 export function getDescriptorAvailabilityContractReview(name: string): DescriptorAvailabilityContractReview | undefined {
   return AVAILABILITY_CONTRACT_REVIEWS[name]
+}
+
+/**
+ * Review only the binding details that cannot safely be inferred from a
+ * descriptor schema.  In particular, an offset parameter is not evidence
+ * that continuation is exhaustively safe across changing search modes.
+ */
+const PAGINATION_DETAILS_REVIEWS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {
+  query_classical_texts: { pagination: 'offset' },
+}
+
+export function getDescriptorPaginationDetailsReview(
+  name: string,
+): SemanticCapabilityDeclaration['primary_binding_details'] | undefined {
+  return PAGINATION_DETAILS_REVIEWS[name]
 }
 
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {

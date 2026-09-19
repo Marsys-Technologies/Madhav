@@ -73,10 +73,10 @@ describe('planner capability knowledge', () => {
     })
     const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
-    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
+    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
     const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(93)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(98)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(94)
   })
 
   it('derives reviewed pagination only from an evidence-bearing continuation contract', () => {
@@ -291,8 +291,8 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(174)
-    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(8)
+    expect(reviewed).toHaveLength(173)
+    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(9)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)

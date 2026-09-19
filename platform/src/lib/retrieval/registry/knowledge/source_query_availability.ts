@@ -395,6 +395,88 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-classical-texts:v1',
+    descriptor_name: 'query_classical_texts',
+    capability_uri: 'marsys://tool/L0/query_classical_texts',
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available',
+    sql: `WITH hybrid_candidates AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics,
+                   (1 - (c.embedding <=> NULL::vector))::float AS vector_score,
+                   similarity(c.content_en, '')::float AS keyword_score
+              FROM classical_text_chunks c
+             WHERE (NULL::text IS NULL OR c.text_id = NULL::text)
+             ORDER BY ((0.65 * COALESCE(1 - (c.embedding <=> NULL::vector), 0))
+                       + (0.35 * COALESCE(similarity(c.content_en, ''), 0))) DESC,
+                      c.text_id ASC, c.chapter ASC NULLS LAST, c.verse_ref ASC NULLS LAST,
+                      c.chunk_id ASC, c.id ASC
+             LIMIT 0
+          ), lexical_fallback AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.content_en,
+                   c.content_sa, c.content_summary, c.source_citation, c.tradition_school, c.topics
+              FROM classical_text_chunks c
+             WHERE c.content_en ILIKE '' AND (NULL::text IS NULL OR c.text_id = NULL::text)
+             ORDER BY c.text_id ASC, c.chapter ASC NULLS LAST, c.verse_ref ASC NULLS LAST,
+                      c.chunk_id ASC, c.id ASC
+             LIMIT 0
+          ), list_path AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics
+              FROM classical_text_chunks c
+             WHERE (NULL::text IS NULL OR c.content_en ILIKE NULL::text)
+               AND (NULL::text IS NULL OR c.text_id = NULL::text)
+               AND (NULL::text IS NULL OR NULL::text = ANY(c.topics))
+             ORDER BY c.text_id ASC, c.chapter ASC NULLS LAST, c.verse_start ASC NULLS LAST,
+                      c.chunk_id ASC, c.id ASC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM hybrid_candidates) AS hybrid_candidates,
+                   (SELECT COUNT(*) FROM lexical_fallback) AS lexical_fallback,
+                   (SELECT COUNT(*) FROM list_path) AS list_path`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:151-352',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_classical_texts.pagination.test.ts:26-89',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-contradictions:v1',
+    descriptor_name: 'query_contradictions',
+    capability_uri: 'marsys://tool/L2/query_contradictions',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH contradictions AS (
+            SELECT contradiction_id, signal_a_id, signal_b_id, tension_class,
+                   domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id
+              FROM bodha_contradictions
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC
+             LIMIT 0
+          ), discoveries AS (
+            SELECT discovery_id, discovery_class, discovery_subsystem, affected_domains_array,
+                   hypothesis_text, non_obviousness_score, consequence_score,
+                   composite_discovery_rank, constituent_refs_jsonb, computed_at
+              FROM bodha_discoveries
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND (0::numeric <= 0 OR non_obviousness_score >= 0::numeric)
+             ORDER BY composite_discovery_rank DESC NULLS LAST
+             LIMIT 0
+          ), anomalies AS (
+            SELECT anomaly_id, anomaly_type, discovery_subsystem, subject_ref_jsonb,
+                   anomaly_metric, anomaly_value, chart_baseline_value, sigma_from_baseline,
+                   meaningfulness_gate_result, computed_at
+              FROM bodha_anomalies
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY sigma_from_baseline DESC NULLS LAST, computed_at DESC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM contradictions) AS contradictions,
+                   (SELECT COUNT(*) FROM discoveries) AS discoveries,
+                   (SELECT COUNT(*) FROM anomalies) AS anomalies`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:151-225',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-86',
+    ],
+  },
+  {
     contract_id: 'source-query:query-dosha-catalog:v1',
     descriptor_name: 'query_dosha_catalog',
     capability_uri: 'marsys://tool/L0/query_dosha_catalog',
