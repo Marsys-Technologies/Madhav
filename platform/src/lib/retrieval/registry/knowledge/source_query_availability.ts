@@ -3465,6 +3465,25 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.n AS chart_total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:103-185'],
   },
+  {
+    contract_id: 'source-query:query-domain-result:v1',
+    descriptor_name: 'query_domain_result',
+    capability_uri: 'marsys://tool/L4/query_domain_result',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT phaladesa_id, domain, anchor_count, clean_anchor_count, staged_revision_count,
+                 anomaly_flag_count, top_anchor_id,
+                 to_char(prediction_window_start, 'YYYY-MM-DD') AS prediction_window_start,
+                 to_char(prediction_window_end, 'YYYY-MM-DD') AS prediction_window_end,
+                 to_char(peak_date, 'YYYY-MM-DD') AS peak_date, magnitude, confidence_low,
+                 confidence_high, malleability, incoming_spillover_count, mitigation_available,
+                 muhurta_available, pramana_window_status, evidence_type, narration_status,
+                 source_citation
+            FROM phala_phaladesa
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR domain = NULL::text)
+           ORDER BY domain LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:70-114'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
