@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "956267d0d05bd54b98e35bd8440a922c5b77ec18738b391f0e9112c376cd12c2",
+  "content_sha256": "ae68c20cc48dc324dcf3daec7e2b76ad700f18c54847aef49ab70c0dde383c1f",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20792,7 +20792,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-19T02:33:08.000Z",
+  "generated_at": "2026-09-19T03:08:08.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21417,11 +21417,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "985be715b6ef91ec436278a8d0715e51ed184c7f6adbf3738b63b419f1039c0a"
+            "sha256": "b4de739d83b28cf1ef0f8fa7625331fe90152bb753c905f1d7953c2c5c2ea98c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "277a9a7a5199002e409b74563d32e01bedeea13472aba50a5e0c9ffa0fe6a2ba"
+            "sha256": "0ebd64d74bd3f68442d6d52736d360d9ebebf012deed1bb5dece8054b5112301"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -21485,15 +21485,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts",
-            "sha256": "cd3e8e002f5f702dbb668bb2e97ce0450ba83083b90c28cbc0b70f16310806fd"
+            "sha256": "d1ae4f3f31c10444e2e90b477c3b05bc85eff902598e6221002d2289ad6e8d50"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts",
-            "sha256": "3d44ac30e7ad947c1d47b7b5361eb92b33b1d8b57d17c41bf054b18800b8cddb"
+            "sha256": "d2cd0746b4f3c6ddb0f792a0909d2ba027f228cbccbca65427f9600565d6556e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
-            "sha256": "f42a1a254f88e6088c4aaf3cd8c94c0683ef6fa47f816aa5c45cf7e5b1ff9d12"
+            "sha256": "bd69952bd2318a83ca240f106890d1a0678922f3755a08bc08d0e2d142ca77ae"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
@@ -21509,7 +21509,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts",
-            "sha256": "d9b518531442ce427176db1a22074daa5645d302dd3eb79b011701d479752dd2"
+            "sha256": "b4ac2c7fefb52b4a1b1f50da8951e5ef3eb39f7219264826d646e180c0830363"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts",
@@ -21533,7 +21533,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts",
-            "sha256": "fac2379d3bc108c7899b75ebb5eeee1b76422eee6ada735feb031a1a9d9a57d5"
+            "sha256": "ca26c5c2d73d5d3aef175f5373feb99343498f43a7b22c3f88e16d30c4015092"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
@@ -21577,7 +21577,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
-            "sha256": "4f84313824a3993bb9bbef3e625bb739c14334cc2624e5161d76ebb5e527c612"
+            "sha256": "e4d37c87b40c582f90ebf6667a4143cd530905cc88cd283820e058dccdb70993"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
@@ -21609,7 +21609,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
-            "sha256": "2a4e5d726def601399efab3788b9127e2ac25677f25ef6b9fc1a8ff5f5bd7435"
+            "sha256": "0c349e4e98b931777ff917a633f6e11a6bf9cb4601ea47de367189153315e5c0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts",
@@ -21937,7 +21937,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
-            "sha256": "15ef9495485c1c34acbbb1045930fddc5c53b57c45c6d4c195c95f2c4f986608"
+            "sha256": "1987d774c001bae2a1c50a2c0325f618c6bdfec56abc68591527d31f1d2b1895"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
@@ -22189,7 +22189,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "9e0d3d693ae32735858999c4dc34b3dc103043fcf784177d12585a5f23b6c3d3"
+        "sha256": "5362e24b2857fc719e1a416a80bc2593299018e8d55bb228c783646fbd44d09d"
       },
       {
         "id": "service_effect_contracts",
@@ -22214,5 +22214,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e40c852fd17a5cc8da8fbb734901886964d5a640"
+  "source_revision": "16b8bfdf248adabea39329167a1c28fabccdb384"
 }

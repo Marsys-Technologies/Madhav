@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T02:33:08.000Z",
-  "content_hash": "sha256:4b510bd958dc06406857504286db7fddb30db68047554695e439d6a55d2bd603",
-  "source_catalog_fingerprint": "sha256:4844d66a4863ed1cfcbd276a690de91966e39ae5235680b3b9e3c50de743ca2c",
-  "semantic_review_fingerprint": "sha256:d7068be1fd3d2bec3f8b2abfb91c3726b74b6298d5f9cf7e489e32773756a1cf",
+  "generated_at": "2026-09-19T03:08:08.000Z",
+  "content_hash": "sha256:d4e909e3908d6fb881da25864eaaf5f77e6797dbed450232e87f067b84e396cc",
+  "source_catalog_fingerprint": "sha256:cf2f7ef762f569efbc6f919f9dc5ff45d18990b63606e8ca579c61036fa84050",
+  "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -1454,6 +1454,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L3/call_ephemeris_at_t",
@@ -1470,7 +1471,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L3/call_ephemeris_at_t",
@@ -1626,6 +1626,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L3/call_muhurta_score",
@@ -1642,7 +1643,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L3/call_muhurta_score",
@@ -1804,6 +1804,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/call_panchanga_service",
@@ -1820,7 +1821,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L0/call_panchanga_service",
@@ -2187,6 +2187,7 @@
       "known_gaps": [
         "The registry contains no exact, authenticated ka-gochara probe configuration."
       ],
+      "editorial": true,
       "availability_dispositions": [
         {
           "binding_id": "registry:marsys://tool/L3/call_transit_search",
@@ -2198,7 +2199,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L3/call_transit_search",
@@ -3532,6 +3532,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://resource/ephemeris-cache/native-lifetime",
@@ -3548,7 +3549,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://resource/ephemeris-cache/native-lifetime",
@@ -3696,6 +3696,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://resource/ephemeris-cache/year/{yyyy}",
@@ -3712,7 +3713,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://resource/ephemeris-cache/year/{yyyy}",
@@ -13365,6 +13365,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_aspects_at_time",
@@ -13381,7 +13382,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L0/query_aspects_at_time",
@@ -16257,6 +16257,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_current_transit_snapshot",
@@ -16272,7 +16273,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L0/query_current_transit_snapshot",
@@ -21865,6 +21865,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_planet_position",
@@ -21881,7 +21882,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L0/query_planet_position",
@@ -25425,6 +25425,7 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "editorial": true,
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_retrograde_periods",
@@ -25441,7 +25442,6 @@
           ]
         }
       ],
-      "editorial": true,
       "bindings": [
         {
           "binding_id": "registry:marsys://tool/L0/query_retrograde_periods",

@@ -5,7 +5,7 @@
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
 import type {
-  AvailabilityRequirement,
+  ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
   SemanticCapabilityKind,
 } from './types'
@@ -31,8 +31,6 @@ export interface DescriptorAvailabilityReview {
   readonly reason: string
   /** Mandatory executable legs that currently lack a complete exact contract. */
   readonly missing_binding_ids?: readonly string[]
-  /** Named semantic gaps that remain visible while the binding is deliberately dark. */
-  readonly known_gaps?: readonly string[]
   readonly source_refs: readonly string[]
 }
 
@@ -42,8 +40,8 @@ export interface DescriptorAvailabilityReview {
  * handler's complete materialized output is represented by the reviewed spec.
  */
 export interface DescriptorAvailabilityContractReview {
-  readonly producer_output_claims?: readonly ProducerOutputClaim[]
-  readonly requirements: readonly AvailabilityRequirement[]
+  readonly producer_output_claims: readonly ProducerOutputClaim[]
+  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
 }
 
 const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
@@ -126,87 +124,9 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
     ],
   },
-  call_transit_search: {
-    reason: 'This live sidecar route has no dedicated signed ka-gochara probe contract. Ephemeris and graha-sancara probes prove different executable paths and cannot substitute.',
-    known_gaps: ['The registry contains no exact, authenticated ka-gochara probe configuration.'],
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:31-156',
-      'platform/python-sidecar/scripts/nirmana_probe_contracts.json',
-    ],
-  },
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
-  call_ephemeris_at_t: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'ka_graha_sancara', probe_id: 'graha_sancara_forensic',
-      endpoint_identity: 'nirmana-elevation:health-probe:ka_graha_sancara',
-      probe_contract_sha256: '2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6', max_age_seconds: 900,
-      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_graha_sancara; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  call_muhurta_score: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'ka_muhurta_seva', probe_id: 'muhurta_seva_forensic',
-      endpoint_identity: 'nirmana-elevation:health-probe:ka_muhurta_seva',
-      probe_contract_sha256: '96a89ddf3ea762a1746109f438cca1ecec86534fe1a088f14eca88a77fc52001', max_age_seconds: 900,
-      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_muhurta_seva; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  call_panchanga_service: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'bg_panchanga', probe_id: 'panchanga_engine',
-      endpoint_identity: 'nirmana-elevation:health-probe:bg_panchanga',
-      probe_contract_sha256: 'febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2', max_age_seconds: 900,
-      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#bg_panchanga; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  ephemeris_cache_native_lifetime: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
-      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
-      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  ephemeris_cache_year: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
-      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
-      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  query_aspects_at_time: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
-      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
-      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  query_current_transit_snapshot: {
-    requirements: [{
-      kind: 'derived', scope: 'global', required_binding_ids: ['registry:marsys://tool/L0/query_planet_transit'],
-      source_ref: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout',
-    }],
-  },
-  query_planet_position: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
-      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
-      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
-  query_retrograde_periods: {
-    requirements: [{
-      kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
-      endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4', max_age_seconds: 900,
-      source_ref: 'platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }],
-  },
   get_positions: {
     producer_output_claims: [{
       asset_id: 'ga_positions',

@@ -280,6 +280,7 @@ describe('planner capability knowledge', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
     expect(reviewed).toHaveLength(174)
+    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(8)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)
@@ -293,6 +294,61 @@ describe('planner capability knowledge', () => {
       expect(scu.intents).not.toContain(descriptor.tool_role)
       expect(scu.outputs).not.toEqual(descriptor.output_schema ? ['structured_content'] : ['content'])
     }
+  })
+
+  it('preserves descriptor-readable availability metadata without changing editorial authorship', () => {
+    const compatibilityUris = [
+      'marsys://resource/ephemeris-cache/native-lifetime',
+      'marsys://resource/ephemeris-cache/year/{yyyy}',
+      'marsys://tool/L0/call_panchanga_service',
+      'marsys://tool/L0/query_aspects_at_time',
+      'marsys://tool/L0/query_current_transit_snapshot',
+      'marsys://tool/L0/query_planet_position',
+      'marsys://tool/L0/query_retrograde_periods',
+      'marsys://tool/L3/call_ephemeris_at_t',
+      'marsys://tool/L3/call_muhurta_score',
+      'marsys://tool/L3/call_transit_search',
+    ]
+
+    for (const uri of compatibilityUris) {
+      const descriptor = catalog.find((candidate) => candidate.uri === uri)!
+      expect(descriptor.semantic_capabilities).toHaveLength(1)
+      const declaration = descriptor.semantic_capabilities?.[0]
+      if (!declaration) throw new Error(`AVAILABILITY_COMPATIBILITY_FIXTURE_MISSING:${uri}`)
+      expect(declaration.editorial).toBe(false)
+      const scu = snapshot.scus.find((candidate) => candidate.bindings.some((binding) => binding.capability_uri === uri))!
+      expect(scu).toMatchObject({ editorial_method: 'descriptor_metadata_review' })
+      expect(scu.availability_contracts).toEqual(declaration.availability_contracts)
+      expect(scu.availability_dispositions).toEqual(declaration.availability_dispositions)
+    }
+
+    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.call_transit_search')?.availability_dispositions)
+      .toContainEqual(expect.objectContaining({
+        binding_id: 'registry:marsys://tool/L3/call_transit_search',
+        status: 'deliberately_dark',
+      }))
+  })
+
+  it('fails closed when a non-editorial compatibility declaration attempts semantic edges', () => {
+    const changedCatalog: readonly CapabilityDescriptor[] = catalog.map((cap) => {
+      if (cap.uri !== 'marsys://tool/L0/query_planet_position') return cap
+      const declaration = cap.semantic_capabilities?.[0]
+      if (!declaration) throw new Error('AVAILABILITY_COMPATIBILITY_FIXTURE_MISSING:query_planet_position')
+      return {
+        ...cap,
+        semantic_capabilities: [{
+          ...declaration,
+          edges: [{
+            relation: 'requires',
+            target_scu_id: 'scu.catalog.query_planet_transit',
+            rationale: 'A compatibility declaration must not author planner semantics.',
+          }],
+        }],
+      }
+    })
+
+    expect(() => compileCapabilityKnowledge(changedCatalog, '2026-09-13T00:00:00.000Z'))
+      .toThrow('AVAILABILITY_ONLY_SEMANTICS_EXCEEDED:query_planet_position')
   })
 
   it('pins representative descriptors to semantically reviewed families', () => {
