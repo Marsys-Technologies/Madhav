@@ -69,6 +69,7 @@ describe('binding availability contracts', () => {
   })
   it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
     expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
+    expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_and_active_build')).toBe(true)
     expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)
     expect(sourceQueryParameterBindingMatchesScope('global', 'global_with_chart_fallback')).toBe(true)
   })
@@ -170,8 +171,8 @@ describe('binding availability contracts', () => {
       expect(classical.sql).toContain(marker)
     }
 
-    expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available' })
-    for (const marker of ["FROM build_runs", "state = 'completed'", 'JOIN active_build', 'FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
+    expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available' })
+    for (const marker of ['SELECT $2::uuid AS build_id', 'JOIN active_build', 'FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
       expect(contradictions.sql).toContain(marker)
     }
 
@@ -195,13 +196,16 @@ describe('binding availability contracts', () => {
 
     await expect(probeSourceQueryAvailabilityContract(classical, 'chart-a', null, successfulZeroRows)).resolves.toEqual([])
     await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
-      'source-query:query-contradictions:v1 requires an active completed build context for the selected chart.',
+      'source-query:query-contradictions:v1 cannot bind the selected chart to an active completed build.',
     ])
-    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', 'build-a', async () => {
+    const observedParams: unknown[][] = []
+    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', 'build-a', async (_sql, params) => {
+      observedParams.push(params ?? [])
       throw new Error('selected relation unavailable')
     })).resolves.toEqual([
       'source-query:query-contradictions:v1 could not execute its authenticated source query.',
     ])
+    expect(observedParams).toEqual([['chart-a', 'build-a']])
   })
 
   it.each([

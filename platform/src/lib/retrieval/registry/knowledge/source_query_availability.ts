@@ -443,13 +443,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     contract_id: 'source-query:query-contradictions:v1',
     descriptor_name: 'query_contradictions',
     capability_uri: 'marsys://tool/L2/query_contradictions',
-    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available',
     sql: `WITH active_build AS (
-            SELECT id AS build_id
-              FROM build_runs
-             WHERE chart_id = $1::uuid AND state = 'completed'
-             ORDER BY ended_at DESC NULLS LAST, id DESC
-             LIMIT 0
+            SELECT $2::uuid AS build_id
           ), contradictions AS (
             SELECT contradiction_id, signal_a_id, signal_b_id, tension_class,
                    domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id, c.build_id
