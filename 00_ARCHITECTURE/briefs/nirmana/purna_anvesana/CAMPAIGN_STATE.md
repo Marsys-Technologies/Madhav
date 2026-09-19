@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.29.0
-status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
+version: 0.30.0
+status: PRODUCT_DELIVERY_TECHNICAL_RELEASE_VERIFIED_ACCEPTANCE_OPEN
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0104
-last_updated: 2026-09-19T14:27:10+05:30
+last_event: PA-E0108
+last_updated: 2026-09-20T01:17:53+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,38 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- Exact protected technical delivery is verified at `origin/main@66b962f2994f0a7500c285025740cd5861534d8c`
+  (PR #2690). Main CI `35462821124`, automatic deployment `35463402314`, and the one
+  lease-authorized force-all deployment `35464335676` succeeded. The automatic run exercised the
+  repaired data-plane detector, strict isolation, routine migration replay, final Pūrṇa marker,
+  web candidate signing/RLS canary and web promotion. The force-all run re-attested those gates and
+  successfully deployed/promoted web, MCP, sidecar, and the pipeline job image; its terminal
+  earned-outcome job required every source-implied mutation result to be successful. All three
+  ordinary-traffic revisions are 100% on `66b962f...`: `amjis-web-probe-66b962f2994f-35464335676-1`,
+  `amjis-mcp-probe-66b962f2994f-35464335676-1`, and
+  `amjis-sidecar-probe-66b962f2994f-35464335676-1`. Web and MCP revision labels/environment
+  attest the exact full SHA; the pipeline job image is tagged with the same SHA. Independent
+  post-release checks returned web/MCP/sidecar health HTTP 200, and the authenticated sidecar
+  release-smoke execution `amjis-sidecar-release-smoke-lhdk9` completed successfully. Live DB
+  attestation records migrations 1040 and 1041 exactly once, absent one-shot bootstrap role, and
+  `data_plane=marked`, `nirmana=marked`, `purna=marked`.
+
+- The canonical allowlist repair was necessary and bounded: after the owner-USAGE repair, the
+  predecessor automatic run `35461533371` correctly failed closed because the global public-schema
+  ACL allowlist did not admit the required `purna_inquiry_owner` USAGE capability. PR #2690 makes
+  that requirement conditional on role existence and preserves no-CREATE posture. This does not
+  reopen one-shot bootstrap authority or broaden runtime privilege.
+
+- The migration barrier remains binding. `MIGRATION_BARRIER_DECISION_v1_0.md` records the decision:
+  traffic promotion remains dependent on successful exact-SHA protected state inspection, strict
+  isolation, routine replay, ownership postflight, and candidate canaries. No global decoupling,
+  skip, retry loop, or unreviewed compatibility route was introduced.
+
+- This is technical-release evidence only. The frozen original five/34-route corpus plus 30
+  product scenarios across Portal, managed MCP, and governed raw MCP has not yet run as the
+  successor's automated three-door acceptance. Human-expert empirical research remains separately
+  `NOT_RUN`. Neither is inferred from CI, deployment, health, or this delivery record.
 
 - Production-delivery priority redirect: the feature frontier is quiesced at pushed commit
   `34e3abf6b10039bf35677a8cb8995cc2760f4fd9`. Read-only refresh confirms deploy run
