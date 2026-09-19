@@ -3039,6 +3039,38 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
              CROSS JOIN forward_source_classification CROSS JOIN build_observation`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620'],
   },
+  {
+    contract_id: 'source-query:query-insights:v1',
+    descriptor_name: 'query_insights',
+    capability_uri: 'marsys://tool/L5/query_insights',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT insight_id, insight_type, domain, horizon, question_lens, statement,
+                   rank_consequence, confidence_band, n_support, leakage_status, evidence_grade,
+                   freshness_lel_version, last_calibrated_at, provenance_chain, is_negative_knowledge,
+                   surface_formula_version, updated_at
+              FROM mimamsa_insight_units
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR insight_type = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+               AND (0::numeric <= 0 OR rank_consequence >= 0::numeric)
+               AND (true OR is_negative_knowledge = false)
+             ORDER BY rank_consequence DESC NULLS LAST LIMIT 0
+          ), filtered_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE chart_id = $1::uuid
+          ), chart_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE chart_id = $1::uuid
+          ), calibration_summary AS (
+            SELECT COUNT(*)::int AS total_matches,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'CONFIRMED') AS confirmed,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'PARTIAL') AS partial,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'REFUTED') AS refuted,
+                   COUNT(*) FILTER (WHERE composite_verdict = 'UNRESOLVED') AS unresolved,
+                   AVG(composite_score)::numeric(4,3) AS mean_composite_score
+              FROM mimamsa_calibration WHERE chart_id = $1::uuid
+          ) SELECT 1 FROM handler_page CROSS JOIN filtered_count CROSS JOIN chart_count CROSS JOIN calibration_summary`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:198-257'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
