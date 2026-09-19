@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:43:40.000Z",
-  "content_hash": "sha256:236d99a832c367835151bcbd931668c60fc004449dba13921e440b0fb3ff783e",
-  "source_catalog_fingerprint": "sha256:022efb864137881b0cd6e374ac24a9eca1aa10426080208cd218afcabcec5d71",
+  "generated_at": "2026-09-19T01:46:00.000Z",
+  "content_hash": "sha256:977da45bb8ee5a8cba5c0d6391835aced75b2e6bd59cfae6ec9a6f0d9eea9f95",
+  "source_catalog_fingerprint": "sha256:3702930af477edb0a28516fad023281ec889bc50a427f5e9fda1cf0365f70462",
   "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -1412,48 +1412,62 @@
     {
       "scu_id": "scu.catalog.call_ephemeris_at_t",
       "version": 1,
-      "label": "Call Ephemeris At T",
-      "description": "Returns planetary positions at an arbitrary datetime (ka_graha_sancara service). Global scope — not chart-specific. Provide a precise datetime and ayanamsha to get all graha positions. Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "label": "Arbitrary-time ephemeris evidence",
+      "description": "Compute planetary positions at an arbitrary time through the authenticated graha-sancara service.",
       "kind": "temporal",
       "domains": [
-        "planetary_state"
+        "timing"
       ],
       "concepts": [
-        "astronomical_reference",
-        "call_ephemeris_at_t",
-        "celestial_state",
-        "planetary_position"
+        "ephemeris",
+        "planet_position"
       ],
       "intents": [
-        "retrieve",
+        "assess",
         "verify"
       ],
       "horizons": [
         "current",
-        "natal"
+        "future",
+        "historical"
       ],
       "scope": "global",
       "inputs": [
-        "ayanamsha_id",
+        "ayanamsha_id?",
         "datetime_utc"
       ],
       "outputs": [
-        "computation_provenance",
-        "planetary_state_evidence"
+        "count",
+        "jd",
+        "positions"
       ],
       "primary_binding_uri": "marsys://tool/L3/call_ephemeris_at_t",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Must carry computation time and engine version.",
+      "freshness_policy": "Requires a fresh authenticated graha-sancara probe; a missing or stale probe keeps this binding unavailable.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Read-only computed evidence."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L3/call_ephemeris_at_t",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "ka_graha_sancara",
+              "probe_id": "graha_sancara_forensic",
+              "endpoint_identity": "nirmana-elevation:health-probe:ka_graha_sancara",
+              "probe_contract_sha256": "2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6",
+              "max_age_seconds": 900,
+              "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_graha_sancara; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -1484,64 +1498,27 @@
       "source_descriptor_uris": [
         "marsys://tool/L3/call_ephemeris_at_t"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "astronomical_reference",
+          "concept_id": "ephemeris",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
         },
         {
-          "concept_id": "call_ephemeris_at_t",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
-        },
-        {
-          "concept_id": "celestial_state",
+          "concept_id": "planet_position",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
-        },
-        {
-          "concept_id": "planetary_position",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
         }
       ],
       "gap_dispositions": [],
@@ -1549,8 +1526,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+          "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
         ]
       },
       "producer_semantic_disposition": {
@@ -1558,58 +1534,71 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+          "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.call_muhurta_score",
       "version": 1,
-      "label": "Call Muhurta Score",
-      "description": "Score an auspicious window (raw muhurta quality) for a specific UTC datetime and event class (ka_muhurta_seva service — reuses the same score_muhurat() scoring primitive the already-served ph_muhurta/muhurta_finder electional finder calls internally for its panchanga_quality sub-score). Global scope — no chart_id, no date-range search (use muhurta_finder/kala_muhurta_get for a best-window search over a date range with dasha/transit sub-scores). Returns the 0-100 score, 1-5 star rating, and the day panchang context (tithi, nakshatra, vara, yoga) the score was derived from. Evidence use: retrieve calendar and electional constraints for a candidate time.",
+      "label": "Muhurta score evidence",
+      "description": "Score a requested event time through the authenticated muhurta service.",
       "kind": "temporal",
       "domains": [
-        "calendar_and_election"
+        "timing"
       ],
       "concepts": [
-        "calendar_factor",
-        "call_muhurta_score",
-        "electional_constraint",
-        "muhurta_window"
+        "muhurta",
+        "panchanga"
       ],
       "intents": [
-        "constrain",
-        "select"
+        "assess",
+        "verify"
       ],
       "horizons": [
-        "candidate_time",
         "current",
-        "future"
+        "future",
+        "historical"
       ],
       "scope": "global",
       "inputs": [
-        "ayanamsha_id",
+        "ayanamsha_id?",
         "datetime_utc",
         "event_class"
       ],
       "outputs": [
-        "calendar_constraints",
-        "candidate_windows"
+        "panchanga",
+        "rating",
+        "score"
       ],
       "primary_binding_uri": "marsys://tool/L3/call_muhurta_score",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Must carry computation time and engine version.",
+      "freshness_policy": "Requires a fresh authenticated muhurta-service probe; a missing or stale probe keeps this binding unavailable.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Read-only computed evidence."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L3/call_muhurta_score",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "ka_muhurta_seva",
+              "probe_id": "muhurta_seva_forensic",
+              "endpoint_identity": "nirmana-elevation:health-probe:ka_muhurta_seva",
+              "probe_contract_sha256": "96a89ddf3ea762a1746109f438cca1ecec86534fe1a088f14eca88a77fc52001",
+              "max_age_seconds": 900,
+              "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_muhurta_seva; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -1641,64 +1630,27 @@
       "source_descriptor_uris": [
         "marsys://tool/L3/call_muhurta_score"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "calendar_factor",
+          "concept_id": "muhurta",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
         },
         {
-          "concept_id": "call_muhurta_score",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
-        },
-        {
-          "concept_id": "electional_constraint",
+          "concept_id": "panchanga",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
-        },
-        {
-          "concept_id": "muhurta_window",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
         }
       ],
       "gap_dispositions": [],
@@ -1706,8 +1658,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+          "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
         ]
       },
       "producer_semantic_disposition": {
@@ -1715,63 +1666,75 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+          "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.call_panchanga_service",
       "version": 1,
-      "label": "Call Panchanga Service",
-      "description": "Compute panchanga (tithi/vara/nakshatra/yoga/karana + sunrise/sunset) for an arbitrary date and location (panchang.py compute service, Swiss-Ephemeris-backed, engine-direct — not a table lookup). mode=single (default): one date, returns full panchang + optional native_context if chart_id is provided. mode=range: date_from.. date_to (max 31 days inclusive), returns one entry per day. Defaults to Bhubaneswar/ IST coordinates when lat/lon/tz_offset_minutes are omitted. Distinct from the natal- only chart_panchanga (query_panchanga) — this is date-parameterized, any date. Evidence use: retrieve calendar and electional constraints for a candidate time.",
+      "label": "Panchanga compute evidence",
+      "description": "Compute date- and location-specific panchanga through the authenticated panchanga service.",
       "kind": "temporal",
       "domains": [
-        "calendar_and_election"
+        "timing"
       ],
       "concepts": [
-        "calendar_factor",
-        "call_panchanga_service",
-        "electional_constraint",
-        "muhurta_window"
+        "calendar",
+        "panchanga"
       ],
       "intents": [
-        "constrain",
-        "select"
+        "assess",
+        "verify"
       ],
       "horizons": [
-        "candidate_time",
         "current",
-        "future"
+        "future",
+        "historical"
       ],
       "scope": "global",
       "inputs": [
-        "chart_id",
-        "date",
-        "date_from",
-        "date_to",
-        "lat",
-        "lon",
-        "mode",
-        "tz_offset_minutes"
+        "date?",
+        "date_from?",
+        "date_to?",
+        "lat?",
+        "lon?",
+        "mode?",
+        "tz_offset_minutes?"
       ],
       "outputs": [
-        "calendar_constraints",
-        "candidate_windows"
+        "count",
+        "panchang",
+        "panchangs"
       ],
       "primary_binding_uri": "marsys://tool/L0/call_panchanga_service",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
-        "build_id",
-        "formula_or_writer_version"
+        "computed_at",
+        "engine_version"
       ],
-      "freshness_policy": "Must resolve against the active compatible chart build.",
+      "freshness_policy": "Requires a fresh authenticated panchanga-engine probe; a missing or stale probe keeps this binding unavailable.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Read-only computed evidence."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/call_panchanga_service",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_panchanga",
+              "probe_id": "panchanga_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_panchanga",
+              "probe_contract_sha256": "febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2",
+              "max_age_seconds": 900,
+              "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#bg_panchanga; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -1808,64 +1771,27 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/call_panchanga_service"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "calendar_factor",
+          "concept_id": "calendar",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
         },
         {
-          "concept_id": "call_panchanga_service",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
-        },
-        {
-          "concept_id": "electional_constraint",
+          "concept_id": "panchanga",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
-        },
-        {
-          "concept_id": "muhurta_window",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
         }
       ],
       "gap_dispositions": [],
@@ -1873,8 +1799,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+          "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
         ]
       },
       "producer_semantic_disposition": {
@@ -1882,10 +1807,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+          "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.call_priority_ranking",
@@ -33893,7 +33818,6 @@
         "domain_concept"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -33928,13 +33852,20 @@
       ]
     },
     {
+      "concept_id": "calendar",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
+      ]
+    },
+    {
       "concept_id": "calendar_factor",
       "types": [
         "domain_concept"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:get_panchanga",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_auspicious_windows",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurat",
@@ -33972,33 +33903,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility"
-      ]
-    },
-    {
-      "concept_id": "call_ephemeris_at_t",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
-      ]
-    },
-    {
-      "concept_id": "call_muhurta_score",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
-      ]
-    },
-    {
-      "concept_id": "call_panchanga_service",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
       ]
     },
     {
@@ -34067,7 +33971,6 @@
         "domain_concept"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -34378,8 +34281,6 @@
         "domain_concept"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:get_panchanga",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_auspicious_windows",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurat",
@@ -34405,7 +34306,8 @@
         "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}",
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time",
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position",
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
+        "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
       ]
     },
     {
@@ -35038,13 +34940,20 @@
       ]
     },
     {
+      "concept_id": "muhurta",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
+      ]
+    },
+    {
       "concept_id": "muhurta_window",
       "types": [
         "domain_concept"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:get_panchanga",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_auspicious_windows",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurat",
@@ -35088,6 +34997,16 @@
       ]
     },
     {
+      "concept_id": "panchanga",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
+      ]
+    },
+    {
       "concept_id": "partial_formation",
       "types": [
         "domain_concept"
@@ -35102,7 +35021,8 @@
         "domain_concept"
       ],
       "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position"
+        "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
       ]
     },
     {
@@ -35127,7 +35047,6 @@
         "domain_concept"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
