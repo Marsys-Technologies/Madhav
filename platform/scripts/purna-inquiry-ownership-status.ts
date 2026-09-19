@@ -78,6 +78,7 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
                   AND membership.member=r.oid)
           AND NOT EXISTS (SELECT 1 FROM pg_auth_members membership
                 WHERE membership.roleid=r.oid)
+          AND has_schema_privilege(r.oid,'public','USAGE')
           AND NOT has_schema_privilege(r.oid,'public','CREATE')) AS serving_normalized,
         NOT EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname='purna_inquiry_bootstrap'
           AND (r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolcreaterole OR r.rolcreatedb

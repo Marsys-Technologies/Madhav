@@ -6,6 +6,46 @@ const MIGRATOR_URL = 'DATA_PLANE_MIGRATOR_DATABASE_URL'
 
 export type PurnaSchemaCapabilityAction = 'grant' | 'revoke'
 
+export async function grantPurnaServingSchemaUsage(
+  databaseUrl = process.env[MIGRATOR_URL],
+): Promise<void> {
+  if (!databaseUrl) {
+    throw new Error(`${MIGRATOR_URL} is required for the durable Pūrṇa serving schema capability.`)
+  }
+  const pool = new Pool({ ...migratorProxyConfig(databaseUrl), max: 1 })
+  const client = await pool.connect()
+  try {
+    const actor = await client.query<{ session_user: string; current_user: string; schema_owner_member: boolean }>(`
+      SELECT session_user, current_user,
+             pg_has_role(session_user, 'data_plane_schema_owner', 'member') AS schema_owner_member
+    `)
+    if (actor.rows[0]?.session_user !== 'data_plane_migrator'
+      || actor.rows[0]?.current_user !== 'data_plane_migrator'
+      || !actor.rows[0]?.schema_owner_member) {
+      throw new Error('Pūrṇa serving schema capability requires the direct protected data_plane_migrator route.')
+    }
+
+    await client.query('BEGIN')
+    await client.query('SET LOCAL ROLE data_plane_schema_owner')
+    await client.query('GRANT USAGE ON SCHEMA public TO role_web_serve')
+    await client.query('RESET ROLE')
+    const final = await client.query<{ can_create: boolean; can_use: boolean }>(`
+      SELECT has_schema_privilege('role_web_serve', 'public', 'CREATE') AS can_create,
+             has_schema_privilege('role_web_serve', 'public', 'USAGE') AS can_use
+    `)
+    if (final.rows[0]?.can_create || !final.rows[0]?.can_use) {
+      throw new Error('Pūrṇa serving role did not converge to USAGE-only public schema capability.')
+    }
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    client.release()
+    await pool.end()
+  }
+}
+
 export async function setPurnaInquirySchemaCapability(
   action: PurnaSchemaCapabilityAction,
   databaseUrl = process.env[MIGRATOR_URL],
@@ -79,8 +119,12 @@ export async function setPurnaInquirySchemaCapability(
 
 if (require.main === module) {
   const action = process.argv[2]
-  if (action !== 'grant' && action !== 'revoke') {
-    console.error('Use grant or revoke for the Pūrṇa schema capability action.')
+  if (action === 'grant-serving-usage') {
+    grantPurnaServingSchemaUsage()
+      .then(() => process.stdout.write('Pūrṇa serving schema USAGE grant complete.\n'))
+      .catch((error) => { console.error(error); process.exitCode = 1 })
+  } else if (action !== 'grant' && action !== 'revoke') {
+    console.error('Use grant, revoke, or grant-serving-usage for the Pūrṇa schema capability action.')
     process.exitCode = 1
   } else {
     setPurnaInquirySchemaCapability(action)

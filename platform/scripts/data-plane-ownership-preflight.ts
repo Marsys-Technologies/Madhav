@@ -301,7 +301,7 @@ export async function runDataPlaneOwnershipPreflight(
     await client.query(`
       DO $$ BEGIN EXECUTE format('REVOKE CREATE ON DATABASE %I FROM amjis_app, data_plane_schema_owner', current_database()); END $$;
       SET LOCAL ROLE data_plane_schema_owner;
-      GRANT USAGE ON SCHEMA public TO data_plane_schema_owner, data_plane_l1_owner, data_plane_l2_owner, data_plane_migrator, data_plane_builder, data_plane_verifier, amjis_app;
+      GRANT USAGE ON SCHEMA public TO data_plane_schema_owner, data_plane_l1_owner, data_plane_l2_owner, data_plane_migrator, data_plane_builder, data_plane_verifier, amjis_app, role_web_serve;
       GRANT CREATE ON SCHEMA public TO data_plane_l1_owner, data_plane_l2_owner;
       RESET ROLE;
       SET LOCAL ROLE data_plane_l1_owner;

@@ -119,6 +119,8 @@ describe('Nirmana ownership deployment attestation', () => {
     expect(purnaSchemaCapability).toContain("SET LOCAL ROLE data_plane_schema_owner")
     expect(purnaSchemaCapability).toContain('GRANT USAGE, CREATE ON SCHEMA public TO purna_inquiry_owner')
     expect(purnaSchemaCapability).toContain('REVOKE USAGE, CREATE ON SCHEMA public FROM purna_inquiry_owner')
+    expect(purnaSchemaCapability).toContain('GRANT USAGE ON SCHEMA public TO role_web_serve')
+    expect(purnaSchemaCapability).not.toContain('GRANT USAGE, CREATE ON SCHEMA public TO role_web_serve')
     expect(purnaSchemaCapability).toContain('migratorProxyConfig(databaseUrl)')
     expect(JSON.stringify(jobs.migrate)).not.toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL')
   })
