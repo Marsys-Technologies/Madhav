@@ -6,7 +6,7 @@ export type SourceQueryParameterBinding =
   | 'global_with_chart_fallback'
   | 'chart_and_active_build'
   | 'chart_with_active_build_context'
-export type SourceQueryEmptySemantics = 'query_success_is_available'
+export type SourceQueryEmptySemantics = 'query_success_is_available' | 'required_rows_must_exist'
 
 /**
  * Registry-owned, read-only probe for a handler's actual source query.
@@ -3868,6 +3868,49 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137',
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360',
       'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145',
+    ],
+  },
+  {
+    contract_id: 'source-query:judgment-query-readiness:v1',
+    descriptor_name: 'judgment_query',
+    capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
+    scope: 'chart',
+    parameter_binding: 'chart_and_active_build',
+    empty_semantics: 'required_rows_must_exist',
+    sql: `WITH active_build AS (
+            SELECT id
+              FROM build_runs
+             WHERE chart_id = $1::uuid AND state = 'completed'
+             ORDER BY ended_at DESC NULLS LAST, id DESC
+             LIMIT 1
+          )
+          SELECT 1 AS source_query_available
+            FROM active_build b
+           WHERE b.id = $2::uuid
+             AND EXISTS (
+               SELECT 1
+                 FROM brahma_vichara_constants c
+                WHERE c.constant_key = 'operative_vargas'
+                  AND c.value_jsonb #> '{wealth,vargas}' @> '["D2"]'::jsonb
+             )
+             AND EXISTS (
+               SELECT 1
+                 FROM chart_facts f
+                WHERE f.chart_id = $1::uuid
+                  AND f.build_id = b.id
+                  AND f.build_id = $2::uuid
+                  AND f.ayanamsha_id = 'lahiri_chitrapaksha'
+                  AND f.fact_subject = 'LAGNA'
+                  AND f.fact_category = 'graha_position'
+                  AND f.fact_key = 'sign'
+                  AND f.fact_value_text IS NOT NULL
+             )
+           LIMIT 1`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
+      'platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants',
+      'platform/migrations/435_ga_vichara.sql:83-115',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
   {

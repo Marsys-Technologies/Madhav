@@ -88,7 +88,7 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     expect(handlers.get('get_signals')).toBeDefined()
   })
 
-  it('forwards every declared param (chart_id, ayanamsha_id, domain, bhava, max_signals) to the capability call — the mandatory W2-lesson check', async () => {
+  it('forwards every declared param (including as_of_date) to the capability call — the mandatory W2-lesson check', async () => {
     const { server, handlers } = makeCapturingServer()
     const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
     stubFetch({
@@ -111,7 +111,7 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
 
     await handler({
       chart_id: TEST_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha', domain: 'marriage',
-      max_signals: 12,
+      as_of_date: '2026-09-15', max_signals: 12,
     })
 
     const call = captured.find(c => c.uri === 'marsys://tool/L-JUDGMENT/judgment_query')
@@ -119,6 +119,7 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     expect(call!.args['chart_id']).toBe(TEST_CHART_ID)
     expect(call!.args['ayanamsha_id']).toBe('lahiri_chitrapaksha')
     expect(call!.args['domain']).toBe('marriage')
+    expect(call!.args['as_of_date']).toBe('2026-09-15')
     expect(call!.args['max_signals']).toBe(12)
   })
 

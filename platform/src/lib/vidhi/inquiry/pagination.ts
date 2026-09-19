@@ -238,13 +238,65 @@ function boundedWindowExhausted(
   return false
 }
 
+function materialTrimPresent(value: unknown): boolean {
+  if (value === null || value === undefined || value === false || value === '') return false
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length > 0
+  return true
+}
+
+/**
+ * Judgment is a single non-repeatable response, but a single response is not
+ * automatically complete. Its handler-owned checklist and MCP trim indicators
+ * are closure evidence only; they are never promoted into semantic findings.
+ */
+function nonPaginatedClosureExhausted(
+  binding: SemanticCapabilityBinding | undefined,
+  raw: unknown,
+): boolean | null {
+  const review = binding?.non_paginated_closure
+  if (!binding || !review) return null
+  if (binding.pagination !== 'none' || review.closure_version !== 'judgment-reading-checklist-v1') return false
+
+  const objects = nestedValues(raw)
+  for (const object of objects) {
+    const checklist = record(atPath(object, review.checklist_path))
+    if (!checklist) continue
+    const served = checklist['units_served']
+    const total = checklist['units_total']
+    const unserved = checklist['units_unserved']
+    const structurallyComplete = checklist['exhaustive'] === true
+      && (checklist['non_exhaustive'] === undefined || checklist['non_exhaustive'] === false)
+      && typeof served === 'number' && Number.isSafeInteger(served) && served >= 0
+      && typeof total === 'number' && Number.isSafeInteger(total) && total >= 0
+      && served === total
+      && Array.isArray(unserved) && unserved.length === 0
+    if (!structurallyComplete) return false
+    // Budget finalizers may put their receipt beside `content`, while the
+    // checklist itself lives inside `content`. Inspect the whole observed
+    // envelope so a collapsed/relocated trim report cannot manufacture closure.
+    for (const candidate of objects) for (const path of review.material_trim_paths) {
+      const value = atPath(candidate, path)
+      if (path === 'budget_kb_applied' ? value !== undefined && value !== null : materialTrimPresent(value)) return false
+    }
+    return true
+  }
+  return false
+}
+
 /** Derive exhaustion only from a source-reviewed binding contract plus server-observed output. */
 export function deriveInquiryPaginationReceipt(
   binding: SemanticCapabilityBinding | undefined,
   raw: unknown,
   args: Readonly<Record<string, unknown>>,
 ): InquiryPaginationReceipt {
-  if (!binding || binding.pagination === 'none') return { semantics: binding?.pagination ?? 'none', exhausted: true, next: null }
+  if (!binding) return { semantics: 'none', exhausted: true, next: null }
+  if (binding.pagination === 'none') {
+    const responseClosure = nonPaginatedClosureExhausted(binding, raw)
+    return responseClosure === false
+      ? { semantics: 'none', exhausted: false, next: 'unproven' }
+      : { semantics: 'none', exhausted: true, next: null }
+  }
   const boundedClosure = boundedWindowExhausted(binding, raw, args)
   if (boundedClosure === true) return { semantics: binding.pagination, exhausted: true, next: null }
   if (boundedClosure === false) return { semantics: binding.pagination, exhausted: false, next: 'unproven' }

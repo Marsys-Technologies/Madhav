@@ -9,6 +9,7 @@ import {
 } from './source_query_availability'
 import { probeSourceQueryAvailabilityContract } from './overlay_loader'
 import type { CapabilityKnowledgeSnapshot } from './types'
+import type { OverlayQueryRow } from './overlay_loader'
 
 const catalog = getCatalog()
 const snapshot = compileCapabilityKnowledge(catalog, '2026-09-17T00:00:00.000Z')
@@ -206,6 +207,116 @@ describe('binding availability contracts', () => {
       'source-query:query-contradictions:v1 could not execute its authenticated source query.',
     ])
     expect(observedParams).toEqual([['chart-a', 'build-a']])
+  })
+
+  it('admits judgment only through its exact required-row readiness contract', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    const judgment = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.judgment_query')!
+
+    expect(contract).toMatchObject({
+      descriptor_name: 'judgment_query',
+      capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
+      scope: 'chart',
+      parameter_binding: 'chart_and_active_build',
+      empty_semantics: 'required_rows_must_exist',
+    })
+    for (const marker of [
+      "state = 'completed'",
+      'ORDER BY ended_at DESC NULLS LAST, id DESC',
+      "constant_key = 'operative_vargas'",
+      "#> '{wealth,vargas}'",
+      "'[\"D2\"]'::jsonb",
+      "ayanamsha_id = 'lahiri_chitrapaksha'",
+      "fact_subject = 'LAGNA'",
+      "fact_category = 'graha_position'",
+      "fact_key = 'sign'",
+      'fact_value_text IS NOT NULL',
+    ]) expect(contract.sql).toContain(marker)
+    expect(judgment.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
+      requirements: [expect.objectContaining({
+        kind: 'source_query', contract_id: contract.contract_id, scope: 'chart',
+      })],
+    })])
+    expect(judgment.availability_dispositions ?? []).toEqual([])
+    expect(judgment.bindings[0]).toMatchObject({
+      pagination: 'none',
+      non_paginated_closure: {
+        closure_version: 'judgment-reading-checklist-v1',
+        checklist_path: 'reading_checklist',
+      },
+    })
+  })
+
+  it.each([
+    ['operative-vargas row missing', { operativeVargas: false, wealthD2: true, lagnaSign: true }],
+    ['wealth profile missing D2', { operativeVargas: true, wealthD2: false, lagnaSign: true }],
+    ['active-build lagna sign missing', { operativeVargas: true, wealthD2: true, lagnaSign: false }],
+  ])('fails judgment readiness closed when %s', async (_label, prerequisites) => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    await expect(probeSourceQueryAvailabilityContract(
+      contract,
+      'chart-a',
+      'build-a',
+      async () => ({
+        rows: prerequisites.operativeVargas && prerequisites.wealthD2 && prerequisites.lagnaSign
+          ? [{ source_query_available: 1 } as unknown as OverlayQueryRow]
+          : [],
+      }),
+    )).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+  })
+
+  it('fails judgment readiness closed when the required-row query succeeds with zero rows', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    await expect(probeSourceQueryAvailabilityContract(
+      contract,
+      'chart-a',
+      'build-a',
+      async () => ({ rows: [] }),
+    )).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+  })
+
+  it('accepts judgment readiness only when the exact probe returns its required row', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    const observed: Array<{ sql: string; params: unknown[] }> = []
+    await expect(probeSourceQueryAvailabilityContract(
+      contract,
+      'chart-a',
+      'build-a',
+      async (sql, params = []) => {
+        observed.push({ sql, params })
+        return { rows: [{ source_query_available: 1 } as unknown as OverlayQueryRow] }
+      },
+    )).resolves.toEqual([])
+    expect(observed).toEqual([{ sql: contract.sql, params: ['chart-a', 'build-a'] }])
+  })
+
+  it('fails judgment readiness closed without an active build, for the wrong chart/build pair, and on SQL failure', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    const query = async (_sql: string, params: unknown[] = []) => ({
+      rows: params[0] === 'chart-a' && params[1] === 'build-a'
+        ? [{ source_query_available: 1 } as unknown as OverlayQueryRow]
+        : [],
+    })
+
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', null, query)).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 cannot bind the selected chart to an active completed build.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-b', 'build-a', query)).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-b', query)).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-a', async () => {
+      throw new Error('permission denied')
+    })).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 could not execute its authenticated source query.',
+    ])
   })
 
   it.each([

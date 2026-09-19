@@ -12,6 +12,31 @@ function binding(overrides: Partial<SemanticCapabilityBinding> = {}): SemanticCa
   }
 }
 
+function judgmentBinding(): SemanticCapabilityBinding {
+  return binding({
+    binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
+    capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
+    pagination: 'none',
+    pagination_verified: null,
+    result_collection_verified: false,
+    pagination_contract: undefined,
+    non_paginated_closure: {
+      closure_version: 'judgment-reading-checklist-v1',
+      checklist_path: 'reading_checklist',
+      material_trim_paths: ['budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated'],
+      source_ref: 'test:judgment-reading-checklist',
+    },
+  } as Partial<SemanticCapabilityBinding>)
+}
+
+const completeJudgmentChecklist = {
+  exhaustive: true,
+  non_exhaustive: false,
+  units_served: 12,
+  units_total: 12,
+  units_unserved: [],
+}
+
 describe('inquiry pagination receipts', () => {
   it('advances a verified offset from server-observed more_available', () => {
     expect(deriveInquiryPaginationReceipt(binding(), { results: [{ content: { rows: [1], more_available: true } }] }, { offset: 50, limit: 25 }))
@@ -125,5 +150,36 @@ describe('inquiry pagination receipts', () => {
       rows: [{ contradiction_id: 'c-1' }],
     })
     expect(deriveInquiryPaginationReceipt(contradictions, raw, {})).toEqual({ semantics: 'none', exhausted: true, next: null })
+  })
+
+  it('closes judgment only for a structurally complete untrimmed reading checklist', () => {
+    expect(deriveInquiryPaginationReceipt(
+      judgmentBinding(),
+      { content: { reading_checklist: completeJudgmentChecklist } },
+      {},
+    )).toEqual({ semantics: 'none', exhausted: true, next: null })
+  })
+
+  it.each([
+    ['missing checklist', { content: {} }],
+    ['malformed checklist', { content: { reading_checklist: { ...completeJudgmentChecklist, units_served: '12' } } }],
+    ['contradictory counts', { content: { reading_checklist: { ...completeJudgmentChecklist, units_served: 11 } } }],
+    ['non-exhaustive marker', { content: { reading_checklist: { ...completeJudgmentChecklist, non_exhaustive: 'salience_sampled' } } }],
+    ['unserved units', { content: { reading_checklist: { ...completeJudgmentChecklist, exhaustive: false, units_served: 11, units_unserved: ['tajaka'] } } }],
+    ['applied byte budget', { content: { reading_checklist: completeJudgmentChecklist, budget_kb_applied: 12, trim_report: null } }],
+    ['outer-envelope applied byte budget', { budget_kb_applied: 12, trim_report: null, content: { reading_checklist: completeJudgmentChecklist } }],
+    ['material trim report', { content: { reading_checklist: completeJudgmentChecklist, trim_report: [{ path: 'checklist.bearing_yogas', kept_count: 3 }] } }],
+    ['material trim indicator', { content: { reading_checklist: completeJudgmentChecklist, response_trimmed: true } }],
+  ])('keeps judgment open for %s', (_label, raw) => {
+    expect(deriveInquiryPaginationReceipt(judgmentBinding(), raw, {}))
+      .toEqual({ semantics: 'none', exhausted: false, next: 'unproven' })
+  })
+
+  it('preserves pagination:none closure for ordinary bindings without a typed closure contract', () => {
+    expect(deriveInquiryPaginationReceipt(
+      binding({ pagination: 'none', pagination_verified: null, pagination_contract: undefined }),
+      { content: {} },
+      {},
+    )).toEqual({ semantics: 'none', exhausted: true, next: null })
   })
 })

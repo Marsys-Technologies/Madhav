@@ -417,9 +417,14 @@ export async function probeSourceQueryAvailabilityContract(
       // chart instead of silently certifying only its in-memory path.
       : [chartId]
   try {
-    // Query success is the availability signal. Zero rows are intentionally a
-    // healthy source: result emptiness belongs to the handler response.
-    await query(contract.sql, params)
+    const result = await query(contract.sql, params)
+    // Most reviewed handlers have honest-empty semantics: query success proves
+    // source reachability even when no domain rows match. A required-row probe is
+    // deliberately different: it encodes mandatory handler prerequisites and must
+    // return at least one readiness row before the binding is admitted.
+    if (contract.empty_semantics === 'required_rows_must_exist' && result.rows.length === 0) {
+      return [`${contract.contract_id} returned no required readiness rows.`]
+    }
     return []
   } catch {
     return [`${contract.contract_id} could not execute its authenticated source query.`]

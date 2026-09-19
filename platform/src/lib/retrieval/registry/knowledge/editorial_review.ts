@@ -7,6 +7,7 @@
 import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
+  SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
 
@@ -71,19 +72,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],
   },
-  judgment_query: {
-    reason: 'The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
-    ],
-  },
   query_domain_reading: {
     reason: 'The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.',
     source_refs: [
@@ -102,6 +90,21 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202',
       'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
     ],
+  },
+}
+
+const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {
+  judgment_query: {
+    pagination: 'none',
+    non_paginated_closure: {
+      closure_version: 'judgment-reading-checklist-v1',
+      checklist_path: 'reading_checklist',
+      material_trim_paths: [
+        'budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated',
+      ],
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#reading_checklist',
+    },
+    route_evidence: 'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
   },
 }
 
@@ -446,6 +449,12 @@ for (const [familyId, names] of Object.entries(MEMBERS)) {
 
 export function getDescriptorEditorialReview(name: string): DescriptorEditorialFamily | null {
   return REVIEW_BY_NAME.get(name) ?? null
+}
+
+export function getDescriptorPrimaryBindingDetails(
+  name: string,
+): SemanticCapabilityDeclaration['primary_binding_details'] | undefined {
+  return PRIMARY_BINDING_DETAILS[name]
 }
 
 export function getReviewedDescriptorNames(): readonly string[] {

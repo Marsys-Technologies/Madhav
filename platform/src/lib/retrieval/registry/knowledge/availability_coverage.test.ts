@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import generatedCapabilityKnowledge from '../../../../generated/capability_knowledge.snapshot.json'
+import { getCatalog } from '../catalog'
+import { compileCapabilityKnowledge } from './compiler'
 import { loadChartCapabilityOverlay, type OverlayQueryRow } from './overlay_loader'
 import type { CapabilityKnowledgeSnapshot, ProducerOutputAvailabilityRequirement } from './types'
 
-const snapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
+const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-17T00:00:00.000Z') as CapabilityKnowledgeSnapshot
 const CHART_ID = 'chart-first-slice'
 const BUILD_ID = 'build-first-slice'
 
@@ -25,11 +26,11 @@ const FIRST_SLICE = {
     'scu.yoga.firing_and_cancellation',
     'scu.catalog.query_classical_texts',
     'scu.catalog.query_contradictions',
+    'scu.catalog.judgment_query',
   ],
   deliberately_dark: [
     'scu.catalog.assess_career',
     'scu.catalog.assess_marriage',
-    'scu.catalog.judgment_query',
   ],
 } as const
 
@@ -244,35 +245,37 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('keeps judgment_query dark when direct-leg producer receipts cannot attest its assembled request response', async () => {
+  it('admits judgment_query only when its exact required-row readiness probe succeeds', async () => {
     const scu = findScu('scu.catalog.judgment_query')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
       binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('resolves chart facts for the requested bhava'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746',
-        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824',
-        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890',
-        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
-        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
-      ]),
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:judgment-query-readiness:v1',
+        scope: 'chart',
+      })],
     })])
+    expect(scu.availability_dispositions ?? []).toEqual([])
 
-    // These exact reviewed receipts cover direct divisional, fired-yoga,
-    // dasha, and signal legs. They do not attest the handler's request-specific
-    // chart-fact resolution, live mechanism reads, or assembled judgment result.
-    const overlay = await overlayFor([
-      adjacentProducerReceipt('ga_vargas', '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51'),
-      adjacentProducerReceipt('ga_yoga', 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246'),
-      adjacentProducerReceipt('ga_dashas', '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14'),
-      adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
-    ])
-    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      state: 'dark',
-      available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('source_query_available') && sql.includes('brahma_vichara_constants')) {
+        return { rows: [{ source_query_available: 1 } as unknown as OverlayQueryRow] }
+      }
+      return { rows: [transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(available.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'available',
+      available_binding_ids: ['registry:marsys://tool/L-JUDGMENT/judgment_query'],
+      gaps: [],
+    })
+
+    const missingRequiredRows = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('source_query_available') && sql.includes('brahma_vichara_constants')) return { rows: [] }
+      return { rows: [transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(missingRequiredRows.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark', available_binding_ids: [],
+      gaps: ['source-query:judgment-query-readiness:v1 returned no required readiness rows.'],
     })
   })
 
@@ -1074,7 +1077,7 @@ describe('first-slice availability coverage', () => {
     expect(sourceCall?.params).toEqual([CHART_ID, BUILD_ID])
 
     initialQuery = true
-    const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, _params = []) => {
+    const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
       if (initialQuery) {
         initialQuery = false
         return { rows: [transitProbeAnchor()] }
@@ -1177,6 +1180,16 @@ describe('first-slice availability coverage', () => {
       expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
         state: 'dark',
         available_binding_ids: [],
+      })
+      return
+    }
+    if (scuId === 'scu.catalog.judgment_query') {
+      const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (sql.includes('source_query_available') && sql.includes('brahma_vichara_constants')) return { rows: [] }
+        return { rows: [transitProbeAnchor()] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+      expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state: 'dark', available_binding_ids: [],
       })
       return
     }

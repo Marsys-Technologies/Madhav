@@ -349,7 +349,7 @@ function planFor(
       if (binding?.input_contract['query']) itemArgs['query'] = question
       if (binding?.input_contract['domain']) itemArgs['domain'] = scope.domains[0]
       if (binding?.input_contract['domains']) itemArgs['domains'] = scope.domains
-      if (aggregateTransitBinding && validTemporalAnchorDate(temporalAnchorDate)) {
+      if (binding?.input_contract['as_of_date'] && validTemporalAnchorDate(temporalAnchorDate)) {
         itemArgs['as_of_date'] = temporalAnchorDate
       }
       const unresolvedRequired = binding

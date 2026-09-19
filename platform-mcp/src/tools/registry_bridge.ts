@@ -3874,10 +3874,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals: z.number().int().min(1).max(50).optional().describe(
         'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).'
       ),
+      as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe(
+        'Point-in-time date (YYYY-MM-DD) forwarded to judgment timing hooks. Default: today.'
+      ),
       verbosity: VERBOSITY_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals, verbosity, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals, as_of_date, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('judgment_query', 'chart_id is required')
       if (!domain && bhava === undefined) {
         return errorOutput('judgment_query', 'either `domain` or `bhava` is required')
@@ -3899,7 +3902,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, resolvedAyanamsha, principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L-JUDGMENT/judgment_query',
-            { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, max_signals },
+            { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, max_signals, as_of_date },
             chart_id, principal
           ),
         ])
