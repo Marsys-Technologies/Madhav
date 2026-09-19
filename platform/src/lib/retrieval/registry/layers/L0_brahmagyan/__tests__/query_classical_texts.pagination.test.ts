@@ -88,8 +88,18 @@ describe('query_classical_texts receipt-pinned pagination', () => {
     expect(pages.every((page) => (page['snapshot_provenance'] as Record<string, unknown>)['output_digest'] === DIGEST)).toBe(true)
   })
 
-  it('rejects nonzero raw offsets, malformed cursors, and unavailable signing', async () => {
-    await expect(queryClassicalTextsCapability.handler({ limit: 2, offset: 2 }, undefined)).resolves.toMatchObject({ is_error: true, content: { code: 'page_cursor_required', restart_required: true } })
+  it.each([-1, 0.5, 2, '0', 'invalid', Number.POSITIVE_INFINITY])('rejects unsafe first-page raw offset %s', async (offset) => {
+    await expect(queryClassicalTextsCapability.handler({ limit: 2, offset }, undefined)).resolves.toMatchObject({ is_error: true, content: { code: 'page_cursor_required', restart_required: true } })
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts literal numeric integer zero as the only explicit first-page offset', async () => {
+    await expect(queryClassicalTextsCapability.handler({ limit: 2, offset: 0 }, undefined)).resolves.toMatchObject({
+      is_error: false, content: { pagination: { offset: 0 } },
+    })
+  })
+
+  it('rejects malformed cursors and unavailable signing', async () => {
     await expect(queryClassicalTextsCapability.handler({ limit: 2, page_cursor: 'forged.payload.signature' }, undefined)).resolves.toMatchObject({ is_error: true, content: { code: 'invalid_page_cursor', restart_required: true } })
     delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID
     delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT
@@ -146,11 +156,47 @@ describe('query_classical_texts receipt-pinned pagination', () => {
     await queryClassicalTextsCapability.handler({ query_text: 'dasha', top_k: 2 }, undefined)
     const hybridSql = String(queryMock.mock.calls[0]?.[0]).replace(/\s+/g, ' ')
     expect(hybridSql).toContain('ORDER BY combined_score DESC, text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC')
-    for (const marker of ['asset_provenance_receipts', 'asset_freshness', 'asset_output_digest_specs', 'build_run_assets', 'classical_text_chunks']) expect(hybridSql).toContain(marker)
-    expect(queryMock.mock.calls[0]?.[1]).toContain(SPEC)
+    for (const marker of [
+      'FROM asset_provenance_receipts receipt',
+      'JOIN asset_freshness freshness',
+      'JOIN asset_output_digest_specs digest_spec',
+      "receipt.receipt_state = 'proven'",
+      "freshness.freshness_state = 'fresh'",
+      'receipt.chart_id IS NULL',
+      "receipt.scope_key = '__global__'",
+      'digest_spec.retired_at IS NULL',
+      'COUNT(*)::text AS eligible_receipt_count',
+      "snapshot.eligible_receipt_count = '1'",
+      'FROM build_run_assets asset',
+      'JOIN build_runs run',
+      "run.state IN ('planned', 'running', 'paused')",
+      "asset.state IN ('queued', 'building')",
+      'FROM classical_text_chunks',
+    ]) expect(hybridSql).toContain(marker)
+    expect((queryMock.mock.calls[0]?.[1] as unknown[]).slice(0, 2)).toEqual(['bg_texts', SPEC])
     queryMock.mockClear(); installPagedSnapshot()
     await queryClassicalTextsCapability.handler({ limit: 2 }, undefined)
     const listSql = String(queryMock.mock.calls[0]?.[0]).replace(/\s+/g, ' ')
     expect(listSql).toContain('ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC')
+  })
+
+  it('computes legacy empty-keyword nearest topics inside the same receipt-fenced SQL snapshot', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [receiptSnapshot({ rows: [], nearest_indexed_topics: ['dasha', 'mahadasha'] })] })
+
+    const result = await queryClassicalTextsCapability.handler({ keyword: 'dashaa' }, undefined)
+
+    expect(result.is_error).toBe(false)
+    expect(contentOf(result)).toMatchObject({
+      citations: [], rows: [], nearest_indexed_topics: ['dasha', 'mahadasha'],
+      empty_reason: expect.stringContaining('is not indexed in the corpus'),
+    })
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    const sql = String(queryMock.mock.calls[0]?.[0]).replace(/\s+/g, ' ')
+    expect(sql).toContain('topic_candidates AS')
+    expect(sql).toContain('topic_suggestions AS')
+    expect(sql).toContain("snapshot.eligible_receipt_count = '1'")
+    expect(sql).toContain('NOT fence.replacement_in_progress')
+    expect(sql).toContain('similarity(topic,')
+    expect(sql).toContain('LIMIT 5')
   })
 })

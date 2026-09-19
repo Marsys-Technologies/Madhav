@@ -42,6 +42,7 @@ interface PageSnapshot extends Partial<SnapshotIdentity> {
   readonly eligible_receipt_count: string
   readonly replacement_in_progress: boolean
   readonly rows: Record<string, unknown>[]
+  readonly nearest_indexed_topics?: string[]
 }
 
 function normalizeLimit(value: unknown, fallback: number, maximum: number): number {
@@ -162,10 +163,10 @@ function receiptBoundarySql(): string {
   )`
 }
 
-function envelopeSql(pageCtes: string): string {
+function envelopeSql(pageCtes: string, extraSelect = ''): string {
   return `WITH ${receiptBoundarySql()}, ${pageCtes}
     SELECT snapshot.*, fence.replacement_in_progress,
-           COALESCE((SELECT jsonb_agg(row ORDER BY order_position) FROM page_rows), '[]'::jsonb) AS rows
+           COALESCE((SELECT jsonb_agg(row ORDER BY order_position) FROM page_rows), '[]'::jsonb) AS rows${extraSelect}
       FROM receipt_snapshot snapshot CROSS JOIN replacement_fence fence`
 }
 
@@ -231,22 +232,36 @@ async function fetchListPage(args: {
 }): Promise<PageSnapshot | undefined> {
   const params: unknown[] = [BG_TEXTS_ASSET_ID, BG_TEXTS_OUTPUT_DIGEST_SPEC_SHA256]
   let predicates = ''
-  if (args.keyword) predicates += ` AND c.content_en ILIKE $${params.push(`%${args.keyword}%`)}::text`
+  const keywordParam = args.keyword ? `$${params.push(args.keyword)}` : null
+  if (keywordParam) predicates += ` AND c.content_en ILIKE ('%' || ${keywordParam}::text || '%')`
   if (args.textSource) predicates += ` AND c.text_id = $${params.push(args.textSource)}::text`
   if (args.topic) predicates += ` AND $${params.push(args.topic)}::text = ANY(c.topics)`
   const limitParam = `$${params.push(args.limit + 1)}`
   const offsetParam = `$${params.push(args.offset)}`
   const order = 'text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC'
+  const topicSuggestionCtes = keywordParam ? `, topic_candidates AS (
+    SELECT DISTINCT topic
+      FROM classical_text_chunks c
+      CROSS JOIN LATERAL unnest(c.topics) AS topic
+      CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
+     WHERE snapshot.eligible_receipt_count = '1' AND NOT fence.replacement_in_progress
+       AND similarity(topic, ${keywordParam}::text) > 0.15
+  ), topic_suggestions AS (
+    SELECT topic, similarity(topic, ${keywordParam}::text) AS score
+      FROM topic_candidates ORDER BY score DESC, topic ASC LIMIT 5
+  )` : ''
   const sql = envelopeSql(`search_rows AS (
     SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
            c.content_en, c.content_sa, c.content_summary, c.source_citation,
            c.tradition_school, c.topics FROM classical_text_chunks c WHERE 1=1${predicates}
   ), page_rows AS (
     SELECT to_jsonb(search_rows) AS row, ROW_NUMBER() OVER (ORDER BY ${order}) AS order_position
-      FROM search_rows CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
+     FROM search_rows CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
      WHERE snapshot.eligible_receipt_count = '1' AND NOT fence.replacement_in_progress
      ORDER BY ${order} LIMIT ${limitParam} OFFSET ${offsetParam}
-  )`)
+  )${topicSuggestionCtes}`, keywordParam
+    ? `, COALESCE((SELECT jsonb_agg(topic ORDER BY score DESC, topic ASC) FROM topic_suggestions), '[]'::jsonb) AS nearest_indexed_topics`
+    : '')
   const result = await query<PageSnapshot>(sql, params)
   return result.rows[0]
 }
@@ -283,9 +298,11 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
 
   async handler(args, _ctx) {
     void _ctx
-    const requestedOffset = normalizeOffset(args.offset)
     const suppliedCursor = args.page_cursor !== undefined && args.page_cursor !== null
-    if (!suppliedCursor && requestedOffset > 0) return paginationError('page_cursor_required', 'A nonzero offset is not a safe continuation; restart and use next_page_cursor.')
+    const initialOffsetIsSafe = args.offset === undefined || args.offset === null
+      || (typeof args.offset === 'number' && Number.isInteger(args.offset) && args.offset === 0)
+    if (!suppliedCursor && !initialOffsetIsSafe) return paginationError('page_cursor_required', 'Only numeric integer zero is accepted as a first-page offset; use next_page_cursor for continuation.')
+    const requestedOffset = normalizeOffset(args.offset)
 
     let signingRing: InquiryLifecycleSigningKeyRing
     try {
@@ -370,6 +387,7 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
           snapshot_provenance: { asset_id: BG_TEXTS_ASSET_ID, ...identity },
           ...(!usesFreeText && citations.length === 0 && keyword ? {
             empty_reason: `No classical_text_chunks rows matched keyword "${keyword}" — this exact spelling/phrase is not indexed in the corpus.`,
+            nearest_indexed_topics: Array.isArray(snapshot!.nearest_indexed_topics) ? snapshot!.nearest_indexed_topics : [],
           } : {}),
         },
         is_error: false,
