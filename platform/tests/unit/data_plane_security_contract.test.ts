@@ -691,6 +691,48 @@ describe('DP-SD-018 deployment ordering', () => {
       'github.event.workflow_run.conclusion': 'failure',
     })).toBe(false)
   })
+
+  it('crosses an intentional bootstrap skip only after the migration barrier succeeds', () => {
+    const deployWebIf = workflowJobs['deploy-web'].if as string
+    const deployMcpIf = workflowJobs['deploy-mcp'].if as string
+    const deployPipelineIf = workflowJobs['deploy-pipeline-job'].if as string
+    const routineDispatch = {
+      'github.event_name': 'workflow_dispatch',
+      'github.event.workflow_run.conclusion': '',
+      'needs.changes.result': 'success',
+      'needs.migrate.result': 'success',
+      'needs.changes.outputs.force_all': 'true',
+      'needs.changes.outputs.mcp': 'false',
+      'needs.changes.outputs.pipeline': 'false',
+    }
+
+    for (const expression of [deployWebIf, deployMcpIf, deployPipelineIf]) {
+      expect(expression).toContain('always()')
+      expect(expression).toContain("needs.changes.result == 'success'")
+      expect(expression).toContain("needs.migrate.result == 'success'")
+      expect(evaluateWorkflowCondition(expression, routineDispatch)).toBe(true)
+      for (const result of ['failure', 'cancelled', 'skipped']) {
+        expect(evaluateWorkflowCondition(expression, {
+          ...routineDispatch,
+          'needs.migrate.result': result,
+        })).toBe(false)
+      }
+      expect(evaluateWorkflowCondition(expression, {
+        ...routineDispatch,
+        'needs.changes.result': 'failure',
+      })).toBe(false)
+    }
+
+    expect(evaluateWorkflowCondition(deployMcpIf, {
+      ...routineDispatch,
+      'needs.changes.outputs.force_all': 'false',
+    })).toBe(false)
+    expect(evaluateWorkflowCondition(deployPipelineIf, {
+      ...routineDispatch,
+      'needs.changes.outputs.force_all': 'false',
+    })).toBe(false)
+  })
+
   it('requires exact backup and successful-restore identifiers as one receipt', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-cutover-preflight.ts'), 'utf8')
     const receipt = parseBackupRestoreReceipt(JSON.stringify({
