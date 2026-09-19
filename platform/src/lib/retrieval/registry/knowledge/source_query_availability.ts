@@ -2685,6 +2685,23 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM systems_present CROSS JOIN active_chain`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts:101-126'],
   },
+  {
+    contract_id: 'source-query:query-kala-paddhati-profile:v1',
+    descriptor_name: 'query_kala_paddhati_profile',
+    capability_uri: 'marsys://tool/L3/query_kala_paddhati_profile',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT factor_family, convention_id, school_tag, constraint_role,
+                 convention_status, provenance, corpus_gap_ref,
+                 native_confirmed, awaiting_native_confirmation, version,
+                 confirmation_provenance, arbitration_role, precedence
+            FROM kala_paddhati_profile
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR factor_family = NULL::text)
+             AND (NULL::text IS NULL OR version = NULL::text)
+           ORDER BY version ASC, factor_family, convention_id
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts:121-143'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

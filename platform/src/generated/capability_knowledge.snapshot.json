@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:30:37.000Z",
-  "content_hash": "sha256:f7d009af8ff39fcf76a0efeba9c82f79b841b13008d3cb7e889b2fc773cc4dc1",
+  "generated_at": "2026-09-19T00:32:06.000Z",
+  "content_hash": "sha256:4148e92dcf191f8cc5ef3127b8144cdb8a852374956d19bad4c2f4dc57effe65",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:eac6723674faf3e665bb87560116479fc3dab6b77b9dc47ba2899efd1d744f6c",
+  "semantic_review_fingerprint": "sha256:22bff719e1685ffc92deed5e73ef22d3395ea76a47dfdb4eb51eff342791cd38",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -18426,6 +18426,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L3/query_kala_paddhati_profile",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-kala-paddhati-profile:v1",
+              "capability_uri": "marsys://tool/L3/query_kala_paddhati_profile",
+              "contract_sha256": "sha256:896491c9f38d3d52d407ac20cb45ecbfbfdf5bac06660cfd442a5e5da8ba0a08",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts:121-143"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
