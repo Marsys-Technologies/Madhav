@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T05:32:51.000Z",
-  "content_hash": "sha256:3b656ed70bc2006bdb438c05fe5d7642058513e1ba7ffcb65120d6b729e32f01",
+  "generated_at": "2026-09-19T06:45:28.000Z",
+  "content_hash": "sha256:5cb031a80a77b0e7d6c45c68d10be1edb37e52e2182473291d5214836506aa11",
   "source_catalog_fingerprint": "sha256:6356cb02a5b453f11a6a83d48706c8955559f133873cce134d34740683788e8d",
-  "semantic_review_fingerprint": "sha256:f5322f562aa039070972f9473a869d8f421d422e1fc845c23b4383801874e4e8",
+  "semantic_review_fingerprint": "sha256:4ff3a67130eb17d508cfc47076d2be3d500ac53ddb7bc81d69d78a3546470ec9",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -11078,6 +11078,22 @@
         "reconciled_evidence"
       ],
       "primary_binding_uri": "marsys://tool/L-JUDGMENT/judgment_query",
+      "primary_binding_details": {
+        "pagination": "none",
+        "non_paginated_closure": {
+          "closure_version": "judgment-reading-checklist-v1",
+          "checklist_path": "reading_checklist",
+          "material_trim_paths": [
+            "budget_kb_applied",
+            "trim_report",
+            "material_trimmed",
+            "response_trimmed",
+            "truncated"
+          ],
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#reading_checklist"
+        },
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler"
+      },
       "edges": [
         {
           "relation": "enables",
@@ -11121,20 +11137,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-JUDGMENT/judgment_query",
-          "status": "deliberately_dark",
-          "reason": "The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:judgment-query-readiness:v1",
+              "capability_uri": "marsys://tool/L-JUDGMENT/judgment_query",
+              "contract_sha256": "sha256:be129861e908a9499c6afca7da19a20ad8b6c284dd014589e0edc8872a4d1ac0",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
           ]
         }
       ],
@@ -11158,9 +11172,22 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": null,
+          "pagination_verified": false,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "non_paginated_closure": {
+            "closure_version": "judgment-reading-checklist-v1",
+            "checklist_path": "reading_checklist",
+            "material_trim_paths": [
+              "budget_kb_applied",
+              "trim_report",
+              "material_trimmed",
+              "response_trimmed",
+              "truncated"
+            ],
+            "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#reading_checklist"
+          },
+          "result_collection_verified": false,
           "pagination_review": {
             "disposition": "not_paginated",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L-JUDGMENT/judgment_query"
