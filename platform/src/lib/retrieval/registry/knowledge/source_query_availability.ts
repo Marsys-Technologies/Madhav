@@ -3271,6 +3271,36 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY cosine_distance ASC LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts:109-168'],
   },
+  {
+    contract_id: 'source-query:query-calibration:v1',
+    descriptor_name: 'query_calibration',
+    capability_uri: 'marsys://tool/L5/query_calibration',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH verdict_distribution AS (
+            SELECT c.composite_verdict, COUNT(*)::int AS n,
+                   AVG(c.composite_score)::numeric(4,3) AS mean_score
+              FROM mimamsa_calibration c
+              LEFT JOIN mimamsa_predictions p
+                ON p.chart_id = c.chart_id AND p.prediction_id = c.prediction_id
+             WHERE c.chart_id = $1::uuid
+               AND c.leakage_status != 'held_out'
+               AND (NULL::text IS NULL OR p.domain = NULL::text)
+             GROUP BY c.composite_verdict
+          ), reliability_curve AS (
+            SELECT stratum_key, predicted_prob_bin, observed_rate, n, brier_score, ece,
+                   held_out_validity, evidence_grade
+              FROM mimamsa_reliability WHERE chart_id = $1::uuid
+          ), multipliers AS (
+            SELECT weight_id, mechanism, target_kind, target_ref, domain, applied_multiplier,
+                   raw_multiplier, n_observations, promotion_status, gate_passed,
+                   kill_switch_state, divergence_from_classical
+              FROM mimamsa_multipliers WHERE chart_id = $1::uuid
+          ), qa_results AS (
+            SELECT check_id, check_type, target, result_score, status, checked_at
+              FROM mimamsa_qa_eval WHERE chart_id = $1::uuid
+          ) SELECT * FROM verdict_distribution LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
