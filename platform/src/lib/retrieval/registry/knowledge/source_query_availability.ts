@@ -2748,6 +2748,29 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:86-115'],
   },
+  {
+    contract_id: 'source-query:query-moorti-nirnaya:v1',
+    descriptor_name: 'query_moorti_nirnaya',
+    capability_uri: 'marsys://tool/L3/query_moorti_nirnaya',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT graha, target_sign_idx, target_sign_name,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   start_truncated, end_truncated, moorti_computed,
+                   moon_nakshatra_idx_at_ingress, moon_nakshatra_name_at_ingress,
+                   janma_nakshatra_idx, janma_nakshatra_fact_id, nakshatra_offset,
+                   moorti_name, quality_tier, phala_brief, moorti_classical_citation,
+                   (window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE) AS is_current
+              FROM kala_moorti_nirnaya WHERE chart_id = $1::uuid
+             ORDER BY graha, window_start LIMIT 0
+          ), current_page AS (
+            SELECT graha FROM kala_moorti_nirnaya
+             WHERE chart_id = $1::uuid AND window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE
+             ORDER BY graha, window_start LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:91-119'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
