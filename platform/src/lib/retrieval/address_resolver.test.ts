@@ -526,7 +526,8 @@ describe('resolveAddress — optional immutable build fence', () => {
     const calls = vi.mocked(query).mock.calls.filter(([sql]) => String(sql).includes('FROM chart_facts'))
     expect(calls.length).toBeGreaterThan(1)
     for (const [sql, params] of calls) {
-      expect(String(sql)).toContain('build_id = $')
+      expect(String(sql)).toMatch(/build_id = \$\d+::uuid/)
+      expect(String(sql)).not.toMatch(/build_id = \$\d+::text/)
       expect(params).toContain(BUILD_ID)
     }
   })

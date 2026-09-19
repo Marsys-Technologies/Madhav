@@ -185,7 +185,8 @@ describe('get_dashas build-pinned cursor pagination', () => {
 
     expect(result.is_error).toBe(false)
     expect(database.natalCalls).toHaveLength(1)
-    expect(database.natalCalls[0]?.sql).toContain('build_id = $5::text')
+    expect(database.natalCalls[0]?.sql).toContain('build_id = $5::uuid')
+    expect(database.natalCalls[0]?.sql).not.toContain('build_id = $5::text')
     expect(database.natalCalls[0]?.params.at(-1)).toBe('build-a')
   })
 

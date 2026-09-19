@@ -800,7 +800,7 @@ export const getDashasCapability: CapabilityDescriptor = {
                     MAX(fact_value_num)  FILTER (WHERE fact_category = 'graha_shadbala_total')     AS shadbala_rupa
              FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])
-               AND build_id = $5::text
+               AND build_id = $5::uuid
                AND (
                  (fact_category = 'graha_dignity_per_varga' AND fact_key = 'dignity_state' AND fact_subject = ANY($4::text[]))
                  OR (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa' AND fact_subject = ANY($3::text[]))

@@ -85,7 +85,8 @@ describe('judgment mandatory completed-build fence', () => {
     expect(stale).toMatchObject({ dignity_state: 'debilitated', dignity_weight: -2, shadbala_rupa: 1 })
 
     for (const [sql, params] of queryMock.mock.calls) {
-      expect(String(sql)).toContain('build_id = $4::text')
+      expect(String(sql)).toContain('build_id = $4::uuid')
+      expect(String(sql)).not.toContain('build_id = $4::text')
       expect([BUILD_ID, STALE_BUILD_ID]).toContain((params as unknown[]).at(-1))
     }
   })

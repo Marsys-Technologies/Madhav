@@ -641,7 +641,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
             `SELECT fact_subject, fact_value_text FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
                AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'
-               ${build_id ? 'AND build_id = $4::text' : ''}`,
+               ${build_id ? 'AND build_id = $4::uuid' : ''}`,
             build_id ? [chart_id, ayanamsha_id, grahaCodes, build_id] : [chart_id, ayanamsha_id, grahaCodes],
           )
           const activeHouseByGraha: Record<string, number> = {}

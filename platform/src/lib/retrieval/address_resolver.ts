@@ -305,7 +305,7 @@ interface ResolveCtx {
 }
 
 function factBuildFence(ctx: ResolveCtx, param: number): string {
-  return ctx.build_id ? ` AND build_id = $${param}::text` : ''
+  return ctx.build_id ? ` AND build_id = $${param}::uuid` : ''
 }
 
 function divisionalBuildFence(ctx: ResolveCtx, param: number): string {

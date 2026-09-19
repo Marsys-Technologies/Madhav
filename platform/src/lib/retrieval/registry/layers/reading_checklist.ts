@@ -129,7 +129,7 @@ export async function fetchSensitiveDegreeFirings(
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND fact_category = 'sensitive_degree_check'
           AND fact_key = ANY($3)
-          ${build_id ? 'AND build_id = $4::text' : ''}`,
+          ${build_id ? 'AND build_id = $4::uuid' : ''}`,
       build_id
         ? [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS], build_id]
         : [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS]],

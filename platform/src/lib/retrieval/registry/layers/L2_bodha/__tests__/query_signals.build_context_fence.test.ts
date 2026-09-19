@@ -50,6 +50,12 @@ beforeEach(() => {
     if (sql.includes('FROM chart_facts') && sql.includes("fact_category = 'graha_shadbala_total'")) {
       return { rows: l1FactsFor(String(params[2])) }
     }
+    if (sql.includes('FROM chart_facts') && sql.includes("fact_subject = $4 AND fact_key = 'sign'")) {
+      return { rows: [{ fact_id: 'sun-sign', fact_value_text: 'Aries' }] }
+    }
+    if (sql.includes('SELECT fact_subject, fact_value_text FROM chart_facts')) {
+      return { rows: [{ fact_subject: 'SUN', fact_value_text: 'Aries' }] }
+    }
     if (sql.includes('FROM chart_facts')) return { rows: [] }
     if (sql.includes('FROM chart_dashas')) {
       const lord = params[3] === BUILD_A ? 'SUN' : 'MOON'
@@ -94,8 +100,25 @@ describe('query_signals selected-build L1 ranking context', () => {
       expect(sql).toContain('SELECT fact_category, fact_subject, fact_key, fact_value_num')
       expect(sql).toContain("fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'")
       expect(sql).toContain("fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state'")
-      expect(sql).toContain('build_id = $3::text')
+      expect(sql).toContain('build_id = $3::uuid')
+      expect(sql).not.toContain('build_id = $3::text')
     }
     for (const [sql] of dashaCalls) expect(String(sql)).toContain('build_id = $4::uuid')
+  })
+
+  it('uses the UUID build fence for the frame-annotation chart_facts read', async () => {
+    const result = await querySignalsCapability.handler(
+      { chart_id: CHART_ID, build_id: BUILD_A, frame: 'surya', top_k: 1 },
+      undefined,
+    )
+
+    expect(result.is_error).toBe(false)
+    const frameFactCall = queryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('SELECT fact_subject, fact_value_text FROM chart_facts'),
+    )
+    expect(frameFactCall).toBeTruthy()
+    expect(String(frameFactCall?.[0])).toContain('build_id = $4::uuid')
+    expect(String(frameFactCall?.[0])).not.toContain('build_id = $4::text')
+    expect(frameFactCall?.[1]).toEqual(expect.arrayContaining([BUILD_A]))
   })
 })

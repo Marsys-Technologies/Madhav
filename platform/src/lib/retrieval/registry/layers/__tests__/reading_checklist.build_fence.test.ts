@@ -22,7 +22,8 @@ describe('reading-checklist selected-build fence', () => {
 
     expect(result.fact_ids).toEqual(['active-sensitive'])
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain('build_id = $4::text')
+    expect(String(sql)).toContain('build_id = $4::uuid')
+    expect(String(sql)).not.toContain('build_id = $4::text')
     expect(params).toEqual([
       CHART_ID, AYANAMSHA, ['pushkara', 'gandanta', 'mrityu_bhaga', 'kartari'], BUILD_ID,
     ])
@@ -35,7 +36,8 @@ describe('reading-checklist selected-build fence', () => {
 
     expect(result.cusps).toEqual([])
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain('build_id = $4::text')
+    expect(String(sql)).toContain('build_id = $4::uuid')
+    expect(String(sql)).not.toContain('build_id = $4::text')
     expect(params).toEqual([
       CHART_ID,
       AYANAMSHA,

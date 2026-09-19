@@ -336,7 +336,7 @@ async function vargaDignity(
       `SELECT fact_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
          AND fact_subject = $3 AND fact_key = 'dignity_state'
-         ${buildId ? 'AND build_id = $4::text' : ''}`,
+         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
       buildId
         ? [chartId, ayanamshaId, `${varga}_${grahaCode}`, buildId]
         : [chartId, ayanamshaId, `${varga}_${grahaCode}`],
@@ -365,7 +365,7 @@ export async function gradeGraha(
       `SELECT fact_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
          AND fact_subject = $3 AND fact_key = 'dignity_state'
-         ${buildId ? 'AND build_id = $4::text' : ''}`,
+         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
       buildId
         ? [chartId, ayanamshaId, `D1_${g.graha_code}`, buildId]
         : [chartId, ayanamshaId, `D1_${g.graha_code}`],
@@ -382,7 +382,7 @@ export async function gradeGraha(
       `SELECT fact_id, fact_value_num FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_shadbala_total'
          AND fact_subject = $3 AND fact_key = 'rupa'
-         ${buildId ? 'AND build_id = $4::text' : ''}`,
+         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
       buildId
         ? [chartId, ayanamshaId, g.graha_code, buildId]
         : [chartId, ayanamshaId, g.graha_code],
@@ -414,7 +414,7 @@ async function fetchAspectingGrahas(
       `SELECT fact_id, fact_key FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'aspect_parashari_received'
          AND fact_subject = $3 AND fact_key LIKE 'from_%'
-         ${buildId ? 'AND build_id = $4::text' : ''}`,
+         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
       buildId
         ? [chartId, ayanamshaId, `HOUSE_${house}`, buildId]
         : [chartId, ayanamshaId, `HOUSE_${house}`],

@@ -136,7 +136,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
              fact_value_text, fact_value_num, fact_value_jsonb
       FROM chart_facts
       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = ANY($3::text[])
-      ${build_id ? 'AND build_id = $4::text' : ''}
+      ${build_id ? 'AND build_id = $4::uuid' : ''}
       ORDER BY fact_category, fact_subject, fact_key`
 
     try {

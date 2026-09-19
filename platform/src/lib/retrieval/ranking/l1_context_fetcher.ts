@@ -99,7 +99,7 @@ export async function fetchL1Context(
            (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa')
            OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state')
          )
-       ${build_id ? 'AND build_id = $3::text' : ''}
+       ${build_id ? 'AND build_id = $3::uuid' : ''}
        LIMIT 100`,
       build_id ? [chart_id, ayanamsha_id, build_id] : [chart_id, ayanamsha_id]
     )
