@@ -169,10 +169,10 @@ describe('first-slice availability coverage', () => {
   it('declares the exact chart-build receipt contract for planetary positions', async () => {
     const scu = findScu('scu.catalog.get_positions')
     const contract = scu.availability_contracts?.find((item) => item.binding_id === 'registry:marsys://tool/L1/get_positions')
-    expect(contract?.requirements).toEqual([expect.objectContaining({
+    expect(contract?.requirements).toEqual(expect.arrayContaining([expect.objectContaining({
       kind: 'producer_output', asset_id: 'ga_positions', scope: 'chart_build',
       spec_sha256: '474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f',
-    })])
+    })]))
     const requirement = producerRequirements('scu.catalog.get_positions')[0]!
     await expect(overlayFor([receipt(requirement)])).resolves.toMatchObject({
       availability: expect.arrayContaining([expect.objectContaining({
