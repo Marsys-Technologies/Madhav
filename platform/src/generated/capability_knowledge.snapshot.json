@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:16:05.000Z",
-  "content_hash": "sha256:d59195799a6b26ba76a0757633dcc8a27fbf131fc2b86a962a53a6713283fd42",
+  "generated_at": "2026-09-19T01:17:24.000Z",
+  "content_hash": "sha256:671df4af51cdb5bceb8806fe55b4ff54a3a2c972eaddc74f84394feb1a1f5615",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:824fc7179fbb19fdf70600b148e34f379337643050551de78840b4315baa7379",
+  "semantic_review_fingerprint": "sha256:4aa3ae8430ee93e6967fba42de0a8f471483631dd405be62140fec8d0dd34aaf",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -17370,9 +17370,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-falsifiers:v1",
               "capability_uri": "marsys://tool/L4/query_falsifiers",
-              "contract_sha256": "sha256:ff7faa6344a652fec676011115e67b62e059bbc1d101c08b78d41f8067e94086",
+              "contract_sha256": "sha256:dd6c45306611638d1b10cf71b9c737ae6555e3b4a0f2d896b7b79ca307035c2d",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250 | platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts:43-64 | platform/supabase/migrations/338_phala_pramana.sql:23-67"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:236-260"
             }
           ]
         }
@@ -27384,6 +27384,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L4/query_spillover_cascades",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-spillover-cascades:v1",
+              "capability_uri": "marsys://tool/L4/query_spillover_cascades",
+              "contract_sha256": "sha256:358e067d0a7fef906aeee292d37660d552d81a679e0b730955a84692c0751b12",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:158-195"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

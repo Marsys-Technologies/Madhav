@@ -3387,6 +3387,36 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT candidate_page.*, handler_count.total FROM candidate_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:600-652'],
   },
+  {
+    contract_id: 'source-query:query-spillover-cascades:v1',
+    descriptor_name: 'query_spillover_cascades',
+    capability_uri: 'marsys://tool/L4/query_spillover_cascades',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT sankrama_id, source_anchor_id, cdlm_cell_id, source_domain, target_domain,
+                 relationship_type, linkage_strength, asymmetry_score, mechanism_text,
+                 source_window_start, source_window_end, projected_window_start,
+                 projected_window_end, projected_peak_date, cascade_depth, trajectory,
+                 mitigation_ref, spillover_confidence, confidence_basis, falsifier
+            FROM phala_sankrama
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR source_domain = NULL::text)
+             AND (NULL::text IS NULL OR target_domain = NULL::text)
+           ORDER BY linkage_strength DESC NULLS LAST LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:158-195'],
+  },
+  {
+    contract_id: 'source-query:query-falsifiers:v1',
+    descriptor_name: 'query_falsifiers',
+    capability_uri: 'marsys://tool/L4/query_falsifiers',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT pramana_id, anchor_id, evidence_type, evidence_strength_label, falsifier_text,
+                 observable_criteria_jsonb, window_status, lel_entry_id, linked_sodhana_id,
+                 source_citation
+            FROM phala_pramana
+           WHERE chart_id = $1::uuid
+           ORDER BY window_status, pramana_id LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:236-260'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
