@@ -84,7 +84,9 @@ export async function runPurnaInquiryOwnershipPreflight(
       RESET ROLE;
       SET LOCAL ROLE amjis_app;
       REVOKE CREATE ON SCHEMA public FROM amjis_inquiry_serve, role_web_serve;
-      GRANT USAGE, CREATE ON SCHEMA public TO purna_inquiry_owner;
+      -- public is owned by data_plane_schema_owner after the protected cutover.
+      -- The workflow grants this temporary schema capability through the
+      -- deployment-only data_plane_migrator immediately after this preflight.
       GRANT REFERENCES (id) ON TABLE public.profiles, public.charts TO purna_inquiry_owner;
       GRANT REFERENCES (key_id) ON TABLE public.mcp_api_keys TO purna_inquiry_owner;
       GRANT REFERENCES (access_token_hash) ON TABLE public.mcp_oauth_tokens TO purna_inquiry_owner;

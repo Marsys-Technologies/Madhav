@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
 const purnaPostflight = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-ownership-postflight.ts'), 'utf8')
 const purnaStatus = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-ownership-status.ts'), 'utf8')
+const purnaSchemaCapability = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-schema-capability.ts'), 'utf8')
 const jobs = (load(workflow) as { jobs: Record<string, {
   environment?: string
   steps: Array<{ name?: string; if?: string; env?: Record<string, string>; run?: string }>
@@ -77,7 +78,9 @@ describe('Nirmana ownership deployment attestation', () => {
     const adminProxyIndex = workflow.indexOf('- name: Start one-shot Pūrṇa admin proxy')
     const adminRouteIndex = workflow.indexOf('- name: Validate one-shot Pūrṇa admin database route')
     const purnaPreflightIndex = workflow.indexOf('- name: One-shot Pūrṇa protected-owner preflight')
+    const purnaSchemaGrantIndex = workflow.indexOf('- name: Grant temporary Pūrṇa schema capability')
     const purnaMigrationIndex = workflow.indexOf('- name: Apply exact Pūrṇa protected-owner migrations')
+    const purnaSchemaRevokeIndex = workflow.indexOf('- name: Revoke temporary Pūrṇa schema capability')
     const purnaPostflightIndex = workflow.indexOf('- name: Close and attest Pūrṇa protected-owner handoff')
     const purnaReleaseIndex = workflow.indexOf('- name: Release one-shot Pūrṇa admin proxy port')
     const nirmanaMarkerIndex = workflow.indexOf('- name: Attest Nirmana ownership handoff as deployment-only migrator')
@@ -89,8 +92,10 @@ describe('Nirmana ownership deployment attestation', () => {
     expect(adminProxyIndex).toBeGreaterThan(stateIndex)
     expect(adminRouteIndex).toBeGreaterThan(adminProxyIndex)
     expect(purnaPreflightIndex).toBeGreaterThan(adminRouteIndex)
-    expect(purnaMigrationIndex).toBeGreaterThan(purnaPreflightIndex)
-    expect(purnaPostflightIndex).toBeGreaterThan(purnaMigrationIndex)
+    expect(purnaSchemaGrantIndex).toBeGreaterThan(purnaPreflightIndex)
+    expect(purnaMigrationIndex).toBeGreaterThan(purnaSchemaGrantIndex)
+    expect(purnaSchemaRevokeIndex).toBeGreaterThan(purnaMigrationIndex)
+    expect(purnaPostflightIndex).toBeGreaterThan(purnaSchemaRevokeIndex)
     expect(purnaReleaseIndex).toBeGreaterThan(purnaPostflightIndex)
     expect(nirmanaMarkerIndex).toBeGreaterThan(purnaReleaseIndex)
     expect(dataPlaneCutoverIndex).toBeGreaterThan(nirmanaMarkerIndex)
@@ -99,11 +104,22 @@ describe('Nirmana ownership deployment attestation', () => {
   it('routes the successor lifecycle migration through the one-shot protected-owner runner', () => {
     const bootstrap = jobs['privileged-bootstrap']
     const protectedMigrations = bootstrap.steps.find((step) => step.name === 'Apply exact Pūrṇa protected-owner migrations')
+    const schemaGrant = bootstrap.steps.find((step) => step.name === 'Grant temporary Pūrṇa schema capability')
+    const schemaRevoke = bootstrap.steps.find((step) => step.name === 'Revoke temporary Pūrṇa schema capability')
 
     expect(protectedMigrations?.env).toEqual({ DATABASE_URL: '${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}' })
     expect(protectedMigrations?.run).toContain('1040_planner_inquiry_successor_lifecycle.sql')
     expect(purnaStatus).toContain("const MARKER = '1040_planner_inquiry_successor_lifecycle.sql'")
     expect(purnaStatus).toContain("'create_planner_inquiry_successor_lifecycle'")
+    expect(schemaGrant?.if).toBe("steps.bootstrap-state.outputs.purna == 'armed'")
+    expect(schemaGrant?.env).toEqual({ DATA_PLANE_MIGRATOR_DATABASE_URL: '${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}' })
+    expect(schemaGrant?.run).toContain('purna-inquiry-schema-capability.ts grant')
+    expect(schemaRevoke?.if).toContain("steps.purna-admin-route.outcome == 'success'")
+    expect(schemaRevoke?.run).toContain('purna-inquiry-schema-capability.ts revoke')
+    expect(purnaSchemaCapability).toContain("SET LOCAL ROLE data_plane_schema_owner")
+    expect(purnaSchemaCapability).toContain('GRANT USAGE, CREATE ON SCHEMA public TO purna_inquiry_owner')
+    expect(purnaSchemaCapability).toContain('REVOKE CREATE ON SCHEMA public FROM purna_inquiry_owner')
+    expect(purnaSchemaCapability).toContain('migratorProxyConfig(databaseUrl)')
     expect(JSON.stringify(jobs.migrate)).not.toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL')
   })
 
