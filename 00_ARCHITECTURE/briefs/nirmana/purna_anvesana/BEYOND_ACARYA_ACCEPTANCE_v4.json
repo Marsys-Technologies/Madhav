@@ -15,8 +15,8 @@
   "evaluated_source_revision": "e848b2733cf68b14162f6c329fa01c9d61c34e7f",
   "generated_snapshot": {
     "path": "platform/src/generated/capability_knowledge.snapshot.json",
-    "generated_at": "2026-09-19T22:53:08.000Z",
-    "snapshot_file_sha256": "sha256:e3ce98b6c04ad5542eeaf69004f49e40ef2c43e897e5f012f18bfaff8578908a",
+    "generated_at": "2026-09-19T23:02:15.000Z",
+    "snapshot_file_sha256": "sha256:1b097a06a561633d736ca364c004f94c9cc0128e5f52e44e0a0eaa902c8a3ca4",
     "capability_content_hash": "sha256:2855530bc7c62761739307ad89c1d6736df9783cac291537483a49794d699bbf",
     "source_catalog_fingerprint": "sha256:8b32f4675390b4a1a955ec3449a0b2c634890cc201a3f69497ad3ab12fc0d75a",
     "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
