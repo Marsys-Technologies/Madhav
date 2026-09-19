@@ -544,7 +544,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
       if (useComposite && rawRows.length > 0) {
         const as_of_date = new Date().toISOString().split('T')[0]
-        const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+        const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_id ?? undefined)
         // Cast through unknown: rawRows carries bodha_msr_signals columns; MsrSignalRow is satisfied at runtime.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const scoredAll = applyCompositeRanking(rawRows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain)

@@ -30,8 +30,13 @@ import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
 // Ranking-layer cache (separate from 60s retrieval cache — needs 30d TTL)
 const _rankingCache = new Map<string, { data: unknown; expiresAt: number }>()
 
-function rankingCacheKey(chart_id: string, ayanamsha_id: string, as_of_date: string): string {
-  return `l1ctx::${chart_id}::${ayanamsha_id}::${as_of_date}`
+function rankingCacheKey(
+  chart_id: string,
+  ayanamsha_id: string,
+  as_of_date: string,
+  build_id?: string,
+): string {
+  return `l1ctx::${chart_id}::${ayanamsha_id}::${as_of_date}::${build_id ?? 'unfenced'}`
 }
 function rankingCacheGet(key: string): unknown {
   const e = _rankingCache.get(key)
@@ -60,13 +65,16 @@ const L1_GRAHA_TO_CODE: Record<string, string> = Object.fromEntries(
  * @param chart_id - chart UUID
  * @param ayanamsha_id - ayanamsha filter
  * @param as_of_date - ISO date string to resolve current dasha period
+ * @param build_id - optional immutable chart-build generation; omitted callers retain
+ * historical unfenced behaviour
  */
 export async function fetchL1Context(
   chart_id: string,
   ayanamsha_id: string,
-  as_of_date: string
+  as_of_date: string,
+  build_id?: string,
 ): Promise<L1ChartContext> {
-  const ck = rankingCacheKey(chart_id, ayanamsha_id, as_of_date)
+  const ck = rankingCacheKey(chart_id, ayanamsha_id, as_of_date, build_id)
   const cached = rankingCacheGet(ck)
   if (cached !== undefined) return cached as L1ChartContext
 
@@ -92,8 +100,9 @@ export async function fetchL1Context(
            (fact_category = 'graha_shadbala_total')
            OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%')
          )
+       ${build_id ? 'AND build_id = $3::text' : ''}
        LIMIT 100`,
-      [chart_id, ayanamsha_id]
+      build_id ? [chart_id, ayanamsha_id, build_id] : [chart_id, ayanamsha_id]
     )
 
     for (const row of l1Result.rows) {
@@ -139,9 +148,12 @@ export async function fetchL1Context(
          AND level IN (1, 2)
          AND start_date <= $3::date
          AND end_date > $3::date
+         ${build_id ? 'AND build_id = $4::uuid' : ''}
        ORDER BY level ASC
        LIMIT 2`,
-      [chart_id, ayanamsha_id, as_of_date]
+      build_id
+        ? [chart_id, ayanamsha_id, as_of_date, build_id]
+        : [chart_id, ayanamsha_id, as_of_date]
     )
     for (const row of dashaResult.rows) {
       const lvl = Number(row['level'])
