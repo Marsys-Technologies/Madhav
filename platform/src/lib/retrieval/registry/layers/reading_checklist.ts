@@ -593,6 +593,12 @@ export const WEALTH_SPECIAL_LAGNAS = ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'] 
 export const WEALTH_SPECIAL_LAGNA_KEYS = [
   'longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1',
 ] as const
+export const WEALTH_YOGI_SUBJECT_KEYS = {
+  YOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+  AVAYOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+  DUPLICATE_YOGI: ['sign', 'assigned_graha'],
+  SAHAYOGI: ['sign', 'assigned_graha'],
+} as const
 
 export interface WealthCorroboratingVargaResult {
   state: 'served' | 'source_incomplete' | 'source_unproven'
@@ -738,6 +744,60 @@ export async function fetchWealthSpecialLagnas(
       if ((row.fact_key === 'longitude_sidereal' || row.fact_key === 'pada' || row.fact_key === 'house_d1')
         ? row.fact_value_num == null
         : row.fact_value_text == null) {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      observed.add(identity)
+    }
+    return observed.size === expected.size
+      ? { state: 'served', rows: res.rows }
+      : { state: 'source_incomplete', rows: [] }
+  } catch {
+    return { state: 'source_unproven', rows: [] }
+  }
+}
+
+export interface WealthYogiAvayogiResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{
+    fact_id: string
+    fact_subject: keyof typeof WEALTH_YOGI_SUBJECT_KEYS
+    fact_key: string
+    fact_value_num: number | null
+    fact_value_text: string | null
+  }>
+}
+
+/** Fixed yogi-system receipt: the primary Yogi/Avayogi placements and their duplicate/
+ * Sahayogi corroboration are a 12-atom ga_sensitive_degree result, not a best-effort
+ * list. Missing, duplicate, floored, or non-verified atoms therefore fail closed. */
+export async function fetchWealthYogiAvayogi(
+  chart_id: string,
+  ayanamsha_id: string,
+  build_id: string,
+): Promise<WealthYogiAvayogiResult> {
+  const subjects = Object.keys(WEALTH_YOGI_SUBJECT_KEYS) as Array<keyof typeof WEALTH_YOGI_SUBJECT_KEYS>
+  const keys = [...new Set(subjects.flatMap(subject => WEALTH_YOGI_SUBJECT_KEYS[subject]))]
+  try {
+    const res = await query<WealthYogiAvayogiResult['rows'][number] & { verification_pass_status: string | null }>(
+      `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
+         FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND fact_category = 'sensitive_point_yogi'
+          AND fact_subject = ANY($4) AND fact_key = ANY($5)
+        ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
+      [chart_id, ayanamsha_id, build_id, subjects, keys],
+    )
+    const expected = new Set<string>()
+    for (const subject of subjects) {
+      for (const key of WEALTH_YOGI_SUBJECT_KEYS[subject]) expected.add(`${subject}|${key}`)
+    }
+    const observed = new Set<string>()
+    for (const row of res.rows) {
+      const identity = `${row.fact_subject}|${row.fact_key}`
+      if (!expected.has(identity) || observed.has(identity) || row.verification_pass_status !== 'two_pass_verified') {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      if (row.fact_key === 'point_longitude' ? row.fact_value_num == null : row.fact_value_text == null) {
         return { state: 'source_incomplete', rows: [] }
       }
       observed.add(identity)

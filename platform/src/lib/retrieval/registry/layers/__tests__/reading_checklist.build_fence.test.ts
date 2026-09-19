@@ -7,6 +7,7 @@ import {
   fetchKpCuspChain,
   fetchWealthAshtakavarga,
   fetchWealthSpecialLagnas,
+  fetchWealthYogiAvayogi,
   fetchSensitiveDegreeFirings,
   fetchWealthCorroboratingVargas,
   fetchWealthReadingSourceFence,
@@ -158,6 +159,37 @@ describe('reading-checklist selected-build fence', () => {
       CHART_ID, AYANAMSHA, BUILD_ID,
       ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'],
       ['longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1'],
+    ])
+  })
+
+  it('requires every selected-build Yogi-system natural key', async () => {
+    const required: Record<string, string[]> = {
+      YOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+      AVAYOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+      DUPLICATE_YOGI: ['sign', 'assigned_graha'],
+      SAHAYOGI: ['sign', 'assigned_graha'],
+    }
+    const rows = Object.entries(required).flatMap(([fact_subject, keys]) => keys.map(fact_key => ({
+      fact_id: `${fact_subject}-${fact_key}`,
+      fact_subject,
+      fact_key,
+      fact_value_num: fact_key === 'point_longitude' ? 123.45 : null,
+      fact_value_text: fact_key === 'point_longitude' ? null : 'Mercury',
+      verification_pass_status: 'two_pass_verified',
+    })))
+    queryMock.mockResolvedValueOnce({ rows })
+
+    const result = await fetchWealthYogiAvayogi(CHART_ID, AYANAMSHA, BUILD_ID)
+
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(12)
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql)).toContain("fact_category = 'sensitive_point_yogi'")
+    expect(String(sql)).toContain('build_id = $3::uuid')
+    expect(params).toEqual([
+      CHART_ID, AYANAMSHA, BUILD_ID,
+      ['YOGI', 'AVAYOGI', 'DUPLICATE_YOGI', 'SAHAYOGI'],
+      ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
     ])
   })
 })

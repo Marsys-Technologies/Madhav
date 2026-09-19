@@ -87,6 +87,7 @@ import {
   fetchWealthCorroboratingVargas,
   fetchWealthAshtakavarga,
   fetchWealthSpecialLagnas,
+  fetchWealthYogiAvayogi,
   fetchWealthReadingSourceFence,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
@@ -959,6 +960,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         ? await fetchWealthSpecialLagnas(chart_id, ayanamsha_id, build_id)
         : null
       for (const fact of wealthSpecialLagnas?.rows ?? []) fact_ids.add(fact.fact_id)
+      const wealthYogiAvayogi = wealthSourceFence?.ready
+        ? await fetchWealthYogiAvayogi(chart_id, ayanamsha_id, build_id)
+        : null
+      for (const fact of wealthYogiAvayogi?.rows ?? []) fact_ids.add(fact.fact_id)
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
@@ -1639,7 +1644,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
-        { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },
+        {
+          unit: 'yogi_avayogi',
+          state: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready ? (wealthYogiAvayogi?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthYogiAvayogi?.rows.length ?? 0,
+          detail: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready
+              ? 'fixed Yogi/Avayogi/Duplicate-Yogi/Sahayogi selected-build atom set'
+              : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
+            : 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment',
+          drill: 'ganita_sensitive_degrees_get',
+        },
         {
           unit: 'bearing_yogas',
           state: yogaFiringsRead ? (bearingYogaFirings.length > 0 ? 'served' : 'empty_for_this_chart') : 'source_unproven',
@@ -1736,6 +1753,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               wealth_special_lagnas: {
                 state: wealthSpecialLagnas?.state ?? 'source_unproven',
                 rows: wealthSpecialLagnas?.rows ?? [],
+              },
+              wealth_yogi_avayogi: {
+                state: wealthYogiAvayogi?.state ?? 'source_unproven',
+                rows: wealthYogiAvayogi?.rows ?? [],
               },
             }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real
