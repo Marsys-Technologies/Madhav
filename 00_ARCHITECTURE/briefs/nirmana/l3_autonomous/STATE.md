@@ -28,9 +28,9 @@
 | Deployment re-verified independently (C1) | ✅ **gate is OPEN — see finding below, corrects the restart notice** |
 | 22-asset baseline (C2) | 🟡 partially blocked — see finding |
 | W1 function contract read (C3) | 🟡 in progress |
-| Salvage packets landed (D1–D6) | 0 / 6 |
-| Branch triage record (D7) | ⬜ |
-| Field dossiers | 0 / 22 |
+| Salvage packets verified (D1–D6) | **6 / 6 ✅ — all already satisfied on `main` via PR #2607, zero PRs needed** |
+| Branch triage record (D7) | ✅ 112 branches classified |
+| Field dossiers | 2 / 22 (ka_graha_sancara, ka_dasha_kala — full field-contract dossier complete) |
 
 ## Per-asset state (22 active identities)
 
@@ -77,17 +77,17 @@ All rows start `— / — / — / — / — / NO`.
 | C1 deploy re-verify | conductor (run 2) | read-only | — | **DONE** | see finding below: web@`cdc701afa` 100% traffic, MCP/sidecar@`66b962f29`, builder image@`66b962f29`, both deploy runs' job-level status independently read via `gh run view --json jobs`, Codex lease independently read as RELEASED on `origin/campaign-coordination` | — |
 | C2 22-asset baseline | conductor (run 2) | read-only | — | **PARTIAL / BLOCKED_STRUCTURAL(no-read-role-on-public-schema)** | `retrieval_census_ro` (the only documented read-only DB role, `platform/scripts/harvest/_db.ts`) has USAGE only on `information_schema`/`pg_catalog` — **not** `public`, where `kala_*` and the generation-head tables live. Did not escalate to a stronger credential (out of proportionality/role-separation scope for an ad hoc query). Row-count baseline deferred to the orchestrator's own build-time reporting in Wave E rather than hand-queried. | native ruling optional: authorize a scoped read-only grant on `public` for verification, or accept orchestrator-reported state as sufficient (recommend the latter — matches doctrine that builders/orchestrator, not ad hoc sessions, are the legitimate reader/writer of `public`) |
 | C3 W1 function contract | conductor (run 2) | read-only | — | **DONE (signatures)** | `open_l1_data_plane_generation` (migration 1035) requires literal `session_user = 'data_plane_builder'` — **SECURITY DEFINER but caller-identity-gated**; W1 generation can only be executed by the real `brahma-build-pipeline-job` authenticated as `data_plane_builder`, never by an ad hoc session even with elevated creds. This resolves E1/E2 planning: dispatch the real builder job, do not hand-write SQL. | — |
-| D1+D3 Kshetra P0 + DHARA correction | subagent `ac646ccb3` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
+| D1+D3 Kshetra P0 + DHARA correction | subagent `ac646ccb3` | own worktree | — | **DONE — NO-OP, already satisfied** | All 17 touched files byte-identical on `main` via the same PR #2607 squash (from a *further-corrected* generation of this work on `codex/madhav-data-plane-execution`, dated one day after the 4 assigned branches). Verified both safety properties by reading live code (15-table `_OWNED_TABLES` scoped to `lel_derived=FALSE`; mutation-free planner + `KshetraReplacementHeld` refusal). Fresh tests: 720/11-skip/2-xfail full suite, 86 DHARA-specific, 112 P0-safety-specific. No PR opened. | — |
 | D2 Bhavishya P0 | subagent `a0e4039b2` | own worktree | — | **DONE — NO-OP, already satisfied** | All 3 target files (`ka_bhavishya_lekha.py` + 2 test files) byte-identical on `main` already — the exact reviewed commits landed via the same squash-merge PR #2607 (`fa9857f00`). Verified the safety properties are genuinely implemented (fail-closed refusal on protected-row mutation, not just present) and ran tests fresh today: 25/26 passed (1 DB-integration skip) on the target files, 1525/41-skip/2-xfail on the full L3 suite. No PR opened (would be an empty diff). | — |
 | D4 Yojaka preservation | subagent `a9801fa14` | own worktree | — | **DONE — NO-OP, already satisfied** | Forensically isolated the exact commits (`06c3d944d`, `7697c43b3`/`fbf7803dc`) out of the 118-commit-ahead branch; both target files byte-identical on `main` via PR #2607. Proved it by actually attempting the cherry-pick and confirming the conflict was pure history-shape, not content gap. Verified in code that the full lossless multi-domain projection is retained and the scalar exists only for the genuine `ph_nimitta` compatibility path. Fresh tests: 4/4 target, 1525/41-skip/2-xfail full L3 suite. **Noted 2 other commits in the same branch** (`b0c5652ba`, `47131772b`, "harden L3 first frontier source contracts") touch 9 *other* L3 writers incl. `ka_dasha_kala.py` — worth checking whether those are ALSO already on main (relevant to E4). | — |
 | D5 W0 field register | subagent `a41f66de3` | own worktree | — | **DONE — NO-OP, already satisfied** | The 800-line register already exists on `main` (landed via PR #2607, `fa9857f00`, 2026-09-16), and main's version is a *corrected* revision (35 row-level type/nullability fixes) vs. the source branch's stale 2026-09-15 draft — landing the branch version would regress main. No PR opened; correctly declined rather than manufacturing one. | — |
 | D6 U05 registry | subagent `abbdfc3eb` | own worktree | — | **DONE — NO-OP, already satisfied** | Isolated the real U05 fix to 2 commits (`7cba13281`, `01a64ca53`) touching `L3_kala/query_temporal_activation.ts`/`query_projections.ts`. `query_projections.ts` byte-identical on main; `query_temporal_activation.ts` on main is a strict superset (has everything the branch has plus later closure/pagination work) — force-applying the branch version would regress main. Verified requested_filters/effective_filters are genuinely distinct fields by reading main's code directly. Ran fresh tests: 146/158 L3_kala suite, 1943/2121 full registry suite, both green modulo pre-existing skips. No PR opened (nothing to merge). | — |
 | D7 branch triage | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE** | `MADHAV_L3_BRANCH_TRIAGE_DISPOSITION_v1_0.md` @ `2955e2f13`; PR #2655 confirmed already closed | — |
-| W1-RESEARCH (informs E1/E2) | subagent `acba0c5c8` (Opus) | read-only | — | **DISPATCHED 02:40 IST** | — | read-only research + disposable-DB rollback rehearsal; must NOT mutate production; report becomes E1/E2's dispatch plan |
-| E1 W1 L1 generation | conductor (pending W1-RESEARCH) | integration | — | BLOCKED_ON W1-RESEARCH | — | dispatch real `brahma-build-pipeline-job`, not ad hoc SQL — confirmed via migration 1035 read (`open_l1_data_plane_generation` hard-gates on `session_user='data_plane_builder'`) |
-| E2 W1 L2 generation | conductor | integration | — | BLOCKED_ON E1 | — | — |
-| E3 ka_graha_sancara terminal | conductor | own worktree | — | BLOCKED_ON W1-RESEARCH | — | service proof (no row build); no conflicting lease (see finding) |
-| E4 ka_dasha_kala terminal | conductor | own worktree | — | BLOCKED_ON W1-RESEARCH | — | service proof (no row build); reads L1 `ga_dashas` per migration 1035 `l1_data_plane_dasha_snapshots` |
+| W1-RESEARCH (informs E1/E2) | subagent `acba0c5c8` (Opus) | read-only | — | **DONE** — full precise dispatch plan produced, disposable-DB rollback rehearsal completed | see §★ FINDING below | — |
+| E1 W1 L1 generation | conductor | integration | — | **BLOCKED_STRUCTURAL(no-authenticated-dispatch-credential)** | see §★ FINDING below | native must supply either a `/api/cockpit/runs`-capable session or an authorized write DB credential |
+| E2 W1 L2 generation | conductor | integration | — | not needed tonight (L2/`bo_*` is off the critical path for E3/E4 — see finding) | — | — |
+| E3 ka_graha_sancara terminal | conductor | own worktree | — | **BLOCKED_STRUCTURAL** — needs no W1 at all (chart-agnostic, reads only L0 `bg_ephemeris`/live swisseph), but the value test must target the actually-live `call_ephemeris_at_t` router path per the dossier finding; ready to execute the moment the campaign wants a service-proof-only pass | full dossier ready | — |
+| E4 ka_dasha_kala terminal | conductor | own worktree | — | **BLOCKED_STRUCTURAL(same credential gate as E1)** | reads L1 `ga_dashas`/`chart_dashas` directly (not through any generation table); confirmed LIVE right now that `ga_dashas` is refusing to serve the canonical chart pending a completed generation (`ga_dashas_replacement_in_progress`, `restart_required: true`, verified via the `ganita_dashas_get` MCP tool) — this is exactly the gap W1 would close | dispatch plan ready | — |
 
 ## Observed environment (re-verify before acting)
 
@@ -118,6 +118,69 @@ and the ones that correctly skipped (MCP/sidecar/pipeline for a docs-only PR) sk
 reason. **Practical effect: Wave E's precondition #2 ("no conflicting active lease") is already
 satisfied, ~2 hours earlier than planned.** Wave E may proceed once C is complete and this
 campaign's own lease is claimed — it does not need to wait for 04:30 IST.
+
+## ★ FINDING — W1 dispatch plan is complete and ready; execution deliberately withheld tonight (credential gate + missing backup precondition)
+
+**Scope is smaller than assumed.** `ka_graha_sancara` needs **no** L1/L2 generation data at all — it
+is chart-agnostic, reading only L0 `bg_ephemeris`/live swisseph. `ka_dasha_kala` needs **only L1**
+(`ga_positions` → `ga_dashas`); **zero `bo_*`/L2 work is on the critical path** for either E3 or
+E4 tonight. Migration 1036's whole L2 bind-receipt apparatus is irrelevant to this wave.
+
+**The real dispatch mechanism** (verified from `jobInvoker.ts`, `main.py`'s argparse, and
+`deploy.yml`'s SA binding — not assumed): `POST /api/cockpit/runs` with
+`{chart_id, scope:'asset_set', scope_target:'ga_positions,ga_dashas', action:'rebuild',
+clear_before:false}`. This inserts `build_runs`/`build_run_assets` rows, then calls
+`invokeRunJob()` which runs `brahma-build-pipeline-job --run-id <uuid>` (no other CLI args exist
+— scope is frozen into the DB row before dispatch). The job authenticates as `data_plane_builder`
+via secret `data-plane-builder-db-url`, satisfying every `session_user` gate in migration 1035.
+A CLI alternative exists (`platform/scripts/dispatch_frozen_rebuild.py --asset-id --chart-id
+--commit --confirm <ASSET>_FROZEN_REBUILD`) but only accepts one asset at a time and needs its own
+write-capable `DATABASE_URL`.
+
+**Rollback rehearsed on a disposable local cluster (not production)**: transaction-abort recovery
+is clean (zero orphans, proven). But `rollback_l1_data_plane_generation` is **not** a safety net
+for tonight specifically — for a chart's *first* generation there is no prior complete generation
+to roll back to, and calling it anyway produces a degenerate self-pointing head. The real safety
+net is Postgres atomicity (proven) plus re-dispatching the same or a fresh `run_id` on failure —
+never hand-editing `build_runs`.
+
+**Live corroboration this gap is real and current, not hypothetical**: querying the canonical
+chart's dashas live via the `ganita_dashas_get` MCP tool (three variants: explicit
+`lahiri_chitrapaksha`, explicit `lahiri`, and bare default) returned, for all three,
+`{code: "ga_dashas_replacement_in_progress", restart_required: true, rows: [], total: 0}` — the
+canonical chart's own `chart_dashas` reads are **currently failing in production**, honestly,
+pending a completed L1 generation. Confirmed via `gcloud run jobs executions list` that this is
+**not** an active/stuck builder-job execution (nothing has run since 2026-09-12) — it is a
+persistent database-state guard, not a live process to avoid racing. W1 would fix a real,
+currently-broken read path, not just satisfy a provenance formality.
+
+**Why I am not dispatching it tonight despite having a complete, reviewed plan:**
+1. **No authenticated path available to me.** Both `/api/cockpit/runs` and `/api/cockpit/stats`
+   require a Firebase-authenticated user session (`getServerUser()`) — unavailable in this
+   session. `dispatch_frozen_rebuild.py` needs a write-capable `DATABASE_URL` I have not been
+   given and did not self-serve from Secret Manager: reading `amjis-pipeline-db-url` or similar
+   myself to manufacture write access would cross from "using an already-authorized secret for
+   its intended purpose" into "the campaign inventing its own authority," which the runtime
+   doctrine and this campaign's forbidden list are explicit should not happen without a clear
+   provisioning decision. I did not attempt it.
+2. **A mandatory precondition is unmet.** The execution package's own Wave E preconditions
+   require "an operation-specific backup/restore point recorded" before this — the FIRST-EVER
+   write under this brand-new generation-tracking system in production deserves that, and I have
+   not taken one (I don't hold the credential to take one either).
+3. **This is exactly a Native Surrogate-scale decision**, not a routine implementation
+   choice: irreversibility is low (atomicity is proven clean) but this is a first-of-its-kind
+   write with real product impact if scoped wrong, and the honest, safe answer is to hand the
+   native a complete, ready-to-execute plan rather than manufacture credentials to avoid an
+   honest stop.
+
+**What unblocks this**: the native (or a session holding proper credentials) either (a) calls
+`POST /api/cockpit/runs` with the exact payload above through an authenticated browser/API
+session, or (b) provisions a write-capable `DATABASE_URL` for `dispatch_frozen_rebuild.py`
+(run twice: `ga_positions` first, then `ga_dashas`, checking `build_run_assets.state` between).
+Either path, then verify with the exact SQL in the full research report (§EVENTS.jsonl
+`W1_DISPATCH_MECHANISM_CONFIRMED` / this session's transcript) — heads populated, `build_runs.state
+='succeeded'`. E3 needs no W1 at all and can run independently the moment a session wants to
+spend the effort on its consumer-route value test.
 
 ## ★ FINDING — the named `ka_graha_sancara`/`ka_dasha_kala` service modules are not on the live consumer path
 
