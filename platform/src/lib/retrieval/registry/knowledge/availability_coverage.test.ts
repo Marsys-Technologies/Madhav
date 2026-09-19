@@ -21,6 +21,7 @@ const FIRST_SLICE = {
     'scu.catalog.query_chart_gestalt',
     'scu.catalog.query_planet_transit',
     'scu.finance.prosperity_assessment',
+    'scu.kala.temporal_activation',
     'scu.yoga.firing_and_cancellation',
   ],
   deliberately_dark: [
@@ -29,7 +30,6 @@ const FIRST_SLICE = {
     'scu.catalog.judgment_query',
     'scu.catalog.query_classical_texts',
     'scu.catalog.query_contradictions',
-    'scu.kala.temporal_activation',
   ],
 } as const
 
@@ -1139,7 +1139,7 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('activates each concrete primary binding from its own exact evidence and keeps the remaining slice dark', async () => {
+  it('activates each concrete primary binding from its own exact contract and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
     // fixture anchor first to model the loader's `queryRows[0]` extraction.
@@ -1161,7 +1161,21 @@ describe('first-slice availability coverage', () => {
     }
   })
 
-  it.each(FIRST_SLICE.concrete)('fails closed for %s when one of its own required receipts is absent', async (scuId) => {
+  it('uses only temporal activation\'s own exact chart-scoped source query', async () => {
+    const temporal = findScu('scu.kala.temporal_activation')
+    expect(temporal.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L3/query_temporal_activation',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:query-temporal-activation:v1',
+        capability_uri: 'marsys://tool/L3/query_temporal_activation',
+        scope: 'chart',
+      })],
+    })])
+    expect(temporal.availability_dispositions ?? []).toEqual([])
+  })
+
+  it.each(FIRST_SLICE.concrete)('fails closed for %s when its own availability contract is unavailable', async (scuId) => {
     const requirements = producerRequirements(scuId)
     const omitted = requirements[0]
     const rows = requirements.slice(1).map(receipt)
@@ -1170,6 +1184,17 @@ describe('first-slice availability coverage', () => {
       // substitute for its authenticated probe.
       const overlay = await overlayFor([])
       expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({ state: 'dark', available_binding_ids: [] })
+      return
+    }
+    if (scuId === 'scu.kala.temporal_activation') {
+      const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (sql.includes('FROM kala_activation')) throw new Error('temporal source unavailable')
+        return { rows: [transitProbeAnchor()] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+      expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+      })
       return
     }
     expect(omitted, scuId).toBeDefined()
