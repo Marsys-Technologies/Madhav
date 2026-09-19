@@ -92,9 +92,11 @@ export interface QualitativeAssessment {
 }
 
 export interface ApprovedEnvironmentConfig {
-  readonly schema_version: 'purna-product-acceptance-environment/v2'
+  readonly schema_version: 'purna-product-acceptance-environment/v3'
   readonly environment: AcceptanceEnvironment
-  readonly base_url: string
+  readonly chart_id: string
+  readonly portal_url: string
+  readonly mcp_url: string
   readonly revision: string
   readonly authorization: {
     readonly mode: 'approved_non_secret'
@@ -476,8 +478,9 @@ export function casesForSuite(protocol: ProductAcceptanceProtocol, suite: Accept
 export function validateEnvironmentConfig(value: unknown, environment: AcceptanceEnvironment): ApprovedEnvironmentConfig {
   if (!isObject(value)) throw new Error('PRODUCT_ACCEPTANCE_ENV_CONFIG_INVALID')
   const config = value as unknown as ApprovedEnvironmentConfig
-  if (config.schema_version !== 'purna-product-acceptance-environment/v2'
+  if (config.schema_version !== 'purna-product-acceptance-environment/v3'
     || config.environment !== environment
+    || typeof config.chart_id !== 'string' || config.chart_id.trim().length === 0
     || typeof config.revision !== 'string' || config.revision.trim().length < 7
     || !isObject(config.authorization)
     || config.authorization.mode !== 'approved_non_secret'
@@ -491,10 +494,12 @@ export function validateEnvironmentConfig(value: unknown, environment: Acceptanc
     || (config.evidence_mode !== 'candidate_or_live' && config.evidence_mode !== 'fixture')) {
     throw new Error('PRODUCT_ACCEPTANCE_ENV_CONFIG_INVALID')
   }
-  let url: URL
-  try { url = new URL(config.base_url) } catch { throw new Error('PRODUCT_ACCEPTANCE_ENV_URL_INVALID') }
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
-    throw new Error('PRODUCT_ACCEPTANCE_ENV_URL_INVALID')
+  for (const endpoint of [config.portal_url, config.mcp_url]) {
+    let url: URL
+    try { url = new URL(endpoint) } catch { throw new Error('PRODUCT_ACCEPTANCE_ENV_URL_INVALID') }
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+      throw new Error('PRODUCT_ACCEPTANCE_ENV_URL_INVALID')
+    }
   }
   if (environment === 'live' && config.evidence_mode === 'fixture') throw new Error('PRODUCT_ACCEPTANCE_FIXTURE_NOT_LIVE_EVIDENCE')
   return config

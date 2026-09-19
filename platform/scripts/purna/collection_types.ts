@@ -3,7 +3,7 @@ import type { AcceptanceCaseInput, AcceptanceSuite } from './acceptance_cases'
 
 export type AcceptanceDoor = 'portal' | 'managed_mcp' | 'raw_mcp'
 export type CollectionTerminal = 'complete' | 'incomplete' | 'blocked' | 'transport_error'
-export const PURNA_COLLECTION_ARTIFACT_VERSION = 'purna-collected-cases/v2' as const
+export const PURNA_COLLECTION_ARTIFACT_VERSION = 'purna-collected-cases/v3' as const
 export const PURNA_ACCOUNTABLE_ANSWERS_VERSION = 'purna-accountable-answers/v1' as const
 const SHA256_FINGERPRINT = /^sha256:[a-f0-9]{64}$/
 
@@ -44,6 +44,12 @@ export interface CollectionManifest {
   readonly environment: 'candidate' | 'live'
   readonly expected_revision: string
   readonly authorization_approval_id: string
+  /** Non-secret target identity, carried into the collection hash. */
+  readonly target: {
+    readonly chart_id: string
+    readonly portal_url: string
+    readonly mcp_url: string
+  }
   readonly case_inputs: readonly AcceptanceCaseInput[]
 }
 
@@ -123,8 +129,25 @@ function manifestProjection(manifest: CollectionManifest): CollectionManifest {
     environment: manifest.environment,
     expected_revision: manifest.expected_revision,
     authorization_approval_id: manifest.authorization_approval_id,
+    target: manifest.target,
     case_inputs: manifest.case_inputs,
   }
+}
+
+function isSafeHttpsUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
+  } catch { return false }
+}
+
+function validTarget(value: unknown): value is CollectionManifest['target'] {
+  return record(value)
+    && exactKeys(value, ['chart_id', 'portal_url', 'mcp_url'])
+    && typeof value.chart_id === 'string' && value.chart_id.length > 0
+    && isSafeHttpsUrl(value.portal_url)
+    && isSafeHttpsUrl(value.mcp_url)
 }
 
 export function createCollectionArtifact(args: {
@@ -132,6 +155,7 @@ export function createCollectionArtifact(args: {
   readonly environment: 'candidate' | 'live'
   readonly expectedRevision: string
   readonly authorizationApprovalId: string
+  readonly target: CollectionManifest['target']
   readonly caseInputs: readonly AcceptanceCaseInput[]
   readonly rows: readonly CollectedCase[]
 }): CollectionArtifact {
@@ -140,6 +164,7 @@ export function createCollectionArtifact(args: {
     environment: args.environment,
     expected_revision: args.expectedRevision,
     authorization_approval_id: args.authorizationApprovalId,
+    target: args.target,
     case_inputs: args.caseInputs,
   })
   const manifest_hash = stableFingerprint(manifest)
@@ -156,11 +181,12 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
   if (!record(value) || !exactKeys(value, ['schema_version', 'manifest', 'manifest_hash', 'rows', 'collection_hash'])
     || value.schema_version !== PURNA_COLLECTION_ARTIFACT_VERSION
     || !record(value.manifest)
-    || !exactKeys(value.manifest, ['suite', 'environment', 'expected_revision', 'authorization_approval_id', 'case_inputs'])
+    || !exactKeys(value.manifest, ['suite', 'environment', 'expected_revision', 'authorization_approval_id', 'target', 'case_inputs'])
     || (value.manifest.suite !== 'beyond_acarya' && value.manifest.suite !== 'product')
     || (value.manifest.environment !== 'candidate' && value.manifest.environment !== 'live')
     || typeof value.manifest.expected_revision !== 'string' || value.manifest.expected_revision.length === 0
     || typeof value.manifest.authorization_approval_id !== 'string' || value.manifest.authorization_approval_id.length === 0
+    || !validTarget(value.manifest.target)
     || !Array.isArray(value.manifest.case_inputs) || !value.manifest.case_inputs.every(validCaseInput)
     || !Array.isArray(value.rows) || !value.rows.every(validCollectedCase)
     || typeof value.manifest_hash !== 'string' || !SHA256_FINGERPRINT.test(value.manifest_hash)

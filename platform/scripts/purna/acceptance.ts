@@ -40,7 +40,7 @@ export interface AcceptanceRunRecord {
   readonly judge_assessor: 'independent_eval_judge'
   readonly judge_model_id: string
   readonly judged_artifact_hash: string
-  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'base_url' | 'revision' | 'authorization' | 'judge_authority' | 'evidence_mode'>
+  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'chart_id' | 'portal_url' | 'mcp_url' | 'revision' | 'authorization' | 'judge_authority' | 'evidence_mode'>
   readonly case_inputs: readonly unknown[]
   readonly evidence: readonly unknown[]
   readonly answers: readonly AcceptanceAnswer[]
@@ -148,6 +148,11 @@ export async function writeAcceptanceRun(args: {
     || collection.manifest.expected_revision !== config.revision
     || collection.manifest.authorization_approval_id !== config.authorization.approval_id) {
     throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_PROVENANCE_MISMATCH')
+  }
+  if (collection.manifest.target.chart_id !== config.chart_id
+    || collection.manifest.target.portal_url !== config.portal_url
+    || collection.manifest.target.mcp_url !== config.mcp_url) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_TARGET_MISMATCH')
   }
   const canonicalInputsById = new Map(inputs.map((caseInput) => [caseInput.case_id, caseInput]))
   const collectedInputs = collection.manifest.case_inputs.map((caseInput) => canonicalInputsById.get(caseInput.case_id))

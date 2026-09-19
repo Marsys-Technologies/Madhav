@@ -89,6 +89,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     environment: config.environment,
     expectedRevision: config.expected_revision,
     authorizationApprovalId: config.authorization_approval_id,
+    target: {
+      chart_id: config.chart_id,
+      portal_url: config.portal_url,
+      mcp_url: config.mcp_url,
+    },
     caseInputs: selected,
     rows,
   })

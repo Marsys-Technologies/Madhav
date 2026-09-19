@@ -25,6 +25,7 @@ describe('Purna real three-door collector', () => {
     const artifact = createCollectionArtifact({
       suite: 'beyond_acarya', environment: 'candidate', expectedRevision: 'candidate-a',
       authorizationApprovalId: 'approval-1', caseInputs: [input],
+      target: { chart_id: base.chartId, portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test' },
       rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...baseRow, door })),
     })
     expect(validateCollectionArtifact(artifact)).toEqual(artifact)
@@ -32,6 +33,10 @@ describe('Purna real three-door collector', () => {
     expect(artifact.collection_hash).toMatch(/^sha256:/)
     expect(() => validateCollectionArtifact({ ...artifact, rows: artifact.rows.map((row, index) => index ? row : { ...row, answer: 'forged' }) }))
       .toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
+    expect(() => validateCollectionArtifact({
+      ...artifact,
+      manifest: { ...artifact.manifest, target: { ...artifact.manifest.target, chart_id: 'other-chart' } },
+    })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
   })
 
   it('rejects a supposedly live answer with no real channel execution', () => {

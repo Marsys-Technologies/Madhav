@@ -23,6 +23,7 @@ function collection(inputOverride: AcceptanceCaseInput = input, rowOverride: Col
   return createCollectionArtifact({
     suite: inputOverride.kind === 'product' ? 'product' : 'beyond_acarya',
     environment: 'candidate', expectedRevision: 'candidate-a', authorizationApprovalId: 'approval-1',
+    target: { chart_id: '11111111-1111-4111-8111-111111111111', portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test' },
     caseInputs: [inputOverride],
     rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...rowOverride, door })),
   })
@@ -43,10 +44,12 @@ describe('Purna collection answer bridge', () => {
   it('rejects duplicate or fixture rows at the collection-artifact boundary', () => {
     expect(() => createCollectionArtifact({
       suite: 'product', environment: 'candidate', expectedRevision: 'candidate-a', authorizationApprovalId: 'approval-1',
+      target: { chart_id: '11111111-1111-4111-8111-111111111111', portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test' },
       caseInputs: [input], rows: [row, row],
     })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
     expect(() => createCollectionArtifact({
       suite: 'product', environment: 'candidate', expectedRevision: 'candidate-a', authorizationApprovalId: 'approval-1',
+      target: { chart_id: '11111111-1111-4111-8111-111111111111', portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test' },
       caseInputs: [input], rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...row, door, source: 'fixture' as const })),
     })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
   })
