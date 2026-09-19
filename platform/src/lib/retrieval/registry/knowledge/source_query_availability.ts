@@ -2940,6 +2940,41 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:60-119'],
   },
+  {
+    contract_id: 'source-query:query-projections:v1',
+    descriptor_name: 'query_projections',
+    capability_uri: 'marsys://tool/L3/query_projections',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH filtered AS (
+            SELECT id, projection_rank, domain, probability_tier, effective_score, peak_date,
+                   window_start, window_end, narrative, falsifiability, convergence_id, signal_id,
+                   source_chain, outcome_recorded, outcome_notes, source_citation, computed_at
+              FROM kala_bhavishya
+             WHERE chart_id = $1::uuid
+               AND (NULL::date IS NULL OR peak_date <= NULL::date)
+               AND (NULL::text IS NULL OR probability_tier = NULL::text)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+          ), handler_page AS (
+            SELECT id, projection_rank, domain, probability_tier, effective_score,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end, narrative, falsifiability,
+                   convergence_id, signal_id, source_chain, outcome_recorded, outcome_notes,
+                   source_citation, computed_at
+              FROM filtered ORDER BY probability_tier, projection_rank LIMIT 0
+          ), families AS (
+            SELECT window_start, window_end, domain, COUNT(*) AS member_count
+              FROM filtered GROUP BY window_start, window_end, domain LIMIT 0
+          ), source_classification AS (
+            SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1::uuid
+          ), build_observation AS (
+            SELECT br.id::text AS build_id, br.state AS build_state, bra.state AS asset_state
+              FROM build_run_assets bra JOIN build_runs br ON br.id = bra.run_id
+             WHERE br.chart_id = $1::uuid AND bra.asset_id = 'ka_bhavishya_lekha'
+             ORDER BY COALESCE(bra.ended_at, br.ended_at, br.created_at) DESC LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN families CROSS JOIN source_classification CROSS JOIN build_observation`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:74-137 | platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:209-371'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
