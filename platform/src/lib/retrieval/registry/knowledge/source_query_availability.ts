@@ -3484,6 +3484,36 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY domain LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:70-114'],
   },
+  {
+    contract_id: 'source-query:query-remedies:v1',
+    descriptor_name: 'query_remedies',
+    capability_uri: 'marsys://tool/L2/query_remedies',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH resonances AS (
+            SELECT resonance_id, graha, resonance_score, weakness_score, contradiction_factor,
+                   domain_burden, motif_burden, remedy_priority_class, is_yoga_karaka_flag,
+                   weakest_rank_in_chart, associated_doshas_array, associated_motifs_array,
+                   associated_cdlm_cells_array, citation_ref, citation_human, computed_at
+              FROM bodha_rm_resonances
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND (NULL::text IS NULL OR LOWER(graha) = LOWER(NULL::text))
+             ORDER BY resonance_score DESC NULLS LAST LIMIT 0
+          ), prescriptions AS (
+            SELECT prescription_id, target_resonance_id, target_graha, tradition, sub_tradition,
+                   remedy_category, remedy_label_human, prescription_detail_jsonb,
+                   classical_strength_rating, classical_sources_jsonb, citation_ref, citation_human,
+                   feasibility_score, estimated_cost_inr_range_jsonb,
+                   estimated_time_minutes_daily, ritual_complexity_class,
+                   requires_acharya_review_flag, phase_sequence_class, phase_duration_days, computed_at
+              FROM bodha_rm_remedy_prescriptions
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY phase_sequence_class NULLS LAST, feasibility_score DESC NULLS LAST LIMIT 0
+          ) SELECT * FROM resonances`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
