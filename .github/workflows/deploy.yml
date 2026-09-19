@@ -793,11 +793,10 @@ jobs:
 
       # While Pūrṇa is armed, its one-shot bootstrap is intentionally a temporary
       # cloudsqlsuperuser child. Mandatory postflight removes that membership.
-      # Re-attest Nirmana only after cleanup, without weakening migration 633.
+      # Re-attest Nirmana only when its own marker was absent. Pūrṇa's pre-run
+      # state is intentionally independent and remains stale after postflight.
       - name: Attest Nirmana ownership handoff as deployment-only migrator
-        if: >-
-          steps.bootstrap-state.outputs.nirmana == 'unmarked' ||
-          steps.bootstrap-state.outputs.purna != 'marked'
+        if: steps.bootstrap-state.outputs.nirmana == 'unmarked'
         env:
           NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
         run: |
