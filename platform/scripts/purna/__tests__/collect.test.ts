@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { assertLiveEvidence, createCollectionArtifact, validateCollectionArtifact, type AcceptanceCase, type CollectedCase } from '../collection_types'
 import type { AcceptanceCaseInput } from '../acceptance_cases'
-import { collect, withMcpDeadline, type Config } from '../collect'
+import { collect, parseConfig, withMcpDeadline, type Config } from '../collect'
 import { ScopeTupleSchema } from '../../../src/lib/vidhi/scope_classifier'
 import { FROZEN_PRODUCT_CASES } from '../product_cases'
 import { collectManagedCase, collectPortalCase, collectRawCase, managedScopeTuple, parsePortalSse } from '../channel_clients'
@@ -10,6 +10,19 @@ const test: AcceptanceCase = { id: 'wealth_mechanism_timing_contradiction', ques
 const base = { test, expectedRevision: 'candidate-a', source: 'candidate' as const, chartId: '11111111-1111-4111-8111-111111111111' }
 
 describe('Purna real three-door collector', () => {
+  it('rejects collection targets that could leak a probe bearer or evade the HTTPS boundary', () => {
+    const config = {
+      schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a',
+      chart_id: base.chartId, portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test',
+      authorization_approval_id: 'approval-1',
+    }
+    expect(parseConfig(config)).toEqual(config)
+    expect(() => parseConfig({ ...config, mcp_url: 'http://mcp.example.test' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
+    expect(() => parseConfig({ ...config, mcp_url: 'https://token@mcp.example.test' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
+    expect(() => parseConfig({ ...config, portal_url: 'https://portal.example.test?token=forbidden' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
+    expect(() => parseConfig({ ...config, api_token: 'forbidden' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
+  })
+
   it('seals the exact suite case inputs and three door rows into a tamper-evident collection', () => {
     const input: AcceptanceCaseInput = {
       case_id: test.id, kind: 'beyond_acarya', question: test.question, scope_tuple: test.scope_tuple,
