@@ -554,14 +554,27 @@ describe('graha_portrait — MCP tool registration + seam reachability', () => {
 
     const envelope = result.structuredContent?.object as Record<string, unknown>
     const pointers = envelope['drill_pointers'] as Array<{ instrument: string; hint: string; pointer_type?: string }>
-    expect(pointers.length).toBe(3)
-    for (const p of pointers) {
-      expect(typeof p.instrument).toBe('string')
-      expect(typeof p.hint).toBe('string')
-      expect(typeof p.pointer_type).toBe('string')
-    }
-    expect(pointers.map(p => p.pointer_type)).toEqual([
-      'dasha_of_promise', 'dispositor_chain', 'karaka_condition',
+    expect(pointers).toEqual([
+      {
+        instrument: 'ganita_dashas_get',
+        hint: "Antardasha-level (level=2+) detail for this graha's Mahadasha periods, narrower window.",
+        pointer_type: 'dasha_of_promise',
+      },
+      {
+        instrument: 'bodha_graph_traverse_get',
+        hint: "deeper CGM traversal (depth>1, paths mode) from this graha's neighborhood.",
+        pointer_type: 'dispositor_chain',
+      },
+      {
+        instrument: 'bodha_signals_get',
+        hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.',
+        pointer_type: 'karaka_condition',
+      },
+      {
+        instrument: 'judgment_query',
+        hint: 'the complete bhava-level (7th-house marriage, 10th-house career, etc.) promise-register verdict — this entity-scoped call cannot fully adjudicate bhava claims on its own.',
+        pointer_type: 'karaka_condition',
+      },
     ])
 
     // v3 verdict carries the design §28.6 completeness receipt vocabulary.
