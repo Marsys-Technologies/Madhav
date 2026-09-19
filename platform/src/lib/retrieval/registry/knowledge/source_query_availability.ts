@@ -3559,6 +3559,65 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226'],
   },
+  {
+    contract_id: 'source-query:query-signals:v1',
+    descriptor_name: 'query_signals',
+    capability_uri: 'marsys://tool/L2/query_signals',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH optional_elevation_columns AS (
+            SELECT column_name
+              FROM information_schema.columns
+             WHERE table_name = 'bodha_msr_signals'
+               AND column_name = ANY(ARRAY['ratification_factor', 'valence_source']::text[])
+             LIMIT 0
+          ), signal_page AS (
+            SELECT signal_id, chart_id, ayanamsha_id, signal_type_id, signal_type_class,
+                   signal_tradition, signal_summary_text, signal_headline_text,
+                   computed_salience, domains_affected_array, constituent_facts_array,
+                   source_subsystem, valence, verification_pass_status, citation_human,
+                   lel_origin, signature_tier, configuration_jsonb
+              FROM bodha_msr_signals m
+             WHERE m.chart_id = $1::uuid AND m.ayanamsha_id = NULLIF(NULL::text, '')
+               AND (NULL::text IS NULL OR NULL::text = ANY(m.domains_affected_array))
+               AND (NULL::text IS NULL OR m.source_subsystem = NULL::text)
+               AND (NULL::text IS NULL OR m.signal_type_class = NULL::text)
+               AND (NULL::text IS NULL OR m.signal_tradition = NULL::text)
+               AND (NULL::numeric IS NULL OR m.computed_salience >= NULL::numeric)
+               AND (m.lel_origin IS NULL OR m.lel_origin = false)
+             ORDER BY m.computed_salience DESC NULLS LAST
+             LIMIT 0
+          ), l1_ranking_context AS (
+            SELECT fact_category, fact_subject, fact_value_num, fact_value_text, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category IN ('graha_shadbala_total', 'graha_dignity_per_varga')
+             LIMIT 0
+          ), active_dashas AS (
+            SELECT level, dasha_lord
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND level IN (1, 2) AND start_date <= CURRENT_DATE AND end_date > CURRENT_DATE
+             ORDER BY level ASC
+             LIMIT 0
+          ), frame_positions AS (
+            SELECT fact_subject, fact_value_text
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category = 'graha_position' AND fact_key = 'sign'
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM optional_elevation_columns) AS optional_columns,
+                   (SELECT COUNT(*) FROM signal_page) AS signals,
+                   (SELECT COUNT(*) FROM l1_ranking_context) AS ranking_facts,
+                   (SELECT COUNT(*) FROM active_dashas) AS dashas,
+                   (SELECT COUNT(*) FROM frame_positions) AS frame_positions`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649',
+      'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145',
+      'platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
