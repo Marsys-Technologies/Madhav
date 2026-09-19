@@ -119,6 +119,40 @@ reason. **Practical effect: Wave E's precondition #2 ("no conflicting active lea
 satisfied, ~2 hours earlier than planned.** Wave E may proceed once C is complete and this
 campaign's own lease is claimed — it does not need to wait for 04:30 IST.
 
+## ★ FINDING — the named `ka_graha_sancara`/`ka_dasha_kala` service modules are not on the live consumer path
+
+Full dossier: `l3_autonomous/dossiers/KA_GRAHA_SANCARA_KA_DASHA_KALA_DOSSIER_v1_0.md`. Grounded,
+code-cited research (not inference) found that for **both** E3/E4 target assets, the
+orchestrator-registered writer's actual compute engine is exercised only by the self-test/health
+probe — the **live, actually-reachable consumer route uses a separate, independent
+implementation**:
+
+- `ka_graha_sancara`: `POST /api/compute/ephemeris_at_t` (the router `call_ephemeris_at_t`
+  proxies) has its own swisseph integration; it never imports
+  `services/ka_graha_sancara/engine.py`. Different ayanamsha vocabularies between the two
+  (`{lahiri,raman,kp,krishnamurti,yukteshwar,surya_siddhanta}` vs.
+  `{lahiri_chitrapaksha,true_chitra,krishnamurti,raman,surya_siddhanta_classical}`) — they can
+  silently drift with no test catching it.
+- `ka_dasha_kala`: the TS tool `call_dasha_eligibility` queries `chart_dashas` directly with its
+  own simpler grouping logic; it never imports `KaDashaKalaService`. The named service's
+  eligibility-band pruning tree-walk is exercised only by the writer's self-test. **Also found: a
+  real, unverified risk** — `call_dasha_eligibility`'s default `ayanamsha_id='lahiri'` differs
+  from the writer/probe's `'lahiri_chitrapaksha'`; if `chart_dashas` rows are stored under the
+  latter, a caller omitting `ayanamsha_id` gets a silent empty result, not an error. Not yet
+  verified against live data (was out of the dossier's read-only scope) — **this must be checked
+  before E4's value test is trusted**, since it could make the "live" consumer path silently
+  broken today regardless of anything Wave E does.
+
+**Consequence for E3/E4's acceptance-test design**: the campaign's own Wave E language already
+named the correct target (`call_ephemeris_at_t`, and by implication `call_dasha_eligibility` for
+E4) — a test that only exercises the self-test-only Python service or the DB-free proxy probe
+would certify something a real caller never touches. The value-test sketches in the dossier
+(§1.8, §2.10) are grounded at the correct, actually-live layer and should be used directly when
+E3/E4 execute. The divergent-implementation finding itself is a genuine, disclosed architectural
+risk — not something to quietly fix as a side effect of an acceptance test, and not something
+that blocks tonight's narrower goal (proving the live path's own contract), but worth a named
+follow-up for the native.
+
 ## ★ FINDING — PR #2607 already squash-merged much of the "stranded" W0 source work
 
 Both D2 and D5 independently found their target content **already on `main`**, landed via
