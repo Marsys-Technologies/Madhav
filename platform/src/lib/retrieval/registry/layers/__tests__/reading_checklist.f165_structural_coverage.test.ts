@@ -26,6 +26,7 @@ import { SHASTRA_MAP } from '../register_d9_judgment'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const AYA = 'lahiri_chitrapaksha'
+const BUILD_ID = '11111111-1111-4111-8111-111111111111'
 
 beforeEach(() => {
   queryMock.mockReset()
@@ -86,6 +87,14 @@ describe('F-165 — fetchDomainStructuralCoverage: population, not vocabulary', 
     expect(sql).toContain('bodha_mechanisms')
     expect(sql).not.toMatch(/'general'|'travel'|'residence'/) // no domain literal baked into the SQL text
     expect(params).toEqual([CHART, AYA, 'general'])
+  })
+
+  it('fences all three coverage subqueries to the selected build', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ msr_count: 1, mech_count: 1, mech_domain_coverage: 1 }] })
+    await fetchDomainStructuralCoverage(CHART, AYA, 'wealth', BUILD_ID)
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql).match(/build_id = \$4::uuid/g)).toHaveLength(3)
+    expect(params).toEqual([CHART, AYA, 'wealth', BUILD_ID])
   })
 })
 

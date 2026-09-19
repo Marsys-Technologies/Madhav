@@ -20,6 +20,7 @@ vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 import { getYogaFiringsCapability } from '../get_yoga_firings'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const BUILD_ID = '11111111-1111-4111-8111-111111111111'
 
 describe('getYogaFiringsCapability — F-D1 classical citation join', () => {
   beforeEach(() => {
@@ -53,6 +54,23 @@ describe('getYogaFiringsCapability — F-D1 classical citation join', () => {
     expect(rows[0]['citation_ref']).toBe('ga_yoga.strength:ruchaka:...')
     const provenance = content['provenance'] as Record<string, unknown>
     expect(provenance['tables']).toContain('brahma_yoga_catalog')
+  })
+
+  it('fences both the served page and total count to one build', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: '0' }] })
+
+    const result = await getYogaFiringsCapability.handler(
+      { chart_id: CHART_ID, build_id: BUILD_ID },
+      undefined,
+    )
+
+    expect((result.content as Record<string, unknown>)['build_id']).toBe(BUILD_ID)
+    expect(mockQuery).toHaveBeenCalledTimes(2)
+    for (const [sql, params] of mockQuery.mock.calls) {
+      expect(String(sql)).toContain('f.build_id = $2::uuid')
+      expect(params).toContain(BUILD_ID)
+    }
   })
 })
 

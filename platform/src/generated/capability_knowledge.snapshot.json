@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T03:08:08.000Z",
-  "content_hash": "sha256:d4e909e3908d6fb881da25864eaaf5f77e6797dbed450232e87f067b84e396cc",
-  "source_catalog_fingerprint": "sha256:cf2f7ef762f569efbc6f919f9dc5ff45d18990b63606e8ca579c61036fa84050",
-  "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
+  "generated_at": "2026-09-19T08:23:04.000Z",
+  "content_hash": "sha256:5e60d6d2987ef7ab2d2cb827936d610ab7cf687154d2ec598bb66a6379ce0574",
+  "source_catalog_fingerprint": "sha256:8b32f4675390b4a1a955ec3449a0b2c634890cc201a3f69497ad3ab12fc0d75a",
+  "semantic_review_fingerprint": "sha256:93411dc07cd9dd051bb080619406e684d57f7cafd35de0c3634702ff86bfe43c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -11078,6 +11078,22 @@
         "reconciled_evidence"
       ],
       "primary_binding_uri": "marsys://tool/L-JUDGMENT/judgment_query",
+      "primary_binding_details": {
+        "pagination": "none",
+        "non_paginated_closure": {
+          "closure_version": "judgment-reading-checklist-v1",
+          "checklist_path": "reading_checklist",
+          "material_trim_paths": [
+            "budget_kb_applied",
+            "trim_report",
+            "material_trimmed",
+            "response_trimmed",
+            "truncated"
+          ],
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#reading_checklist"
+        },
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler"
+      },
       "edges": [
         {
           "relation": "enables",
@@ -11121,20 +11137,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-JUDGMENT/judgment_query",
-          "status": "deliberately_dark",
-          "reason": "The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286",
-            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:judgment-query-readiness:v1",
+              "capability_uri": "marsys://tool/L-JUDGMENT/judgment_query",
+              "contract_sha256": "sha256:be129861e908a9499c6afca7da19a20ad8b6c284dd014589e0edc8872a4d1ac0",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29"
+            }
           ]
         }
       ],
@@ -11158,9 +11172,22 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": null,
+          "pagination_verified": false,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "non_paginated_closure": {
+            "closure_version": "judgment-reading-checklist-v1",
+            "checklist_path": "reading_checklist",
+            "material_trim_paths": [
+              "budget_kb_applied",
+              "trim_report",
+              "material_trimmed",
+              "response_trimmed",
+              "truncated"
+            ],
+            "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#reading_checklist"
+          },
+          "result_collection_verified": false,
           "pagination_review": {
             "disposition": "not_paginated",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L-JUDGMENT/judgment_query"
@@ -15096,7 +15123,7 @@
       "scu_id": "scu.catalog.query_classical_texts",
       "version": 1,
       "label": "Query Classical Texts",
-      "description": "Query the classical text corpus (classical_text_chunks) — classical text chunks from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita, Phala Deepika, Jataka Parijata, and other canonical texts. Each chunk is a verse or shloka with: text_id, chapter, verse_ref, topics, tradition_school, and the original Sanskrit + English translation. Use to cite classical sources for astrological observations. Free-text search (query_text/query/topic) runs genuine hybrid vector+keyword ranking and returns verse text IN HAND (content_en/content_sa), not just a citation id — this is the corpus idiom's ref_search / vector_search target. Exact-phrase search (keyword) does ILIKE substring matching with empty-with-reason. Evidence use: ground a claim in retrievable classical source material.",
+      "description": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand. Evidence use: ground a claim in retrievable classical source material.",
       "kind": "citation",
       "domains": [
         "classical_grounding"
@@ -15119,6 +15146,7 @@
         "keyword",
         "limit",
         "offset",
+        "page_cursor",
         "query",
         "query_text",
         "text_source",
@@ -15130,6 +15158,38 @@
         "source_passages"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_classical_texts",
+      "primary_binding_details": {
+        "pagination": "cursor",
+        "pagination_contract": {
+          "request_position_path": "page_cursor",
+          "request_limit_path": "limit",
+          "effective_maximum": 200,
+          "result_collection_path": "content.citations",
+          "next_path": "content.next_page_cursor",
+          "more_available_path": "content.more_available",
+          "deterministic_order": [
+            "hybrid:combined_score DESC",
+            "hybrid:text_id ASC",
+            "hybrid:chapter ASC NULLS LAST",
+            "hybrid:verse_ref ASC NULLS LAST",
+            "hybrid:chunk_id ASC",
+            "hybrid:id ASC",
+            "legacy:text_id ASC",
+            "legacy:chapter ASC NULLS LAST",
+            "legacy:verse_start ASC NULLS LAST",
+            "legacy:chunk_id ASC",
+            "legacy:id ASC"
+          ],
+          "material_trim_paths": [
+            "budget_kb_applied",
+            "trim_report",
+            "material_trimmed",
+            "response_trimmed",
+            "truncated"
+          ]
+        },
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler"
+      },
       "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
@@ -15141,21 +15201,35 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_texts",
+          "component": "classical_texts and classical_text_chunks",
+          "output_digest_spec_sha256": "10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
+        }
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_classical_texts",
-          "status": "deliberately_dark",
-          "reason": "The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler's corpus query and ranking response.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186",
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190",
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250",
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286",
-            "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27",
-            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44"
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_texts",
+              "spec_sha256": "10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
+            },
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-classical-texts:v1",
+              "capability_uri": "marsys://tool/L0/query_classical_texts",
+              "contract_sha256": "sha256:50d2344ef3d3e12ef1f0e4c90b032c1a23dee0a15df6e22b3cf563fe917c2103",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
+            }
           ]
         }
       ],
@@ -15170,6 +15244,7 @@
             "keyword": "string:optional",
             "limit": "number:optional",
             "offset": "number:optional",
+            "page_cursor": "string:optional",
             "query": "string:optional",
             "query_text": "string:optional",
             "text_source": "string:optional",
@@ -15179,14 +15254,42 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "offset",
-          "pagination_verified": false,
+          "pagination": "cursor",
+          "pagination_verified": true,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_classical_texts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search",
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search",
+          "pagination_contract": {
+            "request_position_path": "page_cursor",
+            "request_limit_path": "limit",
+            "effective_maximum": 200,
+            "result_collection_path": "content.citations",
+            "next_path": "content.next_page_cursor",
+            "more_available_path": "content.more_available",
+            "deterministic_order": [
+              "hybrid:combined_score DESC",
+              "hybrid:text_id ASC",
+              "hybrid:chapter ASC NULLS LAST",
+              "hybrid:verse_ref ASC NULLS LAST",
+              "hybrid:chunk_id ASC",
+              "hybrid:id ASC",
+              "legacy:text_id ASC",
+              "legacy:chapter ASC NULLS LAST",
+              "legacy:verse_start ASC NULLS LAST",
+              "legacy:chunk_id ASC",
+              "legacy:id ASC"
+            ],
+            "material_trim_paths": [
+              "budget_kb_applied",
+              "trim_report",
+              "material_trimmed",
+              "response_trimmed",
+              "truncated"
+            ]
+          },
+          "result_collection_verified": true,
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_classical_texts",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_classical_texts"
           },
           "execution_channels": [
             "platform_internal",
@@ -15258,14 +15361,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:query_classical_texts"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:query_classical_texts"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -15829,21 +15925,22 @@
     {
       "scu_id": "scu.catalog.query_contradictions",
       "version": 1,
-      "label": "Query Contradictions",
-      "description": "Returns synthesis contradictions and discovery findings for a chart. Sources: bodha_contradictions (formal yoga-vs-dosha tension pairs), bodha_discoveries (synthesis discoveries), and bodha_anomalies (quality anomalies surfaced during L2 build). bodha_contradictions: populated — a moderate row count per ayanamsha per chart (built by bo_karanajala). bodha_discoveries: rows ranked by composite_discovery_rank (non_obviousness_score gated). bodha_anomalies: rows covering detector types. Graceful-empty: when a chart/ayanamsha combination has no qualifying contradictions, discoveries, or anomalies, this returns 0 rows for that source rather than erroring — an honest empty state, not a fault. emits_references: returns signal_id pairs from contradiction pairs as reference list. Evidence use: frame and reconcile domain evidence before downstream interpretation.",
+      "label": "Chart contradiction evidence",
+      "description": "Retrieve formal chart-scoped contradiction pairs. Discoveries and anomalies are supplemental and do not satisfy contradiction closure.",
       "kind": "contradiction",
       "domains": [
         "cross_domain"
       ],
       "concepts": [
-        "domain_assessment",
+        "contradiction",
         "evidence_reconciliation",
-        "judgment_support",
-        "query_contradictions"
+        "query_contradictions",
+        "tension"
       ],
       "intents": [
         "assess",
-        "reconcile"
+        "reconcile",
+        "verify"
       ],
       "horizons": [
         "current",
@@ -15851,42 +15948,58 @@
       ],
       "scope": "chart",
       "inputs": [
-        "ayanamsha_id",
+        "ayanamsha_id?",
         "chart_id",
-        "include_anomalies",
-        "include_discoveries",
-        "min_novelty",
-        "top_k_discoveries"
+        "include_anomalies?",
+        "include_discoveries?",
+        "min_novelty?",
+        "top_k_discoveries?"
       ],
       "outputs": [
-        "assessment_findings",
-        "evidence_references",
-        "reconciled_evidence"
+        "build_id",
+        "contradiction_count",
+        "contradictions",
+        "generation_provenance",
+        "signal_id_refs"
       ],
       "primary_binding_uri": "marsys://tool/L2/query_contradictions",
-      "edges": [],
+      "primary_binding_details": {
+        "pagination": "none",
+        "pagination_contract": {
+          "result_collection_path": "content.contradictions",
+          "deterministic_order": [
+            "combined_salience DESC NULLS LAST",
+            "contradiction_id ASC"
+          ]
+        },
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269"
+      },
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
+        "chart_id",
         "build_id",
         "formula_or_writer_version"
       ],
-      "freshness_policy": "Must resolve against the active compatible chart build.",
+      "freshness_policy": "Requires a source query against the selected chart and active completed build context.",
       "entitlement": "native",
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [],
-      "availability_dispositions": [
+      "known_gaps": [
+        "Discoveries and anomalies are supplemental result legs; their caps and empty states do not prove contradiction exhaustion or closure.",
+        "No public MCP alias is asserted by this declaration."
+      ],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_contradictions",
-          "status": "deliberately_dark",
-          "reason": "Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala's reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101",
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125",
-            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140",
-            "platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65",
-            "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-contradictions:v1",
+              "capability_uri": "marsys://tool/L2/query_contradictions",
+              "contract_sha256": "sha256:2046d3188e42746744b998ae69d1d9f077d76b6c620c37d58b1266bbc0e61f15",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269 | platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-130"
+            }
           ]
         }
       ],
@@ -15909,9 +16022,17 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": null,
+          "pagination_verified": false,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_contradictions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "pagination_contract": {
+            "result_collection_path": "content.contradictions",
+            "deterministic_order": [
+              "combined_salience DESC NULLS LAST",
+              "contradiction_id ASC"
+            ]
+          },
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "not_paginated",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_contradictions"
@@ -15924,67 +16045,53 @@
       "source_descriptor_uris": [
         "marsys://tool/L2/query_contradictions"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L2/query_contradictions",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "domain_assessment",
+          "concept_id": "contradiction",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
         },
         {
           "concept_id": "evidence_reconciliation",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions"
-        },
-        {
-          "concept_id": "judgment_support",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
         },
         {
           "concept_id": "query_contradictions",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
+        },
+        {
+          "concept_id": "tension",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
         }
       ],
-      "gap_dispositions": [],
+      "gap_dispositions": [
+        {
+          "gap": "Discoveries and anomalies are supplemental result legs; their caps and empty states do not prove contradiction exhaustion or closure.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
+        },
+        {
+          "gap": "No public MCP alias is asserted by this declaration.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
+        }
+      ],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -16007,7 +16114,8 @@
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_contradictions:bo_samvada",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_contradictions:mi_sambandha"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.query_convergence_windows",
@@ -31402,6 +31510,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/read_sutravali_rule",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:read-sutravali-rule:v1",
+              "capability_uri": "marsys://tool/L0/read_sutravali_rule",
+              "contract_sha256": "sha256:1288e3cca0d19845e64dbc36f8e5a62a3190b2e58e9cee32a8fe70005ae35949",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -33135,6 +33258,13 @@
             "id ASC"
           ]
         },
+        "bounded_window_closure": {
+          "receipt_path": "content.temporal_closure",
+          "closure_version": "temporal-activation-closure-v1",
+          "collection": "activations",
+          "maximum_top_k": 500,
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:200-220,578-607"
+        },
         "execution_channels": [
           "platform_internal",
           "mcp_full"
@@ -33187,15 +33317,18 @@
           "evidence": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
         }
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L3/query_temporal_activation",
-          "status": "deliberately_dark",
-          "reason": "The handler reads kala_activation, but ka_kalasutra has only route evidence and no reviewed digest component for that relation. The reviewed predicate and forward-window receipts cannot substitute for the missing activation output receipt.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
-            "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80",
-            "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-temporal-activation:v1",
+              "capability_uri": "marsys://tool/L3/query_temporal_activation",
+              "contract_sha256": "sha256:4ebad1abb375ab717eab683b6639ff1cacabe699f2c7d4532806ecf54839b715",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620"
+            }
           ]
         }
       ],
@@ -33236,6 +33369,13 @@
               "activation_start ASC",
               "id ASC"
             ]
+          },
+          "bounded_window_closure": {
+            "receipt_path": "content.temporal_closure",
+            "closure_version": "temporal-activation-closure-v1",
+            "collection": "activations",
+            "maximum_top_k": 500,
+            "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:200-220,578-607"
           },
           "execution_channels": [
             "platform_internal",
@@ -34557,6 +34697,15 @@
       ]
     },
     {
+      "concept_id": "contradiction",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
+      ]
+    },
+    {
       "concept_id": "convergence_window",
       "types": [
         "domain_concept"
@@ -34656,7 +34805,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_pratijna",
@@ -34732,6 +34880,7 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -34740,7 +34889,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_pratijna",
@@ -35214,7 +35362,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_pratijna",
@@ -35676,7 +35823,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions"
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
       ]
     },
     {
@@ -36691,6 +36838,15 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_transit_vedha",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_vedha_gochara",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:yoga_activation_by_dasha"
+      ]
+    },
+    {
+      "concept_id": "tension",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions"
       ]
     },
     {
@@ -38270,17 +38426,17 @@
     "executable_bindings": 186,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 72,
-    "reviewed_pagination_bindings": 4,
+    "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
     "reviewed_paginated_descriptors": 96,
-    "exhaustible_reviewed_descriptors": 4,
-    "non_exhaustible_descriptors": 92,
+    "exhaustible_reviewed_descriptors": 5,
+    "non_exhaustible_descriptors": 91,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 14,
-    "reviewed_output_claims": 13,
-    "typed_concepts": 257,
+    "producer_output_claims": 15,
+    "reviewed_output_claims": 14,
+    "typed_concepts": 259,
     "unbound_concepts": 0,
     "isolated_scus": 156,
     "graph_components": 157,

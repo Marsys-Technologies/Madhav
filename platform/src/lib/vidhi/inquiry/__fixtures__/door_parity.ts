@@ -86,6 +86,7 @@ export function w5DoorParityPlan(): PipelinePlan {
 
 export function compileW5DoorParityContract(executionChannel: 'platform_internal' | 'mcp_full') {
   const plan = w5DoorParityPlan()
+  const nowContextDate = new Date().toISOString().slice(0, 10)
   return compileInquiryContract({
     snapshot: W5_DOOR_PARITY_SNAPSHOT,
     overlay: W5_DOOR_PARITY_OVERLAY,
@@ -94,6 +95,8 @@ export function compileW5DoorParityContract(executionChannel: 'platform_internal
     scope_tuple: W5_DOOR_PARITY_SCOPE,
     ai_proposal: managedPlanToAiInquiryProposal(plan),
     execution_channel: executionChannel,
+    temporal_anchor_date: nowContextDate,
+    temporal_anchor_source: 'request_context_clock',
   })
 }
 

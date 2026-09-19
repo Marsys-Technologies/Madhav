@@ -37,6 +37,7 @@ function mockBuildPages(state: {
   rowsByBuild: Record<string, readonly Record<string, unknown>[]>
 }) {
   const pageCalls: Array<{ params: readonly unknown[]; sql: string }> = []
+  const natalCalls: Array<{ params: readonly unknown[]; sql: string }> = []
   queryMock.mockImplementation((sql: string, params: unknown[] = []) => {
     if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
     if (sql.includes('replacement_fence AS')) {
@@ -54,10 +55,17 @@ function mockBuildPages(state: {
         rows: buildId ? (state.rowsByBuild[buildId] ?? []).slice(offset, offset + fetchLimit) : [],
       }] })
     }
+    if (sql.includes('FROM chart_facts')) {
+      natalCalls.push({ sql, params })
+      return Promise.resolve({ rows: [{
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_subject: 'D1_VEN',
+        dignity_state: 'own', shadbala_rupa: null,
+      }] })
+    }
     if (sql.startsWith('SELECT MAX(level_n)')) return Promise.resolve({ rows: [{ max_level: 3 }] })
     throw new Error(`unexpected query: ${sql}`)
   })
-  return { pageCalls }
+  return { pageCalls, natalCalls }
 }
 
 const signingEnvironment = {
@@ -140,6 +148,46 @@ describe('get_dashas build-pinned cursor pagination', () => {
       is_error: false,
       content: { build_id: 'build-a', rows: [], total: 0, more_available: false, next_page_cursor: null },
     })
+  })
+
+  it('rejects a child result whose fresh dasha receipt does not match the caller-selected judgment build', async () => {
+    const database = mockBuildPages({
+      eligibleBuild: 'build-dashas',
+      rowsByBuild: { 'build-dashas': [dasha('a')] },
+    })
+
+    const result = await getDashasCapability.handler(
+      args({ build_id: 'build-judgment' }),
+      undefined,
+    )
+
+    expect(result).toMatchObject({
+      is_error: true,
+      content: {
+        code: 'ga_dashas_build_mismatch',
+        expected_build_id: 'build-judgment',
+        active_build_id: 'build-dashas',
+        rows: [],
+      },
+    })
+    expect(database.pageCalls).toHaveLength(1)
+    expect(queryMock).toHaveBeenCalledTimes(1) // no natal enrichment or secondary count after mismatch
+  })
+
+  it('fences serve-time natal dignity and shadbala enrichment to the selected dasha build', async () => {
+    const row = { ...dasha('a'), lord_graha: 'Venus' }
+    const database = mockBuildPages({
+      eligibleBuild: 'build-a',
+      rowsByBuild: { 'build-a': [row] },
+    })
+
+    const result = await getDashasCapability.handler(args({ build_id: 'build-a' }), undefined)
+
+    expect(result.is_error).toBe(false)
+    expect(database.natalCalls).toHaveLength(1)
+    expect(database.natalCalls[0]?.sql).toContain('build_id = $5::uuid')
+    expect(database.natalCalls[0]?.sql).not.toContain('build_id = $5::text')
+    expect(database.natalCalls[0]?.params.at(-1)).toBe('build-a')
   })
 
   it('rejects fractional and huge finite pagination before issuing SQL, while safely flooring usable values', async () => {

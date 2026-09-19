@@ -42,6 +42,19 @@ describe('getKpCuspsCapability', () => {
     expect(params[2]).not.toContain('graha_kp_lords')
   })
 
+  it('fences KP facts to the requested build and returns that provenance', async () => {
+    const buildId = '815ec8dd-d994-490f-b99c-f1fc4776f39d'
+    mockQuery.mockResolvedValueOnce({ rows: ROWS })
+
+    const result = await getKpCuspsCapability.handler({ chart_id: CHART_ID, build_id: buildId }, undefined)
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]]
+    expect(sql).toContain('AND build_id = $4::uuid')
+    expect(sql).not.toContain('AND build_id = $4::text')
+    expect(params).toEqual([CHART_ID, 'krishnamurti', expect.any(Array), buildId])
+    expect((result.content as Record<string, unknown>)['build_id']).toBe(buildId)
+  })
+
   it('assembles a per-cusp view with the full KP chain + sign derived from stored longitude', async () => {
     mockQuery.mockResolvedValueOnce({ rows: ROWS })
     const result = await getKpCuspsCapability.handler({ chart_id: CHART_ID }, undefined)

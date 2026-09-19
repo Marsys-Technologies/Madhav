@@ -99,12 +99,41 @@ export interface PaginationContract {
   readonly next_path?: string
   readonly more_available_path?: string
   readonly deterministic_order: readonly string[]
+  /** Response-envelope markers that invalidate an otherwise terminal page. */
+  readonly material_trim_paths?: readonly string[]
 }
 
 export interface PaginationReviewDisposition {
   readonly disposition: 'not_paginated' | 'exhaustible_reviewed' | 'non_exhaustible'
   readonly source_ref: string
   readonly blocker?: string
+}
+
+/**
+ * A handler-specific proof that one finite temporal window was fully returned.
+ *
+ * This does not authorize cursor or offset continuation.  It merely lets the
+ * inquiry lifecycle accept an exact, server-observed bounded window when its
+ * receipt independently proves that no rows were trimmed.
+ */
+export interface BoundedWindowClosureContract {
+  readonly receipt_path: string
+  readonly closure_version: string
+  readonly collection: string
+  readonly maximum_top_k: number
+  readonly source_ref: string
+}
+
+/**
+ * Reviewed response-level closure for a non-paginated binding whose single
+ * response can still be materially incomplete. Paths are relative to the
+ * response content object; this contract does not define semantic result rows.
+ */
+export interface NonPaginatedClosureContract {
+  readonly closure_version: string
+  readonly checklist_path: string
+  readonly material_trim_paths: readonly string[]
+  readonly source_ref: string
 }
 
 /** Exact evidence a binding needs before it can be offered for execution. */
@@ -207,6 +236,10 @@ export interface SemanticCapabilityBinding {
   /** True only when response paths and exhaustion semantics were source-reviewed. */
   readonly pagination_verified?: boolean | null
   readonly pagination_review?: PaginationReviewDisposition
+  /** Reviewed proof contract for one non-repeatable bounded temporal window. */
+  readonly bounded_window_closure?: BoundedWindowClosureContract
+  /** Reviewed completeness receipt for one non-paginated response. */
+  readonly non_paginated_closure?: NonPaginatedClosureContract
   /** True when the semantic result collection path was reviewed, independently of exhaustion semantics. */
   readonly result_collection_verified?: boolean
   readonly pagination_contract?: PaginationContract
@@ -240,7 +273,7 @@ export interface SemanticCapabilityDeclaration {
   readonly outputs: readonly string[]
   readonly primary_binding_uri: string
   readonly primary_binding_details?: Pick<SemanticCapabilityBinding,
-    'pagination' | 'pagination_verified' | 'result_collection_verified' | 'pagination_contract' | 'execution_channels' | 'public_tool_name' | 'route_evidence'>
+    'pagination' | 'pagination_verified' | 'result_collection_verified' | 'pagination_contract' | 'bounded_window_closure' | 'non_paginated_closure' | 'execution_channels' | 'public_tool_name' | 'route_evidence'>
   readonly additional_bindings?: readonly SemanticCapabilityBinding[]
   readonly edges?: readonly SemanticCapabilityEdgeDeclaration[]
   readonly provenance_requirements: readonly string[]

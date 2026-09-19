@@ -71,6 +71,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
+      const buildId = args.build_id ? String(args.build_id) : null
       const requestedLimit = Number(args.limit ?? 300)
       const limit = Number.isFinite(requestedLimit)
         ? Math.min(Math.max(Math.floor(requestedLimit), 1), 2000)
@@ -81,6 +82,11 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       // filtered result, without mislabelling this page's length as a total.
       const params: unknown[] = [chartId, limit + 1, offset]
       let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1`
+
+      if (buildId) {
+        sql += ` AND build_id = $${params.length + 1}::text AND build_id_uuid = $${params.length + 1}::uuid`
+        params.push(buildId)
+      }
 
       if (args.ayanamsha_id) {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
@@ -114,8 +120,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       if (needsLagna) {
         const lagnaResult = await query<{ varga: string; ayanamsha_id: string; sign: string | null }>(
           `SELECT varga, ayanamsha_id, sign FROM chart_divisionals
-           WHERE chart_id = $1 AND graha = 'Lagna' AND formula_provenance_text = 'whole_sign'`,
-          [chartId],
+           WHERE chart_id = $1 AND graha = 'Lagna' AND formula_provenance_text = 'whole_sign'
+           ${buildId ? 'AND build_id = $2::text AND build_id_uuid = $2::uuid' : ''}`,
+          buildId ? [chartId, buildId] : [chartId],
         )
         const vargaLagnaSign = new Map<string, ZodiacSign>()
         for (const r of lagnaResult.rows ?? []) {
@@ -133,6 +140,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          build_id: buildId,
           source_table: 'chart_divisionals',
           rows: rowsWithHouse,
           more_available: moreAvailable,

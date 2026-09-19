@@ -6,7 +6,7 @@ export type SourceQueryParameterBinding =
   | 'global_with_chart_fallback'
   | 'chart_and_active_build'
   | 'chart_with_active_build_context'
-export type SourceQueryEmptySemantics = 'query_success_is_available'
+export type SourceQueryEmptySemantics = 'query_success_is_available' | 'required_rows_must_exist'
 
 /**
  * Registry-owned, read-only probe for a handler's actual source query.
@@ -392,6 +392,132 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:52-62',
       'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:63-75',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-classical-texts:v1',
+    descriptor_name: 'query_classical_texts',
+    capability_uri: 'marsys://tool/L0/query_classical_texts',
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist',
+    sql: `WITH eligible_receipts AS (
+            SELECT receipt.receipt_version, receipt.partition_key, receipt.output_digest,
+                   receipt.output_digest_spec_sha256
+              FROM asset_provenance_receipts receipt
+              JOIN asset_freshness freshness
+                ON freshness.asset_id = receipt.asset_id
+               AND freshness.scope_key = receipt.scope_key
+               AND freshness.partition_key = receipt.partition_key
+               AND freshness.receipt_version = receipt.receipt_version
+              JOIN asset_output_digest_specs digest_spec
+                ON digest_spec.asset_id = receipt.asset_id
+               AND digest_spec.spec_sha256 = receipt.output_digest_spec_sha256
+               AND digest_spec.retired_at IS NULL
+             WHERE receipt.asset_id = 'bg_texts'
+               AND receipt.chart_id IS NULL
+               AND receipt.scope_key = '__global__'
+               AND receipt.receipt_state = 'proven'
+               AND receipt.output_digest IS NOT NULL
+               AND receipt.output_digest_spec_sha256 = '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6'
+               AND freshness.freshness_state = 'fresh'
+          ), receipt_count AS (
+            SELECT COUNT(*)::int AS eligible_receipt_count FROM eligible_receipts
+          ), replacement_fence AS (
+            SELECT EXISTS (
+              SELECT 1 FROM build_run_assets asset
+              JOIN build_runs run ON run.id = asset.run_id
+              WHERE asset.asset_id = 'bg_texts'
+                AND (run.state IN ('planned', 'running', 'paused')
+                  OR asset.state IN ('queued', 'building'))
+            ) AS replacement_in_progress
+          ), hybrid_source_probe AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics,
+                   (1 - (c.embedding <=> NULL::vector))::float AS vector_score,
+                   similarity(c.content_en, '')::float AS keyword_score,
+                   (0.65 * COALESCE(1 - (c.embedding <=> NULL::vector), 0)
+                     + 0.35 * COALESCE(similarity(c.content_en, ''), 0))::float AS combined_score
+              FROM classical_text_chunks c
+             WHERE 1 = 0
+             ORDER BY combined_score DESC, text_id ASC, chapter ASC NULLS LAST,
+                      verse_ref ASC NULLS LAST, chunk_id ASC, id ASC
+             LIMIT 0
+          ), fallback_source_probe AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics
+              FROM classical_text_chunks c
+             WHERE c.content_en ILIKE ''
+             ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST,
+                      chunk_id ASC, id ASC
+             LIMIT 0
+          ), list_source_probe AS (
+            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
+                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
+                   c.tradition_school, c.topics
+              FROM classical_text_chunks c
+             WHERE (NULL::text IS NULL OR c.content_en ILIKE ('%' || NULL::text || '%'))
+               AND (NULL::text IS NULL OR c.text_id = NULL::text)
+               AND (NULL::text IS NULL OR NULL::text = ANY(c.topics))
+             ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST,
+                      chunk_id ASC, id ASC
+             LIMIT 0
+          ), handler_source_probe AS (
+            SELECT (SELECT COUNT(*) FROM hybrid_source_probe) AS hybrid_probe_rows,
+                   (SELECT COUNT(*) FROM fallback_source_probe) AS fallback_probe_rows,
+                   (SELECT COUNT(*) FROM list_source_probe) AS list_probe_rows
+          )
+          SELECT 1 AS source_query_available
+            FROM receipt_count count
+            CROSS JOIN replacement_fence fence
+            CROSS JOIN handler_source_probe handler_probe
+           WHERE count.eligible_receipt_count = 1
+             AND NOT fence.replacement_in_progress
+             AND handler_probe.hybrid_probe_rows = 0
+             AND handler_probe.fallback_probe_rows = 0
+             AND handler_probe.list_probe_rows = 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql',
+      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-contradictions:v1',
+    descriptor_name: 'query_contradictions',
+    capability_uri: 'marsys://tool/L2/query_contradictions',
+    scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available',
+    sql: `WITH active_build AS (
+            SELECT $2::uuid AS build_id
+          ), contradictions AS (
+            SELECT contradiction_id, signal_a_id, signal_b_id, tension_class,
+                   domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id, c.build_id
+              FROM bodha_contradictions c JOIN active_build b ON c.build_id = b.build_id
+             WHERE c.chart_id = $1::uuid AND c.ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC
+             LIMIT 0
+          ), discoveries AS (
+            SELECT discovery_id, discovery_class, discovery_subsystem, affected_domains_array,
+                   hypothesis_text, non_obviousness_score, consequence_score,
+                   composite_discovery_rank, constituent_refs_jsonb, computed_at, d.build_id
+              FROM bodha_discoveries d JOIN active_build b ON d.build_id = b.build_id
+             WHERE d.chart_id = $1::uuid AND d.ayanamsha_id = NULLIF(NULL::text, '')
+               AND (0::numeric <= 0 OR non_obviousness_score >= 0::numeric)
+             ORDER BY composite_discovery_rank DESC NULLS LAST
+             LIMIT 0
+          ), anomalies AS (
+            SELECT anomaly_id, anomaly_type, discovery_subsystem, subject_ref_jsonb,
+                   anomaly_metric, anomaly_value, chart_baseline_value, sigma_from_baseline,
+                   meaningfulness_gate_result, computed_at, a.build_id
+              FROM bodha_anomalies a JOIN active_build b ON a.build_id = b.build_id
+             WHERE a.chart_id = $1::uuid AND a.ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY sigma_from_baseline DESC NULLS LAST, computed_at DESC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM contradictions) AS contradictions,
+                   (SELECT COUNT(*) FROM discoveries) AS discoveries,
+                   (SELECT COUNT(*) FROM anomalies) AS anomalies`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-130',
     ],
   },
   {
@@ -3784,6 +3910,67 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137',
       'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360',
       'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145',
+    ],
+  },
+  {
+    contract_id: 'source-query:judgment-query-readiness:v1',
+    descriptor_name: 'judgment_query',
+    capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
+    scope: 'chart',
+    parameter_binding: 'chart_and_active_build',
+    empty_semantics: 'required_rows_must_exist',
+    sql: `WITH active_build AS (
+            SELECT id
+              FROM build_runs
+             WHERE chart_id = $1::uuid AND state = 'completed'
+             ORDER BY ended_at DESC NULLS LAST, id DESC
+             LIMIT 1
+          )
+          SELECT 1 AS source_query_available
+            FROM active_build b
+           WHERE b.id = $2::uuid
+             AND EXISTS (
+               SELECT 1
+                 FROM brahma_vichara_constants c
+                WHERE c.constant_key = 'operative_vargas'
+                  AND c.value_jsonb #> '{wealth,vargas}' @> '["D2"]'::jsonb
+             )
+             AND EXISTS (
+               SELECT 1
+                 FROM chart_facts f
+                WHERE f.chart_id = $1::uuid
+                  AND f.build_id = b.id
+                  AND f.build_id = $2::uuid
+                  AND f.ayanamsha_id = 'lahiri_chitrapaksha'
+                  AND f.fact_subject = 'LAGNA'
+                  AND f.fact_category = 'graha_position'
+                  AND f.fact_key = 'sign'
+                  AND f.fact_value_text IS NOT NULL
+             )
+           LIMIT 1`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
+      'platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants',
+      'platform/migrations/435_ga_vichara.sql:83-115',
+      'platform/supabase/migrations/204_chart_facts.sql:10-29',
+    ],
+  },
+  {
+    contract_id: 'source-query:read-sutravali-rule:v1',
+    descriptor_name: 'read_sutravali_rule',
+    capability_uri: 'marsys://tool/L0/read_sutravali_rule',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.rule_id::text = NULL::text
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
     ],
   },
 ]

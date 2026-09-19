@@ -17,6 +17,7 @@ import { compileCapabilityKnowledge } from '../../../knowledge/compiler'
 import { deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const BUILD_ID = '11111111-1111-4111-8111-111111111111'
 
 function row(id: string) {
   return { id, varga: 'D9', ayanamsha_id: 'lahiri', graha: 'Sun', fact_category: 'varga_position', fact_key: id }
@@ -54,6 +55,26 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
       expect.stringMatching(/ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key/),
       [CHART_ID, 3, 0],
     ]))
+  })
+
+  it('fences both page and varga-lagna reads to the supplied text+UUID build identity', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ ...row('active'), sign: 'Aries' }] })
+      .mockResolvedValueOnce({ rows: [{ varga: 'D9', ayanamsha_id: 'lahiri', sign: 'Aries' }] })
+
+    const result = await getDivisionalsCapability.handler(
+      { chart_id: CHART_ID, build_id: BUILD_ID, limit: 2 },
+      undefined,
+    )
+
+    expect(result.is_error).toBe(false)
+    expect(contentOf(result)['build_id']).toBe(BUILD_ID)
+    expect(mockQuery).toHaveBeenCalledTimes(2)
+    for (const [sql, params] of mockQuery.mock.calls) {
+      expect(String(sql)).toMatch(/build_id = \$\d+::text/)
+      expect(String(sql)).toMatch(/build_id_uuid = \$\d+::uuid/)
+      expect(params).toContain(BUILD_ID)
+    }
   })
 
   it('marks a final short page as exhausted without inventing a total', async () => {

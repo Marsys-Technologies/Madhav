@@ -241,11 +241,13 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
       tradition: z.string().optional().describe('Filter by tradition (e.g. Parashari, Jaimini, Tajaka).'),
       limit:   z.number().int().min(1).max(200).optional().describe('Max results (default: 50)'),
       offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+      page_cursor: z.string().optional().describe('Opaque next_page_cursor from the preceding classical page; forward unchanged.'),
     },
-    async ({ keyword, author, topic, tradition, limit, offset }) => {
+    async ({ keyword, author, topic, tradition, limit, offset, page_cursor }) => {
       try {
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           keyword, author, topic, tradition, limit: limit ?? 50, offset: offset ?? 0,
+          ...(page_cursor != null ? { page_cursor } : {}),
         }, principal)
         return dualOutput(envelope(data, 'ref_rules_search'))
       } catch (err) {
@@ -358,10 +360,12 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
       keyword: z.string().optional().describe('Free-text search within dignity rules (classical-text fallback; used only when planet is omitted or matches no structured row).'),
       limit:   z.number().int().min(1).max(200).optional().describe('Max results (default: 50)'),
       offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+      page_cursor: z.string().optional().describe('Opaque next_page_cursor for the classical fallback path; forward unchanged.'),
     },
-    async ({ planet, keyword, limit, offset }) => {
+    async ({ planet, keyword, limit, offset, page_cursor }) => {
       try {
-        if (planet) {
+        const cursorContinuation = page_cursor != null
+        if (planet && !cursorContinuation) {
           const structured = await platformQuery(
             `SELECT graha, exaltation_sign, exaltation_degree, debilitation_sign, debilitation_degree,
                     moolatrikona_sign, moolatrikona_from, moolatrikona_to, own_signs,
@@ -386,12 +390,15 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
         const kw = [keyword, planet, 'dignity'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           query_text: kw, limit: limit ?? 50, offset: offset ?? 0,
+          ...(page_cursor != null ? { page_cursor } : {}),
         }, principal)
         const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
         return dualOutput(envelope({
           source: 'classical_text_fallback',
           structured_filter_applied: false,
-          fallback_reason: planet
+          fallback_reason: cursorContinuation
+            ? 'page_cursor resumes a prior classical-text result; structured dignity lookup is bypassed.'
+            : planet
             ? `No structured bg_dignity_reference row for planet="${planet}" — degraded to classical-text hybrid search.`
             : 'No planet filter given — classical-text hybrid search over dignity corpus.',
           ...dataObj,
@@ -484,8 +491,9 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
       keyword:   z.string().optional().describe('Free-text classical-text search. Without a nakshatra/lord filter this preserves the text-search path.'),
       limit:     z.number().int().min(1).max(100).optional().describe('Max results (default: 30)'),
       offset:    z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+      page_cursor: z.string().optional().describe('Opaque next_page_cursor for the classical fallback path; forward unchanged.'),
     },
-    async ({ nakshatra, lord, keyword, limit, offset }) => {
+    async ({ nakshatra, lord, keyword, limit, offset, page_cursor }) => {
       try {
         // F04: reference_nakshatra (singular, bg_nakshatra's table) is the populated, canonical
         // grain for THIS serving surface (28 rows, including Abhijit) -- serve it directly when a
@@ -500,7 +508,8 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
         // free-text intent, not a lossy pseudo-WHERE filter over a static catalog.
         const pageLimit = limit ?? 30
         const pageOffset = offset ?? 0
-        const wantsStructuredCatalog = Boolean(nakshatra || lord || !keyword)
+        const cursorContinuation = page_cursor != null
+        const wantsStructuredCatalog = !cursorContinuation && Boolean(nakshatra || lord || !keyword)
         if (wantsStructuredCatalog) {
           const params: unknown[] = []
           const filters: string[] = []
@@ -583,12 +592,15 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
         const kw = [keyword, nakshatra, lord, 'nakshatra'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           query_text: kw, limit: pageLimit, offset: pageOffset,
+          ...(page_cursor != null ? { page_cursor } : {}),
         }, principal)
         const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
         return dualOutput(envelope({
           source: 'classical_text_fallback',
           structured_filter_applied: false,
-          fallback_reason: wantsStructuredCatalog
+          fallback_reason: cursorContinuation
+            ? 'page_cursor resumes a prior classical-text result; structured nakshatra lookup is bypassed.'
+            : wantsStructuredCatalog
             ? `No structured reference_nakshatra row matched (nakshatra=${nakshatra ?? 'any'}, lord=${lord ?? 'any'}) — classical-text hybrid search is returned instead.`
             : 'No structured catalog filter was requested; this is the classical-text hybrid search path for keyword intent.',
           ...dataObj,

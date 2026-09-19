@@ -428,6 +428,7 @@ export const getDashasCapability: CapabilityDescriptor = {
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
+      const expectedBuildId = args.build_id ? String(args.build_id) : null
       const limit = normalizePageLimit(args.limit)
       const requestedOffset = normalizePageOffset(args.offset)
       if (limit === null || requestedOffset === null) {
@@ -750,6 +751,14 @@ export const getDashasCapability: CapabilityDescriptor = {
       if (!activeBuildId) {
         return paginationError(chartId, 'ga_dashas_receipt_unavailable', 'No fresh, proven ga_dashas receipt with the reviewed digest specification is available for this chart.')
       }
+      if (expectedBuildId && activeBuildId !== expectedBuildId) {
+        return paginationError(
+          chartId,
+          'ga_dashas_build_mismatch',
+          'The fresh proven ga_dashas receipt belongs to a different build than the caller-selected chart generation; no dasha rows were served.',
+          { expected_build_id: expectedBuildId, active_build_id: activeBuildId },
+        )
+      }
       if (cursor && cursor.build_id !== activeBuildId) {
         return paginationError(chartId, 'page_cursor_build_changed', 'The fresh proven ga_dashas receipt build changed after this page_cursor was minted; restart from the first page.', {
           cursor_build_id: cursor.build_id,
@@ -791,12 +800,13 @@ export const getDashasCapability: CapabilityDescriptor = {
                     MAX(fact_value_num)  FILTER (WHERE fact_category = 'graha_shadbala_total')     AS shadbala_rupa
              FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])
+               AND build_id = $5::uuid
                AND (
                  (fact_category = 'graha_dignity_per_varga' AND fact_key = 'dignity_state' AND fact_subject = ANY($4::text[]))
                  OR (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa' AND fact_subject = ANY($3::text[]))
                )
              GROUP BY ayanamsha_id, fact_subject`,
-            [chartId, ayas, subs, subs.map(s => `D1_${s}`)],
+            [chartId, ayas, subs, subs.map(s => `D1_${s}`), activeBuildId],
           )
           // The dignity subject is `D1_<code>`; shadbala subject is `<code>`. Split by the two shapes.
           for (const cr of condRes.rows) {

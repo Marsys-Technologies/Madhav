@@ -3,18 +3,34 @@
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
   "status": "PRODUCT_DELIVERY_SUCCESSOR_ACTIVE",
-  "observed_at": "2026-09-17T20:36:00+05:30",
-  "source_candidate": "0f2d9cc0259ac5983fda7f5e10d75ce189e7440f",
+  "observed_at": "2026-09-19T12:53:21+05:30",
+  "source_candidate": "dd3e189ed4b6f81aaf6d20a586290450705c7947",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
-    "approved_by": "Native delegation to successor task 01a0afe3-2832-7692-b133-d1e6b6bfcdf6",
+    "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",
     "approved_plan": "docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md",
     "approved_plan_sha256": "6cc17144f3877bdac7048f9a7cba5caf15e1f7ca59306289c0f13ec94eb1b666",
-    "branch": "codex/purna-product-completion-v2",
-    "protected_baseline": "0f2d9cc0259ac5983fda7f5e10d75ce189e7440f",
+    "branch": "codex/purna-product-completion-v3",
+    "protected_baseline": "4adcf04978757d2f8e8157492f1922f8b5fb92e3",
     "product_gate": "AUTOMATED_THREE_DOOR_ACCEPTANCE_WITH_FROZEN_5_PLUS_30_CASE_DENOMINATOR",
     "research_gate": "HUMAN_EXPERT_EMPIRICAL_RESEARCH_NOT_RUN_AND_SEPARATE_FROM_PRODUCT_DELIVERY"
   },
+  "phase_legend": {
+    "source_ready": "implemented and verified in repository source; not candidate or live evidence",
+    "candidate_verified": "executed against the exact isolated candidate revision and configuration",
+    "live_verified": "executed against protected live traffic after deployed-revision verification"
+  },
+  "product_outcomes": [
+    {"id":"fixed_5_plus_30_denominator","source_ready":"PASS_FROZEN","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"real_three_door_collector","source_ready":"PASS_SOURCE_VERIFIED","candidate_verified":"NOT_RUN_SUCCESSOR_REVISION","live_verified":"NOT_RUN_SUCCESSOR_REVISION"},
+    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_157_CONTRACTS_24_UNCOVERED_5_DARK","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"deep_reasoning_and_evidence_continuation","source_ready":"PASS_SOURCE_WIRING","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_BUILD_FENCED_JUDGMENT_ACCOUNTABILITY_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_TYPED_JUDGMENT_CLOSURE_CONTRACTS_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"candidate_original_5_plus_30_three_door_acceptance","source_ready":"HARNESS_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_APPLICABLE"},
+    {"id":"protected_release","source_ready":"NOT_MERGED_NOT_DEPLOYED","candidate_verified":"NOT_RUN","live_verified":"NOT_DEPLOYED"},
+    {"id":"live_original_5_plus_30_three_door_automated_acceptance","source_ready":"PROTOCOL_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"}
+  ],
   "residuals": [
     {"id":"PA-R01","source_status":"PROTECTED_OWNER_EXACT_SET_AND_PRODUCTION_COMPATIBLE_REPLAY_PASSED","remaining":"none for the shared migration/owner handoff; application was attested by deploy run 35061039613","next_gate":"G7 record","status":"PASS_SHARED_APPLY_AND_OWNER_MARKER"},
     {"id":"PA-R02","source_status":"CLOSED","remaining":"none for deployed intended-channel confirmation; protected web delivery is at ac3ef565","next_gate":"G7 record","status":"PASS_DEPLOYED_INTENDED_CHANNEL"},

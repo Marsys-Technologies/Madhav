@@ -10,6 +10,7 @@ import {
   probeSourceQueryAvailabilityContract,
 } from './overlay_loader'
 import { getPinnedCapabilityKnowledgeSnapshot } from './snapshot'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
 
 const claimHash = 'a'.repeat(64)
 const snapshot = {
@@ -497,6 +498,21 @@ describe('source-query parameter binding', () => {
     expect(query).toHaveBeenCalledExactlyOnceWith(contextContract.sql, ['chart-1'])
   })
 
+  it('fails temporal availability closed when its source or active build is unavailable', async () => {
+    const temporalContract = getSourceQueryAvailabilityContract('source-query:query-temporal-activation:v1')!
+    const query = vi.fn()
+
+    await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', null, query)).resolves.toEqual([
+      'source-query:query-temporal-activation:v1 requires an active completed build context for the selected chart.',
+    ])
+    expect(query).not.toHaveBeenCalled()
+
+    query.mockRejectedValueOnce(new Error('permission denied'))
+    await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', 'build-1', query)).resolves.toEqual([
+      'source-query:query-temporal-activation:v1 could not execute its authenticated source query.',
+    ])
+  })
+
   it('preserves row-bound chart-and-active-build query parameters', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const rowBoundContract = {
@@ -515,10 +531,11 @@ describe('source-query parameter binding', () => {
 
 describe('chart capability overlay loader', () => {
   it.each([
-    ['scu.catalog.query_yoga_catalog', 'registry:marsys://tool/L0/query_yoga_catalog', 'brahma_yoga_catalog'],
-    ['scu.catalog.query_dosha_catalog', 'registry:marsys://tool/L0/query_dosha_catalog', 'brahma_dosha_catalog'],
-    ['scu.catalog.query_compendium_index', 'registry:marsys://tool/L0/query_compendium_index', 'brahma_compendium_index'],
-  ])('treats a successful reviewed source query with zero rows as available for %s', async (scuId, bindingId, relation) => {
+    ['scu.catalog.query_yoga_catalog', 'registry:marsys://tool/L0/query_yoga_catalog', 'brahma_yoga_catalog', []],
+    ['scu.catalog.query_dosha_catalog', 'registry:marsys://tool/L0/query_dosha_catalog', 'brahma_dosha_catalog', []],
+    ['scu.catalog.query_compendium_index', 'registry:marsys://tool/L0/query_compendium_index', 'brahma_compendium_index', []],
+    ['scu.kala.temporal_activation', 'registry:marsys://tool/L3/query_temporal_activation', 'kala_activation', ['chart-1']],
+  ])('treats a successful reviewed source query with zero rows as available for %s', async (scuId, bindingId, relation, expectedParams) => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const sourceScu = sourceSnapshot.scus.find((scu) => scu.scu_id === scuId)!
     mocks.query.mockImplementation(async (sql) => sql.includes('WITH latest_build AS')
@@ -537,13 +554,14 @@ describe('chart capability overlay loader', () => {
     })
     const sourceCall = mocks.query.mock.calls.find((call) => call[0].includes(`FROM ${relation}`))
     expect(sourceCall?.[0]).toContain(`FROM ${relation}`)
-    expect(sourceCall?.[1]).toEqual([])
+    expect(sourceCall?.[1]).toEqual(expectedParams)
   })
 
   it.each([
     ['scu.catalog.query_yoga_catalog', 'source-query:query-yoga-catalog:v1', 'brahma_yoga_catalog'],
     ['scu.catalog.query_dosha_catalog', 'source-query:query-dosha-catalog:v1', 'brahma_dosha_catalog'],
     ['scu.catalog.query_compendium_index', 'source-query:query-compendium-index:v1', 'brahma_compendium_index'],
+    ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'kala_activation'],
   ])('keeps %s dark when its authenticated source query fails', async (scuId, contractId, relation) => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const sourceScu = sourceSnapshot.scus.find((scu) => scu.scu_id === scuId)!
@@ -599,19 +617,21 @@ describe('chart capability overlay loader', () => {
       .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/test'] })
   })
 
-  it('keeps generated temporal bindings dark while admitting alternate bindings with complete exact contracts', async () => {
+  it('admits generated temporal activation from its own source query while admitting alternate bindings with complete exact contracts', async () => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const temporal = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')!
     const wealth = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.finance.prosperity_assessment')!
     const yoga = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.yoga.firing_and_cancellation')!
-    const rows = [temporal, wealth, yoga].flatMap((scu) => (scu.producer_output_claims ?? [])
+    const rows = [wealth, yoga].flatMap((scu) => (scu.producer_output_claims ?? [])
       .filter((claim) => claim.disposition === 'reviewed_output')
       .map((claim) => receipt(claim.asset_id, { output_digest_spec_sha256: claim.output_digest_spec_sha256 })))
-    mocks.query.mockResolvedValue({ rows })
+    mocks.query.mockImplementation(async (sql) => sql.includes('FROM kala_activation')
+      ? { rows: [] }
+      : { rows })
 
     const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
     expect(availability.find((item) => item.scu_id === temporal.scu_id))
-      .toMatchObject({ state: 'dark', available_binding_ids: [] })
+      .toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L3/query_temporal_activation'] })
     expect(availability.find((item) => item.scu_id === wealth.scu_id))
       .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L-DOMAIN/assess_wealth'] })
     expect(availability.find((item) => item.scu_id === yoga.scu_id))

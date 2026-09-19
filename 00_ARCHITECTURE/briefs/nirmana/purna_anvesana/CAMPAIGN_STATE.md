@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.22.0
+version: 0.29.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0095
-last_updated: 2026-09-17T23:35:00+05:30
+last_event: PA-E0104
+last_updated: 2026-09-19T14:27:10+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -20,20 +20,111 @@ layer state, queue or authority.
 
 ## Current position
 
-- Successor execution: the Native approved the complete planner and inquiry product-delivery plan
-  at `docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md`; its exact transferred
-  copy has SHA-256 `6cc17144f3877bdac7048f9a7cba5caf15e1f7ca59306289c0f13ec94eb1b666`. Sole execution
-  ownership is task `01a0afe3-2832-7692-b133-d1e6b6bfcdf6` on
-  `codex/purna-product-completion-v2`, created from protected main
-  `0f2d9cc0259ac5983fda7f5e10d75ce189e7440f`, which contains PR #2626 merge
-  `079e77ef92f25217921f02e4956162f43fe3f824`. The fixed release denominator is the original
-  five cases/34 route obligations plus 30 product scenarios across Portal, managed MCP and
-  governed raw MCP. Product delivery now uses real collection, deterministic gates and independent
-  automated assessment; human-expert empirical research remains separately `NOT_RUN` and is not a
-  product-release gate. The predecessor is stood down and preserved. The shared data-plane boundary
-  is idle, but a protected environment owner must replace the structurally unusable
-  `DATA_PLANE_ADMIN_DATABASE_URL` with a valid password-bearing administrator URL before a later
-  data-plane cutover; no secret was accessed, changed or reconstructed here.
+- Production-delivery priority redirect: the feature frontier is quiesced at pushed commit
+  `34e3abf6b10039bf35677a8cb8995cc2760f4fd9`. Read-only refresh confirms deploy run
+  `35419951080` concluded success while bootstrap, routine migration, web, MCP, and pipeline-image
+  mutation jobs all skipped. Production MCP still serves
+  `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected `origin/main` is 65 commits ahead, with
+  321 runtime-source files changed (+31,821/-6,564). Live database status through the existing
+  authorized route is `data_plane=marked`, `nirmana=marked`, `purna=rearm_required`; migration
+  1040 is absent and the one-shot bootstrap role is absent. The deploy run's protected isolation
+  inspection passed as `strict`. The existing heartbeat was updated in place. Until the earned
+  signal is repaired, the one-shot Pūrṇa lifecycle completes, and actual ready revisions plus
+  environment SHAs are verified, wealth/capability Batch 5 remains paused.
+
+- Earned deployment signal repaired at implementation commit
+  `9d4699ddb2fba792839a1cebdcfd4d5662b0a6e5`: the `changes` job now derives a web signal from
+  production's deployed revision, and the terminal `deployment-outcome` job runs under `always()`
+  to require every source-implied migration and deploy mutation to have succeeded. A fixture shaped
+  like false-green run `35419951080` proves skipped migration, web, MCP, and pipeline mutations now
+  block the workflow. Focused verification passes 81/81 tests plus TypeScript and diff checks;
+  independent review found no HIGH or MEDIUM issue and its one LOW proof gap was repaired before
+  commit. This is source proof only until the commit is protected, exercised by the deploy workflow,
+  and followed by live ready-revision and environment-SHA verification.
+
+- Successor execution: task `01a0b7d8-9a90-74f3-aab9-80014919f8b2` is the sole active owner on
+  `codex/purna-product-completion-v3`, created from verified protected
+  `origin/main@4adcf04978757d2f8e8157492f1922f8b5fb92e3`. The predecessor is stood down; its
+  handoff is preserved verbatim and the preparation head `95242400...` is distinguished from its
+  final documentation commit `0f68030...`. The approved plan and frozen denominator remain the
+  original five cases/34 route obligations plus 30 product scenarios across Portal, managed MCP
+  and governed raw MCP. Human-expert empirical research remains separately `NOT_RUN`.
+
+- First successor source packet: implementation/artifact head `7109b8e749c8e1b331fb87b4366d48c51b11e5aa`
+  admits temporal activation through its exact chart-scoped source query, validates finite temporal
+  window closure without pretending it is repeatable pagination, rejects invalid/reversed windows,
+  preserves fact-accountability on complete and empty results, and ports the exact
+  `read_sutravali_rule` source contract. The regenerated snapshot remains 182 SCUs / 186 executable
+  bindings and now has 154 availability contracts, 24 uncovered executable bindings, 8 deliberate-
+  dark dispositions, and one reviewed bounded-window closure. Focused verification passes 340 tests
+  with 4 DB-gated skips; TypeScript and both code-generation freshness checks pass. Independent
+  review found no remaining HIGH, MED, or LOW issue. This is source-ready evidence only: classical
+  texts, judgment, contradictions, wealth/classical exhaustion, candidate receipts, protected
+  deployment, and all three-door automated acceptance remain open. Draft PR #2682 is the active
+  review surface. Historical stacked PR #2676 is closed as superseded; only its Sutravali
+  micro-delta was retained after current-main reconciliation.
+
+- Second successor source packet: reviewed implementation head `3871c5bf41941ea96c9e67a8cc4584ede2fc8927`
+  and evidence-artifact commit `c62dfefebcef47cc8d318780cc143d87e57c7db8` admit
+  `query_classical_texts` through its exact global source query without claiming pagination
+  exhaustion, and admit `query_contradictions` through an exact chart-and-active-build query.
+  Contradictions are deterministically ordered, build-fenced, returned with generation provenance,
+  and accounted through the reviewed `content.contradictions` collection; capped discoveries and
+  anomalies remain supplemental and non-closure-bearing. `judgment_query` remains deliberately
+  dark. The regenerated snapshot remains 182 SCUs / 186 executable bindings and now has 156
+  availability contracts, 24 uncovered executable bindings, and 6 deliberate-dark dispositions.
+  Full platform verification passes 1,136 files / 12,309 tests, with 704 skipped and 2 todo;
+  TypeScript, both code-generation checks, targeted route baselines, and independent review pass.
+  This is source-ready evidence only: classical pagination exhaustion, judgment, the remaining
+  availability deficit, three-door candidate/live execution, protected release, and automated
+  product acceptance remain open.
+
+- Third successor source packet: event PA-E0099 was independently refuted after review found that
+  `chart_facts.build_id` is UUID but its new build fences compared it to text. No push, candidate/live
+  collection, merge, or deployment preceded correction. Repaired implementation head
+  `ecb8dd174c3843cd022ab42a3d70bfb342251d48` and evidence head
+  `90a2b8b911631cfd403c40b68ddfb3abeb56bfa9` supersede that invalid milestone and admit
+  `judgment_query` only when the selected chart's latest
+  completed build has the required D2 wealth constant and default-ayanamsha Lagna fact. Every
+  judgment fact, child query, page/count path, dasha enrichment, and domain-reranking cache is
+  fenced to that build; `as_of_date` now crosses the inquiry compiler and full MCP door. A typed
+  non-paginated closure contract keeps malformed, contradictory, sampled, unserved, budget-trimmed,
+  or materially trimmed checklists open. The current wealth checklist remains honestly
+  salience-sampled, so canonical wealth completion is still `INCOMPLETE`; admission is not being
+  misreported as response closure. The regenerated snapshot remains 182 SCUs / 186 executable
+  bindings and now has 157 availability contracts, 24 uncovered executable bindings, and 5
+  deliberate-dark dispositions. Full platform verification passes 1,140 files / 12,350 tests,
+  with 704 skipped and 2 todo; lint has 0 errors / 590 inherited warnings, TypeScript and both
+  code-generation checks pass, the fact-category scanner reports 62/62 reviewed violations with
+  zero new findings, the governed MCP bridge subset passes 23/23, and independent review found no
+  remaining HIGH, MED, or LOW issue. This remains source-ready evidence only: classical pagination
+  exhaustion, wealth checklist completion, the remaining catalogue deficit, candidate receipts,
+  protected release, and live 5+30 three-door automated acceptance remain open.
+
+- Fourth successor source packet: implementation head `3046dabb6fc61870bb86fce0a31e872f3226194b`,
+  generated-artifact head `54086f347`, and evidence head
+  `dd3e189ed4b6f81aaf6d20a586290450705c7947` add a signed, opaque, receipt-pinned
+  `query_classical_texts` cursor. Continuations pin the normalized route and filters, ranking mode,
+  embedding hash, and exact current fresh/proven global `bg_texts` receipt; receipt replacement,
+  ambiguity, digest/spec/partition/version changes, ranking drift, forged cursors, and raw nonzero
+  offsets fail closed. Inquiry and full MCP preserve the reviewed `content.citations` exhaustion
+  contract and forward the cursor byte-for-byte. The current snapshot remains 182 SCUs / 186
+  executable bindings / 157 availability contracts / 24 uncovered bindings / 5 deliberate-dark
+  dispositions; 5 of 96 reviewed paginated descriptors are now exhaustible. Full platform
+  verification passes 1,140 files / 12,368 tests, with 704 skipped and 2 todo; lint has 0 errors /
+  590 inherited warnings, TypeScript and both code-generation checks pass, the fact-category
+  scanner reports 62/62 reviewed violations with zero new findings, route goldens pass 56/56, and
+  independent review found no remaining HIGH, MED, or LOW issue. `DATABASE_URL` was absent, so no
+  real PostgreSQL multi-page traversal or live exhaustion is claimed. Wealth checklist closure,
+  the remaining catalogue deficit, candidate receipts, protected release, and live 5+30
+  three-door automated acceptance remain open.
+
+- Refreshed live boundary: `amjis-web` and `amjis-mcp` still serve
+  `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected run `35419951080` skipped all deployment
+  jobs and is not release evidence. A separate authorized security/runtime owner must rotate or
+  revoke the literal legacy watchdog secret retained by tagged revision `amjis-web-02826-huf` and
+  audit tag/revision exposure. The value was not read or recorded; no secret, IAM, tag, traffic, or
+  runtime mutation occurred.
 
 - Product acceptance denominator: the protocol now freezes the full 30-case six-family matrix
   from approved-plan §13 (wealth, career, marriage, family, health, and life events; each with

@@ -1215,11 +1215,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   server.tool(
     'ref_classical_citation_get',
     '[Phase-1 alias] Retrieve classical citations from L0 (same as get_classical_citation).',
-    { keyword: z.string().optional(), topic: z.string().optional(), author: z.string().optional(), ...GlobalBase },
-    async ({ keyword, topic, author, limit, offset }) => {
+    { keyword: z.string().optional(), topic: z.string().optional(), author: z.string().optional(), page_cursor: z.string().optional(), ...GlobalBase },
+    async ({ keyword, topic, author, limit, offset, page_cursor }) => {
       try {
         const data = await callRegistryCap('marsys://tool/L0/query_classical_texts', {
           keyword, topic, author, limit: limit ?? 50, offset: offset ?? 0,
+          ...(page_cursor != null ? { page_cursor } : {}),
         }, principal)
         return dualOutput(data, 'ref_classical_citation_get')
       } catch (err) { return errOut('ref_classical_citation_get', String(err)) }

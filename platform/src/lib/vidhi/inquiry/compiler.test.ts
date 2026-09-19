@@ -311,6 +311,38 @@ describe('versioned inquiry compiler', () => {
     expect(validateInquiryContract(contract)).toEqual({ valid: true, errors: [] })
   })
 
+  it('forwards a valid temporal anchor to judgment because its selected binding declares as_of_date', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Judge the second house for wealth',
+      scope_tuple: { ...wealthScope, intent: 'house_analysis', horizon: 'current' },
+      temporal_anchor_date: '2026-09-15',
+    })
+    const judgment = contract.plan_items.find((item) => item.scu_id === 'scu.catalog.judgment_query')
+
+    expect(judgment).toMatchObject({
+      state: 'ready',
+      binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
+      args: { chart_id: 'chart-fixture', domain: 'wealth', as_of_date: '2026-09-15' },
+    })
+    expect(judgment?.argument_resolution).toBeUndefined()
+  })
+
+  it('does not inject the temporal anchor into a binding that does not declare as_of_date', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Complete wealth outlook',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const divisionals = contract.plan_items.find((item) => item.scu_id === 'scu.catalog.get_divisionals')
+
+    expect(divisionals?.args).not.toHaveProperty('as_of_date')
+    expect(divisionals?.argument_resolution).toBeUndefined()
+  })
+
   it('does not authorize a binding that the chart/build overlay leaves dark', () => {
     const overlay = compileChartCapabilityOverlay({ snapshot, chart_id: 'chart-fixture', build_id: 'build-1', evidence: [], generated_at: '2026-09-13T00:00:00.000Z' })
     const contract = compileInquiryContract({ snapshot, overlay, chart_id: 'chart-fixture', question: 'wealth outlook', scope_tuple: wealthScope })

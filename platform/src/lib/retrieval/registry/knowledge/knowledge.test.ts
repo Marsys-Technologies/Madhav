@@ -4,7 +4,7 @@ import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compil
 import { compileChartCapabilityOverlay, assertOverlayCompatibility } from './overlay'
 import { inspectSemanticCapability, searchSemanticCapabilities } from './query'
 import type { CapabilityKnowledgeSnapshot, SemanticCapabilityUnit } from './types'
-import { getDescriptorEditorialReview } from './editorial_review'
+import { getDescriptorEditorialReview, getDescriptorPrimaryBindingDetails } from './editorial_review'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 import type { CapabilityDescriptor } from '../types'
 import { buildPlannerCapabilityKnowledgeProjection } from './planner_projection'
@@ -63,20 +63,20 @@ describe('planner capability knowledge', () => {
   it('carries the full reviewed pagination denominator without inventing exhaustion', () => {
     const routes = estateCensus.details.descriptor_route_contracts
     expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(96)
-    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(4)
-    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(92)
+    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(5)
+    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(91)
     expect(snapshot.census).toMatchObject({
       reviewed_pagination_dispositions: 186,
       reviewed_paginated_descriptors: 96,
-      exhaustible_reviewed_descriptors: 4,
-      non_exhaustible_descriptors: 92,
+      exhaustible_reviewed_descriptors: 5,
+      non_exhaustible_descriptors: 91,
     })
     const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
     expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
     const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
     expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(93)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(92)
   })
 
   it('derives reviewed pagination only from an evidence-bearing continuation contract', () => {
@@ -96,6 +96,11 @@ describe('planner capability knowledge', () => {
     expect(bindingById.get('registry:marsys://tool/L3/query_temporal_activation')).toMatchObject({
       pagination_verified: false,
       result_collection_verified: true,
+      bounded_window_closure: {
+        receipt_path: 'content.temporal_closure',
+        closure_version: 'temporal-activation-closure-v1',
+        collection: 'activations',
+      },
     })
 
     const changedCatalog = catalog.map((cap) => {
@@ -127,7 +132,7 @@ describe('planner capability knowledge', () => {
     expect(finance?.bindings.every((binding) => binding.executable)).toBe(true)
     expect(yoga?.bindings.find((binding) => binding.relation === 'primary')?.public_tool_name).toBe('ganita_yoga_firings_get')
     expect(snapshot.census.publicly_named_bindings).toBeGreaterThan(0)
-    expect(snapshot.census.reviewed_output_claims).toBe(13)
+    expect(snapshot.census.reviewed_output_claims).toBe(14)
     expect(snapshot.scus.flatMap((scu) => scu.producer_output_claims ?? [])
       .filter((claim) => claim.disposition === 'reviewed_output')
       .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
@@ -162,7 +167,14 @@ describe('planner capability knowledge', () => {
       })
     }
 
-    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')?.availability_contracts).toBeUndefined()
+    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')?.availability_contracts).toEqual([{
+      binding_id: 'registry:marsys://tool/L3/query_temporal_activation',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:query-temporal-activation:v1',
+        scope: 'chart',
+      })],
+    }])
   })
 
   it('replaces every descriptor-derived stub with a source-linked editorial unit', () => {
@@ -279,8 +291,8 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(174)
-    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(8)
+    expect(reviewed).toHaveLength(173)
+    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(9)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)
@@ -370,6 +382,25 @@ describe('planner capability knowledge', () => {
       family_id: 'prospective_ledger',
       domains: ['evidence_quality', 'timing'],
       concepts: expect.arrayContaining(['filed_prediction', 'falsifier', 'prediction_lifecycle', 'source_provenance']),
+    })
+  })
+
+  it('publishes the reviewed classical cursor, collection, trim, and exact ordering contract', () => {
+    expect(getDescriptorPrimaryBindingDetails('query_classical_texts')).toEqual({
+      pagination: 'cursor',
+      pagination_contract: {
+        request_position_path: 'page_cursor', request_limit_path: 'limit', effective_maximum: 200,
+        result_collection_path: 'content.citations', next_path: 'content.next_page_cursor',
+        more_available_path: 'content.more_available',
+        deterministic_order: [
+          'hybrid:combined_score DESC', 'hybrid:text_id ASC', 'hybrid:chapter ASC NULLS LAST',
+          'hybrid:verse_ref ASC NULLS LAST', 'hybrid:chunk_id ASC', 'hybrid:id ASC',
+          'legacy:text_id ASC', 'legacy:chapter ASC NULLS LAST', 'legacy:verse_start ASC NULLS LAST',
+          'legacy:chunk_id ASC', 'legacy:id ASC',
+        ],
+        material_trim_paths: ['budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated'],
+      },
+      route_evidence: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler',
     })
   })
 

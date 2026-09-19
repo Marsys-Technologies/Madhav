@@ -7,6 +7,7 @@
 import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
+  SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
 
@@ -71,40 +72,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],
   },
-  judgment_query: {
-    reason: 'The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
-      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
-    ],
-  },
-  query_classical_texts: {
-    reason: 'The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler\'s corpus query and ranking response.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286',
-      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27',
-      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44',
-    ],
-  },
-  query_contradictions: {
-    reason: 'Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala\'s reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140',
-      'platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65',
-      'platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71',
-    ],
-  },
   query_domain_reading: {
     reason: 'The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.',
     source_refs: [
@@ -126,7 +93,59 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
   },
 }
 
+const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {
+  query_classical_texts: {
+    pagination: 'cursor',
+    pagination_contract: {
+      request_position_path: 'page_cursor',
+      request_limit_path: 'limit',
+      effective_maximum: 200,
+      result_collection_path: 'content.citations',
+      next_path: 'content.next_page_cursor',
+      more_available_path: 'content.more_available',
+      deterministic_order: [
+        'hybrid:combined_score DESC', 'hybrid:text_id ASC', 'hybrid:chapter ASC NULLS LAST',
+        'hybrid:verse_ref ASC NULLS LAST', 'hybrid:chunk_id ASC', 'hybrid:id ASC',
+        'legacy:text_id ASC', 'legacy:chapter ASC NULLS LAST', 'legacy:verse_start ASC NULLS LAST',
+        'legacy:chunk_id ASC', 'legacy:id ASC',
+      ],
+      material_trim_paths: [
+        'budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated',
+      ],
+    },
+    route_evidence: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler',
+  },
+  judgment_query: {
+    pagination: 'none',
+    non_paginated_closure: {
+      closure_version: 'judgment-reading-checklist-v1',
+      checklist_path: 'reading_checklist',
+      material_trim_paths: [
+        'budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated',
+      ],
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#reading_checklist',
+    },
+    route_evidence: 'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
+  },
+}
+
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  query_classical_texts: {
+    producer_output_claims: [{
+      asset_id: 'bg_texts',
+      component: 'classical_texts and classical_text_chunks',
+      output_digest_spec_sha256: '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_texts',
+      spec_sha256: '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',
+    }],
+  },
   get_positions: {
     producer_output_claims: [{
       asset_id: 'ga_positions',
@@ -467,6 +486,12 @@ for (const [familyId, names] of Object.entries(MEMBERS)) {
 
 export function getDescriptorEditorialReview(name: string): DescriptorEditorialFamily | null {
   return REVIEW_BY_NAME.get(name) ?? null
+}
+
+export function getDescriptorPrimaryBindingDetails(
+  name: string,
+): SemanticCapabilityDeclaration['primary_binding_details'] | undefined {
+  return PRIMARY_BINDING_DETAILS[name]
 }
 
 export function getReviewedDescriptorNames(): readonly string[] {

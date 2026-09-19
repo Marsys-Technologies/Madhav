@@ -7,7 +7,9 @@ import {
   sourceQueryAvailabilityContractFingerprint,
   sourceQueryParameterBindingMatchesScope,
 } from './source_query_availability'
+import { probeSourceQueryAvailabilityContract } from './overlay_loader'
 import type { CapabilityKnowledgeSnapshot } from './types'
+import type { OverlayQueryRow } from './overlay_loader'
 
 const catalog = getCatalog()
 const snapshot = compileCapabilityKnowledge(catalog, '2026-09-17T00:00:00.000Z')
@@ -19,6 +21,10 @@ const derivedLeg = snapshot.scus.find((scu) => scu.scu_id !== source.scu_id
   && (scu.availability_contracts?.length ?? 0) > 0
   && scu.bindings.some((binding) => binding.executable))!
 const derivedLegBindingId = derivedLeg.bindings.find((binding) => binding.executable)!.binding_id
+
+function normalizedSql(sql: string): string {
+  return sql.replace(/\s+/g, ' ').trim()
+}
 
 function withContracts(availability_contracts: unknown): CapabilityKnowledgeSnapshot {
   return {
@@ -68,6 +74,7 @@ describe('binding availability contracts', () => {
   })
   it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
     expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
+    expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_and_active_build')).toBe(true)
     expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)
     expect(sourceQueryParameterBindingMatchesScope('global', 'global_with_chart_fallback')).toBe(true)
   })
@@ -123,16 +130,19 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
-    ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
-    ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'platform/migrations/ws2_l0_texts.sql:42-65'],
-  ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
+    ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'global', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
+    ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'global', 'platform/migrations/ws2_l0_texts.sql:42-65'],
+    ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'chart', 'query_temporal_activation.ts:176-620'],
+    ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts#receiptBoundarySql'],
+    ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:156-269'],
+  ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
-    const requirement = scu.availability_contracts![0]!.requirements[0]!
+    const requirement = scu.availability_contracts![0]!.requirements.find((candidate) => candidate.kind === 'source_query')!
 
     expect(requirement).toMatchObject({
       kind: 'source_query',
       contract_id: contractId,
-      scope: 'global',
+      scope,
       contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
       source_ref: expect.stringContaining(schemaRef),
     })
@@ -146,6 +156,7 @@ describe('binding availability contracts', () => {
   it.each([
     ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
     ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
+    ['source-query:read-sutravali-rule:v1', 'FROM sutravali_rules r', 'WHERE r.rule_id::text = NULL::text'],
   ])('keeps %s as an exact, zero-row-safe handler source probe', (contractId, relationMarker, orderMarker) => {
     const contract = getSourceQueryAvailabilityContract(contractId)!
 
@@ -154,6 +165,217 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain(relationMarker)
     expect(contract.sql).toContain(orderMarker)
     expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it('requires a current fresh proven bg_texts receipt for classical search while preserving contradiction closure', () => {
+    const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
+    const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
+    const classicalSql = normalizedSql(classical.sql)
+
+    expect(classical).toMatchObject({ scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist' })
+    for (const marker of [
+      'FROM asset_provenance_receipts receipt', 'JOIN asset_freshness freshness',
+      'JOIN asset_output_digest_specs digest_spec', "receipt.asset_id = 'bg_texts'",
+      'receipt.chart_id IS NULL', "receipt.scope_key = '__global__'", "receipt.receipt_state = 'proven'",
+      'receipt.output_digest IS NOT NULL', "freshness.freshness_state = 'fresh'",
+      "receipt.output_digest_spec_sha256 = '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6'",
+      'digest_spec.retired_at IS NULL', 'COUNT(*)::int AS eligible_receipt_count',
+      'FROM build_run_assets asset', "asset.asset_id = 'bg_texts'",
+      "run.state IN ('planned', 'running', 'paused')", "asset.state IN ('queued', 'building')",
+      'eligible_receipt_count = 1', 'NOT fence.replacement_in_progress', 'source_query_available',
+    ]) {
+      expect(classical.sql).toContain(marker)
+    }
+    for (const marker of [
+      'hybrid_source_probe AS (', 'fallback_source_probe AS (', 'list_source_probe AS (',
+      'c.embedding <=> NULL::vector', "similarity(c.content_en, '')",
+      "c.content_en ILIKE ''", 'c.verse_start',
+      'c.content_summary', 'c.source_citation', 'c.tradition_school', 'c.topics',
+      'ORDER BY combined_score DESC, text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC LIMIT 0',
+      'ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC LIMIT 0',
+      'ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC LIMIT 0',
+      'handler_source_probe AS ( SELECT (SELECT COUNT(*) FROM hybrid_source_probe) AS hybrid_probe_rows, (SELECT COUNT(*) FROM fallback_source_probe) AS fallback_probe_rows, (SELECT COUNT(*) FROM list_source_probe) AS list_probe_rows )',
+      'CROSS JOIN handler_source_probe handler_probe',
+      'handler_probe.hybrid_probe_rows = 0',
+      'handler_probe.fallback_probe_rows = 0',
+      'handler_probe.list_probe_rows = 0',
+    ]) {
+      expect(classicalSql).toContain(marker)
+    }
+
+    expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available' })
+    for (const marker of ['SELECT $2::uuid AS build_id', 'JOIN active_build', 'FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
+      expect(contradictions.sql).toContain(marker)
+    }
+
+    const classicalScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_classical_texts')!
+    const contradictionScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_contradictions')!
+    expect(classicalScu.availability_dispositions ?? []).toEqual([])
+    expect(classicalScu.primary_binding_details).toMatchObject({
+      pagination: 'cursor',
+      pagination_contract: {
+        request_position_path: 'page_cursor', result_collection_path: 'content.citations',
+        next_path: 'content.next_page_cursor', more_available_path: 'content.more_available',
+      },
+    })
+    expect(contradictionScu.availability_dispositions ?? []).toEqual([])
+    expect(contradictionScu.bindings[0]).toMatchObject({
+      pagination: 'none',
+      result_collection_verified: true,
+      pagination_contract: { result_collection_path: 'content.contradictions', deterministic_order: ['combined_salience DESC NULLS LAST', 'contradiction_id ASC'] },
+    })
+  })
+
+  it('treats missing classical readiness rows as unavailable while preserving legacy zero-row availability', async () => {
+    const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
+    const yoga = getSourceQueryAvailabilityContract('source-query:query-yoga-catalog:v1')!
+    const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
+    const successfulZeroRows = async () => ({ rows: [] })
+
+    await expect(probeSourceQueryAvailabilityContract(classical, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
+      'source-query:query-classical-texts:v1 returned no required readiness rows.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(yoga, 'chart-a', null, successfulZeroRows)).resolves.toEqual([])
+    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
+      'source-query:query-contradictions:v1 cannot bind the selected chart to an active completed build.',
+    ])
+    const observedParams: unknown[][] = []
+    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', 'build-a', async (_sql, params) => {
+      observedParams.push(params ?? [])
+      throw new Error('selected relation unavailable')
+    })).resolves.toEqual([
+      'source-query:query-contradictions:v1 could not execute its authenticated source query.',
+    ])
+    expect(observedParams).toEqual([['chart-a', 'build-a']])
+  })
+
+  it('admits judgment only through its exact required-row readiness contract', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    const judgment = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.judgment_query')!
+
+    expect(contract).toMatchObject({
+      descriptor_name: 'judgment_query',
+      capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
+      scope: 'chart',
+      parameter_binding: 'chart_and_active_build',
+      empty_semantics: 'required_rows_must_exist',
+    })
+    expect(normalizedSql(contract.sql)).toBe(normalizedSql(`
+      WITH active_build AS (
+        SELECT id
+          FROM build_runs
+         WHERE chart_id = $1::uuid AND state = 'completed'
+         ORDER BY ended_at DESC NULLS LAST, id DESC
+         LIMIT 1
+      )
+      SELECT 1 AS source_query_available
+        FROM active_build b
+       WHERE b.id = $2::uuid
+         AND EXISTS (
+           SELECT 1
+             FROM brahma_vichara_constants c
+            WHERE c.constant_key = 'operative_vargas'
+              AND c.value_jsonb #> '{wealth,vargas}' @> '["D2"]'::jsonb
+         )
+         AND EXISTS (
+           SELECT 1
+             FROM chart_facts f
+            WHERE f.chart_id = $1::uuid
+              AND f.build_id = b.id
+              AND f.build_id = $2::uuid
+              AND f.ayanamsha_id = 'lahiri_chitrapaksha'
+              AND f.fact_subject = 'LAGNA'
+              AND f.fact_category = 'graha_position'
+              AND f.fact_key = 'sign'
+              AND f.fact_value_text IS NOT NULL
+         )
+       LIMIT 1
+    `))
+    expect(judgment.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
+      requirements: [expect.objectContaining({
+        kind: 'source_query', contract_id: contract.contract_id, scope: 'chart',
+      })],
+    })])
+    expect(judgment.availability_dispositions ?? []).toEqual([])
+    expect(judgment.bindings[0]).toMatchObject({
+      pagination: 'none',
+      non_paginated_closure: {
+        closure_version: 'judgment-reading-checklist-v1',
+        checklist_path: 'reading_checklist',
+      },
+    })
+  })
+
+  it.each([
+    ['operative-vargas row missing', { operativeVargas: false, wealthD2: true, lagnaSign: true }],
+    ['wealth profile missing D2', { operativeVargas: true, wealthD2: false, lagnaSign: true }],
+    ['active-build lagna sign missing', { operativeVargas: true, wealthD2: true, lagnaSign: false }],
+  ])('fails judgment readiness closed when %s', async (_label, prerequisites) => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    await expect(probeSourceQueryAvailabilityContract(
+      contract,
+      'chart-a',
+      'build-a',
+      async () => ({
+        rows: prerequisites.operativeVargas && prerequisites.wealthD2 && prerequisites.lagnaSign
+          ? [{ source_query_available: 1 } as unknown as OverlayQueryRow]
+          : [],
+      }),
+    )).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+  })
+
+  it('fails judgment readiness closed when the required-row query succeeds with zero rows', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    await expect(probeSourceQueryAvailabilityContract(
+      contract,
+      'chart-a',
+      'build-a',
+      async () => ({ rows: [] }),
+    )).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+  })
+
+  it('accepts judgment readiness only when the exact probe returns its required row', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    const observed: Array<{ sql: string; params: unknown[] }> = []
+    await expect(probeSourceQueryAvailabilityContract(
+      contract,
+      'chart-a',
+      'build-a',
+      async (sql, params = []) => {
+        observed.push({ sql, params })
+        return { rows: [{ source_query_available: 1 } as unknown as OverlayQueryRow] }
+      },
+    )).resolves.toEqual([])
+    expect(observed).toEqual([{ sql: contract.sql, params: ['chart-a', 'build-a'] }])
+  })
+
+  it('fails judgment readiness closed without an active build, for the wrong chart/build pair, and on SQL failure', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
+    const query = async (_sql: string, params: unknown[] = []) => ({
+      rows: params[0] === 'chart-a' && params[1] === 'build-a'
+        ? [{ source_query_available: 1 } as unknown as OverlayQueryRow]
+        : [],
+    })
+
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', null, query)).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 cannot bind the selected chart to an active completed build.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-b', 'build-a', query)).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-b', query)).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-a', async () => {
+      throw new Error('permission denied')
+    })).resolves.toEqual([
+      'source-query:judgment-query-readiness:v1 could not execute its authenticated source query.',
+    ])
   })
 
   it.each([

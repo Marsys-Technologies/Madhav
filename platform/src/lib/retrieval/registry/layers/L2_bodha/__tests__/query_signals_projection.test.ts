@@ -12,6 +12,8 @@
 import { describe, it, expect, vi } from 'vitest'
 
 const CHART_A = '482012f1-710e-4a25-994a-93821f5871aa'
+const BUILD_A = '11111111-1111-4111-8111-111111111111'
+const BUILD_B = '22222222-2222-4222-8222-222222222222'
 
 // A representative row carrying every column the internal pipeline + a few extras touch.
 const FAKE_ROW: Record<string, unknown> = {
@@ -116,5 +118,26 @@ describe('query_signals — projection facet (WP-1.3(g) / LCA-7)', () => {
     expect(signalSelect).toContain('signal_headline_text')
     // served row is projected down to the requested single column
     expect(Object.keys(servedSignal(result))).toEqual(['signal_headline_text'])
+  })
+
+  it('fences page/count SQL and partitions the response cache by build_id', async () => {
+    vi.mocked(mockQuery).mockClear()
+
+    await querySignalsCapability.handler({ chart_id: CHART_A, build_id: BUILD_A, projection: ['signal_id'] }, {})
+    await querySignalsCapability.handler({ chart_id: CHART_A, build_id: BUILD_B, projection: ['signal_id'] }, {})
+
+    const buildScopedCalls = vi.mocked(mockQuery).mock.calls.filter(([sql]) =>
+      String(sql).includes('FROM bodha_msr_signals m'),
+    )
+    const pageCalls = buildScopedCalls.filter(([sql]) =>
+      String(sql).includes('ORDER BY m.computed_salience DESC NULLS LAST'),
+    )
+    expect(pageCalls).toHaveLength(2) // a cache key without build_id would have returned the second call from BUILD_A
+    for (const [sql, params] of buildScopedCalls) {
+      expect(String(sql)).toMatch(/m\.build_id = \$\d+::uuid/)
+      expect(params).toEqual(expect.arrayContaining([expect.stringMatching(/^([12])\1{7}-/)]))
+    }
+    expect((pageCalls[0]?.[1] as unknown[])).toContain(BUILD_A)
+    expect((pageCalls[1]?.[1] as unknown[])).toContain(BUILD_B)
   })
 })

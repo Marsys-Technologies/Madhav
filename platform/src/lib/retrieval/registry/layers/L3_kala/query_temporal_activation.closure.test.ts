@@ -59,6 +59,19 @@ function temporalBinding(): SemanticCapabilityBinding {
     .bindings.find((binding) => binding.binding_id === 'registry:marsys://tool/L3/query_temporal_activation')!
 }
 
+function mutableRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} fixture is not an object`)
+  return value as Record<string, unknown>
+}
+
+function mutableContent(raw: Record<string, unknown>): Record<string, unknown> {
+  return mutableRecord(raw['content'], 'content')
+}
+
+function mutableClosure(raw: Record<string, unknown>): Record<string, unknown> {
+  return mutableRecord(mutableContent(raw)['temporal_closure'], 'temporal closure')
+}
+
 const wealthScope: ScopeTuple = {
   intent: 'wealth_deepdive',
   domains: ['wealth'],
@@ -133,6 +146,88 @@ describe('query_temporal_activation bounded temporal closure', () => {
       .toContain('required inquiry must remain unresolved')
   })
 
+  it('admits only a complete, exact handler closure as bounded-window exhaustion', async () => {
+    routeQueries({ activations: ROWS, totalMatching: 2 })
+    const rawResult = await handler({
+      chart_id: CHART_ID,
+      ayanamsha_id: 'lahiri_chitrapaksha',
+      date_from: '2026-01-01',
+      date_to: '2026-12-31',
+      signal_ids: ['sig-2', 'sig-1'],
+      min_activation_strength: 0.4,
+      domain: 'wealth',
+      top_k: 2,
+    })
+    const binding = temporalBinding()
+
+    expect(binding).toMatchObject({ bounded_window_closure: {
+      receipt_path: 'content.temporal_closure',
+      closure_version: 'temporal-activation-closure-v1',
+      collection: 'activations',
+    } })
+    expect(deriveInquiryPaginationReceipt(binding, rawResult, {
+      chart_id: CHART_ID,
+      ayanamsha_id: 'lahiri_chitrapaksha',
+      date_from: '2026-01-01',
+      date_to: '2026-12-31',
+      signal_ids: ['sig-2', 'sig-1'],
+      min_activation_strength: 0.4,
+      domain: 'wealth',
+      top_k: 2,
+    })).toEqual({ semantics: 'bounded_unverified', exhausted: true, next: null })
+  })
+
+  it.each([
+    ['an invalid start date', { date_from: '2026-02-30', date_to: '2026-12-31' }],
+    ['an invalid end date', { date_from: '2026-01-01', date_to: '2026-02-30' }],
+    ['an invalid point-in-time date', { as_of: '2026-02-30' }],
+    ['a reversed range', { date_from: '2026-12-31', date_to: '2026-01-01' }],
+  ])('keeps a temporal frontier for %s even when a receipt claims completion', async (_caseName, window) => {
+    routeQueries({ activations: [], totalMatching: 0 })
+    const args = { chart_id: CHART_ID, ...window, top_k: 2 }
+    const rawResult = await handler(args)
+
+    expect(deriveInquiryPaginationReceipt(temporalBinding(), rawResult, args))
+      .toEqual({ semantics: 'bounded_unverified', exhausted: false, next: 'unproven' })
+  })
+
+  it.each([
+    ['a truncated window', (raw: Record<string, unknown>) => {
+      const content = mutableContent(raw)
+      const closure = mutableClosure(raw)
+      content['more_available'] = true
+      content['truncated'] = true
+      closure['state'] = 'bounded_window_incomplete'
+      closure['exhaustive_within_stated_window'] = false
+      mutableRecord(closure['limit'], 'temporal closure limit')['total_matching'] = 3
+    }],
+    ['an absent closure', (raw: Record<string, unknown>) => { delete mutableContent(raw)['temporal_closure'] }],
+    ['a malformed closure', (raw: Record<string, unknown>) => { mutableContent(raw)['temporal_closure'] = 'not-a-receipt' }],
+    ['inconsistent collection totals', (raw: Record<string, unknown>) => { mutableContent(raw)['total_matching'] = 3 }],
+    ['a foreign query identity', (raw: Record<string, unknown>) => { mutableClosure(raw)['query_identity'] = 'sha256:foreign' }],
+    ['a mismatched temporal window', (raw: Record<string, unknown>) => {
+      const filters = mutableRecord(mutableClosure(raw)['filters'], 'temporal closure filters')
+      mutableRecord(filters['temporal_filter'], 'temporal filter')['date_to'] = '2027-12-31'
+    }],
+  ])('keeps a required temporal frontier for %s', async (_caseName, mutate) => {
+    routeQueries({ activations: ROWS, totalMatching: 2 })
+    const rawResult = await handler({
+      chart_id: CHART_ID,
+      date_from: '2026-01-01',
+      date_to: '2026-12-31',
+      top_k: 2,
+    })
+    const tampered = JSON.parse(JSON.stringify(rawResult)) as Record<string, unknown>
+    mutate(tampered)
+
+    expect(deriveInquiryPaginationReceipt(temporalBinding(), tampered, {
+      chart_id: CHART_ID,
+      date_from: '2026-01-01',
+      date_to: '2026-12-31',
+      top_k: 2,
+    })).toEqual({ semantics: 'bounded_unverified', exhausted: false, next: 'unproven' })
+  })
+
   it('reports an empty exact window as complete within that window, not as an unbuilt source', async () => {
     routeQueries({ activations: [], totalMatching: 0, sourceTotal: 7, sourceDated: 7 })
     const result = await handler({ chart_id: CHART_ID, date_from: '2040-01-01', date_to: '2040-12-31', top_k: 2 })
@@ -143,6 +238,12 @@ describe('query_temporal_activation bounded temporal closure', () => {
       state: 'complete_within_stated_window',
       exhaustive_within_stated_window: true,
     })
+    expect(deriveInquiryPaginationReceipt(temporalBinding(), result, {
+      chart_id: CHART_ID,
+      date_from: '2040-01-01',
+      date_to: '2040-12-31',
+      top_k: 2,
+    })).toEqual({ semantics: 'bounded_unverified', exhausted: true, next: null })
     expect(String(result.content['empty_reason'])).toContain('No activation windows overlap the requested date range 2040-01-01..2040-12-31')
   })
 
