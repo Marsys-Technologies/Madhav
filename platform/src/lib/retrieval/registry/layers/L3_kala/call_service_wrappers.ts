@@ -101,20 +101,6 @@ export const callTransitSearchCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium' },
     bulk_context: { pre_fetch_priority: 30 },
   },
-  semantic_capabilities: [{
-    scu_id: 'scu.catalog.call_transit_search', version: 1, label: 'Transit-event search',
-    description: 'Search live transit events through the ka-gochara compute service.',
-    kind: 'temporal', domains: ['timing'], concepts: ['transit', 'gochara'], intents: ['sequence', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
-    inputs: ['date_from', 'date_to', 'event_type?'], outputs: ['events', 'count'], primary_binding_uri: 'marsys://tool/L3/call_transit_search',
-    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'No availability claim until a dedicated authenticated ka-gochara probe is recorded.',
-    entitlement: 'native', safety_notes: ['Read-only compute evidence.'], known_gaps: ['The registry contains no exact, authenticated ka-gochara probe configuration.'],
-    availability_dispositions: [{
-      binding_id: 'registry:marsys://tool/L3/call_transit_search', status: 'deliberately_dark',
-      reason: 'This live sidecar route has no dedicated signed ka-gochara probe contract. Ephemeris and graha-sancara probes prove different executable paths and cannot substitute.',
-      source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:31-156', 'platform/python-sidecar/scripts/nirmana_probe_contracts.json'],
-    }], editorial: true,
-  }],
-
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const date_from  = args['date_from'] as string
     const date_to    = args['date_to'] as string
@@ -206,20 +192,6 @@ export const callEphemerisAtTCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium' },
     bulk_context: { pre_fetch_priority: 35 },
   },
-  semantic_capabilities: [{
-    scu_id: 'scu.catalog.call_ephemeris_at_t', version: 1, label: 'Arbitrary-time ephemeris evidence',
-    description: 'Compute planetary positions at an arbitrary time through the authenticated graha-sancara service.',
-    kind: 'temporal', domains: ['timing'], concepts: ['ephemeris', 'planet_position'], intents: ['assess', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
-    inputs: ['datetime_utc', 'ayanamsha_id?'], outputs: ['positions', 'count', 'jd'], primary_binding_uri: 'marsys://tool/L3/call_ephemeris_at_t',
-    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'Requires a fresh authenticated graha-sancara probe; a missing or stale probe keeps this binding unavailable.',
-    entitlement: 'native', safety_notes: ['Read-only computed evidence.'], known_gaps: [],
-    availability_contracts: [{ binding_id: 'registry:marsys://tool/L3/call_ephemeris_at_t', requirements: [{
-      kind: 'service_probe', asset_id: 'ka_graha_sancara', probe_id: 'graha_sancara_forensic', endpoint_identity: 'nirmana-elevation:health-probe:ka_graha_sancara',
-      probe_contract_sha256: '2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6', max_age_seconds: 900,
-      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_graha_sancara; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }] }], editorial: true,
-  }],
-
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const datetime_utc = args['datetime_utc'] as string
     if (!datetime_utc) {
@@ -458,20 +430,6 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium' },
     bulk_context: { pre_fetch_priority: 40 },
   },
-  semantic_capabilities: [{
-    scu_id: 'scu.catalog.call_muhurta_score', version: 1, label: 'Muhurta score evidence',
-    description: 'Score a requested event time through the authenticated muhurta service.',
-    kind: 'temporal', domains: ['timing'], concepts: ['muhurta', 'panchanga'], intents: ['assess', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
-    inputs: ['datetime_utc', 'event_class', 'ayanamsha_id?'], outputs: ['score', 'rating', 'panchanga'], primary_binding_uri: 'marsys://tool/L3/call_muhurta_score',
-    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'Requires a fresh authenticated muhurta-service probe; a missing or stale probe keeps this binding unavailable.',
-    entitlement: 'native', safety_notes: ['Read-only computed evidence.'], known_gaps: [],
-    availability_contracts: [{ binding_id: 'registry:marsys://tool/L3/call_muhurta_score', requirements: [{
-      kind: 'service_probe', asset_id: 'ka_muhurta_seva', probe_id: 'muhurta_seva_forensic', endpoint_identity: 'nirmana-elevation:health-probe:ka_muhurta_seva',
-      probe_contract_sha256: '96a89ddf3ea762a1746109f438cca1ecec86534fe1a088f14eca88a77fc52001', max_age_seconds: 900,
-      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_muhurta_seva; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }] }], editorial: true,
-  }],
-
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const datetime_utc = args['datetime_utc'] as string
     if (!datetime_utc) {

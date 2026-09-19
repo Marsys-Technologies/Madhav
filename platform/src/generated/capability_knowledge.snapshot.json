@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:54:06.000Z",
-  "content_hash": "sha256:a55ff1ac7db278cd883f6187450586d5a076360cb8235d142eccb63c0070af99",
-  "source_catalog_fingerprint": "sha256:0097696791b5d648fe00982a7c6b6594ed629992715ccc4cfac4ef3461c07ef8",
-  "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
+  "generated_at": "2026-09-19T02:33:08.000Z",
+  "content_hash": "sha256:4b510bd958dc06406857504286db7fddb30db68047554695e439d6a55d2bd603",
+  "source_catalog_fingerprint": "sha256:4844d66a4863ed1cfcbd276a690de91966e39ae5235680b3b9e3c50de743ca2c",
+  "semantic_review_fingerprint": "sha256:d7068be1fd3d2bec3f8b2abfb91c3726b74b6298d5f9cf7e489e32773756a1cf",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -1412,44 +1412,46 @@
     {
       "scu_id": "scu.catalog.call_ephemeris_at_t",
       "version": 1,
-      "label": "Arbitrary-time ephemeris evidence",
-      "description": "Compute planetary positions at an arbitrary time through the authenticated graha-sancara service.",
+      "label": "Call Ephemeris At T",
+      "description": "Returns planetary positions at an arbitrary datetime (ka_graha_sancara service). Global scope — not chart-specific. Provide a precise datetime and ayanamsha to get all graha positions. Evidence use: establish the relevant computed or stored planetary state before analysis.",
       "kind": "temporal",
       "domains": [
-        "timing"
+        "planetary_state"
       ],
       "concepts": [
-        "ephemeris",
-        "planet_position"
+        "astronomical_reference",
+        "call_ephemeris_at_t",
+        "celestial_state",
+        "planetary_position"
       ],
       "intents": [
-        "assess",
+        "retrieve",
         "verify"
       ],
       "horizons": [
         "current",
-        "future",
-        "historical"
+        "natal"
       ],
       "scope": "global",
       "inputs": [
-        "ayanamsha_id?",
+        "ayanamsha_id",
         "datetime_utc"
       ],
       "outputs": [
-        "count",
-        "jd",
-        "positions"
+        "computation_provenance",
+        "planetary_state_evidence"
       ],
       "primary_binding_uri": "marsys://tool/L3/call_ephemeris_at_t",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated graha-sancara probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only computed evidence."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -1498,27 +1500,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L3/call_ephemeris_at_t"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "ephemeris",
+          "concept_id": "astronomical_reference",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
         },
         {
-          "concept_id": "planet_position",
+          "concept_id": "call_ephemeris_at_t",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+        },
+        {
+          "concept_id": "celestial_state",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+        },
+        {
+          "concept_id": "planetary_position",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
         }
       ],
       "gap_dispositions": [],
@@ -1526,7 +1565,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
+          "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
         ]
       },
       "producer_semantic_disposition": {
@@ -1534,53 +1574,56 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
+          "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.call_muhurta_score",
       "version": 1,
-      "label": "Muhurta score evidence",
-      "description": "Score a requested event time through the authenticated muhurta service.",
+      "label": "Call Muhurta Score",
+      "description": "Score an auspicious window (raw muhurta quality) for a specific UTC datetime and event class (ka_muhurta_seva service — reuses the same score_muhurat() scoring primitive the already-served ph_muhurta/muhurta_finder electional finder calls internally for its panchanga_quality sub-score). Global scope — no chart_id, no date-range search (use muhurta_finder/kala_muhurta_get for a best-window search over a date range with dasha/transit sub-scores). Returns the 0-100 score, 1-5 star rating, and the day panchang context (tithi, nakshatra, vara, yoga) the score was derived from. Evidence use: retrieve calendar and electional constraints for a candidate time.",
       "kind": "temporal",
       "domains": [
-        "timing"
+        "calendar_and_election"
       ],
       "concepts": [
-        "muhurta",
-        "panchanga"
+        "calendar_factor",
+        "call_muhurta_score",
+        "electional_constraint",
+        "muhurta_window"
       ],
       "intents": [
-        "assess",
-        "verify"
+        "constrain",
+        "select"
       ],
       "horizons": [
+        "candidate_time",
         "current",
-        "future",
-        "historical"
+        "future"
       ],
       "scope": "global",
       "inputs": [
-        "ayanamsha_id?",
+        "ayanamsha_id",
         "datetime_utc",
         "event_class"
       ],
       "outputs": [
-        "panchanga",
-        "rating",
-        "score"
+        "calendar_constraints",
+        "candidate_windows"
       ],
       "primary_binding_uri": "marsys://tool/L3/call_muhurta_score",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated muhurta-service probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only computed evidence."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -1630,27 +1673,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L3/call_muhurta_score"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "muhurta",
+          "concept_id": "calendar_factor",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
         },
         {
-          "concept_id": "panchanga",
+          "concept_id": "call_muhurta_score",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+        },
+        {
+          "concept_id": "electional_constraint",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+        },
+        {
+          "concept_id": "muhurta_window",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
         }
       ],
       "gap_dispositions": [],
@@ -1658,7 +1738,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
+          "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
         ]
       },
       "producer_semantic_disposition": {
@@ -1666,57 +1747,61 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
+          "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.call_panchanga_service",
       "version": 1,
-      "label": "Panchanga compute evidence",
-      "description": "Compute date- and location-specific panchanga through the authenticated panchanga service.",
+      "label": "Call Panchanga Service",
+      "description": "Compute panchanga (tithi/vara/nakshatra/yoga/karana + sunrise/sunset) for an arbitrary date and location (panchang.py compute service, Swiss-Ephemeris-backed, engine-direct — not a table lookup). mode=single (default): one date, returns full panchang + optional native_context if chart_id is provided. mode=range: date_from.. date_to (max 31 days inclusive), returns one entry per day. Defaults to Bhubaneswar/ IST coordinates when lat/lon/tz_offset_minutes are omitted. Distinct from the natal- only chart_panchanga (query_panchanga) — this is date-parameterized, any date. Evidence use: retrieve calendar and electional constraints for a candidate time.",
       "kind": "temporal",
       "domains": [
-        "timing"
+        "calendar_and_election"
       ],
       "concepts": [
-        "calendar",
-        "panchanga"
+        "calendar_factor",
+        "call_panchanga_service",
+        "electional_constraint",
+        "muhurta_window"
       ],
       "intents": [
-        "assess",
-        "verify"
+        "constrain",
+        "select"
       ],
       "horizons": [
+        "candidate_time",
         "current",
-        "future",
-        "historical"
+        "future"
       ],
       "scope": "global",
       "inputs": [
-        "date?",
-        "date_from?",
-        "date_to?",
-        "lat?",
-        "lon?",
-        "mode?",
-        "tz_offset_minutes?"
+        "chart_id",
+        "date",
+        "date_from",
+        "date_to",
+        "lat",
+        "lon",
+        "mode",
+        "tz_offset_minutes"
       ],
       "outputs": [
-        "count",
-        "panchang",
-        "panchangs"
+        "calendar_constraints",
+        "candidate_windows"
       ],
       "primary_binding_uri": "marsys://tool/L0/call_panchanga_service",
+      "edges": [],
       "provenance_requirements": [
-        "computed_at",
-        "engine_version"
+        "chart_id_when_chart_scoped",
+        "build_id",
+        "formula_or_writer_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated panchanga-engine probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must resolve against the active compatible chart build.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only computed evidence."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -1771,27 +1856,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/call_panchanga_service"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "calendar",
+          "concept_id": "calendar_factor",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
         },
         {
-          "concept_id": "panchanga",
+          "concept_id": "call_panchanga_service",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+        },
+        {
+          "concept_id": "electional_constraint",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+        },
+        {
+          "concept_id": "muhurta_window",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
         }
       ],
       "gap_dispositions": [],
@@ -1799,7 +1921,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
+          "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
         ]
       },
       "producer_semantic_disposition": {
@@ -1807,10 +1930,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
+          "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.call_priority_ranking",
@@ -2011,44 +2134,55 @@
     {
       "scu_id": "scu.catalog.call_transit_search",
       "version": 1,
-      "label": "Transit-event search",
-      "description": "Search live transit events through the ka-gochara compute service.",
+      "label": "Call Transit Search",
+      "description": "Search for planetary transit events in a date range (ka_gochara service). Global scope — not chart-specific. Use for gochara lookup over natal positions. Returns transit ingress/egress events, retrograde stations, and conjunctions. Provide chart_id optionally to filter transits against natal planet positions. Evidence use: establish dated sequence, activation, or timing evidence.",
       "kind": "temporal",
       "domains": [
         "timing"
       ],
       "concepts": [
-        "gochara",
-        "transit"
+        "activation_timing",
+        "call_transit_search",
+        "temporal_sequence",
+        "timing_window"
       ],
       "intents": [
         "sequence",
-        "verify"
+        "time"
       ],
       "horizons": [
         "current",
         "future",
-        "historical"
+        "historical",
+        "multi_year"
       ],
       "scope": "global",
       "inputs": [
+        "aspect_degrees",
         "date_from",
         "date_to",
-        "event_type?"
+        "event_type",
+        "orb_deg",
+        "planet_a",
+        "planet_b",
+        "target_longitude_deg",
+        "transit_planet"
       ],
       "outputs": [
-        "count",
-        "events"
+        "temporal_sequence_evidence",
+        "timing_windows"
       ],
       "primary_binding_uri": "marsys://tool/L3/call_transit_search",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "No availability claim until a dedicated authenticated ka-gochara probe is recorded.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only compute evidence."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [
         "The registry contains no exact, authenticated ka-gochara probe configuration."
@@ -2101,27 +2235,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L3/call_transit_search"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L3/call_transit_search",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "gochara",
+          "concept_id": "activation_timing",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
         },
         {
-          "concept_id": "transit",
+          "concept_id": "call_transit_search",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
+        },
+        {
+          "concept_id": "temporal_sequence",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
+        },
+        {
+          "concept_id": "timing_window",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
         }
       ],
       "gap_dispositions": [
@@ -2129,14 +2300,15 @@
           "gap": "The registry contains no exact, authenticated ka-gochara probe configuration.",
           "status": "accepted_boundary",
           "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
         }
       ],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
+          "CapabilityDescriptor:marsys://tool/L3/call_transit_search",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
         ]
       },
       "producer_semantic_disposition": {
@@ -2144,10 +2316,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
+          "CapabilityDescriptor:marsys://tool/L3/call_transit_search",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.channel_chat_dispatch",
@@ -3321,40 +3493,43 @@
     {
       "scu_id": "scu.catalog.ephemeris_cache_native_lifetime",
       "version": 1,
-      "label": "Native-lifetime ephemeris coverage",
-      "description": "Retrieve native-lifetime ephemeris coverage through the authenticated ephemeris service.",
+      "label": "Ephemeris Cache Native Lifetime",
+      "description": "Ephemeris coverage statistics for the native's configured lifetime window. Provides: row count, date range, body count, and birth chart context for the active chart. Use as a prefetch sanity check before querying native-lifetime transits. Evidence use: establish the relevant computed or stored planetary state before analysis.",
       "kind": "datum",
       "domains": [
-        "timing"
+        "planetary_state"
       ],
       "concepts": [
-        "cache_coverage",
-        "ephemeris"
+        "astronomical_reference",
+        "celestial_state",
+        "ephemeris_cache_native_lifetime",
+        "planetary_position"
       ],
       "intents": [
-        "assess",
+        "retrieve",
         "verify"
       ],
       "horizons": [
         "current",
-        "future",
-        "historical"
+        "natal"
       ],
       "scope": "global",
       "inputs": [],
       "outputs": [
-        "birth_chart_context",
-        "coverage"
+        "computation_provenance",
+        "planetary_state_evidence"
       ],
       "primary_binding_uri": "marsys://resource/ephemeris-cache/native-lifetime",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only service resource; it must not fabricate native chart context when unavailable."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -3400,27 +3575,64 @@
       "source_descriptor_uris": [
         "marsys://resource/ephemeris-cache/native-lifetime"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "cache_coverage",
+          "concept_id": "astronomical_reference",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
         },
         {
-          "concept_id": "ephemeris",
+          "concept_id": "celestial_state",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+        },
+        {
+          "concept_id": "ephemeris_cache_native_lifetime",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+        },
+        {
+          "concept_id": "planetary_position",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
         }
       ],
       "gap_dispositions": [],
@@ -3428,7 +3640,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
+          "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
         ]
       },
       "producer_semantic_disposition": {
@@ -3436,50 +3649,51 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime"
+          "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.ephemeris_cache_year",
       "version": 1,
-      "label": "Annual ephemeris-cache evidence",
-      "description": "Retrieve one year of ephemeris coverage through the authenticated ephemeris service.",
+      "label": "Ephemeris Cache Year",
+      "description": "Ephemeris cache for a calendar year — all 9 Jyotish bodies (Sun through Ketu) at daily resolution. Covers 1900-2150. URI parameter {yyyy} is the 4-digit year (e.g. 1984, 2026). Returns up to one row per body per day for the year (9 bodies × ~365 days). Use for bulk-context pre-fetch when querying a whole year of transits. Evidence use: establish the relevant computed or stored planetary state before analysis.",
       "kind": "datum",
       "domains": [
-        "timing"
+        "planetary_state"
       ],
       "concepts": [
-        "cache_coverage",
-        "ephemeris"
+        "astronomical_reference",
+        "celestial_state",
+        "ephemeris_cache_year",
+        "planetary_position"
       ],
       "intents": [
-        "assess",
+        "retrieve",
         "verify"
       ],
       "horizons": [
         "current",
-        "future",
-        "historical"
+        "natal"
       ],
       "scope": "global",
-      "inputs": [
-        "year"
-      ],
+      "inputs": [],
       "outputs": [
-        "coverage",
-        "rows"
+        "computation_provenance",
+        "planetary_state_evidence"
       ],
       "primary_binding_uri": "marsys://resource/ephemeris-cache/year/{yyyy}",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only service resource."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -3525,27 +3739,64 @@
       "source_descriptor_uris": [
         "marsys://resource/ephemeris-cache/year/{yyyy}"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "cache_coverage",
+          "concept_id": "astronomical_reference",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
         },
         {
-          "concept_id": "ephemeris",
+          "concept_id": "celestial_state",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
+        },
+        {
+          "concept_id": "ephemeris_cache_year",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
+        },
+        {
+          "concept_id": "planetary_position",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
         }
       ],
       "gap_dispositions": [],
@@ -3553,7 +3804,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
+          "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
         ]
       },
       "producer_semantic_disposition": {
@@ -3561,10 +3813,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
+          "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.find_verses_about",
@@ -13069,43 +13321,48 @@
     {
       "scu_id": "scu.catalog.query_aspects_at_time",
       "version": 1,
-      "label": "Ephemeris aspect evidence",
-      "description": "Compute date-specific aspects from the authenticated ephemeris service.",
-      "kind": "datum",
+      "label": "Query Aspects At Time",
+      "description": "Compute active planetary aspects (conjunction, sextile, square, trine, opposition) for all body pairs on a specific date, with configurable orb in degrees. Returns body pair, aspect type, exact angle, actual angular difference, and orb. Based on tropical longitudes from ephemeris_daily (1900-2150). Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "kind": "temporal",
       "domains": [
-        "timing"
+        "planetary_state"
       ],
       "concepts": [
-        "aspects",
-        "ephemeris"
+        "astronomical_reference",
+        "celestial_state",
+        "planetary_position",
+        "query_aspects_at_time"
       ],
       "intents": [
-        "assess",
+        "retrieve",
         "verify"
       ],
       "horizons": [
         "current",
-        "future",
-        "historical"
+        "natal"
       ],
       "scope": "global",
       "inputs": [
         "date",
-        "orb_degrees?"
+        "orb_degrees"
       ],
       "outputs": [
         "aspects",
-        "count"
+        "count",
+        "date",
+        "ok"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_aspects_at_time",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only computed evidence."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -13154,27 +13411,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/query_aspects_at_time"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L0/query_aspects_at_time",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "aspects",
+          "concept_id": "astronomical_reference",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
         },
         {
-          "concept_id": "ephemeris",
+          "concept_id": "celestial_state",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
+        },
+        {
+          "concept_id": "planetary_position",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
+        },
+        {
+          "concept_id": "query_aspects_at_time",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
         }
       ],
       "gap_dispositions": [],
@@ -13182,7 +13476,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time"
+          "CapabilityDescriptor:marsys://tool/L0/query_aspects_at_time",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
         ]
       },
       "producer_semantic_disposition": {
@@ -13190,10 +13485,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time"
+          "CapabilityDescriptor:marsys://tool/L0/query_aspects_at_time",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.query_attribution",
@@ -15912,43 +16207,54 @@
     {
       "scu_id": "scu.catalog.query_current_transit_snapshot",
       "version": 1,
-      "label": "Complete current transit snapshot",
-      "description": "Retrieve a complete receipted nine-graha snapshot by strictly composing the scalar transit binding.",
+      "label": "Query Current Transit Snapshot",
+      "description": "Return the complete nine-graha transit state for one explicit date by invoking the strict scalar planet-transit capability once per canonical Jyotish body. Every component carries immutable argument and result hashes. The aggregate fails if any component is missing or fails. Evidence use: establish dated sequence, activation, or timing evidence.",
       "kind": "temporal",
       "domains": [
         "timing"
       ],
       "concepts": [
-        "current_state",
-        "transit"
+        "activation_timing",
+        "query_current_transit_snapshot",
+        "temporal_sequence",
+        "timing_window"
       ],
       "intents": [
-        "assess",
-        "verify"
+        "sequence",
+        "time"
       ],
       "horizons": [
-        "current"
+        "current",
+        "future",
+        "historical",
+        "multi_year"
       ],
       "scope": "global",
       "inputs": [
         "as_of_date"
       ],
       "outputs": [
+        "accounted_components",
         "aggregate_hash",
+        "as_of_date",
+        "complete",
         "component_receipts",
         "components",
-        "missing_planets"
+        "expected_components",
+        "missing_planets",
+        "ok"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_current_transit_snapshot",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
-        "engine_version",
-        "component_receipts"
+        "engine_version"
       ],
-      "freshness_policy": "Availability is derived from the exact scalar transit binding; a missing child receipt keeps the aggregate unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Every canonical component must succeed; partial snapshots are failures."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -15995,27 +16301,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/query_current_transit_snapshot"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "current_state",
+          "concept_id": "activation_timing",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
         },
         {
-          "concept_id": "transit",
+          "concept_id": "query_current_transit_snapshot",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
+        },
+        {
+          "concept_id": "temporal_sequence",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
+        },
+        {
+          "concept_id": "timing_window",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
         }
       ],
       "gap_dispositions": [],
@@ -16023,7 +16366,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
+          "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
         ]
       },
       "producer_semantic_disposition": {
@@ -16031,10 +16375,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
+          "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.query_dasha_dossier",
@@ -21476,44 +21820,49 @@
     {
       "scu_id": "scu.catalog.query_planet_position",
       "version": 1,
-      "label": "Planet position evidence",
-      "description": "Retrieve date-specific planetary positions from the authenticated ephemeris service.",
+      "label": "Query Planet Position",
+      "description": "Query planetary positions from the ephemeris_daily table (1900–2150, daily resolution, tropical coordinates — subtract Lahiri ayanamsha to get sidereal). Returns longitude_deg, sign_number, nakshatra_number, is_retrograde, speed_dps for one or all 9 Jyotish bodies (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu). Use for natal chart checks, transit lookup, or any date-specific position query. Source: pyswisseph DE441 / Swiss Ephemeris .se1 files. Date range: 1900-01-01 to 2150-12-31. Evidence use: establish the relevant computed or stored planetary state before analysis.",
       "kind": "datum",
       "domains": [
-        "timing"
+        "planetary_state"
       ],
       "concepts": [
-        "ephemeris",
-        "planet_position"
+        "astronomical_reference",
+        "celestial_state",
+        "planetary_position",
+        "query_planet_position"
       ],
       "intents": [
-        "assess",
+        "retrieve",
         "verify"
       ],
       "horizons": [
         "current",
-        "future",
-        "historical"
+        "natal"
       ],
       "scope": "global",
       "inputs": [
         "date",
-        "planet?"
+        "planet"
       ],
       "outputs": [
         "ayanamsha_id",
         "count",
+        "date",
+        "ok",
         "positions"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_planet_position",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only computed evidence; an empty position set is a failed lookup."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -21562,27 +21911,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/query_planet_position"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L0/query_planet_position",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "ephemeris",
+          "concept_id": "astronomical_reference",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position"
         },
         {
-          "concept_id": "planet_position",
+          "concept_id": "celestial_state",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position"
+        },
+        {
+          "concept_id": "planetary_position",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position"
+        },
+        {
+          "concept_id": "query_planet_position",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position"
         }
       ],
       "gap_dispositions": [],
@@ -21590,7 +21976,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position"
+          "CapabilityDescriptor:marsys://tool/L0/query_planet_position",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position"
         ]
       },
       "producer_semantic_disposition": {
@@ -21606,8 +21993,7 @@
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_planet_position:bg_ephemeris",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_planet_position:bg_ephemeris_engine"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.query_planet_transit",
@@ -24991,24 +25377,27 @@
     {
       "scu_id": "scu.catalog.query_retrograde_periods",
       "version": 1,
-      "label": "Retrograde-period evidence",
-      "description": "Compute station events from the authenticated ephemeris service.",
+      "label": "Query Retrograde Periods",
+      "description": "Find retrograde station events (retrograde_start / retrograde_end) for a planet in a date window. Detects sign changes in the is_retrograde flag across daily ephemeris rows. Applicable to Mercury, Venus, Mars, Jupiter, Saturn (Rahu/Ketu are always retrograde — not meaningful to query). Returns station date, type, longitude at station, sign_number, retrograde day count. Backed by ephemeris_daily (1900-2150). Evidence use: establish dated sequence, activation, or timing evidence.",
       "kind": "temporal",
       "domains": [
         "timing"
       ],
       "concepts": [
-        "ephemeris",
-        "retrograde"
+        "activation_timing",
+        "query_retrograde_periods",
+        "temporal_sequence",
+        "timing_window"
       ],
       "intents": [
         "sequence",
-        "verify"
+        "time"
       ],
       "horizons": [
         "current",
         "future",
-        "historical"
+        "historical",
+        "multi_year"
       ],
       "scope": "global",
       "inputs": [
@@ -25017,19 +25406,23 @@
         "start_date"
       ],
       "outputs": [
+        "ok",
+        "planet",
         "retrograde_days",
         "station_count",
         "stations"
       ],
       "primary_binding_uri": "marsys://tool/L0/query_retrograde_periods",
+      "edges": [],
       "provenance_requirements": [
+        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Requires a fresh authenticated ephemeris-engine probe; a missing or stale probe keeps this binding unavailable.",
+      "freshness_policy": "Must carry computation time and engine version.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only computed evidence."
+        "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
       "availability_contracts": [
@@ -25079,27 +25472,64 @@
       "source_descriptor_uris": [
         "marsys://tool/L0/query_retrograde_periods"
       ],
-      "editorial_method": "authored_declaration",
+      "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
           "source_fields": [
-            "semantic_capabilities",
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L0/query_retrograde_periods",
+          "source_fields": [
+            "name",
             "description",
-            "primary_binding_uri"
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "ephemeris",
+          "concept_id": "activation_timing",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
         },
         {
-          "concept_id": "retrograde",
+          "concept_id": "query_retrograde_periods",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
+        },
+        {
+          "concept_id": "temporal_sequence",
           "concept_type": "domain_concept",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
+        },
+        {
+          "concept_id": "timing_window",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
         }
       ],
       "gap_dispositions": [],
@@ -25107,7 +25537,8 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
+          "CapabilityDescriptor:marsys://tool/L0/query_retrograde_periods",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
         ]
       },
       "producer_semantic_disposition": {
@@ -25115,10 +25546,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
+          "CapabilityDescriptor:marsys://tool/L0/query_retrograde_periods",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
         ]
-      },
-      "edges": []
+      }
     },
     {
       "scu_id": "scu.catalog.query_rm_chart_summary",
@@ -33647,12 +34078,14 @@
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_dossier",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_systems",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_kala_paddhati_profile",
@@ -33662,6 +34095,7 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_obstruction_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_predictive_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_projections",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sudarshana_varsha",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_temporal_view",
@@ -33704,15 +34138,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_rm_resonances",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_tantric_remedies",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:read_remedy"
-      ]
-    },
-    {
-      "concept_id": "aspects",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time"
       ]
     },
     {
@@ -33766,6 +34191,9 @@
         "domain_concept"
       ],
       "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -33773,10 +34201,12 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_sensitive_degrees",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_sensitive_points",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:graha_portrait",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_combustion_orbs",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_graha_dik",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_motion_state_thresholds",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities"
       ]
     },
@@ -33790,30 +34220,13 @@
       ]
     },
     {
-      "concept_id": "cache_coverage",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime",
-        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}"
-      ]
-    },
-    {
-      "concept_id": "calendar",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service"
-      ]
-    },
-    {
       "concept_id": "calendar_factor",
       "types": [
         "domain_concept"
       ],
       "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:get_panchanga",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_auspicious_windows",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurat",
@@ -33854,12 +34267,48 @@
       ]
     },
     {
+      "concept_id": "call_ephemeris_at_t",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t"
+      ]
+    },
+    {
+      "concept_id": "call_muhurta_score",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score"
+      ]
+    },
+    {
+      "concept_id": "call_panchanga_service",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service"
+      ]
+    },
+    {
       "concept_id": "call_priority_ranking",
       "types": [
         "capability"
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking"
+      ]
+    },
+    {
+      "concept_id": "call_transit_search",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
       ]
     },
     {
@@ -33910,6 +34359,9 @@
         "domain_concept"
       ],
       "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -33917,10 +34369,12 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_sensitive_degrees",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_sensitive_points",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:graha_portrait",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_combustion_orbs",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_graha_dik",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_motion_state_thresholds",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities"
       ]
     },
@@ -34123,15 +34577,6 @@
       ]
     },
     {
-      "concept_id": "current_state",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot"
-      ]
-    },
-    {
       "concept_id": "d11",
       "types": [
         "domain_concept"
@@ -34229,6 +34674,8 @@
         "domain_concept"
       ],
       "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:get_panchanga",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_auspicious_windows",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurat",
@@ -34245,17 +34692,21 @@
       ]
     },
     {
-      "concept_id": "ephemeris",
+      "concept_id": "ephemeris_cache_native_lifetime",
       "types": [
-        "domain_concept"
+        "capability"
       ],
       "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/native-lifetime",
-        "SemanticCapabilityDeclaration:marsys://resource/ephemeris-cache/year/{yyyy}",
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_aspects_at_time",
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position",
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods",
-        "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
+      ]
+    },
+    {
+      "concept_id": "ephemeris_cache_year",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
       ]
     },
     {
@@ -34684,15 +35135,6 @@
       ]
     },
     {
-      "concept_id": "gochara",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
-      ]
-    },
-    {
       "concept_id": "graha_portrait",
       "types": [
         "capability"
@@ -34897,20 +35339,13 @@
       ]
     },
     {
-      "concept_id": "muhurta",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
-      ]
-    },
-    {
       "concept_id": "muhurta_window",
       "types": [
         "domain_concept"
       ],
       "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_muhurta_score",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:call_panchanga_service",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:get_panchanga",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_auspicious_windows",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurat",
@@ -34954,32 +35389,12 @@
       ]
     },
     {
-      "concept_id": "panchanga",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/call_panchanga_service",
-        "SemanticCapabilityDeclaration:marsys://tool/L3/call_muhurta_score"
-      ]
-    },
-    {
       "concept_id": "partial_formation",
       "types": [
         "domain_concept"
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_yoga_firings"
-      ]
-    },
-    {
-      "concept_id": "planet_position",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_position",
-        "SemanticCapabilityDeclaration:marsys://tool/L3/call_ephemeris_at_t"
       ]
     },
     {
@@ -35004,6 +35419,9 @@
         "domain_concept"
       ],
       "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_nakshatra",
@@ -35011,10 +35429,12 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_sensitive_degrees",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_sensitive_points",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:graha_portrait",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_combustion_orbs",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_graha_dik",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_motion_state_thresholds",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities"
       ]
     },
@@ -35122,6 +35542,15 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_anomaly_flags"
+      ]
+    },
+    {
+      "concept_id": "query_aspects_at_time",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_aspects_at_time"
       ]
     },
     {
@@ -35257,6 +35686,15 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows"
+      ]
+    },
+    {
+      "concept_id": "query_current_transit_snapshot",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot"
       ]
     },
     {
@@ -35530,6 +35968,15 @@
       ]
     },
     {
+      "concept_id": "query_planet_position",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position"
+      ]
+    },
+    {
       "concept_id": "query_planet_transit",
       "types": [
         "capability"
@@ -35689,6 +36136,15 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_remedy_program"
+      ]
+    },
+    {
+      "concept_id": "query_retrograde_periods",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods"
       ]
     },
     {
@@ -36072,15 +36528,6 @@
       ]
     },
     {
-      "concept_id": "retrograde",
-      "types": [
-        "domain_concept"
-      ],
-      "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_retrograde_periods"
-      ]
-    },
-    {
       "concept_id": "route",
       "types": [
         "capability"
@@ -36217,12 +36664,14 @@
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_dossier",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_systems",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_kala_paddhati_profile",
@@ -36232,6 +36681,7 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_obstruction_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_predictive_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_projections",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sudarshana_varsha",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_temporal_view",
@@ -36283,12 +36733,14 @@
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_convergence_windows",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_current_transit_snapshot",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_dossier",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_dasha_systems",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_kala_paddhati_profile",
@@ -36298,6 +36750,7 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_obstruction_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_predictive_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_projections",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sudarshana_varsha",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_temporal_view",
@@ -36324,8 +36777,6 @@
         "domain_concept"
       ],
       "source_refs": [
-        "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot",
-        "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search",
         "SemanticCapabilityDeclaration:marsys://tool/L3/query_temporal_activation"
       ]
     },

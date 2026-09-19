@@ -218,9 +218,14 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
     safety_notes: cap.mutation
       ? ['Mutation-capable: execution requires explicit authorization and audit receipt.']
       : ['Read-only evidence surface; planner must not interpret returned chart facts.'],
-    known_gaps: cap.calibration_context_only ? ['Calibration-context-only; excluded from planner addressability.'] : [],
+    known_gaps: [
+      ...(cap.calibration_context_only ? ['Calibration-context-only; excluded from planner addressability.'] : []),
+      ...(availabilityReview?.known_gaps ?? []),
+    ],
     ...(availabilityContractReview || sourceQueryAvailabilityReview ? {
-      ...(availabilityContractReview ? { producer_output_claims: availabilityContractReview.producer_output_claims } : {}),
+      ...(availabilityContractReview?.producer_output_claims
+        ? { producer_output_claims: availabilityContractReview.producer_output_claims }
+        : {}),
       availability_contracts: [{
         binding_id: `registry:${cap.uri}`,
         requirements: [

@@ -88,20 +88,6 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium', cacheable: true },
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
-  semantic_capabilities: [{
-    scu_id: 'scu.catalog.call_panchanga_service', version: 1, label: 'Panchanga compute evidence',
-    description: 'Compute date- and location-specific panchanga through the authenticated panchanga service.',
-    kind: 'temporal', domains: ['timing'], concepts: ['panchanga', 'calendar'], intents: ['assess', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
-    inputs: ['mode?', 'date?', 'date_from?', 'date_to?', 'lat?', 'lon?', 'tz_offset_minutes?'], outputs: ['panchang', 'panchangs', 'count'], primary_binding_uri: 'marsys://tool/L0/call_panchanga_service',
-    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'Requires a fresh authenticated panchanga-engine probe; a missing or stale probe keeps this binding unavailable.',
-    entitlement: 'native', safety_notes: ['Read-only computed evidence.'], known_gaps: [],
-    availability_contracts: [{ binding_id: 'registry:marsys://tool/L0/call_panchanga_service', requirements: [{
-      kind: 'service_probe', asset_id: 'bg_panchanga', probe_id: 'panchanga_engine', endpoint_identity: 'nirmana-elevation:health-probe:bg_panchanga',
-      probe_contract_sha256: 'febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2', max_age_seconds: 900,
-      source_ref: 'platform/python-sidecar/scripts/nirmana_probe_contracts.json#bg_panchanga; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe',
-    }] }], editorial: true,
-  }],
-
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const mode = args['mode'] ? String(args['mode']) : 'single'
