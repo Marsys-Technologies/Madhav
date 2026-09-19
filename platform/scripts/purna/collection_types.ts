@@ -22,6 +22,8 @@ export interface CollectedCase {
   readonly inquiryId: string | null
   readonly expectedRevision: string
   readonly observedRevision: string | null
+  /** Chart identity returned by the served channel, never just the requested id. */
+  readonly observedChartId: string | null
   readonly snapshotHash: string | null
   readonly chartBuildId: string | null
   readonly answer: string
@@ -100,7 +102,7 @@ function validCaseInput(value: unknown): value is AcceptanceCaseInput {
 
 function validCollectedCase(value: unknown): value is CollectedCase {
   if (!record(value) || !exactKeys(value, [
-    'caseId', 'door', 'inquiryId', 'expectedRevision', 'observedRevision', 'snapshotHash', 'chartBuildId',
+    'caseId', 'door', 'inquiryId', 'expectedRevision', 'observedRevision', 'observedChartId', 'snapshotHash', 'chartBuildId',
     'answer', 'responseAccountability', 'receiptRefs', 'materialFactIds', 'deliveredFactIds',
     'unresolvedObligationIds', 'networkCallCount', 'source', 'terminal', 'diagnostic',
   ])) return false
@@ -109,6 +111,7 @@ function validCollectedCase(value: unknown): value is CollectedCase {
     && (value.inquiryId === null || typeof value.inquiryId === 'string')
     && typeof value.expectedRevision === 'string' && value.expectedRevision.length > 0
     && (value.observedRevision === null || typeof value.observedRevision === 'string')
+    && (value.observedChartId === null || typeof value.observedChartId === 'string')
     && (value.snapshotHash === null || typeof value.snapshotHash === 'string')
     && (value.chartBuildId === null || typeof value.chartBuildId === 'string')
     && typeof value.answer === 'string'
@@ -217,7 +220,7 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
   return artifact
 }
 
-export function isLiveEvidence(row: CollectedCase): boolean {
+export function isLiveEvidence(row: CollectedCase, expectedChartId?: string): boolean {
   return row.source !== 'fixture'
     && row.networkCallCount > 0
     // A genuinely served, revision-bound honest insufficiency remains live
@@ -225,9 +228,10 @@ export function isLiveEvidence(row: CollectedCase): boolean {
     // whether its bounded outcome satisfies the particular case.
     && row.terminal !== 'transport_error'
     && row.observedRevision === row.expectedRevision
+    && (expectedChartId === undefined || row.observedChartId === expectedChartId)
     && row.receiptRefs.length > 0
 }
 
-export function assertLiveEvidence(row: CollectedCase): void {
-  if (!isLiveEvidence(row)) throw new Error('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
+export function assertLiveEvidence(row: CollectedCase, expectedChartId?: string): void {
+  if (!isLiveEvidence(row, expectedChartId)) throw new Error('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
 }

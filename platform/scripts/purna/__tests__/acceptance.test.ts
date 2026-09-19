@@ -244,6 +244,7 @@ async function boundInput(args: {
     inquiryId: 'inquiry-1',
     expectedRevision: candidateConfig.revision,
     observedRevision: candidateConfig.revision,
+    observedChartId: candidateConfig.chart_id,
     snapshotHash: 'snapshot-1',
     chartBuildId: 'build-1',
     answer: args.answer ?? 'answer',

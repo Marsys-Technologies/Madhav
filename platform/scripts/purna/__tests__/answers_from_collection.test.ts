@@ -14,6 +14,7 @@ const input: AcceptanceCaseInput = {
 }
 const row: CollectedCase = {
   caseId: 'case-1', door: 'managed_mcp', inquiryId: 'i-1', expectedRevision: 'candidate-a', observedRevision: 'candidate-a',
+  observedChartId: '11111111-1111-4111-8111-111111111111',
   snapshotHash: 'snapshot', chartBuildId: 'build', answer: 'Answer', responseAccountability: { accountability_version: 'inquiry-response-accountability-v1' },
   receiptRefs: ['receipt-1'], materialFactIds: ['fact-1'], deliveredFactIds: ['fact-1'], unresolvedObligationIds: [],
   networkCallCount: 2, source: 'candidate', terminal: 'complete', diagnostic: null,
@@ -39,6 +40,12 @@ describe('Purna collection answer bridge', () => {
       expect.objectContaining({ gate_id: 'citation_resolution', passed: true }),
       expect.objectContaining({ gate_id: 'required_evidence_dimensions', passed: false }),
     ]))
+  })
+
+  it('rejects a collection whose channel reports a different chart than the bound target', () => {
+    expect(() => answersFromCollection({
+      inputs: [input], door: 'managed_mcp', collection: collection(input, { ...row, observedChartId: '22222222-2222-4222-8222-222222222222' }),
+    })).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
   })
 
   it('rejects duplicate or fixture rows at the collection-artifact boundary', () => {

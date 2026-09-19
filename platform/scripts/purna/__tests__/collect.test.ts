@@ -31,6 +31,7 @@ describe('Purna real three-door collector', () => {
     }
     const baseRow: CollectedCase = {
       caseId: test.id, door: 'portal', inquiryId: 'i-1', expectedRevision: 'candidate-a', observedRevision: 'candidate-a',
+      observedChartId: base.chartId,
       snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null,
       receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [],
       networkCallCount: 1, source: 'candidate', terminal: 'complete', diagnostic: null,
@@ -53,7 +54,7 @@ describe('Purna real three-door collector', () => {
   })
 
   it('rejects a supposedly live answer with no real channel execution', () => {
-    expect(() => assertLiveEvidence({ caseId: test.id, door: 'portal', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null, receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [], networkCallCount: 0, source: 'live', terminal: 'complete', diagnostic: null })).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
+    expect(() => assertLiveEvidence({ caseId: test.id, door: 'portal', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', observedChartId: base.chartId, snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null, receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [], networkCallCount: 0, source: 'live', terminal: 'complete', diagnostic: null }, base.chartId)).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
   })
   it('keeps a truncated SSE stream incomplete', async () => {
     const stream = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode('data: {"type":"block.commit","text":"partial"}\n\n')); controller.close() } })
@@ -68,11 +69,12 @@ describe('Purna real three-door collector', () => {
   })
   it('records the Portal response revision as acceptance evidence', async () => {
     const stream = new ReadableStream<Uint8Array>({ start(controller) {
-      controller.enqueue(new TextEncoder().encode('data: {"type":"turn.close","status":"ok"}\n\n'))
+      controller.enqueue(new TextEncoder().encode(`data: {"type":"turn.open","chart_id":"${base.chartId}"}\n\ndata: {"type":"turn.close","status":"ok"}\n\n`))
       controller.close()
     } })
     const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', fetchImpl: async () => new Response(stream, { headers: { 'x-madhav-source-revision': 'candidate-a' } }) })
     expect(row.observedRevision).toBe('candidate-a')
+    expect(row.observedChartId).toBe(base.chartId)
   })
   it('turns a stalled Portal connection into an explicit incomplete receipt', async () => {
     const fetchImpl: typeof fetch = async (_input, init) => await new Promise<Response>((_resolve, reject) => {
@@ -145,8 +147,8 @@ describe('Purna real three-door collector', () => {
   it('retains the managed status response revision with its terminal result', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask'
       ? { job_id: 'job-1' }
-      : { status: 'complete', deployed_revision: 'candidate-a', result: { reading: 'complete response', receipt_refs: ['r-1'] } } } })
-    expect(row).toMatchObject({ observedRevision: 'candidate-a', terminal: 'complete', receiptRefs: ['r-1'] })
+      : { status: 'complete', deployed_revision: 'candidate-a', result: { chart_id: base.chartId, reading: 'complete response', receipt_refs: ['r-1'] } } } })
+    expect(row).toMatchObject({ observedRevision: 'candidate-a', observedChartId: base.chartId, terminal: 'complete', receiptRefs: ['r-1'] })
   })
   it('retains the managed response-accountability envelope for independent assessment', async () => {
     const envelope = { accountability_version: 'inquiry-response-accountability-v1' }
@@ -170,7 +172,7 @@ describe('Purna real three-door collector', () => {
     expect(row).toMatchObject({ terminal: 'incomplete', chartBuildId: 'build-1', receiptRefs: ['r-1'] })
   })
   it('collects a raw answer only from an explicit external synthesis bound to the terminal contract and raw payload', async () => {
-    const terminalContract = { contract_id: 'contract-1', status: 'COMPLETE' }
+    const terminalContract = { contract_id: 'contract-1', chart_id: base.chartId, status: 'COMPLETE' }
     const envelope = { accountability_version: 'inquiry-response-accountability-v1' }
     const synthesize = vi.fn(async (input: { inquiryId: string; contract: unknown; evidencePayloads: readonly unknown[] }) => {
       expect(input).toMatchObject({ inquiryId: 'i-1', contract: terminalContract, evidencePayloads: [{ results: [{ fact: 'one' }] }] })
@@ -181,9 +183,9 @@ describe('Purna real three-door collector', () => {
       : name === 'inquiry_execute_next'
         ? { lifecycle_token: 'token-2', next_action_ids: [], raw_result: { results: [{ fact: 'one' }] } }
         : { deployed_revision: 'candidate-a', contract: terminalContract, closure: { status: 'COMPLETE', receipt_hash: 'r-1' } } } })
-    expect(row).toMatchObject({ answer: 'Grounded external answer.', responseAccountability: envelope, terminal: 'complete', networkCallCount: 4 })
+    expect(row).toMatchObject({ answer: 'Grounded external answer.', observedChartId: base.chartId, responseAccountability: envelope, terminal: 'complete', networkCallCount: 4 })
   })
   it('accepts a revision-bound honest insufficiency as live transport evidence for later protocol assessment', () => {
-    expect(() => assertLiveEvidence({ caseId: test.id, door: 'raw_mcp', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', snapshotHash: null, chartBuildId: null, answer: 'Evidence is insufficient.', responseAccountability: {}, receiptRefs: ['r-1'], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: ['obl-1'], networkCallCount: 3, source: 'live', terminal: 'blocked', diagnostic: null })).not.toThrow()
+    expect(() => assertLiveEvidence({ caseId: test.id, door: 'raw_mcp', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', observedChartId: base.chartId, snapshotHash: null, chartBuildId: null, answer: 'Evidence is insufficient.', responseAccountability: {}, receiptRefs: ['r-1'], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: ['obl-1'], networkCallCount: 3, source: 'live', terminal: 'blocked', diagnostic: null }, base.chartId)).not.toThrow()
   })
 })
