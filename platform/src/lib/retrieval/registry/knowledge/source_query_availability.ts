@@ -3166,6 +3166,87 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620'],
   },
   {
+    contract_id: 'source-query:query-domain-reading:v1',
+    descriptor_name: 'query_domain_reading',
+    capability_uri: 'marsys://tool/L2/query_domain_reading',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    // This is the read-only shape shared by the handler's domain-discovery,
+    // lens/count, CDLM, discriminated-signal, per-lens re-rank, L1-context,
+    // DEFECT-001 freshness, and hydration legs. LIMIT 0 validates the exact
+    // relations, chart/ayanamsha predicates, and selected columns without
+    // mistaking a no-match domain for downtime. The L1 and freshness legs are
+    // included because this handler directly reads them at request time; the
+    // three Bodha producer relations alone do not establish route availability.
+    sql: `WITH question_lenses AS (
+            SELECT lens_id, question_type, template_element_ids_jsonb,
+                   all_relevant_ranked_jsonb, lens_template_version,
+                   points_only_assertion, verification_pass_status, computed_at
+              FROM bodha_question_lenses
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY question_type LIMIT 0
+          ), cdlm_cells AS (
+            SELECT cell_id, domain_row, domain_col, domain_relationship_class,
+                   shared_signal_count, net_linkage_strength,
+                   computed_linkage_strength, shared_signal_ids_array,
+                   dominant_linkage_rank_in_chart, cell_remedy_priority_rank,
+                   computed_at
+              FROM bodha_cdlm_cells
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY net_linkage_strength DESC NULLS LAST LIMIT 0
+          ), ranked_signals AS (
+            SELECT signal_id, signal_type_id, signal_type_class, signal_tradition,
+                   signal_summary_text, signal_headline_text, computed_salience,
+                   top_k_salience_rank, domains_affected_array,
+                   constituent_facts_array, source_subsystem, valence,
+                   verification_pass_status, citation_human, lel_origin,
+                   signature_tier, configuration_jsonb,
+                   graph_node_strength_contribution_jsonb
+             FROM bodha_msr_signals
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY computed_salience DESC NULLS LAST, signal_id ASC LIMIT 0
+          ), l1_context_facts AS (
+            SELECT fact_category, fact_subject, fact_key, fact_value_num, fact_value_text, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND (
+                 (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa')
+                 OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state')
+               )
+             LIMIT 0
+          ), l1_context_dashas AS (
+            SELECT level, dasha_lord
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid
+               AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND level IN (1, 2)
+               AND start_date <= CURRENT_DATE
+               AND end_date > CURRENT_DATE
+             ORDER BY level ASC
+             LIMIT 0
+          ), defect001_freshness AS (
+            WITH refs AS (
+              SELECT unnest(m.constituent_facts_array) AS fact_id
+                FROM bodha_msr_signals m
+               WHERE m.chart_id = $1::uuid
+                 AND m.constituent_facts_array IS NOT NULL
+                 AND array_length(m.constituent_facts_array, 1) > 0
+            )
+            SELECT count(*)::text AS total_refs,
+                   count(*) FILTER (WHERE cf.fact_id IS NULL)::text AS orphan_refs
+              FROM refs
+              LEFT JOIN chart_facts cf ON cf.chart_id = $1::uuid AND cf.fact_id = refs.fact_id
+             LIMIT 0
+          ) SELECT 1 FROM question_lenses CROSS JOIN cdlm_cells CROSS JOIN ranked_signals
+             CROSS JOIN l1_context_facts CROSS JOIN l1_context_dashas CROSS JOIN defect001_freshness`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010',
+      'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157',
+      'platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111',
+    ],
+  },
+  {
     contract_id: 'source-query:query-insights:v1',
     descriptor_name: 'query_insights',
     capability_uri: 'marsys://tool/L5/query_insights',
