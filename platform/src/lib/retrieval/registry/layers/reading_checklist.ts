@@ -587,6 +587,8 @@ export function vargaConfirmedMark(varga: string, relation: VargaRatificationRel
 }
 
 export const WEALTH_CORROBORATING_VARGAS = ['D9', 'D11'] as const
+export const WEALTH_ASHTAKAVARGA_VARGAS = ['D2', 'D9', 'D11'] as const
+export const WEALTH_ASHTAKAVARGA_HOUSES = [2, 11] as const
 
 export interface WealthCorroboratingVargaResult {
   state: 'served' | 'source_incomplete' | 'source_unproven'
@@ -634,6 +636,58 @@ export async function fetchWealthCorroboratingVargas(
     return { state: 'served', rows, fact_ids: [...new Set(rows.flatMap(row => row.constituent_fact_ids))].sort() }
   } catch {
     return { state: 'source_unproven', rows: [], fact_ids: [] }
+  }
+}
+
+export interface WealthAshtakavargaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{ fact_id: string; fact_category: string; fact_subject: string; fact_key: string; fact_value_num: number | null }>
+}
+
+/** Exact D2/D9/D11 wealth slice: SARVA bindus for houses 2/11 and pinda rows for the
+ * resolved wealth actors. Missing/duplicate natural keys are corrupt/incomplete, never a
+ * zero-value substitute. The caller establishes the shared receipt fence. */
+export async function fetchWealthAshtakavarga(
+  chart_id: string,
+  ayanamsha_id: string,
+  actor_codes: string[],
+  build_id: string,
+): Promise<WealthAshtakavargaResult> {
+  const actors = [...new Set(actor_codes)]
+  if (actors.length === 0) return { state: 'source_incomplete', rows: [] }
+  try {
+    const res = await query<WealthAshtakavargaResult['rows'][number]>(
+      `SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num
+         FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND (
+            (fact_category = 'ashtakavarga_bindu_per_varga'
+             AND fact_subject = ANY($4) AND fact_key = ANY($5))
+            OR
+            (fact_category = 'ashtakavarga_pinda_sarva_per_varga'
+             AND fact_subject = ANY($6) AND fact_key = ANY($5))
+          )
+        ORDER BY fact_category ASC, fact_subject ASC, fact_key ASC, fact_id ASC`,
+      [chart_id, ayanamsha_id, build_id,
+        WEALTH_ASHTAKAVARGA_HOUSES.map(house => `SARVA-HOUSE_${house}`),
+        [...WEALTH_ASHTAKAVARGA_VARGAS], actors],
+    )
+    const expected = new Set<string>()
+    for (const varga of WEALTH_ASHTAKAVARGA_VARGAS) {
+      for (const house of WEALTH_ASHTAKAVARGA_HOUSES) expected.add(`ashtakavarga_bindu_per_varga|SARVA-HOUSE_${house}|${varga}`)
+      for (const actor of actors) expected.add(`ashtakavarga_pinda_sarva_per_varga|${actor}|${varga}`)
+    }
+    const observed = new Set<string>()
+    for (const row of res.rows) {
+      const key = `${row.fact_category}|${row.fact_subject}|${row.fact_key}`
+      if (!expected.has(key) || observed.has(key)) return { state: 'source_incomplete', rows: [] }
+      observed.add(key)
+    }
+    return observed.size === expected.size
+      ? { state: 'served', rows: res.rows }
+      : { state: 'source_incomplete', rows: [] }
+  } catch {
+    return { state: 'source_unproven', rows: [] }
   }
 }
 

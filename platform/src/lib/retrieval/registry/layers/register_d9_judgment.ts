@@ -85,6 +85,7 @@ import {
   getOperativeVargaConstants,
   fetchVargaRatification,
   fetchWealthCorroboratingVargas,
+  fetchWealthAshtakavarga,
   fetchWealthReadingSourceFence,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
@@ -946,6 +947,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         )
         : null
       for (const factId of wealthCorroboratingVargas?.fact_ids ?? []) fact_ids.add(factId)
+      const wealthAshtakavarga = wealthSourceFence?.ready
+        ? await fetchWealthAshtakavarga(
+          chart_id, ayanamsha_id,
+          grahasToConfirm.map(({ code }) => code), build_id,
+        )
+        : null
+      for (const fact of wealthAshtakavarga?.rows ?? []) fact_ids.add(fact.fact_id)
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
@@ -1591,7 +1599,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 detail: `no corroborating classical varga is mapped for '${spec.signal_domain}' beyond operative ${spec.varga}`,
               }),
         },
-        { unit: 'ashtakavarga', state: 'not_joined', detail: 'bhāva AV bindus not folded into judgment_query', drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)' },
+        {
+          unit: 'ashtakavarga',
+          state: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready ? (wealthAshtakavarga?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthAshtakavarga?.rows.length ?? 0,
+          detail: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready
+              ? 'fixed D2/D9/D11 SARVA house-2/11 bindus and wealth-actor pinda rows'
+              : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
+            : 'bhāva AV bindus not folded into judgment_query',
+          drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)',
+        },
         {
           unit: 'special_lagnas',
           state: 'not_joined',
@@ -1696,6 +1716,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 source_fence: wealthSourceFence,
                 state: wealthCorroboratingVargas?.state ?? 'source_unproven',
                 rows: wealthCorroboratingVargas?.rows ?? [],
+              },
+              wealth_ashtakavarga: {
+                state: wealthAshtakavarga?.state ?? 'source_unproven',
+                rows: wealthAshtakavarga?.rows ?? [],
               },
             }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real

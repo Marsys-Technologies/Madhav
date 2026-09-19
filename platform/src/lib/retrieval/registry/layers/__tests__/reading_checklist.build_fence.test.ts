@@ -5,6 +5,7 @@ vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...
 
 import {
   fetchKpCuspChain,
+  fetchWealthAshtakavarga,
   fetchSensitiveDegreeFirings,
   fetchWealthCorroboratingVargas,
   fetchWealthReadingSourceFence,
@@ -117,5 +118,17 @@ describe('reading-checklist selected-build fence', () => {
       { role: 'bhavesha', code: 'VEN' }, { role: 'karaka', code: 'JUP' },
     ], BUILD_ID)
     expect(result).toEqual({ state: 'source_incomplete', rows: [], fact_ids: [] })
+  })
+
+  it('requires every fixed wealth Ashtakavarga natural key from the selected build', async () => {
+    const rows = [
+      ...['D2', 'D9', 'D11'].flatMap(varga => [2, 11].map(house => ({ fact_id: `b-${varga}-${house}`, fact_category: 'ashtakavarga_bindu_per_varga', fact_subject: `SARVA-HOUSE_${house}`, fact_key: varga, fact_value_num: 28 }))),
+      ...['D2', 'D9', 'D11'].flatMap(varga => ['VEN', 'JUP'].map(actor => ({ fact_id: `p-${varga}-${actor}`, fact_category: 'ashtakavarga_pinda_sarva_per_varga', fact_subject: actor, fact_key: varga, fact_value_num: 48 }))),
+    ]
+    queryMock.mockResolvedValueOnce({ rows })
+    const result = await fetchWealthAshtakavarga(CHART_ID, AYANAMSHA, ['VEN', 'JUP'], BUILD_ID)
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(12)
+    expect(String(queryMock.mock.calls[0]![0])).toContain('build_id = $3::uuid')
   })
 })
