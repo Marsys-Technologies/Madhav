@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.28.0
+version: 0.29.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0103
-last_updated: 2026-09-19T14:18:53+05:30
+last_event: PA-E0104
+last_updated: 2026-09-19T14:27:10+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -31,6 +31,16 @@ layer state, queue or authority.
   inspection passed as `strict`. The existing heartbeat was updated in place. Until the earned
   signal is repaired, the one-shot Pūrṇa lifecycle completes, and actual ready revisions plus
   environment SHAs are verified, wealth/capability Batch 5 remains paused.
+
+- Earned deployment signal repaired at implementation commit
+  `9d4699ddb2fba792839a1cebdcfd4d5662b0a6e5`: the `changes` job now derives a web signal from
+  production's deployed revision, and the terminal `deployment-outcome` job runs under `always()`
+  to require every source-implied migration and deploy mutation to have succeeded. A fixture shaped
+  like false-green run `35419951080` proves skipped migration, web, MCP, and pipeline mutations now
+  block the workflow. Focused verification passes 81/81 tests plus TypeScript and diff checks;
+  independent review found no HIGH or MEDIUM issue and its one LOW proof gap was repaired before
+  commit. This is source proof only until the commit is protected, exercised by the deploy workflow,
+  and followed by live ready-revision and environment-SHA verification.
 
 - Successor execution: task `01a0b7d8-9a90-74f3-aab9-80014919f8b2` is the sole active owner on
   `codex/purna-product-completion-v3`, created from verified protected
