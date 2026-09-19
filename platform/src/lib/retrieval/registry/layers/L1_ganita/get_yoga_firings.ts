@@ -158,6 +158,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
+    const build_id = args['build_id'] ? String(args['build_id']) : null
 
     const all               = args['all'] === true
     const fired             = args['fired'] === undefined ? true : args['fired'] === true
@@ -171,6 +172,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     const filters: string[] = ['f.chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
+    if (build_id)                    { filters.push(`f.build_id = $${p++}::uuid`);    params.push(build_id) }
     if (!all)                       { filters.push(`f.fired = $${p++}`);             params.push(fired) }
     if (ayanamsha_id)               { filters.push(`f.ayanamsha_id = $${p++}`);      params.push(ayanamsha_id) }
     if (bhanga_active !== null)     { filters.push(`f.bhanga_active = $${p++}`);     params.push(bhanga_active) }
@@ -240,6 +242,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          build_id,
           rows,
           count: rowsRes.rows.length,
           total_matching,

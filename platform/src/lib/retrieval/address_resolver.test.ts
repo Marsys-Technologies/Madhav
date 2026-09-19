@@ -262,9 +262,11 @@ import {
   type ResolvedSubLord,
   type ResolvedSaham,
 } from './address_resolver'
+import { query } from '@/lib/db/client'
 
 beforeEach(() => {
   idCounter = 0
+  vi.mocked(query).mockClear()
 })
 
 // ── Pure arithmetic (no DB) ────────────────────────────────────────────────
@@ -508,6 +510,50 @@ describe('resolveAddress — Abhinandan chart (1c826d5a)', () => {
     expect(gNative.graha).toBe('Saturn')
     expect(gAbhi.graha).toBe('Saturn') // same lord (both Lagna=Aries → 10th=Capricorn)
     expect(gNative.house).not.toBe(gAbhi.house) // but DIFFERENT placements — no cross-chart bleed
+  })
+})
+
+describe('resolveAddress — optional immutable build fence', () => {
+  const BUILD_ID = '11111111-1111-4111-8111-111111111111'
+
+  it('fences every recursive chart_facts read when build_id is supplied', async () => {
+    await resolveAddress(
+      NATIVE_CHART_ID,
+      { type: 'lord_of', house: 7 },
+      { ayanamsha_id: AYANAMSHA, build_id: BUILD_ID },
+    )
+
+    const calls = vi.mocked(query).mock.calls.filter(([sql]) => String(sql).includes('FROM chart_facts'))
+    expect(calls.length).toBeGreaterThan(1)
+    for (const [sql, params] of calls) {
+      expect(String(sql)).toContain('build_id = $')
+      expect(params).toContain(BUILD_ID)
+    }
+  })
+
+  it('requires both legacy text and UUID build columns for chart_divisionals', async () => {
+    await resolveAddress(
+      NATIVE_CHART_ID,
+      { type: 'graha', graha: 'Venus', varga: 'D9' },
+      { ayanamsha_id: AYANAMSHA, build_id: BUILD_ID },
+    )
+
+    const call = vi.mocked(query).mock.calls.find(([sql]) => String(sql).includes('FROM chart_divisionals'))
+    expect(call).toBeTruthy()
+    expect(String(call?.[0])).toContain('build_id = $5::text')
+    expect(String(call?.[0])).toContain('build_id_uuid = $5::uuid')
+    expect(call?.[1]).toEqual([NATIVE_CHART_ID, AYANAMSHA, 'D9', 'Venus', BUILD_ID])
+  })
+
+  it('preserves the legacy unfenced query shape for callers that omit build_id', async () => {
+    await resolveAddress(
+      NATIVE_CHART_ID,
+      { type: 'graha', graha: 'Venus' },
+      { ayanamsha_id: AYANAMSHA },
+    )
+    const call = vi.mocked(query).mock.calls.find(([sql]) => String(sql).includes('FROM chart_facts'))
+    expect(String(call?.[0])).not.toContain('build_id =')
+    expect(call?.[1]).toEqual([NATIVE_CHART_ID, AYANAMSHA, 'VEN'])
   })
 })
 

@@ -123,6 +123,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
+    const build_id = args['build_id'] ? String(args['build_id']) : null
 
     const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA
     const includeGraha = args['include_graha_kp_lords'] === true || args['include_graha_kp_lords'] === 'true'
@@ -135,16 +136,20 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
              fact_value_text, fact_value_num, fact_value_jsonb
       FROM chart_facts
       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = ANY($3::text[])
+      ${build_id ? 'AND build_id = $4::text' : ''}
       ORDER BY fact_category, fact_subject, fact_key`
 
     try {
-      const res = await query<FactRow>(sql, [chart_id, ayanamsha_id, categories])
+      const res = await query<FactRow>(sql, build_id
+        ? [chart_id, ayanamsha_id, categories, build_id]
+        : [chart_id, ayanamsha_id, categories])
       const rows = res.rows ?? []
 
       if (rows.length === 0) {
         return {
           content: {
             chart_id,
+            build_id,
             ayanamsha_id,
             cusps: [],
             ruling_planets: [],
@@ -259,6 +264,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
 
       const content: Record<string, unknown> = {
         chart_id,
+        build_id,
         ayanamsha_id,
         cusps,
         ruling_planets: rulingPlanets,

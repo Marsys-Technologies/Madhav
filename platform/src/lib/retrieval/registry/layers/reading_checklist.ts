@@ -116,6 +116,7 @@ export interface SensitiveDegreeResult {
 export async function fetchSensitiveDegreeFirings(
   chart_id: string,
   ayanamsha_id: string,
+  build_id?: string,
 ): Promise<SensitiveDegreeResult> {
   const out: SensitiveDegreeResult = { firings: [], checked: 0, available: false, fact_ids: [] }
   try {
@@ -127,8 +128,11 @@ export async function fetchSensitiveDegreeFirings(
          FROM chart_facts
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND fact_category = 'sensitive_degree_check'
-          AND fact_key = ANY($3)`,
-      [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS]],
+          AND fact_key = ANY($3)
+          ${build_id ? 'AND build_id = $4::text' : ''}`,
+      build_id
+        ? [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS], build_id]
+        : [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS]],
     )
     out.available = res.rows.length > 0
     out.checked = res.rows.length
@@ -352,6 +356,7 @@ export async function fetchVargaRatification(
   signalDomain: string,
   varga: string,
   subjects: Array<{ role: string; code: string }>,
+  build_id?: string,
 ): Promise<VargaRatificationResult> {
   const per_subject: VargaRatificationSubjectResult[] = subjects.map(s => ({
     role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation,
@@ -365,8 +370,11 @@ export async function fetchVargaRatification(
       const res = await query<{ subject: string; value_jsonb: Record<string, unknown> | null }>(
         `SELECT subject, value_jsonb FROM chart_vichara
          WHERE chart_id = $1 AND ayanamsha_id = $2 AND vichara_family = 'varga_ratification'
-           AND domain = $3 AND subject = ANY($4)`,
-        [chart_id, ayanamsha_id, vicharaDomain, subjectCodes],
+           AND domain = $3 AND subject = ANY($4)
+           ${build_id ? 'AND build_id = $5::uuid' : ''}`,
+        build_id
+          ? [chart_id, ayanamsha_id, vicharaDomain, subjectCodes, build_id]
+          : [chart_id, ayanamsha_id, vicharaDomain, subjectCodes],
       )
       const bySubject = new Map(res.rows.map(r => [r.subject, r.value_jsonb]))
       for (const entry of per_subject) {
@@ -432,6 +440,7 @@ export async function fetchKpCuspChain(
   chart_id: string,
   ayanamsha_id: string,
   houses: number[],
+  build_id?: string,
 ): Promise<KpCuspResult> {
   const out: KpCuspResult = {
     cusps: [], available: false, fact_ids: [],
@@ -441,9 +450,13 @@ export async function fetchKpCuspChain(
   }
   try {
     const { getKpCuspsCapability } = await import('./L1_ganita/get_kp_cusps')
-    const res = await getKpCuspsCapability.handler({ chart_id, ayanamsha_id }, undefined)
+    const res = await getKpCuspsCapability.handler(
+      { chart_id, ayanamsha_id, ...(build_id ? { build_id } : {}) },
+      undefined,
+    )
     if (res.is_error) return out
     const c = res.content as Record<string, unknown>
+    if (build_id && c['build_id'] !== build_id) return out
     const allCusps = Array.isArray(c['cusps']) ? (c['cusps'] as Record<string, unknown>[]) : []
     out.available = allCusps.length > 0
     const want = new Set(houses)
@@ -634,6 +647,7 @@ export async function fetchDomainStructuralCoverage(
   chart_id: string,
   ayanamsha_id: string,
   signal_domain: string,
+  build_id?: string,
 ): Promise<DomainStructuralCoverageResult> {
   const out: DomainStructuralCoverageResult = {
     msr_signals: 0,
@@ -648,18 +662,23 @@ export async function fetchDomainStructuralCoverage(
       `WITH msr AS (
          SELECT count(*)::int AS c FROM bodha_msr_signals
           WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
+            ${build_id ? 'AND build_id = $4::uuid' : ''}
        ), mech AS (
          SELECT count(*)::int AS c FROM bodha_mechanisms
           WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
+            ${build_id ? 'AND build_id = $4::uuid' : ''}
        ), mech_domains AS (
          SELECT count(DISTINCT d)::int AS c FROM (
            SELECT unnest(domains_affected_array) AS d FROM bodha_mechanisms
             WHERE chart_id = $1 AND ayanamsha_id = $2
+              ${build_id ? 'AND build_id = $4::uuid' : ''}
          ) s
        )
        SELECT msr.c AS msr_count, mech.c AS mech_count, mech_domains.c AS mech_domain_coverage
          FROM msr, mech, mech_domains`,
-      [chart_id, ayanamsha_id, signal_domain],
+      build_id
+        ? [chart_id, ayanamsha_id, signal_domain, build_id]
+        : [chart_id, ayanamsha_id, signal_domain],
     )
     const row = res.rows[0]
     if (row) {

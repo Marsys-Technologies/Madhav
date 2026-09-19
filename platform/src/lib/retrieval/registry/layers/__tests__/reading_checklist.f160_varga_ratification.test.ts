@@ -19,6 +19,7 @@ import { fetchVargaRatification, vargaConfirmedMark } from '../reading_checklist
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const LAHIRI = 'lahiri_chitrapaksha'
+const BUILD_ID = '11111111-1111-4111-8111-111111111111'
 
 function stubRows(rows: Array<{ subject: string; value_jsonb: Record<string, unknown> }>) {
   queryMock.mockReset()
@@ -84,6 +85,18 @@ describe('F-160 — fetchVargaRatification: can-fail (the §N.8 requirement)', (
     const result = await fetchVargaRatification(CHART, LAHIRI, 'wealth', 'D2', [{ role: 'karaka', code: 'JUP' }])
     expect(result.relation).toBe('agree')
     expect(result.domain_provisional).toBe(false)
+  })
+
+  it('fences the ratification vote to the judgment-selected build', async () => {
+    stubRows([
+      { subject: 'JUP', value_jsonb: { per_varga: { D2: { relation: 'agree' } } } },
+    ])
+    await fetchVargaRatification(
+      CHART, LAHIRI, 'wealth', 'D2', [{ role: 'karaka', code: 'JUP' }], BUILD_ID,
+    )
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql)).toContain('build_id = $5::uuid')
+    expect(params).toEqual([CHART, LAHIRI, 'wealth', ['JUP'], BUILD_ID])
   })
 
   it('no chart_vichara row at all (asset not built) reads as the honest no_row unknown, ok:true', async () => {

@@ -298,6 +298,24 @@ export interface ResolvedAddress {
 interface ResolveCtx {
   chart_id: string
   ayanamsha_id: string
+  /** Optional immutable chart-build generation. When present every build-bearing read is
+   *  fenced to this exact generation; omitted callers retain the historical latest-row
+   *  behaviour for backward compatibility. */
+  build_id?: string
+}
+
+function factBuildFence(ctx: ResolveCtx, param: number): string {
+  return ctx.build_id ? ` AND build_id = $${param}::text` : ''
+}
+
+function divisionalBuildFence(ctx: ResolveCtx, param: number): string {
+  return ctx.build_id
+    ? ` AND build_id = $${param}::text AND build_id_uuid = $${param}::uuid`
+    : ''
+}
+
+function withBuildParam(ctx: ResolveCtx, params: unknown[]): unknown[] {
+  return ctx.build_id ? [...params, ctx.build_id] : params
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,8 +371,8 @@ async function fetchD1GrahaPlacement(
     `SELECT fact_id, fact_key, fact_value_text, fact_value_num
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
-       AND fact_subject = $3 AND fact_key IN ('sign', 'house_d1')`,
-    [ctx.chart_id, ctx.ayanamsha_id, grahaCode],
+       AND fact_subject = $3 AND fact_key IN ('sign', 'house_d1')${factBuildFence(ctx, 4)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, grahaCode]),
   )
   let sign: string | null = null
   let house: number | null = null
@@ -382,8 +400,9 @@ async function fetchVargaGrahaPlacement(
      FROM chart_divisionals
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND varga = $3 AND graha = $4
        AND formula_provenance_text = 'whole_sign'
+       ${divisionalBuildFence(ctx, 5)}
      LIMIT 1`,
-    [ctx.chart_id, ctx.ayanamsha_id, varga, grahaFullName],
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, varga, grahaFullName]),
   )
   const row = res.rows[0]
   if (!row) return { sign: null, house: null, fact_ids: [] }
@@ -429,8 +448,9 @@ async function computeChandraFrameSensitivity(
     const res = await query<{ ayanamsha_id: string; fact_value_text: string | null }>(
       `SELECT ayanamsha_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])
-         AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'sign'`,
-      [ctx.chart_id, REAL_AYANAMSHAS as unknown as string[]],
+         AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'sign'
+         ${factBuildFence(ctx, 3)}`,
+      withBuildParam(ctx, [ctx.chart_id, REAL_AYANAMSHAS as unknown as string[]]),
     )
     const reads: AyanamshaRead[] = res.rows
       .filter((r) => (REAL_AYANAMSHAS as readonly string[]).includes(r.ayanamsha_id) && r.fact_value_text !== null)
@@ -481,8 +501,8 @@ async function resolveFrameSign(
   const res = await query<{ fact_id: string; fact_value_text: string | null }>(
     `SELECT fact_id, fact_value_text FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3
-       AND fact_subject = $4 AND fact_key = 'sign'`,
-    [ctx.chart_id, ctx.ayanamsha_id, category, subject],
+       AND fact_subject = $4 AND fact_key = 'sign'${factBuildFence(ctx, 5)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, category, subject]),
   )
   const row = res.rows[0]
   if (!row || !row.fact_value_text) {
@@ -513,9 +533,13 @@ async function resolveFrameSign(
 export async function resolveFrameReferenceSign(
   chart_id: string,
   frame: ReferenceFrame,
-  opts?: { ayanamsha_id?: string },
+  opts?: { ayanamsha_id?: string; build_id?: string },
 ): Promise<{ sign: ZodiacSign; fact_ids: string[]; ayanamsha_frame_sensitivity?: AyanamshaFrameSensitivity }> {
-  const ctx: ResolveCtx = { chart_id, ayanamsha_id: opts?.ayanamsha_id ?? DEFAULT_AYANAMSHA }
+  const ctx: ResolveCtx = {
+    chart_id,
+    ayanamsha_id: opts?.ayanamsha_id ?? DEFAULT_AYANAMSHA,
+    ...(opts?.build_id ? { build_id: opts.build_id } : {}),
+  }
   return resolveFrameSign(ctx, frame)
 }
 
@@ -523,8 +547,8 @@ async function fetchD1OccupantsOfHouse(ctx: ResolveCtx, house: number): Promise<
   const res = await query<{ fact_id: string; fact_subject: string }>(
     `SELECT fact_id, fact_subject FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
-       AND fact_key = 'house_d1' AND fact_value_num = $3`,
-    [ctx.chart_id, ctx.ayanamsha_id, house],
+       AND fact_key = 'house_d1' AND fact_value_num = $3${factBuildFence(ctx, 4)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, house]),
   )
   const grahas = res.rows
     .map(r => r.fact_subject)
@@ -541,8 +565,9 @@ async function fetchVargaOccupantsOfHouse(
   const res = await query<{ id: string; graha: string }>(
     `SELECT id, graha FROM chart_divisionals
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND varga = $3 AND house = $4
-       AND formula_provenance_text = 'whole_sign' AND graha NOT IN ('ALL', 'karya', 'Lagna')`,
-    [ctx.chart_id, ctx.ayanamsha_id, varga, house],
+       AND formula_provenance_text = 'whole_sign' AND graha NOT IN ('ALL', 'karya', 'Lagna')
+       ${divisionalBuildFence(ctx, 5)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, varga, house]),
   )
   return { grahas: res.rows.map(r => r.graha), fact_ids: res.rows.map(r => r.id) }
 }
@@ -563,8 +588,8 @@ async function fetchKarakaRow(
     `SELECT fact_id, fact_key, fact_value_text, fact_value_num
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'karaka_chara_position'
-       AND fact_subject = $3 AND fact_key IN ('assigned_graha', 'house_d1', 'sign')`,
-    [ctx.chart_id, ctx.ayanamsha_id, factSubject],
+       AND fact_subject = $3 AND fact_key IN ('assigned_graha', 'house_d1', 'sign')${factBuildFence(ctx, 4)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, factSubject]),
   )
   let graha: string | null = null
   let house: number | null = null
@@ -592,8 +617,8 @@ async function fetchCuspKpLords(
     `SELECT fact_id, fact_key, fact_value_text
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'cusp_kp_lords'
-       AND fact_subject = $3 AND fact_key IN ('prana_lord', 'star_lord', 'sub_lord', 'sub_sub_lord')`,
-    [ctx.chart_id, ctx.ayanamsha_id, factSubject],
+       AND fact_subject = $3 AND fact_key IN ('prana_lord', 'star_lord', 'sub_lord', 'sub_sub_lord')${factBuildFence(ctx, 4)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, factSubject]),
   )
   let prana_lord: string | null = null
   let star_lord: string | null = null
@@ -621,8 +646,8 @@ async function fetchSaham(
     `SELECT fact_id, fact_key, fact_value_text, fact_value_num
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'saham_position'
-       AND fact_subject = $3 AND fact_key IN ('sign', 'house_d1', 'sign_lord')`,
-    [ctx.chart_id, ctx.ayanamsha_id, factSubject],
+       AND fact_subject = $3 AND fact_key IN ('sign', 'house_d1', 'sign_lord')${factBuildFence(ctx, 4)}`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, factSubject]),
   )
   let sign: string | null = null
   let house: number | null = null
@@ -997,11 +1022,15 @@ function ordinal(n: number): string {
 export async function resolveAddress(
   chart_id: string,
   expression: AddressExpression | string,
-  opts?: { ayanamsha_id?: string; paradigm?: Paradigm },
+  opts?: { ayanamsha_id?: string; paradigm?: Paradigm; build_id?: string },
 ): Promise<ResolvedAddress> {
   const expr = typeof expression === 'string' ? parseAddressExpression(expression) : expression
   assertParadigmCoherent(expr, opts?.paradigm)
-  const ctx: ResolveCtx = { chart_id, ayanamsha_id: opts?.ayanamsha_id ?? DEFAULT_AYANAMSHA }
+  const ctx: ResolveCtx = {
+    chart_id,
+    ayanamsha_id: opts?.ayanamsha_id ?? DEFAULT_AYANAMSHA,
+    ...(opts?.build_id ? { build_id: opts.build_id } : {}),
+  }
   const { entities, chain } = await evaluate(ctx, expr)
   return { expression: expr, entities, chain, paradigm: effectiveParadigm(expr, opts?.paradigm) }
 }
