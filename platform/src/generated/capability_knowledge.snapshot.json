@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:33:32.000Z",
-  "content_hash": "sha256:9653ac7aaaaa001ea6197d4357cd57933dffd160032964acafc7eee2da96ed60",
+  "generated_at": "2026-09-19T00:34:54.000Z",
+  "content_hash": "sha256:d9d01a2a1ca20e6ace5641d8bf5f1f6ab8d52aa6dc87c1cc007c99f91b1e4a30",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:46da1634d19f9540df50bc81318cdfa7b9ee2cdd88250aa8427300c5885f594b",
+  "semantic_review_fingerprint": "sha256:dcc7dd7e02bb2201bb523c797b3ae0d09029e9aa15113852eec09d8bf12b8670",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -18603,6 +18603,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L3/query_kota_chakra",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-kota-chakra:v1",
+              "capability_uri": "marsys://tool/L3/query_kota_chakra",
+              "contract_sha256": "sha256:72a05827f1828559a22b0b72edd90b477721c316f1c85002ced1fb96d142255f",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:86-115"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

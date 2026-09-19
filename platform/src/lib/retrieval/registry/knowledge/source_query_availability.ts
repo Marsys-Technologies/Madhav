@@ -2727,6 +2727,27 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM deduped ORDER BY parva_index LIMIT 0 OFFSET 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:119-169'],
   },
+  {
+    contract_id: 'source-query:query-kota-chakra:v1',
+    descriptor_name: 'query_kota_chakra',
+    capability_uri: 'marsys://tool/L3/query_kota_chakra',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT graha, nakshatra_name, count_from_janma, kota_ring, is_natural_malefic,
+                   posture, severity, to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end, start_truncated, end_truncated,
+                   janma_nakshatra_fact_id, ring_table_citation, uncited_extension,
+                   (window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE) AS is_current
+              FROM kala_kota_chakra
+             WHERE chart_id = $1::uuid
+             ORDER BY graha, window_start LIMIT 0
+          ), current_page AS (
+            SELECT graha FROM kala_kota_chakra
+             WHERE chart_id = $1::uuid AND window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE
+             ORDER BY graha, window_start LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:86-115'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
