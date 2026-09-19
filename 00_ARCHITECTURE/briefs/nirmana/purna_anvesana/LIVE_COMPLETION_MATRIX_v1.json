@@ -4,7 +4,7 @@
   "authority": "CCD-012",
   "status": "PRODUCT_DELIVERY_SUCCESSOR_ACTIVE",
   "observed_at": "2026-09-19T12:53:21+05:30",
-  "source_candidate": "90a2b8b911631cfd403c40b68ddfb3abeb56bfa9",
+  "source_candidate": "dd3e189ed4b6f81aaf6d20a586290450705c7947",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
     "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",

@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.26.0
+version: 0.27.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0101
-last_updated: 2026-09-19T12:53:21+05:30
+last_event: PA-E0102
+last_updated: 2026-09-19T14:03:39+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -78,6 +78,24 @@ layer state, queue or authority.
   remaining HIGH, MED, or LOW issue. This remains source-ready evidence only: classical pagination
   exhaustion, wealth checklist completion, the remaining catalogue deficit, candidate receipts,
   protected release, and live 5+30 three-door automated acceptance remain open.
+
+- Fourth successor source packet: implementation head `3046dabb6fc61870bb86fce0a31e872f3226194b`,
+  generated-artifact head `54086f347`, and evidence head
+  `dd3e189ed4b6f81aaf6d20a586290450705c7947` add a signed, opaque, receipt-pinned
+  `query_classical_texts` cursor. Continuations pin the normalized route and filters, ranking mode,
+  embedding hash, and exact current fresh/proven global `bg_texts` receipt; receipt replacement,
+  ambiguity, digest/spec/partition/version changes, ranking drift, forged cursors, and raw nonzero
+  offsets fail closed. Inquiry and full MCP preserve the reviewed `content.citations` exhaustion
+  contract and forward the cursor byte-for-byte. The current snapshot remains 182 SCUs / 186
+  executable bindings / 157 availability contracts / 24 uncovered bindings / 5 deliberate-dark
+  dispositions; 5 of 96 reviewed paginated descriptors are now exhaustible. Full platform
+  verification passes 1,140 files / 12,368 tests, with 704 skipped and 2 todo; lint has 0 errors /
+  590 inherited warnings, TypeScript and both code-generation checks pass, the fact-category
+  scanner reports 62/62 reviewed violations with zero new findings, route goldens pass 56/56, and
+  independent review found no remaining HIGH, MED, or LOW issue. `DATABASE_URL` was absent, so no
+  real PostgreSQL multi-page traversal or live exhaustion is claimed. Wealth checklist closure,
+  the remaining catalogue deficit, candidate receipts, protected release, and live 5+30
+  three-door automated acceptance remain open.
 
 - Refreshed live boundary: `amjis-web` and `amjis-mcp` still serve
   `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected run `35419951080` skipped all deployment
