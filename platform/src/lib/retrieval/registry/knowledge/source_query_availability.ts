@@ -3318,6 +3318,48 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:306-335'],
   },
+  {
+    contract_id: 'source-query:query-remedy-program:v1',
+    descriptor_name: 'query_remedy_program',
+    capability_uri: 'marsys://tool/L4/query_remedy_program',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT mitigation_id, linked_anchor_id, obstruction_id, afflicting_graha,
+                   obstruction_severity, intensity_tier, program_jsonb,
+                   tradition_options_jsonb, cross_tradition_corroboration,
+                   recommended_tier_jsonb, proportionality_basis, initiation_muhurta_ref,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   to_char(re_evaluation_date, 'YYYY-MM-DD') AS re_evaluation_date,
+                   classical_citation
+              FROM phala_mitigation
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR intensity_tier = NULL::text)
+               AND (NULL::text IS NULL OR EXISTS (
+                 SELECT 1 FROM phala_anchors a
+                  WHERE a.chart_id = phala_mitigation.chart_id
+                    AND a.anchor_id = phala_mitigation.linked_anchor_id
+                    AND a.domain = NULL::text))
+             ORDER BY obstruction_severity, intensity_tier, mitigation_id LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM phala_mitigation WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:388-449'],
+  },
+  {
+    contract_id: 'source-query:query-cleansed-anchors:v1',
+    descriptor_name: 'query_cleansed_anchors',
+    capability_uri: 'marsys://tool/L4/query_cleansed_anchors',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT entry_id, anchor_id, cleanliness_status, critical_flag_count, major_flag_count,
+                 minor_flag_count, flag_ids_jsonb, staged_revision_jsonb, revision_approved_by,
+                 revision_applied_at, confidence_delta_if_applied, magnitude_delta_if_applied
+            FROM phala_suddha_sodhana
+           WHERE chart_id = $1::uuid
+             AND (NULL::text IS NULL OR cleanliness_status = NULL::text)
+           ORDER BY cleanliness_status, critical_flag_count DESC, anchor_id LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:495-530'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
