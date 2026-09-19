@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.30.0
-status: PRODUCT_DELIVERY_TECHNICAL_RELEASE_VERIFIED_ACCEPTANCE_OPEN
+version: 0.31.0
+status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_LIVE_SLICE_BLOCKED_BY_CROSS_DOOR_REVISION_SPLIT
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0108
-last_updated: 2026-09-20T01:17:53+05:30
+last_event: PA-E0109
+last_updated: 2026-09-20T02:51:56+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -20,6 +20,25 @@ layer state, queue or authority.
 
 ## Current position
 
+- Native-authorized automated product acceptance is active. The first bounded live collection of
+  `wealth_mechanism_timing_contradiction` produced **0/3 accepted doors**, recorded only by the
+  restricted collection hash `sha256:6928c3385b72edb2ff9510d49df0330ac776d81be964634fe79808f95860174d`.
+  Portal produced a terminal response and a receipt reference but observed web revision `cdc701...`
+  where the run expected `66b962...`; managed MCP failed before a usable response because the
+  collector initially sent lifecycle-only scope vocabulary to the narrower `prashna_ask` contract;
+  raw MCP completed its lifecycle polling but was blocked without a closure answer or accountable
+  facts. The collector now bounds portal and MCP requests and normalizes that managed scope, but
+  this live outcome remains a failure baseline, not acceptance or parity evidence.
+
+- Current production is revision-split. Automatic deploy run `35467786237` promoted web to
+  `amjis-web-probe-cdc701afad40-35467786237-1` at 100% traffic with
+  `NIRMANA_DEPLOYED_SHA=cdc701afad40c1ffe8d83468df5127b26e370fba`, while MCP and sidecar remain
+  100% on their `66b962...` revisions from run `35464335676`. Sidecar has no corresponding
+  `NIRMANA_DEPLOYED_SHA` environment attestation. A single three-door expected revision therefore
+  cannot currently be earned. No web-only deploy is represented as a three-door release; a fresh
+  leased, rollback-ready, all-component release remains required after the collector repair is
+  protected.
+
 - Exact protected technical delivery is verified at `origin/main@66b962f2994f0a7500c285025740cd5861534d8c`
   (PR #2690). Main CI `35462821124`, automatic deployment `35463402314`, and the one
   lease-authorized force-all deployment `35464335676` succeeded. The automatic run exercised the
@@ -27,14 +46,15 @@ layer state, queue or authority.
   web candidate signing/RLS canary and web promotion. The force-all run re-attested those gates and
   successfully deployed/promoted web, MCP, sidecar, and the pipeline job image; its terminal
   earned-outcome job required every source-implied mutation result to be successful. All three
-  ordinary-traffic revisions are 100% on `66b962f...`: `amjis-web-probe-66b962f2994f-35464335676-1`,
+  ordinary-traffic revisions were 100% on `66b962f...`: `amjis-web-probe-66b962f2994f-35464335676-1`,
   `amjis-mcp-probe-66b962f2994f-35464335676-1`, and
   `amjis-sidecar-probe-66b962f2994f-35464335676-1`. Web and MCP revision labels/environment
   attest the exact full SHA; the pipeline job image is tagged with the same SHA. Independent
   post-release checks returned web/MCP/sidecar health HTTP 200, and the authenticated sidecar
   release-smoke execution `amjis-sidecar-release-smoke-lhdk9` completed successfully. Live DB
   attestation records migrations 1040 and 1041 exactly once, absent one-shot bootstrap role, and
-  `data_plane=marked`, `nirmana=marked`, `purna=marked`.
+  `data_plane=marked`, `nirmana=marked`, `purna=marked`. This PA-E0107 observation is historical;
+  current traffic is the revision-split state recorded above.
 
 - The canonical allowlist repair was necessary and bounded: after the owner-USAGE repair, the
   predecessor automatic run `35461533371` correctly failed closed because the global public-schema
@@ -47,12 +67,14 @@ layer state, queue or authority.
   isolation, routine replay, ownership postflight, and candidate canaries. No global decoupling,
   skip, retry loop, or unreviewed compatibility route was introduced.
 
-- This is technical-release evidence only. The frozen original five/34-route corpus plus 30
-  product scenarios across Portal, managed MCP, and governed raw MCP has not yet run as the
-  successor's automated three-door acceptance. Human-expert empirical research remains separately
-  `NOT_RUN`. Neither is inferred from CI, deployment, health, or this delivery record.
+- The frozen original five/34-route corpus plus 30 product scenarios across Portal, managed MCP,
+  and governed raw MCP is not accepted. Its first live three-door slice has run and failed as
+  recorded above; the remaining corpus must still earn exact-revision, answer, receipt, and
+  fact-accountability evidence. Human-expert empirical research remains separately `NOT_RUN`.
+  Neither outcome is inferred from CI, deployment, health, or this delivery record.
 
-- Production-delivery priority redirect: the feature frontier is quiesced at pushed commit
+- Historical production-delivery priority redirect — superseded by PA-E0107 and PA-E0109: the
+  feature frontier was quiesced at pushed commit
   `34e3abf6b10039bf35677a8cb8995cc2760f4fd9`. Read-only refresh confirms deploy run
   `35419951080` concluded success while bootstrap, routine migration, web, MCP, and pipeline-image
   mutation jobs all skipped. Production MCP still serves
@@ -62,7 +84,7 @@ layer state, queue or authority.
   1040 is absent and the one-shot bootstrap role is absent. The deploy run's protected isolation
   inspection passed as `strict`. The existing heartbeat was updated in place. Until the earned
   signal is repaired, the one-shot Pūrṇa lifecycle completes, and actual ready revisions plus
-  environment SHAs are verified, wealth/capability Batch 5 remains paused.
+  environment SHAs were verified, wealth/capability Batch 5 remained paused.
 
 - Earned deployment signal repaired at implementation commit
   `9d4699ddb2fba792839a1cebdcfd4d5662b0a6e5`: the `changes` job now derives a web signal from

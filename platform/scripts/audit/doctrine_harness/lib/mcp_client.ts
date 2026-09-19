@@ -109,11 +109,12 @@ export class McpClient {
     this.lastRequestAt = Date.now()
   }
 
-  private async post(body: unknown): Promise<McpToolResult> {
+  private async post(body: unknown, signal?: AbortSignal): Promise<McpToolResult> {
     await this.pace()
     const res = await fetch(this.baseUrl, {
       method: 'POST',
       headers: this.headers(),
+      signal,
       body: JSON.stringify(body),
     })
     const text = await res.text()
@@ -130,14 +131,16 @@ export class McpClient {
     return { ok: res.ok, status: res.status, body: text, json }
   }
 
-  private async withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, label: string, signal?: AbortSignal): Promise<T> {
     const backoffsMs = [10_000, 60_000, 300_000]
     let lastErr: unknown
     for (let attempt = 0; attempt <= backoffsMs.length; attempt++) {
       try {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
         return await fn()
       } catch (err) {
         lastErr = err
+        if (signal?.aborted) throw err
         if (attempt < backoffsMs.length) {
           // Transient-failure handling per CONDUCTOR_PROTOCOL §6.4 — retry
           // with backoff; never counted as a substantive result. Capped at
@@ -166,13 +169,14 @@ export class McpClient {
    * is attempted once, non-fatally, for spec-compliant MCP clients that
    * DO require it against a future/different deployment.
    */
-  async init(): Promise<void> {
+  async init(signal?: AbortSignal): Promise<void> {
     if (this.initialized) return
     this.initialized = true // stateless server — never block callers on this
     try {
       const res = await fetch(this.baseUrl, {
         method: 'POST',
         headers: this.headers(),
+        signal,
         body: JSON.stringify({
           jsonrpc: '2.0',
           id: 1,
@@ -186,7 +190,8 @@ export class McpClient {
       })
       this.sessionId = res.headers.get('mcp-session-id') ?? undefined
       await res.text()
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error
       // Non-fatal — stateless deployed connector does not require this.
     }
   }
@@ -207,10 +212,11 @@ export class McpClient {
   /** Calls a tool and returns the parsed content (throws on transport error). */
   async callTool(
     name: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<{ raw: McpToolResult; content: unknown; isToolError: boolean }> {
     return this.withRetry(async () => {
-      const raw = await this.post({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } })
+      const raw = await this.post({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } }, signal)
       // D15b-F1: the MCP dispatch-level rate limiter (server.ts M8) returns a well-formed
       // 429 JSON body ({error: "rate_limit_exceeded", retry_after_seconds}) — a status
       // outside the `>= 500` transport-error check below, so it must be caught explicitly
@@ -248,7 +254,7 @@ export class McpClient {
         }
       }
       return { raw, content, isToolError }
-    }, `tools/call:${name}`)
+    }, `tools/call:${name}`, signal)
   }
 }
 
