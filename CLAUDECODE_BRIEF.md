@@ -1,7 +1,7 @@
 ---
 artifact: CLAUDECODE_BRIEF_L3_KALA
 type: CLAUDECODE_BRIEF (governing scope for execution sessions)
-version: 1.0
+version: 1.1
 status: ACTIVE
 authored_by: L3 Kāla autonomous conductor session (Claude Code, Sonnet 5, run 2), 2026-09-20
 supersedes: >
@@ -10,6 +10,11 @@ supersedes: >
   nothing there is retracted. This file now governs the currently-active L3 campaign per
   CLAUDE.md §C item 0; it is not a "shortcut" edit — it is the exact governance-refresh packet
   (B3 / P0-4) the campaign's own governing plan authorizes.
+changelog: >
+  v1.1 (N1-E, 2026-09-20): added an explicit "Applicability" clause near the top, per the strategy
+  session's finding that this file — while status ACTIVE — governs every Claude Code session in
+  this repo under CLAUDE.md §C item 0, including sessions commissioned for unrelated work, which
+  could otherwise misread "elevate 22 ka_* assets" as their own scope. Content otherwise unchanged.
 authority: >
   DP-SD-017/018/019/020/021 (00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md
   §9-§13) and MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md. Native authorization for autonomous
@@ -18,6 +23,17 @@ authority: >
 ---
 
 # L3 Kāla data-plane elevation — ACTIVE
+
+## Applicability (added N1-E, 2026-09-20)
+
+Per `CLAUDE.md` §C item 0, this file governs **every** Claude Code session opened in this
+repository while `status: ACTIVE` — including sessions commissioned for work unrelated to the L3
+Kāla campaign. A session opened for a different purpose should: (1) note this file's existence and
+its `status`, (2) confirm its own actual scope with the native rather than silently adopting "elevate
+22 `ka_*` identities" as its governing scope, and (3) proceed under the scope the native confirms.
+The `may_touch`/`must_not_touch` lists below bind *this campaign's own work*; they are not a
+blanket prohibition on legitimate, separately-scoped work elsewhere in the repo — a session with a
+native-confirmed different scope operates under that scope, not under this brief's restrictions.
 
 **Scope:** elevate the 22 active `ka_*` identities to terminal acceptance
 (`LAYER_DATA_ACCEPTED + scoped CONSUMER_INTEGRATED + DEPLOYED_ACCEPTED + VALUE_EVALUATED`) for the

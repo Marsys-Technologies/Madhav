@@ -1,6 +1,6 @@
 ---
 artifact: MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN
-version: "1.0"
+version: "1.1"
 status: PROPOSED_FOR_NATIVE_RULING
 prepared_on: 2026-09-19
 prepared_by: "Strategy session (Claude Code, Fable 5.1) — read-only grounding, no repo mutation"
@@ -17,6 +17,19 @@ related:
   - MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md (local-only branch; see §1.5)
   - ../CAMPAIGN_COORDINATION.md (origin/campaign-coordination)
 changelog:
+  - "1.1 (N1-E, 2026-09-20, L3 Kāla conductor): corrects §0 item 7 note, §1.3, Appendix A and
+    Appendix B — this plan's 'seven stranded commits, none an ancestor of main' claim was right
+    about ancestry (the exact named SHAs are indeed not ancestors of main) but wrong about
+    content: PR #2607 (`fa9857f00`, 2026-09-16) squash-merged a later, corrected generation of the
+    same work. Measured: 874 of 874 substantive added lines across all seven commits are present
+    in `origin/main` (independently confirmed by Wave D subagents D1/D3/D4/D6, each diffing
+    against main before assuming salvage was needed — see
+    `l3_autonomous/STATE.md` packet rows D1–D6). Original claims retained in place per this
+    project's archival/retain-in-place + §N.7/§N.8 discipline; this entry supersedes them with the
+    measurement and method, not by deletion. Cost of the error: five Wave D subagent dispatches
+    were commissioned against a false premise; all five correctly re-verified against main first
+    and closed as no-ops rather than compounding the mistake, but the packet should not have
+    existed as scoped."
   - "1.0: First dual-campaign plan after the native's decision to run Pūrṇa Anveṣaṇa in Codex and L3 Kāla elevation in Claude Code. Grounded against live GitHub, Cloud Run, coordination ledger and both campaigns' own state records; not against the handoff's cover claims."
 ---
 
@@ -56,6 +69,11 @@ Evidence labels, as in the L3 handoff: **LIVE** = read today through GitHub / gc
 7. **The single largest risk in the picture is not technical.** All nine branches carrying L3's
    preserved work *and* the strategy branch holding L3's four governing documents are
    **local-only** — never pushed. Their only off-machine copy is a ZIP. Push first, plan second.
+   **[v1.1 correction]** This push-risk framing understated how much of the actual *content* was
+   already safe: PR #2607 had already squash-merged a corrected generation of most of the named
+   work onto `main` a day earlier. The push (done, per A1) remained the right precaution for what
+   genuinely was local-only, but "stranded" overstated the danger for content that had, in fact,
+   already landed through a different path. See §1.3 and Appendix A/B for the measurement.
 8. **The authority gap must be closed by one amendment (DP-SD-021)**, because the approved brief
    names the Codex task as "the sole execution destination". Everything Claude Code does before
    that is improvised.
@@ -148,7 +166,7 @@ wrong, but merging all delivery-repair PRs *before* leasing would have cost one 
 | Canonical-chart L3 tables | 6 checked tables at 0 rows; **but** `kala_activation_predicates` 50,678 rows with 79 unmatched MSR refs, and `ka_kshetra` ~8.6 M field rows with a served surface hard-coding "field empty" (PARK-5) — partially populated with referential rot, not a clean slate | RECORDED |
 | L1 / L2 selected-generation heads (canonical chart) | 0 / 0 → W1 has not happened | RECORDED |
 | Builder image | `c63cb8048` — cannot populate generation tables it predates; cannot be rebuilt until `migrate` runs | LIVE |
-| The seven "preserved achievement" commits named in handoff §5 (`3f109869d`, `a3e518864`, `87cc8c9`, `47131772b`, `7697c43b3`/`fbf7803dc`, `475f5ab5a`, `66a85047`) | **all stranded — none is an ancestor of main**; content-level diff confirms (e.g. `services/ka_kshetra/dhara_null_vec.py` +207 only on `codex/data-plane-l3-yojaka`) | LIVE |
+| The seven "preserved achievement" commits named in handoff §5 (`3f109869d`, `a3e518864`, `87cc8c9`, `47131772b`, `7697c43b3`/`fbf7803dc`, `475f5ab5a`, `66a85047`) | **all stranded — none is an ancestor of main**; content-level diff confirms (e.g. `services/ka_kshetra/dhara_null_vec.py` +207 only on `codex/data-plane-l3-yojaka`). **[v1.1 correction, N1-E]** The ancestry claim is correct — none of these exact SHAs is an ancestor of `main` — but the *content* claim does not follow from it: PR #2607 (`fa9857f00`, 2026-09-16) squash-merged a later, independently-corrected generation of this same work from `codex/madhav-data-plane-execution`. Measured directly (Wave D subagents D1/D3/D4/D6, each diffing against `main` before assuming salvage was needed, per `l3_autonomous/STATE.md`): **874/874 substantive added lines across all seven commits are present in `origin/main`**, several as *strict supersets or corrected revisions* of the branch version (e.g. D5's W0 field register on main has 35 row-level type/nullability fixes the branch draft lacked). "Not an ancestor" did not mean "not present." | LIVE (ancestry) / **SUPERSEDED (content — see correction)** |
 | Branches carrying that work | 8 local worktree branches, **all LOCAL-ONLY, never pushed** (`codex/l3-bhavishya-p0`, `l3-dhara-correction`, `l3-kshetra-p0`, `l3-kshetra-p0-correction`, `l3-kshetra-w0-preservation`, `l3-u05-registry`, `l3-w0-field-contract`, `data-plane-l3-yojaka` — up to 118 commits ahead) | LIVE |
 | Other unmerged L3 branches on origin | ~105 `codex/nirmana-l3-*` (37 are `heartbeat-idle-*`); **newest last-commit 2026-09-08**, i.e. all predate the 2026-09-15 strategy → old-fleet history, not data-plane packets | LIVE |
 | PR #2655 | open, superseded by #2656, no auto-merge; close, never merge | LIVE |
@@ -470,7 +488,7 @@ release lease → report the §Phase-0 exit table filled in.
 | Pūrṇa leases today | `…-REPAIR-20260919` 15:13→19:30 · `…-REPAIR-SUCCESSOR-20260919` 15:57→20:15 · `…-SCHEMA-SUCCESSOR-20260919` 17:02→21:00 IST |
 | Pūrṇa state | `CAMPAIGN_STATE.md` v0.29.0, last event PA-E0104, 14:27 IST |
 | L3 definition | `t3-2026-09-11-8b884eac`, manifest `8b884eac…a0b6` (RECORDED) |
-| Stranded L3 commits | `3f109869d` `a3e518864` `87cc8c9` `47131772b` `7697c43b3` `fbf7803dc` `475f5ab5a` `66a85047` — none on main |
+| Stranded L3 commits | `3f109869d` `a3e518864` `87cc8c9` `47131772b` `7697c43b3` `fbf7803dc` `475f5ab5a` `66a85047` — none an ancestor of main. **[v1.1 correction]** Content is a different question: 874/874 substantive added lines across all seven are present on `origin/main` via PR #2607's later, corrected re-delivery — see §1.3. |
 | Local-only branches | `codex/l3-bhavishya-p0` `codex/l3-dhara-correction` `codex/l3-kshetra-p0` `codex/l3-kshetra-p0-correction` `codex/l3-kshetra-w0-preservation` `codex/l3-u05-registry` `codex/l3-w0-field-contract` `codex/data-plane-l3-yojaka` `codex/madhav-data-plane-strategy` |
 | Migration high-water | 1040 / 1041 |
 | Generated-artifact churn | 28 / 40 recent main commits |
@@ -480,7 +498,7 @@ release lease → report the §Phase-0 exit table filled in.
 
 | Class | Members | Proposed disposition |
 |---|---|---|
-| B-1 preserved data-plane packets (LOCAL-ONLY) | 8 branches above | push unchanged; per-packet land/supersede/retire with exact reviewed commits (P0-5 → P0-6) |
+| B-1 preserved data-plane packets (LOCAL-ONLY) | 8 branches above | push unchanged; per-packet land/supersede/retire with exact reviewed commits (P0-5 → P0-6). **[v1.1 outcome, N1-E]** Executed 2026-09-20: pushed 9/9 (A1), then 6 packets (D1–D6) each independently diffed against `main` before assuming salvage was needed, per this table's own instruction — every one found its target content already on `main` via PR #2607 and closed as a verified no-op (0 PRs opened, 0 regressions risked). The proposed methodology was correct; the premise it was applied to ("stranded") was not — see §1.3. |
 | B-2 strategy branch (LOCAL-ONLY) | `codex/madhav-data-plane-strategy` | push unchanged; **extract** the four docs; never merge (627 stale runtime files) |
 | B-3 delivery-repair leftovers | `codex/madhav-data-plane-l3-closure` (#2655), `…-isolation-admin-env-fix`, `…-isolation-region-fix`, `…-pgcrypto-successor` | superseded by #2656/#2670/#2673/#2684; close #2655; retire |
 | B-4 old-fleet heartbeat noise | 37 × `codex/nirmana-l3-heartbeat-idle-*` (+ 2 heartbeat-*) | retire in one disposition record |
