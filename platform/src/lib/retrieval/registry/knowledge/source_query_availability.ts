@@ -2168,6 +2168,32 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
+  {
+    contract_id: 'source-query:get-prashna-lagna:v1',
+    descriptor_name: 'get_prashna_lagna',
+    capability_uri: 'marsys://tool/L1/get_prashna_lagna',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT chart_id, ayanamsha_id, lagna_method, lagna_rashi, lagna_degree, kp_sub_lord,
+                   is_primary, classical_citation
+              FROM ga_prashna_lagna
+             WHERE chart_id = $1::uuid
+             ORDER BY ayanamsha_id, lagna_method
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM ga_prashna_lagna
+             WHERE chart_id = $1::uuid
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts:70-95',
+      'platform/migrations/289_ga_prashna_lagna.sql',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
