@@ -102,6 +102,147 @@ export function checklistExhaustiveness(units: ChecklistUnit[]): {
   }
 }
 
+// ── Wealth completion: source-receipt fence ────────────────────────────────────
+
+/**
+ * The finite producer set behind the Batch 5A wealth pivots.  Every served
+ * cross-varga, Ashtakavarga, special-lagna, or yogi/avayogi row must be from
+ * the judgment's exact selected build and each producer must still have its
+ * current output-digest receipt.  This is a consumption boundary only: it
+ * neither dispatches nor repairs a producer.
+ */
+export const WEALTH_READING_REQUIRED_ASSETS = [
+  'ga_structural',
+  'ga_vichara',
+  'ga_sensitive',
+  'ga_sensitive_degree',
+  'ga_strength',
+] as const
+
+export interface WealthReadingSourceFenceAsset {
+  asset_id: typeof WEALTH_READING_REQUIRED_ASSETS[number]
+  receipt_matches_selected_build: boolean
+  replacement_in_progress: boolean
+}
+
+export interface WealthReadingSourceFence {
+  /** False only when the snapshot query itself failed. */
+  ok: boolean
+  /** True only when every named producer has a fresh/proven current-spec receipt for this
+   * exact build and no replacement can have invalidated it. */
+  ready: boolean
+  assets: WealthReadingSourceFenceAsset[]
+}
+
+/**
+ * Reads all five producer receipt states and their replacement fences from a
+ * single statement snapshot.  A current asset-output digest spec is joined to
+ * each receipt, so a source revision (notably ga_strength's wealth AV spec)
+ * requires a rebuilt receipt before it can be served.  A planned/running/
+ * paused producer or a terminal mutation at/after the selected receipt stays
+ * unavailable unless that run itself carries a fresh, proven current receipt.
+ */
+export async function fetchWealthReadingSourceFence(
+  chart_id: string,
+  build_id: string,
+): Promise<WealthReadingSourceFence> {
+  const unavailable = (ok: boolean): WealthReadingSourceFence => ({
+    ok,
+    ready: false,
+    assets: WEALTH_READING_REQUIRED_ASSETS.map(asset_id => ({
+      asset_id,
+      receipt_matches_selected_build: false,
+      replacement_in_progress: false,
+    })),
+  })
+  try {
+    const res = await query<{
+      asset_id: typeof WEALTH_READING_REQUIRED_ASSETS[number]
+      receipt_matches_selected_build: boolean
+      replacement_in_progress: boolean
+    }>(
+      `WITH required_assets AS (
+         SELECT unnest($1::text[]) AS asset_id
+       ), selected_receipts AS (
+         SELECT DISTINCT ON (receipt.asset_id)
+                receipt.asset_id,
+                receipt.observed_at
+           FROM asset_provenance_receipts receipt
+           JOIN asset_freshness freshness
+             ON freshness.asset_id = receipt.asset_id
+            AND freshness.scope_key = receipt.scope_key
+            AND freshness.partition_key = receipt.partition_key
+            AND freshness.receipt_version = receipt.receipt_version
+           JOIN asset_output_digest_specs digest_spec
+             ON digest_spec.asset_id = receipt.asset_id
+            AND digest_spec.spec_sha256 = receipt.output_digest_spec_sha256
+            AND digest_spec.retired_at IS NULL
+          WHERE receipt.asset_id = ANY($1::text[])
+            AND receipt.chart_id = $2::uuid
+            AND receipt.build_id = $3::uuid
+            AND receipt.receipt_state = 'proven'
+            AND freshness.freshness_state = 'fresh'
+          ORDER BY receipt.asset_id, receipt.observed_at DESC
+       )
+       SELECT required_asset.asset_id,
+              selected.asset_id IS NOT NULL AS receipt_matches_selected_build,
+              EXISTS (
+                SELECT 1
+                  FROM build_run_assets fenced_asset
+                  JOIN build_runs fenced_run ON fenced_run.id = fenced_asset.run_id
+                 WHERE fenced_run.chart_id = $2::uuid
+                   AND fenced_asset.asset_id = required_asset.asset_id
+                   AND (
+                     fenced_run.state IN ('planned', 'running', 'paused')
+                     OR fenced_asset.state IN ('queued', 'building')
+                     OR (
+                       selected.observed_at IS NOT NULL
+                       AND COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= selected.observed_at
+                       AND NOT EXISTS (
+                         SELECT 1
+                           FROM asset_provenance_receipts proven_receipt
+                           JOIN asset_freshness proven_freshness
+                             ON proven_freshness.asset_id = proven_receipt.asset_id
+                            AND proven_freshness.scope_key = proven_receipt.scope_key
+                            AND proven_freshness.partition_key = proven_receipt.partition_key
+                            AND proven_freshness.receipt_version = proven_receipt.receipt_version
+                           JOIN asset_output_digest_specs proven_spec
+                             ON proven_spec.asset_id = proven_receipt.asset_id
+                            AND proven_spec.spec_sha256 = proven_receipt.output_digest_spec_sha256
+                            AND proven_spec.retired_at IS NULL
+                          WHERE proven_receipt.asset_id = fenced_asset.asset_id
+                            AND proven_receipt.chart_id = $2::uuid
+                            AND proven_receipt.build_id = fenced_run.id
+                            AND proven_receipt.receipt_state = 'proven'
+                            AND proven_freshness.freshness_state = 'fresh'
+                       )
+                     )
+                   )
+              ) AS replacement_in_progress
+         FROM required_assets required_asset
+         LEFT JOIN selected_receipts selected ON selected.asset_id = required_asset.asset_id
+        ORDER BY required_asset.asset_id ASC`,
+      [[...WEALTH_READING_REQUIRED_ASSETS], chart_id, build_id],
+    )
+    const byAsset = new Map(res.rows.map(row => [row.asset_id, row]))
+    const assets = WEALTH_READING_REQUIRED_ASSETS.map(asset_id => {
+      const row = byAsset.get(asset_id)
+      return {
+        asset_id,
+        receipt_matches_selected_build: row?.receipt_matches_selected_build === true,
+        replacement_in_progress: row?.replacement_in_progress === true,
+      }
+    })
+    return {
+      ok: true,
+      ready: assets.every(asset => asset.receipt_matches_selected_build && !asset.replacement_in_progress),
+      assets,
+    }
+  } catch {
+    return unavailable(false)
+  }
+}
+
 // ── Leg 1: fired sensitive-degree checks (MC-030) ─────────────────────────────
 
 /** sensitive_degree_check fact_subject code → classical graha display name.
