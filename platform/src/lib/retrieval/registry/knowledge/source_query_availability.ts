@@ -3187,6 +3187,29 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY start_date, level_n LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:298-325'],
   },
+  {
+    contract_id: 'source-query:call-priority-ranking:v1',
+    descriptor_name: 'call_priority_ranking',
+    capability_uri: 'marsys://tool/L3/call_priority_ranking',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT m.signal_id, m.signal_headline_text, m.computed_salience,
+                 m.domains_affected_array, m.signal_type_class,
+                 a.orb_strength AS activation_strength,
+                 to_char(a.activation_start, 'YYYY-MM-DD') AS window_start,
+                 to_char(a.activation_end, 'YYYY-MM-DD') AS window_end,
+                 a.signature_class AS trigger_type
+            FROM bodha_msr_signals m
+            JOIN kala_activation a ON m.signal_id = a.signal_id
+              AND a.chart_id = m.chart_id
+              AND a.ayanamsha_id = m.ayanamsha_id
+           WHERE m.chart_id = $1::uuid
+             AND m.ayanamsha_id = NULLIF(NULL::text, '')
+             AND a.activation_end >= CURRENT_DATE
+             AND a.activation_start <= (CURRENT_DATE + INTERVAL '90 days')::date
+             AND (NULL::text[] IS NULL OR m.domains_affected_array && NULL::text[])
+           ORDER BY m.computed_salience DESC NULLS LAST, m.signal_id LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:614-695'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
