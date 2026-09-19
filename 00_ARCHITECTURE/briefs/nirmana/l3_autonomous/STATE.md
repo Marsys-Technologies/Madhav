@@ -78,10 +78,10 @@ All rows start `— / — / — / — / — / NO`.
 | C2 22-asset baseline | conductor (run 2) | read-only | — | **PARTIAL / BLOCKED_STRUCTURAL(no-read-role-on-public-schema)** | `retrieval_census_ro` (the only documented read-only DB role, `platform/scripts/harvest/_db.ts`) has USAGE only on `information_schema`/`pg_catalog` — **not** `public`, where `kala_*` and the generation-head tables live. Did not escalate to a stronger credential (out of proportionality/role-separation scope for an ad hoc query). Row-count baseline deferred to the orchestrator's own build-time reporting in Wave E rather than hand-queried. | native ruling optional: authorize a scoped read-only grant on `public` for verification, or accept orchestrator-reported state as sufficient (recommend the latter — matches doctrine that builders/orchestrator, not ad hoc sessions, are the legitimate reader/writer of `public`) |
 | C3 W1 function contract | conductor (run 2) | read-only | — | **DONE (signatures)** | `open_l1_data_plane_generation` (migration 1035) requires literal `session_user = 'data_plane_builder'` — **SECURITY DEFINER but caller-identity-gated**; W1 generation can only be executed by the real `brahma-build-pipeline-job` authenticated as `data_plane_builder`, never by an ad hoc session even with elevated creds. This resolves E1/E2 planning: dispatch the real builder job, do not hand-write SQL. | — |
 | D1+D3 Kshetra P0 + DHARA correction | subagent `ac646ccb3` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
-| D2 Bhavishya P0 | subagent `a0e4039b2` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
+| D2 Bhavishya P0 | subagent `a0e4039b2` | own worktree | — | **DONE — NO-OP, already satisfied** | All 3 target files (`ka_bhavishya_lekha.py` + 2 test files) byte-identical on `main` already — the exact reviewed commits landed via the same squash-merge PR #2607 (`fa9857f00`). Verified the safety properties are genuinely implemented (fail-closed refusal on protected-row mutation, not just present) and ran tests fresh today: 25/26 passed (1 DB-integration skip) on the target files, 1525/41-skip/2-xfail on the full L3 suite. No PR opened (would be an empty diff). | — |
 | D4 Yojaka preservation | subagent `a9801fa14` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report; cautioned re: 118-commit-ahead source, forensic extraction only |
 | D5 W0 field register | subagent `a41f66de3` | own worktree | — | **DONE — NO-OP, already satisfied** | The 800-line register already exists on `main` (landed via PR #2607, `fa9857f00`, 2026-09-16), and main's version is a *corrected* revision (35 row-level type/nullability fixes) vs. the source branch's stale 2026-09-15 draft — landing the branch version would regress main. No PR opened; correctly declined rather than manufacturing one. | — |
-| D6 U05 registry | subagent `abbdfc3eb` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
+| D6 U05 registry | subagent `abbdfc3eb` | own worktree | — | **DONE — NO-OP, already satisfied** | Isolated the real U05 fix to 2 commits (`7cba13281`, `01a64ca53`) touching `L3_kala/query_temporal_activation.ts`/`query_projections.ts`. `query_projections.ts` byte-identical on main; `query_temporal_activation.ts` on main is a strict superset (has everything the branch has plus later closure/pagination work) — force-applying the branch version would regress main. Verified requested_filters/effective_filters are genuinely distinct fields by reading main's code directly. Ran fresh tests: 146/158 L3_kala suite, 1943/2121 full registry suite, both green modulo pre-existing skips. No PR opened (nothing to merge). | — |
 | D7 branch triage | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE** | `MADHAV_L3_BRANCH_TRIAGE_DISPOSITION_v1_0.md` @ `2955e2f13`; PR #2655 confirmed already closed | — |
 | W1-RESEARCH (informs E1/E2) | subagent `acba0c5c8` (Opus) | read-only | — | **DISPATCHED 02:40 IST** | — | read-only research + disposable-DB rollback rehearsal; must NOT mutate production; report becomes E1/E2's dispatch plan |
 | E1 W1 L1 generation | conductor (pending W1-RESEARCH) | integration | — | BLOCKED_ON W1-RESEARCH | — | dispatch real `brahma-build-pipeline-job`, not ad hoc SQL — confirmed via migration 1035 read (`open_l1_data_plane_generation` hard-gates on `session_user='data_plane_builder'`) |
@@ -118,6 +118,21 @@ and the ones that correctly skipped (MCP/sidecar/pipeline for a docs-only PR) sk
 reason. **Practical effect: Wave E's precondition #2 ("no conflicting active lease") is already
 satisfied, ~2 hours earlier than planned.** Wave E may proceed once C is complete and this
 campaign's own lease is claimed — it does not need to wait for 04:30 IST.
+
+## ★ FINDING — PR #2607 already squash-merged much of the "stranded" W0 source work
+
+Both D2 and D5 independently found their target content **already on `main`**, landed via
+`fa9857f00` ("feat(data-plane): deliver governed L0-L3 source execution (#2607)", 2026-09-16) —
+a large squash-merge whose commit list includes the identically-described fixes the handoff
+document called "stranded" and "never an ancestor of main". The handoff's stranded-commit claim
+was accurate for the exact SHAs it named (`a3e518864` etc. are indeed not ancestors of `main`),
+but the **content** of several of those commits was independently re-delivered through a
+different, later, already-merged PR — so "not an ancestor" did not mean "not present." **Every
+remaining Wave D packet's first real step is now: diff against current `main` before assuming
+anything needs salvaging** — this was already in each dispatched packet's instructions
+(methodology, not luck), and D1+D3/D4/D6 are expected to make the same check. Do not be surprised
+if more Wave D packets close as no-ops; that is a good outcome, not a wasted dispatch — it means
+less risk, not less progress.
 
 ## Active leases held by this campaign
 
