@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.22.0
+version: 0.23.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0095
-last_updated: 2026-09-17T23:35:00+05:30
+last_event: PA-E0096
+last_updated: 2026-09-19T10:10:45+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -20,20 +20,32 @@ layer state, queue or authority.
 
 ## Current position
 
-- Successor execution: the Native approved the complete planner and inquiry product-delivery plan
-  at `docs/superpowers/plans/2026-09-17-purna-product-completion-v2.md`; its exact transferred
-  copy has SHA-256 `6cc17144f3877bdac7048f9a7cba5caf15e1f7ca59306289c0f13ec94eb1b666`. Sole execution
-  ownership is task `01a0afe3-2832-7692-b133-d1e6b6bfcdf6` on
-  `codex/purna-product-completion-v2`, created from protected main
-  `0f2d9cc0259ac5983fda7f5e10d75ce189e7440f`, which contains PR #2626 merge
-  `079e77ef92f25217921f02e4956162f43fe3f824`. The fixed release denominator is the original
-  five cases/34 route obligations plus 30 product scenarios across Portal, managed MCP and
-  governed raw MCP. Product delivery now uses real collection, deterministic gates and independent
-  automated assessment; human-expert empirical research remains separately `NOT_RUN` and is not a
-  product-release gate. The predecessor is stood down and preserved. The shared data-plane boundary
-  is idle, but a protected environment owner must replace the structurally unusable
-  `DATA_PLANE_ADMIN_DATABASE_URL` with a valid password-bearing administrator URL before a later
-  data-plane cutover; no secret was accessed, changed or reconstructed here.
+- Successor execution: task `01a0b7d8-9a90-74f3-aab9-80014919f8b2` is the sole active owner on
+  `codex/purna-product-completion-v3`, created from verified protected
+  `origin/main@4adcf04978757d2f8e8157492f1922f8b5fb92e3`. The predecessor is stood down; its
+  handoff is preserved verbatim and the preparation head `95242400...` is distinguished from its
+  final documentation commit `0f68030...`. The approved plan and frozen denominator remain the
+  original five cases/34 route obligations plus 30 product scenarios across Portal, managed MCP
+  and governed raw MCP. Human-expert empirical research remains separately `NOT_RUN`.
+
+- First successor source packet: implementation/artifact head `7109b8e749c8e1b331fb87b4366d48c51b11e5aa`
+  admits temporal activation through its exact chart-scoped source query, validates finite temporal
+  window closure without pretending it is repeatable pagination, rejects invalid/reversed windows,
+  preserves fact-accountability on complete and empty results, and ports the exact
+  `read_sutravali_rule` source contract. The regenerated snapshot remains 182 SCUs / 186 executable
+  bindings and now has 154 availability contracts, 24 uncovered executable bindings, 8 deliberate-
+  dark dispositions, and one reviewed bounded-window closure. Focused verification passes 340 tests
+  with 4 DB-gated skips; TypeScript and both code-generation freshness checks pass. Independent
+  review found no remaining HIGH, MED, or LOW issue. This is source-ready evidence only: classical
+  texts, judgment, contradictions, wealth/classical exhaustion, candidate receipts, protected
+  deployment, and all three-door automated acceptance remain open.
+
+- Refreshed live boundary: `amjis-web` and `amjis-mcp` still serve
+  `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected run `35419951080` skipped all deployment
+  jobs and is not release evidence. A separate authorized security/runtime owner must rotate or
+  revoke the literal legacy watchdog secret retained by tagged revision `amjis-web-02826-huf` and
+  audit tag/revision exposure. The value was not read or recorded; no secret, IAM, tag, traffic, or
+  runtime mutation occurred.
 
 - Product acceptance denominator: the protocol now freezes the full 30-case six-family matrix
   from approved-plan §13 (wealth, career, marriage, family, health, and life events; each with
