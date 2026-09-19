@@ -8,14 +8,15 @@ import { synthesizeRawLifecycleEvidence } from './raw_external_synthesis'
 import { casesForSuite, validateProtocol, type AcceptanceCaseInput, type AcceptanceSuite } from './acceptance_cases'
 import { assertLiveEvidence, createCollectionArtifact, type AcceptanceCase, type CollectedCase } from './collection_types'
 
-interface Config { schema_version: 'purna-collection-config/v1'; environment: 'candidate' | 'live'; expected_revision: string; chart_id: string; portal_url: string; mcp_url: string; authorization_approval_id: string; max_polls?: number; max_actions?: number; portal_timeout_ms?: number; mcp_timeout_ms?: number }
+export interface Config { schema_version: 'purna-collection-config/v1'; environment: 'candidate' | 'live'; expected_revision: string; chart_id: string; portal_url: string; mcp_url: string; authorization_approval_id: string; max_polls?: number; max_actions?: number; portal_timeout_ms?: number; mcp_timeout_ms?: number }
 class McpRequestDeadlineError extends Error { constructor() { super('PURNA_COLLECTION_MCP_REQUEST_DEADLINE') } }
-async function withMcpDeadline<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+export async function withMcpDeadline<T>(operation: (signal: AbortSignal) => Promise<T>, timeoutMs: number): Promise<T> {
+  const abort = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
-      operation,
-      new Promise<T>((_resolve, reject) => { timer = setTimeout(() => reject(new McpRequestDeadlineError()), timeoutMs) }),
+      operation(abort.signal),
+      new Promise<T>((_resolve, reject) => { timer = setTimeout(() => { abort.abort(); reject(new McpRequestDeadlineError()) }, timeoutMs) }),
     ])
   } finally { if (timer) clearTimeout(timer) }
 }
@@ -40,20 +41,34 @@ function bearer(): string {
   } catch { /* Deliberately do not report credential-provider output. */ }
   throw new Error('PURNA_COLLECTION_MCP_CREDENTIAL_UNAVAILABLE')
 }
-export async function collect(config: Config, cases: readonly AcceptanceCase[]): Promise<readonly CollectedCase[]> {
-  const mcp = new McpClient(config.mcp_url, bearer()); await mcp.init()
+export interface CollectionDependencies {
+  readonly createMcp?: (url: string, token: string) => Pick<McpClient, 'init' | 'callTool'>
+  readonly mintSession?: (serviceUrl: string, uid: string, signal: AbortSignal) => Promise<string>
+}
+export async function collect(config: Config, cases: readonly AcceptanceCase[], dependencies: CollectionDependencies = {}): Promise<readonly CollectedCase[]> {
+  const mcp = (dependencies.createMcp ?? ((url, token) => new McpClient(url, token)))(config.mcp_url, bearer())
+  let mcpPreflight: 'timeout' | 'error' | null = null
+  try { await withMcpDeadline((signal) => mcp.init(signal), config.mcp_timeout_ms ?? 90_000) } catch (error) { mcpPreflight = error instanceof McpRequestDeadlineError ? 'timeout' : 'error' }
   const invoker = { call: async (name: string, args: Record<string, unknown>) => {
+    if (mcpPreflight) return mcpPreflight === 'timeout' ? { __purna_timeout: true } : { __purna_tool_error: true }
     try {
-      const outcome = await withMcpDeadline(mcp.callTool(name, args), config.mcp_timeout_ms ?? 90_000)
+      const outcome = await withMcpDeadline((signal) => mcp.callTool(name, args, signal), config.mcp_timeout_ms ?? 90_000)
       return outcome.isToolError ? { __purna_tool_error: true } : outcome.content
     } catch (error) {
       return error instanceof McpRequestDeadlineError ? { __purna_timeout: true } : { __purna_tool_error: true }
     }
   } }
-  const sessionCookie = await mintFreshProbeSessionCookie(config.portal_url, process.env.PROBE_UID ?? 'probe-service-account')
+  let sessionCookie: string | null = null
+  let sessionDiagnostic: string | undefined
+  try {
+    sessionCookie = await withMcpDeadline(
+      (signal) => (dependencies.mintSession ?? mintFreshProbeSessionCookie)(config.portal_url, process.env.PROBE_UID ?? 'probe-service-account', signal),
+      config.portal_timeout_ms ?? 180_000,
+    )
+  } catch (error) { sessionDiagnostic = error instanceof McpRequestDeadlineError ? 'PORTAL_SESSION_MINT_DEADLINE' : 'PORTAL_SESSION_MINT_FAILED' }
   const rows: CollectedCase[] = []
   for (const test of cases) {
-    rows.push(await collectPortalCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie, timeoutMs: config.portal_timeout_ms }))
+    rows.push(await collectPortalCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie, sessionDiagnostic, timeoutMs: config.portal_timeout_ms }))
     rows.push(await collectManagedCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxPolls: config.max_polls ?? 30, wait: () => new Promise((done) => setTimeout(done, 1000)) }))
     rows.push(await collectRawCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxActions: config.max_actions ?? 64, synthesize: synthesizeRawLifecycleEvidence }))
   }

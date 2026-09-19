@@ -14,14 +14,21 @@ function strings(value: unknown): string[] { return Array.isArray(value) ? value
  * semantics, but its accepted planner vocabulary is intentionally narrower
  * than the lifecycle corpus. Map only those enumerated aliases at this edge.
  */
-function managedScopeTuple(scope: Record<string, unknown>): Record<string, unknown> {
+export function managedScopeTuple(scope: Record<string, unknown>): Record<string, unknown> {
+  const domainMap: Record<string, string> = { cross_domain: 'general', family: 'children' }
+  const domains = Array.isArray(scope.domains) ? scope.domains.map((domain) => domainMap[String(domain)] ?? domain) : []
+  const widthMap: Record<string, string> = { panoramic: 'broad' }
+  const depthMap: Record<string, string> = { deepdive: 'deep', interpretive: 'deep', retrieval: 'shallow' }
+  const horizonMap: Record<string, string> = { multi_year: 'far', current: 'present' }
   return {
     ...scope,
     intent: 'domain_assessment',
-    width: scope.width === 'panoramic' ? 'broad' : scope.width,
-    depth: scope.depth === 'deepdive' ? 'deep' : scope.depth,
-    horizon: scope.horizon === 'multi_year' ? 'far' : scope.horizon,
-    intervention: scope.intervention === false ? 'none' : scope.intervention,
+    domains,
+    width: widthMap[String(scope.width)] ?? scope.width ?? 'standard',
+    depth: depthMap[String(scope.depth)] ?? scope.depth ?? 'standard',
+    horizon: horizonMap[String(scope.horizon)] ?? scope.horizon ?? 'present',
+    intervention: scope.intervention === false ? 'none' : scope.intervention ?? 'none',
+    entitlement: scope.entitlement ?? 'reference',
   }
 }
 
@@ -103,6 +110,7 @@ export async function collectManagedCase(input: {
     const status = record(await input.invoker.call('prashna_status', { job_id: jobId }))
     calls += 1
     if (status.__purna_timeout === true) return failed(input, 'managed_mcp', calls, 'MANAGED_MCP_REQUEST_DEADLINE', jobId)
+    if (status.__purna_tool_error === true) return failed(input, 'managed_mcp', calls, 'MANAGED_MCP_TOOL_ERROR', jobId)
     const state = String(status.status ?? '')
     if (state === 'complete' || state === 'failed') {
       return normalize(input, 'managed_mcp', { ...status, ...record(status.result) }, calls, jobId)
@@ -127,6 +135,7 @@ export async function collectRawCase(input: {
   }))
   calls += 1
   if (response.__purna_timeout === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_REQUEST_DEADLINE')
+  if (response.__purna_tool_error === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_TOOL_ERROR')
   const inquiryId = typeof response.inquiry_id === 'string' ? response.inquiry_id : null
   let token = typeof response.lifecycle_token === 'string' ? response.lifecycle_token : null
   if (!inquiryId || !token) return failed(input, 'raw_mcp', calls, 'RAW_LIFECYCLE_START_INVALID')
@@ -141,6 +150,7 @@ export async function collectRawCase(input: {
     response = record(await input.invoker.call('inquiry_execute_next', { lifecycle_token: token, action_id: actionId }))
     calls += 1
     if (response.__purna_timeout === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_REQUEST_DEADLINE', inquiryId)
+    if (response.__purna_tool_error === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_TOOL_ERROR', inquiryId)
     // Preserve the exact payload whose hash the lifecycle committed. The raw
     // client must never synthesize from a reconstructed or convenience-shaped
     // substitute, because that would sever the answer register from receipt
@@ -153,6 +163,7 @@ export async function collectRawCase(input: {
   response = record(await input.invoker.call('inquiry_finalize', { lifecycle_token: token }))
   calls += 1
   if (response.__purna_timeout === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_REQUEST_DEADLINE', inquiryId)
+  if (response.__purna_tool_error === true) return failed(input, 'raw_mcp', calls, 'RAW_MCP_TOOL_ERROR', inquiryId)
   if (input.synthesize) {
     const contract = response.contract
     if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
@@ -180,11 +191,14 @@ export async function collectPortalCase(input: {
   readonly source: 'candidate' | 'live'
   readonly chartId: string
   readonly endpoint: string
-  readonly sessionCookie: string
+  readonly sessionCookie: string | null
+  /** A preflight failure is sealed as a zero-network portal row, never retried implicitly. */
+  readonly sessionDiagnostic?: string
   /** Bounds both connection and SSE completion; expiry is retained as an incomplete receipt. */
   readonly timeoutMs?: number
   readonly fetchImpl?: typeof fetch
 }): Promise<CollectedCase> {
+  if (!input.sessionCookie) return failed(input, 'portal', 0, input.sessionDiagnostic ?? 'PORTAL_SESSION_UNAVAILABLE')
   const fetcher = input.fetchImpl ?? fetch
   const requestId = randomUUID()
   const abort = new AbortController()

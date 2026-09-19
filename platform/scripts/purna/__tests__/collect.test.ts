@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { assertLiveEvidence, createCollectionArtifact, validateCollectionArtifact, type AcceptanceCase, type CollectedCase } from '../collection_types'
 import type { AcceptanceCaseInput } from '../acceptance_cases'
-import { collectManagedCase, collectPortalCase, collectRawCase, parsePortalSse } from '../channel_clients'
+import { collect, withMcpDeadline, type Config } from '../collect'
+import { ScopeTupleSchema } from '../../../src/lib/vidhi/scope_classifier'
+import { FROZEN_PRODUCT_CASES } from '../product_cases'
+import { collectManagedCase, collectPortalCase, collectRawCase, managedScopeTuple, parsePortalSse } from '../channel_clients'
 
 const test: AcceptanceCase = { id: 'wealth_mechanism_timing_contradiction', question: 'Explain wealth with supporting evidence.', scope_tuple: { intent: 'wealth_deepdive', domains: ['wealth'], width: 'broad', depth: 'deep', horizon: 'near', intervention: 'none', entitlement: 'reference' }, requiredDimensions: ['wealth'], expected: 'supported_complete' }
 const base = { test, expectedRevision: 'candidate-a', source: 'candidate' as const, chartId: '11111111-1111-4111-8111-111111111111' }
@@ -60,6 +63,37 @@ describe('Purna real three-door collector', () => {
     const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', timeoutMs: 1, fetchImpl })
     expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'PORTAL_DEADLINE_EXCEEDED', networkCallCount: 1 })
   })
+  it('bounds a hanging MCP initialization and seals failed rows instead of hanging before collection', async () => {
+    const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
+    const prior = process.env.MARSYS_MCP_KEY
+    process.env.MARSYS_MCP_KEY = 'test-key'
+    try {
+      const rows = await collect(config, [test], {
+        createMcp: () => ({ init: async (signal?: AbortSignal) => await new Promise<void>((_resolve, reject) => signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })), callTool: async () => ({ isToolError: true, content: [] }) } as never),
+        mintSession: async () => { throw new Error('session intentionally unavailable') },
+      })
+      expect(rows.map((row) => row.diagnostic)).toEqual(['PORTAL_SESSION_MINT_FAILED', 'MANAGED_MCP_REQUEST_DEADLINE', 'RAW_MCP_REQUEST_DEADLINE'])
+    } finally { if (prior === undefined) delete process.env.MARSYS_MCP_KEY; else process.env.MARSYS_MCP_KEY = prior }
+  })
+  it('bounds a hanging portal-session mint and seals a zero-network portal failure', async () => {
+    const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
+    const prior = process.env.MARSYS_MCP_KEY
+    process.env.MARSYS_MCP_KEY = 'test-key'
+    try {
+      const rows = await collect(config, [test], {
+        createMcp: () => ({ init: async () => {}, callTool: async () => ({ isToolError: true, content: [] }) } as never),
+        mintSession: async (_url, _uid, signal) => await new Promise<string>((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })),
+      })
+      expect(rows[0]).toMatchObject({ door: 'portal', diagnostic: 'PORTAL_SESSION_MINT_DEADLINE', networkCallCount: 0 })
+      expect(rows.slice(1).map((row) => row.diagnostic)).toEqual(['MANAGED_MCP_TOOL_ERROR', 'RAW_MCP_TOOL_ERROR'])
+    } finally { if (prior === undefined) delete process.env.MARSYS_MCP_KEY; else process.env.MARSYS_MCP_KEY = prior }
+  })
+  it('aborts a preflight operation at its configured deadline', async () => {
+    await expect(withMcpDeadline(async (signal) => await new Promise<void>((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })), 1)).rejects.toThrow('PURNA_COLLECTION_MCP_REQUEST_DEADLINE')
+  })
+  it('rejects an MCP operation that ignores abort instead of waiting forever', async () => {
+    await expect(withMcpDeadline(async () => await new Promise<void>(() => {}), 1)).rejects.toThrow('PURNA_COLLECTION_MCP_REQUEST_DEADLINE')
+  })
   it('enforces a managed polling deadline', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 2, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask' ? { job_id: 'job-1' } : { status: 'running' } } })
     expect(row.diagnostic).toBe('MANAGED_JOB_POLL_DEADLINE')
@@ -73,6 +107,14 @@ describe('Purna real three-door collector', () => {
     } } })
     expect(askArgs?.scope_tuple).toEqual({ intent: 'domain_assessment', domains: ['wealth'], width: 'broad', depth: 'deep', horizon: 'far', intervention: 'none', entitlement: 'native' })
     expect(row.networkCallCount).toBe(2)
+  })
+  it('projects every frozen product scope into the strict managed classifier contract', () => {
+    for (const productCase of FROZEN_PRODUCT_CASES) {
+      expect(() => ScopeTupleSchema.parse(managedScopeTuple(productCase.scope_tuple as unknown as Record<string, unknown>))).not.toThrow()
+    }
+    expect(managedScopeTuple(FROZEN_PRODUCT_CASES[0]!.scope_tuple as unknown as Record<string, unknown>)).toMatchObject({ intent: 'domain_assessment', width: 'standard', depth: 'shallow', horizon: 'present', intervention: 'none', entitlement: 'reference' })
+    expect(managedScopeTuple(FROZEN_PRODUCT_CASES[1]!.scope_tuple as unknown as Record<string, unknown>)).toMatchObject({ intent: 'domain_assessment', width: 'standard', depth: 'deep', horizon: 'far', intervention: 'none', entitlement: 'reference' })
+    expect(managedScopeTuple(FROZEN_PRODUCT_CASES.find((item) => item.case_id === 'events_1')!.scope_tuple as unknown as Record<string, unknown>).domains).toEqual(['general'])
   })
   it('keeps an in-band managed tool error distinct from a missing job handle', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async () => ({ __purna_tool_error: true }) } })
