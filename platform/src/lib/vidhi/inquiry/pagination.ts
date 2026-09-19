@@ -140,6 +140,12 @@ function normalizedMinimumStrength(value: unknown): number {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
 }
 
+function validIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value
+}
+
 /**
  * The handler may default a date range for ordinary reads, but an inquiry can
  * only accept closure for a window it actually authorized.  An explicit
@@ -154,9 +160,9 @@ function authorizedTemporalFilters(
   const asOf = optionalText(args['as_of'])
   const dateFrom = optionalText(args['date_from'])
   const dateTo = optionalText(args['date_to'])
-  const temporalFilter = asOf
+  const temporalFilter = asOf && validIsoDate(asOf)
     ? { mode: 'point_in_time', as_of: asOf }
-    : dateFrom && dateTo
+    : dateFrom && dateTo && validIsoDate(dateFrom) && validIsoDate(dateTo) && dateFrom <= dateTo
       ? { mode: 'range', date_from: dateFrom, date_to: dateTo }
       : null
   if (!temporalFilter) return null

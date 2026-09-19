@@ -131,6 +131,72 @@ describe('Wave 4 response accountability', () => {
     expect(register.validation_errors).toEqual([])
   })
 
+  it.each([
+    ['complete temporal rows', 'served' as const, [{ id: 'temporal-row-1' }]],
+    ['an empty exact temporal window', 'empty' as const, []],
+  ])('retains required temporal obligation facts for %s', (_caseName, disposition, activations) => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Give me a complete wealth outlook',
+      scope_tuple: wealthScope,
+    })
+    const temporalItem = initial.plan_items.find((item) => item.scu_id === 'scu.kala.temporal_activation')!
+    const temporalBinding = bindingForInquiryItem(snapshot, initial, temporalItem.item_id)!
+    const otherPayloads = initial.plan_items
+      .filter((item) => item.item_id !== temporalItem.item_id)
+      .map((item) => ({ results: [{ content: item.item_id }] }))
+    const payloadByItem = new Map(initial.plan_items
+      .filter((item) => item.item_id !== temporalItem.item_id)
+      .map((item, index) => [item.item_id, otherPayloads[index]!]))
+    const observedOthers = applyInquiryObservations(initial, initial.plan_items
+      .filter((item) => item.item_id !== temporalItem.item_id)
+      .map((item) => ({
+        item_id: item.item_id,
+        disposition: 'served' as const,
+        evidence_refs: [`retrieval:${stableFingerprint(payloadByItem.get(item.item_id))}`],
+      })))
+    const temporalPayload = {
+      tool_name: temporalBinding.capability_uri,
+      results: [{ content: JSON.stringify({
+        activations,
+        total_matching: activations.length,
+        more_available: false,
+      }) }],
+    }
+    const contract = finalizeInquiryContract(recordInquiryExecution(observedOthers, {
+      item_id: temporalItem.item_id,
+      disposition,
+      evidence_refs: [`retrieval:${stableFingerprint(temporalPayload)}`],
+      pagination: { semantics: 'bounded_unverified', exhausted: true, next: null },
+    }))
+    const evidencePayloads = [...otherPayloads, temporalPayload]
+    const register = buildInquiryFactRegister(contract, evidencePayloads, snapshot)
+    const temporalFacts = register.facts.filter((fact) => fact.kind === 'obligation'
+      && fact.obligation_ids.some((id) => temporalItem.obligation_ids.includes(id)))
+    const temporalFindings = register.facts.filter((fact) => fact.kind === 'finding'
+      && fact.obligation_ids.some((id) => temporalItem.obligation_ids.includes(id)))
+    const responseText = register.facts
+      .filter((fact) => fact.kind === 'finding' && fact.normalized_content)
+      .map((fact) => fact.normalized_content)
+      .join('\n')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: responseText,
+      evidence_payloads: evidencePayloads,
+      knowledge_snapshot: snapshot,
+    })
+
+    expect(contract.material_frontier.some((frontier) => frontier.scu_id === temporalItem.scu_id
+      && ['open', 'capped'].includes(frontier.disposition))).toBe(false)
+    expect(temporalFacts).not.toEqual([])
+    expect(temporalFacts.every((fact) => fact.materiality === 'required')).toBe(true)
+    expect(temporalFacts.every((fact) => fact.meaning.disposition === disposition)).toBe(true)
+    expect(temporalFindings).toHaveLength(activations.length)
+    expect(envelope.response_coverage_receipt.delivered_fact_ids)
+      .toEqual(expect.arrayContaining(temporalFacts.map((fact) => fact.fact_id)))
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
   it('fails closed rather than applying result paths from a different knowledge snapshot', () => {
     const { contract, evidencePayloads } = completeFixture()
     const register = buildInquiryFactRegister(contract, evidencePayloads, {

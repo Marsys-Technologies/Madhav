@@ -178,6 +178,20 @@ describe('query_temporal_activation bounded temporal closure', () => {
   })
 
   it.each([
+    ['an invalid start date', { date_from: '2026-02-30', date_to: '2026-12-31' }],
+    ['an invalid end date', { date_from: '2026-01-01', date_to: '2026-02-30' }],
+    ['an invalid point-in-time date', { as_of: '2026-02-30' }],
+    ['a reversed range', { date_from: '2026-12-31', date_to: '2026-01-01' }],
+  ])('keeps a temporal frontier for %s even when a receipt claims completion', async (_caseName, window) => {
+    routeQueries({ activations: [], totalMatching: 0 })
+    const args = { chart_id: CHART_ID, ...window, top_k: 2 }
+    const rawResult = await handler(args)
+
+    expect(deriveInquiryPaginationReceipt(temporalBinding(), rawResult, args))
+      .toEqual({ semantics: 'bounded_unverified', exhausted: false, next: 'unproven' })
+  })
+
+  it.each([
     ['a truncated window', (raw: Record<string, unknown>) => {
       const content = mutableContent(raw)
       const closure = mutableClosure(raw)
@@ -224,6 +238,12 @@ describe('query_temporal_activation bounded temporal closure', () => {
       state: 'complete_within_stated_window',
       exhaustive_within_stated_window: true,
     })
+    expect(deriveInquiryPaginationReceipt(temporalBinding(), result, {
+      chart_id: CHART_ID,
+      date_from: '2040-01-01',
+      date_to: '2040-12-31',
+      top_k: 2,
+    })).toEqual({ semantics: 'bounded_unverified', exhausted: true, next: null })
     expect(String(result.content['empty_reason'])).toContain('No activation windows overlap the requested date range 2040-01-01..2040-12-31')
   })
 
