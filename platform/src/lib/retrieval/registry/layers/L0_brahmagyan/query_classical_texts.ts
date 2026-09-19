@@ -1,87 +1,48 @@
 /**
- * L0 retrieval: classical_text_chunks (classical text chunks)
- * Tool: marsys://tool/L0/query_classical_texts
- *
- * R5 W2 corpus lane (design doc §3 CORPUS idiom / instrument #13 `ref_search`):
- * genuine hybrid vector + keyword ranking, not an either/or fallback. This is
- * also the target capability `vector_search` / `ref_vector_search` now resolve
- * to (tool_name_bridge.ts) — the P7 401 fix's second half (the first half was
- * the auth-header fix; this half is that the primitive it called had nothing
- * real to call — see tool_name_bridge.ts comment for the full story).
- *
- * Free-text search accepts any of `query_text` (canonical corpus-idiom name,
- * design §3), `query` (the ref_vector_search alias's param name), or `topic`
- * (find_verses_about's param name) — all three MCP-facing entry points land
- * on this one handler; normalizing the param name here means one real
- * implementation instead of three near-duplicates (the exact trap W1's
- * address-resolver work already hit once).
- *
- * Ranking: cosine similarity over the Vertex `text-multilingual-embedding-002`
- * embedding (768d, already populated on classical_text_chunks.embedding —
- * see migration 081_l0fr_schema.sql) combined with pg_trgm trigram similarity
- * over content_en, in ONE SQL ORDER BY (weighted sum) — a genuine hybrid, not
- * vector-then-fallback-to-keyword. If the embedding call fails (e.g. no GCP
- * credentials in a local/test environment), degrades to trigram-only ranking
- * rather than erroring the whole call.
- *
- * "Interpretation intent" (design §3 corpus idiom: "interpretation-intent
- * calls attach classical attestation"): any call using the free-text search
- * path (as opposed to the legacy exact `keyword` ILIKE path) is, by
- * construction, an interpretation-flavored query (asking about a topic/
- * meaning, not an exact-phrase lookup) — so it always returns full verse text
- * in hand (content_en + content_sa, never just an id) via the `citations`
- * array, capped at top_k≈5 by default per the design's "5 verses in hand"
- * framing (callers may raise top_k up to 50 for a wider FAN-OUT read).
+ * L0 classical-corpus retrieval with receipt-pinned, authenticated pagination.
+ * A page is served only from the same database snapshot that proves one current,
+ * fresh global bg_texts receipt and no replacement build in progress.
  */
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { embedText } from '@/lib/embeddings/embedText'
+import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 
 const DEFAULT_INTERPRETATION_TOP_K = 5
 const MAX_TOP_K = 50
 const DEFAULT_LIST_LIMIT = 20
 const MAX_LIST_LIMIT = 200
 const MAX_OFFSET = 1_000_000
-
-// Hybrid weighting: vector similarity carries more signal for free-text/
-// interpretation queries than raw trigram overlap on long verse translations
-// (pg_trgm degrades as the length gap between query and content grows), but
-// keyword overlap still matters — e.g. exact technical terms ("neecha
-// bhanga") that an embedding alone can blur across near-synonyms.
 const VECTOR_WEIGHT = 0.65
 const KEYWORD_WEIGHT = 0.35
+const EMBED_TIMEOUT_MS = 4_000
+const BG_TEXTS_ASSET_ID = 'bg_texts'
+const BG_TEXTS_OUTPUT_DIGEST_SPEC_SHA256 = '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6'
+const PAGE_CURSOR_DOMAIN = 'madhav:query_classical_texts:page_cursor:v1'
 
-interface HybridRow {
-  id: string
-  text_id: string
-  chunk_id: string
-  verse_ref: string | null
-  chapter: number | null
-  content_en: string
-  content_sa: string | null
-  content_summary: string | null
-  source_citation: string
-  tradition_school: string | null
-  topics: string[] | null
-  vector_score: number | null
-  keyword_score: number
-  combined_score: number
+type RankingMode = 'hybrid_vector_keyword' | 'keyword_trigram_only' | 'keyword_ilike_fallback' | 'legacy_list'
+
+interface SnapshotIdentity {
+  readonly receipt_version: string
+  readonly partition_key: string
+  readonly output_digest: string
+  readonly output_digest_spec_sha256: string
 }
 
-// PARISHODHANA B1 (newly-discovered regression): embedText()'s Vertex AI call
-// (platform/src/lib/embeddings/embedText.ts) wires no internal timeout of its own —
-// neither the ADC auth handshake (getAuth().getClient()/getAccessToken()) nor the
-// :predict fetch() carries an AbortSignal. A slow/hung credential or network path there
-// previously blocked this function INDEFINITELY, because the try/catch below only
-// catches a REJECTED promise, never a HUNG one. Every caller of the free-text/hybrid
-// path (ref_dasha_systems_get, ref_nakshatra_get, ref_rules_search, ref_vector_search —
-// anything that populates query_text/query/topic) inherited that hang and paid for it
-// as a bare "TimeoutError: The operation was aborted due to timeout" once the MCP tool's
-// own outer 15s AbortSignal.timeout finally cut the whole HTTP round-trip — an internal
-// error with no honest degradation, even though this function's own doc comment already
-// promised graceful degradation to trigram-only ranking. EMBED_TIMEOUT_MS bounds the
-// wait so a slow embedding call degrades exactly the way the comment always claimed.
-const EMBED_TIMEOUT_MS = 4_000
+interface ClassicalPageCursor extends SnapshotIdentity {
+  readonly version: 1
+  readonly offset: number
+  readonly filter_fingerprint: string
+  readonly ranking_mode: RankingMode
+  readonly embedding_hash: string | null
+}
+
+interface PageSnapshot extends Partial<SnapshotIdentity> {
+  readonly eligible_receipt_count: string
+  readonly replacement_in_progress: boolean
+  readonly rows: Record<string, unknown>[]
+}
 
 function normalizeLimit(value: unknown, fallback: number, maximum: number): number {
   const parsed = typeof value === 'number' ? value : Number(value)
@@ -96,264 +57,325 @@ function normalizeOffset(value: unknown): number {
   return Math.min(Math.max(Math.floor(parsed), 0), MAX_OFFSET)
 }
 
-/** Best-effort query embedding — never throws and never hangs past
- * EMBED_TIMEOUT_MS; null on any failure OR timeout so the caller degrades to
- * trigram-only ranking instead of blocking on an unbounded embedding call. */
+function sha256(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex')
+}
+
+function cursorMessage(kid: string, payload: string): string {
+  return `${PAGE_CURSOR_DOMAIN}:${kid}.${payload}`
+}
+
+function encodePageCursor(cursor: ClassicalPageCursor, ring: InquiryLifecycleSigningKeyRing): string {
+  const kid = ring.current.kid
+  const payload = Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url')
+  const signature = createHmac('sha256', ring.current.material).update(cursorMessage(kid, payload)).digest('base64url')
+  return `${kid}.${payload}.${signature}`
+}
+
+function decodePageCursor(value: unknown, ring: InquiryLifecycleSigningKeyRing): ClassicalPageCursor | null {
+  if (typeof value !== 'string' || !value) return null
+  try {
+    const parts = value.split('.')
+    if (parts.length !== 3) return null
+    const [kid, payload, signature] = parts
+    if (!kid || !payload || !signature || !/^[A-Za-z0-9_-]+$/.test(payload) || !/^[A-Za-z0-9_-]+$/.test(signature)) return null
+    const key = [ring.current, ...(ring.previous ?? [])].find((candidate) => candidate.kid === kid)
+    if (!key) return null
+    const payloadBytes = Buffer.from(payload, 'base64url')
+    const actual = Buffer.from(signature, 'base64url')
+    if (payloadBytes.toString('base64url') !== payload || actual.toString('base64url') !== signature) return null
+    const expected = createHmac('sha256', key.material).update(cursorMessage(kid, payload)).digest()
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null
+    const parsed = JSON.parse(payloadBytes.toString('utf8')) as Partial<ClassicalPageCursor>
+    const modes: RankingMode[] = ['hybrid_vector_keyword', 'keyword_trigram_only', 'keyword_ilike_fallback', 'legacy_list']
+    if (parsed.version !== 1 || typeof parsed.offset !== 'number' || !Number.isSafeInteger(parsed.offset)
+      || parsed.offset < 0 || parsed.offset > MAX_OFFSET
+      || typeof parsed.filter_fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.filter_fingerprint)
+      || !modes.includes(parsed.ranking_mode as RankingMode)
+      || !(parsed.embedding_hash === null || (typeof parsed.embedding_hash === 'string' && /^[a-f0-9]{64}$/.test(parsed.embedding_hash)))
+      || typeof parsed.receipt_version !== 'string' || !parsed.receipt_version
+      || typeof parsed.partition_key !== 'string' || !parsed.partition_key
+      || typeof parsed.output_digest !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.output_digest)
+      || typeof parsed.output_digest_spec_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.output_digest_spec_sha256)) return null
+    return parsed as ClassicalPageCursor
+  } catch {
+    return null
+  }
+}
+
+function paginationError(code: string, error: string, extra: Record<string, unknown> = {}) {
+  return {
+    content: {
+      code, error, restart_required: true, citations: [], rows: [], total: 0,
+      total_scope: 'page', more_available: false, next_offset: null, next_page_cursor: null,
+      ...extra,
+    },
+    is_error: true,
+  }
+}
+
 async function tryEmbedQuery(text: string): Promise<number[] | null> {
   try {
     return await Promise.race([
       embedText(text),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), EMBED_TIMEOUT_MS)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), EMBED_TIMEOUT_MS)),
     ])
   } catch {
     return null
   }
 }
 
+function receiptBoundarySql(): string {
+  return `eligible_receipts AS (
+    SELECT receipt.receipt_version, receipt.partition_key, receipt.output_digest,
+           receipt.output_digest_spec_sha256
+      FROM asset_provenance_receipts receipt
+      JOIN asset_freshness freshness
+        ON freshness.asset_id = receipt.asset_id
+       AND freshness.scope_key = receipt.scope_key
+       AND freshness.partition_key = receipt.partition_key
+       AND freshness.receipt_version = receipt.receipt_version
+      JOIN asset_output_digest_specs digest_spec
+        ON digest_spec.asset_id = receipt.asset_id
+       AND digest_spec.spec_sha256 = receipt.output_digest_spec_sha256
+       AND digest_spec.retired_at IS NULL
+     WHERE receipt.asset_id = $1::text
+       AND receipt.chart_id IS NULL
+       AND receipt.scope_key = '__global__'
+       AND receipt.receipt_state = 'proven'
+       AND receipt.output_digest IS NOT NULL
+       AND receipt.output_digest_spec_sha256 = $2::text
+       AND freshness.freshness_state = 'fresh'
+  ), receipt_snapshot AS (
+    SELECT COUNT(*)::text AS eligible_receipt_count,
+           MIN(receipt_version) AS receipt_version, MIN(partition_key) AS partition_key,
+           MIN(output_digest) AS output_digest,
+           MIN(output_digest_spec_sha256) AS output_digest_spec_sha256
+      FROM eligible_receipts
+  ), replacement_fence AS (
+    SELECT EXISTS (
+      SELECT 1 FROM build_run_assets asset
+      JOIN build_runs run ON run.id = asset.run_id
+      WHERE asset.asset_id = $1::text
+        AND (run.state IN ('planned', 'running', 'paused') OR asset.state IN ('queued', 'building'))
+    ) AS replacement_in_progress
+  )`
+}
+
+function envelopeSql(pageCtes: string): string {
+  return `WITH ${receiptBoundarySql()}, ${pageCtes}
+    SELECT snapshot.*, fence.replacement_in_progress,
+           COALESCE((SELECT jsonb_agg(row ORDER BY order_position) FROM page_rows), '[]'::jsonb) AS rows
+      FROM receipt_snapshot snapshot CROSS JOIN replacement_fence fence`
+}
+
+function snapshotIdentity(snapshot: PageSnapshot): SnapshotIdentity | null {
+  if (snapshot.eligible_receipt_count !== '1'
+    || typeof snapshot.receipt_version !== 'string' || !snapshot.receipt_version
+    || typeof snapshot.partition_key !== 'string' || !snapshot.partition_key
+    || typeof snapshot.output_digest !== 'string' || !/^[a-f0-9]{64}$/.test(snapshot.output_digest)
+    || snapshot.output_digest_spec_sha256 !== BG_TEXTS_OUTPUT_DIGEST_SPEC_SHA256) return null
+  return {
+    receipt_version: snapshot.receipt_version, partition_key: snapshot.partition_key,
+    output_digest: snapshot.output_digest, output_digest_spec_sha256: snapshot.output_digest_spec_sha256,
+  }
+}
+
+function snapshotChanged(cursor: ClassicalPageCursor, snapshot: PageSnapshot): boolean {
+  return cursor.receipt_version !== snapshot.receipt_version
+    || cursor.partition_key !== snapshot.partition_key
+    || cursor.output_digest !== snapshot.output_digest
+    || cursor.output_digest_spec_sha256 !== snapshot.output_digest_spec_sha256
+}
+
+async function fetchHybridPage(args: {
+  freeText: string; textSource: string | null; embedding: number[] | null; limit: number; offset: number; fallback: boolean
+}): Promise<PageSnapshot | undefined> {
+  const params: unknown[] = [BG_TEXTS_ASSET_ID, BG_TEXTS_OUTPUT_DIGEST_SPEC_SHA256]
+  const queryParam = `$${params.push(args.fallback ? `%${args.freeText}%` : args.freeText)}`
+  let vectorExpression = 'NULL::float'
+  if (!args.fallback && args.embedding) {
+    const embeddingParam = `$${params.push(`[${args.embedding.join(',')}]`)}`
+    vectorExpression = `(1 - (c.embedding <=> ${embeddingParam}::vector))::float`
+  }
+  const textSourcePredicate = args.textSource ? ` AND c.text_id = $${params.push(args.textSource)}::text` : ''
+  const source = args.fallback
+    ? `SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.content_en, c.content_sa,
+              c.content_summary, c.source_citation, c.tradition_school, c.topics,
+              NULL::float AS vector_score, 0.5::float AS keyword_score, 0.5::float AS combined_score
+         FROM classical_text_chunks c WHERE c.content_en ILIKE ${queryParam}${textSourcePredicate}`
+    : `SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.content_en, c.content_sa,
+              c.content_summary, c.source_citation, c.tradition_school, c.topics,
+              ${vectorExpression} AS vector_score,
+              similarity(c.content_en, ${queryParam})::float AS keyword_score,
+              (${VECTOR_WEIGHT} * COALESCE(${vectorExpression}, 0)
+                + ${KEYWORD_WEIGHT} * COALESCE(similarity(c.content_en, ${queryParam}), 0))::float AS combined_score
+         FROM classical_text_chunks c WHERE 1=1${textSourcePredicate}`
+  const order = args.fallback
+    ? 'text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC'
+    : 'combined_score DESC, text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC'
+  const limitParam = `$${params.push(args.limit + 1)}`
+  const offsetParam = `$${params.push(args.offset)}`
+  const sql = envelopeSql(`search_rows AS (${source}), page_rows AS (
+    SELECT to_jsonb(search_rows) AS row, ROW_NUMBER() OVER (ORDER BY ${order}) AS order_position
+      FROM search_rows CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
+     WHERE snapshot.eligible_receipt_count = '1' AND NOT fence.replacement_in_progress
+     ORDER BY ${order} LIMIT ${limitParam} OFFSET ${offsetParam}
+  )`)
+  const result = await query<PageSnapshot>(sql, params)
+  return result.rows[0]
+}
+
+async function fetchListPage(args: {
+  keyword: string | null; textSource: string | null; topic: string | null; limit: number; offset: number
+}): Promise<PageSnapshot | undefined> {
+  const params: unknown[] = [BG_TEXTS_ASSET_ID, BG_TEXTS_OUTPUT_DIGEST_SPEC_SHA256]
+  let predicates = ''
+  if (args.keyword) predicates += ` AND c.content_en ILIKE $${params.push(`%${args.keyword}%`)}::text`
+  if (args.textSource) predicates += ` AND c.text_id = $${params.push(args.textSource)}::text`
+  if (args.topic) predicates += ` AND $${params.push(args.topic)}::text = ANY(c.topics)`
+  const limitParam = `$${params.push(args.limit + 1)}`
+  const offsetParam = `$${params.push(args.offset)}`
+  const order = 'text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC'
+  const sql = envelopeSql(`search_rows AS (
+    SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
+           c.content_en, c.content_sa, c.content_summary, c.source_citation,
+           c.tradition_school, c.topics FROM classical_text_chunks c WHERE 1=1${predicates}
+  ), page_rows AS (
+    SELECT to_jsonb(search_rows) AS row, ROW_NUMBER() OVER (ORDER BY ${order}) AS order_position
+      FROM search_rows CROSS JOIN receipt_snapshot snapshot CROSS JOIN replacement_fence fence
+     WHERE snapshot.eligible_receipt_count = '1' AND NOT fence.replacement_in_progress
+     ORDER BY ${order} LIMIT ${limitParam} OFFSET ${offsetParam}
+  )`)
+  const result = await query<PageSnapshot>(sql, params)
+  return result.rows[0]
+}
+
+function validateSnapshot(snapshot: PageSnapshot | undefined, cursor: ClassicalPageCursor | null) {
+  if (!snapshot) return paginationError('bg_texts_receipt_unavailable', 'No consistent bg_texts receipt snapshot was available.')
+  if (snapshot.replacement_in_progress) return paginationError('bg_texts_replacement_in_progress', 'A bg_texts replacement is in progress; restart after its fresh provenance receipt is complete.')
+  if (cursor && snapshotChanged(cursor, snapshot)) return paginationError('page_cursor_snapshot_changed', 'The bg_texts receipt identity changed after this cursor was minted.')
+  if (snapshot.eligible_receipt_count !== '1') {
+    return paginationError(snapshot.eligible_receipt_count === '0' ? 'bg_texts_receipt_unavailable' : 'bg_texts_receipt_ambiguous', 'Exactly one current fresh, proven global bg_texts receipt is required.')
+  }
+  if (!snapshotIdentity(snapshot)) return paginationError('bg_texts_receipt_unavailable', 'The bg_texts receipt did not match the reviewed digest specification.')
+  return null
+}
+
 export const queryClassicalTextsCapability: CapabilityDescriptor = {
-  uri: 'marsys://tool/L0/query_classical_texts',
-  type: 'tool',
-  layer: 'L0',
-  name: 'query_classical_texts',
-  description:
-    'Query the classical text corpus (classical_text_chunks) — classical text chunks ' +
-    'from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita, ' +
-    'Phala Deepika, Jataka Parijata, and other canonical texts. ' +
-    'Each chunk is a verse or shloka with: text_id, chapter, verse_ref, topics, ' +
-    'tradition_school, and the original Sanskrit + English translation. ' +
-    'Use to cite classical sources for astrological observations. ' +
-    'Free-text search (query_text/query/topic) runs genuine hybrid vector+keyword ' +
-    'ranking and returns verse text IN HAND (content_en/content_sa), not just a ' +
-    'citation id — this is the corpus idiom\'s ref_search / vector_search target. ' +
-    'Exact-phrase search (keyword) does ILIKE substring matching with empty-with-reason.',
+  uri: 'marsys://tool/L0/query_classical_texts', type: 'tool', layer: 'L0', name: 'query_classical_texts',
+  description: 'Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.',
   input_schema: {
-    query_text: { type: 'string', description: 'Free-text topic/meaning query — hybrid vector+keyword search (top_k≈5 verses in hand). Same field as query/topic.' },
-    query:      { type: 'string', description: 'Alias for query_text (ref_vector_search naming).' },
-    topic:      { type: 'string', description: 'Alias for query_text when used as free text (find_verses_about naming). NOTE: if you want the topics-array TAG filter instead, use text_source + the exact tag.' },
-    keyword:     { type: 'string', description: 'Exact-phrase keyword to search in English translation (ILIKE substring, legacy path).' },
-    text_source: { type: 'string', description: 'Filter by source text id (e.g. BPHS, Saravali, Brihat_Jataka).' },
-    top_k:  { type: 'number', description: 'Max results for the hybrid search path (default 5).' },
-    offset: { type: 'number', default: 0 },
-    limit:  { type: 'number', default: 20 },
+    query_text: { type: 'string', description: 'Free-text topic/meaning query.' },
+    query: { type: 'string', description: 'Alias for query_text.' },
+    topic: { type: 'string', description: 'Alias for free text; with no free-text route it remains the legacy topics filter.' },
+    keyword: { type: 'string', description: 'Exact-phrase English substring search.' },
+    text_source: { type: 'string', description: 'Source text id filter.' },
+    top_k: { type: 'number', description: 'Hybrid result limit (default 5, max 50).' },
+    offset: { type: 'number', default: 0, description: 'First-page diagnostic offset only; nonzero continuation requires page_cursor.' },
+    limit: { type: 'number', default: 20 },
+    page_cursor: { type: 'string', description: 'Opaque signed continuation token returned as next_page_cursor.' },
   },
-  required_inputs: [],
-  scope: 'global',
-  archetype: 'prose_citation',
-  traversal_level: 'L-SOURCE',
-  tool_role: 'hybrid_retrieval',
-  emits_references: false,
-  lel_capable: false,
-  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
-  // Band phase 6 ("Consulting the classics"), not a phase-5 retrieval facet — this is the
-  // classical-corpus consultation phase in the fixed band sequence.
+  required_inputs: [], scope: 'global', archetype: 'prose_citation', traversal_level: 'L-SOURCE',
+  tool_role: 'hybrid_retrieval', emits_references: false, lel_capable: false,
   register: { reader_label: 'Consulting the classics' },
-  llm_hints: {
-    agentic: { cost_class: 'cheap', cacheable: false },
-    bulk_context: { pre_fetch_priority: 55, always_include: false },
-  },
+  llm_hints: { agentic: { cost_class: 'cheap', cacheable: false }, bulk_context: { pre_fetch_priority: 55, always_include: false } },
+
   async handler(args, _ctx) {
     void _ctx
+    const requestedOffset = normalizeOffset(args.offset)
+    const suppliedCursor = args.page_cursor !== undefined && args.page_cursor !== null
+    if (!suppliedCursor && requestedOffset > 0) return paginationError('page_cursor_required', 'A nonzero offset is not a safe continuation; restart and use next_page_cursor.')
+
+    let signingRing: InquiryLifecycleSigningKeyRing
     try {
-      const freeText =
-        (args.query_text as string | undefined) ??
-        (args.query as string | undefined) ??
-        (args.topic as string | undefined) ??
-        undefined
+      signingRing = loadInquiryLifecycleSigningKeyRing()
+    } catch {
+      return paginationError('page_cursor_signing_unavailable', 'Classical pagination signing is unavailable; a stable snapshot cannot be established.')
+    }
+    const cursor = suppliedCursor ? decodePageCursor(args.page_cursor, signingRing) : null
+    if (suppliedCursor && !cursor) return paginationError('invalid_page_cursor', 'The supplied page_cursor is malformed, forged, or no longer signed by an accepted key.')
 
-      // ── Hybrid vector + keyword path (free-text / interpretation intent) ──
-      if (freeText && freeText.trim().length > 0) {
-        const topK = normalizeLimit(args.top_k ?? args.limit, DEFAULT_INTERPRETATION_TOP_K, MAX_TOP_K)
-        const offset = normalizeOffset(args.offset)
-        const textSource = args.text_source as string | undefined
+    const queryText = typeof args.query_text === 'string' ? args.query_text : undefined
+    const queryAlias = typeof args.query === 'string' ? args.query : undefined
+    const topicAlias = typeof args.topic === 'string' ? args.topic : undefined
+    const freeText = queryText ?? queryAlias ?? topicAlias
+    const usesFreeText = Boolean(freeText && freeText.trim().length > 0)
+    const textSource = typeof args.text_source === 'string' && args.text_source ? args.text_source : null
+    const keyword = typeof args.keyword === 'string' && args.keyword ? args.keyword : null
+    const routeFingerprint = sha256(usesFreeText
+      ? { route: 'free_text', query: freeText, text_source: textSource }
+      : { route: 'legacy_list', keyword, text_source: textSource, topic: topicAlias || null })
+    if (cursor && cursor.filter_fingerprint !== routeFingerprint) return paginationError('page_cursor_filter_mismatch', 'The cursor was minted for different normalized query filters.')
 
+    const offset = cursor?.offset ?? requestedOffset
+    const limit = usesFreeText
+      ? normalizeLimit(args.top_k ?? args.limit, DEFAULT_INTERPRETATION_TOP_K, MAX_TOP_K)
+      : normalizeLimit(args.limit, DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT)
+
+    try {
+      let rankingMode: RankingMode = 'legacy_list'
+      let embeddingHash: string | null = null
+      let snapshot: PageSnapshot | undefined
+      if (usesFreeText && freeText) {
         const embedding = await tryEmbedQuery(freeText)
-        const params: unknown[] = [freeText]
-        let vectorSelect = `NULL::float AS vector_score`
-        if (embedding) {
-          const embeddingStr = '[' + embedding.join(',') + ']'
-          params.push(embeddingStr)
-          vectorSelect = `(1 - (c.embedding <=> $${params.length}::vector))::float AS vector_score`
+        rankingMode = embedding ? 'hybrid_vector_keyword' : 'keyword_trigram_only'
+        embeddingHash = embedding ? sha256(embedding) : null
+        if (cursor && cursor.ranking_mode !== 'keyword_ilike_fallback' && cursor.ranking_mode !== rankingMode) {
+          return paginationError('page_cursor_ranking_mode_changed', 'The free-text ranking mode changed after this cursor was minted.')
         }
-
-        // NOTE: Postgres does NOT resolve a SELECT-list alias when it appears
-        // inside a compound ORDER BY expression (only a bare "ORDER BY alias"
-        // resolves — verified live against the prod-mirrored DB during this
-        // wave: "column vector_score does not exist"). Wrapping in a subquery
-        // makes vector_score/keyword_score real output columns of `sub`, which
-        // the outer ORDER BY can then combine freely.
-        let innerSql = `
-          SELECT
-            c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,
-            c.content_en, c.content_sa, c.content_summary, c.source_citation,
-            c.tradition_school, c.topics,
-            ${vectorSelect},
-            similarity(c.content_en, $1)::float AS keyword_score
-          FROM classical_text_chunks c
-          WHERE 1=1
-        `
-        if (textSource) { innerSql += ` AND c.text_id = $${params.length + 1}`; params.push(textSource) }
-        const sql = `
-          SELECT * FROM (${innerSql}) sub
-          ORDER BY (
-            ${VECTOR_WEIGHT} * COALESCE(vector_score, 0) + ${KEYWORD_WEIGHT} * COALESCE(keyword_score, 0)
-          ) DESC,
-          text_id ASC,
-          chapter ASC NULLS LAST,
-          verse_ref ASC NULLS LAST,
-          chunk_id ASC,
-          id ASC
-          LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-        `
-        params.push(topK + 1, offset)
-
-        let rows: HybridRow[]
+        if (cursor && cursor.ranking_mode === 'hybrid_vector_keyword' && cursor.embedding_hash !== embeddingHash) {
+          return paginationError('page_cursor_embedding_changed', 'The query embedding changed after this cursor was minted.')
+        }
         try {
-          const result = await query<Omit<HybridRow, 'combined_score'>>(sql, params)
-          rows = result.rows.map(r => ({
-            ...r,
-            combined_score:
-              VECTOR_WEIGHT * (r.vector_score ?? 0) + KEYWORD_WEIGHT * (r.keyword_score ?? 0),
-          }))
+          snapshot = await fetchHybridPage({ freeText, textSource, embedding, limit, offset, fallback: false })
+          if (cursor?.ranking_mode === 'keyword_ilike_fallback') return paginationError('page_cursor_ranking_mode_changed', 'The free-text ranking mode changed after this cursor was minted.')
         } catch {
-          // pg_trgm similarity() unavailable — degrade to plain ILIKE substring
-          // rather than erroring the whole call.
-          const fallbackParams: unknown[] = [`%${freeText}%`]
-          let fallbackSql = `SELECT id, text_id, chunk_id, verse_ref, chapter, content_en, content_sa,
-                    content_summary, source_citation, tradition_school, topics
-             FROM classical_text_chunks
-             WHERE content_en ILIKE $1`
-          if (textSource) { fallbackParams.push(textSource); fallbackSql += ` AND text_id = $2` }
-          fallbackSql += ` ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC
-             LIMIT $${fallbackParams.length + 1} OFFSET $${fallbackParams.length + 2}`
-          fallbackParams.push(topK + 1, offset)
-          const fallback = await query<Record<string, unknown>>(fallbackSql, fallbackParams)
-          rows = fallback.rows.map(r => ({
-            ...(r as unknown as Omit<HybridRow, 'vector_score' | 'keyword_score' | 'combined_score'>),
-            vector_score: null,
-            keyword_score: 0.5,
-            combined_score: 0.5,
-          }))
+          if (cursor && cursor.ranking_mode !== 'keyword_ilike_fallback') return paginationError('page_cursor_ranking_mode_changed', 'The free-text ranking mode changed to ILIKE fallback after this cursor was minted.')
+          rankingMode = 'keyword_ilike_fallback'
+          embeddingHash = null
+          snapshot = await fetchHybridPage({ freeText, textSource, embedding: null, limit, offset, fallback: true })
         }
-
-        // Verse text IN HAND: every citation carries the actual verse content,
-        // not merely a citation_ref id (P7/E-4 fix per the design doc's
-        // "citation arrives WITH verse text" gate).
-        const moreAvailable = rows.length > topK
-        const citations = rows.slice(0, topK).map(r => ({
-          citation_ref: `${r.text_id}:${r.verse_ref ?? r.chunk_id}`,
-          chunk_id: r.chunk_id,
-          text_id: r.text_id,
-          verse_ref: r.verse_ref,
-          chapter: r.chapter,
-          verse_text_en: r.content_en,
-          verse_text_sa: r.content_sa,
-          content_summary: r.content_summary,
-          tradition_school: r.tradition_school,
-          topics: r.topics,
-          source_citation: r.source_citation,
-          vector_score: r.vector_score,
-          keyword_score: r.keyword_score,
-          combined_score: r.combined_score,
-        }))
-
-        return {
-          content: {
-            search_mode: embedding ? 'hybrid_vector_keyword' : 'keyword_trigram_only',
-            query_used: freeText,
-            citations,
-            rows: citations, // back-compat alias — earlier callers read `rows`
-            // Backwards-compatible page count, explicitly not a corpus-wide total.
-            total: citations.length,
-            total_scope: 'page',
-            more_available: moreAvailable,
-            next_offset: moreAvailable ? offset + citations.length : null,
-            pagination: { limit: topK, offset, more_available: moreAvailable },
-          },
-          is_error: false,
-        }
+      } else {
+        if (cursor && cursor.ranking_mode !== 'legacy_list') return paginationError('page_cursor_ranking_mode_changed', 'The list ranking mode changed after this cursor was minted.')
+        snapshot = await fetchListPage({ keyword, textSource, topic: topicAlias || null, limit, offset })
       }
 
-      // ── Legacy exact-phrase / list path (unchanged behaviour) ────────────
-      const limit = normalizeLimit(args.limit, DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT)
-      const offset = normalizeOffset(args.offset)
-      const params: unknown[] = [limit, offset]
-      // R6 3b-budgets (R-26): `SELECT *` was leaking the 768-dim `embedding` vector column
-      // (~8KB/row of served bytes for zero consumer value — no caller reads a raw embedding
-      // out of an MCP tool response) on ref_classical_citation_get's legacy keyword/topic-
-      // filter path. The hybrid free-text path above never had this bug (it already selects
-      // an explicit column list without `embedding`); this is the same fix applied here.
-      let sql = `
-        SELECT id, text_id, chunk_id, verse_ref, chapter, verse_start, content_en, content_sa,
-               content_summary, source_citation, tradition_school, topics
-        FROM classical_text_chunks WHERE 1=1
-      `
-      if (args.keyword)     { sql += ` AND content_en ILIKE $${params.length + 1}`; params.push(`%${args.keyword as string}%`) }
-      if (args.text_source) { sql += ` AND text_id = $${params.length + 1}`; params.push(args.text_source as string) }
-      if (args.topic)       { sql += ` AND $${params.length + 1} = ANY(topics)`; params.push(args.topic as string) }
-      sql += ` ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC LIMIT $1 OFFSET $2`
-      params[0] = limit + 1
-      const result = await query<Record<string, unknown>>(sql, params)
-      const fetchedRows = result.rows ?? []
+      const snapshotError = validateSnapshot(snapshot, cursor)
+      if (snapshotError) return snapshotError
+      const identity = snapshotIdentity(snapshot!)!
+      const fetchedRows = Array.isArray(snapshot!.rows) ? snapshot!.rows : []
       const rows = fetchedRows.slice(0, limit)
       const moreAvailable = fetchedRows.length > limit
+      const nextOffset = moreAvailable ? offset + rows.length : null
+      const nextPageCursor = moreAvailable ? encodePageCursor({
+        version: 1, offset: nextOffset!, filter_fingerprint: routeFingerprint,
+        ranking_mode: rankingMode, embedding_hash: embeddingHash, ...identity,
+      }, signingRing) : null
 
-      // E-3 empty-with-reason (R5 W0a punch-list, P8): a bare {rows: [], total: 0}
-      // is indistinguishable from "the corpus has nothing on this term" (false) vs.
-      // "this exact spelling/keyword is not indexed" (usually true). When a keyword
-      // search comes back empty, say WHY and — where pg_trgm is available — surface
-      // the nearest indexed topic tags as an honest, computed (not fabricated)
-      // alternate-spelling suggestion.
-      if (rows.length === 0 && args.keyword) {
-        const keyword = args.keyword as string
-        let nearestTopics: string[] = []
-        try {
-          const suggest = await query<{ topic: string }>(
-            `
-              SELECT topic FROM (
-                SELECT DISTINCT unnest(topics) AS topic FROM classical_text_chunks
-              ) t
-              WHERE similarity(topic, $1) > 0.15
-              ORDER BY similarity(topic, $1) DESC
-              LIMIT 5
-            `,
-            [keyword]
-          )
-          nearestTopics = suggest.rows.map(r => r.topic)
-        } catch {
-          // pg_trgm similarity() unavailable or query failed — degrade to a
-          // reason-only empty response rather than erroring the whole call.
-          nearestTopics = []
-        }
-        return {
-          content: {
-            rows: [],
-            total: 0,
-            total_scope: 'page',
-            more_available: false,
-            next_offset: null,
-            pagination: { limit, offset, more_available: false },
-            empty_reason: `No classical_text_chunks rows matched keyword "${keyword}" — this exact ` +
-              `spelling/phrase is not indexed in the corpus (this does NOT mean the corpus is silent ` +
-              `on the underlying concept — try a topic filter or an alternate spelling).`,
-            nearest_indexed_topics: nearestTopics,
-          },
-          is_error: false,
-        }
-      }
+      const citations = usesFreeText ? rows.map((row) => ({
+        citation_ref: `${row['text_id']}:${row['verse_ref'] ?? row['chunk_id']}`,
+        chunk_id: row['chunk_id'], text_id: row['text_id'], verse_ref: row['verse_ref'], chapter: row['chapter'],
+        verse_text_en: row['content_en'], verse_text_sa: row['content_sa'], content_summary: row['content_summary'],
+        tradition_school: row['tradition_school'], topics: row['topics'], source_citation: row['source_citation'],
+        vector_score: row['vector_score'], keyword_score: row['keyword_score'], combined_score: row['combined_score'],
+      })) : rows
 
       return {
         content: {
-          rows,
-          total: rows.length,
-          total_scope: 'page',
-          more_available: moreAvailable,
-          next_offset: moreAvailable ? offset + rows.length : null,
+          search_mode: rankingMode, ...(usesFreeText ? { query_used: freeText } : {}),
+          citations, rows: citations, total: citations.length, total_scope: 'page',
+          more_available: moreAvailable, next_offset: nextOffset, next_page_cursor: nextPageCursor,
           pagination: { limit, offset, more_available: moreAvailable },
+          snapshot_provenance: { asset_id: BG_TEXTS_ASSET_ID, ...identity },
+          ...(!usesFreeText && citations.length === 0 && keyword ? {
+            empty_reason: `No classical_text_chunks rows matched keyword "${keyword}" — this exact spelling/phrase is not indexed in the corpus.`,
+          } : {}),
         },
         is_error: false,
       }
-    } catch (err) {
-      return { content: String(err), is_error: true }
+    } catch (error) {
+      return { content: { error: String(error), citations: [], rows: [] }, is_error: true }
     }
   },
 }

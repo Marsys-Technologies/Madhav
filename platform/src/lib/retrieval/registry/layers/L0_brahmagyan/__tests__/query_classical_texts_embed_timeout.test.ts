@@ -41,21 +41,41 @@ const SAMPLE_ROW = {
   vector_score: 0.9, keyword_score: 0.5,
 }
 
+const signingEnv = {
+  INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1',
+  INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: Buffer.alloc(32, 9).toString('base64url'),
+}
+const previousEnv = Object.fromEntries(Object.keys(signingEnv).map((key) => [key, process.env[key]]))
+
+function pageSnapshot() {
+  return {
+    eligible_receipt_count: '1', replacement_in_progress: false,
+    receipt_version: '1', partition_key: '__global__', output_digest: 'a'.repeat(64),
+    output_digest_spec_sha256: '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+    rows: [SAMPLE_ROW],
+  }
+}
+
 describe('query_classical_texts — embedText timeout hardening (PARISHODHANA B1)', () => {
   beforeEach(() => {
     mockQuery.mockReset()
     mockEmbedText.mockReset()
+    Object.assign(process.env, signingEnv)
   })
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
   })
 
   it('degrades to keyword_trigram_only (never hangs) when embedText() hangs indefinitely', async () => {
     vi.useFakeTimers()
     // Simulate a hung Vertex AI call — a promise that never resolves or rejects.
     mockEmbedText.mockReturnValue(new Promise(() => {}))
-    mockQuery.mockResolvedValue({ rows: [SAMPLE_ROW] })
+    mockQuery.mockResolvedValue({ rows: [pageSnapshot()] })
 
     const resultPromise = queryClassicalTextsCapability.handler({ query_text: 'dasha system' }, undefined)
 
@@ -72,7 +92,7 @@ describe('query_classical_texts — embedText timeout hardening (PARISHODHANA B1
 
   it('still returns hybrid_vector_keyword when embedText() resolves normally (no regression)', async () => {
     mockEmbedText.mockResolvedValue(new Array(768).fill(0.1))
-    mockQuery.mockResolvedValue({ rows: [SAMPLE_ROW] })
+    mockQuery.mockResolvedValue({ rows: [pageSnapshot()] })
 
     const result = await queryClassicalTextsCapability.handler({ query_text: 'nakshatra lords' }, undefined)
 
@@ -84,7 +104,7 @@ describe('query_classical_texts — embedText timeout hardening (PARISHODHANA B1
 
   it('still degrades gracefully when embedText() rejects outright (pre-existing behavior preserved)', async () => {
     mockEmbedText.mockRejectedValue(new Error('no GCP credentials'))
-    mockQuery.mockResolvedValue({ rows: [SAMPLE_ROW] })
+    mockQuery.mockResolvedValue({ rows: [pageSnapshot()] })
 
     const result = await queryClassicalTextsCapability.handler({ query_text: 'gajakesari yoga' }, undefined)
 
