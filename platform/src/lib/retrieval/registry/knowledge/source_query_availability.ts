@@ -2213,6 +2213,37 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
     ],
   },
+  {
+    contract_id: 'source-query:asset-registry-all:v1',
+    descriptor_name: 'asset_registry_all',
+    capability_uri: 'marsys://resource/asset-registry/all',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT asset_id, layer, sanskrit_name, english_name, target_table, target_floor,
+                 scope, is_active, asset_type, catalog_status, has_writer,
+                 expected_volume_formula, count_sql, depends_on
+            FROM asset_registry
+           ORDER BY layer, asset_id
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts:145-162'],
+  },
+  {
+    contract_id: 'source-query:asset-registry-l0:v1',
+    descriptor_name: 'asset_registry_l0',
+    capability_uri: 'marsys://resource/asset-registry/L0',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT ar.asset_id, ar.layer, ar.sanskrit_name, ar.english_name, ar.target_table,
+                 ar.target_floor, ar.scope, ar.is_active, ar.asset_type, ar.catalog_status,
+                 ar.has_writer, ar.expected_volume_formula, ar.count_sql, ar.depends_on
+            FROM asset_registry ar
+           WHERE ar.layer = 'brahmagyan'
+           ORDER BY ar.asset_id
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts:103-120'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
