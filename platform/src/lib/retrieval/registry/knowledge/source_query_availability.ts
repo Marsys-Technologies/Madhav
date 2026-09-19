@@ -2834,6 +2834,29 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:66-118'],
   },
+  {
+    contract_id: 'source-query:query-tithi-pravesha:v1',
+    descriptor_name: 'query_tithi_pravesha',
+    capability_uri: 'marsys://tool/L3/query_tithi_pravesha',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT pravesha_year,
+                   to_char(window_start, 'YYYY-MM-DD"T"HH24:MI:SS') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD"T"HH24:MI:SS') AS window_end,
+                   start_converged, end_converged, pravesha_lagna_sign_idx,
+                   pravesha_lagna_sign_name, pravesha_lagna_degree, graha_positions_jsonb,
+                   natal_moon_longitude_deg, moon_fact_id, ephemeris_audit_jsonb,
+                   verification_pass_status, classical_source_citation,
+                   (window_start <= CURRENT_TIMESTAMP AND window_end > CURRENT_TIMESTAMP) AS is_current
+              FROM kala_tithi_pravesha
+             WHERE chart_id = $1::uuid AND pravesha_year >= 1 AND pravesha_year <= 120
+             ORDER BY pravesha_year LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_tithi_pravesha
+             WHERE chart_id = $1::uuid AND pravesha_year >= 1 AND pravesha_year <= 120
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:65-120'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
