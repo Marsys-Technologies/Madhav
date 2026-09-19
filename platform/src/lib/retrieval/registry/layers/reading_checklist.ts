@@ -589,6 +589,10 @@ export function vargaConfirmedMark(varga: string, relation: VargaRatificationRel
 export const WEALTH_CORROBORATING_VARGAS = ['D9', 'D11'] as const
 export const WEALTH_ASHTAKAVARGA_VARGAS = ['D2', 'D9', 'D11'] as const
 export const WEALTH_ASHTAKAVARGA_HOUSES = [2, 11] as const
+export const WEALTH_SPECIAL_LAGNAS = ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'] as const
+export const WEALTH_SPECIAL_LAGNA_KEYS = [
+  'longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1',
+] as const
 
 export interface WealthCorroboratingVargaResult {
   state: 'served' | 'source_incomplete' | 'source_unproven'
@@ -682,6 +686,61 @@ export async function fetchWealthAshtakavarga(
       const key = `${row.fact_category}|${row.fact_subject}|${row.fact_key}`
       if (!expected.has(key) || observed.has(key)) return { state: 'source_incomplete', rows: [] }
       observed.add(key)
+    }
+    return observed.size === expected.size
+      ? { state: 'served', rows: res.rows }
+      : { state: 'source_incomplete', rows: [] }
+  } catch {
+    return { state: 'source_unproven', rows: [] }
+  }
+}
+
+export interface WealthSpecialLagnaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{
+    fact_id: string
+    fact_subject: typeof WEALTH_SPECIAL_LAGNAS[number]
+    fact_key: typeof WEALTH_SPECIAL_LAGNA_KEYS[number]
+    fact_value_num: number | null
+    fact_value_text: string | null
+  }>
+}
+
+/** Fixed wealth special-lagna receipt: Indu, Sree, and Hora each need the complete
+ * longitude/placement atom set from ga_sensitive's selected build. A floored native
+ * computation, a missing atom, or a duplicate atom is incomplete evidence, never a
+ * silently partial lagna reading. The caller establishes the shared receipt fence. */
+export async function fetchWealthSpecialLagnas(
+  chart_id: string,
+  ayanamsha_id: string,
+  build_id: string,
+): Promise<WealthSpecialLagnaResult> {
+  try {
+    const res = await query<WealthSpecialLagnaResult['rows'][number] & { verification_pass_status: string | null }>(
+      `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
+         FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND fact_category = 'special_lagna'
+          AND fact_subject = ANY($4) AND fact_key = ANY($5)
+        ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
+      [chart_id, ayanamsha_id, build_id, [...WEALTH_SPECIAL_LAGNAS], [...WEALTH_SPECIAL_LAGNA_KEYS]],
+    )
+    const expected = new Set<string>()
+    for (const lagna of WEALTH_SPECIAL_LAGNAS) {
+      for (const key of WEALTH_SPECIAL_LAGNA_KEYS) expected.add(`${lagna}|${key}`)
+    }
+    const observed = new Set<string>()
+    for (const row of res.rows) {
+      const identity = `${row.fact_subject}|${row.fact_key}`
+      if (!expected.has(identity) || observed.has(identity) || row.verification_pass_status !== 'two_pass_verified') {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      if ((row.fact_key === 'longitude_sidereal' || row.fact_key === 'pada' || row.fact_key === 'house_d1')
+        ? row.fact_value_num == null
+        : row.fact_value_text == null) {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      observed.add(identity)
     }
     return observed.size === expected.size
       ? { state: 'served', rows: res.rows }

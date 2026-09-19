@@ -6,6 +6,7 @@ vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...
 import {
   fetchKpCuspChain,
   fetchWealthAshtakavarga,
+  fetchWealthSpecialLagnas,
   fetchSensitiveDegreeFirings,
   fetchWealthCorroboratingVargas,
   fetchWealthReadingSourceFence,
@@ -130,5 +131,33 @@ describe('reading-checklist selected-build fence', () => {
     expect(result.state).toBe('served')
     expect(result.rows).toHaveLength(12)
     expect(String(queryMock.mock.calls[0]![0])).toContain('build_id = $3::uuid')
+  })
+
+  it('requires the full selected-build Indu/Sree/Hora atomic lagna receipt', async () => {
+    const numericKeys = new Set(['longitude_sidereal', 'pada', 'house_d1'])
+    const rows = ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'].flatMap(subject => [
+      'longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1',
+    ].map(fact_key => ({
+      fact_id: `${subject}-${fact_key}`,
+      fact_subject: subject,
+      fact_key,
+      fact_value_num: numericKeys.has(fact_key) ? 12 : null,
+      fact_value_text: numericKeys.has(fact_key) ? null : 'Aries',
+      verification_pass_status: 'two_pass_verified',
+    })))
+    queryMock.mockResolvedValueOnce({ rows })
+
+    const result = await fetchWealthSpecialLagnas(CHART_ID, AYANAMSHA, BUILD_ID)
+
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(21)
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql)).toContain('build_id = $3::uuid')
+    expect(String(sql)).toContain("fact_category = 'special_lagna'")
+    expect(params).toEqual([
+      CHART_ID, AYANAMSHA, BUILD_ID,
+      ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'],
+      ['longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1'],
+    ])
   })
 })

@@ -86,6 +86,7 @@ import {
   fetchVargaRatification,
   fetchWealthCorroboratingVargas,
   fetchWealthAshtakavarga,
+  fetchWealthSpecialLagnas,
   fetchWealthReadingSourceFence,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
@@ -954,6 +955,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         )
         : null
       for (const fact of wealthAshtakavarga?.rows ?? []) fact_ids.add(fact.fact_id)
+      const wealthSpecialLagnas = wealthSourceFence?.ready
+        ? await fetchWealthSpecialLagnas(chart_id, ayanamsha_id, build_id)
+        : null
+      for (const fact of wealthSpecialLagnas?.rows ?? []) fact_ids.add(fact.fact_id)
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
@@ -1614,8 +1619,15 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         },
         {
           unit: 'special_lagnas',
-          state: 'not_joined',
-          detail: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+          state: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready ? (wealthSpecialLagnas?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthSpecialLagnas?.rows.length ?? 0,
+          detail: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready
+              ? 'fixed Indu/Sree/Hora complete atomic placement rows from ga_sensitive'
+              : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
+            : DOMAIN_INDU_LAGNA.has(spec.signal_domain)
             // F-107: for wealth, Indu Lagna is not a generic "some lagna we skipped" — it is
             // THE Jaimini wealth-strength lagna, stored two_pass_verified, and served by
             // assess_wealth. Name it and where it is, so the gap is actionable.
@@ -1720,6 +1732,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               wealth_ashtakavarga: {
                 state: wealthAshtakavarga?.state ?? 'source_unproven',
                 rows: wealthAshtakavarga?.rows ?? [],
+              },
+              wealth_special_lagnas: {
+                state: wealthSpecialLagnas?.state ?? 'source_unproven',
+                rows: wealthSpecialLagnas?.rows ?? [],
               },
             }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real
