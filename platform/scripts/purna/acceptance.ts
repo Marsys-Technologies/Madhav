@@ -48,7 +48,8 @@ export interface AcceptanceRunRecord {
   readonly failures: readonly AcceptanceFailure[]
   readonly verdict: string
   readonly evidence_kind: 'candidate_or_live' | 'fixture'
-  readonly network_calls_made: 0
+  /** Network calls evidenced by the collection rows judged for this door. */
+  readonly network_calls_made: number
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -170,6 +171,12 @@ export async function writeAcceptanceRun(args: {
   }
   const score = scoreAnswers(inputs, answers)
   const fixture = config.evidence_mode === 'fixture'
+  // The acceptance runner is offline, but its verdict is bound to one door's
+  // live collection. Preserve that door's observed network-work total instead
+  // of writing a false zero into the durable acceptance record.
+  const networkCallsMade = collection.rows
+    .filter((row) => row.door === input.provenance.door)
+    .reduce((total, row) => total + row.networkCallCount, 0)
   const createdAt = (args.now ?? new Date()).toISOString()
   const record: AcceptanceRunRecord = {
     schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION,
@@ -198,7 +205,7 @@ export async function writeAcceptanceRun(args: {
     // candidate/live product result, regardless of qualitative score.
     verdict: fixture ? 'NOT_LIVE_EVIDENCE' : score.verdict,
     evidence_kind: fixture ? 'fixture' : 'candidate_or_live',
-    network_calls_made: 0,
+    network_calls_made: networkCallsMade,
   }
   const directory = assertSafeArtifactDirectory(args.artifactDir)
   await mkdir(directory, { recursive: true })

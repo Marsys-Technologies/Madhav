@@ -756,7 +756,7 @@ describe('Purna product acceptance harness', () => {
     }
   })
 
-  it('persists per-case verdicts and structured deterministic failures without network activity', async () => {
+  it('persists per-case verdicts, structured deterministic failures, and the selected door\'s observed network work', async () => {
     const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
     const firstCase = casesForSuite(protocol, 'product')[0]
     try {
@@ -783,7 +783,7 @@ describe('Purna product acceptance harness', () => {
         judge_model_id: input.assessment!.model_id,
         judged_artifact_hash: input.assessment!.judged_artifact_hash,
         environment_config: { judge_authority: configAnchoredTo(input).judge_authority },
-        verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
+        verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 2,
       })
       expect(persisted.case_inputs).toHaveLength(30)
       expect(persisted.answers).toHaveLength(1)
