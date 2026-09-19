@@ -80,7 +80,7 @@ All rows start `— / — / — / — / — / NO`.
 | D1+D3 Kshetra P0 + DHARA correction | subagent `ac646ccb3` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
 | D2 Bhavishya P0 | subagent `a0e4039b2` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
 | D4 Yojaka preservation | subagent `a9801fa14` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report; cautioned re: 118-commit-ahead source, forensic extraction only |
-| D5 W0 field register | subagent `a41f66de3` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | docs-only |
+| D5 W0 field register | subagent `a41f66de3` | own worktree | — | **DONE — NO-OP, already satisfied** | The 800-line register already exists on `main` (landed via PR #2607, `fa9857f00`, 2026-09-16), and main's version is a *corrected* revision (35 row-level type/nullability fixes) vs. the source branch's stale 2026-09-15 draft — landing the branch version would regress main. No PR opened; correctly declined rather than manufacturing one. | — |
 | D6 U05 registry | subagent `abbdfc3eb` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
 | D7 branch triage | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE** | `MADHAV_L3_BRANCH_TRIAGE_DISPOSITION_v1_0.md` @ `2955e2f13`; PR #2655 confirmed already closed | — |
 | W1-RESEARCH (informs E1/E2) | subagent `acba0c5c8` (Opus) | read-only | — | **DISPATCHED 02:40 IST** | — | read-only research + disposable-DB rollback rehearsal; must NOT mutate production; report becomes E1/E2's dispatch plan |
