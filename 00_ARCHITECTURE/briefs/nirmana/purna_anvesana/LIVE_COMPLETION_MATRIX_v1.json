@@ -2,8 +2,8 @@
   "schema_version": "madhav-purna-anvesana/live-completion-matrix/v1",
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
-  "status": "PRODUCT_DELIVERY_SUCCESSOR_ACTIVE",
-  "observed_at": "2026-09-19T12:53:21+05:30",
+  "status": "PRODUCT_DELIVERY_TECHNICAL_RELEASE_VERIFIED_ACCEPTANCE_OPEN",
+  "observed_at": "2026-09-20T01:17:53+05:30",
   "source_candidate": "dd3e189ed4b6f81aaf6d20a586290450705c7947",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
@@ -28,7 +28,7 @@
     {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_BUILD_FENCED_JUDGMENT_ACCOUNTABILITY_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_TYPED_JUDGMENT_CLOSURE_CONTRACTS_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"candidate_original_5_plus_30_three_door_acceptance","source_ready":"HARNESS_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_APPLICABLE"},
-    {"id":"protected_release","source_ready":"NOT_MERGED_NOT_DEPLOYED","candidate_verified":"NOT_RUN","live_verified":"NOT_DEPLOYED"},
+    {"id":"protected_release","source_ready":"PROTECTED_MAIN_66B962F","candidate_verified":"PASS_WEB_MCP_SIDECAR_PIPELINE_CANDIDATES","live_verified":"PASS_100_PERCENT_TRAFFIC_AND_EXACT_SHA"},
     {"id":"live_original_5_plus_30_three_door_automated_acceptance","source_ready":"PROTOCOL_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"}
   ],
   "residuals": [
@@ -49,16 +49,16 @@
   "global_gates": {
     "session_open": "PASS",
     "authority_record": "RECORDED_IN_CANDIDATE",
-    "aggregate_candidate": "PROTECTED_MAIN_AC3EF565",
+    "aggregate_candidate": "PROTECTED_MAIN_66B962F",
     "independent_review": "REPAIRED_SUCCESSOR_REVIEWED_AND_PROTECTED_DELIVERY_COMPLETED",
-    "required_checks": "PASS_MAIN_CI_35060226139_AND_DEPLOY_35061039613",
-    "shared_migration": "PASS_DEPLOY_RUN_35061039613_OWNER_MARKER_ATTESTED",
+    "required_checks": "PASS_MAIN_CI_35462821124_AUTOMATIC_DEPLOY_35463402314_AND_FORCE_ALL_35464335676",
+    "shared_migration": "PASS_1040_AND_1041_EXACTLY_ONCE_MARKED_STATE_AND_FINAL_OWNER_MARKER",
     "signing_runtime": "PASS_CANDIDATE_CANARY_AND_LIVE_V2_PINNED_SECRETS",
     "deployed_three_door": "PARTIAL_PASS_SHARED_ACTIVE_SNAPSHOT_AND_DARK_STATE_NO_PAGINATION_METRIC",
     "empirical_acceptance": "NOT_RUN",
-    "protected_merge": "PASS_AC3EF565",
-    "production_revision": "PASS_WEB_100_PERCENT_AC3EF565; MCP_SIDECAR_JOB_REMAIN_C63CB804_FROM_SUCCESSFUL_FORCE_ALL_RELEASE",
-    "bounded_observation": "PASS_HEALTH_200_SCHEDULER_OIDC_200_BEFORE_AND_AFTER_LEGACY_RETIREMENT",
-    "governance_close": "PENDING_THIS_EVIDENCE_PR_AND_EXTERNAL_GATES"
+    "protected_merge": "PASS_66B962F_PR_2690",
+    "production_revision": "PASS_WEB_MCP_SIDECAR_100_PERCENT_66B962F_AND_PIPELINE_IMAGE_66B962F",
+    "bounded_observation": "PASS_WEB_MCP_SIDECAR_HEALTH_200_AND_AUTHENTICATED_SIDECAR_RELEASE_SMOKE",
+    "governance_close": "TECHNICAL_DELIVERY_RECORDED; PRODUCT_AUTOMATED_ACCEPTANCE_AND_EMPIRICAL_GATES_REMAIN_OPEN"
   }
 }
