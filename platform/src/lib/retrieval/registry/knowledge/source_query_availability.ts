@@ -2915,6 +2915,31 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM drill_page CROSS JOIN summary CROSS JOIN peaks`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts:61-147'],
   },
+  {
+    contract_id: 'source-query:query-dasha-dossier:v1',
+    descriptor_name: 'query_dasha_dossier',
+    capability_uri: 'marsys://tool/L3/query_dasha_dossier',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT avadhi_id, system_id, level_n, lord_graha,
+                   to_char(period_start, 'YYYY-MM-DD') AS period_start,
+                   to_char(period_end, 'YYYY-MM-DD') AS period_end,
+                   dossier, quality, citations, formula_version
+              FROM kala_avadhi
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR system_id = NULL::text)
+               AND (NULL::int IS NULL OR level_n = NULL::int)
+               AND (NULL::text IS NULL OR lord_graha = NULL::text)
+               AND (NULL::date IS NULL OR period_end >= NULL::date)
+               AND (NULL::date IS NULL OR period_start <= NULL::date)
+               AND (NULL::date IS NULL OR (period_start <= NULL::date AND period_end >= NULL::date))
+             ORDER BY period_start, level_n LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_avadhi
+             WHERE chart_id = $1::uuid
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:60-119'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
