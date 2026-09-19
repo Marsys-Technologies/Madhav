@@ -123,16 +123,17 @@ describe('binding availability contracts', () => {
   })
 
   it.each([
-    ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
-    ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'platform/migrations/ws2_l0_texts.sql:42-65'],
-  ])('binds %s to its exact global source-query contract', (scuId, contractId, schemaRef) => {
+    ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'global', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
+    ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'global', 'platform/migrations/ws2_l0_texts.sql:42-65'],
+    ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'chart', 'query_temporal_activation.ts:176-620'],
+  ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
 
     expect(requirement).toMatchObject({
       kind: 'source_query',
       contract_id: contractId,
-      scope: 'global',
+      scope,
       contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
       source_ref: expect.stringContaining(schemaRef),
     })
@@ -146,6 +147,7 @@ describe('binding availability contracts', () => {
   it.each([
     ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
     ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
+    ['source-query:read-sutravali-rule:v1', 'FROM sutravali_rules r', 'WHERE r.rule_id::text = NULL::text'],
   ])('keeps %s as an exact, zero-row-safe handler source probe', (contractId, relationMarker, orderMarker) => {
     const contract = getSourceQueryAvailabilityContract(contractId)!
 

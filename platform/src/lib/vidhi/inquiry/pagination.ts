@@ -1,4 +1,5 @@
 import type { SemanticCapabilityBinding } from '../../retrieval/registry/knowledge/types'
+import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 
 export interface InquiryPaginationReceipt {
   readonly semantics: string
@@ -107,6 +108,130 @@ function atPath(value: unknown, path: string | undefined): unknown {
   return path.split('.').reduce<unknown>((current, key) => current && typeof current === 'object' ? (current as Record<string, unknown>)[key] : undefined, value)
 }
 
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function optionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  return normalized || undefined
+}
+
+function normalizedSignalIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value
+    .filter((candidate): candidate is string => typeof candidate === 'string')
+    .map((candidate) => candidate.trim())
+    .filter(Boolean))].sort()
+}
+
+function normalizedTopK(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return 50
+  const normalized = Math.floor(parsed)
+  return normalized >= 1 ? Math.min(normalized, 500) : 50
+}
+
+function normalizedMinimumStrength(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+}
+
+/**
+ * The handler may default a date range for ordinary reads, but an inquiry can
+ * only accept closure for a window it actually authorized.  An explicit
+ * point-in-time or complete range is therefore required here.
+ */
+function authorizedTemporalFilters(
+  args: Readonly<Record<string, unknown>>,
+  closureVersion: string,
+): { filters: Record<string, unknown>; topK: number } | null {
+  const chartId = optionalText(args['chart_id'])
+  if (!chartId) return null
+  const asOf = optionalText(args['as_of'])
+  const dateFrom = optionalText(args['date_from'])
+  const dateTo = optionalText(args['date_to'])
+  const temporalFilter = asOf
+    ? { mode: 'point_in_time', as_of: asOf }
+    : dateFrom && dateTo
+      ? { mode: 'range', date_from: dateFrom, date_to: dateTo }
+      : null
+  if (!temporalFilter) return null
+  return {
+    filters: {
+      closure_version: closureVersion,
+      chart_id: chartId,
+      ayanamsha_id: optionalText(args['ayanamsha_id']) ?? 'lahiri_chitrapaksha',
+      temporal_filter: temporalFilter,
+      signal_ids: normalizedSignalIds(args['signal_ids']),
+      min_activation_strength: normalizedMinimumStrength(args['min_activation_strength']),
+      domain: optionalText(args['domain']) ?? null,
+    },
+    topK: normalizedTopK(args['top_k']),
+  }
+}
+
+/**
+ * A bounded temporal-window receipt is not pagination: it cannot resume from
+ * a cursor or offset.  It can only close one explicitly authorized query when
+ * every identity and cardinality field agrees with the observed collection.
+ */
+function boundedWindowExhausted(
+  binding: SemanticCapabilityBinding | undefined,
+  raw: unknown,
+  args: Readonly<Record<string, unknown>>,
+): boolean | null {
+  const review = binding?.bounded_window_closure
+  if (!binding || !review) return null
+  const contract = binding.pagination_contract
+  if (!contract || binding.pagination !== 'bounded_unverified') return false
+  const authorized = authorizedTemporalFilters(args, review.closure_version)
+  if (!authorized) return false
+
+  for (const object of nestedValues(raw)) {
+    const collection = atPath(object, contract.result_collection_path)
+    const receipt = record(atPath(object, review.receipt_path))
+    if (!Array.isArray(collection) || !receipt) continue
+    const filters = record(receipt['filters'])
+    const limit = record(receipt['limit'])
+    const continuation = record(receipt['continuation'])
+    const stableSort = receipt['stable_sort']
+    const totalMatching = atPath(object, contract.total_path)
+    const moreAvailable = atPath(object, contract.more_available_path)
+    const truncated = atPath(object, 'content.truncated')
+    if (!filters || !limit || !continuation || !Array.isArray(stableSort)) return false
+    if (receipt['closure_version'] !== review.closure_version
+      || receipt['collection'] !== review.collection
+      || receipt['state'] !== 'complete_within_stated_window'
+      || receipt['exhaustive_within_stated_window'] !== true
+      || moreAvailable !== false
+      || truncated !== false
+      || continuation['supported'] !== false
+      || continuation['next'] !== null
+      || stableFingerprint(filters) !== stableFingerprint(authorized.filters)
+      || stableFingerprint(stableSort) !== stableFingerprint(contract.deterministic_order)
+      || receipt['filter_identity'] !== stableFingerprint(authorized.filters)
+      || receipt['query_identity'] !== stableFingerprint({
+        ...authorized.filters,
+        stable_sort: contract.deterministic_order,
+        top_k: authorized.topK,
+      })
+      || limit['effective_top_k'] !== authorized.topK
+      || limit['maximum_top_k'] !== review.maximum_top_k
+      || limit['returned'] !== collection.length
+      || typeof totalMatching !== 'number'
+      || !Number.isSafeInteger(totalMatching)
+      || totalMatching < 0
+      || limit['total_matching'] !== totalMatching
+      || totalMatching !== collection.length) return false
+    return true
+  }
+  return false
+}
+
 /** Derive exhaustion only from a source-reviewed binding contract plus server-observed output. */
 export function deriveInquiryPaginationReceipt(
   binding: SemanticCapabilityBinding | undefined,
@@ -114,6 +239,9 @@ export function deriveInquiryPaginationReceipt(
   args: Readonly<Record<string, unknown>>,
 ): InquiryPaginationReceipt {
   if (!binding || binding.pagination === 'none') return { semantics: binding?.pagination ?? 'none', exhausted: true, next: null }
+  const boundedClosure = boundedWindowExhausted(binding, raw, args)
+  if (boundedClosure === true) return { semantics: binding.pagination, exhausted: true, next: null }
+  if (boundedClosure === false) return { semantics: binding.pagination, exhausted: false, next: 'unproven' }
   if (!binding.pagination_verified) return { semantics: binding.pagination, exhausted: false, next: 'unproven' }
   if (binding.pagination === 'bounded_complete') return { semantics: binding.pagination, exhausted: true, next: null }
   const contract = binding.pagination_contract

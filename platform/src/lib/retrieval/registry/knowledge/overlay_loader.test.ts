@@ -10,6 +10,7 @@ import {
   probeSourceQueryAvailabilityContract,
 } from './overlay_loader'
 import { getPinnedCapabilityKnowledgeSnapshot } from './snapshot'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
 
 const claimHash = 'a'.repeat(64)
 const snapshot = {
@@ -495,6 +496,21 @@ describe('source-query parameter binding', () => {
 
     expect(gaps).toEqual([])
     expect(query).toHaveBeenCalledExactlyOnceWith(contextContract.sql, ['chart-1'])
+  })
+
+  it('fails temporal availability closed when its source or active build is unavailable', async () => {
+    const temporalContract = getSourceQueryAvailabilityContract('source-query:query-temporal-activation:v1')!
+    const query = vi.fn()
+
+    await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', null, query)).resolves.toEqual([
+      'source-query:query-temporal-activation:v1 requires an active completed build context for the selected chart.',
+    ])
+    expect(query).not.toHaveBeenCalled()
+
+    query.mockRejectedValueOnce(new Error('permission denied'))
+    await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', 'build-1', query)).resolves.toEqual([
+      'source-query:query-temporal-activation:v1 could not execute its authenticated source query.',
+    ])
   })
 
   it('preserves row-bound chart-and-active-build query parameters', async () => {

@@ -96,6 +96,11 @@ describe('planner capability knowledge', () => {
     expect(bindingById.get('registry:marsys://tool/L3/query_temporal_activation')).toMatchObject({
       pagination_verified: false,
       result_collection_verified: true,
+      bounded_window_closure: {
+        receipt_path: 'content.temporal_closure',
+        closure_version: 'temporal-activation-closure-v1',
+        collection: 'activations',
+      },
     })
 
     const changedCatalog = catalog.map((cap) => {
@@ -162,7 +167,14 @@ describe('planner capability knowledge', () => {
       })
     }
 
-    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')?.availability_contracts).toBeUndefined()
+    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')?.availability_contracts).toEqual([{
+      binding_id: 'registry:marsys://tool/L3/query_temporal_activation',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:query-temporal-activation:v1',
+        scope: 'chart',
+      })],
+    }])
   })
 
   it('replaces every descriptor-derived stub with a source-linked editorial unit', () => {

@@ -92,6 +92,13 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
           'id ASC',
         ],
       },
+      bounded_window_closure: {
+        receipt_path: 'content.temporal_closure',
+        closure_version: 'temporal-activation-closure-v1',
+        collection: 'activations',
+        maximum_top_k: 500,
+        source_ref: 'platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:200-220,578-607',
+      },
       execution_channels: ['platform_internal', 'mcp_full'],
       public_tool_name: 'kala_windows_get',
       route_evidence: 'platform-mcp/src/tools/register_p1_aliases.ts:1076',
@@ -107,15 +114,9 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       { asset_id: 'ka_yojaka', component: 'kala_activation_predicates rows', output_digest_spec_sha256: '9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5', disposition: 'reviewed_output', evidence: 'platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80' },
       { asset_id: 'ka_bhavishya_lekha', component: 'kala_bhavishya forward windows', output_digest_spec_sha256: 'a66795f7fbf0a2713dbb860dd986128586b8b48830f3902f20bca0bcb12fccf2', disposition: 'reviewed_output', evidence: 'platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232' },
     ],
-    availability_dispositions: [{
+    availability_contracts: [{
       binding_id: 'registry:marsys://tool/L3/query_temporal_activation',
-      status: 'deliberately_dark',
-      reason: 'The handler reads kala_activation, but ka_kalasutra has only route evidence and no reviewed digest component for that relation. The reviewed predicate and forward-window receipts cannot substitute for the missing activation output receipt.',
-      source_refs: [
-        'platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts',
-        'platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80',
-        'platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232',
-      ],
+      requirements: [sourceQueryAvailabilityRequirement('source-query:query-temporal-activation:v1')!],
     }],
     editorial: true,
   },

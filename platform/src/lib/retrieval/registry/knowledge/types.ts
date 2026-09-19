@@ -107,6 +107,21 @@ export interface PaginationReviewDisposition {
   readonly blocker?: string
 }
 
+/**
+ * A handler-specific proof that one finite temporal window was fully returned.
+ *
+ * This does not authorize cursor or offset continuation.  It merely lets the
+ * inquiry lifecycle accept an exact, server-observed bounded window when its
+ * receipt independently proves that no rows were trimmed.
+ */
+export interface BoundedWindowClosureContract {
+  readonly receipt_path: string
+  readonly closure_version: string
+  readonly collection: string
+  readonly maximum_top_k: number
+  readonly source_ref: string
+}
+
 /** Exact evidence a binding needs before it can be offered for execution. */
 export interface ProducerOutputAvailabilityRequirement {
   readonly kind: 'producer_output'
@@ -207,6 +222,8 @@ export interface SemanticCapabilityBinding {
   /** True only when response paths and exhaustion semantics were source-reviewed. */
   readonly pagination_verified?: boolean | null
   readonly pagination_review?: PaginationReviewDisposition
+  /** Reviewed proof contract for one non-repeatable bounded temporal window. */
+  readonly bounded_window_closure?: BoundedWindowClosureContract
   /** True when the semantic result collection path was reviewed, independently of exhaustion semantics. */
   readonly result_collection_verified?: boolean
   readonly pagination_contract?: PaginationContract
@@ -240,7 +257,7 @@ export interface SemanticCapabilityDeclaration {
   readonly outputs: readonly string[]
   readonly primary_binding_uri: string
   readonly primary_binding_details?: Pick<SemanticCapabilityBinding,
-    'pagination' | 'pagination_verified' | 'result_collection_verified' | 'pagination_contract' | 'execution_channels' | 'public_tool_name' | 'route_evidence'>
+    'pagination' | 'pagination_verified' | 'result_collection_verified' | 'pagination_contract' | 'bounded_window_closure' | 'execution_channels' | 'public_tool_name' | 'route_evidence'>
   readonly additional_bindings?: readonly SemanticCapabilityBinding[]
   readonly edges?: readonly SemanticCapabilityEdgeDeclaration[]
   readonly provenance_requirements: readonly string[]
