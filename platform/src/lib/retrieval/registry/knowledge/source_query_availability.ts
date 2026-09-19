@@ -3113,6 +3113,26 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts:59-108'],
   },
+  {
+    contract_id: 'source-query:query-load-bearing:v1',
+    descriptor_name: 'query_load_bearing',
+    capability_uri: 'marsys://tool/L5/query_load_bearing',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT conclusion_id, signal_id, sensitivity, role, formula_version
+              FROM mimamsa_load_bearing
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR conclusion_id = NULL::text)
+               AND (NULL::text IS NULL OR role = NULL::text)
+             ORDER BY sensitivity DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM mimamsa_load_bearing
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR conclusion_id = NULL::text)
+               AND (NULL::text IS NULL OR role = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts:66-112'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
