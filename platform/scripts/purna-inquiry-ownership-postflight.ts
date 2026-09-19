@@ -74,7 +74,9 @@ export async function runPurnaInquiryOwnershipPostflight(
     await client.query('RESET ROLE')
     const finalState = await client.query<{
       owner_can_create: boolean
+      owner_can_use: boolean
       serving_can_create: boolean
+      serving_can_use: boolean
       bootstrap_disabled: boolean
       bootstrap_memberships: number
       bootstrap_acl_dependencies: number
@@ -82,8 +84,12 @@ export async function runPurnaInquiryOwnershipPostflight(
       SELECT
         coalesce((SELECT has_schema_privilege(oid,'public','CREATE')
           FROM pg_roles WHERE rolname='purna_inquiry_owner'), false) AS owner_can_create,
+        coalesce((SELECT has_schema_privilege(oid,'public','USAGE')
+          FROM pg_roles WHERE rolname='purna_inquiry_owner'), false) AS owner_can_use,
         coalesce((SELECT has_schema_privilege(oid,'public','CREATE')
           FROM pg_roles WHERE rolname='amjis_inquiry_serve'), false) AS serving_can_create,
+        coalesce((SELECT has_schema_privilege(oid,'public','USAGE')
+          FROM pg_roles WHERE rolname='amjis_inquiry_serve'), false) AS serving_can_use,
         EXISTS (SELECT 1 FROM pg_roles WHERE rolname='purna_inquiry_bootstrap'
           AND NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper
           AND NOT rolcreaterole AND NOT rolcreatedb
@@ -97,7 +103,8 @@ export async function runPurnaInquiryOwnershipPostflight(
             AND dependency.deptype='a') AS bootstrap_acl_dependencies
     `)
     const final = finalState.rows[0]
-    if (!final || final.owner_can_create || final.serving_can_create
+    if (!final || final.owner_can_create || !final.owner_can_use
+      || final.serving_can_create || !final.serving_can_use
       || !final.bootstrap_disabled || final.bootstrap_memberships !== 0
       || final.bootstrap_acl_dependencies !== 0) {
       throw new Error('Pūrṇa ownership postflight did not remove all temporary authority.')

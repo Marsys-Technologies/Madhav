@@ -169,6 +169,7 @@ export async function probeInquiryStoreReadiness(args: {
       protected_owner_functions: number
       owner_membership_edges: number
       owner_can_create_public: boolean
+      owner_can_use_public: boolean
       scoped_policies: number
       safe_definers: number
     }>(`
@@ -203,6 +204,8 @@ export async function probeInquiryStoreReadiness(args: {
           WHERE owner.rolname=$4::text) AS owner_membership_edges,
         coalesce((SELECT has_schema_privilege(owner.oid, 'public', 'CREATE')
           FROM pg_roles owner WHERE owner.rolname=$4::text), false) AS owner_can_create_public,
+        coalesce((SELECT has_schema_privilege(owner.oid, 'public', 'USAGE')
+          FROM pg_roles owner WHERE owner.rolname=$4::text), false) AS owner_can_use_public,
         (SELECT count(*)::int FROM pg_policies p
           WHERE p.schemaname='public' AND p.tablename = ANY($1::text[])
             AND 'role_web_serve'=ANY(p.roles)) AS scoped_policies,
@@ -255,6 +258,7 @@ export async function probeInquiryStoreReadiness(args: {
     if (!postureRow || postureRow.rls_tables !== 4 || postureRow.protected_owner_tables !== 4
         || postureRow.protected_owner_functions !== 12 || postureRow.scoped_policies !== 4
         || postureRow.owner_membership_edges !== 0 || postureRow.owner_can_create_public
+        || !postureRow.owner_can_use_public
         || postureRow.safe_definers !== 9) {
       throw new Error('INQUIRY_STORE_READINESS_DATABASE_POSTURE_FAILED')
     }

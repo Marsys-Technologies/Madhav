@@ -7,6 +7,7 @@ const harness = vi.hoisted(() => ({
   statusMarker: true,
   statusFunctions: 13,
   servingNormalized: true,
+  ownerCanUsePublic: true,
 }))
 
 vi.mock('pg', () => ({
@@ -38,6 +39,7 @@ vi.mock('pg', () => ({
           owner_normalized: true,
           owner_memberships: 0,
           owner_can_create_public: false,
+          owner_can_use_public: harness.ownerCanUsePublic,
           serving_normalized: harness.servingNormalized,
           bootstrap_disabled: true,
           bootstrap_armed: false,
@@ -46,7 +48,15 @@ vi.mock('pg', () => ({
         }] }
       }
       if (sql.includes('bootstrap_acl_dependencies')) {
-        return { rows: [{ owner_can_create: false, serving_can_create: false, bootstrap_disabled: true, bootstrap_memberships: 0, bootstrap_acl_dependencies: 0 }] }
+        return { rows: [{
+          owner_can_create: false,
+          owner_can_use: true,
+          serving_can_create: false,
+          serving_can_use: true,
+          bootstrap_disabled: true,
+          bootstrap_memberships: 0,
+          bootstrap_acl_dependencies: 0,
+        }] }
       }
       return { rows: [] }
     }
@@ -65,6 +75,7 @@ describe('Pūrṇa ownership postflight recovery path', () => {
     harness.statusMarker = true
     harness.statusFunctions = 13
     harness.servingNormalized = true
+    harness.ownerCanUsePublic = true
   })
 
   it('re-establishes only the app role, revokes ACL residue, and removes membership before commit', async () => {
@@ -98,6 +109,11 @@ describe('Pūrṇa ownership postflight recovery path', () => {
 
   it('rejects marked state when the serving role cannot resolve public functions', async () => {
     harness.servingNormalized = false
+    await expect(purnaOwnershipState('postgresql://fixture')).resolves.toBe('invalid')
+  })
+
+  it('rejects marked state when the protected definer owner cannot resolve public objects', async () => {
+    harness.ownerCanUsePublic = false
     await expect(purnaOwnershipState('postgresql://fixture')).resolves.toBe('invalid')
   })
 
