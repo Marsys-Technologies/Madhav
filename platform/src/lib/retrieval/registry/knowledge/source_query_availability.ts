@@ -2792,6 +2792,28 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:74-94'],
   },
+  {
+    contract_id: 'source-query:query-vedha-gochara:v1',
+    descriptor_name: 'query_vedha_gochara',
+    capability_uri: 'marsys://tool/L3/query_vedha_gochara',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT vedha_kind, graha,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   start_truncated, end_truncated, janma_reference_fact_id,
+                   classical_citation, uncited_extension, grid_basis, grid_school_tag, detail,
+                   (window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE) AS is_current
+              FROM kala_vedha_gochara
+             WHERE chart_id = $1::uuid
+             ORDER BY vedha_kind, graha, window_start LIMIT 0
+          ), current_page AS (
+            SELECT vedha_kind FROM kala_vedha_gochara
+             WHERE chart_id = $1::uuid AND window_start <= CURRENT_DATE AND window_end >= CURRENT_DATE
+             ORDER BY vedha_kind, graha, window_start LIMIT 0
+          ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts:111-152'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
