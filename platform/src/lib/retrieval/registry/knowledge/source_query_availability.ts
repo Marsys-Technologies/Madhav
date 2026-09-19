@@ -2702,6 +2702,31 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts:121-143'],
   },
+  {
+    contract_id: 'source-query:query-life-arc:v1',
+    descriptor_name: 'query_life_arc',
+    capability_uri: 'marsys://tool/L3/query_life_arc',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH leveled AS (
+            SELECT id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year,
+                   parva_quality, theme_keywords, high_convergence_count, avg_effective_score,
+                   narrative, source_citation, computed_at,
+                   CASE WHEN source_citation ~ ':AD=' THEN 'AD'
+                        WHEN source_citation ~ ':PD=' THEN 'PD' ELSE 'MD' END AS parva_level
+              FROM kala_jivana_parva WHERE chart_id = $1::uuid
+          ), deduped AS (
+            SELECT DISTINCT ON (start_year, end_year, dasha_planet, parva_level)
+                   id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year,
+                   parva_quality, theme_keywords, high_convergence_count, avg_effective_score,
+                   narrative, source_citation, computed_at
+              FROM leveled
+             ORDER BY start_year, end_year, dasha_planet, parva_level, parva_index DESC
+          ) SELECT id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year,
+                   parva_quality, theme_keywords, high_convergence_count, avg_effective_score,
+                   narrative, source_citation, computed_at
+              FROM deduped ORDER BY parva_index LIMIT 0 OFFSET 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:119-169'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
