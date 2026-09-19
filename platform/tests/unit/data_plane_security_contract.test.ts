@@ -490,7 +490,7 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
   it('keeps ordinary public-schema CREATE absent after the protected handoff', () => {
     const repair = readFileSync(resolve(__dirname, '../../supabase/migrations/1041_data_plane_public_schema_migration_grant.sql'), 'utf8')
     const runner = readFileSync(resolve(__dirname, '../../scripts/migrate.ts'), 'utf8')
-    expect(repair).toContain('SELECT 1;')
+    expect(repair).toContain('SELECT 1041;')
     expect(repair).not.toContain('SET LOCAL ROLE')
     expect(repair).not.toContain('GRANT USAGE, CREATE')
     expect(runner).toContain("to_regclass('public._migrations_applied')")
