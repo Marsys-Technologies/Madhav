@@ -2194,6 +2194,25 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/289_ga_prashna_lagna.sql',
     ],
   },
+  {
+    contract_id: 'source-query:list-remedies-by-category:v1',
+    descriptor_name: 'list_remedies_by_category',
+    capability_uri: 'marsys://tool/L0/list_remedies_by_category',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT remedy_id, planet, domain, category, deity, prescription_text, mantra_text,
+                 mantra_sanskrit, cost_tier, source_canonical_id, classical_attestation_text
+            FROM brahma_remedy_corpus
+           WHERE is_active = TRUE
+             AND category = NULL::text
+           ORDER BY planet, remedy_id
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieve/remedy_tools.ts:180-200',
+      'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
