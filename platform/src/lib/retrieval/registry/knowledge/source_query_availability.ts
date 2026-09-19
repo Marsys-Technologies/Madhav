@@ -2887,6 +2887,34 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176'],
   },
+  {
+    contract_id: 'source-query:query-activation-waveform:v1',
+    descriptor_name: 'query_activation_waveform',
+    capability_uri: 'marsys://tool/L3/query_activation_waveform',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH filtered AS (
+            SELECT taranga_id, month, scope_kind, scope_id, activation, components, formula_version
+              FROM kala_taranga
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR scope_kind = NULL::text)
+               AND (NULL::text IS NULL OR scope_id = NULL::text)
+               AND (NULL::date IS NULL OR month >= NULL::date)
+               AND (NULL::date IS NULL OR month <= NULL::date)
+          ), drill_page AS (
+            SELECT * FROM filtered ORDER BY month LIMIT 0
+          ), summary AS (
+            SELECT MIN(month) AS first_month, MAX(month) AS last_month,
+                   COUNT(DISTINCT scope_id)::int AS distinct_scopes,
+                   COUNT(DISTINCT scope_kind)::int AS distinct_scope_kinds,
+                   ROUND(AVG(activation)::numeric, 4) AS avg_activation,
+                   ROUND(MAX(activation)::numeric, 4) AS max_activation
+              FROM filtered
+          ), peaks AS (
+            SELECT month, scope_kind, scope_id, activation FROM filtered
+             ORDER BY activation DESC NULLS LAST, month LIMIT 0
+          ) SELECT 1 FROM drill_page CROSS JOIN summary CROSS JOIN peaks`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts:61-147'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
