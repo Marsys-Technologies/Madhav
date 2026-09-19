@@ -3721,6 +3721,71 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172',
     ],
   },
+  {
+    contract_id: 'source-query:query-ucd:v1',
+    descriptor_name: 'query_ucd',
+    capability_uri: 'marsys://tool/L2/query_ucd',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH digest AS (
+            SELECT msr_signal_count::int AS msr_signal_count, yoga_count::int AS yoga_count,
+                   dosha_count::int AS dosha_count, avg_salience, max_salience,
+                   contradiction_count::int AS contradiction_count, weakest_graha,
+                   top_priority_class, top_convergence_domains, trap1_count, digest_at
+              FROM vw_chart_digest
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             LIMIT 0
+          ), signals AS (
+            SELECT signal_id, signal_type_id, signal_type_class, signal_tradition,
+                   signal_summary_text, signal_headline_text, computed_salience,
+                   top_k_salience_rank, domains_affected_array, constituent_facts_array,
+                   source_subsystem, valence, verification_pass_status,
+                   configuration_jsonb, citation_human, lel_origin, signature_tier
+              FROM bodha_msr_signals
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+             ORDER BY computed_salience DESC NULLS LAST
+             LIMIT 0
+          ), convergence AS (
+            SELECT domain, convergence_count, convergence_score, cross_tradition_count,
+                   salience_weighted_sum, contradiction_count
+              FROM bodha_convergence
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND snapshot_type = 'static_natal'
+             ORDER BY convergence_score DESC NULLS LAST
+             LIMIT 0
+          ), shadbala AS (
+            SELECT fact_subject, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'
+               AND fact_value_num IS NOT NULL
+             ORDER BY fact_value_num ASC, fact_subject ASC
+             LIMIT 0
+          ), ranking_context AS (
+            SELECT fact_category, fact_subject, fact_value_num, fact_value_text, fact_value_jsonb
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND fact_category IN ('graha_shadbala_total', 'graha_dignity_per_varga')
+             LIMIT 0
+          ), active_dashas AS (
+            SELECT level, dasha_lord
+              FROM chart_dashas
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+               AND level IN (1, 2) AND start_date <= CURRENT_DATE AND end_date > CURRENT_DATE
+             ORDER BY level ASC
+             LIMIT 0
+          ) SELECT (SELECT COUNT(*) FROM digest) AS digest,
+                   (SELECT COUNT(*) FROM signals) AS signals,
+                   (SELECT COUNT(*) FROM convergence) AS convergence,
+                   (SELECT COUNT(*) FROM shadbala) AS shadbala,
+                   (SELECT COUNT(*) FROM ranking_context) AS ranking_context,
+                   (SELECT COUNT(*) FROM active_dashas) AS active_dashas`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360',
+      'platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
