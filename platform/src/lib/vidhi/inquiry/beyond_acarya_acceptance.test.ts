@@ -271,7 +271,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: '25801eb44649217e46fde6dba1aae9939a227c9b',
+      evaluated_source_revision: 'ecb8dd174c3843cd022ab42a3d70bfb342251d48',
     })
   })
 })
