@@ -2947,13 +2947,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       text_ids: z.array(z.string()).optional().describe('Optional: limit to specific text IDs'),
       limit: z.number().int().min(1).max(20).optional().describe('Max results (default: 5)'),
       cursor: z.string().optional().describe('Pagination cursor'),
+      page_cursor: z.string().optional().describe('Opaque next_page_cursor from the preceding classical page; forward unchanged.'),
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ query, text_ids, limit, cursor, budget_kb }) => {
+    async ({ query, text_ids, limit, cursor, page_cursor, budget_kb }) => {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L0/query_classical_texts',
-          { query, text_ids, limit: limit ?? 5, cursor }, undefined, principal,
+          { query, text_ids, limit: limit ?? 5, ...(page_cursor != null || cursor != null ? { page_cursor: page_cursor ?? cursor } : {}) }, undefined, principal,
         )
         return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('get_classical_citation', budget_kb), 'get_classical_citation', budget_kb))
       } catch (err) {

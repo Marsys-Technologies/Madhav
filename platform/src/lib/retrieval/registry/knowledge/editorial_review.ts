@@ -94,6 +94,27 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
 }
 
 const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {
+  query_classical_texts: {
+    pagination: 'cursor',
+    pagination_contract: {
+      request_position_path: 'page_cursor',
+      request_limit_path: 'limit',
+      effective_maximum: 200,
+      result_collection_path: 'content.citations',
+      next_path: 'content.next_page_cursor',
+      more_available_path: 'content.more_available',
+      deterministic_order: [
+        'hybrid:combined_score DESC', 'hybrid:text_id ASC', 'hybrid:chapter ASC NULLS LAST',
+        'hybrid:verse_ref ASC NULLS LAST', 'hybrid:chunk_id ASC', 'hybrid:id ASC',
+        'legacy:text_id ASC', 'legacy:chapter ASC NULLS LAST', 'legacy:verse_start ASC NULLS LAST',
+        'legacy:chunk_id ASC', 'legacy:id ASC',
+      ],
+      material_trim_paths: [
+        'budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated',
+      ],
+    },
+    route_evidence: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler',
+  },
   judgment_query: {
     pagination: 'none',
     non_paginated_closure: {
@@ -109,6 +130,22 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  query_classical_texts: {
+    producer_output_claims: [{
+      asset_id: 'bg_texts',
+      component: 'classical_texts and classical_text_chunks',
+      output_digest_spec_sha256: '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_texts',
+      spec_sha256: '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',
+    }],
+  },
   get_positions: {
     producer_output_claims: [{
       asset_id: 'ga_positions',

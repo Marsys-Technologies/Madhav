@@ -304,7 +304,13 @@ export function deriveInquiryPaginationReceipt(
   if (binding.pagination === 'bounded_complete') return { semantics: binding.pagination, exhausted: true, next: null }
   const contract = binding.pagination_contract
   if (!contract) return { semantics: binding.pagination, exhausted: false, next: 'unproven' }
-  for (const object of nestedValues(raw)) {
+  const objects = nestedValues(raw)
+  for (const object of objects) for (const path of contract.material_trim_paths ?? []) {
+    if (materialTrimPresent(atPath(object, path))) {
+      return { semantics: binding.pagination, exhausted: false, next: 'unproven' }
+    }
+  }
+  for (const object of objects) {
     if (!Array.isArray(atPath(object, contract.result_collection_path))) continue
     const nextCursor = atPath(object, contract.next_path)
     if (contract.next_path && nextCursor !== undefined) {

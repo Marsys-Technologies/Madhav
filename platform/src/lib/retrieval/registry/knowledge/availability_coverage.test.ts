@@ -279,22 +279,48 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('admits query_classical_texts only through its global source query without claiming a populated or exhaustively paginated corpus', async () => {
+  it('admits query_classical_texts only through its current bg_texts readiness row', async () => {
     const scu = findScu('scu.catalog.query_classical_texts')
     expect(scu.availability_contracts).toEqual([expect.objectContaining({
       binding_id: 'registry:marsys://tool/L0/query_classical_texts',
-      requirements: [expect.objectContaining({ kind: 'source_query', contract_id: 'source-query:query-classical-texts:v1', scope: 'global' })],
+      requirements: expect.arrayContaining([
+        expect.objectContaining({ kind: 'producer_output', asset_id: 'bg_texts', scope: 'global' }),
+        expect.objectContaining({ kind: 'source_query', contract_id: 'source-query:query-classical-texts:v1', scope: 'global' }),
+      ]),
     })])
     expect(scu.availability_dispositions ?? []).toEqual([])
-    expect(scu.bindings[0]?.pagination).toBe('offset')
-    expect(scu.bindings[0]?.pagination_verified).not.toBe(true)
+    expect(scu.primary_binding_details).toMatchObject({
+      pagination: 'cursor',
+      pagination_contract: {
+        request_position_path: 'page_cursor', request_limit_path: 'limit',
+        result_collection_path: 'content.citations', next_path: 'content.next_page_cursor',
+      },
+    })
 
-    const overlay = await overlayFor([])
+    const bgTexts = globalProducerReceipt(
+      'bg_texts',
+      '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6',
+    )
+    const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('source_query_available') && sql.includes("receipt.asset_id = 'bg_texts'")) {
+        return { rows: [{ source_query_available: 1 } as unknown as OverlayQueryRow] }
+      }
+      return { rows: [bgTexts, transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
     expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
       state: 'available',
       available_binding_ids: ['registry:marsys://tool/L0/query_classical_texts'],
-      asset_receipts: [],
+      asset_receipts: [expect.objectContaining({ asset_id: 'bg_texts' })],
       gaps: [],
+    })
+
+    const missingReadiness = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('source_query_available') && sql.includes("receipt.asset_id = 'bg_texts'")) return { rows: [] }
+      return { rows: [bgTexts, transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(missingReadiness.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark', available_binding_ids: [],
+      gaps: ['source-query:query-classical-texts:v1 returned no required readiness rows.'],
     })
   })
 
@@ -1129,7 +1155,9 @@ describe('first-slice availability coverage', () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
     // fixture anchor first to model the loader's `queryRows[0]` extraction.
-    const complete = [transitProbeAnchor(), ...requirements.map(receipt)]
+    const complete = [transitProbeAnchor(), ...requirements.map((requirement) => requirement.scope === 'global'
+      ? globalProducerReceipt(requirement.asset_id, requirement.spec_sha256)
+      : receipt(requirement))]
     const overlay = await overlayFor(complete)
 
     for (const scuId of FIRST_SLICE.concrete) {
@@ -1195,7 +1223,7 @@ describe('first-slice availability coverage', () => {
     }
     if (scuId === 'scu.catalog.query_classical_texts' || scuId === 'scu.catalog.query_contradictions') {
       const sourceMarker = scuId === 'scu.catalog.query_classical_texts'
-        ? 'FROM classical_text_chunks c'
+        ? "receipt.asset_id = 'bg_texts'"
         : 'FROM bodha_contradictions'
       const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
         if (sql.includes(sourceMarker)) throw new Error('selected source unavailable')

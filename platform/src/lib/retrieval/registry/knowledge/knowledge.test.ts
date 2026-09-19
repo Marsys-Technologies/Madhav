@@ -4,7 +4,7 @@ import { compileCapabilityKnowledge, inspectCapabilityKnowledge } from './compil
 import { compileChartCapabilityOverlay, assertOverlayCompatibility } from './overlay'
 import { inspectSemanticCapability, searchSemanticCapabilities } from './query'
 import type { CapabilityKnowledgeSnapshot, SemanticCapabilityUnit } from './types'
-import { getDescriptorEditorialReview } from './editorial_review'
+import { getDescriptorEditorialReview, getDescriptorPrimaryBindingDetails } from './editorial_review'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 import type { CapabilityDescriptor } from '../types'
 import { buildPlannerCapabilityKnowledgeProjection } from './planner_projection'
@@ -132,7 +132,7 @@ describe('planner capability knowledge', () => {
     expect(finance?.bindings.every((binding) => binding.executable)).toBe(true)
     expect(yoga?.bindings.find((binding) => binding.relation === 'primary')?.public_tool_name).toBe('ganita_yoga_firings_get')
     expect(snapshot.census.publicly_named_bindings).toBeGreaterThan(0)
-    expect(snapshot.census.reviewed_output_claims).toBe(13)
+    expect(snapshot.census.reviewed_output_claims).toBe(14)
     expect(snapshot.scus.flatMap((scu) => scu.producer_output_claims ?? [])
       .filter((claim) => claim.disposition === 'reviewed_output')
       .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
@@ -382,6 +382,25 @@ describe('planner capability knowledge', () => {
       family_id: 'prospective_ledger',
       domains: ['evidence_quality', 'timing'],
       concepts: expect.arrayContaining(['filed_prediction', 'falsifier', 'prediction_lifecycle', 'source_provenance']),
+    })
+  })
+
+  it('publishes the reviewed classical cursor, collection, trim, and exact ordering contract', () => {
+    expect(getDescriptorPrimaryBindingDetails('query_classical_texts')).toEqual({
+      pagination: 'cursor',
+      pagination_contract: {
+        request_position_path: 'page_cursor', request_limit_path: 'limit', effective_maximum: 200,
+        result_collection_path: 'content.citations', next_path: 'content.next_page_cursor',
+        more_available_path: 'content.more_available',
+        deterministic_order: [
+          'hybrid:combined_score DESC', 'hybrid:text_id ASC', 'hybrid:chapter ASC NULLS LAST',
+          'hybrid:verse_ref ASC NULLS LAST', 'hybrid:chunk_id ASC', 'hybrid:id ASC',
+          'legacy:text_id ASC', 'legacy:chapter ASC NULLS LAST', 'legacy:verse_start ASC NULLS LAST',
+          'legacy:chunk_id ASC', 'legacy:id ASC',
+        ],
+        material_trim_paths: ['budget_kb_applied', 'trim_report', 'material_trimmed', 'response_trimmed', 'truncated'],
+      },
+      route_evidence: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#queryClassicalTextsCapability.handler',
     })
   })
 

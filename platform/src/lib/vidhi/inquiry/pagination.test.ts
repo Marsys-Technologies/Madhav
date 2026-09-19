@@ -29,6 +29,20 @@ function judgmentBinding(): SemanticCapabilityBinding {
   } as Partial<SemanticCapabilityBinding>)
 }
 
+function classicalBinding(): SemanticCapabilityBinding {
+  return binding({
+    binding_id: 'registry:marsys://tool/L0/query_classical_texts',
+    capability_uri: 'marsys://tool/L0/query_classical_texts',
+    pagination: 'cursor',
+    pagination_contract: {
+      request_position_path: 'page_cursor', request_limit_path: 'limit', effective_maximum: 200,
+      result_collection_path: 'content.citations', next_path: 'content.next_page_cursor',
+      more_available_path: 'content.more_available', deterministic_order: ['text_id ASC', 'id ASC'],
+      material_trim_paths: ['budget_kb_applied', 'trim_report', 'response_trimmed'],
+    },
+  } as Partial<SemanticCapabilityBinding>)
+}
+
 const completeJudgmentChecklist = {
   exhaustive: true,
   non_exhaustive: false,
@@ -62,6 +76,24 @@ describe('inquiry pagination receipts', () => {
       { content: { rows: [{ dasha_row_id: 'a' }], more_available: true, next_page_cursor: 'opaque-page-2' } },
       { page_cursor: 'opaque-page-1', offset: -10, limit: Number.POSITIVE_INFINITY },
     )).toEqual({ semantics: 'cursor', exhausted: false, next: 'opaque-page-2' })
+  })
+
+  it('extracts and continues the reviewed classical citation cursor byte-for-byte', () => {
+    const raw = { content: { citations: [{ citation_ref: 'BPHS:1.1' }], more_available: true, next_page_cursor: 'opaque.classical.page.2' } }
+    expect(extractInquirySemanticFindings(classicalBinding(), raw)).toMatchObject({
+      mode: 'reviewed_collection', result_collection_path: 'content.citations',
+      rows: [{ citation_ref: 'BPHS:1.1' }],
+    })
+    expect(deriveInquiryPaginationReceipt(classicalBinding(), raw, { page_cursor: 'opaque.classical.page.1', limit: 5 }))
+      .toEqual({ semantics: 'cursor', exhausted: false, next: 'opaque.classical.page.2' })
+  })
+
+  it.each([
+    ['citation trim report', { content: { citations: [{ citation_ref: 'BPHS:1.1' }], next_page_cursor: null, more_available: false }, trim_report: [{ path: 'content.citations', removed_count: 2 }] }],
+    ['applied response budget', { content: { citations: [{ citation_ref: 'BPHS:1.1' }], next_page_cursor: null, more_available: false }, budget_kb_applied: 20 }],
+  ])('keeps a terminal classical response open after %s', (_label, raw) => {
+    expect(deriveInquiryPaginationReceipt(classicalBinding(), raw, { limit: 5 }))
+      .toEqual({ semantics: 'cursor', exhausted: false, next: 'unproven' })
   })
 
   it('reads a reviewed nested request position and limit path', () => {

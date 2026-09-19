@@ -133,11 +133,11 @@ describe('binding availability contracts', () => {
     ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'global', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
     ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'global', 'platform/migrations/ws2_l0_texts.sql:42-65'],
     ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'chart', 'query_temporal_activation.ts:176-620'],
-    ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts:151-352'],
+    ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts#receiptBoundarySql'],
     ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:156-269'],
   ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
-    const requirement = scu.availability_contracts![0]!.requirements[0]!
+    const requirement = scu.availability_contracts![0]!.requirements.find((candidate) => candidate.kind === 'source_query')!
 
     expect(requirement).toMatchObject({
       kind: 'source_query',
@@ -167,12 +167,22 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain('LIMIT 0')
   })
 
-  it('keeps classical search and contradiction source probes exact while preserving their distinct closure boundaries', () => {
+  it('requires a current fresh proven bg_texts receipt for classical search while preserving contradiction closure', () => {
     const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
     const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
 
-    expect(classical).toMatchObject({ scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available' })
-    for (const marker of ['classical_text_chunks', 'c.embedding <=> NULL::vector', "similarity(c.content_en, '')", 'c.content_en ILIKE', 'content_summary', 'topics', 'LIMIT 0']) {
+    expect(classical).toMatchObject({ scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist' })
+    for (const marker of [
+      'FROM asset_provenance_receipts receipt', 'JOIN asset_freshness freshness',
+      'JOIN asset_output_digest_specs digest_spec', "receipt.asset_id = 'bg_texts'",
+      'receipt.chart_id IS NULL', "receipt.scope_key = '__global__'", "receipt.receipt_state = 'proven'",
+      'receipt.output_digest IS NOT NULL', "freshness.freshness_state = 'fresh'",
+      "receipt.output_digest_spec_sha256 = '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6'",
+      'digest_spec.retired_at IS NULL', 'COUNT(*)::int AS eligible_receipt_count',
+      'FROM build_run_assets asset', "asset.asset_id = 'bg_texts'",
+      "run.state IN ('planned', 'running', 'paused')", "asset.state IN ('queued', 'building')",
+      'eligible_receipt_count = 1', 'NOT fence.replacement_in_progress', 'source_query_available',
+    ]) {
       expect(classical.sql).toContain(marker)
     }
 
@@ -184,8 +194,13 @@ describe('binding availability contracts', () => {
     const classicalScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_classical_texts')!
     const contradictionScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_contradictions')!
     expect(classicalScu.availability_dispositions ?? []).toEqual([])
-    expect(classicalScu.bindings[0]?.pagination).toBe('offset')
-    expect(classicalScu.bindings[0]?.pagination_verified).not.toBe(true)
+    expect(classicalScu.primary_binding_details).toMatchObject({
+      pagination: 'cursor',
+      pagination_contract: {
+        request_position_path: 'page_cursor', result_collection_path: 'content.citations',
+        next_path: 'content.next_page_cursor', more_available_path: 'content.more_available',
+      },
+    })
     expect(contradictionScu.availability_dispositions ?? []).toEqual([])
     expect(contradictionScu.bindings[0]).toMatchObject({
       pagination: 'none',
@@ -194,12 +209,16 @@ describe('binding availability contracts', () => {
     })
   })
 
-  it('treats zero rows as source availability but fails closed on missing chart-build context or source execution failure', async () => {
+  it('treats missing classical readiness rows as unavailable while preserving legacy zero-row availability', async () => {
     const classical = getSourceQueryAvailabilityContract('source-query:query-classical-texts:v1')!
+    const yoga = getSourceQueryAvailabilityContract('source-query:query-yoga-catalog:v1')!
     const contradictions = getSourceQueryAvailabilityContract('source-query:query-contradictions:v1')!
     const successfulZeroRows = async () => ({ rows: [] })
 
-    await expect(probeSourceQueryAvailabilityContract(classical, 'chart-a', null, successfulZeroRows)).resolves.toEqual([])
+    await expect(probeSourceQueryAvailabilityContract(classical, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
+      'source-query:query-classical-texts:v1 returned no required readiness rows.',
+    ])
+    await expect(probeSourceQueryAvailabilityContract(yoga, 'chart-a', null, successfulZeroRows)).resolves.toEqual([])
     await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
       'source-query:query-contradictions:v1 cannot bind the selected chart to an active completed build.',
     ])

@@ -398,45 +398,45 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     contract_id: 'source-query:query-classical-texts:v1',
     descriptor_name: 'query_classical_texts',
     capability_uri: 'marsys://tool/L0/query_classical_texts',
-    scope: 'global', parameter_binding: 'global', empty_semantics: 'query_success_is_available',
-    sql: `WITH hybrid_candidates AS (
-            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
-                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
-                   c.tradition_school, c.topics,
-                   (1 - (c.embedding <=> NULL::vector))::float AS vector_score,
-                   similarity(c.content_en, '')::float AS keyword_score
-              FROM classical_text_chunks c
-             WHERE (NULL::text IS NULL OR c.text_id = NULL::text)
-             ORDER BY ((0.65 * COALESCE(1 - (c.embedding <=> NULL::vector), 0))
-                       + (0.35 * COALESCE(similarity(c.content_en, ''), 0))) DESC,
-                      c.text_id ASC, c.chapter ASC NULLS LAST, c.verse_ref ASC NULLS LAST,
-                      c.chunk_id ASC, c.id ASC
-             LIMIT 0
-          ), lexical_fallback AS (
-            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.content_en,
-                   c.content_sa, c.content_summary, c.source_citation, c.tradition_school, c.topics
-              FROM classical_text_chunks c
-             WHERE c.content_en ILIKE '' AND (NULL::text IS NULL OR c.text_id = NULL::text)
-             ORDER BY c.text_id ASC, c.chapter ASC NULLS LAST, c.verse_ref ASC NULLS LAST,
-                      c.chunk_id ASC, c.id ASC
-             LIMIT 0
-          ), list_path AS (
-            SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter, c.verse_start,
-                   c.content_en, c.content_sa, c.content_summary, c.source_citation,
-                   c.tradition_school, c.topics
-              FROM classical_text_chunks c
-             WHERE (NULL::text IS NULL OR c.content_en ILIKE NULL::text)
-               AND (NULL::text IS NULL OR c.text_id = NULL::text)
-               AND (NULL::text IS NULL OR NULL::text = ANY(c.topics))
-             ORDER BY c.text_id ASC, c.chapter ASC NULLS LAST, c.verse_start ASC NULLS LAST,
-                      c.chunk_id ASC, c.id ASC
-             LIMIT 0
-          ) SELECT (SELECT COUNT(*) FROM hybrid_candidates) AS hybrid_candidates,
-                   (SELECT COUNT(*) FROM lexical_fallback) AS lexical_fallback,
-                   (SELECT COUNT(*) FROM list_path) AS list_path`,
+    scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist',
+    sql: `WITH eligible_receipts AS (
+            SELECT receipt.receipt_version, receipt.partition_key, receipt.output_digest,
+                   receipt.output_digest_spec_sha256
+              FROM asset_provenance_receipts receipt
+              JOIN asset_freshness freshness
+                ON freshness.asset_id = receipt.asset_id
+               AND freshness.scope_key = receipt.scope_key
+               AND freshness.partition_key = receipt.partition_key
+               AND freshness.receipt_version = receipt.receipt_version
+              JOIN asset_output_digest_specs digest_spec
+                ON digest_spec.asset_id = receipt.asset_id
+               AND digest_spec.spec_sha256 = receipt.output_digest_spec_sha256
+               AND digest_spec.retired_at IS NULL
+             WHERE receipt.asset_id = 'bg_texts'
+               AND receipt.chart_id IS NULL
+               AND receipt.scope_key = '__global__'
+               AND receipt.receipt_state = 'proven'
+               AND receipt.output_digest IS NOT NULL
+               AND receipt.output_digest_spec_sha256 = '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6'
+               AND freshness.freshness_state = 'fresh'
+          ), receipt_count AS (
+            SELECT COUNT(*)::int AS eligible_receipt_count FROM eligible_receipts
+          ), replacement_fence AS (
+            SELECT EXISTS (
+              SELECT 1 FROM build_run_assets asset
+              JOIN build_runs run ON run.id = asset.run_id
+              WHERE asset.asset_id = 'bg_texts'
+                AND (run.state IN ('planned', 'running', 'paused')
+                  OR asset.state IN ('queued', 'building'))
+            ) AS replacement_in_progress
+          )
+          SELECT 1 AS source_query_available
+            FROM receipt_count count CROSS JOIN replacement_fence fence
+           WHERE count.eligible_receipt_count = 1
+             AND NOT fence.replacement_in_progress`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:151-352',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_classical_texts.pagination.test.ts:26-89',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql',
+      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec',
     ],
   },
   {

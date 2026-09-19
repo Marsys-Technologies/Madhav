@@ -99,6 +99,8 @@ export interface PaginationContract {
   readonly next_path?: string
   readonly more_available_path?: string
   readonly deterministic_order: readonly string[]
+  /** Response-envelope markers that invalidate an otherwise terminal page. */
+  readonly material_trim_paths?: readonly string[]
 }
 
 export interface PaginationReviewDisposition {
