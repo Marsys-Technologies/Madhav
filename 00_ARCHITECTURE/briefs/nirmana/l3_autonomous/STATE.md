@@ -77,17 +77,17 @@ All rows start `— / — / — / — / — / NO`.
 | C1 deploy re-verify | conductor (run 2) | read-only | — | **DONE** | see finding below: web@`cdc701afa` 100% traffic, MCP/sidecar@`66b962f29`, builder image@`66b962f29`, both deploy runs' job-level status independently read via `gh run view --json jobs`, Codex lease independently read as RELEASED on `origin/campaign-coordination` | — |
 | C2 22-asset baseline | conductor (run 2) | read-only | — | **PARTIAL / BLOCKED_STRUCTURAL(no-read-role-on-public-schema)** | `retrieval_census_ro` (the only documented read-only DB role, `platform/scripts/harvest/_db.ts`) has USAGE only on `information_schema`/`pg_catalog` — **not** `public`, where `kala_*` and the generation-head tables live. Did not escalate to a stronger credential (out of proportionality/role-separation scope for an ad hoc query). Row-count baseline deferred to the orchestrator's own build-time reporting in Wave E rather than hand-queried. | native ruling optional: authorize a scoped read-only grant on `public` for verification, or accept orchestrator-reported state as sufficient (recommend the latter — matches doctrine that builders/orchestrator, not ad hoc sessions, are the legitimate reader/writer of `public`) |
 | C3 W1 function contract | conductor (run 2) | read-only | — | **DONE (signatures)** | `open_l1_data_plane_generation` (migration 1035) requires literal `session_user = 'data_plane_builder'` — **SECURITY DEFINER but caller-identity-gated**; W1 generation can only be executed by the real `brahma-build-pipeline-job` authenticated as `data_plane_builder`, never by an ad hoc session even with elevated creds. This resolves E1/E2 planning: dispatch the real builder job, do not hand-write SQL. | — |
-| D1 Kshetra P0 | — | own worktree | — | READY | — | branch from main, re-apply, re-test |
-| D2 Bhavishya P0 | — | own worktree | — | READY | — | " |
-| D3 DHARA correction | — | own worktree | — | BLOCKED_ON D1 | — | same files as D1 |
-| D4 Yojaka preservation | — | own worktree | — | READY | — | " |
-| D5 W0 field register | — | own worktree | — | READY | — | " |
-| D6 U05 registry | — | own worktree | — | READY | — | " |
-| D7 branch triage | — | read-only | — | READY | — | ~113 branches, disposition record |
-| E1 W1 L1 generation | — | integration | — | BLOCKED_ON C | — | preconditions §B.3 Wave E |
-| E2 W1 L2 generation | — | integration | — | BLOCKED_ON E1 | — | — |
-| E3 ka_graha_sancara terminal | — | own worktree | — | BLOCKED_ON C | — | service proof (no row build) |
-| E4 ka_dasha_kala terminal | — | own worktree | — | BLOCKED_ON C | — | service proof (no row build) |
+| D1+D3 Kshetra P0 + DHARA correction | subagent `ac646ccb3` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
+| D2 Bhavishya P0 | subagent `a0e4039b2` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
+| D4 Yojaka preservation | subagent `a9801fa14` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report; cautioned re: 118-commit-ahead source, forensic extraction only |
+| D5 W0 field register | subagent `a41f66de3` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | docs-only |
+| D6 U05 registry | subagent `abbdfc3eb` | own worktree | TBD | **DISPATCHED 02:40 IST** | — | awaiting report |
+| D7 branch triage | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE** | `MADHAV_L3_BRANCH_TRIAGE_DISPOSITION_v1_0.md` @ `2955e2f13`; PR #2655 confirmed already closed | — |
+| W1-RESEARCH (informs E1/E2) | subagent `acba0c5c8` (Opus) | read-only | — | **DISPATCHED 02:40 IST** | — | read-only research + disposable-DB rollback rehearsal; must NOT mutate production; report becomes E1/E2's dispatch plan |
+| E1 W1 L1 generation | conductor (pending W1-RESEARCH) | integration | — | BLOCKED_ON W1-RESEARCH | — | dispatch real `brahma-build-pipeline-job`, not ad hoc SQL — confirmed via migration 1035 read (`open_l1_data_plane_generation` hard-gates on `session_user='data_plane_builder'`) |
+| E2 W1 L2 generation | conductor | integration | — | BLOCKED_ON E1 | — | — |
+| E3 ka_graha_sancara terminal | conductor | own worktree | — | BLOCKED_ON W1-RESEARCH | — | service proof (no row build); no conflicting lease (see finding) |
+| E4 ka_dasha_kala terminal | conductor | own worktree | — | BLOCKED_ON W1-RESEARCH | — | service proof (no row build); reads L1 `ga_dashas` per migration 1035 `l1_data_plane_dasha_snapshots` |
 
 ## Observed environment (re-verify before acting)
 
