@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:09:23.000Z",
-  "content_hash": "sha256:1101520577ca1b371b01b14ef21f314a646a3597cd5b819145ce9cff55a88494",
+  "generated_at": "2026-09-19T00:11:28.000Z",
+  "content_hash": "sha256:f6b399efd116cdcecd2ec7c943623dfaf12f301b59d08e33c869f93b4791bc23",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:a45b3858fa3abcefc70cf19ce9bb7d4ba5c83a655af2bc50f325a9a8d2838062",
+  "semantic_review_fingerprint": "sha256:72673a29e2e8d266ec489efeab7c5ddfe196637d238e7bf1bd6317ea6bbf37c7",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -902,6 +902,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://resource/asset-registry/all",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:asset-registry-all:v1",
+              "capability_uri": "marsys://resource/asset-registry/all",
+              "contract_sha256": "sha256:c8968a64a2ca6cddc31bf82614f6c862ba831fbc18e76d588e91a158caad018d",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts:145-162"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -1077,6 +1092,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://resource/asset-registry/L0",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:asset-registry-l0:v1",
+              "capability_uri": "marsys://resource/asset-registry/L0",
+              "contract_sha256": "sha256:85122b96507d15226a72a38d550728e2b2833842a67e0376b83df92417d87746",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts:103-120"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

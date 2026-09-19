@@ -58,7 +58,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    expect(report.report_hash).toBe('sha256:c8b26ea3d2cb6ca0b4abd0c66a076503c791c0a314a9bc92be8950b42b78822e')
+    expect(report.report_hash).toBe('sha256:803ad8f793155b9d6f45901233226249ba24c2f6d247f88eaf45132b068dacfd')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -271,7 +271,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: '88f12204f7ced303f751ed632afd169cc58d2947',
+      evaluated_source_revision: '2ff2d5e75837c3a80986248bdc8562c6eebdad34',
     })
   })
 })
