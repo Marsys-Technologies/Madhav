@@ -129,7 +129,7 @@ Every Claude session, at open, reads the following in order before any substanti
 2. `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` — **new single source of truth** for the canonical-path + artifact catalog (Phase 1B cutover 2026-04-27). Replaces the dual `FILE_REGISTRY` + `CANONICAL_ARTIFACTS` registries. `CANONICAL_ARTIFACTS_v1_0.md` retained in place as SUPERSEDED historical record — read it for audit trail only; governance tooling now reads from the manifest. `drift_detector.py` and `schema_validator.py` default to manifest mode (`*_USE_MANIFEST=true`).
 3. `00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md` (canonical_id `PROJECT_ARCHITECTURE`) — governing blueprint. Re-read relevant sections as needed.
 4. `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` (canonical_id `MACRO_PLAN`) — ten-macro-phase strategic arc M1–M10, Learning Layer substrate, System Integrity Substrate per ND.1, Ethical Framework, External Dependency Graph, per-phase schema, Meta-Governance, Multi-Agent Collaboration, Post-M10 Framing. Orientation only — do not pre-build for phases later than the current one.
-5. **Active campaign** — consult `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` §2 for which layer campaign is active. Currently **L2 Bodha** — read `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` (canonical_id `L2_BODHA_CAMPAIGN_HANDOFF`) for the full L2 context: nomenclature, standards, FROZEN orchestrator contract, L1→L2 data interface, 8-asset Bodha DAG, per-asset specs, and hard-won traps. Prior phase plans all SUPERSEDED-AS-COMPLETE (`PHASE_B_PLAN_v1_0.md` M2, `PHASE_M3_PLAN_v1_0.md` M3, `PHASE_M4_PLAN_v1_0.md` M4, `PHASE_M5_PLAN_v1_0.md` M5-A).
+5. **Active campaign** — consult `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` §2 for which layer campaign is active. **Currently two parallel data-plane elevation campaigns (native-authorized platform split, 2026-09-20, DP-SD-021): Pūrṇa Anveṣaṇa in Codex (product-completion closure — Portal/managed-MCP/raw-MCP three-door acceptance) ∥ L3 Kāla data-plane elevation in Claude Code** (22 active `ka_*` identities elevated to terminal acceptance against campaign definition `t3-2026-09-11-8b884eac`; headline metric `Accepted N/22`). Read `00_ARCHITECTURE/briefs/nirmana/MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (the governing plan for both) and, for L3 specifically, `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` + `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md`. The L2 Bodha campaign referenced below is **historical** (L2 is ✓ BUILT, not the active campaign) — its handoff remains useful onboarding context for L2 itself but is not "currently active." Prior phase plans all SUPERSEDED-AS-COMPLETE (`PHASE_B_PLAN_v1_0.md` M2, `PHASE_M3_PLAN_v1_0.md` M3, `PHASE_M4_PLAN_v1_0.md` M4, `PHASE_M5_PLAN_v1_0.md` M5-A). For full L2 context when actually working on L2, still read `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` (canonical_id `L2_BODHA_CAMPAIGN_HANDOFF`): nomenclature, standards, FROZEN orchestrator contract, L1→L2 data interface, 8-asset Bodha DAG, per-asset specs, and hard-won traps.
 6. `00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md` (canonical_id `GOVERNANCE_INTEGRITY_PROTOCOL`, status CURRENT since Step 8 close) — governs session-open/close, drift/schema enforcement, disagreement protocol, meta-rules. Re-read axes §C.1–§C.6 + §K disagreement protocol at session open.
 7. `00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md` + `00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md` — the handshake + close-checklist schemas the session emits. See §G + §H below.
 8. `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` (canonical_id `CURRENT_STATE`, LIVE) — the authoritative "you are here" state pointer. Answers in one read: which layer campaign is active, which sub-phase is in flight, which session last closed, and what the next session is committed to. Updated at every session close. Authoritative since Step 15 close (2026-04-24); STEP_LEDGER retired per §F. `STEP_LEDGER_v1_0.md` is retained as a historical record (status `GOVERNANCE_CLOSED`) — read it only for audit trail, not for current state.
@@ -174,7 +174,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 7.4 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 7.5 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -189,7 +189,7 @@ Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` 
 | L0 | Brahmagyan | ✓ SEALED | Infrastructure provisioned; DB bootstrap complete; ga_chart_service live |
 | L1 | Gaṇita | ✓ CLOSED | 9 data assets + service; FORENSIC 7/7; orchestrator-native; id-naming standardized. Seal: `L1_GANITA_CLOSURE_v2_0.md`. |
 | L2 | Bodha | ✓ BUILT | 14 `bo_*` assets in DAG (bo_laksana root → bo_bimba / bo_karanajala / bo_sangati / bo_samvada / bo_samskara → bo_upaya → bo_pramana_mapa + 4 gestalt/CGM/CDLM writers); tables `bodha_*`; ran end-to-end (Abhinandan L1→L5, 2026-06-27). Handoff: `L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` |
-| L3 | Kāla | ✓ CLOSED | 12 `ka_*` assets, 12/12 buildable; tables `kala_*`; ran end-to-end (Abhinandan L1→L5). Seal: `L3_KALA_CLOSE_v1_0.md` |
+| L3 | Kāla | ✓ CLOSED (original build arc) — **REOPENED under active data-plane elevation campaign** | Original build: 12 `ka_*` assets, 12/12 buildable; tables `kala_*`; ran end-to-end (Abhinandan L1→L5). Seal: `L3_KALA_CLOSE_v1_0.md` (historical; not superseded as a record, but no longer the current acceptance bar). **Currently under the L3 Kāla data-plane elevation campaign** (DP-SD-017/018/019/020/021, native-authorized from 2026-09-15): **22 active `ka_*` identities** (expanded from the original 12) elevated to terminal acceptance for canonical chart `482012f1-710e-4a25-994a-93821f5871aa` against campaign definition `t3-2026-09-11-8b884eac`; headline metric **`Accepted N/22`**. `ka_gochara_sweep` is retired, protected history, outside the 22-identity denominator, never rebuilt. See `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` + `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md` + `MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` for current state; do not cite the 12/12 figure as current. |
 | L4 | Phala | ✓ CLOSED | 9 `ph_*` assets, 9/9; tables `phala_*`; ran end-to-end (Abhinandan L1→L5); deterministic phala, calibration owned by L5 (ph_pramana D5 NO-SCORING gate). Seal: `L4_PHALA_CLOSE_v1_0.md` |
 | L5 | Mīmāṃsā | ✓ SEALED | 12 `mi_*` assets (10 data writers + 2 service verifiers); tables `mimamsa_*`; sealed in **STRUCTURAL mode** — empirical calibration values fill in as prediction→outcome data accrues (this is by design, not unfinished work). Seal: `L5_SEAL_AND_SHIP_REPORT_v1_0.md` |
 
@@ -370,6 +370,19 @@ been confirmed in.
 claim, and what code path would have to run — and fail — for the signal to correctly read false?"
 If no such code path exists, or it checks a proxy rather than the claim, the signal is null. "It's
 usually true" or "nothing has broken yet" is not a substitute for a real detector.
+
+---
+
+*End of CLAUDE.md v7.5 (2026-09-20, L3 Kāla autonomous data-plane conductor, Packet B3, DP-SD-021
+native-authorized) — §C item 5 rewritten to name the two parallel data-plane elevation campaigns
+(Pūrṇa Anveṣaṇa in Codex ∥ L3 Kāla in Claude Code) and demote the ~3-month-stale "Currently L2
+Bodha" claim; §E's L3 row corrected from the stale "✓ CLOSED, 12 ka_* assets, 12/12" to record the
+original build-arc closure as historical alongside the active data-plane elevation campaign's 22
+active identities and `Accepted N/22` headline metric — the original closure record is retained in
+place, not erased, per the archival/retain-in-place hygiene policy. Both corrections were drafted
+read-only by the prior conductor run (stopped mid-session for a model switch, not resumable) and
+are retained here as reviewed-correct rather than redone. §D's own CLAUDE self-row corrected
+7.4 → 7.5.*
 
 ---
 

@@ -1,0 +1,434 @@
+{
+  "artifact": "MADHAV_L3_HANDOFF_LIVE_EVIDENCE",
+  "prepared_on": "2026-09-19",
+  "observations_utc": "2026-09-18 approximately 20:50–21:43; database follow-up included",
+  "scope": "Read-only snapshot, not full certification. Refresh mutable facts before execution.",
+  "canonical_chart": "482012f1-710e-4a25-994a-93821f5871aa",
+  "git": {
+    "main": "a6b5e093371ae847445ac8864de8c8f01fd0b242",
+    "coordination": "9bfcc28c66a1b714ae86d1dd35bf8fbad9f047cd",
+    "strategy": "2438b579fa8e64f33c44d527ef829c1e987daadc"
+  },
+  "execution_control": {
+    "automation_id": "l3-data-plane-overnight-continuation",
+    "automation_status_verified": "PAUSED",
+    "task_id": "01a0b362-cdff-7901-82f3-43c57dbbc4fa",
+    "stop_instruction_sent": true,
+    "task_observed_idle": true,
+    "goal_status_independently_visible": false
+  },
+  "database": {
+    "current_definition": [
+      {
+        "campaign_id": "nirmana-elevation",
+        "definition_revision": "t3-2026-09-11-8b884eac",
+        "definition_status": "frozen",
+        "manifest_sha256": "8b884eac2a950ca1d8d44c3b4af34288b2a7fbc177dba3903da301fad610a0b6",
+        "created_at": "2026-09-11T12:02:54.493Z"
+      }
+    ],
+    "current_l3_events": [
+      {
+        "current_l3_events": "0",
+        "current_l3_freeze_events": "0"
+      }
+    ],
+    "applied_migrations_1033_through_1041_query": [
+      {
+        "filename": "1033_planner_inquiry_lifecycle.sql",
+        "applied_at": "2026-09-16T02:14:00.879Z",
+        "sha256": "608d526abac406764161156fe5895b2ccb0e43a52894ffc1048c97f5b71f0b53",
+        "sql_identity": "ed05383ca19a5c36fdea2836c781d63bc32ffc205026fcae25858754afc90eeb"
+      },
+      {
+        "filename": "1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
+        "applied_at": "2026-09-16T02:14:01.655Z",
+        "sha256": "9e7db551ed4a289887bdd526c7f02140fc12a2e4638ce7ad8fbc10771b26a9f8",
+        "sql_identity": "7e427ba478057a9d3e3fca3e12a4124ec324ba8f084a76ffc0afa832bc7bd16f"
+      },
+      {
+        "filename": "1035_data_plane_l1_producer_history.sql",
+        "applied_at": "2026-09-18T10:48:47.660Z",
+        "sha256": "80e49dc7460f829c52af41e398422dd891e993cc7aa3dbfeaaad312a149765b0",
+        "sql_identity": "6d50fa16186996f245a63bc20e9d88c45c4f74926b7531c0f794f18f8bea05a4"
+      },
+      {
+        "filename": "1036_data_plane_l2_producer_generations.sql",
+        "applied_at": "2026-09-18T10:48:47.660Z",
+        "sha256": "9fd38140dca82efb379a6af1b575b94b60236501d9f5ce65cb4e4fcb6e4f890d",
+        "sql_identity": "133d90b9f9e1432db3a2a3833f7f9cbf808a2bb4129588eb43ae84cba0e8264b"
+      },
+      {
+        "filename": "1037_planner_inquiry_action_reservations.sql",
+        "applied_at": "2026-09-16T02:14:03.435Z",
+        "sha256": "db2ac8f3140c0090207d965abbc0d312f0ff69ad09b8aeca1483bbcb0964dec9",
+        "sql_identity": "4337f734e5a03c6ebf81398a631a7f2d7fd42abbcf130478211be84ef27cbd4d"
+      },
+      {
+        "filename": "1038_planner_managed_prashna_jobs.sql",
+        "applied_at": "2026-09-16T02:14:04.989Z",
+        "sha256": "8a0c49d5be132567f3bf393f2ce9f4439cf6266b17d99965c4b233d3b2e2158c",
+        "sql_identity": "e346a64cdda766d6db7bb19948ae03c9fa7d5515bca4eff001cc92f993371549"
+      },
+      {
+        "filename": "1039_purna_inquiry_protected_ownership.sql",
+        "applied_at": "2026-09-16T02:14:06.270Z",
+        "sha256": "654ffe9d0c820bb2ac99e5a20485949598adaeda77bf66a7f09228ca24707cbb",
+        "sql_identity": "3bf6f0294a76b456e99de56e11fa04743d88e29030bc44a83fc1e3ada2225f78"
+      }
+    ],
+    "canonical_chart_generation_heads": [
+      {
+        "relation": "l1_generation_heads",
+        "chart_rows": "0"
+      },
+      {
+        "relation": "l2_generation_heads",
+        "chart_rows": "0"
+      }
+    ],
+    "database_roles": [
+      {
+        "rolname": "data_plane_builder",
+        "rolcanlogin": true,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "data_plane_l1_owner",
+        "rolcanlogin": false,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "data_plane_l2_owner",
+        "rolcanlogin": false,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "data_plane_migrator",
+        "rolcanlogin": true,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "data_plane_schema_owner",
+        "rolcanlogin": false,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "data_plane_verifier",
+        "rolcanlogin": true,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "purna_inquiry_owner",
+        "rolcanlogin": false,
+        "rolinherit": false,
+        "rolsuper": false,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolbypassrls": false
+      }
+    ],
+    "database_memberships": [
+      {
+        "parent": "data_plane_l1_owner",
+        "member": "data_plane_migrator",
+        "admin_option": false
+      },
+      {
+        "parent": "data_plane_l2_owner",
+        "member": "data_plane_migrator",
+        "admin_option": false
+      },
+      {
+        "parent": "data_plane_schema_owner",
+        "member": "data_plane_migrator",
+        "admin_option": false
+      }
+    ],
+    "live_registry_declared_dependencies": [
+      {
+        "asset_id": "ka_avadhi",
+        "layer": "kala",
+        "depends_on": [
+          "ga_dashas",
+          "bo_pratijna",
+          "bg_ghatana"
+        ]
+      },
+      {
+        "asset_id": "ka_bhavishya_lekha",
+        "layer": "kala",
+        "depends_on": [
+          "ka_kala_darshana",
+          "ka_vighnakara",
+          "ka_sangam",
+          "bo_laksana"
+        ]
+      },
+      {
+        "asset_id": "ka_dasha_kala",
+        "layer": "kala",
+        "depends_on": [
+          "ga_dashas"
+        ]
+      },
+      {
+        "asset_id": "ka_gochara",
+        "layer": "kala",
+        "depends_on": [
+          "bg_gochara_arcs",
+          "ka_gochara_resonance"
+        ]
+      },
+      {
+        "asset_id": "ka_gochara_resonance",
+        "layer": "kala",
+        "depends_on": [
+          "bg_transit_rules"
+        ]
+      },
+      {
+        "asset_id": "ka_gochara_sweep",
+        "layer": "kala",
+        "depends_on": [
+          "ka_gochara_resonance"
+        ]
+      },
+      {
+        "asset_id": "ka_gochara_v3_century_materialize",
+        "layer": "kala",
+        "depends_on": [
+          "ka_gochara_resonance",
+          "ka_vedha_gochara",
+          "ka_moorti_nirnaya",
+          "ka_kota_chakra",
+          "ka_tithi_pravesha",
+          "bg_sky_calendar"
+        ]
+      },
+      {
+        "asset_id": "ka_graha_sancara",
+        "layer": "kala",
+        "depends_on": [
+          "bg_ephemeris"
+        ]
+      },
+      {
+        "asset_id": "ka_jivana_parva",
+        "layer": "kala",
+        "depends_on": [
+          "ka_kala_darshana",
+          "ka_dasha_kala",
+          "ka_sangam",
+          "ka_yojaka",
+          "ga_dashas"
+        ]
+      },
+      {
+        "asset_id": "ka_kala_darshana",
+        "layer": "kala",
+        "depends_on": [
+          "ka_sangam",
+          "ka_vighnakara",
+          "ka_kalasutra"
+        ]
+      },
+      {
+        "asset_id": "ka_kalasutra",
+        "layer": "kala",
+        "depends_on": [
+          "ka_yojaka",
+          "ka_sangam",
+          "bo_laksana"
+        ]
+      },
+      {
+        "asset_id": "ka_kota_chakra",
+        "layer": "kala",
+        "depends_on": [
+          "ga_positions",
+          "bg_ephemeris",
+          "bg_kota_chakra_rings"
+        ]
+      },
+      {
+        "asset_id": "ka_kshetra",
+        "layer": "kala",
+        "depends_on": [
+          "ka_dasha_kala",
+          "ka_gochara_resonance",
+          "ga_panchanga",
+          "bo_pratijna",
+          "bo_sangati",
+          "bo_upaya",
+          "bg_cohort",
+          "bg_class_lifetime_counts"
+        ]
+      },
+      {
+        "asset_id": "ka_moorti_nirnaya",
+        "layer": "kala",
+        "depends_on": [
+          "ga_positions",
+          "bg_ephemeris",
+          "bg_transit_rules"
+        ]
+      },
+      {
+        "asset_id": "ka_muhurta_seva",
+        "layer": "kala",
+        "depends_on": []
+      },
+      {
+        "asset_id": "ka_sangam",
+        "layer": "kala",
+        "depends_on": [
+          "ka_yojaka",
+          "ka_dasha_kala",
+          "ka_gochara",
+          "ka_muhurta_seva",
+          "bo_laksana",
+          "ga_dashas",
+          "ga_strength",
+          "ga_positions",
+          "ga_tajaka",
+          "bg_transit_rules"
+        ]
+      },
+      {
+        "asset_id": "ka_sudarshana_varsha",
+        "layer": "kala",
+        "depends_on": [
+          "ga_positions"
+        ]
+      },
+      {
+        "asset_id": "ka_taranga",
+        "layer": "kala",
+        "depends_on": [
+          "ka_avadhi",
+          "bo_pratijna",
+          "ka_sangam",
+          "ga_dashas",
+          "bg_ghatana"
+        ]
+      },
+      {
+        "asset_id": "ka_tithi_pravesha",
+        "layer": "kala",
+        "depends_on": [
+          "ga_positions"
+        ]
+      },
+      {
+        "asset_id": "ka_tulana",
+        "layer": "kala",
+        "depends_on": [
+          "ka_sangam",
+          "ka_vighnakara",
+          "ka_kala_darshana"
+        ]
+      },
+      {
+        "asset_id": "ka_vedha_gochara",
+        "layer": "kala",
+        "depends_on": [
+          "ga_positions",
+          "bg_ephemeris",
+          "bg_transit_rules",
+          "bg_sarvatobhadra_grid",
+          "bg_vedha_malefic_scale",
+          "bg_phaladeepika_latta"
+        ]
+      },
+      {
+        "asset_id": "ka_vighnakara",
+        "layer": "kala",
+        "depends_on": [
+          "ka_sangam",
+          "ka_muhurta_seva",
+          "ga_positions",
+          "bg_dignity_reference",
+          "ka_yojaka"
+        ]
+      },
+      {
+        "asset_id": "ka_yojaka",
+        "layer": "kala",
+        "depends_on": [
+          "bo_laksana",
+          "bg_transit_rules",
+          "ga_dashas",
+          "bo_bimba",
+          "bo_sangati",
+          "bo_pratijna",
+          "bg_ghatana"
+        ]
+      }
+    ],
+    "schema_privileges": [
+      {
+        "public_schema_owner": "data_plane_schema_owner",
+        "app_can_create": false,
+        "purna_owner_can_create": false
+      }
+    ],
+    "canonical_chart_yojaka_reference_integrity": [
+      {
+        "predicates": "50678",
+        "null_signal_refs": "0",
+        "unmatched_signal_refs": "79"
+      }
+    ],
+    "canonical_chart_l3_tables": [
+      {
+        "relation": "kala_activation",
+        "chart_rows": "0"
+      },
+      {
+        "relation": "kala_convergence",
+        "chart_rows": "0"
+      },
+      {
+        "relation": "kala_obstruction",
+        "chart_rows": "0"
+      },
+      {
+        "relation": "kala_darshana",
+        "chart_rows": "0"
+      },
+      {
+        "relation": "kala_bhavishya",
+        "chart_rows": "0"
+      },
+      {
+        "relation": "kala_field_snapshots",
+        "chart_rows": "0"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.78
+version: 6.79
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,11 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.79 (2026-09-20, L3 KĀLA AUTONOMOUS CONDUCTOR, Packet B3, DP-SD-021): New top banner records
+    the native-authorized platform split — L3 Kāla data-plane elevation moves to Claude Code
+    (integration branch codex/madhav-l3-claude-code) while Pūrṇa Anveṣaṇa remains in Codex — with a
+    pointer to the governing dual-campaign plan and the strategic-ledger §13 decision record. The
+    prior top banner (v6.78, Pūrṇa Recovery Wave 7) is retained below, not overwritten.
   - v6.78 (2026-09-15, MADHAV-PURNA-ANVESANA-W7-20260915): Exact-head CI and independent review
     refuted the first candidate for a stale census, post-release source mutation, weighted-task
     starvation, nested-pagination authorization and an incomplete log addendum. Every finding was
@@ -5933,6 +5938,23 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
+> **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
+> three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
+> elevation campaign moves to Claude Code** (integration branch `codex/madhav-l3-claude-code`,
+> worktree `/Users/Dev/madhav-l3/integration`). Governing plan:
+> `briefs/nirmana/MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md`; decision record:
+> `briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md` §13. L3 headline metric
+> **`Accepted N/22`** against campaign definition `t3-2026-09-11-8b884eac`, canonical chart
+> `482012f1-710e-4a25-994a-93821f5871aa`; live progress tracked in
+> `briefs/nirmana/l3_autonomous/STATE.md` (updated every packet close), not this banner. The
+> shared delivery gate (migration 1040/Pūrṇa ownership lifecycle) that had blocked both campaigns'
+> terminal acceptance since 2026-09-16 opened 2026-09-20 ~01:15–02:00 IST (protected `main` at
+> `66b962f29` then `cdc701afa`); independently re-verified live by the L3 session via Cloud Run
+> revisions and GitHub Actions job status, not merely copied from Codex's own report. This banner
+> is a pointer only — see the L3 STATE.md and Pūrṇa's own `CAMPAIGN_STATE.md` for authoritative
+> per-campaign progress.
 
 > 🟡 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 FINAL SOURCE CANDIDATE (2026-09-15).** Recovery execution
 > from immutable W6 head `b48a6997b12ebe591bc5e62b7b60ddb295ee352b` has completed every authorized
