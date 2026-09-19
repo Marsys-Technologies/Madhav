@@ -2340,6 +2340,69 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:10-86',
     ],
   },
+  {
+    contract_id: 'source-query:query-cgm-motifs:v1',
+    descriptor_name: 'query_cgm_motifs',
+    capability_uri: 'marsys://tool/L2/query_cgm_motifs',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT motif_id, ayanamsha_id, snapshot_type, motif_name, motif_class,
+                   involved_node_ids_array, involved_edge_ids_array, motif_strength,
+                   classical_citation_id, verification_pass_status, citation_ref, citation_human
+              FROM bodha_cgm_motifs
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR motif_class = NULL::text)
+             ORDER BY motif_strength DESC NULLS LAST, motif_name
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_cgm_motifs
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR motif_class = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:67-84',
+      'platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-cgm-paths:v1',
+    descriptor_name: 'query_cgm_paths',
+    capability_uri: 'marsys://tool/L2/query_cgm_paths',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT path_id, ayanamsha_id, snapshot_type, path_type, from_node_id, to_node_id,
+                   path_node_ids_array, path_edge_ids_array, path_length, path_strength,
+                   is_final_dispositor, convergence_count, path_label_human,
+                   verification_pass_status, citation_ref, citation_human
+              FROM bodha_cgm_paths
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR path_type = NULL::text)
+             ORDER BY path_strength DESC NULLS LAST, path_length
+             LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total
+              FROM bodha_cgm_paths
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND (NULL::text IS NULL OR path_type = NULL::text)
+          )
+          SELECT handler_page.*, handler_count.total
+            FROM handler_page CROSS JOIN handler_count`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:66-83',
+      'platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
