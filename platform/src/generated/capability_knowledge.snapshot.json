@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T01:51:55.000Z",
-  "content_hash": "sha256:2230ad9ada62db90edaef4334bb2d108fd0977dcfc158d74155bbb888396a9d0",
-  "source_catalog_fingerprint": "sha256:5aa314b7e257ffef3e08a49b3ab3a83a3dfabea13d92ddaa4c245bb47180cf3a",
+  "generated_at": "2026-09-19T01:54:06.000Z",
+  "content_hash": "sha256:a55ff1ac7db278cd883f6187450586d5a076360cb8235d142eccb63c0070af99",
+  "source_catalog_fingerprint": "sha256:0097696791b5d648fe00982a7c6b6594ed629992715ccc4cfac4ef3461c07ef8",
   "semantic_review_fingerprint": "sha256:65838eee75e003bee5dd687c19945dea5a7b8d1078764162695047a7d9889008",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -2011,57 +2011,59 @@
     {
       "scu_id": "scu.catalog.call_transit_search",
       "version": 1,
-      "label": "Call Transit Search",
-      "description": "Search for planetary transit events in a date range (ka_gochara service). Global scope — not chart-specific. Use for gochara lookup over natal positions. Returns transit ingress/egress events, retrograde stations, and conjunctions. Provide chart_id optionally to filter transits against natal planet positions. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "label": "Transit-event search",
+      "description": "Search live transit events through the ka-gochara compute service.",
       "kind": "temporal",
       "domains": [
         "timing"
       ],
       "concepts": [
-        "activation_timing",
-        "call_transit_search",
-        "temporal_sequence",
-        "timing_window"
+        "gochara",
+        "transit"
       ],
       "intents": [
         "sequence",
-        "time"
+        "verify"
       ],
       "horizons": [
         "current",
         "future",
-        "historical",
-        "multi_year"
+        "historical"
       ],
       "scope": "global",
       "inputs": [
-        "aspect_degrees",
         "date_from",
         "date_to",
-        "event_type",
-        "orb_deg",
-        "planet_a",
-        "planet_b",
-        "target_longitude_deg",
-        "transit_planet"
+        "event_type?"
       ],
       "outputs": [
-        "temporal_sequence_evidence",
-        "timing_windows"
+        "count",
+        "events"
       ],
       "primary_binding_uri": "marsys://tool/L3/call_transit_search",
-      "edges": [],
       "provenance_requirements": [
-        "chart_id_when_chart_scoped",
         "computed_at",
         "engine_version"
       ],
-      "freshness_policy": "Must carry computation time and engine version.",
+      "freshness_policy": "No availability claim until a dedicated authenticated ka-gochara probe is recorded.",
       "entitlement": "native",
       "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
+        "Read-only compute evidence."
       ],
-      "known_gaps": [],
+      "known_gaps": [
+        "The registry contains no exact, authenticated ka-gochara probe configuration."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/call_transit_search",
+          "status": "deliberately_dark",
+          "reason": "This live sidecar route has no dedicated signed ka-gochara probe contract. Ephemeris and graha-sancara probes prove different executable paths and cannot substitute.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:31-156",
+            "platform/python-sidecar/scripts/nirmana_probe_contracts.json"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -2099,73 +2101,42 @@
       "source_descriptor_uris": [
         "marsys://tool/L3/call_transit_search"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L3/call_transit_search",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
       "concept_bindings": [
         {
-          "concept_id": "activation_timing",
+          "concept_id": "gochara",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
         },
         {
-          "concept_id": "call_transit_search",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
-        },
-        {
-          "concept_id": "temporal_sequence",
+          "concept_id": "transit",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
-        },
-        {
-          "concept_id": "timing_window",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
         }
       ],
-      "gap_dispositions": [],
+      "gap_dispositions": [
+        {
+          "gap": "The registry contains no exact, authenticated ka-gochara probe configuration.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
+        }
+      ],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L3/call_transit_search",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
+          "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
         ]
       },
       "producer_semantic_disposition": {
@@ -2173,10 +2144,10 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L3/call_transit_search",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
+          "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.channel_chat_dispatch",
@@ -33676,7 +33647,6 @@
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -33890,15 +33860,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking"
-      ]
-    },
-    {
-      "concept_id": "call_transit_search",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search"
       ]
     },
     {
@@ -34720,6 +34681,15 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#yoga_prashna:get_yoga_dosha"
+      ]
+    },
+    {
+      "concept_id": "gochara",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search"
       ]
     },
     {
@@ -36247,7 +36217,6 @@
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -36314,7 +36283,6 @@
         "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -36357,6 +36325,7 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_current_transit_snapshot",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/call_transit_search",
         "SemanticCapabilityDeclaration:marsys://tool/L3/query_temporal_activation"
       ]
     },

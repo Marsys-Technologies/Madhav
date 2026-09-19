@@ -101,6 +101,19 @@ export const callTransitSearchCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium' },
     bulk_context: { pre_fetch_priority: 30 },
   },
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.call_transit_search', version: 1, label: 'Transit-event search',
+    description: 'Search live transit events through the ka-gochara compute service.',
+    kind: 'temporal', domains: ['timing'], concepts: ['transit', 'gochara'], intents: ['sequence', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'global',
+    inputs: ['date_from', 'date_to', 'event_type?'], outputs: ['events', 'count'], primary_binding_uri: 'marsys://tool/L3/call_transit_search',
+    provenance_requirements: ['computed_at', 'engine_version'], freshness_policy: 'No availability claim until a dedicated authenticated ka-gochara probe is recorded.',
+    entitlement: 'native', safety_notes: ['Read-only compute evidence.'], known_gaps: ['The registry contains no exact, authenticated ka-gochara probe configuration.'],
+    availability_dispositions: [{
+      binding_id: 'registry:marsys://tool/L3/call_transit_search', status: 'deliberately_dark',
+      reason: 'This live sidecar route has no dedicated signed ka-gochara probe contract. Ephemeris and graha-sancara probes prove different executable paths and cannot substitute.',
+      source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:31-156', 'platform/python-sidecar/scripts/nirmana_probe_contracts.json'],
+    }], editorial: true,
+  }],
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const date_from  = args['date_from'] as string
