@@ -3360,6 +3360,33 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY cleanliness_status, critical_flag_count DESC, anchor_id LIMIT 0`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:495-530'],
   },
+  {
+    contract_id: 'source-query:query-rectification:v1',
+    descriptor_name: 'query_rectification',
+    capability_uri: 'marsys://tool/L4/query_rectification',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH candidate_page AS (
+            SELECT id, to_char(candidate_birth_utc, 'YYYY-MM-DD') AS candidate_birth_date,
+                   candidate_birth_utc, offset_minutes, ayanamsha_id, lagna_sign,
+                   lagna_longitude_deg, lagna_degree_in_sign, lel_fit_score,
+                   lel_events_matched, lel_events_tested, lagna_stable,
+                   to_char(scored_at, 'YYYY-MM-DD') AS scored_date
+              FROM phala_rectification
+             WHERE chart_id = $1::uuid
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY lel_fit_score DESC NULLS LAST, offset_minutes, ayanamsha_id LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM phala_rectification
+             WHERE chart_id = $1::uuid
+          ), best AS (
+            SELECT judgment_flags, confidence_label, offset_minutes AS best_offset_minutes,
+                   best_lel_fit_score, confidence_low, confidence_high, win_margin,
+                   lel_training_events, lel_training_matched, leakage_firewall_note,
+                   competing_candidates
+              FROM phala_rectification_best WHERE chart_id = $1::uuid LIMIT 1
+          ) SELECT candidate_page.*, handler_count.total FROM candidate_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:600-652'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
