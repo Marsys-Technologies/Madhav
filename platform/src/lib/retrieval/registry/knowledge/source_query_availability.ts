@@ -2814,6 +2814,26 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT 1 FROM handler_page CROSS JOIN current_page`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts:111-152'],
   },
+  {
+    contract_id: 'source-query:query-sudarshana-varsha:v1',
+    descriptor_name: 'query_sudarshana_varsha',
+    capability_uri: 'marsys://tool/L3/query_sudarshana_varsha',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT varsha_year, to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   jl_active_sign_name, cl_active_sign_name, sl_active_sign_name,
+                   tri_lagna_convergence, lagna_fact_id, moon_fact_id, sun_fact_id,
+                   (window_start <= CURRENT_DATE AND window_end > CURRENT_DATE) AS is_current
+              FROM kala_sudarshana_varsha
+             WHERE chart_id = $1::uuid AND varsha_year >= 1 AND varsha_year <= 120
+             ORDER BY varsha_year LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_sudarshana_varsha
+             WHERE chart_id = $1::uuid AND varsha_year >= 1 AND varsha_year <= 120
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:66-118'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
