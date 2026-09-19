@@ -31,10 +31,14 @@ const SIGNALS = [
 function l1FactsFor(buildId: string) {
   const sunStrong = buildId === BUILD_A
   return [
-    { fact_category: 'graha_shadbala_total', fact_subject: 'SUN', fact_value_num: sunStrong ? 5 : 0.1, fact_value_text: null, fact_value_jsonb: null },
-    { fact_category: 'graha_dignity_per_varga', fact_subject: 'D1_SUN', fact_value_num: null, fact_value_text: sunStrong ? 'exalted' : 'debilitated', fact_value_jsonb: { house: 10 } },
-    { fact_category: 'graha_shadbala_total', fact_subject: 'MOON', fact_value_num: sunStrong ? 0.1 : 5, fact_value_text: null, fact_value_jsonb: null },
-    { fact_category: 'graha_dignity_per_varga', fact_subject: 'D1_MOON', fact_value_num: null, fact_value_text: sunStrong ? 'debilitated' : 'exalted', fact_value_jsonb: { house: 10 } },
+    { fact_category: 'graha_shadbala_total', fact_subject: 'SUN', fact_key: 'rupa', fact_value_num: sunStrong ? 5 : 0.1, fact_value_text: null, fact_value_jsonb: null },
+    { fact_category: 'graha_shadbala_total', fact_subject: 'SUN', fact_key: 'ratio', fact_value_num: sunStrong ? 0.01 : 99, fact_value_text: null, fact_value_jsonb: null },
+    { fact_category: 'graha_dignity_per_varga', fact_subject: 'D1_SUN', fact_key: 'dignity_state', fact_value_num: null, fact_value_text: sunStrong ? 'exalted' : 'debilitated', fact_value_jsonb: { house: 10 } },
+    { fact_category: 'graha_dignity_per_varga', fact_subject: 'D1_SUN', fact_key: 'dignity_weight', fact_value_num: null, fact_value_text: sunStrong ? 'debilitated' : 'exalted', fact_value_jsonb: { house: 1 } },
+    { fact_category: 'graha_shadbala_total', fact_subject: 'MOON', fact_key: 'rupa', fact_value_num: sunStrong ? 0.1 : 5, fact_value_text: null, fact_value_jsonb: null },
+    { fact_category: 'graha_shadbala_total', fact_subject: 'MOON', fact_key: 'ratio', fact_value_num: sunStrong ? 99 : 0.01, fact_value_text: null, fact_value_jsonb: null },
+    { fact_category: 'graha_dignity_per_varga', fact_subject: 'D1_MOON', fact_key: 'dignity_state', fact_value_num: null, fact_value_text: sunStrong ? 'debilitated' : 'exalted', fact_value_jsonb: { house: 10 } },
+    { fact_category: 'graha_dignity_per_varga', fact_subject: 'D1_MOON', fact_key: 'dignity_weight', fact_value_num: null, fact_value_text: sunStrong ? 'exalted' : 'debilitated', fact_value_jsonb: { house: 1 } },
   ]
 }
 
@@ -43,7 +47,7 @@ beforeEach(() => {
   queryMock.mockImplementation(async (sqlValue: unknown, params: unknown[] = []) => {
     const sql = String(sqlValue)
     if (sql.includes('information_schema.columns')) return { rows: [] }
-    if (sql.includes('FROM chart_facts') && sql.includes("fact_category IN ('graha_shadbala_total'")) {
+    if (sql.includes('FROM chart_facts') && sql.includes("fact_category = 'graha_shadbala_total'")) {
       return { rows: l1FactsFor(String(params[2])) }
     }
     if (sql.includes('FROM chart_facts')) return { rows: [] }
@@ -78,14 +82,20 @@ describe('query_signals selected-build L1 ranking context', () => {
     expect(idsB).toEqual(['moon-signal', 'sun-signal'])
 
     const factCalls = queryMock.mock.calls.filter(([sql]) =>
-      String(sql).includes('FROM chart_facts') && String(sql).includes("fact_category IN ('graha_shadbala_total'"),
+      String(sql).includes('FROM chart_facts') && String(sql).includes("fact_category = 'graha_shadbala_total'"),
     )
     const dashaCalls = queryMock.mock.calls.filter(([sql]) => String(sql).includes('FROM chart_dashas'))
     expect(factCalls).toHaveLength(2)
     expect(dashaCalls).toHaveLength(2)
     expect(factCalls.map(([, params]) => (params as unknown[])[2])).toEqual([BUILD_A, BUILD_B])
     expect(dashaCalls.map(([, params]) => (params as unknown[])[3])).toEqual([BUILD_A, BUILD_B])
-    for (const [sql] of factCalls) expect(String(sql)).toContain('build_id = $3::text')
+    for (const [sqlValue] of factCalls) {
+      const sql = String(sqlValue).replace(/\s+/g, ' ')
+      expect(sql).toContain('SELECT fact_category, fact_subject, fact_key, fact_value_num')
+      expect(sql).toContain("fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'")
+      expect(sql).toContain("fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state'")
+      expect(sql).toContain('build_id = $3::text')
+    }
     for (const [sql] of dashaCalls) expect(String(sql)).toContain('build_id = $4::uuid')
   })
 })

@@ -91,14 +91,13 @@ export async function fetchL1Context(
     //   graha_dignity_per_varga: fact_subject='D1_GRAHA', fact_value_text=dignity,
     //                             fact_value_jsonb.house = house number (1-12)
     const l1Result = await query(
-      `SELECT fact_category, fact_subject, fact_value_num, fact_value_text, fact_value_jsonb
+      `SELECT fact_category, fact_subject, fact_key, fact_value_num, fact_value_text, fact_value_jsonb
        FROM chart_facts
        WHERE chart_id = $1
          AND ayanamsha_id = $2
-         AND fact_category IN ('graha_shadbala_total', 'graha_dignity_per_varga')
          AND (
-           (fact_category = 'graha_shadbala_total')
-           OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%')
+           (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa')
+           OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state')
          )
        ${build_id ? 'AND build_id = $3::text' : ''}
        LIMIT 100`,
@@ -108,15 +107,16 @@ export async function fetchL1Context(
     for (const row of l1Result.rows) {
       const cat = String(row['fact_category'] ?? '')
       const subj = String(row['fact_subject'] ?? '')
+      const key = String(row['fact_key'] ?? '')
 
-      if (cat === 'graha_shadbala_total') {
+      if (cat === 'graha_shadbala_total' && key === 'rupa') {
         // fact_subject = 'SAT' | 'SUN' | 'MAR' etc.
         const code = L1_GRAHA_TO_CODE[subj]
         if (code) {
           graha_map[code] ??= { graha: code, shadbala_total: 2.5, dignity: null, house: null }
           graha_map[code].shadbala_total = Number(row['fact_value_num'] ?? 2.5)
         }
-      } else if (cat === 'graha_dignity_per_varga') {
+      } else if (cat === 'graha_dignity_per_varga' && key === 'dignity_state') {
         // fact_subject = 'D1_SAT' | 'D1_SUN' etc. — strip 'D1_' prefix
         const l1Key = subj.replace(/^D1_/, '')
         const code = L1_GRAHA_TO_CODE[l1Key]
