@@ -3,8 +3,8 @@
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
   "status": "PRODUCT_DELIVERY_SUCCESSOR_ACTIVE",
-  "observed_at": "2026-09-19T10:10:45+05:30",
-  "source_candidate": "7109b8e749c8e1b331fb87b4366d48c51b11e5aa",
+  "observed_at": "2026-09-19T11:07:13+05:30",
+  "source_candidate": "c62dfefebcef47cc8d318780cc143d87e57c7db8",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
     "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",
@@ -23,10 +23,10 @@
   "product_outcomes": [
     {"id":"fixed_5_plus_30_denominator","source_ready":"PASS_FROZEN","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"real_three_door_collector","source_ready":"PASS_SOURCE_VERIFIED","candidate_verified":"NOT_RUN_SUCCESSOR_REVISION","live_verified":"NOT_RUN_SUCCESSOR_REVISION"},
-    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_154_CONTRACTS_24_UNCOVERED_8_DARK","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_156_CONTRACTS_24_UNCOVERED_6_DARK","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"deep_reasoning_and_evidence_continuation","source_ready":"PASS_SOURCE_WIRING","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
-    {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TYPED_TEMPORAL_PATH_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
-    {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_BOUNDED_WINDOW_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TEMPORAL_AND_BUILD_FENCED_CONTRADICTION_COLLECTION_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_BOUNDED_WINDOW_AND_UNPAGINATED_CONTRADICTION_CLOSURE_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"candidate_original_5_plus_30_three_door_acceptance","source_ready":"HARNESS_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_APPLICABLE"},
     {"id":"protected_release","source_ready":"NOT_MERGED_NOT_DEPLOYED","candidate_verified":"NOT_RUN","live_verified":"NOT_DEPLOYED"},
     {"id":"live_original_5_plus_30_three_door_automated_acceptance","source_ready":"PROTOCOL_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"}

@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.23.0
+version: 0.24.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0097
-last_updated: 2026-09-19T10:24:23+05:30
+last_event: PA-E0098
+last_updated: 2026-09-19T11:07:13+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -41,6 +41,21 @@ layer state, queue or authority.
   deployment, and all three-door automated acceptance remain open. Draft PR #2682 is the active
   review surface. Historical stacked PR #2676 is closed as superseded; only its Sutravali
   micro-delta was retained after current-main reconciliation.
+
+- Second successor source packet: reviewed implementation head `3871c5bf41941ea96c9e67a8cc4584ede2fc8927`
+  and evidence-artifact commit `c62dfefebcef47cc8d318780cc143d87e57c7db8` admit
+  `query_classical_texts` through its exact global source query without claiming pagination
+  exhaustion, and admit `query_contradictions` through an exact chart-and-active-build query.
+  Contradictions are deterministically ordered, build-fenced, returned with generation provenance,
+  and accounted through the reviewed `content.contradictions` collection; capped discoveries and
+  anomalies remain supplemental and non-closure-bearing. `judgment_query` remains deliberately
+  dark. The regenerated snapshot remains 182 SCUs / 186 executable bindings and now has 156
+  availability contracts, 24 uncovered executable bindings, and 6 deliberate-dark dispositions.
+  Full platform verification passes 1,136 files / 12,309 tests, with 704 skipped and 2 todo;
+  TypeScript, both code-generation checks, targeted route baselines, and independent review pass.
+  This is source-ready evidence only: classical pagination exhaustion, judgment, the remaining
+  availability deficit, three-door candidate/live execution, protected release, and automated
+  product acceptance remain open.
 
 - Refreshed live boundary: `amjis-web` and `amjis-mcp` still serve
   `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected run `35419951080` skipped all deployment
