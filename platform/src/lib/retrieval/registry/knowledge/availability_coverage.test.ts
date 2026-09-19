@@ -283,7 +283,8 @@ describe('first-slice availability coverage', () => {
       requirements: [expect.objectContaining({ kind: 'source_query', contract_id: 'source-query:query-classical-texts:v1', scope: 'global' })],
     })])
     expect(scu.availability_dispositions ?? []).toEqual([])
-    expect(scu.bindings[0]).toMatchObject({ pagination: 'offset', pagination_verified: false })
+    expect(scu.bindings[0]?.pagination).toBe('offset')
+    expect(scu.bindings[0]?.pagination_verified).not.toBe(true)
 
     const overlay = await overlayFor([])
     expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({

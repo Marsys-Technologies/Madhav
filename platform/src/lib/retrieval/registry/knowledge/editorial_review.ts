@@ -7,7 +7,6 @@
 import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
-  SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
 
@@ -179,21 +178,6 @@ export function getDescriptorAvailabilityReview(name: string): DescriptorAvailab
 
 export function getDescriptorAvailabilityContractReview(name: string): DescriptorAvailabilityContractReview | undefined {
   return AVAILABILITY_CONTRACT_REVIEWS[name]
-}
-
-/**
- * Review only the binding details that cannot safely be inferred from a
- * descriptor schema.  In particular, an offset parameter is not evidence
- * that continuation is exhaustively safe across changing search modes.
- */
-const PAGINATION_DETAILS_REVIEWS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {
-  query_classical_texts: { pagination: 'offset' },
-}
-
-export function getDescriptorPaginationDetailsReview(
-  name: string,
-): SemanticCapabilityDeclaration['primary_binding_details'] | undefined {
-  return PAGINATION_DETAILS_REVIEWS[name]
 }
 
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {

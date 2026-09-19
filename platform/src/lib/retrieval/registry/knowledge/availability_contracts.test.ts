@@ -128,7 +128,7 @@ describe('binding availability contracts', () => {
     ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'global', 'platform/migrations/ws2_l0_texts.sql:42-65'],
     ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'chart', 'query_temporal_activation.ts:176-620'],
     ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts:151-352'],
-    ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:151-225'],
+    ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:156-269'],
   ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements[0]!
@@ -171,16 +171,18 @@ describe('binding availability contracts', () => {
     }
 
     expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available' })
-    for (const marker of ['FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
+    for (const marker of ["FROM build_runs", "state = 'completed'", 'JOIN active_build', 'FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
       expect(contradictions.sql).toContain(marker)
     }
 
     const classicalScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_classical_texts')!
     const contradictionScu = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_contradictions')!
     expect(classicalScu.availability_dispositions ?? []).toEqual([])
-    expect(classicalScu.bindings[0]).toMatchObject({ pagination: 'offset', pagination_verified: false, result_collection_verified: false })
+    expect(classicalScu.bindings[0]?.pagination).toBe('offset')
+    expect(classicalScu.bindings[0]?.pagination_verified).not.toBe(true)
     expect(contradictionScu.availability_dispositions ?? []).toEqual([])
     expect(contradictionScu.bindings[0]).toMatchObject({
+      pagination: 'none',
       result_collection_verified: true,
       pagination_contract: { result_collection_path: 'content.contradictions', deterministic_order: ['combined_salience DESC NULLS LAST', 'contradiction_id ASC'] },
     })

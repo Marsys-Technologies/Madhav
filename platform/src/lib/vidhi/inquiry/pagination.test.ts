@@ -104,4 +104,26 @@ describe('inquiry pagination receipts', () => {
     expect(deriveInquiryPaginationReceipt(binding({ pagination_verified: false }), { content: { rows: [1] } }, {}))
       .toEqual({ semantics: 'offset', exhausted: false, next: 'unproven' })
   })
+
+  it('treats the uncapped, deterministic contradiction collection as complete without promoting supplemental legs', () => {
+    const contradictions = generatedCapabilityKnowledge.scus
+      .find((scu) => scu.scu_id === 'scu.catalog.query_contradictions')!
+      .bindings.find((candidate) => candidate.binding_id === 'registry:marsys://tool/L2/query_contradictions') as SemanticCapabilityBinding
+    const raw = { content: { contradictions: [{ contradiction_id: 'c-1' }], discoveries: [{ discovery_id: 'd-1' }], anomalies: [{ anomaly_id: 'a-1' }] } }
+
+    expect(contradictions).toMatchObject({
+      pagination: 'none',
+      result_collection_verified: true,
+      pagination_contract: {
+        result_collection_path: 'content.contradictions',
+        deterministic_order: ['combined_salience DESC NULLS LAST', 'contradiction_id ASC'],
+      },
+    })
+    expect(extractInquirySemanticFindings(contradictions, raw)).toEqual({
+      mode: 'reviewed_collection',
+      result_collection_path: 'content.contradictions',
+      rows: [{ contradiction_id: 'c-1' }],
+    })
+    expect(deriveInquiryPaginationReceipt(contradictions, raw, {})).toEqual({ semantics: 'none', exhausted: true, next: null })
+  })
 })

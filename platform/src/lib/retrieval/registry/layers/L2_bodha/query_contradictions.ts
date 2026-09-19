@@ -29,6 +29,11 @@ function normalizeMinimumNovelty(value: unknown): number {
   return Math.min(Math.max(parsed, 0), 1)
 }
 
+function rowsMatchSelectedBuild(rows: readonly unknown[], buildId: string): boolean {
+  return rows.every((row) => typeof row === 'object' && row !== null
+    && !Array.isArray(row) && (row as Record<string, unknown>)['build_id'] === buildId)
+}
+
 export const queryContradictionsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_contradictions',
   type:  'tool',
@@ -69,15 +74,15 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     horizons: ['natal', 'current'],
     scope: 'chart',
     inputs: ['chart_id', 'ayanamsha_id?', 'include_discoveries?', 'include_anomalies?', 'top_k_discoveries?', 'min_novelty?'],
-    outputs: ['contradictions', 'contradiction_count', 'signal_id_refs'],
+    outputs: ['contradictions', 'contradiction_count', 'signal_id_refs', 'build_id', 'generation_provenance'],
     primary_binding_uri: 'marsys://tool/L2/query_contradictions',
     primary_binding_details: {
-      pagination: 'bounded_complete',
+      pagination: 'none',
       pagination_contract: {
         result_collection_path: 'content.contradictions',
         deterministic_order: ['combined_salience DESC NULLS LAST', 'contradiction_id ASC'],
       },
-      route_evidence: 'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:151-225',
+      route_evidence: 'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269',
     },
     provenance_requirements: ['chart_id', 'build_id', 'formula_or_writer_version'],
     freshness_policy: 'Requires a source query against the selected chart and active completed build context.',
@@ -148,24 +153,43 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
 
     void _ctx
     try {
+      const activeBuildResult = await query<{ build_id: string }>(`
+        SELECT id::text AS build_id
+          FROM build_runs
+         WHERE chart_id = $1::uuid AND state = 'completed'
+         ORDER BY ended_at DESC NULLS LAST, id DESC
+         LIMIT 1
+      `, [chart_id])
+      const build_id = activeBuildResult.rows[0]?.build_id
+      if (!build_id) {
+        return {
+          content: {
+            code: 'active_completed_build_unavailable',
+            error: 'No active completed build is available for this chart; contradiction evidence cannot be selected safely.',
+            chart_id,
+          },
+          is_error: true,
+        }
+      }
+
       const contraSql = `
         SELECT contradiction_id, signal_a_id, signal_b_id,
                tension_class, domains_affected_array, combined_salience,
-               resolution_hint_jsonb, ayanamsha_id
+               resolution_hint_jsonb, ayanamsha_id, build_id
         FROM bodha_contradictions
-        WHERE chart_id = $1 AND ayanamsha_id = $2
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
         ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC
       `
 
       const promises: Array<Promise<{ rows: unknown[] }>> = [
-        query<Record<string, unknown>>(contraSql, [chart_id, ayanamsha_id]),
+        query<Record<string, unknown>>(contraSql, [chart_id, ayanamsha_id, build_id]),
       ]
 
       // Discoveries
       if (include_discoveries) {
-        const discoveryFilters = ['chart_id = $1', 'ayanamsha_id = $2']
-        const discParams: unknown[] = [chart_id, ayanamsha_id]
-        let dp = 3
+        const discoveryFilters = ['chart_id = $1', 'ayanamsha_id = $2', 'build_id = $3::uuid']
+        const discParams: unknown[] = [chart_id, ayanamsha_id, build_id]
+        let dp = 4
         if (min_novelty > 0) {
           discoveryFilters.push(`non_obviousness_score >= $${dp++}`)
           discParams.push(min_novelty)
@@ -175,7 +199,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
           SELECT discovery_id, discovery_class, discovery_subsystem,
                  affected_domains_array, hypothesis_text,
                  non_obviousness_score, consequence_score,
-                 composite_discovery_rank, constituent_refs_jsonb, computed_at
+                 composite_discovery_rank, constituent_refs_jsonb, computed_at, build_id
           FROM bodha_discoveries
           WHERE ${discoveryFilters.join(' AND ')}
           ORDER BY composite_discovery_rank DESC NULLS LAST
@@ -190,17 +214,33 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
           SELECT anomaly_id, anomaly_type, discovery_subsystem,
                  subject_ref_jsonb, anomaly_metric, anomaly_value,
                  chart_baseline_value, sigma_from_baseline,
-                 meaningfulness_gate_result, computed_at
+                 meaningfulness_gate_result, computed_at, build_id
           FROM bodha_anomalies
-          WHERE chart_id = $1 AND ayanamsha_id = $2
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
           ORDER BY sigma_from_baseline DESC NULLS LAST, computed_at DESC
           LIMIT 100
         `
-        promises.push(query<Record<string, unknown>>(anomSql, [chart_id, ayanamsha_id]))
+        promises.push(query<Record<string, unknown>>(anomSql, [chart_id, ayanamsha_id, build_id]))
       }
 
       const results = await Promise.all(promises)
       const contraRows = results[0].rows as Array<{ signal_a_id?: string; signal_b_id?: string }>
+      const selectedRows = [
+        contraRows,
+        ...(include_discoveries ? [results[1]?.rows ?? []] : []),
+        ...(include_anomalies ? [results[include_discoveries ? 2 : 1]?.rows ?? []] : []),
+      ]
+      if (!selectedRows.every((rows) => rowsMatchSelectedBuild(rows, build_id))) {
+        return {
+          content: {
+            code: 'active_build_provenance_mismatch',
+            error: 'A contradiction source row did not match the selected active completed build.',
+            chart_id,
+            build_id,
+          },
+          is_error: true,
+        }
+      }
 
       // Collect signal refs from contradiction pairs
       const signalRefs = new Set<string>()
@@ -212,6 +252,8 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          build_id,
+          generation_provenance: { build_id, relation_scope: 'selected_active_completed_build' },
           ayanamsha_id,
           contradictions:         contraRows,
           contradiction_count:    contraRows.length,

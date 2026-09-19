@@ -24,7 +24,6 @@ import {
   getDescriptorAvailabilityContractReview,
   getDescriptorAvailabilityReview,
   getDescriptorEditorialReview,
-  getDescriptorPaginationDetailsReview,
   getReviewedDescriptorNames,
 } from './editorial_review'
 import { getProducerSemanticReview } from './producer_editorial_review'
@@ -185,7 +184,6 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
   const availabilityContractReview = getDescriptorAvailabilityContractReview(cap.name)
   const sourceQueryAvailabilityReview = getDescriptorSourceQueryAvailabilityReview(cap.name)
   const availabilityReview = getDescriptorAvailabilityReview(cap.name)
-  const paginationDetailsReview = getDescriptorPaginationDetailsReview(cap.name)
   const sourceDescription = cap.description.trim().replace(/[.。]+$/, '')
   return {
     scu_id: `scu.catalog.${slug(cap.name)}`,
@@ -201,7 +199,6 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
     inputs: Object.keys(inputParameters.properties).sort(),
     outputs: semanticOutputs(cap, review.outputs),
     primary_binding_uri: cap.uri,
-    ...(paginationDetailsReview ? { primary_binding_details: paginationDetailsReview } : {}),
     edges: (cap.drill_children ?? []).map((child) => ({
       relation: 'enables' as const,
       target_scu_id: `scu.catalog.${slug(child.split('/').at(-1) ?? child)}`,

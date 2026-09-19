@@ -69,7 +69,7 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
       expect(scuIds.has(edge.to_scu_id)).toBe(true)
       expect(edge.source_ref?.length).toBeGreaterThan(0)
     }
-    expect(sourceRefsChecked).toBe(356)
+    expect(sourceRefsChecked).toBe(355)
   })
 
   it('preserves the declared four-item historical manual sample in every layer', () => {

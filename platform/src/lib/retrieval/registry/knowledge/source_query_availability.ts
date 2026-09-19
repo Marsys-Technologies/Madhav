@@ -444,36 +444,42 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'query_contradictions',
     capability_uri: 'marsys://tool/L2/query_contradictions',
     scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
-    sql: `WITH contradictions AS (
+    sql: `WITH active_build AS (
+            SELECT id AS build_id
+              FROM build_runs
+             WHERE chart_id = $1::uuid AND state = 'completed'
+             ORDER BY ended_at DESC NULLS LAST, id DESC
+             LIMIT 0
+          ), contradictions AS (
             SELECT contradiction_id, signal_a_id, signal_b_id, tension_class,
-                   domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id
-              FROM bodha_contradictions
-             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+                   domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id, c.build_id
+              FROM bodha_contradictions c JOIN active_build b ON c.build_id = b.build_id
+             WHERE c.chart_id = $1::uuid AND c.ayanamsha_id = NULLIF(NULL::text, '')
              ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC
              LIMIT 0
           ), discoveries AS (
             SELECT discovery_id, discovery_class, discovery_subsystem, affected_domains_array,
                    hypothesis_text, non_obviousness_score, consequence_score,
-                   composite_discovery_rank, constituent_refs_jsonb, computed_at
-              FROM bodha_discoveries
-             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+                   composite_discovery_rank, constituent_refs_jsonb, computed_at, d.build_id
+              FROM bodha_discoveries d JOIN active_build b ON d.build_id = b.build_id
+             WHERE d.chart_id = $1::uuid AND d.ayanamsha_id = NULLIF(NULL::text, '')
                AND (0::numeric <= 0 OR non_obviousness_score >= 0::numeric)
              ORDER BY composite_discovery_rank DESC NULLS LAST
              LIMIT 0
           ), anomalies AS (
             SELECT anomaly_id, anomaly_type, discovery_subsystem, subject_ref_jsonb,
                    anomaly_metric, anomaly_value, chart_baseline_value, sigma_from_baseline,
-                   meaningfulness_gate_result, computed_at
-              FROM bodha_anomalies
-             WHERE chart_id = $1::uuid AND ayanamsha_id = NULLIF(NULL::text, '')
+                   meaningfulness_gate_result, computed_at, a.build_id
+              FROM bodha_anomalies a JOIN active_build b ON a.build_id = b.build_id
+             WHERE a.chart_id = $1::uuid AND a.ayanamsha_id = NULLIF(NULL::text, '')
              ORDER BY sigma_from_baseline DESC NULLS LAST, computed_at DESC
              LIMIT 0
           ) SELECT (SELECT COUNT(*) FROM contradictions) AS contradictions,
                    (SELECT COUNT(*) FROM discoveries) AS discoveries,
                    (SELECT COUNT(*) FROM anomalies) AS anomalies`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:151-225',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-86',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-130',
     ],
   },
   {
