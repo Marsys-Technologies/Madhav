@@ -2636,6 +2636,35 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181'],
   },
+  {
+    contract_id: 'source-query:query-quality-scorecard:v1',
+    descriptor_name: 'query_quality_scorecard',
+    capability_uri: 'marsys://tool/L2/query_quality_scorecard',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH scorecard_probe AS (
+            SELECT scorecard_id, chart_id, build_id, msr_signal_count, cdlm_cell_count,
+                   cgm_node_count, cgm_edge_count, two_pass_verified_pct,
+                   documented_approximation_pct, msr_citation_ref_coverage_pct,
+                   trap1_authority_inversion_count, trap2_narration_leak_count,
+                   unresolved_constituent_facts_count, scored_at
+              FROM synthesis_quality_scorecard WHERE chart_id = $1::uuid
+             ORDER BY scored_at DESC LIMIT 0
+          ), defect001_probe AS (
+            WITH refs AS (
+              SELECT unnest(m.constituent_facts_array) AS fact_id
+                FROM bodha_msr_signals m
+               WHERE m.chart_id = $1::uuid AND m.constituent_facts_array IS NOT NULL
+                 AND array_length(m.constituent_facts_array, 1) > 0
+            ) SELECT count(*)::text AS total_refs,
+                     count(*) FILTER (WHERE cf.fact_id IS NULL)::text AS orphan_refs
+                FROM refs LEFT JOIN chart_facts cf ON cf.chart_id = $1::uuid AND cf.fact_id = refs.fact_id
+          ) SELECT scorecard_probe.*, defect001_probe.total_refs, defect001_probe.orphan_refs
+              FROM scorecard_probe CROSS JOIN defect001_probe`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97',
+      'platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
