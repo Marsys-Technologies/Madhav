@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-19T00:43:31.000Z",
-  "content_hash": "sha256:757e765499f315a4b77e4b4b05995a46e8f05276b4a16d61172ba2da0e8f5b27",
+  "generated_at": "2026-09-19T00:44:33.000Z",
+  "content_hash": "sha256:40f71dff1df3ae4740347ea7ed100bcb4fc7bdc9505c0e41b40f6c851e40044e",
   "source_catalog_fingerprint": "sha256:8561b1ce2af0af2342673557baf907b833ca3f82e924a3e4cbfe7a23ff014986",
-  "semantic_review_fingerprint": "sha256:df35fc22d03f031a104dc40ce4dcb5d2abb2f77bd298c68bc5362d6466a76c8c",
+  "semantic_review_fingerprint": "sha256:b4ea629cd83e63e6e626142d402b699e13dba9dc6887a092f99b224de565efa7",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -15811,6 +15811,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L3/query_convergence_windows",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-convergence-windows:v1",
+              "capability_uri": "marsys://tool/L3/query_convergence_windows",
+              "contract_sha256": "sha256:37bb2a6069895adfebc3c151ba5b2bc24cda5080ca60f8a2e93877adf5723315",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

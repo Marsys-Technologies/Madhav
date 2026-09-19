@@ -2857,6 +2857,36 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:65-120'],
   },
+  {
+    contract_id: 'source-query:query-convergence-windows:v1',
+    descriptor_name: 'query_convergence_windows',
+    capability_uri: 'marsys://tool/L3/query_convergence_windows',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `WITH handler_page AS (
+            SELECT convergence_id, signal_id,
+                   to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                   to_char(window_end, 'YYYY-MM-DD') AS window_end,
+                   to_char(peak_date, 'YYYY-MM-DD') AS peak_date, mode, convergence_score,
+                   orb_strength, rarity_years, confidence_score, confidence_label,
+                   independent_current_count, is_off_dasha_discovery, horizon_tier, domain,
+                   constituent_factors, source_citation
+              FROM kala_convergence
+             WHERE chart_id = $1::uuid
+               AND (NULL::date IS NULL OR window_end >= NULL::date)
+               AND (NULL::date IS NULL OR window_start <= NULL::date)
+               AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+             ORDER BY convergence_score DESC NULLS LAST LIMIT 0
+          ), handler_count AS (
+            SELECT COUNT(*)::text AS total FROM kala_convergence
+             WHERE chart_id = $1::uuid
+               AND (NULL::date IS NULL OR window_end >= NULL::date)
+               AND (NULL::date IS NULL OR window_start <= NULL::date)
+               AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
+               AND (NULL::text IS NULL OR domain = NULL::text)
+          ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
