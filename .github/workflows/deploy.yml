@@ -187,6 +187,7 @@ jobs:
       actions: read # read the CI workflow's conclusion for this SHA
       id-token: write # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
     outputs:
+      web: ${{ steps.diff.outputs.web }}
       sidecar: ${{ steps.diff.outputs.sidecar }}
       mcp: ${{ steps.diff.outputs.mcp }}
       pipeline: ${{ steps.diff.outputs.pipeline }}
@@ -295,6 +296,7 @@ jobs:
           # commands were dry-run verified live against this project's
           # real Cloud Run surfaces before this landed.
 
+          WEB_PATTERN='^(platform/|00_ARCHITECTURE/CAPABILITY_MANIFEST\.json$|00_ARCHITECTURE/manifest_overrides\.yaml$|00_ARCHITECTURE/PLANNER_PROMPT_v.*\.md$|01_FACTS_LAYER/|025_HOLISTIC_SYNTHESIS/|035_DISCOVERY_LAYER/)'
           SIDECAR_PATTERN='^platform/python-sidecar/'
           MCP_PATTERN='^platform-mcp/'
           PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'
@@ -302,7 +304,7 @@ jobs:
           deployed_sha() {
             # Prints the commit production reports for one component; empty on any failure.
             case "$1" in
-              sidecar|mcp)
+              web|sidecar|mcp)
                 local rev
                 rev=$(gcloud run services describe "amjis-$1" --region "$GCP_REGION" \
                   --format='value(status.latestReadyRevisionName)' 2>/dev/null) || return 0
@@ -344,18 +346,20 @@ jobs:
             fi
           }
 
+          web=$(decide web "$WEB_PATTERN")
           sidecar=$(decide sidecar "$SIDECAR_PATTERN")
           mcp=$(decide mcp "$MCP_PATTERN")
           pipeline=$(decide pipeline "$PIPELINE_PATTERN")
 
           {
+            echo "web=$web"
             echo "sidecar=$sidecar"
             echo "mcp=$mcp"
             echo "pipeline=$pipeline"
           } >> "$GITHUB_OUTPUT"
 
           echo "=== Outputs ==="
-          echo "sidecar=$sidecar  mcp=$mcp  pipeline=$pipeline"
+          echo "web=$web  sidecar=$sidecar  mcp=$mcp  pipeline=$pipeline"
   # ── /Path-change detection ───────────────────────────────────────────────────
 
   # ── Schema barrier (PARIŚEṢA-V4 / RATE-07, 2026-08-21) ──────────────────────
@@ -1955,3 +1959,44 @@ jobs:
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
   # ── /Orchestrator Convergence Phase 1 ──
+
+  # A skipped prerequisite causes all dependent mutation jobs to skip, and
+  # GitHub otherwise treats that graph as a successful workflow. This terminal
+  # job is the earned-signal detector: when production's own revision says a
+  # deployable component changed, the corresponding mutation must have actually
+  # succeeded. It intentionally does not alter the migration barrier or any
+  # protected-owner gate.
+  deployment-outcome:
+    name: Require earned deployment outcome
+    needs: [changes, migrate, deploy-web, deploy-sidecar, deploy-mcp, deploy-pipeline-job]
+    if: ${{ always() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout detector
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Require every source-implied mutation to succeed
+        env:
+          OUTCOME_EVENT_NAME: ${{ github.event_name }}
+          OUTCOME_SHA: ${{ env.DEPLOY_SHA }}
+          OUTCOME_CHANGES_RESULT: ${{ needs.changes.result }}
+          OUTCOME_FORCE_ALL: ${{ needs.changes.outputs.force_all }}
+          OUTCOME_WEB_CHANGED: ${{ needs.changes.outputs.web }}
+          OUTCOME_SIDECAR_CHANGED: ${{ needs.changes.outputs.sidecar }}
+          OUTCOME_MCP_CHANGED: ${{ needs.changes.outputs.mcp }}
+          OUTCOME_PIPELINE_CHANGED: ${{ needs.changes.outputs.pipeline }}
+          OUTCOME_MIGRATE_RESULT: ${{ needs.migrate.result }}
+          OUTCOME_WEB_RESULT: ${{ needs.deploy-web.result }}
+          OUTCOME_SIDECAR_RESULT: ${{ needs.deploy-sidecar.result }}
+          OUTCOME_MCP_RESULT: ${{ needs.deploy-mcp.result }}
+          OUTCOME_PIPELINE_RESULT: ${{ needs.deploy-pipeline-job.result }}
+        run: cd platform && npx --yes tsx scripts/ci/deployment_outcome_gate.ts

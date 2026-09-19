@@ -191,7 +191,7 @@ describe('deploy.yml wiring', () => {
 
   it('the changes job still exposes the per-service path outputs plus force_all', () => {
     expect(Object.keys(yml.jobs.changes?.outputs ?? {}).sort()).toEqual(
-      ['force_all', 'mcp', 'pipeline', 'sidecar'].sort()
+      ['force_all', 'mcp', 'pipeline', 'sidecar', 'web'].sort()
     )
   })
 })

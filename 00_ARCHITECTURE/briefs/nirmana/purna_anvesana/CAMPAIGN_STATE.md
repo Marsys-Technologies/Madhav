@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.27.0
+version: 0.28.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0102
-last_updated: 2026-09-19T14:03:39+05:30
+last_event: PA-E0103
+last_updated: 2026-09-19T14:18:53+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,18 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- Production-delivery priority redirect: the feature frontier is quiesced at pushed commit
+  `34e3abf6b10039bf35677a8cb8995cc2760f4fd9`. Read-only refresh confirms deploy run
+  `35419951080` concluded success while bootstrap, routine migration, web, MCP, and pipeline-image
+  mutation jobs all skipped. Production MCP still serves
+  `93a3a5eb8d8552656efc6582d92dfbdf7555b0e1`; protected `origin/main` is 65 commits ahead, with
+  321 runtime-source files changed (+31,821/-6,564). Live database status through the existing
+  authorized route is `data_plane=marked`, `nirmana=marked`, `purna=rearm_required`; migration
+  1040 is absent and the one-shot bootstrap role is absent. The deploy run's protected isolation
+  inspection passed as `strict`. The existing heartbeat was updated in place. Until the earned
+  signal is repaired, the one-shot Pūrṇa lifecycle completes, and actual ready revisions plus
+  environment SHAs are verified, wealth/capability Batch 5 remains paused.
 
 - Successor execution: task `01a0b7d8-9a90-74f3-aab9-80014919f8b2` is the sole active owner on
   `codex/purna-product-completion-v3`, created from verified protected
