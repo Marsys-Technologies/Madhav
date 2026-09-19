@@ -3540,6 +3540,25 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98'],
   },
+  {
+    contract_id: 'source-query:query-prospective-ledger:v1',
+    descriptor_name: 'query_prospective_ledger',
+    capability_uri: 'marsys://tool/L4/query_prospective_ledger',
+    scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
+    sql: `SELECT p.prediction_id, p.chart_id, p.claim, p.event_class, p.claim_shape,
+                 p.observation_window::text AS observation_window, p.milestone_set,
+                 p.model, p.formula_version, p.confidence, p.falsifier,
+                 p.as_of, p.generator_class, p.configuration_signature,
+                 p.lifecycle_status, p.matched_event_id, p.matched_at, p.match_note,
+                 p.filed_by, p.filing_method, p.source_citation, p.created_at,
+                 o.domain AS ontology_domain
+            FROM brahma_prospective_ledger p
+            LEFT JOIN brahma_event_ontology o ON o.event_class_id = p.event_class
+           WHERE p.chart_id = $1::uuid AND p.lifecycle_status = NULLIF(NULL::text, '')
+           ORDER BY p.as_of DESC
+           LIMIT 0`,
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226'],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
