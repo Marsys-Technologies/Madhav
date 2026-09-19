@@ -10,11 +10,19 @@ function strings(value: unknown): string[] { return Array.isArray(value) ? value
 /**
  * `prashna_ask` accepts the classifier vocabulary, while the immutable Vidhi
  * corpus carries compiler-family intents such as `wealth_deepdive`. The
- * domain/depth/horizon evidence remains unchanged; only this known namespace
- * boundary is adapted at the managed-engine door.
+ * The managed route retains the same domain, entitlement and intervention
+ * semantics, but its accepted planner vocabulary is intentionally narrower
+ * than the lifecycle corpus. Map only those enumerated aliases at this edge.
  */
 function managedScopeTuple(scope: Record<string, unknown>): Record<string, unknown> {
-  return { ...scope, intent: 'domain_assessment' }
+  return {
+    ...scope,
+    intent: 'domain_assessment',
+    width: scope.width === 'panoramic' ? 'broad' : scope.width,
+    depth: scope.depth === 'deepdive' ? 'deep' : scope.depth,
+    horizon: scope.horizon === 'multi_year' ? 'far' : scope.horizon,
+    intervention: scope.intervention === false ? 'none' : scope.intervention,
+  }
 }
 
 function answerFrom(value: unknown): string {

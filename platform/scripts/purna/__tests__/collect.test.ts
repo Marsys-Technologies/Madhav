@@ -67,11 +67,11 @@ describe('Purna real three-door collector', () => {
   })
   it('projects the immutable corpus scope into the managed engine vocabulary', async () => {
     let askArgs: Record<string, unknown> | undefined
-    const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async (name, args) => {
+    const row = await collectManagedCase({ ...base, test: { ...test, scope_tuple: { intent: 'wealth_deepdive', domains: ['wealth'], width: 'panoramic', depth: 'deepdive', horizon: 'multi_year', intervention: false, entitlement: 'native' } }, maxPolls: 1, wait: async () => {}, invoker: { call: async (name, args) => {
       if (name === 'prashna_ask') { askArgs = args; return { job_id: 'job-1' } }
       return { status: 'failed' }
     } } })
-    expect((askArgs?.scope_tuple as Record<string, unknown>).intent).toBe('domain_assessment')
+    expect(askArgs?.scope_tuple).toEqual({ intent: 'domain_assessment', domains: ['wealth'], width: 'broad', depth: 'deep', horizon: 'far', intervention: 'none', entitlement: 'native' })
     expect(row.networkCallCount).toBe(2)
   })
   it('keeps an in-band managed tool error distinct from a missing job handle', async () => {
