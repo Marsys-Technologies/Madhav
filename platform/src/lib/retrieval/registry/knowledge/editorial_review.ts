@@ -72,16 +72,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],
   },
-  query_domain_reading: {
-    reason: 'The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:201',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:778',
-      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
-    ],
-  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [

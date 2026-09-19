@@ -26,6 +26,7 @@ const FIRST_SLICE = {
     'scu.yoga.firing_and_cancellation',
     'scu.catalog.query_classical_texts',
     'scu.catalog.query_contradictions',
+    'scu.catalog.query_domain_reading',
     'scu.catalog.judgment_query',
   ],
   deliberately_dark: [
@@ -144,7 +145,7 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
 describe('first-slice availability coverage', () => {
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
-    expect(all).toHaveLength(13)
+    expect(all).toHaveLength(14)
     expect(new Set(all).size).toBe(all.length)
 
     for (const scuId of FIRST_SLICE.concrete) {
@@ -196,31 +197,53 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
-  it('keeps query_domain_reading machine-readably dark rather than inferring a composed route from adjacent producer receipts', async () => {
+  it('admits query_domain_reading only through its complete active-build-context source-query contract', async () => {
     const scu = findScu('scu.catalog.query_domain_reading')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
       binding_id: 'registry:marsys://tool/L2/query_domain_reading',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193',
-        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
-      ]),
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:query-domain-reading:v1',
+        scope: 'chart',
+      })],
     })])
+    expect(scu.availability_dispositions ?? []).toEqual([])
 
-    // These are exact reviewed output-spec hashes for the three producers the
-    // handler reads. They are deliberately insufficient to prove the composed
-    // route, which also reads runtime L1 context and derives DEFECT-001 live.
+    // Adjacent receipts establish the selected completed-build fixture only.
+    // The zero-row-safe probe itself must execute before this composed L2 route
+    // is available; it validates its direct Bodha, L1 and DEFECT-001 sources.
     const overlay = await overlayFor([
       adjacentProducerReceipt('bo_drishti', 'fd76f79e2f1b6a6659ef5d7bad4f5a422515fee85ab9245ac0e52fc58f9b81d2'),
       adjacentProducerReceipt('bo_sangati', 'f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc'),
       adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
     ])
     expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'available',
+      available_binding_ids: ['registry:marsys://tool/L2/query_domain_reading'],
+      gaps: [],
+    })
+
+    const noActiveBuild = await overlayFor([])
+    expect(noActiveBuild.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+      gaps: [expect.stringContaining('requires an active completed build context')],
+    })
+
+    const sourceFailed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('defect001_freshness') && sql.includes('l1_context_dashas')) {
+        throw new Error('source relation unavailable')
+      }
+      return { rows: [
+        adjacentProducerReceipt('bo_drishti', 'fd76f79e2f1b6a6659ef5d7bad4f5a422515fee85ab9245ac0e52fc58f9b81d2'),
+        adjacentProducerReceipt('bo_sangati', 'f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc'),
+        adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
+      ] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(sourceFailed.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('source-query:query-domain-reading:v1 could not execute its authenticated source query')],
     })
   })
 
@@ -1240,6 +1263,19 @@ describe('first-slice availability coverage', () => {
       }, new Date('2026-09-17T00:05:00.000Z'))
       expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
         state: 'dark', available_binding_ids: [],
+      })
+      return
+    }
+    if (scuId === 'scu.catalog.query_domain_reading') {
+      const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (sql.includes('defect001_freshness') && sql.includes('l1_context_dashas')) {
+          throw new Error('domain-reading source unavailable')
+        }
+        return { rows: [transitProbeAnchor()] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+      expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
       })
       return
     }

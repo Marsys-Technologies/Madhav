@@ -133,6 +133,7 @@ describe('binding availability contracts', () => {
     ['scu.catalog.resolve_entity', 'source-query:resolve-entity:v1', 'global', 'platform/migrations/ws2_l0_ontology.sql:15-37'],
     ['scu.catalog.read_chapter', 'source-query:read-chapter:v1', 'global', 'platform/migrations/ws2_l0_texts.sql:42-65'],
     ['scu.kala.temporal_activation', 'source-query:query-temporal-activation:v1', 'chart', 'query_temporal_activation.ts:176-620'],
+    ['scu.catalog.query_domain_reading', 'source-query:query-domain-reading:v1', 'chart', 'query_domain_reading.ts:174-533'],
     ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts#receiptBoundarySql'],
     ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:156-269'],
   ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
@@ -165,6 +166,21 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain(relationMarker)
     expect(contract.sql).toContain(orderMarker)
     expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it('pins the complete direct domain-reading source surface without promoting a failed query', async () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-domain-reading:v1')!
+    expect(contract).toMatchObject({
+      capability_uri: 'marsys://tool/L2/query_domain_reading',
+      parameter_binding: 'chart_with_active_build_context',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('FROM bodha_question_lenses')
+    expect(contract.sql).toContain('FROM bodha_cdlm_cells')
+    expect(contract.sql).toContain('FROM bodha_msr_signals')
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-a', async () => {
+      throw new Error('source unavailable')
+    })).resolves.toEqual(['source-query:query-domain-reading:v1 could not execute its authenticated source query.'])
   })
 
   it('requires a current fresh proven bg_texts receipt for classical search while preserving contradiction closure', () => {
@@ -1300,7 +1316,7 @@ describe('binding availability contracts', () => {
 
     const missingLegReport = inspectCapabilityKnowledge(catalog, withContracts([{
       binding_id: knownBindingId,
-      requirements: [{ ...derived, required_binding_ids: ['registry:marsys://tool/L2/query_domain_reading'] }],
+      requirements: [{ ...derived, required_binding_ids: ['registry:marsys://tool/L1/get_strength'] }],
     }]))
     expect(missingLegReport.findings).toContainEqual(expect.objectContaining({
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',

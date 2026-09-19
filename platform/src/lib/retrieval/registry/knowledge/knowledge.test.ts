@@ -175,6 +175,14 @@ describe('planner capability knowledge', () => {
         scope: 'chart',
       })],
     }])
+    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_domain_reading')?.availability_contracts).toEqual([{
+      binding_id: 'registry:marsys://tool/L2/query_domain_reading',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:query-domain-reading:v1',
+        scope: 'chart',
+      })],
+    }])
   })
 
   it('replaces every descriptor-derived stub with a source-linked editorial unit', () => {
