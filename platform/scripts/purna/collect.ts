@@ -6,9 +6,9 @@ import { mintFreshProbeSessionCookie } from '../probe/session_auth'
 import { collectManagedCase, collectPortalCase, collectRawCase } from './channel_clients'
 import { synthesizeRawLifecycleEvidence } from './raw_external_synthesis'
 import { casesForSuite, validateProtocol, type AcceptanceCaseInput, type AcceptanceSuite } from './acceptance_cases'
-import { assertLiveEvidence, createCollectionArtifact, type AcceptanceCase, type CollectedCase } from './collection_types'
+import { assertLiveEvidence, createCollectionArtifact, type AcceptanceCase, type CollectedCase, type DoorExpectedRevisions } from './collection_types'
 
-export interface Config { schema_version: 'purna-collection-config/v1'; environment: 'candidate' | 'live'; expected_revision: string; chart_id: string; portal_url: string; mcp_url: string; authorization_approval_id: string; max_polls?: number; max_actions?: number; portal_timeout_ms?: number; mcp_timeout_ms?: number }
+export interface Config { schema_version: 'purna-collection-config/v1'; environment: 'candidate' | 'live'; expected_revision: string; door_expected_revisions: DoorExpectedRevisions; chart_id: string; portal_url: string; mcp_url: string; authorization_approval_id: string; max_polls?: number; max_actions?: number; portal_timeout_ms?: number; mcp_timeout_ms?: number }
 class McpRequestDeadlineError extends Error { constructor() { super('PURNA_COLLECTION_MCP_REQUEST_DEADLINE') } }
 export async function withMcpDeadline<T>(operation: (signal: AbortSignal) => Promise<T>, timeoutMs: number): Promise<T> {
   const abort = new AbortController()
@@ -28,16 +28,22 @@ function isSafeHttpsUrl(value: unknown): value is string {
     return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
   } catch { return false }
 }
+function doorExpectedRevisions(value: unknown): value is DoorExpectedRevisions {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    && Object.keys(value).length === 3
+    && (['portal', 'managed_mcp', 'raw_mcp'] as const).every((door) => typeof (value as Record<string, unknown>)[door] === 'string' && ((value as Record<string, unknown>)[door] as string).length > 0)
+}
 export function parseConfig(value: unknown): Config {
   const data = object(value)
   const allowed = new Set([
-    'schema_version', 'environment', 'expected_revision', 'chart_id', 'portal_url', 'mcp_url',
+    'schema_version', 'environment', 'expected_revision', 'door_expected_revisions', 'chart_id', 'portal_url', 'mcp_url',
     'authorization_approval_id', 'max_polls', 'max_actions', 'portal_timeout_ms', 'mcp_timeout_ms',
   ])
   if (Object.keys(data).some((key) => !allowed.has(key))
     || data.schema_version !== 'purna-collection-config/v1'
     || !['candidate', 'live'].includes(String(data.environment))
     || ![data.expected_revision, data.chart_id, data.authorization_approval_id].every((item) => typeof item === 'string' && item.length > 0)
+    || !doorExpectedRevisions(data.door_expected_revisions)
     || !isSafeHttpsUrl(data.portal_url)
     || !isSafeHttpsUrl(data.mcp_url)) {
     throw new Error('PURNA_COLLECTION_CONFIG_INVALID')
@@ -90,9 +96,9 @@ export async function collect(config: Config, cases: readonly AcceptanceCase[], 
   } catch (error) { sessionDiagnostic = error instanceof McpRequestDeadlineError ? 'PORTAL_SESSION_MINT_DEADLINE' : 'PORTAL_SESSION_MINT_FAILED' }
   const rows: CollectedCase[] = []
   for (const test of cases) {
-    rows.push(await collectPortalCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie, sessionDiagnostic, timeoutMs: config.portal_timeout_ms }))
-    rows.push(await collectManagedCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxPolls: config.max_polls ?? 30, wait: () => new Promise((done) => setTimeout(done, 1000)) }))
-    rows.push(await collectRawCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxActions: config.max_actions ?? 64, synthesize: synthesizeRawLifecycleEvidence }))
+    rows.push(await collectPortalCase({ test, expectedRevision: config.door_expected_revisions.portal, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie, sessionDiagnostic, timeoutMs: config.portal_timeout_ms }))
+    rows.push(await collectManagedCase({ test, expectedRevision: config.door_expected_revisions.managed_mcp, source: config.environment, chartId: config.chart_id, invoker, maxPolls: config.max_polls ?? 30, wait: () => new Promise((done) => setTimeout(done, 1000)) }))
+    rows.push(await collectRawCase({ test, expectedRevision: config.door_expected_revisions.raw_mcp, source: config.environment, chartId: config.chart_id, invoker, maxActions: config.max_actions ?? 64, synthesize: synthesizeRawLifecycleEvidence }))
   }
   return rows
 }
@@ -110,6 +116,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     suite: suite as AcceptanceSuite,
     environment: config.environment,
     expectedRevision: config.expected_revision,
+    expectedDoorRevisions: config.door_expected_revisions,
     authorizationApprovalId: config.authorization_approval_id,
     target: {
       chart_id: config.chart_id,
