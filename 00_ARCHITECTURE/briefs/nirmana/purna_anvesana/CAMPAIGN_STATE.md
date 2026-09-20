@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0135
-last_updated: 2026-09-20T18:18:00+05:30
+last_event: PA-E0136
+last_updated: 2026-09-20T18:30:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -891,3 +891,16 @@ including unresolved historical import, authorization-mock and unrelated respons
 not a protected required check and is not represented as green. Exact counts and qualifications are
 in `SOURCE_VERIFICATION_EVIDENCE_v1.json`. Exact-head protected CI and independent review remain
 mandatory before G3 can close.
+
+## PRODUCT-M2 large-N composite boundary — 2026-09-20
+
+`compose_large_n` was reconciled against its actual `RegistrySurfaceGateway`: it invokes
+`query_chart_gestalt`, `query_domain_reading`, `query_cgm_paths`, and `query_contradictions`.
+The first three source-query legs other than orientation are individually reviewed, but the
+orientation handler also invokes `buildTailWatch`; no exact handler-level availability contract
+exists for that whole path. The synthesizer is therefore deliberately dark rather than promoted
+from adjacent L2 data or its own graceful thin-stage output. Focused availability tests passed
+211/211 and both generated-artifact drift checks passed at source packet
+`f5bcab0a5`. The inventory is 186 executable bindings, 166 contracts, 11 deliberate-dark
+dispositions, and 9 still uncovered. This is source accounting only: no live configuration,
+chart grant, deployment, candidate execution, or acceptance result has changed.

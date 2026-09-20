@@ -3,8 +3,8 @@
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
   "status": "PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS",
-  "observed_at": "2026-09-20T18:16:54+05:30",
-  "source_candidate": "36d7fcc9857ff8b5d95e931bfc20dd247212ee42",
+  "observed_at": "2026-09-20T18:30:00+05:30",
+  "source_candidate": "f5bcab0a58c8c13ccacf39bc0c9d3f1684ea8b2d",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
     "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",
@@ -23,7 +23,7 @@
   "product_outcomes": [
     {"id":"fixed_5_plus_30_denominator","source_ready":"PASS_FROZEN","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"real_three_door_collector","source_ready":"RECEIPT_SEAL_REPAIR_PR2703_PROTECTED_MAIN_20F4D02D_PORTAL_DEPLOYED; MCP_SIDECAR_PRIOR_REVISION","candidate_verified":"NOT_RUN_SUCCESSOR_REVISION","live_verified":"FAIL_FIRST_SLICE_0_OF_3_HISTORICAL; NEW_CONFIG_AWAITS_RESTRICTED_STORE_AND_CHART_GRANT"},
-    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_166_CONTRACTS_10_UNCOVERED_10_DARK; SPINE_BUNDLE_REQUIRES_ALL_EXACT_COMPOSED_LEGS; LEL_INTAKE_ZERO_ROW_ONTOLOGY_AND_COVERAGE_PROBE; MUHURTA_ROUTE_FAIL_CLOSED_PENDING_ENDPOINT_PROBE; PACT_GRAHA_PORTRAIT_TRANSIT_GATING_AND_CHANNEL_INTROSPECTION_FAIL_CLOSED; WEALTH_NOTABLY_ABSENT_HARDCODE_REPRODUCED; PR2705_CI_35510491471_DENSITY_ARTIFACT_STALE_LOCALLY_REGENERATED_AND_HELD_PR2704_GOLDENS","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_166_CONTRACTS_9_UNCOVERED_11_DARK; SPINE_BUNDLE_REQUIRES_ALL_EXACT_COMPOSED_LEGS; LEL_INTAKE_ZERO_ROW_ONTOLOGY_AND_COVERAGE_PROBE; LARGE_N_COMPOSITE_FAIL_CLOSED_ON_UNCONTRACTED_GESTALT_TAIL_WATCH; MUHURTA_ROUTE_FAIL_CLOSED_PENDING_ENDPOINT_PROBE; PACT_GRAHA_PORTRAIT_TRANSIT_GATING_AND_CHANNEL_INTROSPECTION_FAIL_CLOSED; WEALTH_NOTABLY_ABSENT_HARDCODE_REPRODUCED; PR2705_CI_35510491471_DENSITY_ARTIFACT_STALE_LOCALLY_REGENERATED_AND_HELD_PR2704_GOLDENS","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"deep_reasoning_and_evidence_continuation","source_ready":"PASS_SOURCE_WIRING","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_BUILD_FENCED_JUDGMENT_ACCOUNTABILITY_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_TYPED_JUDGMENT_CLOSURE_CONTRACTS_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
