@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0125
-last_updated: 2026-09-20T16:55:17+05:30
+last_event: PA-E0126
+last_updated: 2026-09-20T17:01:50+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -86,6 +86,14 @@ layer state, queue or authority.
   contracts to 164 and lowers uncovered bindings to 19 without altering the 186-binding or frozen
   105+105 denominator. The contracts are source-local probes only: no live corpus receipt,
   candidate run, or three-door acceptance is claimed.
+
+- **Planet assembly is deliberately dark until its mandatory strength facet is complete.**
+  `query_planet` assembles eight child routes and marks child failures as `partial_source_error`.
+  Its required `get_strength` child remains deliberately dark because the reviewed receipt covers
+  only canonical total strength, while its handler can select all 21 strength categories. The
+  assembly cannot be promoted through the other facets. This is an evidence-backed dark
+  disposition, not a denominator reduction: the projection is now 164 contracts, 18 uncovered,
+  and four deliberately dark bindings.
 
 - **Three required domain assessments now have source-local derived evidence contracts.**
   `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
