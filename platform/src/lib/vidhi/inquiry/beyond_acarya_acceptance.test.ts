@@ -19,6 +19,11 @@ const historicalV3 = {
   report_hash: 'sha256:9c86043abcdcd9859da602bab6323a67bd138eca6d9fbbb10b9eee15b7815b6f',
   artifact_hash: 'sha256:9c12f15b88f3d4bb1f1766a9364d231801e8c1a82e3bb3ea0b1680ba9935bc1e',
 } as const
+const historicalV4 = {
+  capability_content_hash: 'sha256:2855530bc7c62761739307ad89c1d6736df9783cac291537483a49794d699bbf',
+  report_hash: 'sha256:acbf2428749c5b97b30b1e462d496ff424861210da2046788dd940e5b521f907',
+  artifact_hash: 'sha256:d972ce0345092602ff2acf258da13f1711cb1671f1625fbf552eb97594154320',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -58,7 +63,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    expect(report.report_hash).toBe('sha256:acbf2428749c5b97b30b1e462d496ff424861210da2046788dd940e5b521f907')
+    expect(report.report_hash).toBe('sha256:22b4f8d5237e786493ee848f8f750d3b8622399941daa12b75b0b741cf1c4542')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -213,9 +218,25 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v4 source-successor artifact to the current executable report without claiming live acceptance', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v4 source-successor immutable after a later contract-truth advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v4.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV4.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v4',
+      capability_content_hash: historicalV4.capability_content_hash,
+      report_hash: historicalV4.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v5 source-successor artifact to the current executable report without claiming live acceptance', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v5.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -223,12 +244,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v4',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v5',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v3.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v4.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV3.capability_content_hash,
-        report_hash: historicalV3.report_hash,
+        capability_content_hash: historicalV4.capability_content_hash,
+        report_hash: historicalV4.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -271,7 +292,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: 'e848b2733cf68b14162f6c329fa01c9d61c34e7f',
+      evaluated_source_revision: 'eabb46057649188e7008d8bda743481fd4bf7b8a',
     })
   })
 })

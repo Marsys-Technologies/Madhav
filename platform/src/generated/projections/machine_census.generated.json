@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T15:24:35.840Z",
+  "generated_at": "2026-09-20T01:38:35.408Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
@@ -858,14 +858,14 @@
       "calibration_context_only": false,
       "bearing_first": false,
       "required_inputs": [],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "chat",
         "mcp_full",
         "mcp_compact"
       ],
       "short_label": "Query Classical Texts",
-      "one_line": "Query the classical text corpus (classical_text_chunks) — classical text chunks from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita,…",
+      "one_line": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -1757,7 +1757,7 @@
         "mcp_full"
       ],
       "short_label": "Query Sky Calendar",
-      "one_line": "Read the global chart-independent sky-event diary (bg_sky_events) for a time interval.",
+      "one_line": "Read the global chart-independent sky-event diary (bg_sky_calendar) for a time interval.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -2740,7 +2740,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 16,
+      "input_param_count": 17,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3950,7 +3950,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 7,
+      "input_param_count": 8,
       "projection_tags": [
         "chat",
         "mcp_full",
