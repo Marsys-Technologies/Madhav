@@ -53,6 +53,21 @@ const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  channel_chat_dispatch: {
+    reason: 'The descriptor itself reports migration_status=PENDING: the serving chat route still dispatches through the legacy retrieve layer, not the retrieval registry. Its static migration note is introspection, not evidence that the registry capability is reachable through Portal.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:264-300',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:302-326',
+    ],
+  },
+  channel_mcp_wiring: {
+    reason: 'The handler returns a hand-maintained five-entry wiring map rather than deriving mappings from the MCP bridge and server registration. It cannot prove the current managed MCP surface or parity, so no source receipt can promote this internal introspection route.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:174-257',
+      'platform/src/lib/retrieval/registry/mcp_capability_bridge.ts',
+      'platform-mcp/src/server.ts',
+    ],
+  },
   classical_attribution_lookup: {
     reason: 'The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.',
     source_refs: [

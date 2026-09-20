@@ -156,6 +156,20 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it.each([
+    ['scu.catalog.channel_chat_dispatch', 'registry:marsys://tool/channel/chat_dispatch', 'migration_status=PENDING'],
+    ['scu.catalog.channel_mcp_wiring', 'registry:marsys://tool/channel/mcp_wiring', 'hand-maintained five-entry wiring map'],
+  ])('accounts for %s as internal channel introspection, not serving proof', (scuId, bindingId, reasonFragment) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      status: 'deliberately_dark',
+      reason: expect.stringContaining(reasonFragment),
+      source_refs: expect.any(Array),
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
     expect(all).toHaveLength(15)
