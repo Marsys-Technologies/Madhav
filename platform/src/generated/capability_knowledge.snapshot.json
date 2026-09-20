@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T11:16:23.000Z",
-  "content_hash": "sha256:7be16b0730ca887898d84067792eb4c672bb0d94a136b4dec5abb4de0ee28b53",
+  "generated_at": "2026-09-20T11:23:35.000Z",
+  "content_hash": "sha256:631929da155b91a101036dc2923c737804deb3133bd80ee9f3c6042d1545315b",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:67e0eff2da0a3025f8d158831a2a2d3afce3a760b025cc8268df48a9c9727e73",
+  "semantic_review_fingerprint": "sha256:9882a721167b9328efd4047abfdf67eba5d1b9d06278db1fab8cd8d5efb1322d",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -12086,6 +12086,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/list_sutravali_rules_by_text",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:list-sutravali-rules-by-text:v1",
+              "capability_uri": "marsys://tool/L0/list_sutravali_rules_by_text",
+              "contract_sha256": "sha256:c811b5f3efc239c66d54233394e17803fa0eef0d4d942ad28944495754d39db8",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:612-638 | platform/python-sidecar/routers/sutravali.py:181-212 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -28392,6 +28407,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules",
+              "contract_sha256": "sha256:9062eceb3d317cb68f8825cea55a812c8ac04a4a9559b20c83218b7978cc353c",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:362-393 | platform/python-sidecar/routers/sutravali.py:87-124 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28558,6 +28588,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules_for_planet",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules-for-planet:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules_for_planet",
+              "contract_sha256": "sha256:4b1783cd6b86843c3a7de2a14aee950f4da992b513dbb80eb79143dc00616296",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:445-472 | platform/python-sidecar/routers/sutravali.py:127-163 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

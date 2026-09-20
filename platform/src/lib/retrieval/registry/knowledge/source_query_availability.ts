@@ -4037,6 +4037,70 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-sutravali-rules:v1',
+    descriptor_name: 'query_sutravali_rules',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE (NULL::text IS NULL OR r.antecedent_jsonb::text ILIKE '%' || NULL::text || '%')
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'planet' ILIKE NULL::text)
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'sign_canon' ILIKE NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:362-393',
+      'platform/python-sidecar/routers/sutravali.py:87-124',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-sutravali-rules-for-planet:v1',
+    descriptor_name: 'query_sutravali_rules_for_planet',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules_for_planet',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.antecedent_jsonb->>'planet' ILIKE NULL::text
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:445-472',
+      'platform/python-sidecar/routers/sutravali.py:127-163',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:list-sutravali-rules-by-text:v1',
+    descriptor_name: 'list_sutravali_rules_by_text',
+    capability_uri: 'marsys://tool/L0/list_sutravali_rules_by_text',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.text_id = NULL::text
+           ORDER BY r.verse_ref NULLS LAST, r.confidence DESC NULLS LAST
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:612-638',
+      'platform/python-sidecar/routers/sutravali.py:181-212',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
     contract_id: 'source-query:read-sutravali-rule:v1',
     descriptor_name: 'read_sutravali_rule',
     capability_uri: 'marsys://tool/L0/read_sutravali_rule',
