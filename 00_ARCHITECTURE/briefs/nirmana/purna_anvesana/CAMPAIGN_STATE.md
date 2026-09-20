@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.49.0
+version: 0.50.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0142
-last_updated: 2026-09-20T19:23:00+05:30
+last_event: PA-E0143
+last_updated: 2026-09-20T19:40:12+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -953,3 +953,15 @@ assertions. The prior capability-projection assertion no longer fails. Those fou
 the narrow L3-owned PR #2704 correction boundary; the PR is clean but review-pending, and no golden
 baseline is changed here. The fact-category scanner remains a separate inherited gate failure on
 unchanged zero-row availability probes. This is CI classification only, not a release or acceptance result.
+
+## PRODUCT-M2 current-head CI terminal classification — 2026-09-20
+
+The exact current Pūrṇa head `861369579415a532a93e2c5b1770b90110a96b6f` completed Ganga run
+`35514927802`: 13 of 16 jobs passed, one was intentionally skipped, and two failed. The Unit Tests
+job retained exactly the four owner-scoped PR #2704 failures (the two route-port golden receipts and
+the two Beyond-Acarya v5 artifact/hash expectations); the campaign-owned projection assertion remained
+green. The only other failure is the unchanged fact-category scanner mismatch already classified in
+PA-E0142. The concurrent PR-only deploy workflow `35514927828` built successfully but skipped every
+migration and production deployment job, so it provides no delivery claim. This records a terminal CI
+boundary only; it neither changes L3-owned goldens nor authorizes release, data-plane work, or live
+acceptance.
