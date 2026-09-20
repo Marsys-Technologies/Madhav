@@ -3,7 +3,7 @@
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
   "status": "PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS",
-  "observed_at": "2026-09-20T14:50:00+05:30",
+  "observed_at": "2026-09-20T16:30:00+05:30",
   "source_candidate": "dd3e189ed4b6f81aaf6d20a586290450705c7947",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
@@ -23,7 +23,7 @@
   "product_outcomes": [
     {"id":"fixed_5_plus_30_denominator","source_ready":"PASS_FROZEN","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"real_three_door_collector","source_ready":"RECEIPT_SEAL_REPAIR_PR2703_PROTECTED_MAIN_20F4D02D_PORTAL_DEPLOYED; MCP_SIDECAR_PRIOR_REVISION","candidate_verified":"NOT_RUN_SUCCESSOR_REVISION","live_verified":"FAIL_FIRST_SLICE_0_OF_3_HISTORICAL; NEW_CONFIG_AWAITS_RESTRICTED_STORE_AND_CHART_GRANT"},
-    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_161_CONTRACTS_23_UNCOVERED_2_DARK; WEALTH_NOTABLY_ABSENT_HARDCODE_REPRODUCED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_161_CONTRACTS_23_UNCOVERED_2_DARK; WEALTH_NOTABLY_ABSENT_HARDCODE_REPRODUCED; PR2705_CI_35505915319_FAIL_CLOSED_ON_PR2704_GOLDEN_PACKET","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"deep_reasoning_and_evidence_continuation","source_ready":"PASS_SOURCE_WIRING","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_BUILD_FENCED_JUDGMENT_ACCOUNTABILITY_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_TYPED_JUDGMENT_CLOSURE_CONTRACTS_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},

@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.44.0
+version: 0.45.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0122
-last_updated: 2026-09-20T16:15:00+05:30
+last_event: PA-E0123
+last_updated: 2026-09-20T16:30:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -86,6 +86,18 @@ layer state, queue or authority.
   not change the 186-binding input set, the frozen 105+105 acceptance denominator, or any live
   acceptance state. The remaining PR #2705 route-golden and v5-source-artifact failures are
   tracked separately as the exact-head PR #2704 dependency and are not rebaselined here.
+
+- **PR #2705's refreshed required CI is fail-closed only on the held PR #2704 packet.** Run
+  `35505915319` passed every non-unit required job, including TypeScript, governance, earned-signal,
+  density, registry-parity, database-integration, and planner-regression gates. Its unit job ran
+  1,140 passing and 77 skipped tests, then failed exactly four assertions: two provenance-derived
+  route golden receipts and two v5 source-artifact snapshot expectations. The four target files
+  are exactly PR #2704's scope, whose head `889ceaf9…` is open and clean against
+  `codex/madhav-l3-claude-code`; it has no protected-main target or review result yet. Pūrṇa will
+  not alter that branch, bless its goldens, rebaseline on `main`, or claim PR #2705 green before
+  the owner-integrated packet is available. The three required composite contracts remain verified
+  source-local only; live collection is still independently blocked by the restricted-store/grant
+  boundary.
 
 - Current serving revisions, re-read directly on 2026-09-20, are web
   `94f75602f1cb3a794ed70723f67bf35e7003f11e`, MCP
