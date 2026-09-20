@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T13:33:00.000Z",
-  "content_hash": "sha256:557ace441c324b312779fc4bae6d33b9307c671896f538f205302be9193cc087",
+  "generated_at": "2026-09-20T13:42:00.000Z",
+  "content_hash": "sha256:1881d008d3dc4541ee15a47aca87609f9129d0a5d9cd4511f8eb0dc46a1fcf26",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:e1dc9013b648f582b6065fd790c64d286935c5f0c85d9dbb3eb4a929d536717c",
+  "semantic_review_fingerprint": "sha256:ee9a03358ca742803d31bd21215e9ce40b81e301e5286cfcb18c10067c552256",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -32139,6 +32139,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/router/route",
+          "status": "deliberately_dark",
+          "reason": "router/route classifies and plans a tool trajectory but does not execute the planned evidence calls. Its local routing result is not an authenticated served inquiry or a complete evidence contract for the downstream chain.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/router_registration.ts:25-126"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32298,6 +32308,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/cross_layer",
+          "status": "deliberately_dark",
+          "reason": "synergy_cross_layer delegates to runWholeChartRead over direct database access and returns a cross-layer composition. No complete reviewed contract covers the full chain of graph, signal, contradiction, and temporal reads, so individual adjacent receipts cannot promote it.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:164-282"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32456,6 +32476,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/pipeline",
+          "status": "deliberately_dark",
+          "reason": "synergy_pipeline delegates live execution to runWholeChartRead over direct database access and a multi-surface chain. Its dry_run is explicitly only a planned route; no complete reviewed composed contract covers all handler reads and downstream surfaces.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:31-160"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32612,6 +32642,16 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/tool_search",
+          "status": "deliberately_dark",
+          "reason": "tool_search rebuilds an in-memory index from the process-local catalog at call time. Source tests prove local behavior but provide no authenticated serving receipt for the deployed registry/MCP process, so static catalog presence is not route availability.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts:22-94"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

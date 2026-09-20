@@ -66,6 +66,22 @@ const SPINE_BUNDLE_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  route: {
+    reason: 'router/route classifies and plans a tool trajectory but does not execute the planned evidence calls. Its local routing result is not an authenticated served inquiry or a complete evidence contract for the downstream chain.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/router_registration.ts:25-126'],
+  },
+  synergy_pipeline: {
+    reason: 'synergy_pipeline delegates live execution to runWholeChartRead over direct database access and a multi-surface chain. Its dry_run is explicitly only a planned route; no complete reviewed composed contract covers all handler reads and downstream surfaces.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:31-160'],
+  },
+  synergy_cross_layer: {
+    reason: 'synergy_cross_layer delegates to runWholeChartRead over direct database access and returns a cross-layer composition. No complete reviewed contract covers the full chain of graph, signal, contradiction, and temporal reads, so individual adjacent receipts cannot promote it.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:164-282'],
+  },
+  tool_search: {
+    reason: 'tool_search rebuilds an in-memory index from the process-local catalog at call time. Source tests prove local behavior but provide no authenticated serving receipt for the deployed registry/MCP process, so static catalog presence is not route availability.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts:22-94'],
+  },
   // The MARO descriptors expose static v1 provider-profile hypotheses.  They
   // do not observe an actual managed-MCP/session surface, and the resource
   // labels the profiles UNMEASURED pending the D8 corpus evaluation.  Static

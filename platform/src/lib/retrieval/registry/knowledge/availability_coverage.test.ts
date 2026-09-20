@@ -251,6 +251,21 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it.each([
+    ['scu.catalog.route', 'registry:marsys://tool/router/route'],
+    ['scu.catalog.synergy_pipeline', 'registry:marsys://tool/synergy/pipeline'],
+    ['scu.catalog.synergy_cross_layer', 'registry:marsys://tool/synergy/cross_layer'],
+    ['scu.catalog.tool_search', 'registry:marsys://tool/L0/tool_search'],
+  ])('keeps %s dark until its exact served or composed path has a reviewed contract', (scuId, bindingId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      status: 'deliberately_dark',
+      source_refs: expect.any(Array),
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
     expect(all).toHaveLength(15)
