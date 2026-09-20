@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.31.0
-status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_LIVE_SLICE_BLOCKED_BY_CROSS_DOOR_REVISION_SPLIT
+version: 0.41.0
+status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0109
-last_updated: 2026-09-20T02:51:56+05:30
+last_event: PA-E0119
+last_updated: 2026-09-20T15:30:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,61 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- **PR #2695 golden review is reproduced and its narrow correction is review-pending.** On exact head
+  `5d8252db…`, the two route-port golden failures (`branch-deep-dive` and
+  `branch-completeness-receipt`) reduce to order-derived fact IDs and receipt hashes after the
+  generated capability provenance refresh: canonicalized substantive payloads match. The two
+  mechanically regenerated fixtures and the mutable v5 source artifact now pass the focused
+  71-test check and the full suite (12,412 passed). Dependent PR #2704 is open against the L3 PR
+  branch and contains only those four Pūrṇa fixture/provenance updates. It remains review-pending:
+  neither that PR nor PR #2695 is merged or product acceptance evidence. No L3 runtime, grant,
+  migration, production dispatch, or acceptance denominator was changed.
+
+- **R0–R4 recovery is active; no new live configuration or collection is yet valid.** The old
+  worktree-local `live-config-20260920.json` and its receipts remain preserved historical evidence:
+  its revision was stale, Portal disagreed with that expected revision, managed MCP failed before
+  a usable response, and raw MCP blocked without closure. The chart UUID is associated with the
+  named operator Abhinandan Mohanty, so it is not a synthetic fixture; a fresh proof that the
+  current test principal may use that chart has not been recorded. The existing GCS Pūrṇa prefix
+  was located but no approved restricted retention/access designation was evidenced, so it is not
+  being used for a new configuration. The governed probe specifies `probe-service-account` and
+  documents its pre-existing `chart_grants` `view` grant on this chart, historically confirmed by
+  live DB read; that is provenance, not fresh run evidence. The exact missing external action is
+  an approved restricted evidence location (or a documented restricted policy for a named existing
+  prefix), followed by a current governed-principal grant verification retained there. The full
+  project-bucket inventory and the alternative attachments bucket were also checked: neither is
+  designated, restricted, or retained, and the attachments bucket retains broad legacy project
+  ACLs. An approval ID is not substituted for either boundary.
+
+- **The supported-complete wealth path is materially incomplete, not merely uncollected.** A new
+  focused regression test fails against the current hardcoded `notably_absent_yogas: not_computed`
+  branch. L0 supplies yoga rules/citations, but L1 `ga_yoga_firings` persists fired rows only and
+  never currently emits its partial fields for non-firings; L2 `bo_laksana` has no selected-build
+  near-miss band. Therefore ordinary non-fired rows cannot truthfully stand in for notable
+  near-misses. The next implementation unit is to establish the ratified L2 classification and
+  build-provenanced persisted band, or obtain the exact rule-classification authority if the
+  threshold cannot be derived from the ratified corpus. The fixed acceptance denominator remains
+  unchanged.
+
+- **The ga-dasha replacement refusal remains correctly fail-closed until live build/receipt proof
+  exists.** The consumer selects only a chart-scoped completed build with a proven receipt using
+  the reviewed digest specification and fresh state, then refuses if newer dasha work is active or
+  a later terminal mutation lacks an equally fresh receipt. This environment has no configured
+  authorized production DB read path, so no completion, builder viability, or consumer recovery is
+  inferred from the metadata grant or deployment. The exact next proof is a right-owner read-only
+  statement over the relevant build, asset, receipt, freshness, and dasha tables.
+
+- Current serving revisions, re-read directly on 2026-09-20, are web
+  `94f75602f1cb3a794ed70723f67bf35e7003f11e`, MCP
+  `09d998940069e00a4f09df60a03c3d07d6536ecf`, and sidecar
+  `09d998940069e00a4f09df60a03c3d07d6536ecf`. Collector receipt-sealing repair PR #2703 merged
+  at protected main `20f4d02d…`; CI `35499473125` and deploy `35500092042` succeeded. Web now
+  serves `amjis-web-probe-20f4d02dce5e-35500092042-1` with exact
+  `NIRMANA_DEPLOYED_SHA=20f4d02d…`; MCP and sidecar remain on `09d99894…`. This is verified
+  Portal-only release evidence: 100% web traffic and exact-attributed post-deploy behavioural
+  smoke run `35500872708` passed. It is not three-door readiness, so no new three-door collection
+  is being started.
 
 - Native-authorized automated product acceptance is active. The first bounded live collection of
   `wealth_mechanism_timing_contradiction` produced **0/3 accepted doors**, recorded only by the
