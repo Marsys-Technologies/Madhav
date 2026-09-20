@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0137
-last_updated: 2026-09-20T18:37:00+05:30
+last_event: PA-E0138
+last_updated: 2026-09-20T18:47:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -911,3 +911,10 @@ chart grant, deployment, candidate execution, or acceptance result has changed.
 produce a validated structured classification. It is now deliberately dark rather than counted as
 executed intent evidence. Focused tests passed 212/212 and both generated-artifact checks passed.
 Inventory: 186 executable bindings, 166 contracts, 12 deliberate-dark dispositions, and 8 uncovered.
+
+## PRODUCT-M2 MARO profile boundary — 2026-09-20
+
+The MARO orchestration, MCP-surface, and profiles descriptors return static profile constants which
+the resource explicitly labels `UNMEASURED`. They do not prove a managed-MCP or chat execution, so
+all three are deliberately dark. Focused tests passed 215/215; both generated-artifact checks pass.
+Inventory: 186 executable bindings, 166 contracts, 15 deliberate-dark dispositions, and 5 uncovered.
