@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0124
-last_updated: 2026-09-20T16:46:23+05:30
+last_event: PA-E0125
+last_updated: 2026-09-20T16:55:17+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -78,13 +78,22 @@ layer state, queue or authority.
   retrieval. A replacement queryable source and grounded receipts remain required before the route
   can be lit.
 
+- **The three live Sutravali query routes now have exact global source-query contracts.** The
+  flexible rule lookup, planet-scoped lookup, and text-scoped paginated lookup each preserve their
+  own handler-side filter and order semantics against `sutravali_rules`; they are not promoted by
+  the adjacent single-rule contract. Their executable wire contracts cover required inputs,
+  filter forwarding, caps, output shape, and text-route offset continuation. This raises source
+  contracts to 164 and lowers uncovered bindings to 19 without altering the 186-binding or frozen
+  105+105 denominator. The contracts are source-local probes only: no live corpus receipt,
+  candidate run, or three-door acceptance is claimed.
+
 - **Three required domain assessments now have source-local derived evidence contracts.**
   `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
   contracts for domain reading, temporal activation, and contradictions. A failed temporal
   child makes every composite dark; adjacent receipts cannot promote it. Focused contract tests
   (196), TypeScript, lint, and generated-artifact freshness checks pass. The regenerated
-  snapshot has 182 SCUs, 186 executable bindings, 161 explicit availability contracts, three
-  deliberate-dark dispositions, and 22 still-uncovered executable bindings. This is an
+  snapshot has 182 SCUs, 186 executable bindings, 164 explicit availability contracts, three
+  deliberate-dark dispositions, and 19 still-uncovered executable bindings. This is an
   unprotected source-local capability repair, not a live source-query result, deployment, or
   acceptance result; the frozen 105+105 execution denominator is unchanged.
 
@@ -93,7 +102,9 @@ layer state, queue or authority.
   three derived contracts changed the projected states to 23 missing, 161 authored, and two
   deliberately dark. The later fail-closed classical-attribution disposition leaves the same 161
   authored contracts while changing the projection to 22 missing and three deliberately dark.
-  The focused coverage/availability/regression set passes 89 tests. This corrects the source
+  The three exact Sutravali source-query contracts then changed it to 19 missing, 164 authored,
+  and the same three deliberately dark. The focused coverage/availability/regression set passes
+  209 tests. This corrects the source
   projection only; it does
   not change the 186-binding input set, the frozen 105+105 acceptance denominator, or any live
   acceptance state. The remaining PR #2705 route-golden and v5-source-artifact failures are
