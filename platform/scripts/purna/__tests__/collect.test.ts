@@ -87,6 +87,11 @@ describe('Purna real three-door collector', () => {
     const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', timeoutMs: 1, fetchImpl })
     expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'PORTAL_DEADLINE_EXCEEDED', networkCallCount: 1 })
   })
+  it('turns a response body that never closes into an explicit deadline receipt', async () => {
+    const stream = new ReadableStream<Uint8Array>({ start() {} })
+    const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', timeoutMs: 1, fetchImpl: async () => new Response(stream) })
+    expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'PORTAL_DEADLINE_EXCEEDED', networkCallCount: 1 })
+  })
   it('bounds a hanging MCP initialization and seals failed rows instead of hanging before collection', async () => {
     const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
     const prior = process.env.MARSYS_MCP_KEY

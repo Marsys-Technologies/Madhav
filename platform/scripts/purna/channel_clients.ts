@@ -221,7 +221,8 @@ export async function collectPortalCase(input: {
       body: JSON.stringify({ chartId: input.chartId, reading_depth: 'auto', length_tier: 'standard', messages: [{ id: `${requestId}-user`, role: 'user', parts: [{ type: 'text', text: input.test.question }] }] }),
     })
     if (!response.ok || !response.body) return failed(input, 'portal', 1, `PORTAL_HTTP_${response.status}`)
-    const parsed = await parsePortalSse(response.body)
+    const parsed = await parsePortalSse(response.body, abort.signal)
+    if (abort.signal.aborted) return failed(input, 'portal', 1, 'PORTAL_DEADLINE_EXCEEDED', parsed.inquiryId)
     if (parsed.truncated) return failed(input, 'portal', 1, 'PORTAL_SSE_TRUNCATED', parsed.inquiryId)
     return normalize(input, 'portal', {
       ...parsed.payload,
@@ -236,24 +237,35 @@ export async function collectPortalCase(input: {
   } finally { clearTimeout(timer) }
 }
 
-export async function parsePortalSse(stream: ReadableStream<Uint8Array>): Promise<{ truncated: boolean; inquiryId: string | null; answer: string; payload: Json }> {
+export async function parsePortalSse(stream: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<{ truncated: boolean; inquiryId: string | null; answer: string; payload: Json }> {
   const reader = stream.getReader(); const decoder = new TextDecoder(); let buffer = ''; let answer = ''; let inquiryId: string | null = null; let closed = false; let payload: Json = {}
-  while (true) {
-    const chunk = await reader.read(); if (chunk.done) break
-    buffer += decoder.decode(chunk.value, { stream: true })
-    const frames = buffer.split('\n\n'); buffer = frames.pop() ?? ''
-    for (const frame of frames) {
-      const line = frame.split('\n').find((candidate) => candidate.startsWith('data: ')); if (!line) continue
-      let event: Json; try { event = record(JSON.parse(line.slice(6))) } catch { continue }
-      // The terminal event is intentionally minimal. Preserve receipt and other
-      // evidence emitted earlier rather than replacing the accumulated payload.
-      payload = event.receipt && typeof event.receipt === 'object'
-        ? { ...payload, ...event, receipt: event.receipt }
-        : { ...payload, ...event }
-      if (event.type === 'block.commit' && typeof event.text === 'string') answer += `${answer ? '\n\n' : ''}${event.text}`
-      if (event.type === 'turn.commit' && typeof event.conversation_id === 'string') inquiryId = event.conversation_id
-      if (event.type === 'turn.close') closed = event.status === 'ok'
+  // `fetch` resolves when the SSE headers arrive. Its AbortSignal alone does
+  // not interrupt a subsequently stalled body reader, so bind the same
+  // collector deadline to the reader itself.
+  const cancel = () => { void reader.cancel('PORTAL_DEADLINE_EXCEEDED').catch(() => undefined) }
+  if (signal?.aborted) cancel()
+  else signal?.addEventListener('abort', cancel, { once: true })
+  try {
+    while (true) {
+      const chunk = await reader.read(); if (chunk.done) break
+      buffer += decoder.decode(chunk.value, { stream: true })
+      const frames = buffer.split('\n\n'); buffer = frames.pop() ?? ''
+      for (const frame of frames) {
+        const line = frame.split('\n').find((candidate) => candidate.startsWith('data: ')); if (!line) continue
+        let event: Json; try { event = record(JSON.parse(line.slice(6))) } catch { continue }
+        // The terminal event is intentionally minimal. Preserve receipt and other
+        // evidence emitted earlier rather than replacing the accumulated payload.
+        payload = event.receipt && typeof event.receipt === 'object'
+          ? { ...payload, ...event, receipt: event.receipt }
+          : { ...payload, ...event }
+        if (event.type === 'block.commit' && typeof event.text === 'string') answer += `${answer ? '\n\n' : ''}${event.text}`
+        if (event.type === 'turn.commit' && typeof event.conversation_id === 'string') inquiryId = event.conversation_id
+        if (event.type === 'turn.close') closed = event.status === 'ok'
+      }
     }
+  } finally {
+    signal?.removeEventListener('abort', cancel)
+    reader.releaseLock()
   }
   return { truncated: !closed, inquiryId, answer, payload }
 }
