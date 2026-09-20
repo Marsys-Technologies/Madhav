@@ -5,7 +5,7 @@
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
 import type {
-  ProducerOutputAvailabilityRequirement,
+  AvailabilityRequirement,
   ProducerOutputClaim,
   SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
@@ -43,7 +43,7 @@ export interface DescriptorAvailabilityReview {
  */
 export interface DescriptorAvailabilityContractReview {
   readonly producer_output_claims: readonly ProducerOutputClaim[]
-  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
+  readonly requirements: readonly AvailabilityRequirement[]
 }
 
 const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
@@ -53,26 +53,6 @@ const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
-  assess_career: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
-    ],
-  },
-  assess_marriage: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
-    ],
-  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [
@@ -123,6 +103,36 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  // assess_* composes these exact handler results; it must not be promoted by an
+  // adjacent producer receipt. The derived requirement recursively evaluates the
+  // independently reviewed source-query contracts in the same chart/build scope.
+  assess_career: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
+  assess_health: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
+  assess_marriage: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
   query_classical_texts: {
     producer_output_claims: [{
       asset_id: 'bg_texts',

@@ -28,11 +28,11 @@ const FIRST_SLICE = {
     'scu.catalog.query_contradictions',
     'scu.catalog.query_domain_reading',
     'scu.catalog.judgment_query',
-  ],
-  deliberately_dark: [
     'scu.catalog.assess_career',
+    'scu.catalog.assess_health',
     'scu.catalog.assess_marriage',
   ],
+  deliberately_dark: [],
 } as const
 
 function findScu(scuId: string) {
@@ -145,7 +145,7 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
 describe('first-slice availability coverage', () => {
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
-    expect(all).toHaveLength(14)
+    expect(all).toHaveLength(15)
     expect(new Set(all).size).toBe(all.length)
 
     for (const scuId of FIRST_SLICE.concrete) {
@@ -186,14 +186,22 @@ describe('first-slice availability coverage', () => {
 
   it.each([
     'scu.catalog.assess_career',
+    'scu.catalog.assess_health',
     'scu.catalog.assess_marriage',
-  ])('records the exact missing mandatory composite legs for %s', (scuId) => {
-    expect(findScu(scuId).availability_dispositions).toEqual([expect.objectContaining({
-      missing_binding_ids: [
-        'registry:marsys://tool/L2/query_domain_reading',
-        'registry:marsys://tool/L3/query_temporal_activation',
-        'registry:marsys://tool/L2/query_contradictions',
-      ],
+  ])('requires every exact source-backed composite leg for %s', (scuId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: `registry:${scu.primary_binding_uri}`,
+      requirements: [expect.objectContaining({
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: [
+          'registry:marsys://tool/L2/query_domain_reading',
+          'registry:marsys://tool/L3/query_temporal_activation',
+          'registry:marsys://tool/L2/query_contradictions',
+        ],
+      })],
     })])
   })
 
@@ -1253,6 +1261,24 @@ describe('first-slice availability coverage', () => {
       expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
         state: 'dark',
         available_binding_ids: [],
+      })
+      return
+    }
+    if ([
+      'scu.catalog.assess_career',
+      'scu.catalog.assess_health',
+      'scu.catalog.assess_marriage',
+    ].includes(scuId)) {
+      // A composite cannot remain available when one of its declared child
+      // handlers cannot earn its own source-query evidence.
+      const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (sql.includes('FROM kala_activation')) throw new Error('temporal source unavailable')
+        return { rows: [transitProbeAnchor()] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+      expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: [expect.stringContaining('Derived availability leg registry:marsys://tool/L3/query_temporal_activation:')],
       })
       return
     }

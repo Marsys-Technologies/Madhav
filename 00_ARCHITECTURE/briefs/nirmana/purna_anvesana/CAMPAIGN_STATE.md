@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.41.0
+version: 0.42.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0119
-last_updated: 2026-09-20T15:30:00+05:30
+last_event: PA-E0120
+last_updated: 2026-09-20T15:55:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -63,6 +63,16 @@ layer state, queue or authority.
   authorized production DB read path, so no completion, builder viability, or consumer recovery is
   inferred from the metadata grant or deployment. The exact next proof is a right-owner read-only
   statement over the relevant build, asset, receipt, freshness, and dasha tables.
+
+- **Three required domain assessments now have source-local derived evidence contracts.**
+  `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
+  contracts for domain reading, temporal activation, and contradictions. A failed temporal
+  child makes every composite dark; adjacent receipts cannot promote it. Focused contract tests
+  (196), TypeScript, lint, and generated-artifact freshness checks pass. The regenerated
+  snapshot has 182 SCUs, 186 executable bindings, 161 explicit availability contracts, two
+  deliberate-dark dispositions, and 23 still-uncovered executable bindings. This is an
+  unprotected source-local capability repair, not a live source-query result, deployment, or
+  acceptance result; the frozen 105+105 execution denominator is unchanged.
 
 - Current serving revisions, re-read directly on 2026-09-20, are web
   `94f75602f1cb3a794ed70723f67bf35e7003f11e`, MCP
