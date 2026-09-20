@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0127
-last_updated: 2026-09-20T17:05:33+05:30
+last_event: PA-E0128
+last_updated: 2026-09-20T17:39:30+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -100,13 +100,18 @@ layer state, queue or authority.
   live MCP bridge/server state. Both now remain explicit dark dispositions in the denominator:
   164 contracts, 16 uncovered, and six deliberately dark bindings.
 
+- **Transit gating is dark until both material modes have one source contract.** Its SAV/BAV
+  branch reads chart facts, but its Kakshya-window branch also fetches daily ephemeris from the
+  sidecar. Neither branch may promote the other. The current projection is 164 contracts, 15
+  uncovered, and seven deliberately dark bindings.
+
 - **Three required domain assessments now have source-local derived evidence contracts.**
   `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
   contracts for domain reading, temporal activation, and contradictions. A failed temporal
   child makes every composite dark; adjacent receipts cannot promote it. Focused contract tests
   (196), TypeScript, lint, and generated-artifact freshness checks pass. The regenerated
-  snapshot has 182 SCUs, 186 executable bindings, 164 explicit availability contracts, six
-  deliberate-dark dispositions, and 16 still-uncovered executable bindings. This is an
+  snapshot has 182 SCUs, 186 executable bindings, 164 explicit availability contracts, seven
+  deliberate-dark dispositions, and 15 still-uncovered executable bindings. This is an
   unprotected source-local capability repair, not a live source-query result, deployment, or
   acceptance result; the frozen 105+105 execution denominator is unchanged.
 
