@@ -223,6 +223,21 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it.each([
+    ['scu.catalog.maro_orchestrate', 'registry:marsys://tool/maro/orchestrate'],
+    ['scu.catalog.maro_mcp_surface', 'registry:marsys://tool/maro/mcp_surface'],
+    ['scu.catalog.maro_profiles', 'registry:marsys://resource/maro/profiles'],
+  ])('keeps %s dark while MARO profiles remain unmeasured hypotheses', (scuId, bindingId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      status: 'deliberately_dark',
+      reason: expect.stringMatching(/unmeasured/i),
+      source_refs: expect.any(Array),
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
     expect(all).toHaveLength(15)

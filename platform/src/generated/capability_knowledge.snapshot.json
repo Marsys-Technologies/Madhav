@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T13:05:00.000Z",
-  "content_hash": "sha256:e17dfec3aac34414d8cfbfdc6e74f2c05b350391adfda35498fb0076fbf08fa2",
+  "generated_at": "2026-09-20T13:14:00.000Z",
+  "content_hash": "sha256:ca038e6ebd5d3fcb3febfa66cfa6d670805fd893ce2c3253a60666fd523d9201",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:02d42988a10f13edc60f7c8633977bc4729837af1dd79ed056d5587d8e8ee53e",
+  "semantic_review_fingerprint": "sha256:932574a94af1ccd8a5049c8423487ec3d8762a5f9f0e70e75052d6255c67dd4f",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -12350,6 +12350,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/maro/mcp_surface",
+          "status": "deliberately_dark",
+          "reason": "maro_mcp_surface returns a static profile-derived surface specification, not a registered or exercised managed MCP surface. The underlying profiles are explicitly UNMEASURED, so this cannot establish channel availability.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:175-245",
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12508,6 +12519,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/maro/orchestrate",
+          "status": "deliberately_dark",
+          "reason": "maro_orchestrate resolves static profile constants only. Those values are explicitly unmeasured hypotheses and do not demonstrate an actual managed-MCP or chat orchestration execution for the requested model family.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:26-173",
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12663,6 +12685,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://resource/maro/profiles",
+          "status": "deliberately_dark",
+          "reason": "maro_profiles itself labels its family values UNMEASURED v1 hypotheses awaiting D8 corpus evaluation. A profile dossier is not an observed provider or managed-MCP execution receipt.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:246-295"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

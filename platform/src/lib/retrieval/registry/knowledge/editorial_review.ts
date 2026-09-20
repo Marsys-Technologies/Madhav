@@ -65,6 +65,31 @@ const SPINE_BUNDLE_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  // The MARO descriptors expose static v1 provider-profile hypotheses.  They
+  // do not observe an actual managed-MCP/session surface, and the resource
+  // labels the profiles UNMEASURED pending the D8 corpus evaluation.  Static
+  // normalization/profile output is therefore not evidence of a working
+  // channel-specific orchestration path.
+  maro_orchestrate: {
+    reason: 'maro_orchestrate resolves static profile constants only. Those values are explicitly unmeasured hypotheses and do not demonstrate an actual managed-MCP or chat orchestration execution for the requested model family.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:26-173',
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295',
+    ],
+  },
+  maro_mcp_surface: {
+    reason: 'maro_mcp_surface returns a static profile-derived surface specification, not a registered or exercised managed MCP surface. The underlying profiles are explicitly UNMEASURED, so this cannot establish channel availability.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:175-245',
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295',
+    ],
+  },
+  maro_profiles: {
+    reason: 'maro_profiles itself labels its family values UNMEASURED v1 hypotheses awaiting D8 corpus evaluation. A profile dossier is not an observed provider or managed-MCP execution receipt.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:246-295',
+    ],
+  },
   // This descriptor returns a prompt template verbatim.  It does not invoke an
   // LLM or validate a structured classification result, despite its declared
   // output.  A prompt string is not an executed intent classification and
