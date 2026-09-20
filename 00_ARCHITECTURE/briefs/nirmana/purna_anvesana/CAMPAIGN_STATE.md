@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0136
-last_updated: 2026-09-20T18:30:00+05:30
+last_event: PA-E0137
+last_updated: 2026-09-20T18:37:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -904,3 +904,10 @@ from adjacent L2 data or its own graceful thin-stage output. Focused availabilit
 `f5bcab0a5`. The inventory is 186 executable bindings, 166 contracts, 11 deliberate-dark
 dispositions, and 9 still uncovered. This is source accounting only: no live configuration,
 chart grant, deployment, candidate execution, or acceptance result has changed.
+
+## PRODUCT-M2 intent execution boundary — 2026-09-20
+
+`intent_classify` returns an interpolated prompt template only; it does not invoke a model or
+produce a validated structured classification. It is now deliberately dark rather than counted as
+executed intent evidence. Focused tests passed 212/212 and both generated-artifact checks passed.
+Inventory: 186 executable bindings, 166 contracts, 12 deliberate-dark dispositions, and 8 uncovered.
