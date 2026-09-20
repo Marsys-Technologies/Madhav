@@ -45,7 +45,7 @@ describe('Purna collection answer bridge', () => {
   it('rejects a collection whose channel reports a different chart than the bound target', () => {
     expect(() => answersFromCollection({
       inputs: [input], door: 'managed_mcp', collection: collection(input, { ...row, observedChartId: '22222222-2222-4222-8222-222222222222' }),
-    })).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
+    })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
   })
 
   it('rejects duplicate or fixture rows at the collection-artifact boundary', () => {

@@ -105,7 +105,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const sourceCases = casesForSuite(protocol, suite as AcceptanceSuite)
   const selected = caseId ? sourceCases.filter((item) => item.case_id === caseId) : sourceCases
   if (!selected.length) throw new Error('PURNA_COLLECTION_CASE_UNKNOWN')
-  const config = parseConfig(JSON.parse(await readFile(configPath, 'utf8'))); const rows = await collect(config, selected.map(asCase)); const invalid = rows.filter((row) => { try { assertLiveEvidence(row); return false } catch { return true } })
+  const config = parseConfig(JSON.parse(await readFile(configPath, 'utf8'))); const rows = await collect(config, selected.map(asCase)); const invalid = rows.filter((row) => { try { assertLiveEvidence(row, config.chart_id); return false } catch { return true } })
   const artifact = createCollectionArtifact({
     suite: suite as AcceptanceSuite,
     environment: config.environment,

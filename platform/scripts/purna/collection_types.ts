@@ -212,7 +212,8 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
     || actualRows.length !== expectedRows.size || new Set(actualRows).size !== actualRows.length
     || actualRows.some((key) => !expectedRows.has(key))
     || artifact.rows.some((row) => row.expectedRevision !== artifact.manifest.expected_revision
-      || row.source !== artifact.manifest.environment)
+      || row.source !== artifact.manifest.environment
+      || row.observedChartId !== artifact.manifest.target.chart_id)
     || artifact.manifest_hash !== stableFingerprint(manifestProjection(artifact.manifest))
     || artifact.collection_hash !== stableFingerprint(projection)) {
     throw new Error('PURNA_COLLECTION_ARTIFACT_INVALID')
