@@ -8,7 +8,7 @@ definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.js
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
 last_event: PA-E0124
-last_updated: 2026-09-20T16:41:45+05:30
+last_updated: 2026-09-20T16:46:23+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
