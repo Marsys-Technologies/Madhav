@@ -68,6 +68,13 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform-mcp/src/server.ts',
     ],
   },
+  get_av_transit_gating: {
+    reason: 'The handler has two material modes: SAV/BAV chart_facts gating and Kakshya windows, which additionally fetch daily ephemeris from the sidecar. A chart_facts probe cannot establish the externally fetched branch, and no combined reviewed receipt or source-query contract covers both modes. The route must remain dark rather than promote only SAV/BAV evidence.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:264-356',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:359-459',
+    ],
+  },
   classical_attribution_lookup: {
     reason: 'The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.',
     source_refs: [
