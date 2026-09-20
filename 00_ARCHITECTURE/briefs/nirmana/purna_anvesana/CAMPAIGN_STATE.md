@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0140
-last_updated: 2026-09-20T19:12:00+05:30
+last_event: PA-E0141
+last_updated: 2026-09-20T19:13:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -935,3 +935,12 @@ authenticated deployed-process receipt. Focused tests passed 270/270 and both ge
 The source catalogue is fully accounted: 186 executable bindings, 167 contracts, 19 dark dispositions,
 and zero uncovered bindings. This is not live availability, a candidate corpus, release proof, or
 product automated acceptance.
+
+## PRODUCT-M2 projection assertion reconciliation — 2026-09-20
+
+The campaign-owned capability-coverage assertion still expected the historical 13-binding contract
+deficit after the generated catalogue had reached zero uncovered bindings. It now asserts the actual
+source inventory: 186 bindings, 167 authored contracts, 19 deliberately dark dispositions, and no
+missing availability contract. The focused projection/availability checks pass 223/223; both generated
+artifact drift checks remain current. This reconciles source-local accounting only and does not alter the
+frozen 105+105 acceptance denominator, a live configuration, release state, or product acceptance.
