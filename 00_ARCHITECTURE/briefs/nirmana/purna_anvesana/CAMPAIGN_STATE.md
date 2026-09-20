@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.43.0
+version: 0.44.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0121
-last_updated: 2026-09-20T16:10:13+05:30
+last_event: PA-E0122
+last_updated: 2026-09-20T16:15:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -51,10 +51,14 @@ layer state, queue or authority.
   branch. L0 supplies yoga rules/citations, but L1 `ga_yoga_firings` persists fired rows only and
   never currently emits its partial fields for non-firings; L2 `bo_laksana` has no selected-build
   near-miss band. Therefore ordinary non-fired rows cannot truthfully stand in for notable
-  near-misses. The next implementation unit is to establish the ratified L2 classification and
-  build-provenanced persisted band, or obtain the exact rule-classification authority if the
-  threshold cannot be derived from the ratified corpus. The fixed acceptance denominator remains
-  unchanged.
+  near-misses. The only located L2 absence brief is explicitly `FOR_NATIVE_REVIEW`; it authorizes
+  neither a closed yoga candidate set nor an eligibility threshold. The exact upstream decision
+  required is a ratified L2 near-miss contract naming (1) the classical yoga candidates and
+  citations eligible for a significant-absence result, (2) the deterministic all-input
+  classification/threshold including incomplete L1 non-firing handling, and (3) the selected-build
+  row schema, fact IDs, source receipt, and freshness required to serve it. Its L2 owner must then
+  implement and prove the persisted band; Pūrṇa will not infer the threshold, proxy ordinary
+  non-firings, or mutate the protected producer. The fixed acceptance denominator remains unchanged.
 
 - **The ga-dasha replacement refusal remains correctly fail-closed until live build/receipt proof
   exists.** The consumer selects only a chart-scoped completed build with a proven receipt using
