@@ -4,7 +4,7 @@
   "authority": "CCD-012",
   "status": "PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS",
   "observed_at": "2026-09-20T18:16:54+05:30",
-  "source_candidate": "36d7fcc9876762207a31a3b2e3dc024981264cb7",
+  "source_candidate": "36d7fcc9857ff8b5d95e931bfc20dd247212ee42",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
     "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",
