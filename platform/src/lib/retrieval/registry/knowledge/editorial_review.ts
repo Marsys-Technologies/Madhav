@@ -65,6 +65,23 @@ const SPINE_BUNDLE_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  // compose_large_n is an actual composite, not an independent evidence
+  // producer.  Its gateway invokes these four registered handlers directly.
+  // Three have exact source-query contracts today, but query_chart_gestalt also
+  // invokes the tail-watch helper after its direct table query and has no
+  // complete handler-level availability contract.  Do not promote the
+  // composition from adjacent L2 receipts or from its graceful degradation:
+  // doing so would describe a partial answer as a supported complete path.
+  compose_large_n: {
+    reason: 'compose_large_n directly composes query_chart_gestalt, query_domain_reading, query_cgm_paths, and query_contradictions. query_chart_gestalt has no complete handler-level availability contract because its served path also invokes tail-watch after the gestalt table read. The synthesizer remains deliberately dark until every mandatory leg is contracted in the same chart scope; its graceful thin-stage response is not proof of supported-complete availability.',
+    missing_binding_ids: [
+      'registry:marsys://tool/L2/query_chart_gestalt',
+    ],
+    source_refs: [
+      'platform/src/lib/retrieval/synthesis/surface_gateway.ts:63-175',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:57-128',
+    ],
+  },
   channel_chat_dispatch: {
     reason: 'The descriptor itself reports migration_status=PENDING: the serving chat route still dispatches through the legacy retrieve layer, not the retrieval registry. Its static migration note is introspection, not evidence that the registry capability is reachable through Portal.',
     source_refs: [

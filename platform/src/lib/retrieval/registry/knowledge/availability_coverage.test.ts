@@ -197,6 +197,21 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('keeps the large-N composite dark until its orientation leg has a complete handler-level contract', () => {
+    const scu = findScu('scu.catalog.compose_large_n')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/synthesis/compose_large_n',
+      status: 'deliberately_dark',
+      missing_binding_ids: ['registry:marsys://tool/L2/query_chart_gestalt'],
+      reason: expect.stringContaining('tail-watch'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/synthesis/surface_gateway.ts:63-175',
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:57-128',
+      ]),
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
     expect(all).toHaveLength(15)
