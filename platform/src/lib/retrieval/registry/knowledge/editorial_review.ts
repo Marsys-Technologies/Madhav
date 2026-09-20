@@ -75,6 +75,14 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:359-459',
     ],
   },
+  graha_portrait: {
+    reason: 'The portrait assembles position, dignity, strength, avasthas, yogas, dashas, and graph evidence, while returning partial_source_error when a child fails. Its required strength child has no complete exact contract because its receipt covers only canonical graha_shadbala_total but the child handler can select all 21 strength categories. A populated partial portrait is not complete synthesis evidence.',
+    missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts:214-302',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202',
+    ],
+  },
   classical_attribution_lookup: {
     reason: 'The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.',
     source_refs: [

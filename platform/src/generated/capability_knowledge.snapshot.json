@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T12:09:30.000Z",
-  "content_hash": "sha256:a90462565fb4aeddcfa80d1db1ee1c15d1b3327833a7250ae5f0ce8357e08174",
+  "generated_at": "2026-09-20T12:12:00.000Z",
+  "content_hash": "sha256:ac13d07dda4968cfb70a9c7c6c6d13ae80315de9b214d7bd73213f802013017c",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:dd9a8d7c9c516ce7ca27bf4b00374bf14f92bd57e656f41a8b7cab6de7d3ea6a",
+  "semantic_review_fingerprint": "sha256:465e32159d5c1a108f0e2593596474f1bd9aa21dbfa524f7be6dac954854ee2a",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -10833,6 +10833,20 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/graha_portrait",
+          "status": "deliberately_dark",
+          "reason": "The portrait assembles position, dignity, strength, avasthas, yogas, dashas, and graph evidence, while returning partial_source_error when a child fails. Its required strength child has no complete exact contract because its receipt covers only canonical graha_shadbala_total but the child handler can select all 21 strength categories. A populated partial portrait is not complete synthesis evidence.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L1/get_strength"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts:214-302",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
