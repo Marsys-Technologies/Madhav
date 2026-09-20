@@ -926,3 +926,12 @@ probe was attached only to its separate MCP alias. The alias-oriented key remain
 ambiguous automatic wiring; the raw binding now explicitly uses that same reviewed probe. No L3
 handler or data-plane path changed. Focused availability/overlay tests passed 266/266 and both
 generated-artifact checks pass. Inventory: 186 executable bindings, 167 contracts, 15 dark, 4 uncovered.
+
+## PRODUCT-M2 catalogue accounting closure — 2026-09-20
+
+The remaining four routes are now explicitly fail-closed: router planning does not execute its
+trajectory; both synergy routes require an uncontracted direct-DB composite; and tool search has no
+authenticated deployed-process receipt. Focused tests passed 270/270 and both generation checks pass.
+The source catalogue is fully accounted: 186 executable bindings, 167 contracts, 19 dark dispositions,
+and zero uncovered bindings. This is not live availability, a candidate corpus, release proof, or
+product automated acceptance.
