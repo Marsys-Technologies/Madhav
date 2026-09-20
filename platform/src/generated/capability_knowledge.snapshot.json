@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T11:25:17.000Z",
-  "content_hash": "sha256:631929da155b91a101036dc2923c737804deb3133bd80ee9f3c6042d1545315b",
+  "generated_at": "2026-09-20T11:31:00.000Z",
+  "content_hash": "sha256:225082bec8fc63af0eb89c58279e9c754e4db52d2509d719706e3bc2f5181b14",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:9882a721167b9328efd4047abfdf67eba5d1b9d06278db1fab8cd8d5efb1322d",
+  "semantic_review_fingerprint": "sha256:49d15796d86f063d5cb827f09e3a88128a149c84b232b6c13e0149c11d434782",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -21896,6 +21896,22 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/query_planet",
+          "status": "deliberately_dark",
+          "reason": "The assembled entity response always includes shadbala from get_strength and marks any failed child as partial_source_error. get_strength has no complete exact availability contract because its reviewed receipt covers only canonical graha_shadbala_total while the handler can select all 21 strength categories, so a complete query_planet entity cannot be promoted from adjacent facet evidence.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L1/get_strength"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:133-145",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:174-185",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202",
+            "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

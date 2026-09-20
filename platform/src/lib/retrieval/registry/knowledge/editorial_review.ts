@@ -69,6 +69,16 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
     ],
   },
+  query_planet: {
+    reason: 'The assembled entity response always includes shadbala from get_strength and marks any failed child as partial_source_error. get_strength has no complete exact availability contract because its reviewed receipt covers only canonical graha_shadbala_total while the handler can select all 21 strength categories, so a complete query_planet entity cannot be promoted from adjacent facet evidence.',
+    missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:133-145',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:174-185',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202',
+      'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
+    ],
+  },
 }
 
 const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {

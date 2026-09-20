@@ -218,6 +218,17 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('accounts for query_planet as dark when its mandatory get_strength facet has no complete contract', () => {
+    const scu = findScu('scu.catalog.query_planet')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L1/query_planet',
+      status: 'deliberately_dark',
+      missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
+      reason: expect.stringContaining('partial_source_error'),
+    })])
+  })
+
   it('admits query_domain_reading only through its complete active-build-context source-query contract', async () => {
     const scu = findScu('scu.catalog.query_domain_reading')
     expect(scu.availability_contracts).toEqual([expect.objectContaining({
