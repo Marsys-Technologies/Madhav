@@ -240,7 +240,9 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
     || actualRows.some((key) => !expectedRows.has(key))
     || artifact.rows.some((row) => row.expectedRevision !== artifact.manifest.expected_door_revisions[row.door]
       || row.source !== artifact.manifest.environment
-      || row.observedChartId !== artifact.manifest.target.chart_id)
+      // A channel can fail before the served response exposes chart identity. Preserve that
+      // authentic incomplete receipt; assertLiveEvidence still rejects it for acceptance.
+      || (row.observedChartId !== null && row.observedChartId !== artifact.manifest.target.chart_id))
     || artifact.manifest_hash !== stableFingerprint(manifestProjection(artifact.manifest))
     || artifact.collection_hash !== stableFingerprint(projection)) {
     throw new Error('PURNA_COLLECTION_ARTIFACT_INVALID')
