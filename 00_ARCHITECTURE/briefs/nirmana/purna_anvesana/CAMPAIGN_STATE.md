@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.42.0
+version: 0.43.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0120
-last_updated: 2026-09-20T15:55:00+05:30
+last_event: PA-E0121
+last_updated: 2026-09-20T16:10:13+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -73,6 +73,15 @@ layer state, queue or authority.
   deliberate-dark dispositions, and 23 still-uncovered executable bindings. This is an
   unprotected source-local capability repair, not a live source-query result, deployment, or
   acceptance result; the frozen 105+105 execution denominator is unchanged.
+
+- **The capability-projection assertion now agrees with the regenerated contract inventory.**
+  CI job `106063696768` on PR #2705 exposed its stale 24/158/4 expectations after the above
+  three derived contracts changed the projected states to 23 missing, 161 authored, and two
+  deliberately dark. The test now asserts those generated-inventory totals and the focused
+  coverage/availability set passes 199 tests. This corrects the source projection only; it does
+  not change the 186-binding input set, the frozen 105+105 acceptance denominator, or any live
+  acceptance state. The remaining PR #2705 route-golden and v5-source-artifact failures are
+  tracked separately as the exact-head PR #2704 dependency and are not rebaselined here.
 
 - Current serving revisions, re-read directly on 2026-09-20, are web
   `94f75602f1cb3a794ed70723f67bf35e7003f11e`, MCP
