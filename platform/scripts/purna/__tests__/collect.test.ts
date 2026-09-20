@@ -51,6 +51,10 @@ describe('Purna real three-door collector', () => {
       ...artifact,
       manifest: { ...artifact.manifest, target: { ...artifact.manifest.target, chart_id: 'other-chart' } },
     })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
+    expect(() => validateCollectionArtifact({
+      ...artifact,
+      rows: artifact.rows.map((row, index) => index ? row : { ...row, observedChartId: 'other-chart' }),
+    })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
   })
 
   it('rejects a supposedly live answer with no real channel execution', () => {
