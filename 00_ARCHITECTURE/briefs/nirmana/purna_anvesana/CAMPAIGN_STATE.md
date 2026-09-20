@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0141
-last_updated: 2026-09-20T19:13:00+05:30
+last_event: PA-E0142
+last_updated: 2026-09-20T19:23:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -944,3 +944,12 @@ source inventory: 186 bindings, 167 authored contracts, 19 deliberately dark dis
 missing availability contract. The focused projection/availability checks pass 223/223; both generated
 artifact drift checks remain current. This reconciles source-local accounting only and does not alter the
 frozen 105+105 acceptance denominator, a live configuration, release state, or product acceptance.
+
+## PRODUCT-M2 corrected-candidate CI classification — 2026-09-20
+
+On source candidate `371ead2aa`, the protected unit suite passed 12,441 tests and retained only
+four failures: the two route-port golden receipts and the two Beyond-Acarya v5 artifact/hash
+assertions. The prior capability-projection assertion no longer fails. Those four failures remain
+the narrow L3-owned PR #2704 correction boundary; the PR is clean but review-pending, and no golden
+baseline is changed here. The fact-category scanner remains a separate inherited gate failure on
+unchanged zero-row availability probes. This is CI classification only, not a release or acceptance result.
