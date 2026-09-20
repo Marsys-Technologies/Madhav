@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T12:37:42.000Z",
-  "content_hash": "sha256:c7803047f7a1c3abc4c779279a70b6176f5c92250efbbf45b72d6bc014281f65",
+  "generated_at": "2026-09-20T12:46:16.000Z",
+  "content_hash": "sha256:5d85beaef0d82bee197853dda6a38aff4ae54ffd51c19b99cb0c5665c1bd5b08",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:655dae27687f15a475c153239a1524c566807b6c3ff2b0664f794a9adbdab1ff",
+  "semantic_review_fingerprint": "sha256:0609e8d7cbfc95c6f4290a6edff68b7993a5d504f0fac8173c94aae0eb0053c0",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -21067,6 +21067,18 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L4/query_muhurat",
+          "status": "deliberately_dark",
+          "reason": "The handler only forwards the request to the authenticated sidecar /api/compute/phala/muhurta_finder endpoint. Its named ka_muhurta_seva writer self-test is not an endpoint-specific probe and does not establish that this distinct PH-4-4 route, its chart-scoped dasha/transit reads, or its panchanga window source are currently reachable. No route-specific authenticated service receipt exists, so this temporal route must remain dark.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts:92-133",
+            "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+            "platform/python-sidecar/services/ka_muhurta_seva/writer.py:72-137"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

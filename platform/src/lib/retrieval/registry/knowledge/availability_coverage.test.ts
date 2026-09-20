@@ -184,6 +184,19 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('keeps the forward-only muhurta sidecar route dark until its exact endpoint has an authenticated probe', () => {
+    const scu = findScu('scu.catalog.query_muhurat')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L4/query_muhurat',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('authenticated sidecar'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts:92-133',
+      ]),
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
     expect(all).toHaveLength(15)

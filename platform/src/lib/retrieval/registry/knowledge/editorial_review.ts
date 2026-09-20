@@ -87,6 +87,14 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:359-459',
     ],
   },
+  query_muhurat: {
+    reason: 'The handler only forwards the request to the authenticated sidecar /api/compute/phala/muhurta_finder endpoint. Its named ka_muhurta_seva writer self-test is not an endpoint-specific probe and does not establish that this distinct PH-4-4 route, its chart-scoped dasha/transit reads, or its panchanga window source are currently reachable. No route-specific authenticated service receipt exists, so this temporal route must remain dark.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts:92-133',
+      'platform/python-sidecar/brahmagyan/phala/muhurta.py',
+      'platform/python-sidecar/services/ka_muhurta_seva/writer.py:72-137',
+    ],
+  },
   graha_portrait: {
     reason: 'The portrait assembles position, dignity, strength, avasthas, yogas, dashas, and graph evidence, while returning partial_source_error when a child fails. Its required strength child has no complete exact contract because its receipt covers only canonical graha_shadbala_total but the child handler can select all 21 strength categories. A populated partial portrait is not complete synthesis evidence.',
     missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
