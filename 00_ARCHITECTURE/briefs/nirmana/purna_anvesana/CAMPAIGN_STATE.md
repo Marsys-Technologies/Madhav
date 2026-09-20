@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0128
-last_updated: 2026-09-20T17:39:30+05:30
+last_event: PA-E0129
+last_updated: 2026-09-20T17:48:24+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -104,6 +104,10 @@ layer state, queue or authority.
   branch reads chart facts, but its Kakshya-window branch also fetches daily ephemeris from the
   sidecar. Neither branch may promote the other. The current projection is 164 contracts, 15
   uncovered, and seven deliberately dark bindings.
+
+- **Graha portrait is dark until its mandatory strength facet is complete.** The response exposes
+  partial child failures, but the 21-category strength handler lacks a complete exact contract.
+  The projection is 164 contracts, 14 uncovered, and eight deliberately dark bindings.
 
 - **Three required domain assessments now have source-local derived evidence contracts.**
   `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
