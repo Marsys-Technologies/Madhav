@@ -13,6 +13,7 @@ describe('Purna real three-door collector', () => {
   it('rejects collection targets that could leak a probe bearer or evade the HTTPS boundary', () => {
     const config = {
       schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a',
+      door_expected_revisions: { portal: 'candidate-a', managed_mcp: 'candidate-a', raw_mcp: 'candidate-a' },
       chart_id: base.chartId, portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test',
       authorization_approval_id: 'approval-1',
     }
@@ -20,6 +21,7 @@ describe('Purna real three-door collector', () => {
     expect(() => parseConfig({ ...config, mcp_url: 'http://mcp.example.test' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
     expect(() => parseConfig({ ...config, mcp_url: 'https://token@mcp.example.test' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
     expect(() => parseConfig({ ...config, portal_url: 'https://portal.example.test?token=forbidden' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
+    expect(() => parseConfig({ ...config, door_expected_revisions: { portal: 'only-one' } })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
     expect(() => parseConfig({ ...config, api_token: 'forbidden' })).toThrow('PURNA_COLLECTION_CONFIG_INVALID')
   })
 
@@ -55,6 +57,27 @@ describe('Purna real three-door collector', () => {
       ...artifact,
       rows: artifact.rows.map((row, index) => index ? row : { ...row, observedChartId: 'other-chart' }),
     })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
+  })
+
+  it('binds a changed-path deployment to the verified revision for each door', () => {
+    const input: AcceptanceCaseInput = {
+      case_id: test.id, kind: 'beyond_acarya', question: test.question, scope_tuple: test.scope_tuple,
+      deterministic_gates: ['immutable_case_input'], required_dimensions: test.requiredDimensions, expected: test.expected,
+    }
+    const revisions = { portal: 'web-c194', managed_mcp: 'mcp-09d', raw_mcp: 'mcp-09d' }
+    const row: CollectedCase = {
+      caseId: test.id, door: 'portal', inquiryId: 'i-1', expectedRevision: revisions.portal, observedRevision: revisions.portal,
+      observedChartId: base.chartId, snapshotHash: null, chartBuildId: null, answer: 'answer', responseAccountability: null,
+      receiptRefs: ['receipt-a'], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: [], networkCallCount: 1, source: 'live', terminal: 'complete', diagnostic: null,
+    }
+    const artifact = createCollectionArtifact({
+      suite: 'beyond_acarya', environment: 'live', expectedRevision: 'web-c194', expectedDoorRevisions: revisions,
+      authorizationApprovalId: 'approval-1', caseInputs: [input],
+      target: { chart_id: base.chartId, portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test' },
+      rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...row, door, expectedRevision: revisions[door], observedRevision: revisions[door] })),
+    })
+    expect(validateCollectionArtifact(artifact)).toEqual(artifact)
+    expect(() => validateCollectionArtifact({ ...artifact, rows: artifact.rows.map((entry) => entry.door === 'managed_mcp' ? { ...entry, expectedRevision: revisions.portal } : entry) })).toThrow('PURNA_COLLECTION_ARTIFACT_INVALID')
   })
 
   it('rejects a supposedly live answer with no real channel execution', () => {
@@ -93,7 +116,7 @@ describe('Purna real three-door collector', () => {
     expect(row).toMatchObject({ terminal: 'transport_error', diagnostic: 'PORTAL_DEADLINE_EXCEEDED', networkCallCount: 1 })
   })
   it('bounds a hanging MCP initialization and seals failed rows instead of hanging before collection', async () => {
-    const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
+    const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', door_expected_revisions: { portal: 'candidate-a', managed_mcp: 'candidate-b', raw_mcp: 'candidate-c' }, chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
     const prior = process.env.MARSYS_MCP_KEY
     process.env.MARSYS_MCP_KEY = 'test-key'
     try {
@@ -102,10 +125,11 @@ describe('Purna real three-door collector', () => {
         mintSession: async () => { throw new Error('session intentionally unavailable') },
       })
       expect(rows.map((row) => row.diagnostic)).toEqual(['PORTAL_SESSION_MINT_FAILED', 'MANAGED_MCP_REQUEST_DEADLINE', 'RAW_MCP_REQUEST_DEADLINE'])
+      expect(rows.map((row) => row.expectedRevision)).toEqual(['candidate-a', 'candidate-b', 'candidate-c'])
     } finally { if (prior === undefined) delete process.env.MARSYS_MCP_KEY; else process.env.MARSYS_MCP_KEY = prior }
   })
   it('bounds a hanging portal-session mint and seals a zero-network portal failure', async () => {
-    const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
+    const config: Config = { schema_version: 'purna-collection-config/v1', environment: 'candidate', expected_revision: 'candidate-a', door_expected_revisions: { portal: 'candidate-a', managed_mcp: 'candidate-a', raw_mcp: 'candidate-a' }, chart_id: base.chartId, portal_url: 'https://example.test', mcp_url: 'https://example.test/mcp', authorization_approval_id: 'approval-1', portal_timeout_ms: 1, mcp_timeout_ms: 1 }
     const prior = process.env.MARSYS_MCP_KEY
     process.env.MARSYS_MCP_KEY = 'test-key'
     try {

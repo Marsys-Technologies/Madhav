@@ -7,6 +7,18 @@ export const PURNA_COLLECTION_ARTIFACT_VERSION = 'purna-collected-cases/v3' as c
 export const PURNA_ACCOUNTABLE_ANSWERS_VERSION = 'purna-accountable-answers/v1' as const
 const SHA256_FINGERPRINT = /^sha256:[a-f0-9]{64}$/
 
+/**
+ * A protected changed-path release may intentionally retain an unchanged MCP
+ * service revision while promoting a web-only repair.  Bind each door to the
+ * revision actually selected for it; `expected_revision` remains the source
+ * release identity for the whole collection.
+ */
+export interface DoorExpectedRevisions {
+  readonly portal: string
+  readonly managed_mcp: string
+  readonly raw_mcp: string
+}
+
 export interface AcceptanceCase {
   readonly id: string
   readonly question: string
@@ -45,6 +57,7 @@ export interface CollectionManifest {
   readonly suite: AcceptanceSuite
   readonly environment: 'candidate' | 'live'
   readonly expected_revision: string
+  readonly expected_door_revisions: DoorExpectedRevisions
   readonly authorization_approval_id: string
   /** Non-secret target identity, carried into the collection hash. */
   readonly target: {
@@ -85,6 +98,12 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[]):
 
 function stringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function validDoorExpectedRevisions(value: unknown): value is DoorExpectedRevisions {
+  return record(value)
+    && exactKeys(value, ['portal', 'managed_mcp', 'raw_mcp'])
+    && ['portal', 'managed_mcp', 'raw_mcp'].every((door) => typeof value[door] === 'string' && value[door].length > 0)
 }
 
 function validCaseInput(value: unknown): value is AcceptanceCaseInput {
@@ -131,6 +150,7 @@ function manifestProjection(manifest: CollectionManifest): CollectionManifest {
     suite: manifest.suite,
     environment: manifest.environment,
     expected_revision: manifest.expected_revision,
+    expected_door_revisions: manifest.expected_door_revisions,
     authorization_approval_id: manifest.authorization_approval_id,
     target: manifest.target,
     case_inputs: manifest.case_inputs,
@@ -157,6 +177,7 @@ export function createCollectionArtifact(args: {
   readonly suite: AcceptanceSuite
   readonly environment: 'candidate' | 'live'
   readonly expectedRevision: string
+  readonly expectedDoorRevisions?: DoorExpectedRevisions
   readonly authorizationApprovalId: string
   readonly target: CollectionManifest['target']
   readonly caseInputs: readonly AcceptanceCaseInput[]
@@ -166,6 +187,11 @@ export function createCollectionArtifact(args: {
     suite: args.suite,
     environment: args.environment,
     expected_revision: args.expectedRevision,
+    expected_door_revisions: args.expectedDoorRevisions ?? {
+      portal: args.expectedRevision,
+      managed_mcp: args.expectedRevision,
+      raw_mcp: args.expectedRevision,
+    },
     authorization_approval_id: args.authorizationApprovalId,
     target: args.target,
     case_inputs: args.caseInputs,
@@ -184,10 +210,11 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
   if (!record(value) || !exactKeys(value, ['schema_version', 'manifest', 'manifest_hash', 'rows', 'collection_hash'])
     || value.schema_version !== PURNA_COLLECTION_ARTIFACT_VERSION
     || !record(value.manifest)
-    || !exactKeys(value.manifest, ['suite', 'environment', 'expected_revision', 'authorization_approval_id', 'target', 'case_inputs'])
+    || !exactKeys(value.manifest, ['suite', 'environment', 'expected_revision', 'expected_door_revisions', 'authorization_approval_id', 'target', 'case_inputs'])
     || (value.manifest.suite !== 'beyond_acarya' && value.manifest.suite !== 'product')
     || (value.manifest.environment !== 'candidate' && value.manifest.environment !== 'live')
     || typeof value.manifest.expected_revision !== 'string' || value.manifest.expected_revision.length === 0
+    || !validDoorExpectedRevisions(value.manifest.expected_door_revisions)
     || typeof value.manifest.authorization_approval_id !== 'string' || value.manifest.authorization_approval_id.length === 0
     || !validTarget(value.manifest.target)
     || !Array.isArray(value.manifest.case_inputs) || !value.manifest.case_inputs.every(validCaseInput)
@@ -211,7 +238,7 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
   if (caseIds.length === 0 || new Set(caseIds).size !== caseIds.length
     || actualRows.length !== expectedRows.size || new Set(actualRows).size !== actualRows.length
     || actualRows.some((key) => !expectedRows.has(key))
-    || artifact.rows.some((row) => row.expectedRevision !== artifact.manifest.expected_revision
+    || artifact.rows.some((row) => row.expectedRevision !== artifact.manifest.expected_door_revisions[row.door]
       || row.source !== artifact.manifest.environment
       || row.observedChartId !== artifact.manifest.target.chart_id)
     || artifact.manifest_hash !== stableFingerprint(manifestProjection(artifact.manifest))
