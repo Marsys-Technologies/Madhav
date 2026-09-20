@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.48.0
+version: 0.49.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0133
-last_updated: 2026-09-20T18:10:24+05:30
+last_event: PA-E0134
+last_updated: 2026-09-20T18:16:54+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -127,6 +127,12 @@ layer state, queue or authority.
   186 executable bindings, 166 explicit availability contracts, 11 uncovered bindings, and nine
   deliberate-dark dispositions. It is proof of queryability only; no private-event receipt,
   inference, writing, candidate execution, release, or acceptance is claimed.
+
+- **Muhurta is explicitly dark, not silently unaccounted.** The serving handler only forwards to
+  `/api/compute/phala/muhurta_finder`; the named Kāla self-test is not an authenticated probe of
+  that distinct PH-4-4 endpoint, its chart reads, or panchanga source. Until route-specific proof
+  exists, its binding remains dark. Current projection: 166 contracts, 10 uncovered bindings, and
+  10 dark dispositions; the frozen 186-binding and 105+105 denominators are unchanged.
 
 - **The newest PR #2705 required CI is terminal but not green.** Run `35510491471` shows the exact
   historic four PR #2704 golden/source-artifact failures and one separate Density Census failure:
