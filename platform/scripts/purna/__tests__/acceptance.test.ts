@@ -27,9 +27,11 @@ const scoreInput: AcceptanceCaseInput = {
 }
 
 const candidateConfig = {
-  schema_version: 'purna-product-acceptance-environment/v2' as const,
+  schema_version: 'purna-product-acceptance-environment/v3' as const,
   environment: 'candidate' as const,
-  base_url: 'https://candidate.example.invalid',
+  chart_id: '11111111-1111-4111-8111-111111111111',
+  portal_url: 'https://portal.candidate.example.invalid',
+  mcp_url: 'https://mcp.candidate.example.invalid',
   revision: 'candidate-revision-123',
   authorization: { mode: 'approved_non_secret' as const, approval_id: 'approval-123' },
   judge_authority: {
@@ -242,6 +244,7 @@ async function boundInput(args: {
     inquiryId: 'inquiry-1',
     expectedRevision: candidateConfig.revision,
     observedRevision: candidateConfig.revision,
+    observedChartId: candidateConfig.chart_id,
     snapshotHash: 'snapshot-1',
     chartBuildId: 'build-1',
     answer: args.answer ?? 'answer',
@@ -260,6 +263,11 @@ async function boundInput(args: {
     environment: 'candidate',
     expectedRevision: candidateConfig.revision,
     authorizationApprovalId: candidateConfig.authorization.approval_id,
+    target: {
+      chart_id: candidateConfig.chart_id,
+      portal_url: candidateConfig.portal_url,
+      mcp_url: candidateConfig.mcp_url,
+    },
     caseInputs: [args.caseInput],
     rows: (['portal', 'managed_mcp', 'raw_mcp'] as const).map((door) => ({ ...row, door })),
   })
@@ -434,6 +442,13 @@ describe('Purna product acceptance harness', () => {
         },
         artifactDir,
       })).rejects.toThrow('PURNA_JUDGED_ANSWERS_HASH_MISMATCH')
+
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate',
+        environmentConfig: { ...trustedConfig, mcp_url: 'https://other-mcp.example.invalid' },
+        input: judged,
+        artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_COLLECTION_TARGET_MISMATCH')
     } finally {
       await rm(artifactDir, { recursive: true, force: true })
     }
@@ -756,7 +771,7 @@ describe('Purna product acceptance harness', () => {
     }
   })
 
-  it('persists per-case verdicts and structured deterministic failures without network activity', async () => {
+  it('persists per-case verdicts, structured deterministic failures, and the selected door\'s observed network work', async () => {
     const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
     const firstCase = casesForSuite(protocol, 'product')[0]
     try {
@@ -783,7 +798,7 @@ describe('Purna product acceptance harness', () => {
         judge_model_id: input.assessment!.model_id,
         judged_artifact_hash: input.assessment!.judged_artifact_hash,
         environment_config: { judge_authority: configAnchoredTo(input).judge_authority },
-        verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
+        verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 2,
       })
       expect(persisted.case_inputs).toHaveLength(30)
       expect(persisted.answers).toHaveLength(1)

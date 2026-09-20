@@ -21,7 +21,29 @@ export async function withMcpDeadline<T>(operation: (signal: AbortSignal) => Pro
   } finally { if (timer) clearTimeout(timer) }
 }
 function object(value: unknown): Record<string, unknown> { if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('PURNA_COLLECTION_CONFIG_INVALID'); return value as Record<string, unknown> }
-function parseConfig(value: unknown): Config { const data = object(value); if (data.schema_version !== 'purna-collection-config/v1' || !['candidate', 'live'].includes(String(data.environment)) || ![data.expected_revision, data.chart_id, data.portal_url, data.mcp_url, data.authorization_approval_id].every((item) => typeof item === 'string' && item.length > 0)) throw new Error('PURNA_COLLECTION_CONFIG_INVALID'); return data as unknown as Config }
+function isSafeHttpsUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
+  } catch { return false }
+}
+export function parseConfig(value: unknown): Config {
+  const data = object(value)
+  const allowed = new Set([
+    'schema_version', 'environment', 'expected_revision', 'chart_id', 'portal_url', 'mcp_url',
+    'authorization_approval_id', 'max_polls', 'max_actions', 'portal_timeout_ms', 'mcp_timeout_ms',
+  ])
+  if (Object.keys(data).some((key) => !allowed.has(key))
+    || data.schema_version !== 'purna-collection-config/v1'
+    || !['candidate', 'live'].includes(String(data.environment))
+    || ![data.expected_revision, data.chart_id, data.authorization_approval_id].every((item) => typeof item === 'string' && item.length > 0)
+    || !isSafeHttpsUrl(data.portal_url)
+    || !isSafeHttpsUrl(data.mcp_url)) {
+    throw new Error('PURNA_COLLECTION_CONFIG_INVALID')
+  }
+  return data as unknown as Config
+}
 function asCase(value: AcceptanceCaseInput): AcceptanceCase {
   if (!value.question || !value.scope_tuple || !value.expected) throw new Error('PURNA_COLLECTION_CASE_INVALID')
   return {
@@ -83,12 +105,17 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const sourceCases = casesForSuite(protocol, suite as AcceptanceSuite)
   const selected = caseId ? sourceCases.filter((item) => item.case_id === caseId) : sourceCases
   if (!selected.length) throw new Error('PURNA_COLLECTION_CASE_UNKNOWN')
-  const config = parseConfig(JSON.parse(await readFile(configPath, 'utf8'))); const rows = await collect(config, selected.map(asCase)); const invalid = rows.filter((row) => { try { assertLiveEvidence(row); return false } catch { return true } })
+  const config = parseConfig(JSON.parse(await readFile(configPath, 'utf8'))); const rows = await collect(config, selected.map(asCase)); const invalid = rows.filter((row) => { try { assertLiveEvidence(row, config.chart_id); return false } catch { return true } })
   const artifact = createCollectionArtifact({
     suite: suite as AcceptanceSuite,
     environment: config.environment,
     expectedRevision: config.expected_revision,
     authorizationApprovalId: config.authorization_approval_id,
+    target: {
+      chart_id: config.chart_id,
+      portal_url: config.portal_url,
+      mcp_url: config.mcp_url,
+    },
     caseInputs: selected,
     rows,
   })

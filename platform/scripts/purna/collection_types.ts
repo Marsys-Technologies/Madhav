@@ -3,7 +3,7 @@ import type { AcceptanceCaseInput, AcceptanceSuite } from './acceptance_cases'
 
 export type AcceptanceDoor = 'portal' | 'managed_mcp' | 'raw_mcp'
 export type CollectionTerminal = 'complete' | 'incomplete' | 'blocked' | 'transport_error'
-export const PURNA_COLLECTION_ARTIFACT_VERSION = 'purna-collected-cases/v2' as const
+export const PURNA_COLLECTION_ARTIFACT_VERSION = 'purna-collected-cases/v3' as const
 export const PURNA_ACCOUNTABLE_ANSWERS_VERSION = 'purna-accountable-answers/v1' as const
 const SHA256_FINGERPRINT = /^sha256:[a-f0-9]{64}$/
 
@@ -22,6 +22,8 @@ export interface CollectedCase {
   readonly inquiryId: string | null
   readonly expectedRevision: string
   readonly observedRevision: string | null
+  /** Chart identity returned by the served channel, never just the requested id. */
+  readonly observedChartId: string | null
   readonly snapshotHash: string | null
   readonly chartBuildId: string | null
   readonly answer: string
@@ -44,6 +46,12 @@ export interface CollectionManifest {
   readonly environment: 'candidate' | 'live'
   readonly expected_revision: string
   readonly authorization_approval_id: string
+  /** Non-secret target identity, carried into the collection hash. */
+  readonly target: {
+    readonly chart_id: string
+    readonly portal_url: string
+    readonly mcp_url: string
+  }
   readonly case_inputs: readonly AcceptanceCaseInput[]
 }
 
@@ -94,7 +102,7 @@ function validCaseInput(value: unknown): value is AcceptanceCaseInput {
 
 function validCollectedCase(value: unknown): value is CollectedCase {
   if (!record(value) || !exactKeys(value, [
-    'caseId', 'door', 'inquiryId', 'expectedRevision', 'observedRevision', 'snapshotHash', 'chartBuildId',
+    'caseId', 'door', 'inquiryId', 'expectedRevision', 'observedRevision', 'observedChartId', 'snapshotHash', 'chartBuildId',
     'answer', 'responseAccountability', 'receiptRefs', 'materialFactIds', 'deliveredFactIds',
     'unresolvedObligationIds', 'networkCallCount', 'source', 'terminal', 'diagnostic',
   ])) return false
@@ -103,6 +111,7 @@ function validCollectedCase(value: unknown): value is CollectedCase {
     && (value.inquiryId === null || typeof value.inquiryId === 'string')
     && typeof value.expectedRevision === 'string' && value.expectedRevision.length > 0
     && (value.observedRevision === null || typeof value.observedRevision === 'string')
+    && (value.observedChartId === null || typeof value.observedChartId === 'string')
     && (value.snapshotHash === null || typeof value.snapshotHash === 'string')
     && (value.chartBuildId === null || typeof value.chartBuildId === 'string')
     && typeof value.answer === 'string'
@@ -123,8 +132,25 @@ function manifestProjection(manifest: CollectionManifest): CollectionManifest {
     environment: manifest.environment,
     expected_revision: manifest.expected_revision,
     authorization_approval_id: manifest.authorization_approval_id,
+    target: manifest.target,
     case_inputs: manifest.case_inputs,
   }
+}
+
+function isSafeHttpsUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
+  } catch { return false }
+}
+
+function validTarget(value: unknown): value is CollectionManifest['target'] {
+  return record(value)
+    && exactKeys(value, ['chart_id', 'portal_url', 'mcp_url'])
+    && typeof value.chart_id === 'string' && value.chart_id.length > 0
+    && isSafeHttpsUrl(value.portal_url)
+    && isSafeHttpsUrl(value.mcp_url)
 }
 
 export function createCollectionArtifact(args: {
@@ -132,6 +158,7 @@ export function createCollectionArtifact(args: {
   readonly environment: 'candidate' | 'live'
   readonly expectedRevision: string
   readonly authorizationApprovalId: string
+  readonly target: CollectionManifest['target']
   readonly caseInputs: readonly AcceptanceCaseInput[]
   readonly rows: readonly CollectedCase[]
 }): CollectionArtifact {
@@ -140,6 +167,7 @@ export function createCollectionArtifact(args: {
     environment: args.environment,
     expected_revision: args.expectedRevision,
     authorization_approval_id: args.authorizationApprovalId,
+    target: args.target,
     case_inputs: args.caseInputs,
   })
   const manifest_hash = stableFingerprint(manifest)
@@ -156,11 +184,12 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
   if (!record(value) || !exactKeys(value, ['schema_version', 'manifest', 'manifest_hash', 'rows', 'collection_hash'])
     || value.schema_version !== PURNA_COLLECTION_ARTIFACT_VERSION
     || !record(value.manifest)
-    || !exactKeys(value.manifest, ['suite', 'environment', 'expected_revision', 'authorization_approval_id', 'case_inputs'])
+    || !exactKeys(value.manifest, ['suite', 'environment', 'expected_revision', 'authorization_approval_id', 'target', 'case_inputs'])
     || (value.manifest.suite !== 'beyond_acarya' && value.manifest.suite !== 'product')
     || (value.manifest.environment !== 'candidate' && value.manifest.environment !== 'live')
     || typeof value.manifest.expected_revision !== 'string' || value.manifest.expected_revision.length === 0
     || typeof value.manifest.authorization_approval_id !== 'string' || value.manifest.authorization_approval_id.length === 0
+    || !validTarget(value.manifest.target)
     || !Array.isArray(value.manifest.case_inputs) || !value.manifest.case_inputs.every(validCaseInput)
     || !Array.isArray(value.rows) || !value.rows.every(validCollectedCase)
     || typeof value.manifest_hash !== 'string' || !SHA256_FINGERPRINT.test(value.manifest_hash)
@@ -183,7 +212,8 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
     || actualRows.length !== expectedRows.size || new Set(actualRows).size !== actualRows.length
     || actualRows.some((key) => !expectedRows.has(key))
     || artifact.rows.some((row) => row.expectedRevision !== artifact.manifest.expected_revision
-      || row.source !== artifact.manifest.environment)
+      || row.source !== artifact.manifest.environment
+      || row.observedChartId !== artifact.manifest.target.chart_id)
     || artifact.manifest_hash !== stableFingerprint(manifestProjection(artifact.manifest))
     || artifact.collection_hash !== stableFingerprint(projection)) {
     throw new Error('PURNA_COLLECTION_ARTIFACT_INVALID')
@@ -191,7 +221,7 @@ export function validateCollectionArtifact(value: unknown): CollectionArtifact {
   return artifact
 }
 
-export function isLiveEvidence(row: CollectedCase): boolean {
+export function isLiveEvidence(row: CollectedCase, expectedChartId?: string): boolean {
   return row.source !== 'fixture'
     && row.networkCallCount > 0
     // A genuinely served, revision-bound honest insufficiency remains live
@@ -199,9 +229,10 @@ export function isLiveEvidence(row: CollectedCase): boolean {
     // whether its bounded outcome satisfies the particular case.
     && row.terminal !== 'transport_error'
     && row.observedRevision === row.expectedRevision
+    && (expectedChartId === undefined || row.observedChartId === expectedChartId)
     && row.receiptRefs.length > 0
 }
 
-export function assertLiveEvidence(row: CollectedCase): void {
-  if (!isLiveEvidence(row)) throw new Error('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
+export function assertLiveEvidence(row: CollectedCase, expectedChartId?: string): void {
+  if (!isLiveEvidence(row, expectedChartId)) throw new Error('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
 }

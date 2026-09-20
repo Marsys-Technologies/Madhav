@@ -163,12 +163,16 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       // ── the reading_checklist receipt is present ──
       const rc = content['reading_checklist'] as Record<string, unknown>
       expect(rc).toBeTruthy()
+      expect(rc['contract_id']).toBe('judgment-reading-checklist-v2')
       const units = rc['units'] as Array<Record<string, unknown>>
       expect(Array.isArray(units)).toBe(true)
       const unitByName = new Map(units.map(u => [u['unit'] as string, u]))
       expect(unitByName.has('sensitive_degree_firings')).toBe(true)
       expect(unitByName.has('kp_cusp_chain')).toBe(true)
       expect(unitByName.has('gochara_sweep')).toBe(true)
+      expect(unitByName.has('bearing_yogas')).toBe(true)
+      expect(unitByName.has('bearing_afflictions')).toBe(true)
+      expect(unitByName.get('notably_absent_yogas')!['state']).toBe('not_computed')
       // yogi/avayogi honestly not_joined (T6/MC-029 computed it; this instrument doesn't fold it in yet)
       expect(unitByName.get('yogi_avayogi')!['state']).toBe('not_joined')
 

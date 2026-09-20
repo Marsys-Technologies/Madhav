@@ -317,8 +317,10 @@ describe('binding availability contracts', () => {
     expect(judgment.bindings[0]).toMatchObject({
       pagination: 'none',
       non_paginated_closure: {
-        closure_version: 'judgment-reading-checklist-v1',
+        closure_version: 'judgment-reading-checklist-v2',
         checklist_path: 'reading_checklist',
+        checklist_contract_id: 'judgment-reading-checklist-v2',
+        required_units: expect.arrayContaining(['bearing_yogas', 'bearing_afflictions', 'notably_absent_yogas']),
       },
     })
   })

@@ -10,11 +10,20 @@ describe('checklistExhaustiveness (the non_exhaustive self-disclosure)', () => {
     const units: ChecklistUnit[] = [
       { unit: 'a', state: 'served' },
       { unit: 'b', state: 'empty_for_this_chart' },
+      { unit: 'c', state: 'not_applicable' },
     ]
     const r = checklistExhaustiveness(units)
     expect(r.exhaustive).toBe(true)
     expect(r.non_exhaustive).toBe(false)
     expect(r.units_unserved).toEqual([])
+  })
+
+  it('keeps source-unproven, source-incomplete, and materially-trimmed units open', () => {
+    for (const state of ['source_unproven', 'source_incomplete', 'materially_trimmed'] as const) {
+      const r = checklistExhaustiveness([{ unit: 'required', state }])
+      expect(r.exhaustive).toBe(false)
+      expect(r.units_unserved).toEqual(['required'])
+    }
   })
 
   it('any not_joined / not_computed / salience_floored / not_yet_available unit forces non_exhaustive: salience_sampled', () => {

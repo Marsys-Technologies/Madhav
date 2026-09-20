@@ -103,7 +103,7 @@ export function answersFromCollection(args: {
   return args.inputs.map((input): AcceptanceAnswer => {
     const row = byCase.get(input.case_id)
     if (!row) throw new Error('PURNA_COLLECTION_DOOR_CASE_MISSING')
-    assertLiveEvidence(row)
+    assertLiveEvidence(row, collection.manifest.target.chart_id)
     return {
       case_id: input.case_id,
       answer: row.answer || null,

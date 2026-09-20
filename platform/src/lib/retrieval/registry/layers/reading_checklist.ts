@@ -31,10 +31,14 @@ import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 export type ChecklistState =
   | 'served' //               this unit's data is present in THIS response
   | 'empty_for_this_chart' //  computed, but no rows fired/exist for this chart (a finding, not a gap)
+  | 'not_applicable' //        this classical unit does not apply to the resolved domain
   | 'not_computed' //          the underlying L1/L2/L3 asset does not exist for this chart yet
   | 'not_joined' //            the data exists but this instrument does not fold it in (drill handle given)
   | 'salience_floored' //      exists + reachable but ranked below the served cut on salience surfaces
   | 'not_yet_available' //     the producing asset is being built in a parallel track (T6 yogi/avayogi)
+  | 'source_unproven' //       a required source leg could not be proven for this response
+  | 'source_incomplete' //     a fixed-shape required source leg was missing or duplicated
+  | 'materially_trimmed' //    response budgeting removed material evidence from this unit
 
 export interface ChecklistUnit {
   unit: string
@@ -44,6 +48,35 @@ export interface ChecklistUnit {
   drill?: string
   count?: number
 }
+
+/**
+ * v2 is deliberately an exact set, rather than a response-controlled denominator.
+ * A handler may disclose that a unit is not applicable, but it may not omit it and
+ * then call a smaller self-selected checklist complete.
+ */
+export const JUDGMENT_READING_CHECKLIST_V2_UNITS = [
+  'bhava_bhavesha_from_lagna',
+  'bhava_bhavesha_from_chandra',
+  'karakas',
+  'operative_varga',
+  'corroborating_vargas',
+  'ashtakavarga',
+  'special_lagnas',
+  'sensitive_degree_firings',
+  'kp_cusp_chain',
+  'yogi_avayogi',
+  'bearing_yogas',
+  'bearing_afflictions',
+  'notably_absent_yogas',
+  'dasha_levels',
+  'gochara_sweep',
+  'tajaka',
+] as const
+
+export const JUDGMENT_READING_CHECKLIST_V2_CONTRACT = {
+  contract_id: 'judgment-reading-checklist-v2',
+  required_units: JUDGMENT_READING_CHECKLIST_V2_UNITS,
+} as const
 
 /**
  * A response is `non_exhaustive: 'salience_sampled'` whenever not every checklist
@@ -57,7 +90,7 @@ export function checklistExhaustiveness(units: ChecklistUnit[]): {
   units_total: number
   units_unserved: string[]
 } {
-  const settled = new Set<ChecklistState>(['served', 'empty_for_this_chart'])
+  const settled = new Set<ChecklistState>(['served', 'empty_for_this_chart', 'not_applicable'])
   const unserved = units.filter(u => !settled.has(u.state)).map(u => u.unit)
   const exhaustive = unserved.length === 0
   return {
@@ -67,6 +100,183 @@ export function checklistExhaustiveness(units: ChecklistUnit[]): {
     units_total: units.length,
     units_unserved: unserved,
   }
+}
+
+// ── Wealth completion: source-receipt fence ────────────────────────────────────
+
+/**
+ * The finite producer set behind the Batch 5A wealth pivots.  Every served
+ * cross-varga, Ashtakavarga, special-lagna, or yogi/avayogi row must be from
+ * the judgment's exact selected build and each producer must still have its
+ * current output-digest receipt.  This is a consumption boundary only: it
+ * neither dispatches nor repairs a producer.
+ */
+export const WEALTH_READING_REQUIRED_ASSETS = [
+  'ga_structural',
+  'ga_vichara',
+  'ga_sensitive',
+  'ga_sensitive_degree',
+  'ga_strength',
+] as const
+
+export interface WealthReadingSourceFenceAsset {
+  asset_id: typeof WEALTH_READING_REQUIRED_ASSETS[number]
+  receipt_matches_selected_build: boolean
+  replacement_in_progress: boolean
+}
+
+export interface WealthReadingSourceFence {
+  /** False only when the snapshot query itself failed. */
+  ok: boolean
+  /** True only when every named producer has a fresh/proven current-spec receipt for this
+   * exact build and no replacement can have invalidated it. */
+  ready: boolean
+  assets: WealthReadingSourceFenceAsset[]
+}
+
+interface SourceReceiptFenceAsset {
+  asset_id: string
+  receipt_matches_selected_build: boolean
+  replacement_in_progress: boolean
+}
+
+interface SourceReceiptFence {
+  ok: boolean
+  ready: boolean
+  assets: SourceReceiptFenceAsset[]
+}
+
+/**
+ * Reads all five producer receipt states and their replacement fences from a
+ * single statement snapshot.  A current asset-output digest spec is joined to
+ * each receipt, so a source revision (notably ga_strength's wealth AV spec)
+ * requires a rebuilt receipt before it can be served.  A planned/running/
+ * paused producer or a terminal mutation at/after the selected receipt stays
+ * unavailable unless that run itself carries a fresh, proven current receipt.
+ */
+async function fetchSourceReceiptFence(
+  chart_id: string,
+  build_id: string,
+  requiredAssets: readonly string[],
+): Promise<SourceReceiptFence> {
+  const unavailable = (ok: boolean): SourceReceiptFence => ({
+    ok,
+    ready: false,
+    assets: requiredAssets.map(asset_id => ({
+      asset_id,
+      receipt_matches_selected_build: false,
+      replacement_in_progress: false,
+    })),
+  })
+  try {
+    const res = await query<{
+      asset_id: string
+      receipt_matches_selected_build: boolean
+      replacement_in_progress: boolean
+    }>(
+      `WITH required_assets AS (
+         SELECT unnest($1::text[]) AS asset_id
+       ), selected_receipts AS (
+         SELECT DISTINCT ON (receipt.asset_id)
+                receipt.asset_id,
+                receipt.observed_at
+           FROM asset_provenance_receipts receipt
+           JOIN asset_freshness freshness
+             ON freshness.asset_id = receipt.asset_id
+            AND freshness.scope_key = receipt.scope_key
+            AND freshness.partition_key = receipt.partition_key
+            AND freshness.receipt_version = receipt.receipt_version
+           JOIN asset_output_digest_specs digest_spec
+             ON digest_spec.asset_id = receipt.asset_id
+            AND digest_spec.spec_sha256 = receipt.output_digest_spec_sha256
+            AND digest_spec.retired_at IS NULL
+          WHERE receipt.asset_id = ANY($1::text[])
+            AND receipt.chart_id = $2::uuid
+            AND receipt.build_id = $3::uuid
+            AND receipt.receipt_state = 'proven'
+            AND freshness.freshness_state = 'fresh'
+          ORDER BY receipt.asset_id, receipt.observed_at DESC
+       )
+       SELECT required_asset.asset_id,
+              selected.asset_id IS NOT NULL AS receipt_matches_selected_build,
+              EXISTS (
+                SELECT 1
+                  FROM build_run_assets fenced_asset
+                  JOIN build_runs fenced_run ON fenced_run.id = fenced_asset.run_id
+                 WHERE fenced_run.chart_id = $2::uuid
+                   AND fenced_asset.asset_id = required_asset.asset_id
+                   AND (
+                     fenced_run.state IN ('planned', 'running', 'paused')
+                     OR fenced_asset.state IN ('queued', 'building')
+                     OR (
+                       selected.observed_at IS NOT NULL
+                       AND COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= selected.observed_at
+                       AND NOT EXISTS (
+                         SELECT 1
+                           FROM asset_provenance_receipts proven_receipt
+                           JOIN asset_freshness proven_freshness
+                             ON proven_freshness.asset_id = proven_receipt.asset_id
+                            AND proven_freshness.scope_key = proven_receipt.scope_key
+                            AND proven_freshness.partition_key = proven_receipt.partition_key
+                            AND proven_freshness.receipt_version = proven_receipt.receipt_version
+                           JOIN asset_output_digest_specs proven_spec
+                             ON proven_spec.asset_id = proven_receipt.asset_id
+                            AND proven_spec.spec_sha256 = proven_receipt.output_digest_spec_sha256
+                            AND proven_spec.retired_at IS NULL
+                          WHERE proven_receipt.asset_id = fenced_asset.asset_id
+                            AND proven_receipt.chart_id = $2::uuid
+                            AND proven_receipt.build_id = fenced_run.id
+                            AND proven_receipt.receipt_state = 'proven'
+                            AND proven_freshness.freshness_state = 'fresh'
+                       )
+                     )
+                   )
+              ) AS replacement_in_progress
+         FROM required_assets required_asset
+         LEFT JOIN selected_receipts selected ON selected.asset_id = required_asset.asset_id
+        ORDER BY required_asset.asset_id ASC`,
+      [[...requiredAssets], chart_id, build_id],
+    )
+    const byAsset = new Map(res.rows.map(row => [row.asset_id, row]))
+    const assets = requiredAssets.map(asset_id => {
+      const row = byAsset.get(asset_id)
+      return {
+        asset_id,
+        receipt_matches_selected_build: row?.receipt_matches_selected_build === true,
+        replacement_in_progress: row?.replacement_in_progress === true,
+      }
+    })
+    return {
+      ok: true,
+      ready: assets.every(asset => asset.receipt_matches_selected_build && !asset.replacement_in_progress),
+      assets,
+    }
+  } catch {
+    return unavailable(false)
+  }
+}
+
+export async function fetchWealthReadingSourceFence(
+  chart_id: string,
+  build_id: string,
+): Promise<WealthReadingSourceFence> {
+  const fence = await fetchSourceReceiptFence(chart_id, build_id, WEALTH_READING_REQUIRED_ASSETS)
+  return {
+    ...fence,
+    assets: fence.assets.map(asset => ({
+      ...asset,
+      asset_id: asset.asset_id as typeof WEALTH_READING_REQUIRED_ASSETS[number],
+    })),
+  }
+}
+
+/** ga_tajaka is an independent annual producer, so it has its own current-spec receipt
+ * fence rather than borrowing the natal wealth pivot's five-producer fence. */
+export async function fetchTajakaSourceFence(
+  chart_id: string,
+  build_id: string,
+): Promise<SourceReceiptFence> {
+  return fetchSourceReceiptFence(chart_id, build_id, ['ga_tajaka'])
 }
 
 // ── Leg 1: fired sensitive-degree checks (MC-030) ─────────────────────────────
@@ -410,6 +620,284 @@ export function vargaConfirmedMark(varga: string, relation: VargaRatificationRel
   if (relation === 'agree') return `${varga}✓ (varga_ratification: agrees with D1)`
   if (relation === 'oppose') return `${varga}✗! (varga_ratification: CONTRADICTS D1 — see varga_ratification_per_subject)`
   return `${varga}? (varga did not vote)`
+}
+
+export const WEALTH_CORROBORATING_VARGAS = ['D9', 'D11'] as const
+export const WEALTH_ASHTAKAVARGA_VARGAS = ['D2', 'D9', 'D11'] as const
+export const WEALTH_ASHTAKAVARGA_HOUSES = [2, 11] as const
+export const WEALTH_SPECIAL_LAGNAS = ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'] as const
+export const WEALTH_SPECIAL_LAGNA_KEYS = [
+  'longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1',
+] as const
+export const WEALTH_YOGI_SUBJECT_KEYS = {
+  YOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+  AVAYOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+  DUPLICATE_YOGI: ['sign', 'assigned_graha'],
+  SAHAYOGI: ['sign', 'assigned_graha'],
+} as const
+
+export interface WealthCorroboratingVargaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{ role: string; subject: string; varga: typeof WEALTH_CORROBORATING_VARGAS[number]; relation: VargaRatificationRelation; source_id: string; constituent_fact_ids: string[] }>
+  fact_ids: string[]
+}
+
+/** Fixed-shape wealth corroboration: two named actors times D9/D11.  The caller must
+ * establish the shared selected-build receipt fence before calling this reader. */
+export async function fetchWealthCorroboratingVargas(
+  chart_id: string,
+  ayanamsha_id: string,
+  subjects: Array<{ role: string; code: string }>,
+  build_id: string,
+): Promise<WealthCorroboratingVargaResult> {
+  const uniqueSubjects = [...new Map(subjects.map(subject => [subject.code, subject])).values()]
+  const codes = uniqueSubjects.map(subject => subject.code)
+  if (codes.length === 0) return { state: 'source_incomplete', rows: [], fact_ids: [] }
+  try {
+    const res = await query<{ id: string; subject: string; value_jsonb: Record<string, unknown> | null; constituent_fact_ids: string[] | null }>(
+      `SELECT id::text AS id, subject, value_jsonb, constituent_fact_ids
+         FROM chart_vichara
+        WHERE chart_id = $1 AND ayanamsha_id = $2
+          AND build_id = $3::uuid AND vichara_family = 'varga_ratification'
+          AND domain = 'wealth' AND subject = ANY($4)
+        ORDER BY subject ASC, id ASC`,
+      [chart_id, ayanamsha_id, build_id, codes],
+    )
+    const bySubject = new Map<string, typeof res.rows>()
+    for (const row of res.rows) bySubject.set(row.subject, [...(bySubject.get(row.subject) ?? []), row])
+    const rows: WealthCorroboratingVargaResult['rows'] = []
+    for (const subject of uniqueSubjects) {
+      const matches = bySubject.get(subject.code) ?? []
+      if (matches.length !== 1) return { state: 'source_incomplete', rows: [], fact_ids: [] }
+      const row = matches[0]!
+      const perVarga = row.value_jsonb?.['per_varga'] as Record<string, { relation?: string }> | undefined
+      for (const varga of WEALTH_CORROBORATING_VARGAS) {
+        const relation = perVarga?.[varga]?.relation
+        if (!['agree', 'oppose', 'abstain', 'abstain_missing', 'no_row'].includes(String(relation))) {
+          return { state: 'source_incomplete', rows: [], fact_ids: [] }
+        }
+        rows.push({ role: subject.role, subject: subject.code, varga, relation: relation as VargaRatificationRelation, source_id: row.id, constituent_fact_ids: row.constituent_fact_ids ?? [] })
+      }
+    }
+    return { state: 'served', rows, fact_ids: [...new Set(rows.flatMap(row => row.constituent_fact_ids))].sort() }
+  } catch {
+    return { state: 'source_unproven', rows: [], fact_ids: [] }
+  }
+}
+
+export interface WealthAshtakavargaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{ fact_id: string; fact_category: string; fact_subject: string; fact_key: string; fact_value_num: number | null }>
+}
+
+/** Exact D2/D9/D11 wealth slice: SARVA bindus for houses 2/11 and pinda rows for the
+ * resolved wealth actors. Missing/duplicate natural keys are corrupt/incomplete, never a
+ * zero-value substitute. The caller establishes the shared receipt fence. */
+export async function fetchWealthAshtakavarga(
+  chart_id: string,
+  ayanamsha_id: string,
+  actor_codes: string[],
+  build_id: string,
+): Promise<WealthAshtakavargaResult> {
+  const actors = [...new Set(actor_codes)]
+  if (actors.length === 0) return { state: 'source_incomplete', rows: [] }
+  try {
+    const res = await query<WealthAshtakavargaResult['rows'][number]>(
+      `SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num
+         FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND (
+            (fact_category = 'ashtakavarga_bindu_per_varga'
+             AND fact_subject = ANY($4) AND fact_key = ANY($5))
+            OR
+            (fact_category = 'ashtakavarga_pinda_sarva_per_varga'
+             AND fact_subject = ANY($6) AND fact_key = ANY($5))
+          )
+        ORDER BY fact_category ASC, fact_subject ASC, fact_key ASC, fact_id ASC`,
+      [chart_id, ayanamsha_id, build_id,
+        WEALTH_ASHTAKAVARGA_HOUSES.map(house => `SARVA-HOUSE_${house}`),
+        [...WEALTH_ASHTAKAVARGA_VARGAS], actors],
+    )
+    const expected = new Set<string>()
+    for (const varga of WEALTH_ASHTAKAVARGA_VARGAS) {
+      for (const house of WEALTH_ASHTAKAVARGA_HOUSES) expected.add(`ashtakavarga_bindu_per_varga|SARVA-HOUSE_${house}|${varga}`)
+      for (const actor of actors) expected.add(`ashtakavarga_pinda_sarva_per_varga|${actor}|${varga}`)
+    }
+    const observed = new Set<string>()
+    for (const row of res.rows) {
+      const key = `${row.fact_category}|${row.fact_subject}|${row.fact_key}`
+      if (!expected.has(key) || observed.has(key)) return { state: 'source_incomplete', rows: [] }
+      observed.add(key)
+    }
+    return observed.size === expected.size
+      ? { state: 'served', rows: res.rows }
+      : { state: 'source_incomplete', rows: [] }
+  } catch {
+    return { state: 'source_unproven', rows: [] }
+  }
+}
+
+export interface WealthSpecialLagnaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{
+    fact_id: string
+    fact_subject: typeof WEALTH_SPECIAL_LAGNAS[number]
+    fact_key: typeof WEALTH_SPECIAL_LAGNA_KEYS[number]
+    fact_value_num: number | null
+    fact_value_text: string | null
+  }>
+}
+
+/** Fixed wealth special-lagna receipt: Indu, Sree, and Hora each need the complete
+ * longitude/placement atom set from ga_sensitive's selected build. A floored native
+ * computation, a missing atom, or a duplicate atom is incomplete evidence, never a
+ * silently partial lagna reading. The caller establishes the shared receipt fence. */
+export async function fetchWealthSpecialLagnas(
+  chart_id: string,
+  ayanamsha_id: string,
+  build_id: string,
+): Promise<WealthSpecialLagnaResult> {
+  try {
+    const res = await query<WealthSpecialLagnaResult['rows'][number] & { verification_pass_status: string | null }>(
+      `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
+         FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND fact_category = 'special_lagna'
+          AND fact_subject = ANY($4) AND fact_key = ANY($5)
+        ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
+      [chart_id, ayanamsha_id, build_id, [...WEALTH_SPECIAL_LAGNAS], [...WEALTH_SPECIAL_LAGNA_KEYS]],
+    )
+    const expected = new Set<string>()
+    for (const lagna of WEALTH_SPECIAL_LAGNAS) {
+      for (const key of WEALTH_SPECIAL_LAGNA_KEYS) expected.add(`${lagna}|${key}`)
+    }
+    const observed = new Set<string>()
+    for (const row of res.rows) {
+      const identity = `${row.fact_subject}|${row.fact_key}`
+      if (!expected.has(identity) || observed.has(identity) || row.verification_pass_status !== 'two_pass_verified') {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      if ((row.fact_key === 'longitude_sidereal' || row.fact_key === 'pada' || row.fact_key === 'house_d1')
+        ? row.fact_value_num == null
+        : row.fact_value_text == null) {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      observed.add(identity)
+    }
+    return observed.size === expected.size
+      ? { state: 'served', rows: res.rows }
+      : { state: 'source_incomplete', rows: [] }
+  } catch {
+    return { state: 'source_unproven', rows: [] }
+  }
+}
+
+export interface WealthYogiAvayogiResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  rows: Array<{
+    fact_id: string
+    fact_subject: keyof typeof WEALTH_YOGI_SUBJECT_KEYS
+    fact_key: string
+    fact_value_num: number | null
+    fact_value_text: string | null
+  }>
+}
+
+/** Fixed yogi-system receipt: the primary Yogi/Avayogi placements and their duplicate/
+ * Sahayogi corroboration are a 12-atom ga_sensitive_degree result, not a best-effort
+ * list. Missing, duplicate, floored, or non-verified atoms therefore fail closed. */
+export async function fetchWealthYogiAvayogi(
+  chart_id: string,
+  ayanamsha_id: string,
+  build_id: string,
+): Promise<WealthYogiAvayogiResult> {
+  const subjects = Object.keys(WEALTH_YOGI_SUBJECT_KEYS) as Array<keyof typeof WEALTH_YOGI_SUBJECT_KEYS>
+  const keys = [...new Set(subjects.flatMap(subject => WEALTH_YOGI_SUBJECT_KEYS[subject]))]
+  try {
+    const res = await query<WealthYogiAvayogiResult['rows'][number] & { verification_pass_status: string | null }>(
+      `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
+         FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND fact_category = 'sensitive_point_yogi'
+          AND fact_subject = ANY($4) AND fact_key = ANY($5)
+        ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
+      [chart_id, ayanamsha_id, build_id, subjects, keys],
+    )
+    const expected = new Set<string>()
+    for (const subject of subjects) {
+      for (const key of WEALTH_YOGI_SUBJECT_KEYS[subject]) expected.add(`${subject}|${key}`)
+    }
+    const observed = new Set<string>()
+    for (const row of res.rows) {
+      const identity = `${row.fact_subject}|${row.fact_key}`
+      if (!expected.has(identity) || observed.has(identity) || row.verification_pass_status !== 'two_pass_verified') {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      if (row.fact_key === 'point_longitude' ? row.fact_value_num == null : row.fact_value_text == null) {
+        return { state: 'source_incomplete', rows: [] }
+      }
+      observed.add(identity)
+    }
+    return observed.size === expected.size
+      ? { state: 'served', rows: res.rows }
+      : { state: 'source_incomplete', rows: [] }
+  } catch {
+    return { state: 'source_unproven', rows: [] }
+  }
+}
+
+export interface WealthTajakaResult {
+  state: 'served' | 'source_incomplete' | 'source_unproven'
+  row: {
+    varsha_id: string
+    varsha_year: number
+    varsha_start_iso: string
+    varsha_end_iso: string
+    year_lord_method: string
+    year_lord: string
+    candidate_lord_jsonb: Record<string, unknown> | null
+    muntha_position_jsonb: Record<string, unknown> | null
+    applicable_tajik_yogas_array: string[] | null
+    verification_pass_status: string
+    citation_ref: string
+    citation_human: string
+  } | null
+}
+
+/** One annual Tājika row is selected by the caller's explicit as-of date. There is no
+ * oldest/current heuristic here: selected build + ayanāṃśa + half-open annual window
+ * must yield exactly one two-pass-verified Vārṣaphala record. */
+export async function fetchWealthTajaka(
+  chart_id: string,
+  ayanamsha_id: string,
+  build_id: string,
+  as_of_date: string,
+): Promise<WealthTajakaResult> {
+  try {
+    const res = await query<NonNullable<WealthTajakaResult['row']>>(
+      `SELECT varsha_id::text AS varsha_id, varsha_year, varsha_start_iso::text, varsha_end_iso::text,
+              year_lord_method, year_lord, candidate_lord_jsonb, muntha_position_jsonb,
+              applicable_tajik_yogas_array, verification_pass_status, citation_ref, citation_human
+         FROM l1_tajik_varsha_year_lords
+        WHERE chart_id = $1::uuid AND ayanamsha_id = $2 AND build_id = $3::uuid
+          AND varsha_start_iso <= $4::date AND varsha_end_iso > $4::date
+        ORDER BY varsha_year ASC, varsha_id ASC`,
+      [chart_id, ayanamsha_id, build_id, as_of_date],
+    )
+    if (res.rows.length !== 1) return { state: 'source_incomplete', row: null }
+    const row = res.rows[0]!
+    if (row.verification_pass_status !== 'two_pass_verified'
+      || row.year_lord_method !== 'tajik_classical'
+      || !row.varsha_id || !Number.isInteger(row.varsha_year)
+      || !row.varsha_start_iso || !row.varsha_end_iso || !row.year_lord
+      || row.candidate_lord_jsonb == null || row.muntha_position_jsonb == null
+      || !row.citation_ref || !row.citation_human) {
+      return { state: 'source_incomplete', row: null }
+    }
+    return { state: 'served', row }
+  } catch {
+    return { state: 'source_unproven', row: null }
+  }
 }
 
 export interface KpCuspLink {
