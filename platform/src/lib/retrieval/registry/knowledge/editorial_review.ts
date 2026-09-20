@@ -11,6 +11,7 @@ import type {
   SemanticCapabilityKind,
 } from './types'
 import { JUDGMENT_READING_CHECKLIST_V2_CONTRACT } from '../layers/reading_checklist'
+import { sourceQueryAvailabilityRequirement } from './source_query_availability'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -229,6 +230,14 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  // The MCP alias already consumes this exact handler query through editorial.ts.
+  // Bind that same reviewed probe to the raw registry descriptor explicitly,
+  // rather than renaming the alias-oriented contract and collapsing the two
+  // bindings into an ambiguous source-query owner.
+  yoga_activation_by_dasha: {
+    producer_output_claims: [],
+    requirements: [sourceQueryAvailabilityRequirement('source-query:yoga-activation-by-dasha:v1')!],
+  },
   // assess_* composes these exact handler results; it must not be promoted by an
   // adjacent producer receipt. The derived requirement recursively evaluates the
   // independently reviewed source-query contracts in the same chart/build scope.

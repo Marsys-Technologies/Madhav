@@ -1428,6 +1428,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
   },
   {
     contract_id: 'source-query:yoga-activation-by-dasha:v1',
+    // This contract is consumed by the explicitly authored MCP-alias binding
+    // in editorial.ts. The registry descriptor receives the same probe through
+    // its own reviewed contract below; keep this distinct key so automatic
+    // descriptor wiring does not create an ambiguous duplicate binding.
     descriptor_name: 'yoga_activation_by_dasha_source',
     capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
     scope: 'chart',

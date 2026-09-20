@@ -223,6 +223,19 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('attaches the existing exact source-query contract to the yoga-dasha bridge', () => {
+    const scu = findScu('scu.catalog.yoga_activation_by_dasha')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-TIMING/yoga_activation_by_dasha',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:yoga-activation-by-dasha:v1',
+        capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+      })],
+    })])
+  })
+
   it.each([
     ['scu.catalog.maro_orchestrate', 'registry:marsys://tool/maro/orchestrate'],
     ['scu.catalog.maro_mcp_surface', 'registry:marsys://tool/maro/mcp_surface'],
