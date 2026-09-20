@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-09-15T15:24:35.840Z
+ * generated_at: 2026-09-20T01:38:35.408Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-09-15T15:24:35.840Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-09-20T01:38:35.408Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -583,7 +583,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_mechanisms_get",
-        "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total, offset pagination, and an honest empty_reason when a chart carries no mechanisms. SCOPE (F-107): mechanisms are detected on the RĀŚI (D1) natal graph ONLY — bodha_mechanisms has no varga dimension. NO cross-varga (D2/D9/D10/D11/…) or special-lagna (Indu Lagna, Ārūḍha) convergence mechanism is computed anywhere in this instrument. If a question names a divisional chart or a special lagna, this tool does NOT answer that part of it; the response carries a `varga_scope` block with drill pointers to the surfaces that do serve per-varga data (assess_wealth varga_analysis, ganita_chart_facts_get divisional_chart=…, ganita_special_lagnas_get).",
+        "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total and build-pinned cursor pagination, and an honest empty_reason when a chart carries no mechanisms. SCOPE (F-107): mechanisms are detected on the RĀŚI (D1) natal graph ONLY — bodha_mechanisms has no varga dimension. NO cross-varga (D2/D9/D10/D11/…) or special-lagna (Indu Lagna, Ārūḍha) convergence mechanism is computed anywhere in this instrument. If a question names a divisional chart or a special lagna, this tool does NOT answer that part of it; the response carries a `varga_scope` block with drill pointers to the surfaces that do serve per-varga data (assess_wealth varga_analysis, ganita_chart_facts_get divisional_chart=…, ganita_special_lagnas_get).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -613,7 +613,11 @@ export const MCP_SURFACE_PROFILES: {
             },
             "offset": {
               "type": "number",
-              "description": "Pagination offset (default 0)."
+              "description": "First-page offset only (default 0). A nonzero continuation must use page_cursor."
+            },
+            "page_cursor": {
+              "type": "string",
+              "description": "Opaque, signed continuation token from next_page_cursor. It pins the normalized filters and fresh/proven bo_yantra_mechanism build; changed/replacing builds require restart."
             }
           },
           "required": [
@@ -2032,7 +2036,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "judgment_query",
-        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a classical-units completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Honest gap: \"notably-absent\"/bhanga (cancellation) near-miss checking needs a data-plane addition (design §12 D3) that does not exist yet — bhanga_checked reports false, not fabricated. chart_id is required — never defaulted (principle #14).",
+        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a versioned `judgment-reading-checklist-v2` completeness receipt (design §28.6). The receipt names every required classical unit, including bearing yogas, bearing afflictions, corroborating vargas, Ashtakavarga, special lagnas, yogi/avayogi, and Tajaka; it is exhaustive only when every unit is honestly settled in this response. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Honest gap: \"notably-absent\" yoga near-miss checking needs a data-plane addition (design §12 D3) that does not exist yet. The receipt explicitly reports `notably_absent_yogas: not_computed`, so it cannot manufacture closure; cancellation (bhaṅga) on fired yogas is handled separately. chart_id is required — never defaulted (principle #14).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2208,7 +2212,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "kala_projections_get",
-        "description": "Returns probabilistic forward projections for a chart from kala_bhavishya. Source: kala_bhavishya (50 rows — spanning multiple years and domains). Each projection carries: domain, probability_tier, peak_date, window_start/window_end, falsifiability hook, source_chain, effective_score, and narrative. Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65), tier_3_speculative (<0.40). emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4). MC-015/026: the raw `projections` array frequently repeats the SAME resolved window many times (one per contributing signal) — e.g. dozens of rows can share one (window_start, window_end, domain) triple. Prefer `projection_families` — one entry per distinct (window_start, window_end, domain), with member_count and bounded member_ids/ member_signal_ids — copying query_temporal_activation's window_families pattern.",
+        "description": "Returns probabilistic forward projections for a chart from kala_bhavishya. Source: kala_bhavishya (50 rows — spanning multiple years and domains). Each projection carries: domain, probability_tier, peak_date, window_start/window_end, falsifiability hook, source_chain, effective_score, and narrative. Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65), tier_3_speculative (<0.40). emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4). MC-015/026: the raw `projections` array frequently repeats the SAME resolved window many times (one per contributing signal) — e.g. dozens of rows can share one (window_start, window_end, domain) triple. Prefer `projection_families` — one entry per distinct (window_start, window_end, domain), with member_count and bounded member_ids/ member_signal_ids — copying query_temporal_activation's window_families pattern. The response explicitly reports source state and build/generation qualification; served rows are never represented as accepted-current without a physical binding.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2693,41 +2697,46 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ref_classical_citation_get",
-        "description": "Query the classical text corpus (classical_text_chunks) — classical text chunks from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita, Phala Deepika, Jataka Parijata, and other canonical texts. Each chunk is a verse or shloka with: text_id, chapter, verse_ref, topics, tradition_school, and the original Sanskrit + English translation. Use to cite classical sources for astrological observations. Free-text search (query_text/query/topic) runs genuine hybrid vector+keyword ranking and returns verse text IN HAND (content_en/content_sa), not just a citation id — this is the corpus idiom's ref_search / vector_search target. Exact-phrase search (keyword) does ILIKE substring matching with empty-with-reason.",
+        "description": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.",
         "input_schema": {
           "type": "object",
           "properties": {
             "query_text": {
               "type": "string",
-              "description": "Free-text topic/meaning query — hybrid vector+keyword search (top_k≈5 verses in hand). Same field as query/topic."
+              "description": "Free-text topic/meaning query."
             },
             "query": {
               "type": "string",
-              "description": "Alias for query_text (ref_vector_search naming)."
+              "description": "Alias for query_text."
             },
             "topic": {
               "type": "string",
-              "description": "Alias for query_text when used as free text (find_verses_about naming). NOTE: if you want the topics-array TAG filter instead, use text_source + the exact tag."
+              "description": "Alias for free text; with no free-text route it remains the legacy topics filter."
             },
             "keyword": {
               "type": "string",
-              "description": "Exact-phrase keyword to search in English translation (ILIKE substring, legacy path)."
+              "description": "Exact-phrase English substring search."
             },
             "text_source": {
               "type": "string",
-              "description": "Filter by source text id (e.g. BPHS, Saravali, Brihat_Jataka)."
+              "description": "Source text id filter."
             },
             "top_k": {
               "type": "number",
-              "description": "Max results for the hybrid search path (default 5)."
+              "description": "Hybrid result limit (default 5, max 50)."
             },
             "offset": {
               "type": "number",
+              "description": "First-page diagnostic offset only; nonzero continuation requires page_cursor.",
               "default": 0
             },
             "limit": {
               "type": "number",
               "default": 20
+            },
+            "page_cursor": {
+              "type": "string",
+              "description": "Opaque signed continuation token returned as next_page_cursor."
             }
           }
         },
@@ -2996,13 +3005,13 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ref_remedy_get",
-        "description": "Fetch the full record for a single remedy by remedy_id from brahma_remedy_corpus. Returns all columns including ingredients_jsonb and timing_rules_jsonb. remedy_id is required (UUID). Registry equivalent of lib/retrieve/remedy_tools.ts::read_remedy (D7 gap fill).",
+        "description": "Fetch the full record for a single remedy by remedy_id from brahma_remedy_corpus. Returns all columns including ingredients_jsonb and timing_rules_jsonb. remedy_id is required (stable TEXT remedy slug, e.g. sat_career_mantra_01). Registry equivalent of lib/retrieve/remedy_tools.ts::read_remedy (D7 gap fill).",
         "input_schema": {
           "type": "object",
           "properties": {
             "remedy_id": {
               "type": "string",
-              "description": "UUID of the remedy to fetch. Required."
+              "description": "Stable TEXT remedy slug to fetch (for example, sat_career_mantra_01). Required."
             }
           },
           "required": [
@@ -3967,7 +3976,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "judgment_query",
-        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a classical-units completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Honest gap: \"notably-absent\"/bhanga (cancellation) near-miss checking needs a data-plane addition (design §12 D3) that does not exist yet — bhanga_checked reports false, not fabricated. chart_id is required — never defaulted (principle #14).",
+        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a versioned `judgment-reading-checklist-v2` completeness receipt (design §28.6). The receipt names every required classical unit, including bearing yogas, bearing afflictions, corroborating vargas, Ashtakavarga, special lagnas, yogi/avayogi, and Tajaka; it is exhaustive only when every unit is honestly settled in this response. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Honest gap: \"notably-absent\" yoga near-miss checking needs a data-plane addition (design §12 D3) that does not exist yet. The receipt explicitly reports `notably_absent_yogas: not_computed`, so it cannot manufacture closure; cancellation (bhaṅga) on fired yogas is handled separately. chart_id is required — never defaulted (principle #14).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -4233,41 +4242,46 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ref_classical_citation_get",
-        "description": "Query the classical text corpus (classical_text_chunks) — classical text chunks from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita, Phala Deepika, Jataka Parijata, and other canonical texts. Each chunk is a verse or shloka with: text_id, chapter, verse_ref, topics, tradition_school, and the original Sanskrit + English translation. Use to cite classical sources for astrological observations. Free-text search (query_text/query/topic) runs genuine hybrid vector+keyword ranking and returns verse text IN HAND (content_en/content_sa), not just a citation id — this is the corpus idiom's ref_search / vector_search target. Exact-phrase search (keyword) does ILIKE substring matching with empty-with-reason.",
+        "description": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.",
         "input_schema": {
           "type": "object",
           "properties": {
             "query_text": {
               "type": "string",
-              "description": "Free-text topic/meaning query — hybrid vector+keyword search (top_k≈5 verses in hand). Same field as query/topic."
+              "description": "Free-text topic/meaning query."
             },
             "query": {
               "type": "string",
-              "description": "Alias for query_text (ref_vector_search naming)."
+              "description": "Alias for query_text."
             },
             "topic": {
               "type": "string",
-              "description": "Alias for query_text when used as free text (find_verses_about naming). NOTE: if you want the topics-array TAG filter instead, use text_source + the exact tag."
+              "description": "Alias for free text; with no free-text route it remains the legacy topics filter."
             },
             "keyword": {
               "type": "string",
-              "description": "Exact-phrase keyword to search in English translation (ILIKE substring, legacy path)."
+              "description": "Exact-phrase English substring search."
             },
             "text_source": {
               "type": "string",
-              "description": "Filter by source text id (e.g. BPHS, Saravali, Brihat_Jataka)."
+              "description": "Source text id filter."
             },
             "top_k": {
               "type": "number",
-              "description": "Max results for the hybrid search path (default 5)."
+              "description": "Hybrid result limit (default 5, max 50)."
             },
             "offset": {
               "type": "number",
+              "description": "First-page diagnostic offset only; nonzero continuation requires page_cursor.",
               "default": 0
             },
             "limit": {
               "type": "number",
               "default": 20
+            },
+            "page_cursor": {
+              "type": "string",
+              "description": "Opaque signed continuation token returned as next_page_cursor."
             }
           }
         },

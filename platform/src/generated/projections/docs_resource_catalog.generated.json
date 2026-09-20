@@ -1,7 +1,7 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-09-15T15:24:35.840Z",
+  "generated_at": "2026-09-20T01:38:35.408Z",
   "total": 186,
   "capabilities": [
     {
@@ -398,7 +398,7 @@
       "layer": "L0",
       "name": "query_classical_texts",
       "short_label": "Query Classical Texts",
-      "one_line": "Query the classical text corpus (classical_text_chunks) — classical text chunks from Brihat Parashara Hora Shastra, Saravali, Brihat Jataka, Uttara Kalamrita,…",
+      "one_line": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.",
       "scope": "global",
       "archetype": "prose_citation",
       "tool_role": "hybrid_retrieval",
@@ -806,7 +806,7 @@
       "layer": "L0",
       "name": "query_sky_calendar",
       "short_label": "Query Sky Calendar",
-      "one_line": "Read the global chart-independent sky-event diary (bg_sky_events) for a time interval.",
+      "one_line": "Read the global chart-independent sky-event diary (bg_sky_calendar) for a time interval.",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
