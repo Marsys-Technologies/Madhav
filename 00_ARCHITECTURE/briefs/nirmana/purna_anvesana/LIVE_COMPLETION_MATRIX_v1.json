@@ -3,8 +3,8 @@
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
   "status": "PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS",
-  "observed_at": "2026-09-20T19:12:00+05:30",
-  "source_candidate": "b88a3e57fbe644626af8229cbfcb7271d96b6b05",
+  "observed_at": "2026-09-20T19:13:00+05:30",
+  "source_candidate": "574fca4cbfbd213cc2842b4328f26ef2417bc6ba",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
     "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",
