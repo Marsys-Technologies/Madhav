@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T10:25:55.000Z",
-  "content_hash": "sha256:c76d2cf5eef42ba7fa3f2848ac1f7c3be6703bae1cfef5ebaf6681ba21f91e09",
+  "generated_at": "2026-09-20T11:11:45.000Z",
+  "content_hash": "sha256:7be16b0730ca887898d84067792eb4c672bb0d94a136b4dec5abb4de0ee28b53",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:b38bc5d1848fda51e909e67d537cb572b6467ad31b1b075326eb92fc7e796d8c",
+  "semantic_review_fingerprint": "sha256:67e0eff2da0a3025f8d158831a2a2d3afce3a760b025cc8268df48a9c9727e73",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -3062,6 +3062,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/classical_attribution_lookup",
+          "status": "deliberately_dark",
+          "reason": "The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.",
+          "source_refs": [
+            "platform/src/lib/tools/classical_attribution_lookup.ts:1-61",
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:646-779"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

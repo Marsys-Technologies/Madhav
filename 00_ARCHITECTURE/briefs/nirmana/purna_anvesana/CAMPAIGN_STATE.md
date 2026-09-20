@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.45.0
+version: 0.46.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0123
-last_updated: 2026-09-20T16:30:00+05:30
+last_event: PA-E0124
+last_updated: 2026-09-20T16:41:45+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -68,21 +68,33 @@ layer state, queue or authority.
   inferred from the metadata grant or deployment. The exact next proof is a right-owner read-only
   statement over the relevant build, asset, receipt, freshness, and dasha tables.
 
+- **Classical-attribution lookup is now truthfully unavailable rather than silently empty.** The
+  registry handler had delegated to a retired `classical_attributions` source through a stub that
+  returned a successful empty attribution list for every requested signal. The registry now returns
+  the typed `CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE` error and related domain assessment output
+  records the unavailable status rather than advertising citations or a drill path that cannot
+  succeed. The capability remains in the 186-binding input and has a reviewed deliberate-dark
+  disposition with source references; this is neither `not_applicable` nor a successful classical
+  retrieval. A replacement queryable source and grounded receipts remain required before the route
+  can be lit.
+
 - **Three required domain assessments now have source-local derived evidence contracts.**
   `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
   contracts for domain reading, temporal activation, and contradictions. A failed temporal
   child makes every composite dark; adjacent receipts cannot promote it. Focused contract tests
   (196), TypeScript, lint, and generated-artifact freshness checks pass. The regenerated
-  snapshot has 182 SCUs, 186 executable bindings, 161 explicit availability contracts, two
-  deliberate-dark dispositions, and 23 still-uncovered executable bindings. This is an
+  snapshot has 182 SCUs, 186 executable bindings, 161 explicit availability contracts, three
+  deliberate-dark dispositions, and 22 still-uncovered executable bindings. This is an
   unprotected source-local capability repair, not a live source-query result, deployment, or
   acceptance result; the frozen 105+105 execution denominator is unchanged.
 
 - **The capability-projection assertion now agrees with the regenerated contract inventory.**
   CI job `106063696768` on PR #2705 exposed its stale 24/158/4 expectations after the above
   three derived contracts changed the projected states to 23 missing, 161 authored, and two
-  deliberately dark. The test now asserts those generated-inventory totals and the focused
-  coverage/availability set passes 199 tests. This corrects the source projection only; it does
+  deliberately dark. The later fail-closed classical-attribution disposition leaves the same 161
+  authored contracts while changing the projection to 22 missing and three deliberately dark.
+  The focused coverage/availability/regression set passes 89 tests. This corrects the source
+  projection only; it does
   not change the 186-binding input set, the frozen 105+105 acceptance denominator, or any live
   acceptance state. The remaining PR #2705 route-golden and v5-source-artifact failures are
   tracked separately as the exact-head PR #2704 dependency and are not rebaselined here.

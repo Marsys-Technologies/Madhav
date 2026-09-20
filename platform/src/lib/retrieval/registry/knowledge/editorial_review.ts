@@ -53,6 +53,13 @@ const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  classical_attribution_lookup: {
+    reason: 'The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.',
+    source_refs: [
+      'platform/src/lib/tools/classical_attribution_lookup.ts:1-61',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:646-779',
+    ],
+  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [

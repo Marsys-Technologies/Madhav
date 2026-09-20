@@ -38,13 +38,27 @@ export interface ClassicalAttributionLookupOutput {
   signal_ids_silent: string[]
 }
 
+export const CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE = 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE'
+
+/**
+ * The retired attribution relations cannot truthfully answer an ordinary empty
+ * result. Callers must disclose the missing source rather than treating every
+ * requested signal as classically silent.
+ */
+export class ClassicalAttributionSourceUnavailableError extends Error {
+  readonly code = CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE
+
+  constructor() {
+    super(
+      'Classical attribution lookup is unavailable: the retired classical_attributions store has not yet been replaced by a queryable L0/Bodha attribution source.',
+    )
+    this.name = 'ClassicalAttributionSourceUnavailableError'
+  }
+}
+
 export async function classical_attribution_lookup(
   input: ClassicalAttributionLookupInput
 ): Promise<ClassicalAttributionLookupOutput> {
-  return {
-    attributions: [],
-    signal_ids_queried: input.signal_ids,
-    signal_ids_with_attributions: [],
-    signal_ids_silent: input.signal_ids,
-  }
+  void input
+  throw new ClassicalAttributionSourceUnavailableError()
 }

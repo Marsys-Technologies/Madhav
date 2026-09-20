@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "5dda3da475a2ca82cdf1d64eb9b57d658d7ac4c9348b4b7939be91fb19eec34b",
+  "content_sha256": "01de58de2791876608ed1f14d4ed966daffdbb8136d3f41973f3395c4dce4edb",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20803,7 +20803,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-20T10:25:55.000Z",
+  "generated_at": "2026-09-20T11:11:45.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21440,7 +21440,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "68f24b1ff3b2d3dbcd919ae80e049dcfc9e2857a1ea6c5ce9739b3921c20e2d0"
+            "sha256": "b02c1db3ff622d43e35fd9a299d94c981402df66a9038833ee974037284abd87"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -22132,11 +22132,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "dc3012d90c88941e9a3c12513d383c821feda23c4b5bb32f18f065f7f9a8cbb9"
+            "sha256": "f34209519137b0adc617c5685c2c2f2f7d6bc5d26df676199d0d9e83200e5aa0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "c07a1fe9b83c98034d5e6c80397face2d2ec5445b51a9f08ca903a60e63ac615"
+            "sha256": "c35726ffceb6f89f7e003845ae56023e67d8fb26c621e9f60106e2d6e984f2c9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
@@ -22208,7 +22208,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "a69ea5a6b197592e700aaeace22b4241b43a4a253fc8e98f9a60eb6e9ace8369"
+        "sha256": "74cd3b612ecb5aff09bce2550ba5db6643d3fa53c7e6f0e7481d7774e445c100"
       },
       {
         "id": "service_effect_contracts",
@@ -22233,5 +22233,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "5e62c82365c195c5b1d515136aac6b76bf146310"
+  "source_revision": "c2e1354d931c778b6cc7a0ffa2a10fd3511ccf78"
 }
