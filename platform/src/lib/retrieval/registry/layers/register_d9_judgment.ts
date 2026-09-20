@@ -84,6 +84,13 @@ import {
   ensureDomainDirectVargasLoaded,
   getOperativeVargaConstants,
   fetchVargaRatification,
+  fetchWealthCorroboratingVargas,
+  fetchWealthAshtakavarga,
+  fetchWealthSpecialLagnas,
+  fetchWealthYogiAvayogi,
+  fetchTajakaSourceFence,
+  fetchWealthTajaka,
+  fetchWealthReadingSourceFence,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
   type ChecklistUnit,
@@ -930,6 +937,42 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // 'abstain_missing'/'no_row' are an honest unknown, never defaulted to ✓ or ✗.
       const vargaConfirmedMarkValue = vargaConfirmedMark(spec.varga, vargaRatificationRelation)
 
+      // Wealth's non-operative D9/D11 pivots are fixed-shape evidence, not a ranked sample.
+      // Do not read any of them until every required producer has a fresh/proven receipt for
+      // this exact build; an unavailable provenance fence is disclosed, never flattened into
+      // an empty corroboration finding.
+      const wealthSourceFence = spec.signal_domain === 'wealth'
+        ? await fetchWealthReadingSourceFence(chart_id, build_id)
+        : null
+      const wealthCorroboratingVargas = wealthSourceFence?.ready
+        ? await fetchWealthCorroboratingVargas(
+          chart_id, ayanamsha_id,
+          grahasToConfirm.map(({ role, code }) => ({ role, code })), build_id,
+        )
+        : null
+      for (const factId of wealthCorroboratingVargas?.fact_ids ?? []) fact_ids.add(factId)
+      const wealthAshtakavarga = wealthSourceFence?.ready
+        ? await fetchWealthAshtakavarga(
+          chart_id, ayanamsha_id,
+          grahasToConfirm.map(({ code }) => code), build_id,
+        )
+        : null
+      for (const fact of wealthAshtakavarga?.rows ?? []) fact_ids.add(fact.fact_id)
+      const wealthSpecialLagnas = wealthSourceFence?.ready
+        ? await fetchWealthSpecialLagnas(chart_id, ayanamsha_id, build_id)
+        : null
+      for (const fact of wealthSpecialLagnas?.rows ?? []) fact_ids.add(fact.fact_id)
+      const wealthYogiAvayogi = wealthSourceFence?.ready
+        ? await fetchWealthYogiAvayogi(chart_id, ayanamsha_id, build_id)
+        : null
+      for (const fact of wealthYogiAvayogi?.rows ?? []) fact_ids.add(fact.fact_id)
+      const tajakaSourceFence = spec.signal_domain === 'wealth'
+        ? await fetchTajakaSourceFence(chart_id, build_id)
+        : null
+      const wealthTajaka = tajakaSourceFence?.ready
+        ? await fetchWealthTajaka(chart_id, ayanamsha_id, build_id, as_of_date)
+        : null
+
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
       // bhaṅga/cancellation state), not the MSR yoga signal projection — see the YOGA_* constants'
@@ -1545,7 +1588,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         // (D2 dhana + D11 lābha). Named here as not_joined with a live drill rather than
         // left invisible behind an `operative_varga: served` box that reads as complete.
         {
-          ...(crossVarga.length > 0
+          ...(spec.signal_domain === 'wealth'
+            ? {
+              unit: 'corroborating_vargas',
+              state: wealthSourceFence?.ready
+                ? (wealthCorroboratingVargas?.state ?? 'source_unproven')
+                : 'source_unproven',
+              count: wealthCorroboratingVargas?.rows.length ?? 0,
+              detail: wealthSourceFence?.ready
+                ? 'fixed D9/D11 ratification pivots for the wealth bhāveśa and Jupiter'
+                : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active',
+              drill: 'ganita_vichara_get',
+            }
+            : crossVarga.length > 0
             ? {
               unit: 'corroborating_vargas',
               state: 'not_joined' as const,
@@ -1562,11 +1617,30 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 detail: `no corroborating classical varga is mapped for '${spec.signal_domain}' beyond operative ${spec.varga}`,
               }),
         },
-        { unit: 'ashtakavarga', state: 'not_joined', detail: 'bhāva AV bindus not folded into judgment_query', drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)' },
+        {
+          unit: 'ashtakavarga',
+          state: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready ? (wealthAshtakavarga?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthAshtakavarga?.rows.length ?? 0,
+          detail: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready
+              ? 'fixed D2/D9/D11 SARVA house-2/11 bindus and wealth-actor pinda rows'
+              : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
+            : 'bhāva AV bindus not folded into judgment_query',
+          drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)',
+        },
         {
           unit: 'special_lagnas',
-          state: 'not_joined',
-          detail: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+          state: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready ? (wealthSpecialLagnas?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthSpecialLagnas?.rows.length ?? 0,
+          detail: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready
+              ? 'fixed Indu/Sree/Hora complete atomic placement rows from ga_sensitive'
+              : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
+            : DOMAIN_INDU_LAGNA.has(spec.signal_domain)
             // F-107: for wealth, Indu Lagna is not a generic "some lagna we skipped" — it is
             // THE Jaimini wealth-strength lagna, stored two_pass_verified, and served by
             // assess_wealth. Name it and where it is, so the gap is actionable.
@@ -1578,7 +1652,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
-        { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },
+        {
+          unit: 'yogi_avayogi',
+          state: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready ? (wealthYogiAvayogi?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthYogiAvayogi?.rows.length ?? 0,
+          detail: spec.signal_domain === 'wealth'
+            ? (wealthSourceFence?.ready
+              ? 'fixed Yogi/Avayogi/Duplicate-Yogi/Sahayogi selected-build atom set'
+              : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
+            : 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment',
+          drill: 'ganita_sensitive_degrees_get',
+        },
         {
           unit: 'bearing_yogas',
           state: yogaFiringsRead ? (bearingYogaFirings.length > 0 ? 'served' : 'empty_for_this_chart') : 'source_unproven',
@@ -1598,7 +1684,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
         { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, canonical domain='${spec.signal_domain}'${domain_resolution.is_exact ? '' : ` (requested '${requestedDomainKey ?? `bhāva ${spec.bhava}`}' — see domain_resolution, F-57)`} (MC-033)` },
-        { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },
+        {
+          unit: 'tajaka',
+          state: spec.signal_domain === 'wealth'
+            ? (tajakaSourceFence?.ready ? (wealthTajaka?.state ?? 'source_unproven') : 'source_unproven')
+            : 'not_joined',
+          count: wealthTajaka?.row === null ? 0 : (wealthTajaka?.row ? 1 : 0),
+          detail: spec.signal_domain === 'wealth'
+            ? (tajakaSourceFence?.ready
+              ? `fixed annual Vārṣaphala row containing as_of_date=${as_of_date}`
+              : 'fresh/proven selected-build ga_tajaka receipt is unavailable or a producer replacement is active')
+            : 'annual (varṣaphala/tājaka) not folded into the natal judgment',
+          drill: 'ganita_tajaka_get',
+        },
       ]
       const exhaustiveness = checklistExhaustiveness(reading_checklist_units)
       const reading_checklist = {
@@ -1662,6 +1760,31 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             },
             aspecting_grahas: aspectsLagna.grahas,
             varga_confirmation: { varga: spec.varga, rows: vargaConfirmation },
+            ...(wealthSourceFence === null ? {} : {
+              wealth_corroborating_vargas: {
+                source_fence: wealthSourceFence,
+                state: wealthCorroboratingVargas?.state ?? 'source_unproven',
+                rows: wealthCorroboratingVargas?.rows ?? [],
+              },
+              wealth_ashtakavarga: {
+                state: wealthAshtakavarga?.state ?? 'source_unproven',
+                rows: wealthAshtakavarga?.rows ?? [],
+              },
+              wealth_special_lagnas: {
+                state: wealthSpecialLagnas?.state ?? 'source_unproven',
+                rows: wealthSpecialLagnas?.rows ?? [],
+              },
+              wealth_yogi_avayogi: {
+                state: wealthYogiAvayogi?.state ?? 'source_unproven',
+                rows: wealthYogiAvayogi?.rows ?? [],
+              },
+              wealth_tajaka: {
+                source_fence: tajakaSourceFence,
+                state: wealthTajaka?.state ?? 'source_unproven',
+                as_of_date,
+                row: wealthTajaka?.row ?? null,
+              },
+            }),
             // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real
             // strength + bhaṅga state) and stays a flat array (registry_bridge.ts's response-budget
             // trimmer + the existing integration test both expect `Array.isArray(bearing_yogas)`).

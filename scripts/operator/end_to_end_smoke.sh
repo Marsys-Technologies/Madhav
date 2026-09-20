@@ -76,10 +76,27 @@ check_health() {
 # Neither is visible to the static /api/health route.
 probe_auth_enforced() {
   local url="$1"
-  local status
-  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${url}/api/sidecar/health")
-  echo "  [probe: auth-enforced] GET /api/sidecar/health (no session cookie) → ${status} (expect 401)"
-  [ "$status" = "401" ]
+  local attempt=1
+  local status="000"
+
+  # A newly-created Cloud Run tag can serve the boot probe before its next
+  # request has consistently reached the revision.  Keep the same bounded
+  # retry window as check_health, but admit only the real auth-bound response:
+  # a 401.  A 200, 4xx other than 401, 5xx, or a transport failure remains a
+  # hard failure after the bounded attempts.
+  while [ "$attempt" -le "$MAX_RETRIES" ]; do
+    status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
+      "${url}/api/sidecar/health" || true)
+    echo "  [probe: auth-enforced] attempt ${attempt}/${MAX_RETRIES} → ${status} (expect 401)"
+    if [ "$status" = "401" ]; then
+      return 0
+    fi
+    sleep "$RETRY_DELAY"
+    attempt=$((attempt + 1))
+  done
+
+  echo "ERROR: [probe: auth-enforced] did not receive 401 after ${MAX_RETRIES} attempts (last status: ${status})"
+  return 1
 }
 
 echo "=== Post-deploy smoke: amjis-web (${WEB_URL}) ==="

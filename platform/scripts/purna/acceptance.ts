@@ -40,7 +40,7 @@ export interface AcceptanceRunRecord {
   readonly judge_assessor: 'independent_eval_judge'
   readonly judge_model_id: string
   readonly judged_artifact_hash: string
-  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'base_url' | 'revision' | 'authorization' | 'judge_authority' | 'evidence_mode'>
+  readonly environment_config: Pick<ApprovedEnvironmentConfig, 'schema_version' | 'environment' | 'chart_id' | 'portal_url' | 'mcp_url' | 'revision' | 'authorization' | 'judge_authority' | 'evidence_mode'>
   readonly case_inputs: readonly unknown[]
   readonly evidence: readonly unknown[]
   readonly answers: readonly AcceptanceAnswer[]
@@ -48,7 +48,8 @@ export interface AcceptanceRunRecord {
   readonly failures: readonly AcceptanceFailure[]
   readonly verdict: string
   readonly evidence_kind: 'candidate_or_live' | 'fixture'
-  readonly network_calls_made: 0
+  /** Network calls evidenced by the collection rows judged for this door. */
+  readonly network_calls_made: number
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -148,6 +149,11 @@ export async function writeAcceptanceRun(args: {
     || collection.manifest.authorization_approval_id !== config.authorization.approval_id) {
     throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_PROVENANCE_MISMATCH')
   }
+  if (collection.manifest.target.chart_id !== config.chart_id
+    || collection.manifest.target.portal_url !== config.portal_url
+    || collection.manifest.target.mcp_url !== config.mcp_url) {
+    throw new Error('PRODUCT_ACCEPTANCE_COLLECTION_TARGET_MISMATCH')
+  }
   const canonicalInputsById = new Map(inputs.map((caseInput) => [caseInput.case_id, caseInput]))
   const collectedInputs = collection.manifest.case_inputs.map((caseInput) => canonicalInputsById.get(caseInput.case_id))
   if (collectedInputs.some((caseInput) => caseInput === undefined)) {
@@ -170,6 +176,12 @@ export async function writeAcceptanceRun(args: {
   }
   const score = scoreAnswers(inputs, answers)
   const fixture = config.evidence_mode === 'fixture'
+  // The acceptance runner is offline, but its verdict is bound to one door's
+  // live collection. Preserve that door's observed network-work total instead
+  // of writing a false zero into the durable acceptance record.
+  const networkCallsMade = collection.rows
+    .filter((row) => row.door === input.provenance.door)
+    .reduce((total, row) => total + row.networkCallCount, 0)
   const createdAt = (args.now ?? new Date()).toISOString()
   const record: AcceptanceRunRecord = {
     schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION,
@@ -198,7 +210,7 @@ export async function writeAcceptanceRun(args: {
     // candidate/live product result, regardless of qualitative score.
     verdict: fixture ? 'NOT_LIVE_EVIDENCE' : score.verdict,
     evidence_kind: fixture ? 'fixture' : 'candidate_or_live',
-    network_calls_made: 0,
+    network_calls_made: networkCallsMade,
   }
   const directory = assertSafeArtifactDirectory(args.artifactDir)
   await mkdir(directory, { recursive: true })

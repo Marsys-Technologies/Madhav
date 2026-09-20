@@ -5,8 +5,15 @@ vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...
 
 import {
   fetchKpCuspChain,
+  fetchWealthAshtakavarga,
+  fetchWealthSpecialLagnas,
+  fetchWealthYogiAvayogi,
+  fetchTajakaSourceFence,
+  fetchWealthTajaka,
   fetchSensitiveDegreeFirings,
+  fetchWealthCorroboratingVargas,
   fetchWealthReadingSourceFence,
+  WEALTH_CORROBORATING_VARGAS,
   WEALTH_READING_REQUIRED_ASSETS,
 } from '../reading_checklist'
 
@@ -85,5 +92,137 @@ describe('reading-checklist selected-build fence', () => {
     expect(result.ready).toBe(false)
     expect(result.assets.find(asset => asset.asset_id === 'ga_strength')?.receipt_matches_selected_build).toBe(false)
     expect(result.assets.find(asset => asset.asset_id === 'ga_vichara')?.replacement_in_progress).toBe(true)
+  })
+
+  it('reads the exact D9/D11 wealth pivots from the selected build and preserves their facts', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [
+      { id: '101', subject: 'VEN', constituent_fact_ids: ['fact-v'], value_jsonb: { per_varga: { D9: { relation: 'agree' }, D11: { relation: 'oppose' } } } },
+      { id: '102', subject: 'JUP', constituent_fact_ids: ['fact-j'], value_jsonb: { per_varga: { D9: { relation: 'abstain' }, D11: { relation: 'agree' } } } },
+    ] })
+
+    const result = await fetchWealthCorroboratingVargas(CHART_ID, AYANAMSHA, [
+      { role: 'bhavesha', code: 'VEN' }, { role: 'karaka', code: 'JUP' },
+    ], BUILD_ID)
+
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(4)
+    expect(result.rows.map(row => row.varga)).toEqual([...WEALTH_CORROBORATING_VARGAS, ...WEALTH_CORROBORATING_VARGAS])
+    expect(result.fact_ids).toEqual(['fact-j', 'fact-v'])
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql)).toContain("build_id = $3::uuid")
+    expect(String(sql)).toContain("domain = 'wealth'")
+    expect(params).toEqual([CHART_ID, AYANAMSHA, BUILD_ID, ['VEN', 'JUP']])
+  })
+
+  it('fails closed rather than treating missing or duplicate fixed pivots as an empty finding', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{
+      id: '101', subject: 'VEN', constituent_fact_ids: [], value_jsonb: { per_varga: { D9: { relation: 'agree' }, D11: { relation: 'agree' } } },
+    }] })
+    const result = await fetchWealthCorroboratingVargas(CHART_ID, AYANAMSHA, [
+      { role: 'bhavesha', code: 'VEN' }, { role: 'karaka', code: 'JUP' },
+    ], BUILD_ID)
+    expect(result).toEqual({ state: 'source_incomplete', rows: [], fact_ids: [] })
+  })
+
+  it('requires every fixed wealth Ashtakavarga natural key from the selected build', async () => {
+    const rows = [
+      ...['D2', 'D9', 'D11'].flatMap(varga => [2, 11].map(house => ({ fact_id: `b-${varga}-${house}`, fact_category: 'ashtakavarga_bindu_per_varga', fact_subject: `SARVA-HOUSE_${house}`, fact_key: varga, fact_value_num: 28 }))),
+      ...['D2', 'D9', 'D11'].flatMap(varga => ['VEN', 'JUP'].map(actor => ({ fact_id: `p-${varga}-${actor}`, fact_category: 'ashtakavarga_pinda_sarva_per_varga', fact_subject: actor, fact_key: varga, fact_value_num: 48 }))),
+    ]
+    queryMock.mockResolvedValueOnce({ rows })
+    const result = await fetchWealthAshtakavarga(CHART_ID, AYANAMSHA, ['VEN', 'JUP'], BUILD_ID)
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(12)
+    expect(String(queryMock.mock.calls[0]![0])).toContain('build_id = $3::uuid')
+  })
+
+  it('requires the full selected-build Indu/Sree/Hora atomic lagna receipt', async () => {
+    const numericKeys = new Set(['longitude_sidereal', 'pada', 'house_d1'])
+    const rows = ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'].flatMap(subject => [
+      'longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1',
+    ].map(fact_key => ({
+      fact_id: `${subject}-${fact_key}`,
+      fact_subject: subject,
+      fact_key,
+      fact_value_num: numericKeys.has(fact_key) ? 12 : null,
+      fact_value_text: numericKeys.has(fact_key) ? null : 'Aries',
+      verification_pass_status: 'two_pass_verified',
+    })))
+    queryMock.mockResolvedValueOnce({ rows })
+
+    const result = await fetchWealthSpecialLagnas(CHART_ID, AYANAMSHA, BUILD_ID)
+
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(21)
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql)).toContain('build_id = $3::uuid')
+    expect(String(sql)).toContain("fact_category = 'special_lagna'")
+    expect(params).toEqual([
+      CHART_ID, AYANAMSHA, BUILD_ID,
+      ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'],
+      ['longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1'],
+    ])
+  })
+
+  it('requires every selected-build Yogi-system natural key', async () => {
+    const required: Record<string, string[]> = {
+      YOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+      AVAYOGI: ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+      DUPLICATE_YOGI: ['sign', 'assigned_graha'],
+      SAHAYOGI: ['sign', 'assigned_graha'],
+    }
+    const rows = Object.entries(required).flatMap(([fact_subject, keys]) => keys.map(fact_key => ({
+      fact_id: `${fact_subject}-${fact_key}`,
+      fact_subject,
+      fact_key,
+      fact_value_num: fact_key === 'point_longitude' ? 123.45 : null,
+      fact_value_text: fact_key === 'point_longitude' ? null : 'Mercury',
+      verification_pass_status: 'two_pass_verified',
+    })))
+    queryMock.mockResolvedValueOnce({ rows })
+
+    const result = await fetchWealthYogiAvayogi(CHART_ID, AYANAMSHA, BUILD_ID)
+
+    expect(result.state).toBe('served')
+    expect(result.rows).toHaveLength(12)
+    const [sql, params] = queryMock.mock.calls[0]!
+    expect(String(sql)).toContain("fact_category = 'sensitive_point_yogi'")
+    expect(String(sql)).toContain('build_id = $3::uuid')
+    expect(params).toEqual([
+      CHART_ID, AYANAMSHA, BUILD_ID,
+      ['YOGI', 'AVAYOGI', 'DUPLICATE_YOGI', 'SAHAYOGI'],
+      ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
+    ])
+  })
+
+  it('fences Tajaka independently and selects exactly one as-of annual record', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{
+        asset_id: 'ga_tajaka', receipt_matches_selected_build: true, replacement_in_progress: false,
+      }] })
+      .mockResolvedValueOnce({ rows: [{
+        varsha_id: 'annual-1', varsha_year: 42,
+        varsha_start_iso: '2026-01-01T00:00:00.000Z', varsha_end_iso: '2027-01-01T00:00:00.000Z',
+        year_lord_method: 'tajik_classical', year_lord: 'Jupiter',
+        candidate_lord_jsonb: { Jupiter: 5 }, muntha_position_jsonb: { sign: 'Aries' },
+        applicable_tajik_yogas_array: [], verification_pass_status: 'two_pass_verified',
+        citation_ref: 'tajaka-ref', citation_human: 'Tajaka citation.',
+      }] })
+
+    const fence = await fetchTajakaSourceFence(CHART_ID, BUILD_ID)
+    const result = await fetchWealthTajaka(CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19')
+
+    expect(fence.ready).toBe(true)
+    expect(fence.assets).toEqual([{ asset_id: 'ga_tajaka', receipt_matches_selected_build: true, replacement_in_progress: false }])
+    expect(result.state).toBe('served')
+    expect(result.row?.varsha_year).toBe(42)
+    const [fenceSql, fenceParams] = queryMock.mock.calls[0]!
+    expect(String(fenceSql)).toContain('asset_provenance_receipts receipt')
+    expect(fenceParams).toEqual([['ga_tajaka'], CHART_ID, BUILD_ID])
+    const [tajakaSql, tajakaParams] = queryMock.mock.calls[1]!
+    expect(String(tajakaSql)).toContain('l1_tajik_varsha_year_lords')
+    expect(String(tajakaSql)).toContain('build_id = $3::uuid')
+    expect(String(tajakaSql)).toContain('varsha_start_iso <= $4::date')
+    expect(tajakaParams).toEqual([CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19'])
   })
 })
