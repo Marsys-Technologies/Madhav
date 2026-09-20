@@ -83,6 +83,29 @@ describe('Purna real three-door collector', () => {
   it('rejects a supposedly live answer with no real channel execution', () => {
     expect(() => assertLiveEvidence({ caseId: test.id, door: 'portal', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', observedChartId: base.chartId, snapshotHash: 'snapshot-a', chartBuildId: 'build-a', answer: 'answer', responseAccountability: null, receiptRefs: ['receipt-a'], materialFactIds: ['f1'], deliveredFactIds: ['f1'], unresolvedObligationIds: [], networkCallCount: 0, source: 'live', terminal: 'complete', diagnostic: null }, base.chartId)).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
   })
+  it('seals a channel failure without promoting its missing chart identity to live evidence', () => {
+    const input: AcceptanceCaseInput = {
+      case_id: test.id, kind: 'beyond_acarya', question: test.question, scope_tuple: test.scope_tuple,
+      deterministic_gates: ['immutable_case_input'], required_dimensions: test.requiredDimensions, expected: test.expected,
+    }
+    const completeRow: CollectedCase = {
+      caseId: test.id, door: 'portal', inquiryId: 'i-1', expectedRevision: 'candidate-a', observedRevision: 'candidate-a',
+      observedChartId: base.chartId, snapshotHash: null, chartBuildId: null, answer: 'answer', responseAccountability: null,
+      receiptRefs: ['receipt-a'], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: [],
+      networkCallCount: 1, source: 'candidate', terminal: 'complete', diagnostic: null,
+    }
+    const failedRawRow: CollectedCase = {
+      ...completeRow, door: 'raw_mcp', inquiryId: null, observedRevision: null, observedChartId: null,
+      answer: '', receiptRefs: [], networkCallCount: 1, terminal: 'transport_error', diagnostic: 'RAW_EXTERNAL_SYNTHESIS_FAILED',
+    }
+    const artifact = createCollectionArtifact({
+      suite: 'beyond_acarya', environment: 'candidate', expectedRevision: 'candidate-a', authorizationApprovalId: 'approval-1',
+      caseInputs: [input], target: { chart_id: base.chartId, portal_url: 'https://portal.example.test', mcp_url: 'https://mcp.example.test' },
+      rows: [completeRow, { ...completeRow, door: 'managed_mcp' }, failedRawRow],
+    })
+    expect(validateCollectionArtifact(artifact)).toEqual(artifact)
+    expect(() => assertLiveEvidence(failedRawRow, base.chartId)).toThrow('PURNA_COLLECTION_NOT_LIVE_EVIDENCE')
+  })
   it('keeps a truncated SSE stream incomplete', async () => {
     const stream = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode('data: {"type":"block.commit","text":"partial"}\n\n')); controller.close() } })
     await expect(parsePortalSse(stream)).resolves.toMatchObject({ truncated: true, answer: 'partial' })
