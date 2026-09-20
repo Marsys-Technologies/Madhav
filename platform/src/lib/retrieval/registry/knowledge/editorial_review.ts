@@ -65,6 +65,16 @@ const SPINE_BUNDLE_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  // This descriptor returns a prompt template verbatim.  It does not invoke an
+  // LLM or validate a structured classification result, despite its declared
+  // output.  A prompt string is not an executed intent classification and
+  // cannot be offered as a supported evidence capability.
+  intent_classify: {
+    reason: 'intent_classify only substitutes query text into INTENT_CLASSIFY_TEMPLATE and returns that prompt string. It performs no model invocation, schema validation, or structured intent result production, so template rendering is not a supported executed classification path.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts:8-62',
+    ],
+  },
   // compose_large_n is an actual composite, not an independent evidence
   // producer.  Its gateway invokes these four registered handlers directly.
   // Three have exact source-query contracts today, but query_chart_gestalt also

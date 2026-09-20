@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T12:59:30.000Z",
-  "content_hash": "sha256:00bf589254bb8c464f1c6f5709edc6ac116edccfbf156bcdf36c306b3916b8ab",
+  "generated_at": "2026-09-20T13:05:00.000Z",
+  "content_hash": "sha256:e17dfec3aac34414d8cfbfdc6e74f2c05b350391adfda35498fb0076fbf08fa2",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:de74c173c3e0bd9caf05180c2f8f61deab4c08a369c0422ecf1305a8a4f101d9",
+  "semantic_review_fingerprint": "sha256:02d42988a10f13edc60f7c8633977bc4729837af1dd79ed056d5587d8e8ee53e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -11020,6 +11020,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://prompt/intent-classify",
+          "status": "deliberately_dark",
+          "reason": "intent_classify only substitutes query text into INTENT_CLASSIFY_TEMPLATE and returns that prompt string. It performs no model invocation, schema validation, or structured intent result production, so template rendering is not a supported executed classification path.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts:8-62"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

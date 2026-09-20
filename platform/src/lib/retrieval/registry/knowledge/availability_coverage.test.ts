@@ -212,6 +212,17 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('keeps the intent prompt dark because rendering a template is not executed classification', () => {
+    const scu = findScu('scu.catalog.intent_classify')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://prompt/intent-classify',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('no model invocation'),
+      source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts:8-62'],
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
     expect(all).toHaveLength(15)
