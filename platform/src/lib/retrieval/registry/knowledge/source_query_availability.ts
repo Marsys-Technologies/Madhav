@@ -4118,6 +4118,36 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
     ],
   },
+  {
+    contract_id: 'source-query:lel-intake-checklist:v1',
+    descriptor_name: 'lel_intake_checklist',
+    capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    // checklist reads the global ontology and chart-scoped coverage; validate
+    // reads the ontology alone. Probe both with zero-row handler-shaped CTEs so
+    // availability proves queryability without exposing ontology or LEL content.
+    sql: `WITH ontology AS (
+            SELECT event_class_id, name_en, domain, lel_category, temporal_shape, evidence_requirements
+              FROM brahma_event_ontology
+             ORDER BY domain, event_class_id
+             LIMIT 0
+          ), coverage AS (
+            SELECT split_part(domain, '/', 1) AS domain, COUNT(*)::text AS total
+              FROM life_events
+             WHERE chart_id = $1::uuid
+             GROUP BY split_part(domain, '/', 1)
+             LIMIT 0
+          )
+          SELECT ontology.event_class_id, coverage.domain AS coverage_domain, coverage.total
+            FROM ontology FULL OUTER JOIN coverage ON false`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:242-353',
+      'platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql',
+      'platform/migrations/457_lel_schema_v2_event_shapes.sql',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

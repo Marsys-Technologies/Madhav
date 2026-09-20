@@ -52,6 +52,18 @@ const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
   'registry:marsys://tool/L2/query_contradictions',
 ] as const
 
+// query_spine_bundle delegates its full result to these exact four handlers.
+// The materialized row is only a cache of that composition: the serving path
+// lazily recomputes and persists it when absent or stale, so a receipt for the
+// cache alone cannot establish the whole route.  Keep every material leg
+// required in the same chart scope.
+const SPINE_BUNDLE_MANDATORY_BINDINGS = [
+  'registry:marsys://tool/L2/query_signals',
+  'registry:marsys://tool/L3/query_temporal_activation',
+  'registry:marsys://tool/L4/query_predictive_anchors',
+  'registry:marsys://tool/L5/query_calibration',
+] as const
+
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
   channel_chat_dispatch: {
     reason: 'The descriptor itself reports migration_status=PENDING: the serving chat route still dispatches through the legacy retrieve layer, not the retrieval registry. Its static migration note is introspection, not evidence that the registry capability is reachable through Portal.',
@@ -185,6 +197,15 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       scope: 'chart',
       required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
       source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
+  query_spine_bundle: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: SPINE_BUNDLE_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/spine/compute_spine_bundle.ts:76-141 | platform/src/lib/retrieval/spine/materialize.ts:132-168',
     }],
   },
   query_classical_texts: {

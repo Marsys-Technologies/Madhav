@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T12:20:30.000Z",
-  "content_hash": "sha256:147f68c9c18994ab5fec3fbfd8481d5843baaeb7763f42d0422867552a8d935c",
+  "generated_at": "2026-09-20T12:37:42.000Z",
+  "content_hash": "sha256:c7803047f7a1c3abc4c779279a70b6176f5c92250efbbf45b72d6bc014281f65",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:3a3ad53360a3c845e45ddd2494e3cd6efeda3bc19d16e58d40bf613b239ececf",
+  "semantic_review_fingerprint": "sha256:655dae27687f15a475c153239a1524c566807b6c3ff2b0664f794a9adbdab1ff",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -11448,6 +11448,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L5/lel_intake_checklist",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:lel-intake-checklist:v1",
+              "capability_uri": "marsys://tool/L5/lel_intake_checklist",
+              "contract_sha256": "sha256:c14460f1d4ca7da9d292ccac47f30ccf69adb44bb34c0c2b137ad32998d34c3d",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:242-353 | platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql | platform/migrations/457_lel_schema_v2_event_shapes.sql"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28125,6 +28140,25 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-SPINE/query_spine_bundle",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L4/query_predictive_anchors",
+                "registry:marsys://tool/L5/query_calibration"
+              ],
+              "source_ref": "platform/src/lib/retrieval/spine/compute_spine_bundle.ts:76-141 | platform/src/lib/retrieval/spine/materialize.ts:132-168"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

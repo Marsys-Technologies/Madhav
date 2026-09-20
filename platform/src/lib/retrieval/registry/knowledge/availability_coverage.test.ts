@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge } from './compiler'
 import { loadChartCapabilityOverlay, type OverlayQueryRow } from './overlay_loader'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
 import type { CapabilityKnowledgeSnapshot, ProducerOutputAvailabilityRequirement } from './types'
 
 const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-17T00:00:00.000Z') as CapabilityKnowledgeSnapshot
@@ -243,6 +244,41 @@ describe('first-slice availability coverage', () => {
         ],
       })],
     })])
+  })
+
+  it('requires every source-backed spine leg because a stale or missing cache recomputes the full chain', () => {
+    const scu = findScu('scu.catalog.query_spine_bundle')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-SPINE/query_spine_bundle',
+      requirements: [expect.objectContaining({
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: [
+          'registry:marsys://tool/L2/query_signals',
+          'registry:marsys://tool/L3/query_temporal_activation',
+          'registry:marsys://tool/L4/query_predictive_anchors',
+          'registry:marsys://tool/L5/query_calibration',
+        ],
+      })],
+    })])
+  })
+
+  it('probes both the ontology and chart-scoped coverage sources for LEL intake without reading either payload', () => {
+    const scu = findScu('scu.catalog.lel_intake_checklist')
+    const requirement = scu.availability_contracts?.[0]?.requirements[0]
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: 'source-query:lel-intake-checklist:v1',
+      capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+      scope: 'chart',
+    })
+    const contract = getSourceQueryAvailabilityContract('source-query:lel-intake-checklist:v1')
+    expect(contract?.empty_semantics).toBe('query_success_is_available')
+    expect(contract?.sql).toContain('FROM brahma_event_ontology')
+    expect(contract?.sql).toContain('FROM life_events')
+    expect(contract?.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(contract?.sql).toContain('LIMIT 0')
   })
 
   it('accounts for query_planet as dark when its mandatory get_strength facet has no complete contract', () => {
