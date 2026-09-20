@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.46.0
+version: 0.48.0
 status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0130
-last_updated: 2026-09-20T17:52:36+05:30
+last_event: PA-E0133
+last_updated: 2026-09-20T18:10:24+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -112,6 +112,28 @@ layer state, queue or authority.
 - **PACT is dark until its full chain has one evidence contract.** Promise-stage judgment,
   direct operative-varga SQL, dasha evidence, and sidecar transit trigger are all material;
   the projection is 164 contracts, 13 uncovered, and nine deliberately dark bindings.
+
+- **Spine bundle now has a full derived availability contract.** Its cached row cannot promote
+  the route on its own because the handler recomputes and persists the complete chain when that
+  row is stale or missing. The binding therefore requires the exact same-chart contracts for
+  signals, temporal activation, predictive anchors, and calibration. Generated evidence now
+  records 182 SCUs, 186 executable bindings, 165 explicit availability contracts, 12 uncovered
+  bindings, and nine deliberate-dark dispositions. This is source-local proof only: it neither
+  changes the frozen denominator nor attests a live cache, release, or three-door acceptance.
+
+- **LEL intake now has an exact, zero-row source-query contract.** It probes the handler's global
+  `brahma_event_ontology` taxonomy and its selected-chart `life_events` coverage query without
+  returning ontology or life-event content. This brings the current source projection to 182 SCUs,
+  186 executable bindings, 166 explicit availability contracts, 11 uncovered bindings, and nine
+  deliberate-dark dispositions. It is proof of queryability only; no private-event receipt,
+  inference, writing, candidate execution, release, or acceptance is claimed.
+
+- **The newest PR #2705 required CI is terminal but not green.** Run `35510491471` shows the exact
+  historic four PR #2704 golden/source-artifact failures and one separate Density Census failure:
+  its census artifact was stale relative to source. The census has now been regenerated from
+  commit `cc145d011…` with explicit provenance and its local drift check passes. The held four
+  golden failures remain PR #2704's owner-scoped packet; Pūrṇa did not rebaseline or bless them.
+  No protected release or acceptance is inferred from the local repair.
 
 - **Three required domain assessments now have source-local derived evidence contracts.**
   `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
