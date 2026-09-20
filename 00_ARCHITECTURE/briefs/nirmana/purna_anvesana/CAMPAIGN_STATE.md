@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0138
-last_updated: 2026-09-20T18:47:00+05:30
+last_event: PA-E0139
+last_updated: 2026-09-20T19:04:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -918,3 +918,11 @@ The MARO orchestration, MCP-surface, and profiles descriptors return static prof
 the resource explicitly labels `UNMEASURED`. They do not prove a managed-MCP or chat execution, so
 all three are deliberately dark. Focused tests passed 215/215; both generated-artifact checks pass.
 Inventory: 186 executable bindings, 166 contracts, 15 deliberate-dark dispositions, and 5 uncovered.
+
+## PRODUCT-M2 yoga route contract repair — 2026-09-20
+
+The raw `yoga_activation_by_dasha` registry binding was falsely uncovered: the exact reviewed
+probe was attached only to its separate MCP alias. The alias-oriented key remains distinct to avoid
+ambiguous automatic wiring; the raw binding now explicitly uses that same reviewed probe. No L3
+handler or data-plane path changed. Focused availability/overlay tests passed 266/266 and both
+generated-artifact checks pass. Inventory: 186 executable bindings, 167 contracts, 15 dark, 4 uncovered.
