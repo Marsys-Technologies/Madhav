@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T12:18:24.000Z",
-  "content_hash": "sha256:ac13d07dda4968cfb70a9c7c6c6d13ae80315de9b214d7bd73213f802013017c",
+  "generated_at": "2026-09-20T12:20:30.000Z",
+  "content_hash": "sha256:147f68c9c18994ab5fec3fbfd8481d5843baaeb7763f42d0422867552a8d935c",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:465e32159d5c1a108f0e2593596474f1bd9aa21dbfa524f7be6dac954854ee2a",
+  "semantic_review_fingerprint": "sha256:3a3ad53360a3c845e45ddd2494e3cd6efeda3bc19d16e58d40bf613b239ececf",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -12805,6 +12805,17 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-PACT/pact_query",
+          "status": "deliberately_dark",
+          "reason": "PACT chains judgment_query with a direct operative-varga chart_facts query, direct dasha evidence, and a sidecar transit trigger. Its direct confirmation query intentionally turns missing rows or database errors into an inconclusive stage, while the trigger has distinct service reachability semantics. No single reviewed contract covers all stages, so PROMISE or any adjacent child contract cannot promote the full chain.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:78-101",
+            "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:192-474"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

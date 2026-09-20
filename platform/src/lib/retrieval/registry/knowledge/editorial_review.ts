@@ -83,6 +83,13 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202',
     ],
   },
+  pact_query: {
+    reason: 'PACT chains judgment_query with a direct operative-varga chart_facts query, direct dasha evidence, and a sidecar transit trigger. Its direct confirmation query intentionally turns missing rows or database errors into an inconclusive stage, while the trigger has distinct service reachability semantics. No single reviewed contract covers all stages, so PROMISE or any adjacent child contract cannot promote the full chain.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:78-101',
+      'platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:192-474',
+    ],
+  },
   classical_attribution_lookup: {
     reason: 'The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.',
     source_refs: [
