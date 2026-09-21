@@ -137,3 +137,37 @@ matching event types" — which is a materially weaker claim, and given the obse
 (`t0-2026-08-25-4a78a5c4`, `t0-2026-08-26-faa4d6b0`) have no events traceable to them by
 `definition_revision` at all — an evidence-lineage gap for the campaign's first six days,
 worth a footnote in whatever record closes this audit but not itself campaign-blocking.
+
+## ADDENDUM (cycle 8, conductor, not the original authoring subagent)
+
+The F1 sibling-sweep fix (PR #2706, merged into `origin/main` as `9b3c3b219`) applied the scoping
+this report's §3 called for: `capsule_audit.sql` now joins all three sections on
+`WHERE definition_revision = (SELECT definition_revision FROM frozen_def)`. Re-ran it live,
+read-only (`amjis_app`, `default_transaction_read_only=on`):
+
+```
+§1 (incomplete evidence chain): 0 rows
+§2 (identity separation): 11 rows, all verdict = 'ok'
+§3 (per-layer position, t3-scoped):
+ layer | assets | frozen | routed_not_frozen | unrouted | pct_frozen
+ L0    |     40 |      0 |                 0 |       40 |        0.0
+ L1    |     19 |      0 |                 0 |       19 |        0.0
+ L2    |     22 |      8 |                 0 |       14 |       36.4
+ L3    |     23 |      0 |                 0 |       23 |        0.0
+ L4    |      9 |      0 |                 0 |        9 |        0.0
+ L5    |     15 |      0 |                 0 |       15 |        0.0
+       |    128 |      8 |                 0 |      120 |        6.3
+```
+
+**Revised classification: READY (as an instrument).** The tool can now genuinely distinguish
+"verified under `t3`" from "verified at some point, under some definition, ever" — the exact gap
+this report's original NOT READY verdict identified is closed.
+
+**But the now-trustworthy output itself is a severe finding.** Under the old unscoped aggregation,
+§3 read L3 as 13/23 frozen (56.5%) — a picture of real progress. Correctly scoped, **L3 is 0/23
+frozen under `t3`**; every prior "13 frozen" reading was contamination from superseded definitions.
+This corroborates, via a second independent instrument, F2's and the readiness query's own finding
+that 22/23 assets read `NOT_READY-BLOCKED-ANCESTORS` with zero READY-shaped rows. Not a new
+campaign-blocking defect beyond what F2 already names — folded into the readiness audit's
+decision-list item 1 as corroboration, and item 18 (which called for exactly this re-run) is now
+closed.
