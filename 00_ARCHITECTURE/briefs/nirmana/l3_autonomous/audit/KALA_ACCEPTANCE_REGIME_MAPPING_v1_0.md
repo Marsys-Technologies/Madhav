@@ -373,7 +373,6 @@ this branch; `egate.sql` and `capsule_audit.sql` both now contain `definition_re
 reproduced this section's own §3 "0 scoped" figure for L3 exactly, this time as the tool's actual
 current output rather than a hand-rolled equivalent query — see `KALA_ENVIRONMENT_READINESS_AUDIT_
 v1_0.md`'s Domain A addendum and decision-list item 18 for the authoritative current record.
-
 ---
 
 ## 6. Bottom line for the campaign's acceptance arithmetic
