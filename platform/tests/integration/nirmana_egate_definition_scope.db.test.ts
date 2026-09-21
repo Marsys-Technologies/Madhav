@@ -12,8 +12,16 @@
  * CLI against a disposable database, because both scripts use psql meta-commands
  * (\echo, \if, \set, :'layer' substitution) a plain SQL client cannot execute.
  *
- *   NIRMANA_EGATE_TEST_DATABASE_URL=postgresql://.../nirmana_elevation_test \
+ *   NIRMANA_ELEVATION_TEST_DATABASE_URL=postgresql://.../nirmana_elevation_test \
  *     npx vitest run tests/integration/nirmana_egate_definition_scope.db.test.ts
+ *
+ * Reuses the same disposable database as nirmana_elevation_asset_labels.db.test.ts
+ * (isolated by a distinct, literal `nirmana_evidence` schema rather than that
+ * sibling's randomized schema name — both scripts under test hardcode
+ * `nirmana_evidence.<table>` rather than relying on search_path, so the schema
+ * must be literally named that). Wired into CI alongside that sibling in the
+ * same `unit-tests` job step (ci.yml) since both are cheap, schema-isolated,
+ * and share no state.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
@@ -21,7 +29,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { Pool, type PoolClient } from 'pg'
 
-const TEST_DB_URL = process.env.NIRMANA_EGATE_TEST_DATABASE_URL
+const TEST_DB_URL = process.env.NIRMANA_ELEVATION_TEST_DATABASE_URL
 const MIGRATION_592_PATH = resolve(__dirname, '../../migrations/592_nirmana_elevation_campaign_evidence.sql')
 const EGATE_SQL_PATH = resolve(__dirname, '../../scripts/nirmana/egate.sql')
 const CAPSULE_AUDIT_SQL_PATH = resolve(__dirname, '../../scripts/nirmana/capsule_audit.sql')
