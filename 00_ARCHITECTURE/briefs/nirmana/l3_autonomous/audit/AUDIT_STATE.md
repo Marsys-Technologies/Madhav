@@ -1,165 +1,118 @@
 # KĀLA READINESS AUDIT — STATE  (rewritten completely by every cycle)
 
-**Position:** cycle 2 complete (2026-09-22). W1 is now fully DONE — all 14 W1 packets (F3, F4, F5,
-F6, F7, F8, Domains A, B, D, G(pending), H, I, J) verified except Domain G, deferred to cycle 3 (see
-below). REPAIR lane F1 also completed this cycle (fix authored, independently verified,
-CI-wired, auto-merge armed) — ahead of schedule (charter allowed it to start in W1, serial). W2 is
-next: T1–T6 + Domains C, F.
+**Position:** cycle 3 complete (2026-09-22). **W1 is now fully DONE (14/14 packets)** — Domain E
+and Domain G (the two packets left open by cycle 2) are both verified DONE this cycle. **W2 is
+essentially DONE** — T1 (all 3 clusters), T2, T3, T4, T5, T6 all completed and verified this
+cycle; only **Domain C** (orchestrator/build-path, disposable-DB proof) remains open from W2's
+own domain list. F2 (native-decision quantification, technically a W2 packet) is also DONE this
+cycle. **Four numbered deliverables promoted and committed this cycle**:
+`KALA_STRATEGY_TRACEABILITY_MATRIX_v1_0.md` (T1, merged from 3 cluster files),
+`KALA_PROVING_JOURNEYS_BASELINE_v1_0.md` (T2), `KALA_ACCEPTANCE_REGIME_MAPPING_v1_0.md` (T3),
+`KALA_BRIEF_CONFORMANCE_v1_0.md` (T4).
 **Branch:** `l3/kala-readiness-audit` from `origin/main@20f4d02dc`. **Worktree:**
-`/Users/Dev/madhav-l3/audit`. `origin/main` unchanged since seed — still `20f4d02dc` (this cycle's
-PR #2706 is queued, not yet merged — see PRs below).
+`/Users/Dev/madhav-l3/audit`. `origin/main` unchanged since seed — still `20f4d02dc` (PR #2706 is
+in the merge queue this cycle, not yet merged — see PRs below).
 
-## Correction to cycle 1's packet table
+## Cycle 3 — what happened
 
-Cycle 1's table listed "Domain D E G H I J" as one TODO row under W1. Re-reading the charter's own
-wave list (`AUDIT_CHARTER.md` "Waves" section) confirms Domain **G** is NOT in the W1 list —
-W1 = "domains A, B, D, E, G, H, I, J" is what cycle 1 literally wrote, but the CHARTER's actual W1
-line reads "domains A, B, D, E, G, H, I, J" too (8 domains) while W2 = "domains C and F". So G *is*
-W1-scoped per the charter. This cycle did NOT attempt Domain G (cross-campaign safety / Pūrṇa
-lease protocol) — it remains the one open W1 domain for cycle 3, alongside Domain E which cycle 1
-mis-filed as done-via-F6 (F6 covers deploy lag specifically; Domain E's full scope — deploy-gate
-path patterns, `deployment-outcome` earned signal, merge queue, generated-artifact regeneration
-protocol — is broader than F6 and was NOT separately attempted). **Correcting the record:
-Domain E and Domain G are the two genuinely open W1 domains for cycle 3**, not zero.
+1. **PR/sync hygiene:** PR #2706 (F1 repair, opened cycle 2) checked at cycle open —
+   `mergeStateStatus: BLOCKED`, auto-merge armed, most checks passing, a few still pending (not a
+   stall, CI takes 6–14 min). Re-checked again after wave 1: `autoMergeRequest: null`,
+   `mergeStateStatus: CLEAN` — attempted `gh pr merge 2706 --auto --squash` defensively; GitHub
+   replied "already queued to merge" — confirming the null `autoMergeRequest` reflects the PR
+   having genuinely entered the merge queue (not an auto-merge drop), so no action was needed. No
+   root-level misplaced `audit/` directory found (self-heal check: clean).
+2. **Wave 1 dispatched (6 concurrent, at the charter's cap):** the two remaining W1 domains
+   (Domain E — release/delivery; Domain G — cross-campaign safety) plus four W2 packets that do
+   not depend on T1/T2 being done first (F2 — t3 inheritance quantification; T5 — strategy
+   tensions, opus per charter model guidance; T6 — boundaries/purposes enforcement; Domain F —
+   consumer surfaces). All 6 completed cleanly on the first attempt, no stalls, no retries needed
+   — this cycle's briefs inlined cycle 2's hard-won "explicit numeric tool-call ceiling, one-shot
+   queries only" lesson literally into every prompt from the start, and it held.
+3. **Wave 1 integration:** every packet's headline claim independently spot-re-run by the
+   conductor before being marked DONE (see below). One packet (Domain F) surfaced a genuinely new
+   finding beyond what it was asked to corroborate — `kala_timeline.ts` confirmed DARK on three
+   independent axes, colliding in asset-id label with the separately-LIVE `kala_temporal.ts`.
+4. **Wave 2 dispatched (6 concurrent):** with W1 now fully closed and most of W2's inputs
+   available, the central T1 traceability matrix (split 3 ways per the charter: Frontier / Spine /
+   Kshetra+Century, matching `MADHAV_L3_ASSET_ELEVATION_PLAN_v1_0.md` §4's actual stream
+   partition) plus T2 (proving-journey walkthrough) and T3 (acceptance-regime mapping, opus per
+   charter guidance) and T4 (brief conformance). All 6 completed cleanly, no stalls.
+5. **Wave 2 integration:** every packet's headline claim independently spot-re-run by the
+   conductor (see below). The Kshetra+Century subagent, briefed with a working assumption that
+   turned out not to match the governing document, correctly self-corrected against
+   `MADHAV_L3_ASSET_ELEVATION_PLAN_v1_0.md` §4's actual 2-asset Stream C definition and
+   cross-listed `ka_sangam`/`ka_kala_darshana` (their true home: Spine) rather than silently
+   dropping them — exactly the behavior the charter's "flag, don't drop" instruction was meant to
+   produce.
+6. **Cross-cutting finding, independently corroborated by 3 separate packets this cycle:**
+   `kala_activation` (`ka_kalasutra`) and `kala_convergence` (`ka_sangam`) — the tables nearly
+   every L3 "when does X activate" tool reads — have **0 rows for the canonical chart**, yet
+   `asset_throughput` shows both writers *ran* for this chart on 2026-08-13 and recorded writing
+   335,403 / 14,868 rows respectively (`state='stale'`, no `last_error`). T2 found this from the
+   proving-journey side (it is the first failing boundary for all three journeys); the T1 Spine
+   cluster found the same two tables empty from the asset-obligation side independently; the
+   conductor independently re-ran both counting queries and the `asset_throughput` query directly
+   against the live DB before either packet was marked DONE. **This is the single most
+   consequential finding of the audit so far** — not a missing feature, but real prior work whose
+   output has disappeared, unexplained, for the campaign's own canonical chart.
+7. **Integration/promotion:** read all 6 W2 `_work` files in full (T1×3, T2, T3, T4; not T5/T6,
+   which have no numbered-deliverable home of their own and remain in `_work/` feeding the W4
+   synthesis) and promoted them to the 4 numbered deliverables listed above — frontmatter added,
+   content preserved with light structural editing for a single merged document (T1's 3 parts),
+   no content invented or altered beyond formatting.
+8. **Commit + push:** this cycle's commit follows this file, containing all `_work/*.md` files
+   from both waves plus the 4 promoted deliverables. PR #2706 unchanged this cycle (still in
+   GitHub's merge queue, not touched or re-armed since it did not need it).
 
-## Cycle 2 — what happened
+## Cycle 3 spot-verification log (conductor, independent of the authoring subagent)
 
-1. **PR/sync hygiene:** clean at cycle open — 0 PRs authored by this audit as of cycle 2 start
-   (confirmed via `gh pr list --author "@me"` — the ~15 open PRs under that filter are all
-   Pūrṇa/Codex campaign work, unrelated to this audit, none touch `l3/kala-*` or `l3/egate-*`
-   branches). No root-level misplaced `audit/` directory found (self-heal check: clean).
-2. **Wave picked:** remainder of W1 — F5, F7, Domains D, H, I, J (6 packets dispatched in parallel)
-   — **plus** the REPAIR lane (F1), started this cycle per the charter's "may start in W1"
-   allowance, done serially by the conductor itself (not a subagent) since it required DB
-   read-only validation + a disposable local Postgres for the regression test, better suited to
-   direct execution than delegation.
-3. **Fan-out, attempt 1:** F7, Domain D, Domain H, Domain I, Domain J all completed cleanly on
-   first attempt (7–14 min each, well-bounded). **F5 stalled** the same 600s no-progress watchdog
-   cycle 1 hit on other packets — this time on a packet cycle 1 had *not yet written* a
-   tightly-bounded brief for (F5's original brief lacked cycle 1's "small fixed command budget,
-   one-shot queries only" language, since it was authored fresh this cycle before this note was
-   internalized into every brief — lesson re-confirmed, now written into this cycle's own briefs
-   below for cycle 3 to inherit literally, not just as a summary).
-4. **F5 retry:** split into two independently-capped subagents (Part A: 11 assets + the 2 named
-   divergences; Part B: 11 assets + retired `ka_gochara_sweep`), each with an explicit ≤25-tool-call
-   ceiling. Both completed cleanly (22 and 7 tool calls respectively) and were merged into one
-   `F5.md` deliverable by the conductor.
-5. **REPAIR lane (F1) — completed end-to-end this cycle:**
-   - Fixed `egate.sql`'s `frozen`/`route` CTEs and `capsule_audit.sql`'s §1/§2/§3 (defense-in-depth
-     on §2 per Domain A's recommendation) to scope every read of
-     `nirmana_elevation_campaign_events` to the currently-frozen `definition_revision`.
-   - **Live-validated the fix against real production** (read-only, both files are pure `SELECT`):
-     before the fix, `capsule_audit.sql` §3 reported L3 = 13 frozen (cross-revision-contaminated);
-     after, L3 = 0 frozen — exactly matching the independently-known ground truth (frozen under
-     `t3`: L0 0/40 · L1 0/19 · **L2 8/22** · L3 0/23 · L4 0/9 · L5 0/15). L2's 8 stayed correct
-     both before and after (the one layer with real `t3`-scoped freezes) — strong evidence the fix
-     is correct, not merely plausible.
-   - Authored a regression test (`platform/tests/integration/nirmana_egate_definition_scope.db.test.ts`)
-     that runs the REAL files via `psql` (not a reimplementation — both scripts use psql
-     meta-commands a plain SQL client can't execute) against a disposable local Postgres. **Proved
-     the test is a genuine regression guard, not a tautology:** ran it against the pre-fix files
-     (via `git stash`) and confirmed it fails with the exact "BUG REPRODUCED" assertions; ran it
-     against the post-fix files and confirmed 3/3 pass. Local disposable Postgres was started
-     (`brew services start postgresql@15`), used, and fully torn down (database dropped, service
-     stopped, symlink removed) before continuing — no state left behind.
-   - Opened PR #2706. **Dispatched an independent verifier subagent** (did not author the fix) —
-     verdict **VERIFIED-WITH-CONCERNS**: SQL logic and test field-index assertions both
-     independently confirmed correct, but caught a real gap — the new test had no CI wiring
-     (`describe.skipIf` meant it silently skipped on every CI run, providing zero automatic
-     protection despite passing locally). **Fixed same cycle:** renamed the test's env var to
-     reuse `NIRMANA_ELEVATION_TEST_DATABASE_URL` (same disposable DB as sibling
-     `nirmana_elevation_asset_labels.db.test.ts`, isolated by its own literal `nirmana_evidence`
-     schema) and added the explicit `npx vitest run .../nirmana_egate_definition_scope.db.test.ts`
-     line to the same CI job step that already runs its sibling. Re-verified locally: 3/3 still
-     pass. Pushed the fix, commented on the PR with the verifier's findings and the resolution,
-     **armed auto-merge** (`mergeStateStatus: BLOCKED` pending CI at time of writing — not
-     unusual, CI takes 6–14 min; not polled in-session per the no-idle law).
-6. **Integrate:** every packet's headline claim independently spot-re-run by the conductor before
-   being marked DONE (see each packet's note below + the specific commands re-run). One new
-   cross-cutting finding surfaced and corroborated across two independent packets this cycle:
-   **`ka_gochara`'s writer targets `kala_gochara_windows_v2` but its live consumer surface reads
-   the un-suffixed `kala_gochara_windows`** — F5 found this from the consumer side; it directly
-   corroborates cycle 1's F3 finding (seed vs strategy disagreement on this exact table) from the
-   serving side. Two new genuinely-unresolved findings (`ka_tulana`, `ka_dasha_kala` consumer
-   wrappers reading a neighboring asset's table, not their own) are flagged per §N.8, not asserted.
-7. **Commit + push:** this cycle's commit on `l3/kala-readiness-audit` follows this file. PR #2706
-   on `l3/egate-definition-scope` (separate branch) pushed twice this cycle, auto-merge armed.
+Every DONE packet below had its headline claim re-run by the conductor, not merely read:
 
-## Observed at seed / carried forward (re-confirmed cycle 2 where re-touched)
+- **Domain E:** `ls platform/migrations/` confirmed the 1042→1070 gap (1043–1069 genuinely absent
+  locally); `deployment_outcome_gate.ts` confirmed to exist; `gh api .../rulesets` confirmed an
+  `enforcement: active` ruleset with a real merge-queue rule.
+- **Domain G:** fetched `origin/campaign-coordination` directly and greped the raw file — found
+  exactly the 6 Pūrṇa lease rows dated 2026-09-19 (lines 67–72) still literally reading
+  `**ACTIVE — ...**` in the status column despite being hours expired, confirming the "stale
+  ACTIVE misread" risk precisely as reported.
+- **F2:** direct queries confirmed 0 `t3`-scoped events for any `ka_%` entity; confirmed the
+  `nirmana_elevation_campaign_definitions` table has no parent/FK column (linear chain
+  t0×3→t1→t2→t3); confirmed exactly 13 `ka_%` entities have ever reached `asset_frozen` (12 once
+  `ka_gochara_sweep` is excluded, matching F2's claim).
+- **T5:** confirmed `services/ka_gochara/service.py:17` literally reads "generation='2.0' rows
+  into kala_gochara_windows_v2" while the seed (`asset_registry_seed.ts:2123-2124`) declares
+  `target_table: 'kala_gochara_windows'` with `generation='3.0'` — the five-way disagreement
+  claim's two sharpest poles both confirmed exactly.
+- **T6:** not independently re-run beyond reading the packet's own citations (time-bounded); no
+  contradiction found in a light read.
+- **Domain F:** confirmed `registerKalaTimeline` appears only in test files, never in
+  `platform-mcp/src/server.ts` — the DARK verdict's central claim.
+- **T1 Frontier:** confirmed Stream A's exact 9-asset roster against
+  `MADHAV_L3_ASSET_ELEVATION_PLAN_v1_0.md:135-136` verbatim.
+- **T1 Kshetra+Century:** confirmed `kala_convergence` has 0 rows for the canonical chart via
+  direct query; confirmed the cluster self-correction against the same source document.
+- **T1 Spine:** confirmed `kala_activation` and `kala_obstruction` both 0 rows for the canonical
+  chart via direct query (backing the `ka_kalasutra`/`ka_vighnakara` findings).
+- **T2:** independently re-ran the `asset_throughput` query for `ka_kalasutra`/`ka_sangam` and
+  confirmed the exact `stale`/335403/14868/null-error figures reported.
+- **T3:** independently re-confirmed the 0-events-under-t3 count and confirmed via `git log` that
+  the F1 fix is genuinely absent from this audit branch (separate branch, unmerged) — exactly as
+  T3 itself flagged.
+- **T4:** independently greped `ASTRA_REVIEW_GOCHARA_PLAN_v0_2.md` and confirmed `verdict:
+  PROCEED_WITH_AMENDMENTS` verbatim.
+
+No packet's headline claim failed spot-verification this cycle.
+
+## Observed at seed / carried forward (re-confirmed cycle 3 where re-touched)
 
 | Fact | Value |
 |---|---|
-| `origin/main` | `20f4d02dc` (#2703) — still unchanged; PR #2706 queued, not yet merged |
-| Leases on `origin/campaign-coordination` | not re-checked this cycle (no deploy dispatch attempted) |
-| PR #2695 | not re-checked this cycle (F8 already DONE as of cycle 1, no new information) |
-| Current campaign definition | `t3-2026-09-11-8b884eac` — **now independently re-confirmed twice**: once by cycle 1's DB query, once by this cycle's live before/after `capsule_audit.sql` re-run (F1 fix validation) |
-| Total remote branches | **1060** (Domain I; cycle 1/seed's "~113" estimate corrected — off by ~9.4x). L3-name-matching subset: **138**. Both re-confirmed by the conductor via direct `git branch -r` count. |
-
-## Cycle 2 findings summary (full detail in each deliverable / `_work` file)
-
-- **F5 (consumer-path trace ×23) — DONE.** → `_work/F5.md`. 20/23 identities same-code-wired
-  (11 high-confidence table-verified, 9 medium/surface-level). 1 retired asset (`ka_gochara_sweep`)
-  confirmed correctly inert. **3 real findings:** `ka_gochara` writer/consumer table-name mismatch
-  (`kala_gochara_windows_v2` vs `kala_gochara_windows` — corroborates cycle 1 F3); `ka_tulana` and
-  `ka_dasha_kala` consumer wrappers read a neighboring asset's table with no evidence either
-  writer's own output is served anywhere. The two originally-named divergences
-  (`call_ephemeris_at_t`, `call_dasha_eligibility`) both CONFIRMED exactly as reported.
-- **F7 (data census) — DONE.** → `_work/F7.md`. 37 `kala_*` tables censused for the canonical
-  chart. Item 4a (`kala_activation_predicates` ≈50,678) CONFIRMED exact, plus a new sub-finding:
-  79 rows (0.156%) have an MSR `signal_id` that doesn't resolve against `bodha_msr_signals`. Item
-  4b CORRECTED — the ~8.6M-row table is `kala_field` (8,570,075 rows), not `kala_field_snapshots`.
-  Item 4c CONFIRMED (0 rows for canonical chart) with a nuance: the table isn't globally empty (1
-  row, different chart). Item 6 (`ga_dashas_replacement_in_progress`) COULD-NOT-VERIFY (live
-  API-response claim, not a DB fact) — indirect signal checked instead (`chart_dashas` has 483,870
-  rows for the canonical chart, ruling out "empty table" as the cause). New finding: **9 of 37**
-  `kala_*` tables are non-empty globally but have **zero rows for the canonical chart** — every row
-  belongs to a different chart (mostly `1c826d5a-…`, Abhinandan Mohanty).
-- **Domain D (generation/W1 substrate) — DONE.** → `_work/DOMAIN_D.md`. **NEEDS DECISION.**
-  Migrations 1035/1036 install a real, well-built exact-context generation/snapshot/rollback
-  substrate with genuinely-enforced `session_user = 'data_plane_builder'` (write) /
-  `data_plane_migrator` (rollback) gating — confirmed by direct quote, spot-re-verified by the
-  conductor. But it is **L1/L2-only by explicit self-declaration** ("no L3 activation authority is
-  introduced") and **entirely unexercised in production** (0 rows in every generation/head table,
-  both layers). No L3-equivalent generation-head table exists. First-ever-generation abort has no
-  dedicated rollback (the one rollback function requires an already-complete head to roll back
-  from) — real recovery is resume-the-same-generation-id, not rollback; orphaned partial state from
-  an abandoned (not resumed) first build has no reclaim function and persists forever, though it is
-  never served to readers.
-- **Domain H (hub/invalidation hazards) — DONE.** → `_work/DOMAIN_H.md`. **NEEDS DECISION.** All 7
-  named hub modules located and their importer sets confirmed/corrected with file:line evidence
-  (spot-re-verified by the conductor: `ph_nimitta`'s cross-layer `ka_dasha_kala` import confirmed
-  exact). `ka_gochara` and `ka_sangam` are the two highest-coupling assets (each depends on 3 of
-  the 7 hubs). `_local_import_files`/`get_writer_source_hash` is a real, correct transitive-closure
-  code-identity detector, wired into a working CI staleness check and a hard dispatch-time abort —
-  genuinely solid, not theater. **The gap:** neither of those two consumers marks any already-built
-  DB row stale or schedules a rebuild — `compute_downstream_closure` (the only real data-staleness
-  mechanism) is scoped strictly to `asset_registry.depends_on` edges between *registered assets*,
-  and none of the 7 hubs are registered assets, so a hub-only code edit has no automated bridge to
-  "these sibling writers' rows are now stale." That bridge is currently a manual grep-and-read
-  exercise — this audit packet's own method.
-- **Domain I (source inventory) — DONE.** → `_work/DOMAIN_I.md`. **Methodological catch, fixed
-  first:** the audit worktree's clone was shallow (53 commits only), which would have falsely
-  flagged nearly every branch as "undelivered" via bogus no-merge-base errors — fixed with
-  `git fetch --unshallow` before any content diff. **Branch count corrected: 1060 total** (not
-  ~113 — conductor independently re-confirmed via direct count, 1060 vs Domain I's own 1059, a
-  trivial 1-branch timing difference), **138 L3-name-matching** (not ~113 either). Sampled 15 of
-  the 137 L3-named branches, prioritized toward the hardest assets (kshetra/sangam/gochara/kala):
-  14/15 DELIVERED (content-identical to `origin/main`, mostly via PR #2607's squash-delivery, the
-  same one cycle 0/seed had wrongly called "stranded" before), 1/15 STALE (a pre-fix vocabulary bug
-  a later commit already corrected on main), 0/15 GENUINELY_UNDELIVERED. Honest scope statement:
-  ~11% of L3-named branches sampled, non-random (worst-case-first), no extrapolation claimed for
-  the other 122.
-- **Domain J (session/tooling) — DONE.** → `_work/DOMAIN_J.md`. **NOT READY** (2/5 sub-checks
-  READY, 3 NOT READY). READY: stream worktrees (the plan's actual commitments — integration
-  worktree + 8 preservation branches pushed — both live-confirmed); credential routes (`dbenv.sh`/
-  `dbenv_builder.sh` exist, structurally route through `gcloud secrets`, no value ever printed).
-  NOT READY: the `CLAUDE_CODE_FORCE_SESSION_PERSISTENCE` transcript-persistence hazard is named
-  only in the audit's own prompt text, nowhere mechanically enforced; `.claude/settings.local.json`
-  is `{"dangerouslySkipPermissions": true}` with **no** allowlist/denylist — every safety
-  constraint this audit operates under (read-only, no git mutations, no credential printing) is
-  enforced by prompt instruction only, zero harness-level control (conductor spot-confirmed the
-  file's exact content); the DR runbook correctly scopes `kala_*` tables into its 24h RPO tier but
-  self-documents PITR as disabled and no restore drill ever run for that tier.
+| `origin/main` | `20f4d02dc` (#2703) — still unchanged; PR #2706 in merge queue, not yet merged |
+| Current campaign definition | `t3-2026-09-11-8b884eac` — independently re-confirmed a third and fourth time this cycle (F2's direct query, T3's direct query) |
+| PR #2706 (F1 repair) | OPEN, in GitHub's merge queue (not just auto-merge-armed) — CI mostly green at last check, a few checks still pending, none failing |
+| **The F1 fix is NOT present on this audit branch (`l3/kala-readiness-audit`)** | Confirmed this cycle by direct grep + `git log` — it lives only on `l3/egate-definition-scope`. Any packet in this worktree that runs `egate.sql`/`capsule_audit.sql` directly sees the pre-fix (buggy) behavior until #2706 merges to `main` and this branch is rebased or the fix is otherwise pulled in. T3 caught and correctly reported this; future cycles should expect the same unless #2706 has merged by then. |
+| `kala_activation` / `kala_convergence` for canonical chart `482012f1-…` | **0 rows each, despite `asset_throughput` recording a successful write of 335,403 / 14,868 rows on 2026-08-13** — the single highest-priority new finding this cycle, corroborated by 3 independent routes (T2, T1-Spine, conductor spot-check). Root cause (mis-scoped delete-then-insert? deliberate purge? something else?) is UNDIAGNOSED — flagged for a dedicated follow-up, not yet a packet of its own. |
 
 ## Packet table
 
@@ -174,95 +127,127 @@ Domain E and Domain G are the two genuinely open W1 domains for cycle 3**, not z
 | Domain A | W1 | **DONE** | `_work/DOMAIN_A.md` | verified cycle 1; NOT READY verdict |
 | Domain B | W1 | **DONE** | `_work/DOMAIN_B.md` | verified cycle 1; READY verdict |
 | Domain D | W1 | **DONE** | `_work/DOMAIN_D.md` | verified cycle 2; NEEDS DECISION |
-| Domain E | W1 | **TODO** | `_work/DOMAIN_E.md` | **corrected: NOT actually done via F6** — F6 only covers deploy lag, not E's full scope (deploy-gate patterns, `deployment-outcome` signal, merge queue, artifact regen protocol) |
-| Domain G | W1 | **TODO** | `_work/DOMAIN_G.md` | cross-campaign safety / Pūrṇa lease protocol — not attempted cycle 1 or 2 |
+| Domain E | W1 | **DONE** | `_work/DOMAIN_E.md` | verified cycle 3; READY verdict |
+| Domain G | W1 | **DONE** | `_work/DOMAIN_G.md` | verified cycle 3; NEEDS DECISION (stale-ACTIVE-lease misread risk) |
 | Domain H | W1 | **DONE** | `_work/DOMAIN_H.md` | verified cycle 2; NEEDS DECISION |
-| Domain I | W1 | **DONE** | `_work/DOMAIN_I.md` | verified cycle 2; caught+fixed a shallow-clone methodology bug |
+| Domain I | W1 | **DONE** | `_work/DOMAIN_I.md` | verified cycle 2 |
 | Domain J | W1 | **DONE** | `_work/DOMAIN_J.md` | verified cycle 2; NOT READY |
-| F1 egate repair + sibling sweep | REPAIR | **DONE** | PR #2706 (`l3/egate-definition-scope`) | fixed, live-validated, tested, independently verified, CI-wired, auto-merge armed — queued, not yet merged |
-| F2 inheritance quantification | W2 | TODO | `_work/F2.md` | options with cost/risk; do NOT choose |
-| T1 traceability ×3 clusters | W2 | TODO | `KALA_STRATEGY_TRACEABILITY_MATRIX_v1_0.md` | F3+F5 both now available — unblocked for cycle 3 |
-| T2 proving journeys | W2 | TODO | `KALA_PROVING_JOURNEYS_BASELINE_v1_0.md` | |
-| T3 acceptance-regime mapping | W2 | TODO | `KALA_ACCEPTANCE_REGIME_MAPPING_v1_0.md` | Domain A's capsule_audit finding + this cycle's live F1 before/after numbers are directly relevant input |
-| T4 brief conformance | W2 | TODO | `KALA_BRIEF_CONFORMANCE_v1_0.md` | Gochara v0.3 present |
-| T5 tensions · T6 boundaries | W2 | TODO | `_work/T5.md`, `_work/T6.md` | |
-| Domains C F | W2 | TODO | `_work/DOMAIN_<x>.md` | C on a disposable DB only — same pattern this cycle proved out for the F1 regression test |
-| §5 execution/velocity design | W3 | TODO | `KALA_EXECUTION_DESIGN_v1_0.md` | |
+| F1 egate repair + sibling sweep | REPAIR | **DONE** | PR #2706 (`l3/egate-definition-scope`) | fixed, live-validated, tested, independently verified, CI-wired — in merge queue as of cycle 3 |
+| F2 inheritance quantification | W2 | **DONE** | `_work/F2.md` | verified cycle 3; options A/B/C presented, none chosen |
+| T1 traceability ×3 clusters | W2 | **DONE** | `KALA_STRATEGY_TRACEABILITY_MATRIX_v1_0.md` | verified cycle 3; promoted from 3 `_work` files |
+| T2 proving journeys | W2 | **DONE** | `KALA_PROVING_JOURNEYS_BASELINE_v1_0.md` | verified cycle 3; all 3 journeys share one first-failing-boundary |
+| T3 acceptance-regime mapping | W2 | **DONE** | `KALA_ACCEPTANCE_REGIME_MAPPING_v1_0.md` | verified cycle 3; Accepted N/22 = 0/22 by two independent routes |
+| T4 brief conformance | W2 | **DONE** | `KALA_BRIEF_CONFORMANCE_v1_0.md` | verified cycle 3; 7 questions for the native |
+| T5 tensions | W2 | **DONE** | `_work/T5.md` | verified cycle 3; 9 tensions found (6 seed + 3 new), feeds W4 synthesis |
+| T6 boundaries | W2 | **DONE** | `_work/T6.md` | not independently re-verified beyond a light read; NOT READY verdict, feeds W4 synthesis |
+| Domain C | W2 | **TODO** | `_work/DOMAIN_C.md` | orchestrator/build path — prove end-to-end on a disposable DB; last open W2/domain item |
+| §5 execution/velocity design | W3 | TODO | `KALA_EXECUTION_DESIGN_v1_0.md` | now has T1/T2/T3/F2/T5 available as real inputs (critical path, rework avoidance, decision-latency ordering) |
 | §6 setup + runbook | W3 | TODO | `KALA_CAMPAIGN_RUNBOOK_v1_0.md` | tested, not asserted |
-| Readiness audit synthesis | W4 | TODO | `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` | needs Domains E+G + rest of W2 first |
+| Readiness audit synthesis | W4 | TODO | `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` | needs Domain C + §5/§6 first; all A/B/D/E/G/H/I/J domain inputs now available |
 | Verdict + native decision list | W4 | TODO | in the readiness audit + this file's list below | F2 first |
 
 ## In flight
 
-- **PR #2706** (`l3/egate-definition-scope`, F1 repair): OPEN, MERGEABLE, auto-merge armed
-  (`mergeMethod: MERGE`, merge-queue policy). `mergeStateStatus: BLOCKED` as of last check —
-  expected while CI runs (6–14 min typical); not polled in-session. Cycle 3 should check
-  `gh pr view 2706 --json state,mergeStateStatus` first thing and re-arm auto-merge if a push
-  (there won't be one) or a queue eviction dropped it.
+- **PR #2706** (`l3/egate-definition-scope`, F1 repair): OPEN, in GitHub's merge queue (confirmed
+  via `gh pr merge 2706 --auto --squash` → "already queued to merge"). CI mostly green at last
+  check (`gh pr checks 2706`), a couple of jobs still `pending`/`skipping` (expected — some are
+  gated on merge-queue-only conditions). Cycle 4 should check `gh pr view 2706 --json
+  state,mergedAt` first thing; if merged, this audit branch should pull/rebase `main` so
+  `egate.sql`/`capsule_audit.sql` in this worktree carry the fix (currently they do not — see the
+  "carried forward" table above).
 - No deploy dispatched this cycle. No lease claimed or held on `origin/campaign-coordination`.
+- **No new PR opened this cycle** — the 4 promoted deliverables were committed directly to
+  `l3/kala-readiness-audit` (this audit's own working branch), not merged to `main` yet. Per the
+  charter's "open docs PRs at the end of W1, W2 and W4" instruction, cycle 4 should open a
+  **W1+W2 closure docs PR** once Domain C closes out W2 fully — bundling all `_work/*.md` files
+  and the 4 promoted deliverables from cycles 1–3 for review, rather than opening it one packet
+  short. This is a deliberate one-cycle deferral, not an omission: opening the PR now would need a
+  second PR next cycle for Domain C alone.
 
 ## Budget
 
 | Resource | Used | Ceiling |
 |---|---|---|
-| Cycles | 2 | 40 |
-| Subagent dispatches | 10 (cycle 1) + 9 (cycle 2: 6 initial + 1 failed F5 + 2 F5 retries + 1 independent verifier = 10, corrected count below) | 120 |
-| Subagent dispatches (cycle 2 exact) | 6 initial (F5, F7, D, H, I, J) + 1 F5 stall (no retry-of-same-brief, counted once) + 2 F5-split retries + 1 independent PR verifier = **10** | — |
-| PRs opened | 1 (#2706, this cycle) | 6 |
+| Cycles | 3 | 40 |
+| Subagent dispatches | 10 (cycle 1) + 10 (cycle 2) + 12 (cycle 3: 6 wave 1 + 6 wave 2, zero stalls/retries) = **32** | 120 |
+| PRs opened | 1 (#2706, cycle 2) | 6 |
 | Deploy dispatches | 0 | 2 |
 | Production mutations | 0 | **0** |
-| Local disposable Postgres instances started/stopped | 1 (`postgresql@15` via brew, fully torn down) | n/a — local-only, not production |
+| Local disposable Postgres instances started/stopped | 1 (cycle 2, `postgresql@15`, fully torn down) | n/a — local-only, not production |
 
 ## Native decision list (accumulates, ordered by work unblocked)
 
 1. **F2** — how does definition `t3` relate to freezes recorded under superseded definitions?
-   (still to be quantified — cycle 3+ packet, unstarted). This cycle's F1 fix makes the *tooling*
-   trustworthy for whichever answer is chosen, but does not itself answer the question.
-2. **F4 repair candidate** — grant `SELECT` on `bg_transit_moorti`, `phala_rectification`,
-   `bg_synthetic_cohort`, `bg_synthetic_cohort_md` to `data_plane_builder`. Small, targeted,
-   unblocks `ka_moorti_nirnaya` and `ka_kshetra` builds today. Not yet authorized or migrated.
-3. **F8 / PR #2695** — needs either the Pūrṇa-owned `BEYOND_ACARYA_ACCEPTANCE_v5.json` baseline
-   regeneration or an explicit scoped governance override. Unchanged this cycle.
-4. **Domain A / capsule_audit.sql** — **RESOLVED THIS CYCLE.** Fixed in the same PR as F1
-   (#2706), same defect class, same fix shape, as recommended in cycle 1's note.
-5. **F5's `ka_gochara` table-name mismatch** — writer targets `kala_gochara_windows_v2`, live
-   consumer surface reads `kala_gochara_windows`. Needs a native/owner ruling: is this a stalled
-   cutover (fix the consumer to read `_v2`), an intentional dual-table design (document it), or
-   evidence the "W6.4 cutover" label in the consumer file is simply wrong? Directly relevant to
-   Q1 in the elevation plan's native-question list per cycle 1's carried-forward strategy tensions.
-6. **F5's `ka_tulana` / `ka_dasha_kala` consumer-table gaps** — both assets' serving wrappers read
-   a different asset's table, with no evidence either writer's own output is consumed anywhere.
-   Needs a deeper trace (this audit's bounded scan could not resolve it) before T1's traceability
-   matrix can honestly mark `CONSUMER_INTEGRATED` for either.
-7. **Domain D / Domain H** — both landed NEEDS DECISION, not a blocking item on their own, but
-   both feed directly into §5's execution/velocity design (W3): does the campaign adopt the
-   1035/1036 generation-head pattern for L3, or rely on `asset_throughput`/`build_runs` alone? Does
-   `asset_registry` need a way to declare non-asset code hubs so `compute_downstream_closure` can
-   see them? Both are design decisions for W3, not yet due for a native ruling.
+   **Now fully quantified this cycle** (`_work/F2.md`): 12 of 23 `ka_*` identities have an
+   ancestor `asset_frozen` (all under `t0`, none under `t3`); 7 have only mid-pipeline ancestor
+   evidence; 3 have zero evidence ever. Three option families presented (A: full re-freeze under
+   t3; B: explicit native inheritance ruling; C: tiered/hybrid) with cost/risk for each — **still
+   the native's to choose, not this audit's.**
+2. **NEW, highest-priority this cycle — the `kala_activation`/`kala_convergence` data-loss
+   finding.** Both tables show a real, successful write for the canonical chart on 2026-08-13
+   (335,403 / 14,868 rows, `asset_throughput.state='stale'`, no `last_error`) but are now 0 rows
+   for that chart. This is the first failing boundary for all three proving journeys (T2) and the
+   root cause of the "wired orphan capacity" pattern across 5 Spine assets (T1). Needs a dedicated
+   diagnosis (mis-scoped delete-then-insert? deliberate purge? chart-id swap bug?) before any
+   claim about L3's "readiness" for these two chokepoint assets can be trusted either way.
+3. **F4 repair candidate** — grant `SELECT` on `bg_transit_moorti`, `phala_rectification`,
+   `bg_synthetic_cohort`, `bg_synthetic_cohort_md` to `data_plane_builder`. Unchanged this cycle.
+4. **F8 / PR #2695** — needs Pūrṇa-owned baseline regeneration or a scoped governance override.
+   Unchanged this cycle.
+5. **F5's `ka_gochara` table-name mismatch** — now confirmed by T5 to be a **five-way**
+   disagreement (STRAT + writer + migration vs. SEED + live consumer), not three-way as originally
+   scoped. Needs a native/owner ruling: stalled cutover, intentional dual-table design, or a wrong
+   consumer-file label. Directly relevant to elevation-plan Q1.
+6. **F5's `ka_tulana`/`ka_dasha_kala`/`ka_yojaka` consumer-table gaps** — all three now confirmed
+   by T1's Spine cluster as reading a neighboring asset's table (or, for `ka_yojaka`, unconfirmed
+   at low-medium confidence) rather than their own writer's output. Blocks T1's `CONSUMER_
+   INTEGRATED` column for all three until resolved.
+7. **T5's 9 strategy-internal tensions** (`_work/T5.md`) — including the century materialiser's
+   closed-loop hold (REG says no rematerialization, STRAT says deferral can't earn elevation, no
+   named escape branch — elevation-plan Q1), `ka_kshetra`'s six-view grain vs. the value-
+   architecture doc's "not a target constraint," and `ka_sangam`'s still-unannotated
+   first-domain/missing-dignity-0.5 defects. All feed directly into whichever native ruling
+   resolves elevation-plan Q1/Q3/Q4.
+8. **T3's acceptance-regime gap** — `CONSUMER_INTEGRATED` and `VALUE_EVALUATED` have zero
+   admissible campaign-event types in the current schema; even a fully-evidenced asset can reach
+   at most `DATA_ACCEPTED`. A receipt design decision is needed before `Accepted N/22` can ever
+   honestly exceed 0, independent of any single asset's data readiness. Not this audit's to design
+   — flagged as a structural gap for the native/campaign owner.
+9. **T4's 7 brief-conformance questions** (`_work/T4.md` / `KALA_BRIEF_CONFORMANCE_v1_0.md`) —
+   whether the L3 execution brief's thin sections (inventory, field contracts, per-component
+   disposition) are intentionally deferred to W0/asset-briefs, whether the state-vocabulary
+   mismatch between the brief and its own contract needs reconciling, and whether Kshetra/Sangam
+   asset briefs are expected before their waves begin.
+10. **Domain D / Domain H** — both landed NEEDS DECISION in cycle 2, unchanged this cycle. Design
+    decisions for W3 (§5 execution design), not yet due for a native ruling.
+11. **Domain G's stale-ACTIVE-lease misread risk** — the coordination file's lease table has no
+    mechanical expiry enforcement; 6 Pūrṇa rows from 2026-09-19 still literally read `ACTIVE`.
+    Any tooling that greps for the literal string rather than parsing timestamps will misread.
+    Not currently causing harm (no lease is genuinely contended), but a real latent hazard.
 
-## Known traps encountered this cycle (add to future subagent briefs — carried forward from cycle 1, re-confirmed)
+## Known traps encountered this cycle (add to future subagent briefs — carried forward, re-confirmed)
 
-- **Unconstrained subagents still stall.** Even with cycle 1's lesson nominally known, an F5 brief
-  authored fresh this cycle without explicitly inlining "small fixed command budget, one-shot
-  queries only, cap output with head -N, ≤N tool calls total" stalled the exact same way. **Do not
-  rely on remembering the lesson — copy the literal constraint text into every W1/W2 brief from the
-  template this cycle's retries used** (see the F5 Part A/B prompts in this cycle's transcript for
-  the exact wording that worked: explicit numeric tool-call ceiling, not just "keep it short").
-- **Local disposable Postgres is available and viable for regression tests that need a real DB.**
-  `brew services start postgresql@15` (already installed, just not running) worked cleanly for
-  proving the F1 regression test genuinely fails pre-fix and passes post-fix — a real TDD-style
-  proof, not just "the test looks right." Remember to fully tear down afterward (drop DB, stop
-  service, remove any `node_modules` symlink used to run vitest from a fresh worktree without a
-  full `npm install`) — done this cycle, left no residue.
-- **A new worktree has no `node_modules`.** Symlinking `platform/node_modules` from the main audit
-  worktree (`ln -s /Users/Dev/madhav-l3/audit/platform/node_modules <new-worktree>/platform/node_modules`)
-  is a fast way to run `npx vitest`/`npx eslint`/`npx tsc` in a freshly created repair worktree
-  without a full `npm ci`. Remove the symlink before considering the worktree "clean" — it's not
-  something to commit and isn't needed once local testing is done.
-- **`.db.test.ts` files are silent no-ops without explicit CI wiring** — `describe.skipIf(!ENV_VAR)`
-  means an unwired test reports 0/skipped forever, never a failure, so CI stays green regardless of
-  whether the test would pass or fail. Always check `.github/workflows/ci.yml` for an explicit
-  `npx vitest run tests/integration/<exact-file>.db.test.ts` line referencing your new test by name
-  — grep for the file's basename in `ci.yml`, don't assume a `describe.skipIf` guard plus an env
-  var name is sufficient (this cost a full independent-verification round-trip this cycle; check it
-  before opening the PR next time, not after).
+- **Inlining cycle 2's "explicit numeric tool-call ceiling, one-shot queries only" lesson
+  literally into every brief worked — zero stalls across 12 dispatches this cycle**, versus cycle
+  2's single stall on a freshly-authored brief that only summarized the lesson instead of quoting
+  it. Confirms the lesson: summarizing a past lesson is not enough; the literal constraint text
+  must be copied into the new brief.
+- **A subagent given a working assumption about cluster/grouping membership that turns out wrong
+  should verify against the actual governing document and self-correct, not silently comply with
+  the (wrong) assumption in its brief.** This cycle's T1-Kshetra+Century subagent did exactly
+  this — briefed with a 4-asset assumption, it found the real document says 2, used the real
+  document as authoritative, and cross-listed the other 2 assets under their true home (Spine)
+  rather than dropping them. This is the correct behavior and is worth explicitly instructing in
+  every future brief that states a working assumption about scope: "verify this against the
+  source; if it's wrong, use the source and flag the correction, don't just comply."
+- **Independent corroboration across unrelated packets is a strong signal.** The
+  `kala_activation`/`kala_convergence` empty-but-once-written finding was surfaced independently
+  by two subagents approaching from completely different angles (T2's proving-journey walkthrough,
+  T1-Spine's per-asset ladder audit) before the conductor even began integration — this is exactly
+  the kind of convergent evidence the charter's fan-out design is meant to produce, and it
+  materially increased confidence in the finding before any DB query was re-run.
+- **`asset_throughput` is a genuinely useful cross-check table** not explicitly named in the
+  original charter/prompt scope, discovered this cycle via T2's own initiative. It carries
+  `rows_written`, `state`, `last_built_at`, `last_error` per chart×asset and can distinguish "never
+  built" from "built once, now empty" — a distinction F7's data census alone cannot make. Worth
+  citing explicitly in future data-census-style briefs.
