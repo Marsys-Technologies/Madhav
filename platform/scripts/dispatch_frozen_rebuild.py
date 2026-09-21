@@ -25,7 +25,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 TRIGGERED_BY = "l3-lane-frozen-manifest-rebuild"
-WRITER_DIGESTS_PATH = Path("/Users/Dev/nirmana-s/l3/platform/src/generated/nirmana-writer-digests.json")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+WRITER_DIGESTS_PATH = REPO_ROOT / "platform/src/generated/nirmana-writer-digests.json"
 
 
 def _canonical_json(value: object) -> str:

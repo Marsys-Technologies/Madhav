@@ -599,6 +599,12 @@ jobs:
           npx vitest run tests/unit/migrations/nirmana_l0_wave0_remaining_integrity_contract.test.ts --reporter=verbose
           python -m pytest python-sidecar/tests/test_l0_ontology.py -q
 
+      - name: L3 dispatcher — writer-digest path resolves inside this repo (F8)
+        # dispatch_frozen_rebuild.py once read digests from a hardcoded developer worktree, so a
+        # dispatched build would have recorded a provenance receipt for code that never ran.
+        # This test fails on that old path (mutation-checked) — keep it collected.
+        run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
+
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
         # The contract test also refuses any non-loopback host or any database
