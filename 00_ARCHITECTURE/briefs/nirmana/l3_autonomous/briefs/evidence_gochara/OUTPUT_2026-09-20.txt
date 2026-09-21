@@ -1,0 +1,123 @@
+################ E1_w2g_frame_defect.py
+
+Saturn: 45 arcs, 1 'exact contacts' with target 291.8 (a SIDEREAL degree)
+  w2g exact=2020-01-04  tropical_lon= 291.8002  sidereal_lon= 267.6683  TRUE sidereal separation from target =  -24.132 deg
+  TRUE sidereal contacts (Swiss): 2022-02-04
+  first w2g 'contact' is 763 days from the nearest TRUE contact
+
+Jupiter: 43 arcs, 4 'exact contacts' with target 291.8 (a SIDEREAL degree)
+  w2g exact=2020-03-13  tropical_lon= 291.8002  sidereal_lon= 267.6656  TRUE sidereal separation from target =  -24.134 deg
+  w2g exact=2020-07-18  tropical_lon= 291.8002  sidereal_lon= 267.6606  TRUE sidereal separation from target =  -24.139 deg
+  w2g exact=2020-11-06  tropical_lon= 291.7999  sidereal_lon= 267.6567  TRUE sidereal separation from target =  -24.143 deg
+  w2g exact=2032-02-21  tropical_lon= 291.8002  sidereal_lon= 267.4904  TRUE sidereal separation from target =  -24.310 deg
+  TRUE sidereal contacts (Swiss): 2021-02-26, 2033-02-10
+  first w2g 'contact' is 349 days from the nearest TRUE contact
+
+Mars: 33 arcs, 11 'exact contacts' with target 291.8 (a SIDEREAL degree)
+  w2g exact=2016-10-28  tropical_lon= 291.8000  sidereal_lon= 267.7099  TRUE sidereal separation from target =  -24.090 deg
+  w2g exact=2018-04-27  tropical_lon= 291.7999  sidereal_lon= 267.6909  TRUE sidereal separation from target =  -24.109 deg
+  w2g exact=2020-03-19  tropical_lon= 291.8000  sidereal_lon= 267.6652  TRUE sidereal separation from target =  -24.135 deg
+  w2g exact=2022-02-23  tropical_lon= 291.8000  sidereal_lon= 267.6372  TRUE sidereal separation from target =  -24.163 deg
+  w2g exact=2024-02-02  tropical_lon= 291.8000  sidereal_lon= 267.6076  TRUE sidereal separation from target =  -24.192 deg
+  w2g exact=2026-01-12  tropical_lon= 291.7999  sidereal_lon= 267.5775  TRUE sidereal separation from target =  -24.223 deg
+  TRUE sidereal contacts (Swiss): 2016-11-30, 2018-10-22, 2020-04-22, 2022-03-27, 2024-03-04, 2026-02-12
+  first w2g 'contact' is 33 days from the nearest TRUE contact
+
+################ E2_lambda_is_step_function.py
+targets: 2 [('bhava', '7', 195.0), ('karaka', 'Venus', 142.0)]
+per-eval seconds (weekly grid, as the solver calls it): [0.062, 0.069, 0.058, 0.069, 0.062, 0.073, 0.063, 0.074, 0.067, 0.085, 0.067, 0.071] median 0.068
+per-eval seconds (off-grid probes): [0.068, 0.066, 0.067, 0.067, 0.067, 0.069, 0.067, 0.069] median 0.067
+
+activity over 90 d @0.25 d: 360 samples, 167 DISTINCT values, 223 change points
+distinct activity values: [np.float64(0.9939869455), np.float64(0.99604926), np.float64(0.9965424937), np.float64(0.997827093), np.float64(0.9979215672), np.float64(0.9984773507), np.float64(0.9988049012), np.float64(0.9991244766), np.float64(0.9993426956), np.float64(0.9995185299), np.float64(0.9995393986), np.float64(0.9996384826)]
+events in span: 187; predicted breakpoints (event_jd +/- 5.0): 340; observed change points: 223; observed NOT within 0.25 d of a predicted breakpoint: 0
+lambda distinct values: 1  tara distinct: [1.0]
+permission distinct values over span: [0.0]
+
+################ E3_activity_saturation.py
+weights: {'7': 0.9, 'Venus': 0.85}
+
+202 activity sentences in 90 d for 2 targets. By primitive:
+   kakshya_cell_crossing      147
+   drishti_contact            22
+   degree_contact             18
+   eclipse_degree             8
+   sign_ingress               7
+By transit body:
+   Moon       137
+   Mercury    18
+   Venus      13
+   Mars       11
+   Sun        10
+   Rahu       6
+   Ketu       6
+   Jupiter    1
+sentences with orb_strength == 0 (anti-point phantoms): 11
+
+ date        all-bodies(act, n)     no-Moon(act, n)      slow-only(act, n)
+ 2026-01-01   0.998477 ( 12)      0.000000 (  0)     0.000000 (  0)
+ 2026-01-10   1.000000 ( 23)      0.425000 (  1)     0.425000 (  1)
+ 2026-01-19   0.996049 ( 11)      0.425000 (  1)     0.425000 (  1)
+ 2026-01-28   0.999539 ( 14)      0.899986 (  4)     0.899986 (  4)
+ 2026-02-06   1.000000 ( 30)      0.988570 (  8)     0.425000 (  1)
+ 2026-02-15   0.999995 ( 24)      0.999249 ( 14)     0.809891 (  3)
+ 2026-02-24   0.999990 ( 22)      0.997728 ( 12)     0.425000 (  1)
+ 2026-03-05   1.000000 ( 34)      0.996049 ( 12)     0.669375 (  2)
+ 2026-03-14   0.999857 ( 17)      0.979219 (  7)     0.425000 (  1)
+ 2026-03-23   0.999723 ( 16)      0.939878 (  6)     0.000000 (  0)
+
+################ E4_cost_share_by_primitive.py
+per-evaluation search cost by primitive (2 targets), total 57.1 ms:
+  kakshya_cell_crossing                                            34.17 ms   59.8%   sentences/6 evals: 107
+  drishti_contact                                                   6.95 ms   12.2%   sentences/6 evals: 12
+  degree_contact                                                    5.50 ms    9.6%   sentences/6 evals: 12
+  eclipse_degree                                                    4.80 ms    8.4%   sentences/6 evals: 0
+  sign_ingress                                                      3.61 ms    6.3%   sentences/6 evals: 4
+  station_retro_loop                                                2.07 ms    3.6%   sentences/6 evals: 0
+  nakshatra_ingress_tara                                            0.00 ms    0.0%   sentences/6 evals: 0
+  sarvatobhadra_vedha (computed, then excluded from activity)       0.00 ms    0.0%   sentences/6 evals: -
+  gochara_vedha_pair                                                0.00 ms    0.0%   sentences/6 evals: 0
+
+################ E5_era_window_is_whole_range.py
+1-year range, writer's threshold config: 1 interval(s); coarse samples=53; wall=7.8s
+  enter 2026-01-01  exit 2026-12-31  (range start/end: 2026-01-01 / 2026-12-31 )
+lambda min/max over series: 0.0 0.0 -> every sample satisfies lambda >= 0.0, including lambda == 0
+
+instants compared: 360 over 180 d (2 targets, 402 events)
+max |engine - reconstruction| = 2.140e-04;  instants differing by > 1e-9: 41
+   differs at grid[1]  engine=0.99971053 recon=0.99949657   distance of this instant from an event+/-5d edge: 0.1124 d
+   differs at grid[22]  engine=0.99999761 recon=0.99999585   distance of this instant from an event+/-5d edge: 0.0256 d
+   differs at grid[23]  engine=0.99991625 recon=0.99985436   distance of this instant from an event+/-5d edge: 0.0343 d
+   differs at grid[30]  engine=0.99983358 recon=0.99971057   distance of this instant from an event+/-5d edge: 0.0827 d
+   differs at grid[31]  engine=0.99981811 recon=0.99968366   distance of this instant from an event+/-5d edge: 0.0016 d
+
+wall: engine point-by-point 31.87s | one gather 1.01s + closed form 0.005s  => 31.4x on this span
+per-instant cost: engine 88.5 ms vs closed form 0.013 ms  (6745x per instant once events are known)
+NOTE: the gather here still uses the legacy day-stepping scan. The arc kernel replaces that gather; E1 shows it solves each contact to ~1 arcsec.
+t=grid[1] engine-window-only   eclipse_degree         Ketu     event at t+5.0000 d  orb_strength=None
+t=grid[22] engine-window-only   eclipse_degree         Ketu     event at t-4.9998 d  orb_strength=None
+t=grid[23] engine-window-only   eclipse_degree         Ketu     event at t-4.9998 d  orb_strength=None
+t=grid[30] engine-window-only   eclipse_degree         Rahu     event at t+5.0000 d  orb_strength=None
+t=grid[31] engine-window-only   eclipse_degree         Rahu     event at t+5.0000 d  orb_strength=None
+t=grid[61] engine-window-only   eclipse_degree         Ketu     event at t+2.8044 d  orb_strength=None
+
+causes:
+   ('engine-window-only', 'eclipse_degree', 'within 1 scan step of window edge') 5
+   ('engine-window-only', 'eclipse_degree', 'interior') 1
+   ('global-list-only', 'eclipse_degree', 'interior') 1
+
+################ READING OF E6/E7
+E6: 319/360 instants reproduce the engine to <1e-9; the other 41 differ by <= 2.1e-4.
+E7: every difference traces to ONE primitive, eclipse_degree, whose event_jd is stamped at the edge of
+    the caller's own search window (t+5.0000 / t-4.9998) - i.e. its "event time" depends on where the
+    search started. The other seven activity primitives reconstruct exactly from a single event list.
+
+################ E8_astra_counterexamples_rerun.py (run after the independent review)
+close stations: actual [1.4000000000001036, 1.5999999999998964] | w2g retains [1.4000000000001036]
+roots of target 100: expected 3 | w2g finds [1.326795]
+wrap tangency at 360/0, orb 1: w2g contacts = 0 (expected >=1)
+S0 body already inside orb for whole horizon: episodes = [] (expected 1)
+sign-only drishti residence: engine-window activity 0.44999999999999996 | filtered global list 0.0
+two sidereal conventions in this repo disagree (Moon, 2026): -5.523 arcsec
+two sidereal conventions in this repo disagree (Moon, 2020): +16.516 arcsec
+two sidereal conventions in this repo disagree (Moon, 1984): +14.851 arcsec
