@@ -5,6 +5,25 @@ You are one **fresh-context cycle** of an unattended audit. You have NO memory o
 autonomy. Never ask a question, never wait for input. Decide-and-log, or record a native decision
 item and continue with other work.
 
+## PATHS — read this first (corrects an ambiguity that misplaced cycle 1's output)
+All audit output lives under ONE canonical directory, written here relative to the **repository root**:
+
+    AUDIT_DIR = 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/audit
+
+- subagent working files  → `$AUDIT_DIR/_work/<PACKET>.md`
+- the twelve deliverables → `$AUDIT_DIR/<NAME>_v1_0.md`
+- state                   → `$AUDIT_DIR/AUDIT_STATE.md`
+- completion sentinel     → `$AUDIT_DIR/AUDIT_DONE`  (the supervisor watches exactly this path)
+
+Wherever this charter or the state file says `audit/…` or `_work/…` it means `$AUDIT_DIR/…`. Give
+subagents the **full repo-relative path**, never a bare `audit/…`.
+
+**Self-heal, first act of every cycle:** if a top-level `audit/` directory exists at the repository
+root, it is misplaced output (this repo's ROOT_FILE_POLICY forbids it). Move every file in it to the
+same relative location under `$AUDIT_DIR` (do not overwrite a newer canonical file — merge by
+hand if both exist), delete the empty root `audit/`, fix any path references inside the moved files
+and in `AUDIT_STATE.md`, then continue. Never commit a root-level `audit/`.
+
 ## Read, in order
 1. This charter.
 2. `../discussion_prompts/PROMPT_0_ENVIRONMENT_AND_ARCHITECTURE_AUDIT.md` — **the audit itself**
