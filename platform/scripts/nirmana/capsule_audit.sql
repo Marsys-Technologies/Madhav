@@ -21,10 +21,19 @@
 \echo 'acceptance (rebuild / probe / static / empty / producer_covered / source / retired), and'
 \echo 'an integrity_verified. Any row here is a capsule asserting more than its evidence supports.'
 
-WITH ev AS (
+WITH frozen_def AS (
+  SELECT definition_revision
+  FROM nirmana_evidence.nirmana_elevation_campaign_definitions
+  WHERE definition_status = 'frozen'
+), ev AS (
+  -- F1-class fix: scope to the currently-frozen definition_revision. Unscoped,
+  -- an event logged against a superseded definition (different manifest,
+  -- different acceptance criteria) was read as evidence for the current one —
+  -- the same defect class as egate.sql's frozen/route CTEs.
   SELECT entity_id, event_type
   FROM nirmana_evidence.nirmana_elevation_campaign_events
   WHERE entity_type = 'asset'
+    AND definition_revision = (SELECT definition_revision FROM frozen_def)
 ), agg AS (
   SELECT entity_id,
     bool_or(event_type = 'asset_analysis_accepted')       AS w2_analysis,
@@ -48,6 +57,15 @@ ORDER BY entity_id;
 \echo 'writer; everything else the executor-side control writer. A crossing is a hard-floor breach'
 \echo '(implementer certifying its own asset), not a style issue.'
 
+-- Defense-in-depth F1-class scoping (charter recommendation): this check is a
+-- per-event structural check, not a cross-revision aggregation, so it was
+-- less exposed than §1/§3 — but scoping it too means a superseded-definition
+-- crossing can never be mistaken for a currently-frozen-definition PASS.
+WITH frozen_def AS (
+  SELECT definition_revision
+  FROM nirmana_evidence.nirmana_elevation_campaign_definitions
+  WHERE definition_status = 'frozen'
+)
 SELECT
   CASE WHEN event_type IN ('integrity_verified','asset_frozen','probe_accepted',
                            'stage_transition_accepted','foundation_lane_accepted')
@@ -64,20 +82,31 @@ SELECT
               THEN 'ok' ELSE '*** CROSSED ***' END
   END AS verdict
 FROM nirmana_evidence.nirmana_elevation_campaign_events
+WHERE definition_revision = (SELECT definition_revision FROM frozen_def)
 GROUP BY 1,2,3,4
 ORDER BY verdict DESC, 1, 2;
 
 \echo ''
 \echo '════ §3 — campaign position per layer, against the frozen definition ════'
 
-WITH assets AS (
+WITH frozen_def AS (
+  SELECT definition_revision
+  FROM nirmana_evidence.nirmana_elevation_campaign_definitions
+  WHERE definition_status = 'frozen'
+), assets AS (
   SELECT a->>'asset_id' AS id, a->>'layer' AS layer
   FROM nirmana_evidence.nirmana_elevation_campaign_definitions d,
        jsonb_array_elements(d.manifest->'assets') a
   WHERE d.definition_status = 'frozen'
 ), ev AS (
+  -- F1 fix: same scoping as §1 — the assets CTE above already reads only the
+  -- frozen manifest; without this, frozen/routed here still aggregated events
+  -- across every superseded definition, so a layer's own "frozen" and
+  -- "pct_frozen" figures could count clearance that never happened under the
+  -- current manifest.
   SELECT entity_id, event_type FROM nirmana_evidence.nirmana_elevation_campaign_events
   WHERE entity_type = 'asset'
+    AND definition_revision = (SELECT definition_revision FROM frozen_def)
 )
 SELECT
   a.layer,
