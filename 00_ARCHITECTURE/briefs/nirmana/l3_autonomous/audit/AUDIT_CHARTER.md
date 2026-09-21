@@ -152,3 +152,24 @@ When all twelve §7 deliverables exist, the verdict and decision list are writte
 PR is merged (or queued with every check green), and `AUDIT_STATE.md` says so — create the empty
 file `audit/AUDIT_DONE`, commit, push, and print `CYCLE <n>: AUDIT COMPLETE -> next: native review`.
 Truthfulness outranks completion: a NO-GO with precise reasons is a successful audit.
+
+---
+
+## LAW: SUBAGENTS RUN IN THE FOREGROUND (added 2026-09-22 02:20 IST by the strategic session, after cycle 4)
+
+**What happened.** Cycle 4 dispatched its subagents without `run_in_background: false`. In this
+headless (`claude -p`) mode a turn that ends with "waiting for agents to complete" can END THE
+PROCESS. Cycle 4 exited rc=0 with its two W3 agents still running — they were killed, their output
+was lost, nothing was committed, `AUDIT_STATE.md` was not rewritten, and ~$9 was spent. Cycle 3
+survived the same pattern only by luck of timing.
+
+**The rule — no exceptions:**
+1. Every `Agent` call sets **`run_in_background: false`**. To run a wave in parallel, put all of
+   the wave's `Agent` calls **in one single message** — they execute concurrently and the message
+   returns only when all have finished. Parallelism is unchanged; only the waiting is.
+2. **Never end a turn with text like "waiting for…"**. In headless mode, ending a turn may be
+   final. If you have nothing to call, you are finished: commit, push, rewrite state, exit.
+3. **Commit early.** As soon as a wave's `_work/` files exist and are spot-verified, `git add` +
+   commit + push them *before* dispatching the next wave. An uncommitted wave is a lost wave.
+4. A cycle is only complete if it (a) pushed at least one commit and (b) rewrote
+   `AUDIT_STATE.md` with its own cycle number in the Position line.

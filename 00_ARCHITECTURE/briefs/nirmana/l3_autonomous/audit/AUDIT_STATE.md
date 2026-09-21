@@ -1,5 +1,24 @@
 # KĀLA READINESS AUDIT — STATE  (rewritten completely by every cycle)
 
+> **STRATEGIC-SESSION NOTE (2026-09-22 02:20 IST) — read before planning. Delete this note when you rewrite this file.**
+> **Cycle 4 ran but did not close**: it exited while background subagents were still running (see the
+> new "LAW: SUBAGENTS RUN IN THE FOREGROUND" at the end of the charter — obey it). Everything below
+> this note is cycle 3's state and is therefore one cycle stale. Cycle 4 left these **untracked,
+> unintegrated, unverified** outputs — integrate them, do NOT redo them:
+> - `_work/DOMAIN_C.md` (32 KB) — Domain C orchestrator/build-path proof. Spot-verify, then promote.
+> - `_work/DATA_LOSS_DIAGNOSIS.md` (19 KB) — diagnosis of the empty `kala_activation`/`kala_convergence`.
+>   The strategic session independently measured the cause: both tables have
+>   `… signal_id REFERENCES bodha_msr_signals ON DELETE CASCADE`; L2 delete-then-insert rebuilds
+>   cascade-delete L3 rows. Three-chart natural experiment: `482012f1` (bo_laksana rebuilt 09-08,
+>   AFTER ka_kalasutra 08-13) 335,403 claimed / 0 actual; `cb73cd3d` (rebuilt after) 335,447 / 1,055;
+>   `1c826d5a` (L2 built BEFORE L3) 336,093 / 336,093. Seven writers target `bodha_msr_signals`
+>   but `ka_kalasutra`/`ka_sangam` declare only `bo_laksana`. Check the diagnosis against this; if it
+>   disagrees, re-measure rather than pick one.
+> - `_work/artifacts/kala_readiness_query.sql` (11 KB).
+> - **Lost:** cycle 4's two W3 agents (§5 execution design, §6 setup/runbook) were killed mid-run.
+>   W3 must be re-dispatched — in the foreground.
+> - PR #2706 **MERGED** 2026-09-21T20:22:55Z; `origin/main` has moved past `20f4d02dc`.
+
 **Position:** cycle 3 complete (2026-09-22). **W1 is now fully DONE (14/14 packets)** — Domain E
 and Domain G (the two packets left open by cycle 2) are both verified DONE this cycle. **W2 is
 essentially DONE** — T1 (all 3 clusters), T2, T3, T4, T5, T6 all completed and verified this
