@@ -1,4 +1,16 @@
-# KĀLA READINESS AUDIT — STATE  (rewritten completely by every cycle)
+# KĀLA READINESS AUDIT — STATE
+
+**FINAL — AUDIT COMPLETE (2026-09-22, closed by the strategic session).** All 12 deliverables are on
+`main` (PR #2707 W1–W3, PR #2708 W4 + verdict + decision list). Verdict: **strategy
+GO-WITH-CONDITIONS; environment GO for non-mutating work, NO-GO for production builds** (four
+defects E-1…E-4). The supervisor was stopped after cycle 14: cycles 10–14 were honest IDLE-OK polls
+of CI with nothing left to do, so the close-out (this note, `AUDIT_DONE`, the v1.1 addendum to the
+readiness audit, and `../KALA_NATIVE_RULING_SHEET_v1_0.md`) was done directly rather than by
+spending further cycles. 14 cycles, ~3h wall. One process defect found and fixed mid-run (cycle 4
+exited with background subagents pending — see the charter's foreground-subagent law). Known
+residual: the supervisor's progress fingerprint counts non-commit changes, so an idle cycle reads
+`progress=yes`; fix before reusing the supervisor for the elevation campaign.
+**Next:** native rulings R1–R6 (ruling sheet). Everything below is the cycle-9 state, kept as record.
 
 **Position:** cycle 9 complete (2026-09-22). All twelve §7 deliverables remain content-complete
 (unchanged in substance from cycle 8). This cycle's entire contribution was **push/PR mechanics**
