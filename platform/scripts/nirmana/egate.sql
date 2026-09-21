@@ -19,7 +19,11 @@
 
 \if :{?layer} \else \set layer 'ALL' \endif
 
-WITH RECURSIVE assets AS (
+WITH RECURSIVE frozen_def AS (
+  SELECT definition_revision
+  FROM nirmana_evidence.nirmana_elevation_campaign_definitions
+  WHERE definition_status = 'frozen'
+), assets AS (
   SELECT a->>'asset_id'  AS id,
          a->>'layer'     AS layer,
          a->>'asset_kind' AS kind,
@@ -34,15 +38,22 @@ WITH RECURSIVE assets AS (
   UNION
   SELECT a.id, e.dep FROM anc a JOIN edges e ON e.id = a.ancestor
 ), frozen AS (
+  -- F1 fix: scope to the currently-frozen definition_revision. Unscoped, an
+  -- asset_frozen event logged against a superseded definition (a different
+  -- manifest, different acceptance criteria) was read as current clearance.
   SELECT DISTINCT entity_id AS id
   FROM nirmana_evidence.nirmana_elevation_campaign_events
   WHERE event_type = 'asset_frozen' AND entity_type = 'asset'
+    AND definition_revision = (SELECT definition_revision FROM frozen_def)
 ), route AS (
+  -- F1 fix: same scoping — a route recorded under a superseded definition is
+  -- not evidence of a route under the current one.
   SELECT entity_id AS id,
          bool_or(event_type = 'asset_analysis_accepted')       AS analysis_ok,
          bool_or(event_type = 'optimization_verdict_accepted') AS verdict_ok
   FROM nirmana_evidence.nirmana_elevation_campaign_events
   WHERE entity_type = 'asset'
+    AND definition_revision = (SELECT definition_revision FROM frozen_def)
   GROUP BY entity_id
 ), blocked AS (
   SELECT anc.id, count(*) FILTER (WHERE f.id IS NULL) AS unfrozen_ancestors,
