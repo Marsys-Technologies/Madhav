@@ -69,17 +69,30 @@ item and continue with other work.
   for the whole audit. NEVER set `data_plane_cutover`. NEVER use `EMERGENCY-OVERRIDE`.**
 - Migration range if one is genuinely needed: **1071–1119**. 1033–1070 are applied — never edit.
 
-## Database access (read-only)
-The supervisor keeps a Cloud SQL proxy alive on `127.0.0.1:5434`. Every connection MUST set
-`PGOPTIONS='-c default_transaction_read_only=on'`. Load credentials straight into env, never
-print them, never write them to a file, never put them in argv of a logged command:
-- general reads as `amjis_app`: password from secret `amjis-db-password` (db `amjis`)
-- privilege introspection as the builder: URL from secret `data-plane-builder-db-url`
-Campaign evidence lives in schema `nirmana_evidence`
-(`nirmana_elevation_campaign_definitions`, `nirmana_elevation_campaign_events`) — **always filter
-events by `definition_revision`**; failing to is finding F1. Aggregates only; never sample private
-chart narrative. Python with `psycopg`+`pytest`: `/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3`.
-`platform/node_modules` is already installed in this worktree.
+## Database access (read-only) — ONE permitted way to handle credentials
+The supervisor keeps a Cloud SQL proxy alive on `127.0.0.1:5434`. To connect:
+
+```bash
+source /Users/Dev/madhav-l3/dbenv.sh           # amjis_app, read-only  — general reads
+source /Users/Dev/madhav-l3/dbenv_builder.sh   # data_plane_builder, read-only — privilege introspection
+psql -Atq -c "SELECT current_user"             # PG* env is already set; nothing else is needed
+```
+
+Both helpers export `PG*` silently and force `default_transaction_read_only=on`.
+**Never call `gcloud secrets versions access` yourself. Never `echo`, `printenv`, `env`, `set -x`,
+or interpolate a credential into a command line, a file, a report or a prompt to a subagent.**
+Give every DB-using subagent these two `source` lines verbatim and this prohibition verbatim.
+
+> **Incident, 2026-09-22 cycle 1:** a command echoed the `amjis_app` password into the session
+> output. It reached three local files and nothing else (no commit, no push); they were scrubbed
+> and the native was told. The supervisor now redacts known secret values from its logs and
+> scrubs transcripts after every cycle — that is a safety net, not permission. Do not repeat it.
+
+Campaign evidence lives in schema `nirmana_evidence` (`nirmana_elevation_campaign_definitions`,
+`nirmana_elevation_campaign_events`) — **always filter events by `definition_revision`**; failing
+to is finding F1. Aggregates only; never sample private chart narrative. Python with
+`psycopg`+`pytest`: `/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3`. `platform/node_modules`
+is already installed in this worktree.
 
 ## No-idle laws
 - **Never wait, sleep or poll in-session** for CI, the merge queue or a deploy. Record the run/PR
