@@ -100,13 +100,31 @@ see "In flight").** This is the only reason this cycle does not print `AUDIT COM
    conductor-authored spot-verification sub-log inside that section, distinct from Agent B's own
    verification claims, so a future reader can tell which checks were independently re-run by the
    conductor versus reported by the authoring agent.
-7. **Commit + push:** committed this cycle's `_work/DOMAIN_F` integration note (none needed —
-   `DOMAIN_F.md` itself was untouched, only newly *read and cited*) plus the updated
-   `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` plus this rewritten `AUDIT_STATE.md`, and pushed to
-   `l3/kala-readiness-audit` — which is the same branch PR `#2707` already tracks, so no new PR was
-   opened; the push updates `#2707` in place. Re-checked auto-merge status after push (see "In
-   flight" — CI checks reset to `pending` on the new commits as expected; auto-merge request
-   remained armed, not dropped).
+7. **Commit + push — push BLOCKED by an external condition, not by this cycle's own action.**
+   Committed the updated `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` plus this file locally as
+   `bc617d9db` (on top of cycle 6's `98be7fd33`). The `git push` was **rejected by GitHub** with
+   `GH006: Protected branch update failed ... A pull request for this branch has been added to a
+   merge queue. Branches that are queued for merging cannot be updated.` — between this cycle's
+   pre-dispatch check (PR #2707 `mergeStateStatus: BLOCKED`, checks `pending`) and this push
+   attempt, GitHub's CI finished (all required checks passed; the remaining non-pass rows are
+   known `skipping` gates) and the merge queue **picked up #2707 and locked the branch** for the
+   merge it's about to perform. This is a good-news event (checks went green), not a failure, but
+   it means **this cycle's commit `bc617d9db` exists only in this worktree, not on `origin`, as of
+   this cycle's close.** Per the charter's no-idle law, this cycle did not wait/poll for the queue
+   to finish processing — `gh pr view 2707` at close still showed `state: OPEN`, `mergedAt: null`,
+   `mergeStateStatus: CLEAN` (queued-and-clean, not yet merged). **This worktree is persistent
+   across cycles** (per the charter, it is the audit's fixed working directory, not a disposable
+   container), so `bc617d9db` is not at risk of loss — it will still be here next cycle.
+   **Next cycle's mandatory first action:** `git fetch origin l3/kala-readiness-audit && git log
+   origin/l3/kala-readiness-audit -1` — if origin has advanced past `98be7fd33` (i.e. `#2707`
+   merged and, depending on repo settings, the branch was either fast-forwarded, recreated, or
+   deleted post-merge), reconcile by rebasing/re-pointing this local commit onto the new state
+   (or, if the branch was deleted on merge, push `bc617d9db`'s content as a fresh branch/PR — do
+   **not** force-push over remote history, do **not** delete or recreate `l3/kala-readiness-audit`
+   without first confirming origin's exact post-merge state). If origin is still at `98be7fd33`
+   and the queue is still processing, a plain `git push origin l3/kala-readiness-audit` should
+   succeed once the queue has released the lock — retry once, plainly, before investigating
+   further.
 
 ## Cycle 7 spot-verification log (conductor, independent of both authoring subagents)
 
@@ -181,22 +199,34 @@ correction (60→102), which did not change any substantive conclusion.
 ## In flight
 
 - **PR #2706** (F1 repair): MERGED. No further action.
-- **PR #2707** (cumulative W1+W2+W3+W4 closure docs PR): OPEN, auto-merge armed. This cycle's push
-  added new commits, which resets GitHub's check run to `pending` again — this is expected and not
-  a stall (matches every prior cycle's own precedent at this exact stage). **Next cycle's first
-  action:** `gh pr view 2707 --json state,mergedAt,mergeStateStatus` — if `mergedAt` is set, all
-  three "Done" conditions (twelve deliverables exist ✓, verdict+decision list written ✓, final docs
-  PR merged) are satisfied and the next cycle should write `AUDIT_DONE`, commit, push, and print
-  `CYCLE <n>: AUDIT COMPLETE -> next: native review`. If still open, re-check `gh pr checks 2707`
-  — if all required checks are green but merge hasn't happened yet (queue latency), that also
-  satisfies "queued with every check green" per the charter's Done clause and `AUDIT_DONE` may
-  still be written with a note to that effect. If any required check is failing (not merely
-  pending), diagnose before writing `AUDIT_DONE` — do not write it over a red check.
-- No new PR opened this cycle (push went to the existing `#2707` branch).
+- **PR #2707** (cumulative W1+W2+W3 closure docs PR — does NOT yet contain cycle 7's W4 commit,
+  see below): OPEN, `mergeStateStatus: CLEAN`, in GitHub's merge queue, auto-merge armed. All
+  required checks passed (only known `skipping` gates remain non-pass). **This will very likely
+  merge on its own before the next cycle starts** — no action needed to make that happen, it is
+  already queued.
+- **UNPUSHED local commit `bc617d9db`** (this cycle's W4 work: promoted
+  `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` + this rewritten `AUDIT_STATE.md`) sits on top of
+  `98be7fd33` in this worktree only — `git push` was rejected because the branch was locked by the
+  merge queue at push time. **Next cycle's mandatory first action, in order:**
+  1. `git fetch origin l3/kala-readiness-audit`
+  2. Check whether `#2707` merged (`gh pr view 2707 --json state,mergedAt`).
+  3. **If merged:** the branch `l3/kala-readiness-audit` on origin will have been fast-forwarded
+     into `main` and (depending on repo auto-delete settings) may or may not still exist as a ref.
+     Rebase `bc617d9db` onto the new `origin/main` (or recreate the branch from the current local
+     worktree state if origin's ref is gone — the local worktree still has the correct commit and
+     full history; do not lose it) and push, opening a **new** PR for cycle 7's W4 deliverables
+     if `#2707` itself is now closed/merged. This satisfies the charter's "Done" condition for a
+     *new* docs PR, not the old one.
+  4. **If still queued/open:** simply retry `git push origin l3/kala-readiness-audit` — the lock
+     is almost certainly released by then.
+  5. Either way, once `bc617d9db`'s content is confirmed live on `origin` (merged or in a fresh
+     open PR with checks passing), and all twelve deliverables + verdict/decision list are
+     confirmed present on `main` (or in a PR queued clean), write `AUDIT_DONE`, commit, push, and
+     print `CYCLE <n>: AUDIT COMPLETE -> next: native review`.
 - No deploy dispatched this cycle. No lease claimed or held on `origin/campaign-coordination`.
-- **Nothing else is eligible for a new wave.** All ten named deliverables plus the verdict/decision
-  list exist. The only remaining charter-mandated action is confirming PR #2707's merge/check
-  state and then writing `AUDIT_DONE` — a hygiene/confirmation step, not a new wave.
+- **No new wave is eligible.** All ten named deliverables plus the verdict/decision list are
+  content-complete (present in this worktree). The only remaining work is the push/PR mechanics
+  above — a hygiene/confirmation step, not new investigation.
 
 ## Budget
 
