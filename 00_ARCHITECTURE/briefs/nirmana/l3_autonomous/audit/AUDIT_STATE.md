@@ -1,270 +1,275 @@
 # KĀLA READINESS AUDIT — STATE  (rewritten completely by every cycle)
 
-**Position:** cycle 8 complete (2026-09-22). All twelve §7 deliverables are content-complete
-(ten named files + verdict/decision list folded into `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md`'s
-final section). Decision-list item 18 (the one remaining open follow-up identified by cycle 7) is
-now **discharged**: `capsule_audit.sql` was re-run live under its now-fixed scoping, Domain A's
-verdict flipped NOT READY → READY (as an instrument), and its corrected output was folded into
-decision-list item 1 as independent corroboration. **What remains before `AUDIT_DONE` can honestly
-be written: three local commits (cycle 7's `bc617d9db` + `84efeb02a`, cycle 8's `3d9605b79`) still
-have not reached `origin` — two push attempts this cycle were both rejected identically
-(`GH006`, branch locked by PR #2707's entry into GitHub's merge queue), and per the no-idle law a
-third identical attempt was not made.** This is the only reason this cycle does not print
-`AUDIT COMPLETE`.
+**Position:** cycle 9 complete (2026-09-22). All twelve §7 deliverables remain content-complete
+(unchanged in substance from cycle 8). This cycle's entire contribution was **push/PR mechanics**
+that had gone stale between cycles: PR #2707 (cycles 1-6, W1/W2/W3 close) turned out to have
+**already merged** into `main` during the gap since cycle 8 closed — but as a **squash merge**,
+which broke the direct ancestry relationship cycle 8 had assumed. This meant cycle 7+8's three
+unpushed local commits, once pushed, produced a **real add/add merge conflict** against the new
+`main` (not a queue lock) when opened as a fresh PR. That conflict is now resolved, pushed, and a
+new PR (**#2708**) is open with auto-merge armed and CI running. **`AUDIT_DONE` is not yet written**
+— per the charter's own "Done" clause ("final docs PR is merged, **or queued with every check
+green**"), #2708's checks are still `pending`/running, not yet green. This is the only reason this
+cycle does not print `AUDIT COMPLETE`.
 
 **Branch:** `l3/kala-readiness-audit`. **Worktree:** `/Users/Dev/madhav-l3/audit` (persistent
 across cycles — not disposable; local-only commits are safe here between cycles).
 
-## Cycle 8 — what happened
+## Cycle 9 — what happened
 
-1. **PR/sync hygiene:**
-   - `git fetch origin l3/kala-readiness-audit` → origin still at `98be7fd33` (cycle 6's last
-     push); local `HEAD` was 2 commits ahead (`bc617d9db`, `84efeb02a`, both from cycle 7,
-     unpushed per cycle 7's own note).
-   - **PR #2707** (this audit's cumulative closure docs PR): `OPEN`, `mergedAt: null`. Checked the
-     actual merge-queue entry via GraphQL (`mergeQueueEntry { position state estimatedTimeToMerge
-     }`) rather than relying on `mergeStateStatus` alone — returned `position: 1`, `state:
-     AWAITING_CHECKS`, `estimatedTimeToMerge: 798` (~13 min). `gh pr checks 2707` showed all
-     required checks `pass`, only the known `skipping` gates (TAP-5/7+S-13, Census Battery,
-     boot-time pointer validation, the native-only MCP smoke battery) non-pass. This matches the
-     charter's own "CI here takes 6-14 min, not a stall" precedent exactly — no root-cause chase
-     needed, this is the queue doing its job.
-   - **Attempted `git push origin l3/kala-readiness-audit` twice this cycle** (once before this
-     cycle's new work, once after committing it) — **both rejected identically**: `GH006,
-     Protected branch update failed ... A pull request for this branch has been added to a merge
-     queue. Branches that are queued for merging cannot be updated.` Per the charter's no-idle law
-     ("two identical failures stop that attempt... never a third identical attempt"), did **not**
-     attempt a third push this cycle. This is an external branch-level lock, not a bug in anything
-     this session did — the fix is the queue finishing, not a different push invocation.
-   - **PR #2695 (F8):** re-checked; `mergeStateStatus` now reads `BLOCKED` (was `UNKNOWN` as of
-     cycle 7) — noted as a minor fact update, substance unchanged: still `OPEN`, still unmerged,
-     still poisoning provenance for any dispatch that would touch it.
-   - **Deploy-sync table** (required every cycle, read-only `gcloud run services describe`, no
-     dispatch): all three services live in `asia-south1` (prior cycles' region guesses were
-     wrong; discovered the correct region via `gcloud run services list` first).
+1. **PR/sync hygiene — mandatory first action per cycle 8's own handoff instructions:**
+   - `git fetch origin l3/kala-readiness-audit` → origin still at `98be7fd33` (unchanged since
+     cycle 6's push — cycle 7/8's three commits, `bc617d9db`/`84efeb02a`/`3d9605b79`, plus cycle
+     8's own state-rewrite commit `fa63442a0`, were still local-only, exactly as cycle 8 recorded).
+   - `gh pr view 2707` (REST-style read) reported `state: OPEN, mergedAt: null` — **this was
+     stale/cached.** Cross-checked via GraphQL (`pullRequest(number: 2707) { state mergedAt
+     mergeStateStatus mergeQueueEntry }`) which correctly reported `state: MERGED, mergedAt:
+     2026-09-21T21:34:03Z, mergeQueueEntry: null`. **Lesson for future cycles: prefer the GraphQL
+     read over `gh pr view`'s cached fields when the two might disagree** — added to known traps
+     below.
+   - Confirmed via `git log 9b3c3b219..origin/main` that PR #2707 landed as squash commit
+     `796c5d47e` on `origin/main`. The `l3/kala-readiness-audit` branch ref on origin was **not**
+     deleted or fast-forwarded by the squash-merge — it remained at its pre-merge tip (`98be7fd33`,
+     unlocked, since the merge-queue lock releases once the PR is off the queue).
+   - **`git push origin l3/kala-readiness-audit` — succeeded on the first attempt this cycle**
+     (`98be7fd33..fa63442a0`, fast-forward). The charter's per-cycle "no third identical attempt"
+     rule from cycles 7-8 no longer applied since the underlying blocker (queue lock) was gone.
+   - `gh pr list --head l3/kala-readiness-audit --state all` confirmed #2707 as `MERGED` and no
+     other open PR existed for this branch — so a **new** PR was required for cycles 7-8's content
+     (old PR is closed, cannot be reused), matching cycle 8's own contingency plan exactly.
+   - Comparing `git diff origin/main HEAD` (direct two-tree diff, **not** the misleading
+     triple-dot/merge-base form — see known traps) showed only **4 files** genuinely differ from
+     the new `main`: `AUDIT_STATE.md` (full rewrite, as expected for a "rewritten every cycle"
+     file), the new W4 deliverable `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` (never in #2707,
+     created cycle 7), `KALA_ACCEPTANCE_REGIME_MAPPING_v1_0.md` (+8 lines, cycle 8's stale-flag
+     note), and `_work/DOMAIN_A.md` (+34 lines, cycle 8's addendum).
+   - Opened **PR #2708** (`docs(l3-audit): KĀLA readiness audit — W4 close (cycles 7-8, verdict +
+     decision list)`, base `main`, head `l3/kala-readiness-audit`). `gh pr merge 2708 --squash
+     --auto` reported `! The merge strategy for main is set by the merge queue` (informational, not
+     an error — the repo enforces its own merge-queue strategy) but `autoMergeRequest` was already
+     populated on the PR (repo-level auto-arm on PR creation, matching the pattern seen on #2706/
+     #2707). Confirmed armed via `gh pr view 2708 --json autoMergeRequest`.
+   - **Discovered and resolved a real add/add merge conflict** (not a queue lock — the true
+     obstacle cycle 8 had not yet encountered): `git merge-tree` against the *wrong* (but
+     git-computed) merge-base `9b3c3b219` showed `AUDIT_STATE.md`, `KALA_ACCEPTANCE_REGIME_
+     MAPPING_v1_0.md`, and `_work/DOMAIN_A.md` all as "added in both" with genuinely divergent
+     content (main's squash-merged cycle-6 version vs. this branch's cycle-8 version) — GitHub's
+     own merge check agreed (`mergeable: CONFLICTING`, `mergeStateStatus: DIRTY`). **Force-push and
+     `reset --hard` are both charter-forbidden**, so resolved via a standard `git merge origin/main
+     --no-edit`: kept HEAD's version whole for `AUDIT_STATE.md` (correct per its own "rewritten
+     completely by every cycle" contract — cycle 8's content strictly supersedes cycle 6's), and
+     for the other two files confirmed by direct inspection that origin/main's side of each
+     conflict was empty (pure cycle-8 appends with nothing to reconcile against) before resolving.
+     Verified zero leftover `<<<<<<<`/`=======`/`>>>>>>>` markers anywhere under the audit dir
+     before committing. Merge commit `ec640136602a4ba71d521e9e8f5096189cd282f2` pushed clean.
+   - Re-checked mergeability post-push: `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED`
+     (checks still running — 24 checks observed via `gh pr checks 2708`, most `pending`, a handful
+     already `pass`, two `skipping` for the same known-native-only reasons as every prior cycle:
+     Census Battery §G master gate, the MCP per-tool smoke battery needing a native-set bearer
+     token). This matches the charter's own precedent exactly — not a stall.
+   - **PR #2695 (F8):** re-checked; `state: OPEN, mergeStateStatus: UNKNOWN, mergedAt: null` — no
+     change in substance from cycle 8 (still unmerged, still poisoning provenance for any dispatch
+     that would touch it). The `mergeStateStatus` value itself flickered (`BLOCKED` cycle 8 →
+     `UNKNOWN` this cycle) which is expected GitHub-side noise per the known trap already on file
+     about `mergeStateStatus` not being an authoritative signal.
+   - **Deploy-sync table** (read-only `gcloud run services describe`, `asia-south1`, no dispatch):
 
-     | Surface | Deployed revision SHA | vs `origin/main` (`9b3c3b219`) | Deployable drift? |
+     | Surface | Deployed revision SHA | vs `origin/main` (`796c5d47e`) | Deployable drift? |
      |---|---|---|---|
-     | `amjis-web` | `9b3c3b219` | exact match | None — at HEAD |
-     | `amjis-mcp` | `09d998940` (PR #2698) | behind | **No** — `git log 09d998940069..origin/main -- platform-mcp/` returns zero commits |
-     | `amjis-sidecar` | `09d998940` (PR #2698) | behind | **No** — same check against `platform/python-sidecar/` returns zero commits |
-     | builder image (`platform/python-sidecar/Dockerfile.pipeline`) | covered by the sidecar path check above | behind | **No** — same zero-commit result |
+     | `amjis-web` | `9b3c3b219` (unchanged since cycle 8) | behind by 1 commit (#2707) | **No** — `git diff 9b3c3b219..origin/main --stat -- platform/` is empty; #2707 was docs-only |
+     | `amjis-mcp` | `09d998940` (PR #2698, unchanged) | behind | **No** — same docs-only delta, plus the zero-content-drift result already established cycle 8 for `platform-mcp/` |
+     | `amjis-sidecar` | `09d998940` (PR #2698, unchanged) | behind | **No** — same |
+     | builder image | tracks the sidecar path | behind | **No** — same |
 
-     **No deploy dispatched this cycle** — no genuine deployable drift exists on any surface
-     (MCP/sidecar are behind by SHA but byte-identical in content for their own paths since the
-     last deploy; redeploying now would produce the same artifact). This preserves both remaining
-     deploy-dispatch budget slots.
+     **No deploy dispatched this cycle** — the only new commit on `main` since the last check
+     (`796c5d47e`, i.e. PR #2707 itself) touches only `00_ARCHITECTURE/`, confirmed via
+     `git diff 9b3c3b219..origin/main --stat -- platform/` returning empty. Both remaining
+     deploy-dispatch budget slots preserved (0 of 2 used all-time).
 
-2. **Discharged decision-list item 18** (the one substantive piece of unfinished work cycle 7
-   flagged, distinct from pure push mechanics — this justified doing real audit work this cycle,
-   not just retrying a push). Read `platform/scripts/nirmana/capsule_audit.sql` in full to confirm
-   the F1-class fix covers all three sections (§1/§2/§3 each join on `WHERE definition_revision =
-   (SELECT definition_revision FROM frozen_def)`), then ran it live, read-only
-   (`source dbenv.sh`; role `amjis_app`; `psql -f platform/scripts/nirmana/capsule_audit.sql`):
+2. **No new wave dispatched, no subagents spawned this cycle.** Consistent with cycle 8's own
+   conclusion (re-confirmed, not re-litigated): all ten named deliverables plus the verdict/
+   decision-list synthesis are content-complete and unchanged in substance; this cycle's entire
+   task was mechanical (push, conflict resolution, PR open, auto-merge arm) work that a subagent
+   dispatch would not have improved — the conductor did it directly, matching the audit's own
+   established precedent for single-owner mechanical/deterministic tasks (cycle 6's grep
+   re-verification, cycle 7's path correction, cycle 8's SQL re-run).
 
-   ```
-   §1 (incomplete evidence chain): 0 rows
-   §2 (identity separation): 11 rows, all verdict = 'ok'
-   §3 (per-layer, t3-scoped): L0=0/40 L1=0/19 L2=8/22(36.4%) L3=0/23 L4=0/9 L5=0/15 frozen — 8/128 total (6.3%)
-   ```
+3. **Commit — pushed all pending work this cycle.** Two pushes: (a) the fast-forward of cycles
+   7-8's three previously-local commits (`98be7fd33..fa63442a0`), and (b) the merge-conflict
+   resolution commit `ec640136602a4ba71d521e9e8f5096189cd282f2` (`origin/main` merged in, conflicts
+   resolved as above). Working tree clean after both. **Zero unpushed local commits remain** —
+   `git log origin/l3/kala-readiness-audit -1` and `git log HEAD -1` are identical
+   (`ec640136602a4ba71d521e9e8f5096189cd282f2`).
 
-   **Domain A's instrument verdict flips NOT READY → READY**: the tool can now genuinely
-   distinguish "verified under `t3`" from "verified at some point, under some definition, ever" —
-   the exact gap its original NOT READY verdict identified is closed. **But the correctly-scoped
-   output is itself a severe finding, not a clean bill of health:** under the old unscoped
-   aggregation §3 read L3 as 13/23 frozen (56.5%); correctly scoped, **L3 is 0/23 frozen under
-   `t3`** — every prior "13 frozen L3 assets" reading was cross-definition contamination. This
-   independently corroborates (a second instrument, a different query shape) F2's and the
-   readiness query's own finding that 22/23 assets read `NOT_READY-BLOCKED-ANCESTORS` with zero
-   READY-shaped rows — raising confidence this is the campaign's genuine current position, not an
-   artifact of one query's construction. Folded into decision-list item 1, not left as a
-   standalone new item.
+## Cycle 9 spot-verification / direct-work log (conductor; no subagents dispatched this cycle)
 
-   Updated in place: `_work/DOMAIN_A.md` (addendum appended), `KALA_ENVIRONMENT_READINESS_AUDIT_
-   v1_0.md` (Domain A section verdict + new addendum block, §2b split-verdict text, decision-list
-   items 1 and 18, frontmatter scope note, conductor spot-verification log, closing footer).
+- **`gh pr view 2707`'s cached `mergedAt: null` vs. GraphQL's accurate `mergedAt:
+  2026-09-21T21:34:03Z`** — caught by cross-checking two independent read paths before acting on
+  either, per this audit's own "measured, not inferred" governing rule. Acting on the stale REST
+  read alone would have wasted a cycle re-attempting a push against a branch that was actually
+  already unlocked.
+- **`git diff origin/main...HEAD` (triple-dot) vs. `git diff origin/main HEAD` (direct tree
+  diff)** — the triple-dot form, relative to `git merge-base` (`9b3c3b219`, a point before the
+  audit directory existed on shared history), showed all 61 files as pure additions, which would
+  have led to opening a PR that re-proposed cycles 1-6's already-merged content wholesale. The
+  direct two-tree diff correctly isolated the actual 4-file delta. **New known trap, recorded
+  below.**
+- **`git merge-tree` against the same (correct-per-git, misleading-for-content) merge-base**
+  reproduced the exact conflict GitHub's own `mergeable: CONFLICTING` check reported, confirming
+  the conflict was real (a genuine content divergence from the squash-merge breaking direct
+  ancestry) and not a false positive from a bad local check.
+- **Read both non-`AUDIT_STATE.md` conflict hunks in full** before resolving (`KALA_ACCEPTANCE_
+  REGIME_MAPPING_v1_0.md` lines 369-379, `_work/DOMAIN_A.md` lines 140-176) — confirmed the
+  `origin/main` side of each was empty (nothing to lose by keeping HEAD's side) rather than
+  assuming it from the file names alone.
+- **Post-resolution grep for leftover conflict markers** (`<<<<<<<`, `=======`, `>>>>>>>`) across
+  the whole audit directory returned zero matches before committing.
+- **`git diff 9b3c3b219..origin/main --stat -- platform/`** — empty, confirming #2707 was
+  genuinely docs-only and no deploy is owed for it.
 
-3. **Flagged one stale cross-reference found while verifying item 18** (not itself a defect in the
-   audit, but worth recording so a future reader isn't misled): `KALA_ACCEPTANCE_REGIME_MAPPING_
-   v1_0.md` §5 states "neither `egate.sql` nor `capsule_audit.sql` contains the string
-   `definition_revision`" — this was **true when that T3 packet was authored** (before PR #2706
-   merged) but is now stale, since PR #2706 is on `main` as of cycle 6. Per the archival/
-   retain-in-place hygiene policy, did not rewrite the historical claim — appended a short
-   "STALE as of cycle 8" note pointing to the current authoritative record instead. That same T3
-   packet's own §5 worked example, notably, had *already independently reproduced* the "0 scoped"
-   L3 figure via a hand-rolled equivalent query before PR #2706 merged — this cycle's live run of
-   the actual (now-fixed) tool confirms that figure was correct, not a coincidence.
+No claim independently checked this cycle failed verification, apart from the one stale field
+(`gh pr view`'s `mergedAt`) that the GraphQL cross-check itself caught and corrected before any
+action was taken on it.
 
-4. **No new wave dispatched, no subagents spawned this cycle.** The only substantive open item
-   (decision-list item 18) was a single, mechanical, read-only SQL re-run plus a bounded set of
-   doc edits — following this audit's own established precedent (cycle 6's F1 grep-count
-   re-verification, cycle 7's Domain F path-correction), work of this shape is done directly by
-   the conductor rather than delegated, since delegating a single deterministic query and citing
-   its own output adds a verification hop without adding coverage. All ten named deliverables plus
-   verdict/decision list remain otherwise unchanged from cycle 7 — **no new wave is eligible**
-   until origin catches up and a human/native reviews the merged result.
-
-5. **Commit — pushed 0 of 3 pending commits this cycle (external block, not this cycle's
-   action).** Committed this cycle's Domain A re-run + T3 stale-flag + deploy-sync findings as
-   `3d9605b79`, on top of cycle 7's `bc617d9db`/`84efeb02a`. Working tree clean after commit. Both
-   push attempts (before and after this commit) rejected identically per item 1 above.
-
-## Cycle 8 spot-verification / direct-work log (conductor; no subagents dispatched this cycle)
-
-- **Merge-queue state, precisely** (not previously checked via the queue-specific API): GraphQL
-  `mergeQueueEntry` on PR #2707 → `position: 1`, `state: AWAITING_CHECKS`,
-  `estimatedTimeToMerge: 798`. Confirms "in flight, not stalled" with a number, not just a status
-  string.
-- **`capsule_audit.sql` full-file read** (not just `grep -c`): confirmed by direct inspection that
-  all three sections join on the `frozen_def` CTE with `WHERE definition_revision = (SELECT
-  definition_revision FROM frozen_def)` — §1 and §3 carry explicit "F1-class fix"/"F1 fix" inline
-  comments; §2 uses the identical CTE pattern without its own comment (matches cycle 7's own
-  correction of the line-number citation, re-confirmed, not re-litigated).
-- **Live re-run of `capsule_audit.sql`** (see item 2 above) — first time this exact tool has been
-  executed live end-to-end by this audit, as opposed to grepped for scoping-string presence.
-- **`git log 09d998940069..origin/main -- platform-mcp/`** and the same for
-  `platform/python-sidecar/` → both zero commits, confirming no deployable drift on either surface
-  despite the SHA gap.
-- **Region correction for `gcloud run services describe`**: prior assumption (`us-central1`) was
-  wrong; `gcloud run services list` shows all three services in `asia-south1`. Recorded as a new
-  known trap below so a future cycle doesn't re-discover this by trial and error.
-
-No claim independently checked this cycle failed verification.
-
-## Observed at seed / carried forward (re-confirmed cycle 8 where re-touched)
+## Observed at seed / carried forward (re-confirmed cycle 9 where re-touched)
 
 | Fact | Value |
 |---|---|
-| `origin/main` | `9b3c3b219` (#2706, F1 repair) — unchanged since cycle 6; re-confirmed cycle 8 |
+| `origin/main` | `796c5d47e` (PR #2707 squash-merged, cycles 1-6 content) — advanced from cycle 8's `9b3c3b219` |
 | Current campaign definition | `t3-2026-09-11-8b884eac` — unchanged |
-| PR #2706 (F1 repair) | MERGED. No further action. |
-| PR #2707 (this audit's cumulative closure docs PR — still does NOT contain cycles 7 or 8's commits) | OPEN, in GitHub's merge queue at position 1, `state: AWAITING_CHECKS`, ETA ~13 min at last check, all required checks `pass` |
-| PR #2695 (F8) | OPEN, `mergeStateStatus: BLOCKED` (was `UNKNOWN` as of cycle 7) — unmerged either way |
-| `kala_activation`/`kala_convergence` for canonical chart | 0 rows each — root cause fully diagnosed (cycle 6), unresolved (native decision list item 4) |
-| `ka_gochara_v3_century_materialize` BUILD-PROTECTED guard | Still live, unresolved (native decision list item 7) |
-| `kala_timeline_spec` vs `kala_timeline` | Two similarly-named tables, only one live (`kala_timeline_spec`, written by `ka_kshetra`); `kala_timeline` fully DARK — unchanged since cycle 7 |
-| Safety-exclusion coverage gap | `detectMortalityExclusion` wired into only 2 of 9 registered `kala_views` tools — unchanged since cycle 7, native decision list item 12 |
-| **NEW this cycle — Domain A instrument verdict** | READY (was NOT READY pre-F1-fix). `capsule_audit.sql` §1/§2/§3 all now genuinely `t3`-scoped and live-confirmed. |
-| **NEW this cycle — true L3 frozen count under `t3`** | **0 of 23** (not 13/23 as the pre-fix unscoped aggregation had shown). All 8 of the campaign's `t3`-scoped `asset_frozen` events belong to L2. Corroborates F2/readiness-query's 22/23 `NOT_READY-BLOCKED-ANCESTORS` finding via a second, independent instrument. |
-| **NEW this cycle — deploy region** | All three Cloud Run services (`amjis-web`, `amjis-mcp`, `amjis-sidecar`) live in `asia-south1`, not `us-central1`. |
-| **NEW this cycle — deploy-sync table** | `amjis-web` at `origin/main` HEAD exactly; `amjis-mcp`/`amjis-sidecar` behind by SHA (`09d998940`, PR #2698) but zero content drift on their own paths — no deploy dispatched, none needed. |
+| PR #2706 (F1 repair) | MERGED. No further action. Unchanged. |
+| **PR #2707** (this audit's cycles 1-6 W1/W2/W3 closure docs PR) | **MERGED** (`2026-09-21T21:34:03Z`, squash commit `796c5d47e`) — cycle 8 had it as still-queued; it merged in the gap between cycles. No further action. |
+| **PR #2708** (NEW this cycle — cycles 7-8 W4 closure docs PR) | OPEN, auto-merge armed, `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED` (CI running — checks `pending`, a handful already `pass`, two `skipping` for the usual native-only reasons). Content: `AUDIT_STATE.md` rewrite, `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` (new), stale-note in T3, Domain A addendum. |
+| PR #2695 (F8) | OPEN, `mergeStateStatus: UNKNOWN` (was `BLOCKED` cycle 8, `UNKNOWN` cycle 7 — this field is known-noisy, see traps) — still unmerged either way |
+| `kala_activation`/`kala_convergence` for canonical chart | 0 rows each — root cause fully diagnosed (cycle 6), unresolved (native decision list item 4) — unchanged |
+| `ka_gochara_v3_century_materialize` BUILD-PROTECTED guard | Still live, unresolved (native decision list item 7) — unchanged |
+| `kala_timeline_spec` vs `kala_timeline` | Two similarly-named tables, only one live — unchanged since cycle 7 |
+| Safety-exclusion coverage gap | `detectMortalityExclusion` wired into only 2 of 9 registered `kala_views` tools — unchanged, native decision list item 12 |
+| Domain A instrument verdict | READY (unchanged since cycle 8's fix-confirmation) |
+| True L3 frozen count under `t3` | 0 of 23 (unchanged since cycle 8) |
+| Deploy region | All three Cloud Run services in `asia-south1` (unchanged since cycle 8) |
+| Deploy-sync table | Still no genuine deployable drift on any surface — PR #2707 (the only new commit on `main` since last check) was docs-only. No deploy dispatched. |
 
 ## Packet table
 
-| Packet | Wave | Status | Output | Notes |
-|---|---|---|---|---|
-| F1 egate repair + sibling sweep | REPAIR | **DONE** | PR #2706 (merged) | unchanged |
-| F2 inheritance quantification | W2 | **DONE** | `_work/F2.md` | unchanged |
-| F3 four-way DAG reconciliation | W1 | **DONE** | `KALA_DAG_RECONCILIATION_v1_0.md` | unchanged |
-| F4 privilege matrix | W1 | **DONE** | `KALA_PRIVILEGE_MATRIX_v1_0.md` | unchanged |
-| F5 consumer-path trace ×23 | W1 | **DONE** | `_work/F5.md` | unchanged |
-| F6 deploy lag | W1 | **DONE** | `_work/F6.md` | unchanged |
-| F7 data census | W1 | **DONE** | `KALA_DATA_CENSUS_v1_0.md` | unchanged |
-| F8 PR #2695 state | W1 | **DONE** | `_work/F8.md` | `mergeStateStatus` now `BLOCKED` (was `UNKNOWN`), still unmerged |
-| Domain A | W1 | **DONE**, re-verified cycle 8 | `_work/DOMAIN_A.md` | **verdict flipped NOT READY → READY** (instrument now genuinely scoped); output corroborates item 1 |
-| Domain B | W1 | **DONE** | `_work/DOMAIN_B.md` | unchanged |
-| Domain C | W2 | **DONE** | `_work/DOMAIN_C.md` | unchanged |
-| Domain D | W1 | **DONE** | `_work/DOMAIN_D.md` | unchanged |
-| Domain E | W1 | **DONE** | `_work/DOMAIN_E.md` | unchanged |
-| Domain F | W2 | **DONE** | `_work/DOMAIN_F.md` | unchanged since cycle 7's correction |
-| Domain G | W1 | **DONE** | `_work/DOMAIN_G.md` | unchanged |
-| Domain H | W1 | **DONE** | `_work/DOMAIN_H.md` | unchanged |
-| Domain I | W1 | **DONE** | `_work/DOMAIN_I.md` | unchanged |
-| Domain J | W1 | **DONE** | `_work/DOMAIN_J.md` | unchanged |
-| T1 traceability ×3 clusters | W2 | **DONE** | `KALA_STRATEGY_TRACEABILITY_MATRIX_v1_0.md` | unchanged |
-| T2 proving journeys | W2 | **DONE** | `KALA_PROVING_JOURNEYS_BASELINE_v1_0.md` | unchanged |
-| T3 acceptance-regime mapping | W2 | **DONE** | `KALA_ACCEPTANCE_REGIME_MAPPING_v1_0.md` | one stale cross-reference flagged in place this cycle (§5, pre-PR-#2706 grep observation) — substance unaffected |
-| T4 brief conformance | W2 | **DONE** | `KALA_BRIEF_CONFORMANCE_v1_0.md` | unchanged |
-| T5 tensions | W2 | **DONE** | `_work/T5.md` | unchanged |
-| T6 boundaries | W2 | **DONE** | `_work/T6.md` | unchanged |
-| §5 execution/velocity design | W3 | **DONE** | `KALA_EXECUTION_DESIGN_v1_0.md` | unchanged |
-| §6 setup + runbook | W3 | **DONE** | `KALA_CAMPAIGN_RUNBOOK_v1_0.md` | unchanged |
-| Readiness audit synthesis | W4 | **DONE** | `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md` | updated cycle 8: Domain A section, §2b, decision-list items 1+18, frontmatter, spot-verification log, footer |
-| Verdict + native decision list | W4 | **DONE** | folded into `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md`'s final section | item 18 discharged, item 1 strengthened with cycle-8 corroboration; verdict itself (GO-WITH-CONDITIONS strategy / split NO-GO+GO environment) unchanged |
+All ten named deliverables + the W4 verdict/decision-list synthesis remain **DONE**, content
+unchanged from cycle 8 — see cycle 8's entry in git history (`git show
+84efeb02a:00_ARCHITECTURE/briefs/nirmana/l3_autonomous/audit/AUDIT_STATE.md`) for the full
+per-packet table; not reproduced here verbatim since nothing changed. Full list, status only:
+
+| Packet | Status |
+|---|---|
+| F1 egate repair + sibling sweep | **DONE** (PR #2706, merged) |
+| F2 inheritance quantification | **DONE** |
+| F3 four-way DAG reconciliation | **DONE** |
+| F4 privilege matrix | **DONE** |
+| F5 consumer-path trace ×23 | **DONE** |
+| F6 deploy lag | **DONE** |
+| F7 data census | **DONE** |
+| F8 PR #2695 state | **DONE** (re-checked this cycle, unchanged) |
+| Domain A | **DONE**, READY as instrument (cycle 8 fix) |
+| Domain B–J | **DONE**, all unchanged |
+| T1 traceability ×3 clusters | **DONE** |
+| T2 proving journeys | **DONE** |
+| T3 acceptance-regime mapping | **DONE** (one stale-flag note, cycle 8) |
+| T4 brief conformance | **DONE** |
+| T5 tensions | **DONE** |
+| T6 boundaries | **DONE** |
+| §5 execution/velocity design | **DONE** |
+| §6 setup + runbook | **DONE** |
+| Readiness audit synthesis (W4) | **DONE** — `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md`, now in PR #2708 pending merge |
+| Verdict + native decision list | **DONE** — folded into the same file; verdict itself (GO-WITH-CONDITIONS strategy / split NO-GO+GO environment) unchanged |
 
 ## In flight
 
 - **PR #2706** (F1 repair): MERGED. No further action.
-- **PR #2707** (cumulative closure docs PR — still does NOT contain cycles 7 or 8's commits): OPEN,
-  in GitHub's merge queue at position 1, `state: AWAITING_CHECKS`, ETA ~13 min at last check, all
-  required checks `pass`. **Will very likely merge on its own before the next cycle starts** — no
-  action needed to make that happen.
-- **THREE unpushed local commits** sit on top of `98be7fd33` in this persistent worktree:
-  `bc617d9db` (cycle 7 W4 close), `84efeb02a` (cycle 7 push-status correction), `3d9605b79`
-  (cycle 8 item-18 discharge). **Next cycle's mandatory first action, in order:**
-  1. `git fetch origin l3/kala-readiness-audit && git log origin/l3/kala-readiness-audit -1`.
-  2. `gh pr view 2707 --json state,mergedAt` — has it merged since this cycle's close?
-  3. **If merged:** `origin/l3/kala-readiness-audit` will have advanced (fast-forwarded into
-     `main`, and depending on repo settings the branch ref may or may not still exist). Rebase
-     these three local commits onto the new state (or, if the branch ref is gone, push this
-     worktree's content as a fresh branch and open a **new** PR for cycles 7+8's deliverables —
-     do **not** force-push, do **not** delete/recreate the branch without first confirming
-     origin's exact post-merge state). This satisfies "Done" for a *new* docs PR.
-  4. **If still queued/open:** try `git push origin l3/kala-readiness-audit` exactly **once**. If
-     it succeeds, proceed to check whether all twelve deliverables are now live on `main` (or
-     queued clean in a PR) and, if so, write `AUDIT_DONE`, commit, push, print `AUDIT COMPLETE`.
-     If it fails identically a third calendar-time-separate time (i.e., this would be the third
-     attempt across cycles 7-8-9), do **not** retry a fourth time in that same cycle — record it,
-     move to any other eligible work, and let the queue keep processing; the ETA figures observed
-     so far (798s at cycle 8's check) suggest this should resolve well within a cycle or two.
+- **PR #2707** (cycles 1-6 closure): **MERGED** this gap (`796c5d47e`). No further action.
+- **PR #2708** (cycles 7-8 W4 closure, NEW this cycle): OPEN, auto-merge armed, `mergeable:
+  MERGEABLE`, CI running (`mergeStateStatus: BLOCKED` pending checks, not a stall — matches every
+  prior cycle's 6-14 min precedent). **Next cycle's mandatory first action:**
+  1. `git fetch origin l3/kala-readiness-audit && git log origin/l3/kala-readiness-audit -1` —
+     confirm no drift (should still be `ec640136602a4ba71d521e9e8f5096189cd282f2` unless a human
+     touched the branch).
+  2. `gh api graphql` for PR #2708's `state`/`mergedAt`/`mergeQueueEntry` (**prefer GraphQL over
+     `gh pr view`'s cached fields** — this cycle's own lesson) and `gh pr checks 2708`.
+  3. **If merged:** all twelve §7 deliverables are now live on `main`. Confirm no further local
+     commits are pending (there should be none — this cycle left the tree clean and fully pushed).
+     If genuinely nothing else is outstanding, write `audit/AUDIT_DONE` (empty file), commit, push,
+     print `CYCLE <n>: AUDIT COMPLETE -> next: native review`.
+  4. **If still open/checks running:** this is normal CI latency, not a stall. Do not re-push, do
+     not re-open a PR, do not force anything. If genuinely nothing else is eligible (expected — no
+     new wave has been eligible since cycle 8), print `CYCLE <n>: IDLE-OK <reason> -> next: PR
+     #2708 merge` with zero git writes, per the charter's own IDLE-OK provision — do **not**
+     fabricate work to avoid an idle cycle.
+  5. **If checks show a genuine failure** (not `pending`/`skipping`): diagnose; this would be the
+     first real CI failure this audit branch has produced against its own docs-only content, so
+     treat it as a real signal, not assume it's the known-native-only skip pattern.
 - No deploy dispatched this cycle (see deploy-sync table above — no genuine drift). No lease
   claimed or held on `origin/campaign-coordination`.
-- **No new wave is eligible.** All content-complete deliverables are unchanged except the item-18
-  discharge recorded above. The only remaining work is push/PR mechanics.
+- **No new audit wave is eligible.** Unchanged from cycle 8's own conclusion, re-confirmed this
+  cycle. The only remaining work of any kind is PR #2708 clearing CI and merging, then writing
+  `AUDIT_DONE`.
 
 ## Budget
 
 | Resource | Used | Ceiling |
 |---|---|---|
-| Cycles (supervisor numbering) | 8 (of which 6 have actually closed with a local commit: 1, 2, 3, 6, 7, 8) | 40 |
-| Subagent dispatches | 34 (cycles 1-6) + 2 (cycle 7, W4, both foreground) + 0 (cycle 8, direct conductor work only) = **36** | 120 |
-| PRs opened | 2 (#2706 merged, #2707 still open — no new PR opened cycle 8, still targeting #2707 once pushable) | 6 |
+| Cycles (supervisor numbering) | 9 (of which 7 have actually closed with a local commit: 1, 2, 3, 6, 7, 8, 9) | 40 |
+| Subagent dispatches | 36 (cycles 1-8) + 0 (cycle 9, mechanical push/merge/PR work only) = **36** | 120 |
+| PRs opened | 3 (#2706 merged, #2707 merged, **#2708 NEW this cycle**, open with auto-merge armed) | 6 |
 | Deploy dispatches | 0 | 2 |
 | Production mutations | 0 | **0** |
 | Local disposable Postgres instances started/stopped | 2 (cycles 2 and 4), both fully torn down — none this cycle | n/a — local-only |
 
 ## Native decision list
 
-**Unchanged in ranking from cycle 7's 20-item list in `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md`'s
-"Readiness verdict and native decision list" section — read it there, not here.** The only content
-change this cycle: item 1 (F2) gained a corroborating-evidence paragraph (the `capsule_audit.sql`
-re-run's 0/23 L3-frozen-under-`t3` result), and item 18 is now marked **DISCHARGED** rather than
-open. No item was added, removed, or re-ranked. Top-line summary for a reader of this file alone:
+**Unchanged in ranking and content from cycle 8's list (itself unchanged in ranking from cycle
+7's) in `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md`'s "Readiness verdict and native decision list"
+section — read it there, not here.** No item was added, removed, re-ranked, or edited this cycle;
+this cycle's work was entirely push/PR/merge-conflict mechanics, not new audit findings. Top-line
+summary for a reader of this file alone:
 
-1. F2 (t3 definition inheritance) — still first, still the largest single lever; now doubly
-   evidenced (readiness query's own 22/23 `NOT_READY-BLOCKED-ANCESTORS` reading, plus
-   `capsule_audit.sql`'s independently-derived 0/23 L3-frozen-under-`t3`).
+1. F2 (t3 definition inheritance) — still first, still the largest single lever.
 2. Design the missing acceptance receipts, or amend the delivery target.
 3. Per-asset admission authority — zero assets formally authorized to start today.
 4. The `kala_*` CASCADE data-loss remediation — highest severity, demoted by reach only.
 5-20. Unchanged from cycle 7 — see the full list in `KALA_ENVIRONMENT_READINESS_AUDIT_v1_0.md`.
-   Item 18 is now DISCHARGED, not open.
+   Item 18 remains DISCHARGED (cycle 8).
 
-## Known traps encountered this cycle (add to future subagent briefs — carried forward, re-confirmed, plus one new)
+## Known traps encountered this cycle (add to future subagent briefs — carried forward, re-confirmed, plus two new)
 
-- **NEW this cycle — `gcloud run services describe` needs the correct region, and it is not
-  `us-central1`.** All three Cloud Run services for this project (`amjis-web`, `amjis-mcp`,
-  `amjis-sidecar`) live in `asia-south1`. `gcloud run services list` (no region flag) will surface
-  the correct region in its labels; `describe` silently returns "Cannot find service" for the
-  wrong region rather than an explicit region-mismatch error, which can misread as "service does
-  not exist."
-- **A `mergeStateStatus` of `BLOCKED`/`UNKNOWN`/`CLEAN` on a queued PR is not the authoritative
-  signal of queue position or ETA — the GraphQL `mergeQueueEntry { position state
-  estimatedTimeToMerge }` field is.** `mergeStateStatus` read `CLEAN` this cycle (meaning
-  "mergeable, no blocking review/status issues") even while the branch was actively locked by the
-  queue and rejecting pushes — these are two different questions (mergeability vs. queue
-  processing state) and conflating them could read a genuinely-in-progress merge as either
-  "stalled" or "already done" incorrectly.
+- **NEW this cycle — `gh pr view <n>`'s JSON fields (notably `mergedAt`, `state`) can read stale/
+  cached even when the PR has genuinely merged.** Cross-check with the GraphQL API
+  (`pullRequest(number: N) { state mergedAt mergeStateStatus mergeQueueEntry { position state
+  estimatedTimeToMerge } }`) before concluding a PR is still open, especially after any gap between
+  cycles where a queued PR plausibly finished processing.
+- **NEW this cycle — after a PR merges via squash, its source branch ref is *not* automatically
+  advanced or deleted** (at least under this repo's settings) — it sits at its pre-merge tip,
+  unlocked. A fresh push to that branch will succeed (fast-forward), but the branch's content will
+  then have **diverged from `main`'s squash commit at the git level** (same logical content, no
+  shared exact-commit ancestry beyond the true fork point), which can produce a **real** add/add
+  merge conflict when a *new* PR is opened from that branch against the now-advanced `main` — this
+  is not a queue lock and will not resolve itself; it needs an actual `git merge origin/main`
+  (never force-push/reset --hard) with the conflicts resolved by hand.
+- **NEW this cycle — `git diff A...B` (triple-dot, merge-base-relative) can be badly misleading
+  when `A` and `B` share a very old true merge-base** (e.g. from before a whole directory was
+  created on either side) — it will show large swaths of already-shared content as pure additions.
+  **Use `git diff A B` (direct two-tree diff) to see what has actually changed between two refs'
+  current content**, and reserve triple-dot for when you specifically want "what changed in B since
+  it forked from A."
+- **`gcloud run services describe` needs the correct region** (`asia-south1`, not `us-central1`) —
+  carried forward from cycle 8, re-confirmed correct this cycle.
+- **A `mergeStateStatus` of `BLOCKED`/`UNKNOWN`/`CLEAN`/`DIRTY` on a PR is not by itself the full
+  picture** — carried forward from cycle 8 (queue-position nuance) and reinforced this cycle in a
+  new way: `DIRTY` specifically flags a real merge conflict (confirmed this cycle by cross-checking
+  `mergeable: CONFLICTING` and independently reproducing the same conflict locally via
+  `git merge-tree`), whereas `BLOCKED`/`UNKNOWN` on a conflict-free PR usually just means checks are
+  still running. Don't conflate the two — `DIRTY`/`CONFLICTING` needs an actual merge/rebase; the
+  others just need CI to finish.
+- **Two identical push rejections in one cycle are not evidence of a local bug** — carried forward
+  from cycle 8, not re-triggered this cycle (the queue lock that caused cycles 7-8's rejections was
+  gone by the time this cycle checked).
 - **A packet can sit fully complete on disk and never make it into the packet table** — carried
-  forward from cycles 4/7, re-confirmed not recurring this cycle (`ls _work/*.md` diffed cleanly
-  against this file's table before closing).
+  forward from cycles 4/7/8, re-confirmed not recurring this cycle.
 - **Repo-relative greps must use the actual tree, not an assumed top-level shorthand** — carried
-  forward from cycle 7 (`platform/python-sidecar/{pipeline,services}/`, not bare
-  `pipeline/`/`services/`); re-applied correctly this cycle for the deploy-sync `git log` path
-  checks (`platform-mcp/`, `platform/python-sidecar/`).
-- **A subagent's (or the conductor's own) markdown discussing configuration files by name can
-  trigger a harness false-positive instruction-pattern scan** — carried forward from cycles 6/7,
-  not re-triggered this cycle (no subagents dispatched).
-- **Two identical push rejections in one cycle are not evidence of a local bug** — the fix is the
-  external queue finishing, not a different push invocation, syntax, or force flag. Never
-  force-push to route around a `GH006` merge-queue lock.
+  forward from cycle 7, re-applied correctly this cycle for the `platform/` deploy-sync path check.
