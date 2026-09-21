@@ -366,6 +366,14 @@ this audit's own `capsule_audit.sql` predicate still aggregates across all four 
 revisions — its `WHERE frozen AND NOT (...)` check can be satisfied by an analysis emitted under
 `t0` for a freeze emitted under `t3`.
 
+**STALE as of cycle 8 — retained above as an accurate snapshot of its own cycle, not corrected in
+place.** PR #2706 merged to `main` (`9b3c3b219`) before cycle 6 closed and is now an ancestor of
+this branch; `egate.sql` and `capsule_audit.sql` both now contain `definition_revision` scoping
+(`grep -c` → 4 and 7 respectively). Cycle 8 re-ran the now-fixed `capsule_audit.sql` live and
+reproduced this section's own §3 "0 scoped" figure for L3 exactly, this time as the tool's actual
+current output rather than a hand-rolled equivalent query — see `KALA_ENVIRONMENT_READINESS_AUDIT_
+v1_0.md`'s Domain A addendum and decision-list item 18 for the authoritative current record.
+
 ---
 
 ## 6. Bottom line for the campaign's acceptance arithmetic

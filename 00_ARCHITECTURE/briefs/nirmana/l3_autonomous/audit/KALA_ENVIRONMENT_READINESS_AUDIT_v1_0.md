@@ -13,7 +13,11 @@ scope: >
   `_work/DATA_LOSS_DIAGNOSIS.md`. It synthesizes and cross-references; it does not re-adjudicate
   any domain's READY/NOT READY/NEEDS DECISION verdict — those are carried forward from the
   source packets verbatim. One correction is applied to Domain F's reproducing commands (see
-  §Domain F addendum), supplied by the cycle-7 conductor commissioning this compilation.
+  §Domain F addendum), supplied by the cycle-7 conductor commissioning this compilation. Cycle 8
+  is the one exception to "does not re-adjudicate": decision-list item 18 explicitly required
+  re-running `capsule_audit.sql` under its now-fixed scoping before Domain A's verdict could be
+  cited as current, so cycle 8 did exactly that live and updated Domain A's verdict + item 1 + item
+  18 in place (see the Domain A addendum and the conductor spot-verification log's cycle-8 entry).
 produced_by: L3 Kāla readiness audit (autonomous, Claude Code), read-only compilation subagent, cycle 7
 inputs_cited: >
   _work/F2.md, F3.md, F4.md, F5.md, F6.md, F7.md, F8.md (F1 has no _work file — resolved via
@@ -92,9 +96,11 @@ $ grep -c definition_revision platform/scripts/nirmana/egate.sql
 
 **Result / current status:** **RESOLVED.** Both files that ever read the events table for
 eligibility are fixed and merged into this branch. `nrec` and `l1_integrity_check_dry_run.sql`
-never had the defect. **Note:** the same defect class re-appears, independently, inside
+never had the defect. **Note:** the same defect class had re-appeared, independently, inside
 `capsule_audit.sql` §1/§3's *own aggregation logic* (not the query this PR fixed) — see **Domain A**
-below, which found this as a live, still-open NOT READY finding distinct from the PR #2706 fix.
+below, which found this as a NOT READY finding distinct from the PR #2706 fix, then (cycle 8)
+independently re-ran the now-fixed instrument live and confirmed it is genuinely scoped —
+**READY** — while surfacing a materially more severe true campaign-position reading underneath.
 
 **Severity:** CRITICAL (as originally found). **Owner:** nirmana tooling owner (per charter C5).
 
@@ -488,7 +494,7 @@ ayanamsha default bug silently mismatches production data conventions). **Owner:
 
 # Part 2 — Domains A-J
 
-## Domain A — Campaign evidence integrity: **NOT READY**
+## Domain A — Campaign evidence integrity: **READY** (re-run cycle 8; see addendum below — the instrument is now sound, but its correct output is a severe campaign-position finding)
 
 **What was checked:** definition lineage integrity, `definition_superseded_mid_campaign` event
 completeness, whether any evidence-integrity tool besides `egate.sql` admits stale evidence, and
@@ -522,13 +528,52 @@ of "no violation ever logged," not evidence that the current 98 frozen assets ha
 §2 (identity-separation check) is less exposed — it is a per-event structural check, not a
 cross-revision aggregation — and its PASS is more trustworthy.
 
-**Verdict: NOT READY.** What would need to be true for READY: §1 and §3 (ideally §2 too, for
-defense in depth) scoped to `WHERE definition_revision = (SELECT definition_revision FROM
-nirmana_elevation_campaign_definitions WHERE definition_status='frozen')`, and the "0 rows"/"98
-frozen, complete" results re-verified under that scoping.
+**Original verdict (pre-fix, superseded below): NOT READY.** What would need to be true for READY:
+§1 and §3 (ideally §2 too, for defense in depth) scoped to `WHERE definition_revision = (SELECT
+definition_revision FROM nirmana_elevation_campaign_definitions WHERE definition_status='frozen')`,
+and the "0 rows"/"98 frozen, complete" results re-verified under that scoping.
 
 **Secondary, non-blocking finding:** the two earliest superseded definitions have no traceable
 events at all — a footnote for whatever record closes this audit, not campaign-blocking.
+
+**ADDENDUM (cycle 8, conductor, live re-run) — decision-list item 18 discharged.** All three
+sections now carry the scoping this domain's original verdict required (confirmed by direct file
+read: §1 line ~34, §2 line ~85, §3 line ~107, each joining `WHERE definition_revision = (SELECT
+definition_revision FROM frozen_def)`). Ran the fixed instrument live, read-only, via
+`psql -f platform/scripts/nirmana/capsule_audit.sql` (role `amjis_app`,
+`default_transaction_read_only=on`):
+
+```
+§1 (incomplete evidence chain): 0 rows        -- PASS, now genuinely t3-scoped
+§2 (identity separation): 11 rows, all 'ok'   -- PASS, no crossings, now t3-scoped too
+§3 (per-layer position, t3-scoped):
+ layer | assets | frozen | routed_not_frozen | unrouted | pct_frozen
+ L0    |     40 |      0 |                 0 |       40 |        0.0
+ L1    |     19 |      0 |                 0 |       19 |        0.0
+ L2    |     22 |      8 |                 0 |       14 |       36.4
+ L3    |     23 |      0 |                 0 |       23 |        0.0
+ L4    |      9 |      0 |                 0 |        9 |        0.0
+ L5    |     15 |      0 |                 0 |       15 |        0.0
+       |    128 |      8 |                 0 |      120 |        6.3
+```
+
+**Instrument verdict: READY.** §1/§2/§3 are now genuinely scoped to the frozen definition and their
+PASS/output is trustworthy evidence about `t3-2026-09-11-8b884eac` specifically, not about "ever,
+under any definition." This closes decision-list item 18.
+
+**But the correctly-scoped output is itself a severe, independent finding, not a clean bill of
+health.** Under the old (buggy, unscoped) aggregation, §3 read L3 as "13 frozen, 7 routed-not-
+frozen, 3 unrouted (56.5% frozen)" — a picture of real campaign progress. Under the now-correctly-
+t3-scoped aggregation, **L3 shows 0 of 23 assets frozen, 0 routed-not-frozen, 23 unrouted (0.0%)**.
+All 8 of the campaign's total `asset_frozen` events under `t3-2026-09-11-8b884eac` belong to L2;
+none belong to L3. Every prior appearance of "13 frozen L3 assets" in this campaign's own
+self-reporting was cross-definition contamination — evidence logged against `t0`/`t1`/`t2` being
+misread as evidence for `t3`. This is independent corroboration, from a completely different
+instrument and query shape, of F2's and the readiness query's own finding (decision-list item 1:
+22/23 rows read `NOT_READY-BLOCKED-ANCESTORS`, 0 READY-shaped rows) — it is not a new defect on top
+of F2, it is the same true position, reached a second way, which raises confidence that "0/22
+genuinely accepted under `t3`" is the correct current headline, not an artifact of one query's
+construction. Folded into decision-list item 1 as corroborating evidence, not a new numbered item.
 
 ---
 
@@ -1076,9 +1121,10 @@ Four defects, present-tense and reproducible, none inside L3's unilateral author
 
 F1 is genuinely fixed and present (conductor re-verified: `egate.sql` 4 `definition_revision` refs,
 `capsule_audit.sql` 7 refs across all three sections with two `F1-class fix`/`F1 fix` comments —
-**this supersedes Domain A's NOT READY verdict above**, which rested on `capsule_audit.sql` having
-zero such references; Domain A's own PASS predates the fix and was computed unscoped, so it is not
-evidence about `t3` and must be re-run before being cited, see decision-list item 18). Domain C is
+**this supersedes Domain A's original NOT READY verdict above**, which rested on `capsule_audit.sql`
+having zero such references; cycle 8 re-ran the now-fixed instrument live and confirmed it — Domain
+A is now **READY** as an instrument, see the addendum above; decision-list item 18 is discharged).
+Domain C is
 READY (advisory lock proven per-chart on a disposable instance, 141/141 tests). Domain E is READY
 (deploy gate diffs against production's own deployed SHA). Domain B is READY. F6 is conditionally
 READY. Domain I found 0 of 15 sampled branches genuinely undelivered. The readiness query itself
@@ -1101,7 +1147,12 @@ to, per the mapping below).
    that column for all of them simultaneously. Precision correction to the record: the 12 ancestor
    freezes are not all under `t0` — 9 under `t0-09-01`, 1 (`ka_gochara`) under `t1`, 2 (`ka_tulana`,
    `ka_yojaka`) under `t2`; the 3 zero-evidence assets are `ka_kalasutra`, `ka_vighnakara`, and the
-   century materialiser.
+   century materialiser. **Independently corroborated cycle 8** via the separately-fixed
+   `capsule_audit.sql` (item 18): under correct `t3` scoping, its §3 per-layer rollup shows L3 at
+   **0 of 23 assets frozen** (all 8 of the campaign's `t3`-scoped `asset_frozen` events belong to
+   L2) — a second instrument, a different query shape, the same true position. The prior "13 L3
+   frozen" figure that had circulated in this campaign's own self-reporting was cross-definition
+   contamination, not real progress.
 2. **Design the missing acceptance receipts, or amend the delivery target.** Promoted from prior
    rank 9 — it caps the campaign's terminal outcome regardless of execution quality and needs design
    lead time. Absorbs T4 Q4 (the two exit-gate vocabularies).
@@ -1154,10 +1205,11 @@ to, per the mapping below).
 17. **F3 — dispatch `ka_sangam` once through a manifest-capturing run before relying on it.** Only
     11/23 identities have ever been captured by a surviving `build_runs.plan_manifest` — `ka_sangam`,
     the campaign's own chokepoint, is not among them despite 522 build_runs on the canonical chart.
-18. **Re-run `capsule_audit.sql` under the now-correct scoping and record the result.** Domain A's
-    NOT READY verdict is superseded by the F1 sibling-sweep fix (conductor-verified this cycle,
-    §2b above) but its pre-fix PASS was computed unscoped across four definition revisions and is
-    not evidence about `t3` — must be re-run and re-recorded before being cited as current.
+18. **DISCHARGED cycle 8 — `capsule_audit.sql` re-run under the now-correct scoping.** Domain A's
+    original NOT READY verdict is superseded by the F1 sibling-sweep fix; cycle 8 ran the fixed
+    instrument live (read-only, `amjis_app`) and confirmed §1 = 0 rows, §2 = 11 rows all `ok`, §3 =
+    L3 0/23 frozen under `t3`. Domain A is now READY as an instrument; its corrected output is
+    folded into decision-list item 1 as independent corroboration, not left here as an open item.
 19. **Governance-hygiene residue.** T5 Tension 9 (REG line-anchor drift, 3/23 checked); T4's
     remaining conformance questions; the vestigial `'service_ok'` state.
 20. **Not L3's to fix, report to owners:** `mimamsa_* 0/37`, `phala_* 0/20`, `chart_* 4/15`
@@ -1192,10 +1244,21 @@ caught Domain F's four-cycle invisibility sooner — see the cycle-7 note in AUD
 No headline claim in this section failed spot-verification. One citation-precision error (line 60
 vs. 102) was found and corrected in place.
 
+**Cycle-8 addendum (conductor, done directly, not delegated):** discharged decision-list item 18.
+Read `capsule_audit.sql` in full to confirm all three sections (§1 line ~34, §2 line ~85, §3 line
+~107) now join on `WHERE definition_revision = (SELECT definition_revision FROM frozen_def)`, then
+ran it live via `psql -f platform/scripts/nirmana/capsule_audit.sql` (role `amjis_app`, read-only).
+Result: §1 = 0 rows, §2 = 11 rows all `ok`, §3 shows L3 at 0/23 frozen under `t3` (all 8 of the
+campaign's `t3`-scoped `asset_frozen` events belong to L2). Updated Domain A's verdict (NOT
+READY → READY, as an instrument), decision-list item 1 (added this as independent corroboration
+of the 22/23 `NOT_READY-BLOCKED-ANCESTORS` reading), and item 18 (closed). Command output pasted
+verbatim into the Domain A addendum above; also appended to `_work/DOMAIN_A.md`.
+
 ---
 
 *End of KALA_ENVIRONMENT_READINESS_AUDIT_v1.0. This document is a compilation of cycles 1-7's
 per-finding and per-domain evidence packets, plus the cycle-7 readiness verdict and native decision
-list (deliverables #11 and #12). Every reproducing command, table name, and confidence caveat above
-is carried forward from its cited source packet or independently verified by the cycle-7 conductor
-as noted.*
+list (deliverables #11 and #12), with one cycle-8 re-run (Domain A / decision-list item 18) applied
+in place per that item's own instruction. Every reproducing command, table name, and confidence
+caveat above is carried forward from its cited source packet or independently verified by the
+cycle-7/cycle-8 conductor as noted.*
