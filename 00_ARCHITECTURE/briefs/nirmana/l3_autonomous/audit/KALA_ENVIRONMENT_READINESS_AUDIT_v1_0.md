@@ -1,6 +1,9 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS_AUDIT
-version: "1.0"
+version: "1.1"
+changelog:
+  - "1.1 (2026-09-22): addendum C-1/C-2 — F2 re-scoped to the 48 upstream ancestors (7 frozen under t3, 41 superseded-only, 0 never); server_reconstructed corrected as the verifier-certified source kind. Body unchanged."
+  - "1.0 (2026-09-22): first issue (audit cycles 7-8)."
 status: CURRENT
 date: 2026-09-22
 canonical_id: KALA_ENVIRONMENT_READINESS_AUDIT
@@ -1262,3 +1265,42 @@ list (deliverables #11 and #12), with one cycle-8 re-run (Domain A / decision-li
 in place per that item's own instruction. Every reproducing command, table name, and confidence
 caveat above is carried forward from its cited source packet or independently verified by the
 cycle-7/cycle-8 conductor as noted.*
+
+---
+
+# Addendum (v1.1, 2026-09-22) — two corrections from the strategic session's independent re-measurement
+
+Both concern F2 and both change how the native's inheritance ruling should be framed. The body above
+is left as written (audit trail); read F2 together with this addendum. Full treatment:
+`../KALA_NATIVE_RULING_SHEET_v1_0.md`.
+
+## C-1. F2's scope is the 48 upstream ancestors, not Kāla's own 12 old freezes
+
+F2 quantified the `ka_*` assets' *own* superseded evidence (12 / 7 / 3). The readiness gate does not
+block on that — `NOT_READY-BLOCKED-ANCESTORS` is about the assets Kāla depends on. Reproducing query
+(read-only, recursive closure of `asset_registry.depends_on` from every `ka_*`, non-`ka_*` members
+only, joined to `asset_frozen` events by definition):
+
+| Upstream layer | Ancestors | Frozen under t3 | Frozen only under a superseded definition | Never frozen |
+|---|---|---|---|---|
+| `bg_*` | 22 | 0 | 22 | 0 |
+| `ga_*` | 13 | 0 | 13 | 0 |
+| `bo_*` | 13 | 7 | 6 | 0 |
+| **Total** | **48** | **7** | **41** | **0** |
+
+Also measured: `max(observed_at)` over the whole event ledger is `2026-09-11 17:25:48` — **zero
+events of any kind in the 11 days since**. No session is re-freezing L0 or L1 under t3. The options
+table in F2 (A / B / C1–C3) must therefore be read as applying to these 41 upstream freezes first;
+inheriting Kāla's own 12 does not by itself open any gate.
+
+## C-2. `source_kind = server_reconstructed` is the certified path, not a weaker one
+
+F2 (and `KALA_EXECUTION_DESIGN_v1_0.md` §4, Option A row) argue that ~30% of ancestor evidence being
+`server_reconstructed`, "not a live build receipt", means a defensible re-freeze needs a re-run. That
+misreads the vocabulary. `platform/scripts/nirmana/README.md` §"The identity split it enforces" and the
+trigger `nirmana_elevation_guard_server_reconstructed_insert` (migration 632) define
+`server_reconstructed` as the source kind reserved for the **verifier** service account: it is how
+every `integrity_verified`, `asset_frozen`, `probe_accepted`, `stage_transition_accepted` and
+`foundation_lane_accepted` event is minted, by design. All 8 of L2's t3 freezes carry it. It is
+evidence of independent certification, not of a missing build. **The staleness argument against
+inheritance stands; the source-kind argument does not.**
