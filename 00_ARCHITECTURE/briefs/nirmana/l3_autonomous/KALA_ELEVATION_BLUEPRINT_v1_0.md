@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "3.1"
+version: "3.2"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.2 (2026-09-23): PG332 correction — it is the 28-asterism RING chakra for the Sun-vedha rule at śl. 26-27, NOT a second SBC page. My 'two grid pages' framing would have spliced two instruments. Verified against PG331/PG333. Fifth correction of the day."
   - "3.1 (2026-09-23): §11.27 — Sade-Sati, a live serving factor consuming 4,492 verified facts on the canonical chart, has ZERO primary-text attestation: all 5 corpus rows are in one MEDIUM-provenance modern nāḍī text. Highest-severity item of the day. Kota confirmed 0 rows."
   - "3.0 (2026-09-23): my own OCR caveat corrected — PG346-352 is a COMPLETE, legible primary construction of the Sarvatobhadra chakra; only the diagram page is degraded, and the prose rules make it unnecessary. G10 re-graded again, to BUILDABLE. §11.25 closes the day with the W0 corpus re-audit task."
   - "2.9 (2026-09-23): the wrong corpus list is HARDCODED IN PRODUCTION CODE with a verification claim behind it (ka_vedha_gochara/logic.py). And the Sarvatobhadra grid IS in the corpus at phaladeepika PG345/PG332 — G10 re-graded from unsourceable to OCR-blocked. New §11.24."
@@ -1199,8 +1200,9 @@ memory because regional traditions disagree. That worry is unnecessary:
 
 - `phaladeepika:PG345:C1` — *"I shall now describe the (Sarvatobhadrachakra) which has become
   famous"*, followed by a grid with `NORTH` and nakshatra cells.
-- `phaladeepika:PG332:C1` — a second grid page carrying `WEST` / `NORTH` and named cells (Śravaṇa,
-  Abhijit, U. Āṣāḍhā, P. Āṣāḍhā, Mūla, Jyeṣṭhā, Anurādhā).
+- `phaladeepika:PG332:C1` — **NOT a second SBC page. Corrected below (§11.25).** It is the
+  28-asterism *ring* chakra belonging to the Sun-vedha rule at śl. 26-27 — a different instrument
+  that happens to share the Kṛttikā start.
 
 Same Adhyāya XXVI as the vedha rules and the laṭṭā rules. There are **ten** rows corpus-wide matching
 `sarvato`; nobody had looked, because a docstring said not to.
@@ -1244,6 +1246,17 @@ proposed can be applied to a transcription rather than to an invention.
 **My own error here is the sparse-sample rule again**, one day after I named it. I read the first
 page of an eight-page span, found it illegible, and published a caveat about the span. The Saṅgam
 session read the rest. **A sparse sample is not a bound, and page one is not a chapter.**
+
+**A fifth correction of mine, and the most dangerous one had it shipped.** I described `PG332:C1`
+as "a second grid page" of the Sarvatobhadra chakra. It is not. The Saṅgam session placed it
+correctly and I verified the placement: `PG331:C1` is śloka 24 (Rāhu's transit effects through the
+12th from the Janmarāśi) and `PG333:C1` is śloka 27 (the three asterisms, Janmanakṣatra, the Sun
+associated with a malefic). PG332 sits between them, so it is the **28-asterism ring chakra for the
+Sun-vedha rule at śl. 26-27**. The Sarvatobhadra proper is śloka **48**, at PG345-346. Both use a
+Kṛttikā start, which is exactly what makes the confusion plausible and the consequence severe: **a
+transcriber handed "PG332 and PG345 are the two grid pages" would have spliced two different
+instruments into one table** and produced a chakra that exists in no text. This is the worst error I
+made today, because unlike the others it would have survived into data rather than into prose.
 
 **Two refinements adopted from the other sessions, both table-verified by them:**
 
