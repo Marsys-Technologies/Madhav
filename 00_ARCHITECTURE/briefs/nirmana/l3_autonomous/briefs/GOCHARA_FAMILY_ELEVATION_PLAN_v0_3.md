@@ -1,7 +1,8 @@
 ---
 artifact: GOCHARA_FAMILY_ELEVATION_PLAN
 version: "0.3"
-status: PROPOSAL_FOR_NATIVE_RULING
+status: SUPERSEDED
+superseded_by: GOCHARA_FAMILY_ELEVATION_PLAN_v1_0.md  # native-ratified 2026-09-22
 supersedes: GOCHARA_FAMILY_ELEVATION_PLAN_v0_2.md (retained, SUPERSEDED)
 incorporates_review: ASTRA_REVIEW_GOCHARA_PLAN_v0_2.md (verdict PROCEED_WITH_AMENDMENTS; reviewed plan sha256 964b7f9e…)
 produced_on: 2026-09-20
