@@ -118,3 +118,32 @@ one each in Lanes E and F). The pattern is consistent enough to name: **a lane v
 mechanism exists and can fail, then reports it as failing, without measuring whether any live
 caller reaches it.** The consolidated package must state, for every hazard it carries, whether a
 live path reaches it today.
+
+## CONFIRMED — Lane C F1: a LIVE path deletes the protected Gochara capital
+
+This one passes the live-path test that the three corrections above failed. Every link
+re-measured at its authority:
+
+| # | Link | Evidence |
+|---|---|---|
+| 1 | The Clear route loads the registry **unfiltered** | `platform/src/app/api/cockpit/clear/route.ts:114-117` — `SELECT … FROM asset_registry ORDER BY layer, sort_order`. No `WHERE is_active`. |
+| 2 | Scope filtering does not restore it | `platform/src/lib/cockpit/clearScopeFilter.ts` — the `layer` branch returns `r.layer === scopeTarget && allowedScopes.includes(r.scope)`. `is_active` appears nowhere in the file. |
+| 3 | The retired asset is in scope and points at live capital | live `asset_registry`: `ka_gochara_sweep` — `is_active=false`, `layer=kala`, `scope=per_chart`, `target_table=kala_gochara_windows`. |
+| 4 | **So does the ACTIVE asset** | `ka_gochara` — `is_active=true`, `target_table=kala_gochara_windows`, while its `count_sql` reads `kala_gochara_windows_v2 … generation='2.0'` and its writer (`ka_gochara.py:120,336,362`) writes `_v2`. The active row's `target_table` points at a table its writer never touches. |
+| 5 | The protection table is empty | live: `SELECT count(*) FROM build_protected_assets` → **0**. `route.ts:122` is the only protection lookup and it returns nothing, for every chart. |
+| 6 | The fallback reaches a DELETE | `route.ts:186-187` — `isClearable = deleteSql != null \|\| asset.target_table != null`. The route's own authz test docstring (`__tests__/route.authz.test.ts:14`) states the effect: "`DELETE FROM <target_table> WHERE chart_id=$1` across every build-derived" table — and its fixture at `:68` is literally `target_table: 'kala_gochara_windows'`. |
+| 7 | No database-level guard exists | positive control, live: non-internal triggers on ANY `kala_%` table → **0**. The guard a code comment attributes to migration 540 is not present (migration 588 dropped it). |
+| 8 | Rows at risk | `kala_gochara_windows` → **40,117 rows**. |
+
+**Conclusion.** A layer-scoped Clear on `kala` issues `DELETE FROM kala_gochara_windows WHERE
+chart_id=$1`, and nothing in code, registry or database prevents it. Because link 4 shows the
+ACTIVE asset carries the same `target_table`, **filtering out retired assets would not save these
+rows** — the registry's own `target_table` is wrong for `ka_gochara` and that is the deeper fault.
+
+This is the single most consequential finding of the readiness exercise: the native's Gochara v0.3
+plan treats this capital as protected, and it is not. Severity: **BLOCKS-CAMPAIGN** for any work
+that touches the Gochara family, and a standing hazard for the cockpit regardless of the campaign.
+Remediation is cheap and belongs BEFORE any Gochara work: correct `ka_gochara.target_table` to
+`kala_gochara_windows_v2`, add `is_active` to the clear route's registry query, and populate
+`build_protected_assets` (or restore a database-level guard) so the protection is not merely a
+comment.
