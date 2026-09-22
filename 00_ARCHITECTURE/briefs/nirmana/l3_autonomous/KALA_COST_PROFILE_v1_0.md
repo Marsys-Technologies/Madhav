@@ -2,7 +2,7 @@
 artifact: KALA_COST_PROFILE
 canonical_id: KALA_COST_PROFILE
 version: "1.0"
-status: MEASURED
+status: PARTIAL_INCOMPLETE
 date: 2026-09-22
 phase: "L3 Kāla pre-elevation setup — Phase 0.3 (measure build cost properly)"
 benchmark_contract: "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §5 Benchmark contract, adopted verbatim"
@@ -10,9 +10,35 @@ does_not_authorize: "any change; this is a measurement"
 production_writes: "NONE — production was read-only throughout; every build ran on a disposable local Postgres that was torn down"
 supersedes: none
 raw_logs: "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/setup/cost_runs/"
+completeness: "SECTIONS 1, 2 and 5 are complete. SECTIONS 3, 4 and 6 were NOT WRITTEN — the five cost profiles and the per-asset table are ABSENT. Do not read this document as a measurement of Kala build cost; it is an adopted benchmark contract, a proven method, and a completed estimated_seconds finding."
 ---
 
-# Kāla (L3) cost profile — measured
+# Kāla (L3) cost profile — PARTIAL
+
+> ## ⚠️ THIS DOCUMENT IS INCOMPLETE — read this before §1
+>
+> Phase 0.3 was **not finished**. Its authoring session was interrupted, and the campaign
+> subsequently closed without resuming it. What is here is real and verified; what is missing
+> is the part a reader would most expect to find.
+>
+> | Section | State |
+> |---|---|
+> | §1 benchmark contract adopted verbatim + full environment declaration | **COMPLETE** |
+> | §2 method (harness, trigger-function trap, seeding, repeated runs, tolerances) | **COMPLETE** |
+> | §3 the five cost profiles | **ABSENT — NOT MEASURED** |
+> | §4 per-asset table (22 active `ka_*` identities) | **ABSENT — NOT MEASURED** |
+> | §5 `estimated_seconds` finding and retirement specification | **COMPLETE** |
+> | §6 what these numbers do and do not establish | **ABSENT** |
+> | §7 teardown proof | **written below, after the fact — see §7** |
+>
+> **Therefore: no cost profile has been measured for any Kāla asset by this document.** The
+> ~7.5 h figure for `ka_kshetra` quoted in §5 is carried in from a prior lane, not measured here.
+> Strategy §5's five profiles — new chart, unchanged replay, dependency correction, extended
+> horizon, precise on-demand inquiry — all remain **unmeasured**, and Phase 0.3 is therefore
+> **open**, not discharged. It is listed as such in `KALA_PHASE01_CLOSE_v1_0.md`.
+>
+> What §5 establishes stands on its own and does not depend on the missing sections.
+
 
 > **What this document is.** A measurement of what the 22 active `ka_*` identities cost
 > to compute, under the benchmark contract the Kāla strategy sets for itself, plus a
@@ -444,7 +470,9 @@ never to assert a complete dependency graph. Strategy §6.3's own warning applie
 
 ### §2.8 Teardown — proof
 
-See §7. The instance was stopped, its port proved unbound, and its data directory removed.
+See **§7**, which records what actually happened: the instance **outlived** the authoring
+session's interrupt and was torn down afterwards by the orchestrating session, not by the
+session that created it.
 
 ## §5 — `asset_registry.estimated_seconds`: what it is, who reads it, and how to retire it
 
@@ -808,3 +836,40 @@ If the native chooses **(c)**, a no-op predicate is required, and it does not ex
 `build_run_assets` can separate a real build from a no-op**, and any re-baselined
 `estimated_seconds` would reproduce exactly the defect this section documents.
 
+## §7 — Teardown, recorded honestly
+
+The disposable instance (`/tmp/kc0`, port 59520, database `kcost`) was **not** torn down by the
+session that created it. That session was interrupted mid-work, and the Postgres instance was
+still running afterwards — verified alive with 402 tables and 155 functions. It was torn down by
+the orchestrating session at the close of the campaign.
+
+This distinction is recorded rather than smoothed over because §2.8's original wording ("the
+instance was stopped…") would have read as though the authoring session had done it. Under
+CLAUDE.md §N.8 a claim is only as good as the code path that could make it read false; here the
+honest statement is that teardown happened, late, and by a different actor.
+
+Executed teardown, with output:
+
+```
+$ pg_ctl -D /tmp/kc0/data stop -m fast
+waiting for server to shut down.... done
+server stopped
+
+$ lsof -ti :59520
+(no output — unbound)
+
+$ pg_isready -h /tmp/kc0 -p 59520
+/tmp/kc0:59520 - no response          # exit=2
+
+$ rm -rf /tmp/kc0 && ls -d /tmp/kc0
+ls: /tmp/kc0: No such file or directory
+
+$ ps -Ao pid,command | grep "[k]c0/data"
+(no output — no stray processes)
+```
+
+All five disposable-harness ports used across this campaign (59500, 59510, 59520, 59530, 59540)
+were confirmed unbound, and all five data directories (`/tmp/kx`, `/tmp/kp0`, `/tmp/kc0`,
+`/tmp/kb1`, `/tmp/kg2`) confirmed removed, at campaign close.
+
+**No production database was written to at any point in Phase 0.3.**
