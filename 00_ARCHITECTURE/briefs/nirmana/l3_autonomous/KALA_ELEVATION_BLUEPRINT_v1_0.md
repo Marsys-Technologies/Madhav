@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.9"
+version: "2.0"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.0 (2026-09-23): §9 rewritten as the native's actual decision queue — it predated every finding of 23 Sep. Adds D6 (node frame + its paired disposition + the two sibling conventions), D7 (M-3 producer shape and owner), and the two items that are cheap and unblock others. The 65.3″ bound is now reproduced by three sessions independently."
   - "1.9 (2026-09-23): the Moshier node bound is 65.3″ over the full 55,152-knot domain — both earlier sparse samples under-reported it (mine by half). Natal-pāda safety is 2.7×, not 'well under'. New rule: a sample is not a bound."
   - "1.8 (2026-09-23): the 14.82″ method gap IS nutation in longitude — verified identical; so the three sessions' figures were one value under two ayanāṃśa conventions, both giving pāda 4. Moshier's true-node error measured at ≤32.5″ (1950–2100), retiring 'unbounded' — and that bound is what makes the natal pāda reportable and the stored-knot pāda not. §11.7 gains two counterexamples."
   - "1.7 (2026-09-23): natal figures corrected by 14.82″ — my manual tropical−ayanāṃśa subtraction disagrees with FLG_SIDEREAL, and L1's stored RAH_MEAN arbitrates for the latter. A THIRD undeclared convention (ayanāṃśa application method). §11.10 refined: the epoch is declared correctly in code, never in the data, and the fix extends the row's existing ayanamsha_id pattern."
@@ -403,19 +404,46 @@ F03). Not row counts. Not agreement counts. Not longer prose.
 
 ## §9 — Decisions, holds, risks
 
-**Decisions (the native's, gating stage 4+):** D1 release the W1 hold under the frozen generation
-design · D2 receipts for the two missing states (an enum member; no migration) · D3 the three
-protected classes · D4 tithi-praveśa source qualification · D5 baseline authority — all in
-`KALA_PHASE2_DECISIONS_v1_0.md`; plus Q1–Q8 of the elevation plan and each brief's own list.
+Rewritten at v2.0: the original predated every finding of 23 September. Ordered by what each
+unblocks, not by when it was raised.
 
-**Holds (not decisions):** W1 on the cutover; century v3 on its BUILD-PROTECTED guard; Kshetra
-populated replacement until W7; Bhavishya until its W6 packet; RI-01 on production-owner authority.
+### 9.1 The native's decision queue
 
-**Risks:** an L2 rebuild during the campaign empties five tables again (mitigation: build-order rule
-+ `cascade_check.sql` until W1); Pūrṇa and L3 collide on `kala_views` (mitigation: interface packets
-only); the three brief sessions write into foreign worktrees (found; fix in §7); decision latency
-idles the fleet (mitigation: recommendations attached, one sitting); every cost number is
-unmeasured until Phase 0.3 lands (mitigation: no schedule promised before it).
+| # | Decision | Unblocks | Recommendation |
+|---|---|---|---|
+| **D6** | **Node frame** — mean or true — **and its paired disposition** (§11.2): (a) rebuild `ephemeris_daily` mean, (b) keep true knots and derive mean at read with the disagreement declared per row, (c) mixed-frame per consumer. Rule the **two sibling conventions with it**: the undeclared **epoch** and the undeclared **ayanāṃśa application method** (§11.10–11.12). | Every Kāla rebuild; three critical assets; an L0 repair | Mean frame (it is what L1 stores, F27); **(b)** for the disposition — it never consumes the knot, so it is immune to the §11.13 knife edge; and declare all three conventions on the row, extending the `ayanamsha_id` pattern the table already has |
+| **D1** | Release the W1 hold under the frozen generation design | Stage 4+ for all 22 assets | Yes — the design is already accepted at W0; this releases a hold, it does not adopt a design |
+| **D7** | **M-3** — the directed contact-event producer: **shape** (Path A, a bounded `transit_search` amendment; or Path B, the Gochara kernel) **and owner** (§11.3) | Saṅgam E1/E3 | Shape is yours; the owner must be named either way. Path B is gated on that brief's own N-5/N-7, so E1/E3 is not unblocked by a proposal |
+| **D2** | Receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | The headline metric past `DATA_ACCEPTED` | Add the enum member; **no migration needed** |
+| **D3** | The three protected classes | Safe rebuild semantics | Confirm: sweep snapshot, issued claims/observations, retained outcomes |
+| **D4** | Tithi-praveśa source qualification | That asset's `DATA_ACCEPTED` | Needs a source steward; its own citation reads `not_in_corpus` |
+| **D5** | Baseline authority | Proof discipline | L3-Q01–Q13 + the §14 proving set + one ordinary period |
+
+Plus Q1–Q8 of the elevation plan and each brief's own list. Full evidence and options:
+`KALA_PHASE2_DECISIONS_v1_0.md`.
+
+**Two items that are cheap and unblock others:** D2 (one enum member) and D3 (a confirmation).
+Ruling those two costs little and removes a ceiling and a safety ambiguity from every other lane.
+
+### 9.2 Holds (not decisions — they clear on evidence, not on a ruling)
+
+W1 on the production cutover · century v3 on its BUILD-PROTECTED guard — **and note the guard may be
+residue: the stored error predates migration 588's removal of it by two days, and there is currently
+no database guard at all** (carried from the Gochara session, unverified here) · Kshetra populated
+replacement until W7 · Bhavishya until its W6 packet · RI-01 on production-owner authority.
+
+### 9.3 Risks
+
+An L2 rebuild during the campaign empties five tables again (mitigation: build-order rule +
+`cascade_check.sql` until W1) · Pūrṇa and L3 collide on `kala_views` (mitigation: interface packets
+only) · decision latency idles the fleet (mitigation: recommendations attached; D2 and D3 are one
+sitting) · every cost number is unmeasured until Phase 0.3 lands (mitigation: promise no schedule
+before it) · **numerical gates built on unverified backends** — the §11.7 rule and the 65.3″ bound
+exist because two sessions nearly anchored a gate on a figure 200× finer than its own reference.
+
+**Resolved since v1.0:** the three brief sessions now work in their own worktrees. One residue: the
+Kshetra session's **stale v1.0 brief is still on `main`** under this session's sweep (§11.5) — do not
+cite that path until its v4.0 lands.
 
 ## §10 — What this blueprint does not establish
 
@@ -600,8 +628,9 @@ samples of it.** Moshier's true-node error against Swiss, computed at **every** 
 1950-01-01 to 2100-12-31 (**n = 55,152**, `retflag` asserted Swiss on every call): **min −58.1″, max
 +65.3″, worst 65.3″ on 1972-11-20.** Two earlier sparse estimates both under-reported it in the same
 direction — a five-date sample said 18.1″, my sixteen-date decade sample said 32.5″, the truth is
-**65.3″**, half as much again as my figure and over three times the other. Independently reproduced
-here to the arcsecond and the date.
+**65.3″**, half as much again as my figure and over three times the other. **Independently reproduced by three
+sessions** — measured by the Gochara session, reproduced here and by the Saṅgam session, each to the
+arcsecond and the date.
 
 That bound is what separates a reportable figure from an unreportable one, with the real ratios:
 
