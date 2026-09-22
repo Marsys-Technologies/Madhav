@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.9"
+version: "3.0"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.0 (2026-09-23): my own OCR caveat corrected — PG346-352 is a COMPLETE, legible primary construction of the Sarvatobhadra chakra; only the diagram page is degraded, and the prose rules make it unnecessary. G10 re-graded again, to BUILDABLE. §11.25 closes the day with the W0 corpus re-audit task."
   - "2.9 (2026-09-23): the wrong corpus list is HARDCODED IN PRODUCTION CODE with a verification claim behind it (ka_vedha_gochara/logic.py). And the Sarvatobhadra grid IS in the corpus at phaladeepika PG345/PG332 — G10 re-graded from unsourceable to OCR-blocked. New §11.24."
   - "2.8 (2026-09-23): §11.18 mechanism corrected — a lock is not a configuration; the 0.314″ origin is v3_spline_accuracy.py, decorated but unconfigured. New §11.22: M-1's 'no node dṛṣṭi' would flip a LIVE multiplicative term in the served λ (gochara_v3, not ka_sangam) and invalidate every stored λ. Six-rule ledger consolidated."
   - "2.7 (2026-09-23): §11.15 CITATION STRIKE RETRACTED IN ITS CENTRAL CLAIM. Phaladeepika IS in the served corpus (564 chunks, 17 vedha rows, the actual Adhyāya XXVI vedha + laṭṭā doctrine at PG322/323/339). My admitted-corpus list was a SOURCE_DATA directory listing, not the corpus. Ruling 8 rests on this. New §11.21."
@@ -1203,15 +1204,76 @@ memory because regional traditions disagree. That worry is unnecessary:
 Same Adhyāya XXVI as the vedha rules and the laṭṭā rules. There are **ten** rows corpus-wide matching
 `sarvato`; nobody had looked, because a docstring said not to.
 
-**The honest limit, stated so this does not swing too far the other way.** These pages are severely
-OCR-degraded — the grid renders as scattered tokens, not a table. Present in the corpus is not the
-same as extractable today. Recovering a reliable 9×9 layout will need a re-OCR of two known pages
-against the source images, and it should still land with the checkable partition invariant the
-docstring itself proposed. But that is a **bounded task with a named target**, which is a different
-thing entirely from "unavailable, do not attempt." G10 is re-graded accordingly.
+**My first OCR caveat here was itself over-stated, and I am correcting it (see §11.25).** I wrote
+that the pages are severely degraded and need a re-OCR against source images. That is true of
+**`PG345:C1` alone**, which is the diagram page — a figure, so of course it OCRs as scattered
+tokens. I generalized from it to the whole span without reading the rest. The Saṅgam session read
+further and was right: **`PG346:C1`–`PG352:C1` is a complete primary construction in legible
+prose**, ~1,400 characters per page, and I have now read all eight.
 
 **The governance point, which outlives all of this.** Three sessions converged on a wrong answer
 because all three inherited it from the same docstring. Convergence is not confirmation when the
 premise is shared. The only thing that broke it was reading the table with `count(*)`. Whenever an
 artifact claims a corpus fact — present, absent, admitted, unqualified — the check is a query
 against `classical_text_chunks`, not a search tool and not another document's assurance.
+
+### 11.25 The Sarvatobhadra construction is complete and legible — G10 re-graded again, to buildable
+
+I read `PG345:C1`–`PG352:C1` in full rather than infer from the first page. The construction is
+there, in prose, and the degraded diagram page is not needed to build it:
+
+- **`PG346:C1`** — the grid, stated as an instruction: *"Draw ten lines vertically and another ten
+  lines crosswise over the same. You will have 81 squares. Write in the regular order the 16 vowels
+  from onwards in the corner squares commencing…"* This is the 9×9 layout the
+  `ka_vedha_gochara` docstring said could not be recovered without fabricating one.
+- **`PG347:C1`** — weekday/tithi groups; the malefic set (Saturn, Sun, Rāhu, Ketu, Mars), Mercury
+  conditionally malefic in malefic association, the waning Moon likewise.
+- **`PG348:C1`** — the motion-dependent vedha direction rule: *"In the case of Rahu and Ketu, which
+  are always retrograde, the Vedha will be on the right, and in the case of the Sun and the Moon
+  which move direct … the Vedha will be on the left."*
+- **`PG349:C1`** — the five-fold effect scale: agitation, fear, loss, disease, death.
+- **`PG350:C1`–`PG351:C1`** — effects by motion, own-weekday vedha, directional/quarter effects.
+- **`PG352:C1`** — the sensitive-star set: Janmabha/Janmarkṣa, the 10th as Karmabha, the 19th, etc.
+
+**So G10 moves a second time: from "unsourceable" to "OCR-blocked" to buildable.** The SBC grid
+tables are empty because nobody populated them, not because no source exists. That is now an
+ordinary build task against a cited primary, and the checkable partition invariant the docstring
+proposed can be applied to a transcription rather than to an invention.
+
+**My own error here is the sparse-sample rule again**, one day after I named it. I read the first
+page of an eight-page span, found it illegible, and published a caveat about the span. The Saṅgam
+session read the rest. **A sparse sample is not a bound, and page one is not a chapter.**
+
+**Two refinements adopted from the other sessions, both table-verified by them:**
+
+1. Adhyāya XXVI carries **two distinct 1-5 vedha-count scales**, at `PG349` and `PG353`.
+   `bg_vedha_malefic_scale` cites the PG353 one and should say which it cites — two scales in one
+   chapter is precisely where an unpinned citation drifts.
+2. The retrieval layer ranked the load-bearing Adhyāya XXVI chunk **7th of 12** on a vedha query,
+   behind nāḍī and muhūrta noise. So a `top_k=5` search "proves" absence of the very text that
+   answers the question. That is the mechanism behind every absence error in this chain.
+
+### 11.26 W0 task: re-audit every corpus-absence claim in the codebase
+
+Every "no source in the corpus" claim any of us relied on was made against a **directory listing**,
+not the table, and the three that have been checked are all false: Phaladīpikā is admitted; the SBC
+is sourced; `kp`/`kp_reader` do not exist as texts at all. The claims live in production code and
+migrations, not only in our documents — `ka_vedha_gochara/logic.py`, and (per the Saṅgam and Kṣetra
+sessions) migrations 526 and 528.
+
+**Re-opened pending a `count(*)`, none of them yet checked:** Kota, kakṣyā, muntha, sade-sati
+("KP Reader only" — and KP is not in the corpus), the sandhi band, and the tithi-praveśa
+`not_in_corpus` disposition. Each may well survive the check. None of them has had one.
+
+**The method rule, which all four sessions converged on independently and which belongs in doctrine
+rather than in four packets:** an absence claim about the corpus is made by a `count(*)` against
+`classical_text_chunks` naming the predicate. Never a directory listing. Never a search tool, whose
+ranking demonstrably buries the answer. And never another artifact's assurance that it already
+checked — "confirmed by direct search, not assumed" was the sentence that propagated this error into
+three analyses and a native ruling inside one day.
+
+**The governance finding this day produced, which outranks any individual defect above:**
+**convergence between independent sessions is not independent confirmation when they inherit a
+shared premise.** Four sessions agreed. The agreement was real, the independence was not, and only a
+direct query broke it. Any review protocol that treats cross-session agreement as verification needs
+this caveat written into it.
