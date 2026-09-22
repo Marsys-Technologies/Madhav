@@ -1,6 +1,6 @@
 ---
 artifact: SANGAM_RULING_SUMMARY_FOR_NATIVE
-version: "1.1"
+version: "1.2"
 status: FOR_NATIVE_RULING
 date: 2026-09-23
 reference: SANGAM_RULING_SHEET_v1_0.md (this is the plain-language face of that sheet; the sheet governs where they differ)
@@ -64,8 +64,9 @@ currently written as twelve zeros, indistinguishable from a measured zero.
 elevations (E1, E3) cannot start until you say which stands.
 *Recommendation:* **re-affirm §4.5 as the mechanism** (Saṅgam consumes events, doesn't scan), keep
 §4.6's planet-attribution as a refinement, and grant a *bounded* fast tier — Moon and Sun positions,
-tārā-vedha stars, and laṭṭā contacts (reusing the served vedha producer; those two enter as
-*unqualified* until source-qualified), computed only inside an already-qualified slow window, every
+tārā-vedha stars, and laṭṭā contacts (reusing the served vedha producer — and note: *every* vedha
+row, house-vedha included, is "unqualified" today, because the only text it rests on, Phaladīpikā
+Ch. 26, is not yet in the admitted corpus; that lifts per row once the text is admitted), computed only inside an already-qualified slow window, every
 such contact enumerated with **no cap**, and **never counted as extra witnesses**. Two smaller
 questions ride along: is the Sun in the slow set as a calendar witness? and mark the old READY
 prompt superseded-and-reissued? **The catch:** someone upstream must *produce* those events — either
