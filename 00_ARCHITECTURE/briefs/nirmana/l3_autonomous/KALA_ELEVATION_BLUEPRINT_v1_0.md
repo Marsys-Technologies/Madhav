@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.1"
+version: "2.2"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.2 (2026-09-23): §11.15 — the BPHS Ch.29 strike propagates: 39 of 41 vedha-bearing transit rules cite that non-existent gochara chapter, the other 2 cite Phaladīpikā which is not in the admitted corpus, so ZERO vedha rules are corpus-verifiable and the layer has no source-qualified ordinary reference today. Added to §9 as D8."
   - "2.1 (2026-09-23): §11.14 — three defects from the Kshetra packet, all verified here: a wrong classical citation inside an INDEPENDENTLY ACCEPTED W0 record; a coverage gap declaring a table absent that holds 8 live rows; and the stored field being chart-wide where its contract says route-scoped."
   - "2.0 (2026-09-23): §9 rewritten as the native's actual decision queue — it predated every finding of 23 Sep. Adds D6 (node frame + its paired disposition + the two sibling conventions), D7 (M-3 producer shape and owner), and the two items that are cheap and unblock others. The 65.3″ bound is now reproduced by three sessions independently."
   - "1.9 (2026-09-23): the Moshier node bound is 65.3″ over the full 55,152-knot domain — both earlier sparse samples under-reported it (mine by half). Natal-pāda safety is 2.7×, not 'well under'. New rule: a sample is not a bound."
@@ -417,7 +418,8 @@ unblocks, not by when it was raised.
 | **D7** | **M-3** — the directed contact-event producer: **shape** (Path A, a bounded `transit_search` amendment; or Path B, the Gochara kernel) **and owner** (§11.3) | Saṅgam E1/E3 | Shape is yours; the owner must be named either way. Path B is gated on that brief's own N-5/N-7, so E1/E3 is not unblocked by a proposal |
 | **D2** | Receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | The headline metric past `DATA_ACCEPTED` | Add the enum member; **no migration needed** |
 | **D3** | The three protected classes | Safe rebuild semantics | Confirm: sweep snapshot, issued claims/observations, retained outcomes |
-| **D4** | Tithi-praveśa source qualification | That asset's `DATA_ACCEPTED` | Needs a source steward; its own citation reads `not_in_corpus` |
+| **D8** | **Corpus admission** — admit Phaladīpikā (± Sārāvalī / Jātaka Pārijāta), or re-grade every gochara-vedha row as cited-outside-admitted-corpus (§11.15) | Any vedha reaching `applied` in **all three** consumers; the vedha half of transit qualification | Rule the uniform `corpus_verifiable` stamp either way — the three streams have already converged on the mechanism, so this is one ruling, not three |
+| **D4** | Tithi-praveśa source qualification — **and note this is the path to the layer's FIRST source-qualified ordinary reference**, not one asset's paperwork (§11.15) | That asset's `DATA_ACCEPTED`; the layer's qualification story | Needs a source steward; its own citation reads `not_in_corpus` |
 | **D5** | Baseline authority | Proof discipline | L3-Q01–Q13 + the §14 proving set + one ordinary period |
 
 Plus Q1–Q8 of the elevation plan and each brief's own list. Full evidence and options:
@@ -811,3 +813,45 @@ fourth site, because there is no split. Contract ≠ behaviour, not field ≠ nu
 reviewer's consequence while accepting the finding is the right discipline and worth recording as
 such. The native's decision is which semantics governs, gated on a byte-equality test
 `field ≡ null ≡ projection` before any `null_p` is served.
+
+### 11.15 The citation strike propagates: the layer has no corpus-verifiable vedha source
+
+Consequence of §11.14(a), raised by the Kshetra session, cross-checked by the Gochara session,
+measured independently here against `bg_transit_rules` where `vedha_house IS NOT NULL`:
+
+| Citation | Rules |
+|---|---|
+| `BPHS Ch.29 (Gochara Phala — Transit Results)` | **39** |
+| `Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)` | **2** |
+
+BPHS Volume 1 Chapter 29 is *Bhāva Padas* (§11.14a) — so **39 of 41 vedha rules, 95% of the set,
+cite a gochara chapter that does not exist.** The remaining 2 name the right work; the admitted
+corpus holds `BPHS · Jaimini_Sutram · KP · KP_Reader` and **no Phaladīpikā** (0 matches under
+`SOURCE_DATA`). So after the strike **zero vedha rules are corpus-verifiable.**
+
+Two consequences the native should see plainly:
+
+1. **`FOUNDATION_SAFETY §5:207-209`'s claim does not hold as written.** It names "the existing
+   source-qualified ordinary reference" and the thing it names is the wrong chapter. That record's
+   41 passing tests (`test_ka_vedha_gochara*.py`) prove geometry and interval behaviour — which is
+   **computational correctness, not source qualification** (F24 keeps those tiers separate). A
+   correction note belongs on that record; no L3 session edits it silently.
+2. **The layer currently has no source-qualified ordinary reference at all.** Not just vedha:
+   `ka_tithi_pravesha`'s own citation reads `not_in_corpus`, and Sarvatobhadra is an acknowledged
+   approximation. So D4 (tithi-praveśa qualification) is not one asset's paperwork — it is the path
+   to the layer's **first** honest source-qualified reference, which changes its priority.
+
+**The three streams have already converged on the mechanism**, which is why this needs ruling once
+rather than three times. The producer stamps every `ka_vedha_gochara` row with
+`source_qualification ∈ {verse_cited, algorithmic_approximation, unsourced}`, `precision_regime ∈
+{date_grain, instant_grain}` and **`corpus_verifiable`** (is the cited text actually in the admitted
+corpus). Consumer admission is then uniform and mechanical: **F06 `applied` iff `corpus_verifiable`
+AND the Vedha geometry conjuncts pass; otherwise `unqualified`.** Today that admits nothing —
+house-vedha, sarvatobhadra and laṭṭā all enter unqualified in all three consumers — and the policy
+lifts row by row as the stamp flips, with no plan needing re-ruling. This also corrects an
+inconsistency the Gochara session caught in Kshetra's earlier draft, where house-vedha was applied
+and laṭṭā unqualified on one stated ground.
+
+**The fix is a corpus/L0 decision, not an L3 one** (Gochara's G-9): admit Phaladīpikā — and
+Sārāvalī / Jātaka Pārijāta if the non-vedha rows citing them are to stay verse-cited — or re-grade
+every gochara-vedha row uniformly as *cited-outside-admitted-corpus*. Routed to the corpus owner.
