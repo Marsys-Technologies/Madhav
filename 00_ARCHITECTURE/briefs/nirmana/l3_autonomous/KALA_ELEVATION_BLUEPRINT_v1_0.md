@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.4"
+version: "2.5"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.5 (2026-09-23): RETRACTION — my ScannerError diagnosis of PR #2722's file was my own naive splitter, not the gate. The file had no byte-0 frontmatter at all. §11.17 rewritten; new rule: a naive parser is not the gate. G18 item 1 (scope) and the constructed in-scope parse-blindness finding both survive."
   - "2.4 (2026-09-23): new G18 + §11.17 — the governance frontmatter gate is blind to the entire briefs tree (0 files matched by any governed glob) AND, for files it does govern, a YAML parse failure produces zero violations. Measured, not read."
   - "2.3 (2026-09-23): §11.5 stale-brief warning now points at PR #2722 (supersedes in place, v4.3). New §11.16: a `set -e` chain is not a detector — recorded against this session's own rails, not only a peer's."
   - "2.2 (2026-09-23): §11.15 — the BPHS Ch.29 strike propagates: 39 of 41 vedha-bearing transit rules cite that non-existent gochara chapter, the other 2 cite Phaladīpikā which is not in the admitted corpus, so ZERO vedha rules are corpus-verifiable and the layer has no source-qualified ordinary reference today. Added to §9 as D8."
@@ -874,36 +875,49 @@ guards is not a detector.** Migration 624 asserted a node frame it never measure
 asserts a validation it does not enforce. Verification steps should assert explicitly and gate the
 commit on their own exit status, not lean on shell semantics.
 
-Concrete instance found while checking PR #2722: four of its five frontmatter blocks parse; the
-fifth, `KIMI_K3_REVIEW_KSHETRA_v1_0.md`, still fails (`ScannerError`, frontmatter line 5 — prose
-inside the `---` fences). The earlier fix landed on a different file than the one still broken.
+Concrete instance found while checking PR #2722: one file, `KIMI_K3_REVIEW_KSHETRA_v1_0.md`, was
+missing frontmatter entirely rather than carrying a broken block — see §11.17 for the retraction of
+my first diagnosis of it. Both files now carry real byte-0 frontmatter (`29bddaa2b`), and that
+session's commit chain now runs its parse gate as its own step with an explicit `|| exit 1` rather
+than trusting `set -e`.
 
-### 11.17 The governance frontmatter gate is blind in two independent ways (measured)
+### 11.17 The governance frontmatter gate is blind in scope — and my first diagnosis of PR #2722 was wrong
 
-The Kshetra session shipped a file whose frontmatter does not parse and noted that if the
-Governance schema gate flagged anything, that would be where to look. It will not flag it. I
-measured both reasons against `platform/scripts/governance/schema_validator.py` and
-`schemas/artifact_schemas.yaml` rather than reasoning from the source:
+Two findings here, one of which is a retraction of my own.
 
-**1 — Scope.** Eleven class/glob pairs exist in total. Expanding every one of them against the repo
-matches **zero files under `00_ARCHITECTURE/briefs/`**. The governance class that would otherwise
-cover us is `architecture_governance`, whose glob is `00_ARCHITECTURE/*.md` — a single-level
-pattern that does not descend. Every artifact this campaign has produced — this blueprint, the three
-asset briefs, the ruling sheets, the packets — sits outside the gate entirely.
+**RETRACTED — the ScannerError I reported was mine, not the gate's.** I told the Kshetra session its
+file failed to parse at "frontmatter line 5, column 4," a `**bold**` prose line inside the fences.
+That was an artifact of my own checker, which split on the first `---` *anywhere* in the file. The
+real file, at `c83309a00`, had **no frontmatter block at all** — it opened with `#`. My splitter had
+seized on an interior horizontal rule and called the prose beneath it a frontmatter block. The gate's
+own `_FRONTMATTER_RE` is used with `.match()`, which is anchored at byte 0, so it would have read
+that file as *missing* frontmatter, a different violation class from the one I named. The Kshetra
+session caught this and was right. Both files now carry real byte-0 frontmatter at `29bddaa2b`.
 
-**2 — The gate does not fail on a parse failure even in scope.** In
-`validate_frontmatter_for_class`, a `yaml.safe_load` failure does not raise a violation. It sets a
-`__loose_yaml__` marker and falls back to a line-start regex scan for the required keys, at severity
-`LOW`. Run against the exact broken shape (a `**bold**` prose line inside the fences, which YAML
-rejects as an alias indicator), all three required keys are still found by the regex, so the file
-produces **zero violations and exit code 0.** Even had a `LOW` fired, `compute_exit_code` returns 3,
-and exit 3 is the band `ONGOING_HYGIENE_POLICIES` maintains a `known_residuals` whitelist for.
+**Rule earned, alongside "a date is not an epoch" / "a flag is not a backend" / "a sparse sample is
+not a bound": a naive parser is not the gate.** When reporting what a gate will do, run the gate's
+own matcher, not a reimplementation of it. Mine differed from the real one in exactly the way that
+produced a confident, specific, wrong line number — the most credible-looking kind of error.
 
-So PR #2722's clean CI run is not evidence its frontmatter is well-formed. It is evidence that
-nothing looked. This is exactly §N.8: *what code path would have to run, and fail, for this signal
-to correctly read false?* For frontmatter parseability in this tree, there is none.
+**STANDS — scope.** Independently measured and unaffected by the above: expanding all eleven
+class/glob pairs in `schemas/artifact_schemas.yaml` against the repo matches **zero files under
+`00_ARCHITECTURE/briefs/`**. The class that would cover us, `architecture_governance`, globs
+`00_ARCHITECTURE/*.md` — single-level, does not descend. Every artifact this campaign has produced
+is ungoverned. The Kshetra session reached the same conclusion independently and noted that Saṅgam's
+two identically-shaped Kimi files are already on `main` unchallenged, which corroborates it.
 
-**The fix is small and belongs in W0**, not later: add a `briefs/**` glob to the campaign-artifact
-class, and make a YAML parse failure a violation in its own right rather than a silent downgrade to
-a regex scan. The second half matters more than the first — extending scope to a gate that cannot
-fail only widens the reach of a green light nothing earned.
+**STANDS, as a constructed finding — the gate does not fail on a malformed block it *does* reach.**
+For a file that is in scope and does open with `---` at byte 0, a `yaml.safe_load` failure raises no
+violation: `validate_frontmatter_for_class` sets a `__loose_yaml__` marker and falls back to a
+line-start regex scan for the required keys at severity `LOW`. I tested this with a constructed
+byte-0 block containing broken interior YAML: all three required keys were still found by the regex,
+so the file produced **zero violations, exit 0**. Even a `LOW` returns exit 3, the band
+`ONGOING_HYGIENE_POLICIES` keeps a `known_residuals` whitelist for. This was never PR #2722's
+situation — it is a latent hole, found while chasing a defect that turned out to be mine.
+
+**Net, for W0.** A clean CI run on a briefs-tree artifact is not evidence its frontmatter is
+well-formed; nothing looked. Two small fixes belong in W0: extend the campaign-artifact class to
+`briefs/**`, and make a YAML parse failure a violation in its own right instead of a silent
+downgrade to a regex scan. The second matters more — widening the reach of a gate that cannot fail
+only spreads a green light nothing earned. That is §N.8 read against our own tooling: *what code
+path would have to run, and fail, for this signal to correctly read false?*
