@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CRITICAL_REVIEW
 canonical_id: KALA_PRE_ELEVATION_CRITICAL_REVIEW
-version: "1.0"
+version: "1.1"
 status: AWAITING_NATIVE_RULING
 date: 2026-09-22
 reviewed_against:
@@ -16,6 +16,9 @@ reviewed_artifacts:
   - KALA_ELEVATION_READINESS_PACKAGE_v1_0.md (7 lanes)
   - "the four-phase pre-elevation plan the native approved ('rest all is good') — exists ONLY in conversation; no artifact carries it (verified by repo grep)"
 does_not_authorize: any change. Every item is a proposal until the native rules.
+changelog:
+  - "1.1 (2026-09-22): addendum §9 — the W0 tier beneath the Strategy was never read by this review; three items corrected (C1 reframed, A2 narrowed, A6 reversed) and the accepted 2026-09-15/16 source work credited. Body unchanged as audit trail."
+  - "1.0 (2026-09-22): first issue."
 ---
 
 # Critical review of the Kāla pre-elevation setup
@@ -344,3 +347,80 @@ and the seven made for this review (P0 status, v1 snapshot identity, generation 
 predicates, Clear reachability, plan-artifact absence, tithi source citation). It does not judge
 the Jyotish correctness of any asset — that is the elevation's own work. It does not resolve the
 five decisions in §6; it names them.
+
+---
+
+# Addendum §9 (v1.1) — what this review did not read, and what that changes
+
+This review was built against the five top-level authorities. It did **not** read the W0 tier
+beneath the Strategy — `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md` (status `ACCEPTED`),
+`..._W0_FIELD_CONTRACT_REGISTER_v1_0.md`, `..._W0_BENCHMARK_BASELINE_v1_0.md`,
+`..._L3_CURRENT_STATE_AND_DISPOSITION_v1_0.md`, `..._L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md`
+(DP-SD-019) — nor the execution ledger's L3 rows. The native asked whether the data-plane
+elevation strategy had been consulted; the honest answer is "the master plan yes, the tier beneath
+it no." Three conclusions change. The body above is left as written.
+
+## 9.1 C1 is reframed: the generation design is not open — it is frozen; the *physical* work is held
+
+C1 said the plan "omits the generation / compatible-dependency substrate" and made adopting it
+native decision 1. **The design was frozen and independently accepted at W0** — FOUNDATION_SAFETY §6
+(eight numbered design points: content-addressed generations, candidate vs selected heads, atomic
+layer manifest, rollback by head re-pointing, Kshetra's fifteen-table stage plan, Bhavishya's
+fail-closed rule) and CURRENT_STATE §4.4: *"This is reviewed design, not physical infrastructure."*
+What is held is **physical implementation**, on `L3-W1-UPSTREAM-GENERATIONS-01`
+(FOUNDATION_SAFETY §8 item 2), which itself waits on the RI-01 precursor release.
+
+The measurements stand (zero generation heads ever opened; 79 dangling predicates). **Decision 1
+reframes** from *"adopt the 1035/1036 pattern?"* to *"authorize the physical L3 generation
+infrastructure now, per the frozen W0 design, and state what releases the W1 hold."* Asking the
+native to re-decide an accepted design is the error; asking them to release a hold is the question.
+
+## 9.2 A2 is narrowed: the DAG/producer-use map and the field register already exist
+
+A2 asked for "the internal input/output/use matrix … every edge with its F12 operator role."
+CURRENT_STATE §4.1 already holds the source-derived DAG (81 declared entries, 32 active-L3 edges)
+with a producer/use row and W0 disposition per identity, and the field register holds 699 explicit
+fields across 39 partitions, each with producer path, grain, key role, null semantics,
+qualification code, receiver and falsifying test. **What is genuinely missing is one overlay:** the
+F12 operator role on each §4.1 edge. A2 becomes that overlay, not a matrix from scratch — and
+DP-SD-019 §6 forbids the latter in terms: *"do not build another tracker, scheduler or blanket
+per-field paperwork system."*
+
+## 9.3 A6 is reversed in framing and kept in substance: P0 is accepted; the real-DB rehearsal is not
+
+A6 said both P0 hazards "appear repaired in code; no receipt shows the required tests ran."
+**Receipts exist.** FOUNDATION_SAFETY §4.1 (Kshetra `3f109869d`: 27 focused / 133 expanded,
+independent ACCEPT) and §4.2 (Bhavishya `a3e518864`: 25 passed plus a disposable two-connection
+lock proof, independent ACCEPT); execution ledger 2026-09-15 04:04 / 04:47 / 05:01. The framing
+was wrong.
+
+What FOUNDATION_SAFETY itself still lists as not run: *"A populated real Bhavishya/Phala rehearsal
+remains not run"* (§4.2) and *"No production rehearsal is inferred"* (§4.1). The accepted proofs ran
+against a strict fake connection. A functions-first disposable-PostgreSQL rehearsal of the real
+writers is therefore **additive**, not duplicative — and the Phase 0/1 session has already built
+exactly that (`tests/l3/_p0_harness.py`, `test_ka_kshetra_p0_planning_readonly.py` with three
+independent detectors, `test_bhavishya_p0_empty_generation_db.py`). Its close-out must say
+"real-DB rehearsal added to accepted fake-based proof," never "P0 was unproven before us."
+
+## 9.4 Credit the accepted source work this review under-stated
+
+At the **t3 evidence** level, "0/22, no L3 event under the frozen definition" is true and stays
+true. At the **source-acceptance** level it was misleading to leave unstated that, on 2026-09-15/16
+under DP-SD-017/018/019: W0 passed terminal independent review at `00a161195`; W2 first-frontier
+source for eight replacements (Avadhi, Yojaka, Gochara 27-event-class completeness, Tulana typed
+fields, Dasha contracts) was accepted at `47131772b`; RI-02 provenance and security were accepted
+(`da498ebd9`); Kshetra's DHARA left-limit correction was admitted as generation
+`l3:87cc8c9baf89:002a118b218e`; and the DP-SD-019 source release gate went GREEN at `475f5ab5a`.
+None of this is deployed, physically built, or campaign-accepted — the ledger is explicit — but it
+is accepted, reviewed source, and every asset brief starts from it, not from zero.
+
+## 9.5 Two things that survive unchanged
+
+The W0 benchmark baseline is real but explicitly bounded — *"source-local, no-DB, small fixture,
+Moshier fallback; PostgreSQL rows/storage/WAL, full-chart duration … remain future packet
+measurements."* Phase 0.3's five-profile measurement is precisely that future packet. Keep it.
+And the asset-brief template the native asked for **already exists** as the reusable
+`ASSET_INTERFACE_EXECUTION_BRIEF_CONTRACT` (bound by DP-SD-017 as blob `71ff974ec…`) plus the
+skill's A–J `asset-elevation-contract.md`; `KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md` binds
+them for one Kāla asset rather than adding a fifth authority.
+
