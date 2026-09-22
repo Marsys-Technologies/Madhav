@@ -58,7 +58,7 @@ detector, never coerced onto a natal point (F-01/RR-03).
 
 **Your question.** (a) Confirm the four contracts and order? (b) Retire the legacy scan after one
 generation, or sooner? (c) **House frame for cusp targets: Placidus-as-stored (my recommendation) /
-Śrīpati (Kimi) / whole-sign only?** (d) **Node convention: mean (L1, Kimi, me) / true (scanner)?**
+Śrīpati (Kimi) / whole-sign only?** (d) **Node convention: mean (L1, Kimi, me) / true (scanner)?** — *Scope corrected 2026-09-23:* Kshetra is already mean/mean via `ephemeris_daily` (`node_mode="mean"`, migration 624:30) and does not use the scanner; the repair site is **Saṅgam's `transit_search` path** (true-node at `:10, :64`) and, if you rule *true*, `bg_ephemeris` — not Kshetra.
 (e) Any graha-dṛṣṭi for Rāhu/Ketu — which houses, on the authority of which text?
 
 ---
@@ -89,6 +89,8 @@ right — RR-02 proved reader-level recovery impossible.
 
 **Astra's constraint.** Not `BAV/8` into a nonnegative combiner (F-04/RR-05); SAV contains BAV —
 one lineage (D.3); the frame is *settled*, not open (RR-02).
+
+**Cross-stream (added 2026-09-23, from the Kshetra session, author-verified):** Kshetra's `av_kaksha_gate` covariate is a declared `not_in_corpus` gap (`stage1_symbolization.py:346`). Whichever AV source you admit here — E2's signed testimony or `ganita_av_transit_gating` directly — **Kshetra S1 must consume the same one**, so the layer carries **one AV verdict per instant** (U02). Kshetra's decision list §7 item 4 mirrors this.
 
 **Your question.** (a) **BAV = 4: indeterminate (text; Kimi; me) or support (modern practice)?**
 (b) Within "indeterminate", does 4 lean adverse (23.11 says "fear") or neutral? (c) BPHS bands
