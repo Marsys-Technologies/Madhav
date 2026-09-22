@@ -1,9 +1,9 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
 canonical_id: SANGAM_ELEVATION_BRIEF
-version: "1.3"
-status: PROPOSED_FOR_NATIVE_RULING          # APPROVED_FOR_EXECUTION only by native record
-approval_record: "<none yet>"
+version: "1.4"
+status: APPROVED_FOR_EXECUTION_STAGE_3      # native record 2026-09-23T02:42:50+05:30: SANGAM_RULING_SHEET §RULINGS; M-6 n OPEN; E1/E3 gated on Gochara N-7
+approval_record: "SANGAM_RULING_SHEET_v1_0.md §RULINGS — M-1…M-7 in writing by the native, 2026-09-23T02:42:50+05:30 (M-6 minimum n OPEN)"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 asset_or_interface_ids: ["ka_sangam", "L3-U02", "L3-U07", "L3-U04/U11"]
@@ -495,6 +495,8 @@ asserted "no `date.today()` in this asset"; a grep found three time-of-run reads
 so the reviewer knows the claim was checked, not assumed.
 
 ## Changelog
+
+- **1.4** (2026-09-23) — Native rulings M-1…M-7 recorded on the sheet and applied; status → APPROVED_FOR_EXECUTION_STAGE_3 with conditions (M-6 minimum n open; E1/E3 gated on the Gochara N-7 ruling; D30-for-DOSHA held; 6/8/12 inversion does not ship; legacy scan one generation; no node dṛṣṭi). No content change beyond frontmatter and this entry.
 
 - **1.3** (2026-09-23) — Companion amendments required by the method plan (SANGAM_ALGORITHM_
   ELEVATION_PLAN_v0_4 §7) after two independent reviews: streaming/memory claims corrected (S7);

@@ -2,7 +2,7 @@
 artifact: SANGAM_RULING_SHEET
 canonical_id: SANGAM_RULING_SHEET
 version: "1.0"
-status: AWAITING_NATIVE_RULING
+status: RULED  # M-1…M-5, M-7 ruled; M-6 ruled "agree" with minimum n OPEN (placeholder unfilled)
 date: 2026-09-23
 for: the native — seven method rulings on the Saṅgam algorithm elevation (plan v0.4 §8)
 inputs:
@@ -10,8 +10,43 @@ inputs:
   - KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0.md (Kimi K3, effort=max; read plan, both reviews, June ruling, corpus)
   - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md / _v0_3.md (constraints each ruling must respect)
 verification_by_author: "every BPHS line Kimi cited re-read at the corpus (BP1:16605-16652, 7569-7593, 22725-22742; BP2:8955-8962, 35666-35676, 42332-42369) — all verbatim; Phaladīpikā 23.10/23.11/23.20 re-read online (wisdomlib doc1621595) — verbatim; Hāyanaratna 2.1/3.3 NOT re-verified by the author (Kimi and Astra both cite the same online edition) — tagged [D-online]; Kimi's '0 dots = loss of life' not found on the page — [U]"
-does_not_authorize: anything. Each row becomes authority only when the native answers it.
+rulings_recorded: 2026-09-23T02:42:50+05:30 — by the native, in writing, in the Saṅgam session (madhav-d9), transcribed verbatim below; attribution: Abhisek Mohanty
+does_not_authorize: implementation. The rulings below are the native's record and make plan v1.0 APPROVED_FOR_EXECUTION for stage 3 under the conditions stated; M-6's minimum count remains OPEN.
 answer_format: "M-n: agree / agree, but … / no — …"
+---
+
+# RULINGS — recorded 2026-09-23T02:42:50+05:30
+
+The native answered the seven questions **in writing, in the Saṅgam session**, in the sheet's own
+format. Transcribed **verbatim**; attribution Abhisek Mohanty. **Transparency note, stated so it can
+be corrected:** the seven lines are character-for-character the author's *example* lines offered
+in the same exchange (the M-6 placeholder `<your number>` was not filled). The native adopted them
+as their rulings by pasting them as the answer; the author records them as such and flags M-6's
+minimum count as **OPEN** — a placeholder cannot be a ruling, and only the native can supply that
+number. Any line the native meant differently is corrected on request; nothing below is inferred.
+
+```
+M-1: agree — mean node; Placidus-as-stored; retire legacy scan after one generation; no node dṛṣṭi
+M-2: agree, but 4 leans adverse; 6/8/12 inversion does not ship
+M-3: agree — §4.5 governs; owner = Gochara stream (kernel path if N-7 approved); E3 tier granted
+M-7: agree
+M-4: agree, but D30 for DOSHA held
+M-5: agree
+M-6: agree; minimum n = <your number>
+```
+
+**Resolution per decision (what the ruling binds; consequences drawn from the sheet's own text):**
+
+| # | Ruling | Binds |
+|---|---|---|
+| M-1 / M-1a | agree — mean node; Placidus-as-stored; retire legacy scan after one generation; no node dṛṣṭi | Four contact contracts adopted (Parāśari directed + fractional; Moon-gochara + vedha; Tājika qualifier on all contacts, full Tājika annual only; Jaimini on a Jaimini route). **Node = mean** (L1's `RAH_MEAN`; the only citable node) with disposition **(b)** as the sheet's default unless the native says otherwise: true-node L0 knots retained, mean derived at read, ~1° disagreement declared per row, derivation in the L0 service. **Cusps = Placidus-as-stored**, house system on every row, Śrīpati only as a ratified variant with an L1 amendment. **Legacy scan** kept exactly one generation as `legacy_unsigned_angles`, then retired. **No graha-dṛṣṭi for Rāhu/Ketu** — nodes ship as gochara agents and targets only. |
+| M-2 | agree, but 4 leans adverse; 6/8/12 inversion does not ship | Three-state own-BAV verdict (≥5 support / 4 indeterminate / ≤3 obstruct), conditioned by dignity in sign; **4 is recorded as indeterminate-leaning-adverse** (Phaladīpikā 23.11 "fear"). Vocabulary ledger (Santhanam bindu = adverse mark). BPHS bands primary, Phaladīpikā alternate, 28 → middle band. **Santhanam's 6/8/12 inversion gloss does not ship.** Mode D = BAV-supported ingress; producer completeness receipt now; kakṣyā deferred. **Cross-stream lock:** Kshetra S1 consumes the same admitted AV source. |
+| M-3 | agree — §4.5 governs; owner = Gochara stream (kernel path if N-7 approved); E3 tier granted | **§4.5 re-affirmed as mechanism** — no ephemeris scan inside Saṅgam; consume pre-computed directed contact events; `planet` as a list, absent when nothing fires; §4.6's per-signature attribution kept as a refinement; inline-threshold principle applied upstream. **Owner = the Gochara stream**; **Path B (the pure kernel, N-5/N-7) if the native approves N-7 on the Gochara brief, else Path A (bounded `transit_search` amendment) under the same owner.** E1 and E3 remain gated on that N-7 ruling landing — **not unblocked today**. **E3 bounded fast tier granted**: Moon/Sun, tārā-vedha, laṭṭā inside qualified parents, all families enumerated, no cap, evidence count unchanged; vedha rows under the uniform admission rule (all `unqualified` today). `CLAUDE_CODE_PROMPT_KA_SANGAM_TRANSIT_REDESIGN.md` → SUPERSEDED-and-reissued against this integrated reading. |
+| M-7 | agree | R-6 kernel separation: `activity` · `valence` · `applicability` · `availability`; dignity leaves the necessary product → valence; genuine gates survive only where classical; `kernel_version = legacy_i16` never pooled; `activity` scale (virupa vs [0,1]) left to implementation with the choice recorded. |
+| M-4 | agree, but D30 for DOSHA held | Full ṣoḍaśavarga domain table adopted; no typed condition ever vetoes; relevant lords ratified line by line; boundary annotation carries the drekkāṇa rule; cancellation (nīca-bhaṅga) detector is a precondition; `chart_divisionals` becomes a declared L1 read with explicit missing states. **D30 as the DOSHA-predicate varga is HELD** — not adopted; DOSHA predicates use the domain varga only until ruled. |
+| M-5 | agree | Station-loop episodes with child contact intervals; no default peak (vakra = 60 is strength, not date); aborted approaches kept as labelled children; `ka_taranga` unit = occupied-day union per month per (contract × valence-sign); split/merge/supersession published before any key change (R-5 first). |
+| M-6 | agree; minimum n = `<your number>` — **OPEN** | L5 may consume Saṅgam windows as prediction candidates once R-5 identity is qualified in the harness and outcomes are on two axes; `EMPIRICALLY_EVALUATED` stays closed behind the five conditions. **The per-stratum minimum count is not yet supplied** — recorded as OPEN; the E6 evaluation gate cannot open until the native names it. Adjudicator of `ambiguous`: not yet named. |
+
 ---
 
 # Saṅgam — the seven rulings

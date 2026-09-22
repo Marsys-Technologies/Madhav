@@ -2,7 +2,7 @@
 artifact: SANGAM_ELEVATION_FINAL
 canonical_id: SANGAM_ELEVATION_FINAL
 version: "1.0"
-status: FINAL_PACKET_PENDING_NATIVE_RULINGS   # becomes APPROVED_FOR_EXECUTION only by the native's record of M-1…M-7
+status: RULED_APPROVED_FOR_STAGE_3   # native rulings recorded 2026-09-23T02:42:50+05:30 (sheet §RULINGS); plan v1.0 + brief v1.4; M-6 minimum n OPEN; E1/E3 gated on Gochara N-7
 date: 2026-09-23
 asset: ka_sangam (Saṅgam — the L3 Kāla convergence engine; seven downstream consumers; rebuild reaches sealed L4)
 this_is: the single pointer every other session uses. When the complete L3 elevation runs, THIS packet governs Saṅgam.
@@ -16,12 +16,21 @@ does_not_authorize: any code, migration, build, L4 rebuild, L5 consumption, or d
 
 # Saṅgam elevation — the final packet
 
+## 0. Rulings — recorded 2026-09-23T02:42:50+05:30
+
+The native ruled all seven in writing (`SANGAM_RULING_SHEET_v1_0.md §RULINGS`, verbatim). Plan
+**v1.0** and brief **v1.4** carry `APPROVED_FOR_EXECUTION_STAGE_3` on that record, with three
+standing conditions: **M-6's minimum count is OPEN** (placeholder unfilled — the E6 evaluation gate
+waits on it); **E1/E3 are gated on the Gochara brief's N-7 ruling** (owner = Gochara stream, kernel
+path if approved, else the bounded amendment); **D30-for-DOSHA is held**. Next: third Astra review
+on v1.0, then a separate stage-3 execution session with an independent reviewer.
+
 ## 1. What is in the packet, and which document governs what
 
 | Document | Governs | Status |
 |---|---|---|
 | `SANGAM_ELEVATION_BRIEF_v1_0.md` **v1.3** | the **output contract** — contract §1–§8: typed testimony (independence groups, per-method F06 states, route, coverage, comparability), four grains/one key, bidirectional generation binding, cascade to sealed L4, the two registry edges | PROPOSED_FOR_NATIVE_RULING; amended v1.3 to match the plan (§7 of the plan) |
-| `SANGAM_ALGORITHM_ELEVATION_PLAN_v0_4.md` | the **method** — six repairs (R-1…R-6) before six elevations (E1…E6); falsifier per item; inputs-consumed contract (18 rows); 7×6 consumer matrix; preservation spec | PROPOSAL_FOR_NATIVE_RULING after two independent REWORKs, both fully dispositioned |
+| `SANGAM_ALGORITHM_ELEVATION_PLAN_v1_0.md` (= v0.4 + §0R rulings) | the **method** — six repairs (R-1…R-6) before six elevations (E1…E6); falsifier per item; inputs-consumed contract (18 rows); 7×6 consumer matrix; preservation spec | PROPOSAL_FOR_NATIVE_RULING after two independent REWORKs, both fully dispositioned |
 | `SANGAM_RULING_SHEET_v1_0.md` | the **seven decisions** M-1/M-1a, M-2, M-3, M-7, M-4, M-5, M-6 — Kimi K3 (max) recommendation, author verification, author position, Astra constraint, the question with options | AWAITING_NATIVE_RULING |
 | `evidence_sangam/` (v2) | **13 assertion-based falsifiers** with negative controls; manifest-checked, non-truncating runner; `OUTPUT_2026-09-22T234243.txt` SUITE-PASS; the failing run retained | runnable read-only, no DB |
 | `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md`, `_v0_3.md` | the two independent adversarial reviews (Codex gpt-6-astra, xhigh) — F-01…F-19, RR-01…RR-10 | immutable |
