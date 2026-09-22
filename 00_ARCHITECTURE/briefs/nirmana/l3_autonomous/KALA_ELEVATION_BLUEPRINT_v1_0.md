@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.0"
+version: "1.1"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.1 (2026-09-23): §11 addendum — the node-convention hub defect (mean-node natal vs true-node transit engine; reached and served: 232 rows in the served Gochara generation), the M-3 producer-owner decision the Saṅgam FINAL packet raises, and the shared-branch rule. Body unchanged."
   - "1.0 (2026-09-22): first issue."
 ---
 
@@ -415,3 +416,52 @@ the two measured; that the frozen generation design works physically (W1 will); 
 consumer-value distinction exists yet (`VALUE_EVALUATED` is N for all sixteen questions examined);
 or that the five decisions will be ruled as recommended. It is the map. The territory is measured
 one wave at a time.
+
+---
+
+## §11 — Addendum (v1.1, 2026-09-23): a hub defect, a decision, and a branch rule
+
+Raised by the Saṅgam session's FINAL packet (`briefs/SANGAM_ELEVATION_FINAL_v1_0.md`, commit
+`04ec54a91`) and verified by this session at source and live.
+
+### 11.1 The node-convention defect — hub-level, reached, served
+
+L1 stores natal Rahu/Ketu in **mean node**: `platform/python-sidecar/pyjhora_adapter/positions.py:21-22`
+(`_USE_TRUE_NODES = False`, "classical convention"), confirmed by `strength.py:195-197` ("mean-node-
+patched … consistent with every other position fact this project stores"). The shared transit engine
+computes Rahu in **true node**: `platform/python-sidecar/pipeline/transit_search.py:10` and `:64`
+(`"Rahu": 11, # swe.TRUE_NODE`). Mean and true node differ by up to ~1.7°. Every transit contact to or
+from a node is therefore computed in a different frame from the natal point it contacts.
+
+**Live path — reached, not latent.** For the canonical chart: 40 `gochara_resonance_map` targets are
+Rahu/Ketu; 242 rows in `kala_gochara_windows_v2` and **232 rows in the served generation 3.0** of
+`kala_gochara_windows` carry node contacts. `kala_convergence`: 0 (the table is empty for the chart).
+
+**Blast radius — all three critical assets.** `transit_search` is read by `services/ka_gochara/
+service.py`, `services/ka_kshetra/stage0_kinematics.py` and `services/ka_sangam/engine.py`, and is
+shared with frozen L0 `bg_sky_calendar`. This is a **hub repair**, not a Saṅgam preference: whatever
+the native rules lands in every reader, before any of the three rebuild. Recommendation (agreeing with
+the Saṅgam sheet's M-1d): **mean node** — it is what L1 stores, hence the §N.5/F27-consistent frame;
+the scanner is the outlier. The same packet flags a second frame question — L1 stores Placidus cusps,
+the plan assumed Śrīpati — to be ruled with it. Gap register: **G18**.
+
+### 11.2 M-3 — who owns the upstream directed-event producer (blocking Saṅgam E1/E3)
+
+If the native re-affirms the June §4.5 mechanism (no ephemeris scan inside Saṅgam; upstream directed
+contact events; `planet` as a list), then a *directed contact-event producer* becomes an upstream
+obligation on `transit_search` — which Saṅgam is frozen against editing. **Until an owner is named,
+Saṅgam E1 and E3 cannot start.** Blueprint §3.1 already assigns the Contact object to the Gochara
+family, and §7's hub-first rule forbids in-stream edits to `transit_search.py`. Recommendation: the
+**Gochara stream owns the bounded amendment** (frame/ayanāṃśa/node arguments; directed special-aspect
+search) as part of its Contact-object work, with Kshetra and Saṅgam as named consumers and the
+scanner-signature change landing in all three. Native decision: name the owner. Gap register: **G19**.
+
+### 11.3 The shared branch
+
+`l3/kala-elevation-readiness` has become, by use, the L3 documentation branch: the Saṅgam session
+committed its packet there (36 files, zero foreign files swept — verified) from inside this session's
+worktree. Rule from here: committed documentation on this branch is fine, **staged by name only**;
+*uncommitted* work belongs in the authoring session's own worktree, never a shared one. The
+`KSHETRA_ELEVATION_BRIEF_v1_0.md` still unstaged in this worktree is the Kshetra session's, not this
+session's, and stays untouched.
+
