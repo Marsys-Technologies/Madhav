@@ -35,6 +35,11 @@ M-5: agree
 M-6: agree; minimum n = <your number>
 ```
 
+**Two clarifications put to the native after recording (2026-09-23T02:52:53+05:30) — questions, not rulings; M-1 stands as written until answered:**
+
+- **M-1 / pāda.** "Mean node" has a chart-level consequence the line does not state: at this native's birth instant the mean node is Rohiṇī **pāda 3** (L1 fact `060bb63b81a073bb`) and the true node is **pāda 4** (Swiss 50.049248°, 177″ apart = 2.7× the Moshier bound). Does the ruling mean only *"the citable (mean) value governs"*, or also *"pāda 3 is the reading for this chart"*? The `ephemeris_daily` undeclared-contract finding (§11.1) stays open either way. (Raised by the strategic session on verifying the sheet; author agrees it needs one line.)
+- **M-1 / "no node dṛṣṭi".** Cost and corpus status, so the line is ruled with both in view: (i) Saṅgam's engine applies no node dṛṣṭi today (`engine.py` — only C8 eclipse proximity at :180; aspect lists are symmetric 0/60/90/120/180), so the ruling removes nothing in Saṅgam; (ii) the Gochara family DOES apply it live — `gochara_grammar/primitives.py:189-196` gives Rāhu/Ketu Jupiter's 120/180/240 citing "BPHS Ch.26", and on the canonical chart that is Rāhu 85 records across 76 of 914 served rows, Ketu 87 across 79 (Gochara session measurement, raised as their decision N-14); (iii) **corpus check, 2026-09-23, author-run:** three hybrid searches over the admitted corpus (35 unique hits) found every classical aspect rule — Horā Sāra śl. 13-14, Jātaka Pārijāta śl. 30, Uttara Kālāmṛta, Patel's transit gloss — naming Mars 4/8, Jupiter 5/9, Saturn 3/10, 7th for all, and **none naming Rāhu or Ketu**; the BPHS aspect chapter itself did not surface (page-based chapter index), so the grade is *unverified so far*, not *absent*. Does "no node dṛṣṭi" extend to the Gochara family (one instrument, one rule — the Gochara session's recommendation and the author's), or is it Saṅgam-only?
+
 **Resolution per decision (what the ruling binds; consequences drawn from the sheet's own text):**
 
 | # | Ruling | Binds |
