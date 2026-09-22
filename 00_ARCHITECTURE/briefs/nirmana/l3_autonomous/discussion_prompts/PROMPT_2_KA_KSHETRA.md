@@ -5,6 +5,22 @@ You are opening a **dedicated design discussion** with the native (Abhisek Mohan
 execution session.** Do not write production code, do not dispatch builds, do not rebuild
 anything. Your deliverable is one reviewed brief.
 
+## Where you are (added 2026-09-22 — this was missing and is why the prompt failed)
+
+All paths below are **relative to the repository root**. Anchor yourself before reading anything:
+the Python for this layer lives under `platform/python-sidecar/`, NOT at the repo root — a path
+like `pipeline/transit_search.py` does not exist as written; it is
+`platform/python-sidecar/pipeline/transit_search.py`. Every code path in this prompt has been
+corrected and verified to resolve. Governance artifacts under `00_ARCHITECTURE/` are already
+repo-root-relative.
+
+**Read this too, before the list below:**
+`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/KALA_ASSET_BRIEF_CONTEXT_v1_0.md` — the context that
+changed since this prompt was written (no invented confidence scalar; bind to F04/F06/F12 + the
+Strategy §3 Temporal-Testimony object; L3-Q01–Q13 as the ratified baseline; generations as the
+probable substrate; "disposable data" scoped to rebuildable projections only; serving is a Pūrṇa
+interface packet). It supersedes anything below that conflicts with it.
+
 ## Read first
 
 - `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` — §3 (the data
@@ -15,8 +31,8 @@ anything. Your deliverable is one reviewed brief.
   `..._DHARA_NUMERICAL_CONTRACT_v1_0.md`
 - `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/MADHAV_L3_ASSET_ELEVATION_PLAN_v1_0.md` — §1, §2
   Tier S, §5 Q4
-- Code: `services/ka_kshetra/**` (14,113 LOC non-test + 4,465 own tests), especially
-  `dhara_null_vec.py`, `layer1.py`; `pipeline/transit_search.py`
+- Code: `platform/python-sidecar/services/ka_kshetra/**` (14,113 LOC non-test + 4,465 own tests), especially
+  `platform/python-sidecar/services/ka_kshetra/dhara_null_vec.py`, `platform/python-sidecar/services/ka_kshetra/layer1.py`; `platform/python-sidecar/pipeline/transit_search.py`
 
 ## The measured situation — verify before relying on it
 

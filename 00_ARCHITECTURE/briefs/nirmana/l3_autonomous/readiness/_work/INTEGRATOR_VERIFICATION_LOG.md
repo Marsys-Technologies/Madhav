@@ -147,3 +147,21 @@ Remediation is cheap and belongs BEFORE any Gochara work: correct `ka_gochara.ta
 `kala_gochara_windows_v2`, add `is_active` to the clear route's registry query, and populate
 `build_protected_assets` (or restore a database-level guard) so the protection is not merely a
 comment.
+
+
+## RETRACTED — "none of the accepted L3 source is on main" (fourth instance of the ancestry trap)
+
+Stated in the strategic session on 2026-09-22 from `git merge-base --is-ancestor` alone: six accepted
+L3 commits "exist but are not ancestors of `origin/main`". True as ancestry, **false as content**,
+because `main` squash-merges. Re-measured by diffing the files each commit touched against `main`:
+`3f109869d` IDENTICAL (7 files), `a3e518864` IDENTICAL (3), `87cc8c9baf` IDENTICAL (3),
+`47131772b` one file differs — `ka_yojaka.py`, 789 lines in the commit vs 1,026 on `main`, because
+`main` carries the *later* accepted DP-SD-019 Yojaka repair. Whole-sidecar diff between `main` and
+`codex/madhav-data-plane-execution` is 7 files / 789 deletions, all tests and a grant migration that
+`main` removed — `main` is ahead. `DHARA_SWEEP_SEMANTIC_VERSION = '1.2'` at `dhara_sweep.py:52` on
+`main`; my earlier proxy strings (`writer.py`, the word "midpoint") were simply the wrong markers.
+
+This is the same error the conductor disproved on 2026-09-20 ("stranded work", 874/874 lines present
+via PR #2607) and that the kickoff prompt itself warns against ("verify content, not commit
+ancestry"). Rule, restated for the fourth time: **a claim that work is missing from `main` is made
+only by content diff of the touched files, never by SHA ancestry.**

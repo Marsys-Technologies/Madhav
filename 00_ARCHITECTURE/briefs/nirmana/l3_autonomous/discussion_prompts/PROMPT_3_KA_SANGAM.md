@@ -5,6 +5,22 @@ You are opening a **dedicated design discussion** with the native (Abhisek Mohan
 discussion, not an execution session.** Do not write production code, do not dispatch builds.
 Your deliverable is one reviewed brief.
 
+## Where you are (added 2026-09-22 — this was missing and is why the prompt failed)
+
+All paths below are **relative to the repository root**. Anchor yourself before reading anything:
+the Python for this layer lives under `platform/python-sidecar/`, NOT at the repo root — a path
+like `pipeline/transit_search.py` does not exist as written; it is
+`platform/python-sidecar/pipeline/transit_search.py`. Every code path in this prompt has been
+corrected and verified to resolve. Governance artifacts under `00_ARCHITECTURE/` are already
+repo-root-relative.
+
+**Read this too, before the list below:**
+`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/KALA_ASSET_BRIEF_CONTEXT_v1_0.md` — the context that
+changed since this prompt was written (no invented confidence scalar; bind to F04/F06/F12 + the
+Strategy §3 Temporal-Testimony object; L3-Q01–Q13 as the ratified baseline; generations as the
+probable substrate; "disposable data" scoped to rebuildable projections only; serving is a Pūrṇa
+interface packet). It supersedes anything below that conflicts with it.
+
 ## Read first
 
 - `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` — §2 (L3-Q02, Q05),
@@ -13,9 +29,9 @@ Your deliverable is one reviewed brief.
 - `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/MADHAV_L3_ASSET_ELEVATION_PLAN_v1_0.md` — §1, §2
   Tier S, §5 Q3 and Q8
 - Root `CLAUDE.md` §N.5 (L1 is authority over L2+ derivations), §N.6, §N.7
-- Code: `pipeline/orchestrator/writers/ka_sangam.py` (1,166 LOC),
-  `services/ka_sangam/engine.py` (1,812 LOC), `services/kala_trigger/**`,
-  `pipeline/transit_search.py`
+- Code: `platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py` (1,166 LOC),
+  `platform/python-sidecar/services/ka_sangam/engine.py` (1,812 LOC), `platform/python-sidecar/services/kala_trigger/**`,
+  `platform/python-sidecar/pipeline/transit_search.py`
 
 ## Why this asset is different
 
@@ -26,12 +42,12 @@ the layer; getting it right unblocks the whole spine.
 
 ## The measured situation — verify before relying on it
 
-**Caps found in code** (`ka_sangam.py`):
+**Caps found in code** (`platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py`):
 - `ORDER BY dignity_score DESC NULLS LAST, p.id ASC LIMIT 200` (~line 247)
 - a "near `LIMIT 200` / lifetime `LIMIT 60`" framing (~line 386)
-- `engine.py:1102` — `list(dasha_rule.get('constituent_lords', []) or [])[:1]`, i.e. **only the
+- `platform/python-sidecar/services/ka_sangam/engine.py:1102` — `list(dasha_rule.get('constituent_lords', []) or [])[:1]`, i.e. **only the
   first constituent lord is retained**
-- `engine.py:1124` — `max_level=3`
+- `platform/python-sidecar/services/ka_sangam/engine.py:1124` — `max_level=3`
 
 **Declared vs actual reads.** The registry declares 10 dependencies including a materialised
 `ka_gochara` edge. The strategy states Sangam actually reads **Vedha and on-demand transit
@@ -68,7 +84,7 @@ another representation of the same origin adds no independent support.
    correct multi-domain representation, given the strategy forbids one-domain flattening?
 7. **P4 shared geometry** — geometric search results may be reused across compatible
    predicates/modes only if each rule's, parent's and method's testimony survives. Note the
-   constraint: this touches `transit_search.py`, which sits inside already-frozen L0
+   constraint: this touches `platform/python-sidecar/pipeline/transit_search.py`, which sits inside already-frozen L0
    (`bg_sky_calendar`) and is imported by Kshetra and the Gochara family. Any change is a
    coordinated cross-stream invalidation, not an in-stream edit.
 8. **L1 authority (§N.5).** Sangam must reference L1 `fact_id`s and inherit their values, never
@@ -89,7 +105,7 @@ another representation of the same origin adds no independent support.
   group, applicability, material uncertainty
 - Mode dispositions
 - The ayanamsha/domain identity decision
-- A P4 shared-geometry position including the `transit_search.py` change protocol
+- A P4 shared-geometry position including the `platform/python-sidecar/pipeline/transit_search.py` change protocol
 - What is **not** settled
 
 ## Conduct

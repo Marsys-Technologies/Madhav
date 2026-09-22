@@ -4,6 +4,22 @@ You are opening a **dedicated design discussion** with the native (Abhisek Mohan
 Gochara assets in L3 Kāla. **This is a discussion, not an execution session.** Do not write
 production code, do not dispatch builds, do not open PRs. Your deliverable is one reviewed brief.
 
+## Where you are (added 2026-09-22 — this was missing and is why the prompt failed)
+
+All paths below are **relative to the repository root**. Anchor yourself before reading anything:
+the Python for this layer lives under `platform/python-sidecar/`, NOT at the repo root — a path
+like `pipeline/transit_search.py` does not exist as written; it is
+`platform/python-sidecar/pipeline/transit_search.py`. Every code path in this prompt has been
+corrected and verified to resolve. Governance artifacts under `00_ARCHITECTURE/` are already
+repo-root-relative.
+
+**Read this too, before the list below:**
+`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/KALA_ASSET_BRIEF_CONTEXT_v1_0.md` — the context that
+changed since this prompt was written (no invented confidence scalar; bind to F04/F06/F12 + the
+Strategy §3 Temporal-Testimony object; L3-Q01–Q13 as the ratified baseline; generations as the
+probable substrate; "disposable data" scoped to rebuildable projections only; serving is a Pūrṇa
+interface packet). It supersedes anything below that conflicts with it.
+
 ## Read first
 
 - `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` — §5 (efficient
@@ -11,10 +27,10 @@ production code, do not dispatch builds, do not open PRs. Your deliverable is on
 - `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/MADHAV_L3_ASSET_ELEVATION_PLAN_v1_0.md` — §1 (the
   ten dimensions of elevation), §2 Tier S, §5 Q1
 - Root `CLAUDE.md` §N.4–§N.8
-- Code: `pipeline/orchestrator/writers/ka_gochara.py`,
-  `ka_gochara_v3_century_materialize.py`, `services/gochara_v3/**` (8,441 LOC),
-  `services/w2g/**`, `services/gochara_grammar/**`, `services/gochara_intensity/**`,
-  `services/ka_gochara_resonance/**`, `pipeline/transit_search.py`
+- Code: `platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py`,
+  `platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py`, `platform/python-sidecar/services/gochara_v3/**` (8,441 LOC),
+  `platform/python-sidecar/services/w2g/**`, `platform/python-sidecar/services/gochara_grammar/**`, `platform/python-sidecar/services/gochara_intensity/**`,
+  `platform/python-sidecar/services/ka_gochara_resonance/**`, `platform/python-sidecar/pipeline/transit_search.py`
 
 ## The measured situation — verify each before relying on it
 
@@ -41,7 +57,7 @@ Three further measured facts:
 2. **The century materialiser declares inputs its code does not consume** — `ka_kota_chakra`,
    `ka_tithi_pravesha` and (per strategy) `ka_sudarshana_varsha` are declared `depends_on` edges
    with no corresponding read. Those same three assets are consumed by nothing else either.
-3. **`transit_search.py` is a cross-stream hub** — imported by Kshetra, Sangam, this family, and
+3. **`platform/python-sidecar/pipeline/transit_search.py` is a cross-stream hub** — imported by Kshetra, Sangam, this family, and
    L0's already-frozen `bg_sky_calendar`. Editing it invalidates accepted analyses elsewhere.
    Strategy items P3/P4 want to change exactly this file.
 
@@ -78,7 +94,7 @@ and do not let a default emerge by silence.
 - The native's ruling on each numbered question above, with rationale — including any left open
 - The retirement/supersession disposition for whichever asset does not survive as active
 - The exact read DAG vs declared DAG, discrepancies typed
-- A `transit_search.py` change protocol, since P3/P4 collide with a frozen L0 closure
+- A `platform/python-sidecar/pipeline/transit_search.py` change protocol, since P3/P4 collide with a frozen L0 closure
 - What is **not** settled, named plainly
 
 ## Conduct
