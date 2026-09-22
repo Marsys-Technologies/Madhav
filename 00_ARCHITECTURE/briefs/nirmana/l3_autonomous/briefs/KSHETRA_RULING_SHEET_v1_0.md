@@ -5,7 +5,10 @@ version: "1.0"
 status: AWAITING_NATIVE_RULING
 date: 2026-09-23
 rules_on: KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md v1.4 §7 · KSHETRA_ELEVATION_BRIEF_v1_0.md v4.3
-prepared_by: the Kshetra brief session (madhav-d2), on the native's delegation to "do the rest" — the rulings themselves are NOT delegable (contract §8: a packet never approves itself; APPROVED_FOR_EXECUTION comes only by native record)
+prepared_by: >
+  the Kshetra brief session (madhav-d2), on the native's delegation to "do the rest" — the rulings
+  themselves are NOT delegable (contract §8 — a packet never approves itself; APPROVED_FOR_EXECUTION
+  comes only by native record)
 how_to_rule: >
   One word per line in the "Native ruling" field — AFFIRM (adopt the recommendation), or a written
   alternative. When every line carries a ruling, the brief's status moves to APPROVED_FOR_EXECUTION
