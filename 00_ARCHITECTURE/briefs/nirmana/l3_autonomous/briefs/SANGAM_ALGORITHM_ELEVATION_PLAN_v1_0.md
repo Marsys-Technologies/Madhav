@@ -42,7 +42,7 @@ M-6: agree; minimum n = <your number>
 | Ruling | Effect on this plan |
 |---|---|
 | M-1 | R-1/R-3/E1 as written, with **mean node** (disposition (b): true L0 knots retained, mean derived at read in the L0 service, ~1° disagreement declared per row), **Placidus-as-stored cusps** (frame on every row; Śrīpati only as a ratified variant), **legacy scan retired after one generation**, **no node dṛṣṭi** (nodes as gochara agents and targets only). R-3's convention vector: `ephemeris_backend`, `epoch_convention`, `ayanamsa_application` (= `apparent_flg_sidereal`). |
-| M-2 | E2 as written; **4 = indeterminate-leaning-adverse**; **6/8/12 inversion does not ship**; BPHS bands primary; producer completeness receipt now; kakṣyā deferred; Kshetra S1 shares the source. |
+| M-2 | E2 as written; **4 = indeterminate-leaning-adverse** (Phaladīpikā 23.11 = `phaladeepika:PG299:C1`, verified at the table 2026-09-23; note 3 and 4 both read "fear" there — the 4/≤3 boundary is BPHS's); **6/8/12 inversion does not ship**; BPHS bands primary; producer completeness receipt now; kakṣyā deferred; Kshetra S1 shares the source. |
 | M-3 | **§4.5 governs.** R-1's directed events are produced **upstream by the Gochara stream** — Path B (kernel, N-5/N-7) if the native approves N-7 on the Gochara brief, else Path A (bounded `transit_search` amendment). **E1 and E3 stay gated until N-7 is ruled**; E3's bounded tier is granted in principle. `_resolve_transit_planet` is replaced by event consumption at that point, not extended. TRANSIT_REDESIGN prompt → SUPERSEDED-and-reissued. |
 | M-7 | R-6 as written. |
 | M-4 | E4 as written; **D30-for-DOSHA HELD** (not adopted); cancellation detector precondition binds. |
