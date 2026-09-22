@@ -9,7 +9,7 @@ inputs:
   - SANGAM_ALGORITHM_ELEVATION_PLAN_v0_4.md (the decisions, as framed after two Astra reviews)
   - KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0.md (Kimi K3, effort=max; read plan, both reviews, June ruling, corpus)
   - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md / _v0_3.md (constraints each ruling must respect)
-verification_by_author: "every BPHS line Kimi cited re-read at the corpus (BP1:16605-16652, 7569-7593, 22725-22742; BP2:8955-8962, 35666-35676, 42332-42369) — all verbatim; Phaladīpikā 23.10/23.11/23.20 re-read online (wisdomlib doc1621595) — verbatim; Hāyanaratna 2.1/3.3 NOT re-verified by the author (Kimi and Astra both cite the same online edition) — tagged [D-online]; Kimi's '0 dots = loss of life' not found on the page — [U]"
+verification_by_author: "every BPHS line Kimi cited re-read at the corpus (BP1:16605-16652, 7569-7593, 22725-22742; BP2:8955-8962, 35666-35676, 42332-42369) — all verbatim; Phaladīpikā 23.10/23.11/23.20 re-read online (wisdomlib doc1621595) — verbatim; Hāyanaratna 2.1/3.3 NOT re-verified by the author (Kimi and Astra both cite the same online edition) — tagged [D-online]; Kimi's '0 dots = loss of life' — RECORDED AS NOT FOUND, **RETRACTED 2026-09-23 (K2-06): that was a FALSE NEGATIVE.** The clause is verbatim at the cited page (`phaladeepika:PG299:C1`, Adh. XXIII śl. 11): 'if it be found that a Rasi is void of any benefic dot in a planet's Ashtakavarga, it indicates that the native will lose his life when the particular planet in his orbit transits that Rasi.' This session's own earlier query returned that text; the verification record contradicted the author's own tool output. Kimi was verse-correct. Changes no ruling (M-2 rests on the 3/4 'fear' reading, independently confirmed) — but a verification artifact that itself errs is the exact failure this packet exists to catch — [U]"
 rulings_recorded: "2026-09-23T02:42:50+05:30 — by the native, in writing, in the Saṅgam session (madhav-d9), transcribed verbatim below; attribution: Abhisek Mohanty"
 does_not_authorize: "implementation. This sheet records the native's rulings plus the author's delegated decisions; plan v1.0 is APPROVED_FOR_EXECUTION_STAGE_3 with the third Astra review as a stage-3 ENTRY GATE (D-8). No code, migration or build is authorized by this document."
 answer_format: "M-n: agree / agree, but … / no — …"
@@ -37,12 +37,51 @@ as such. Each carries its reasoning so any one can be overturned with a single l
   different estimands and are never pooled. This is the calibration-leak discipline the project
   already enforces, not a new rule.
 - **Per-stratum claim** — a claim about one `(domain × route × method_version)`, Kimi's stratum shape,
-  adopted: **n = 30** fully observed, non-censored evaluated windows. Chosen for power, not
-  roundness: against a 0.20 base rate at α=0.05 one-sided, n=30 puts the critical value at ≥10 hits
-  and gives ≈80% power to detect a lift to 0.40. It is underpowered below that lift and must say so.
+  adopted: **n = 35** fully observed, non-censored evaluated windows, **critical ≥ 12 hits,
+  α = 0.0344, power = 0.805** against a 0.20 null at a 0.40 alternative (exact binomial).
+  **[AMENDED 2026-09-23 — K2-01, MAJOR, Kimi K3 max-effort review; the author's arithmetic was wrong.** The
+  original read "n = 30 … α=0.05 one-sided, critical ≥10, ≈80% power". Reproduced exactly:
+  P(X≥10 | Bin(30,0.20)) = **0.0611**, power 0.8237 — the power figure was right, **the α was not**:
+  the stated gate ran at 6.1%, not 5%. Holding α≤0.05 at n=30 forces critical ≥11 → power drops to
+  0.709. Rather than restate 30 with a corrected description, the gate is **set by the arithmetic**:
+  35 is the smallest n that actually satisfies the design as written (α≤0.05 **and** power≥0.80).
+  A number chosen for its roundness and then described wrongly is the §N.8 defect in miniature.]**
 - **Instrument-level claim** — Saṅgam's windows beat measured exposure within ONE frozen
   `method_version`, pooled across domain and route with both carried as reported covariates and the
-  per-stratum counts published alongside (never suppressed): **n = 100**; ≈85% power for 0.20 → 0.32.
+  per-stratum counts published alongside (never suppressed): **n = 100, critical ≥ 28, α = 0.0342, power = 0.833** at 0.20 → 0.32 (exact binomial).
+  **[AMENDED 2026-09-23 — K2-01:** the original claimed "≈85%"; at n=100 holding α≤0.05 the true power is
+  **0.833**. n=98/crit≥27 would reach 0.854 at α=0.0446; 100 is retained as the already-communicated
+  figure with its **honest** power published rather than the aspirational one.]**
+
+- **Independence is NOT assumed — amended 2026-09-23, K2-02 (MAJOR).** The binomial figures above are
+  **first-order approximations**. The admissible population is **two charts** (D-3), so windows are
+  clustered within two subjects: intracluster correlation makes the effective n materially lower than
+  the nominal n, and plan §4 already says "No statistical independence is claimed" — the author's
+  original power computation silently re-introduced it. Therefore: (i) the triples are published **as
+  approximations**, never as exact operating characteristics; (ii) a **chart-level concordance
+  requirement** binds — the lift direction must appear **independently in both charts** before any
+  claim opens; and (iii) a **beta-binomial overdispersion check is computed and published** with every
+  claim. Neither (ii) nor (iii) costs data; both are the difference between "35 windows" and "35
+  windows that mean what the formula thinks they mean".
+
+- **Pooling rule — amended 2026-09-23, K2-10 (MAJOR).** The instrument-level claim pools strata with
+  different base rates and exposures and is therefore **Simpson-vulnerable**: a pooled lift no stratum
+  has, or a real per-stratum lift masked. Publishing per-stratum counts displays the problem without
+  deciding it. **Predeclared primary estimand: a stratified (CMH-type / standardized) pooled lift, and
+  the claim opens only if no stratum shows a significant opposite-sign deviation.** The raw pooled
+  number is secondary display only.
+
+- **Base-rate provenance — amended 2026-09-23, K2-12.** The 0.20 null comes from the **exposure/coverage
+  model, a priori** — never estimated from the same outcome data the gate scores, which would test and
+  fit on one dataset.
+
+- **Reachability has a detector — amended 2026-09-23 (Kimi Q3).** The first generation's exposure manifest
+  **publishes the measured window-issuance rate** (windows per chart-year, by stratum). Without it,
+  "the instrument-level gate opens first" is an article of faith rather than a quantity. Note for the
+  record: `PROVISIONAL_INSUFFICIENT_N` carrying actual n **is** a real detector with a real false
+  state, so the design is §N.8-compliant; the residual risk is *status fossilization* — a per-stratum
+  `EMPIRICALLY_EVALUATED` that can never open on a two-chart population. The instrument-level gate is
+  what prevents that, and this text now says so.
 - **Below either threshold:** `EMPIRICALLY_EVALUATED` stays closed and the result reports as
   `PROVISIONAL_INSUFFICIENT_N` carrying the actual n and the lift that n can see — never as a
   calibration, never silently (§N.8: the gate needs a detector, and "not enough data yet" is a real
@@ -60,10 +99,27 @@ as such. Each carries its reasoning so any one can be overturned with a single l
 
 - Adjudicated by **the native** — not the author, not the instrument: the only party holding the
   lived facts. Every adjudication records its reason.
-- `ambiguous` is **censored, excluded from n** (hence "fully observed, non-censored" above). Scoring
-  it a miss biases against the instrument; scoring it a hit biases for it.
-- **The censoring rate is published per stratum, and if it exceeds 20% of that stratum's windows the
-  stratum's claim is blocked regardless of n.** Without that ceiling, n counts only the clean cases
+- `ambiguous` is **excluded from n** (hence "fully observed, non-censored" above) — n measures how
+  much real evidence exists. **But it is NOT excluded from the reported rate.**
+  **[AMENDED 2026-09-23 — K2-03 (MAJOR): the original D-2 contradicted this sheet's own M-6 record.** That
+  record carries, among the five conditions the native's "agree" covered, Kimi's condition 4:
+  *"`ambiguous` stays in the denominator, fraction disclosed"*. The original D-2 ("censored, excluded
+  from n") stated the opposite, leaving two contradictory censoring rules in one packet, one of them
+  native-adjacent — a GA.1-class registry disagreement authored by the very session that has spent
+  the day correcting them in others. **Resolved without superseding the native-adjacent rule**, and
+  the resolution is strictly better than either original: see the interval below, whose adverse end
+  *is* condition 4.]**
+- **Every stratum reports a hit-rate INTERVAL, and the claim is stated against its adverse end**
+  (K2-11): `[ hits / all windows (ambiguous included) , (hits + ambiguous) / all windows ]`. The lower
+  bound is Kimi's condition 4 exactly — ambiguity can never help the instrument. The upper bound is
+  the censored estimate, published alongside with the censoring rate. This closes the
+  **informative-censoring** exposure the original D-2 carried: the hardest cases to adjudicate are
+  plausibly the near-misses, so excluding them preferentially removes misses and inflates the rate;
+  a ceiling caps that inflation's *magnitude* but not its *direction*, and only the adverse end does.
+- **The censoring rate is published per stratum**, with a **gradient rather than a cliff** (K2-11):
+  above **10%** the stratum's claim carries a `censoring_elevated` label; above **20%** the claim is
+  **blocked regardless of n**. A bare 20% binary would make 19.9% and 20.1% mean wholly different
+  things for no reason available in the data. Without that ceiling, n counts only the clean cases
   and a high-ambiguity predicate looks well-evidenced precisely because it is ill-defined.
 
 ### D-3 — Evaluation population: consenting persons with real outcomes only
@@ -82,6 +138,18 @@ under the MACRO_PLAN Ethical Framework, not a technical one.
   path** until ruled.
 - **Falsifier** (mirroring Kimi's own for `boundary_distance`): *any D30 term appearing in a DOSHA
   score path fails the suite.*
+  **[AMENDED 2026-09-23 — K2-04 (MAJOR), and the author's own §N.8 violation.** As written that sentence was
+  **a claim with no detector**: the evidence MANIFEST holds 14 script lines and **zero** D30/DOSHA
+  entries (verified), so no code path exists that could ever make it read false — precisely the defect
+  §N.8 forbids, authored inside the decision whose purpose was honest exclusion. Its scope was also
+  too narrow: "score path" does not reach a D30 value surfacing in a **served response** or in a
+  **consumer's scoring SQL**. Corrected, and stated as a gate rather than an accomplishment:
+  **(i)** the D30 storage contract (table, column, label location) is **pinned in stage 3 before any
+  D30 row is written** — the test cannot be authored until it is; **(ii)** the falsifier **exists in
+  `evidence_sangam/MANIFEST.txt` with a negative control, and passes, BEFORE the first D30 row
+  ships** — not after; **(iii)** its scope covers score paths, **served surfaces and consumer SQL**.
+  Until (i)–(iii) hold, D-4's exclusion is an **intention, not a verified property**, and must be
+  described that way wherever it is cited.]**
 - **Reasoning.** Kimi recommended adopting D30 with verse support ("evil effects from Triṃśāṃśa",
   BP1:7569-7593) and named its own falsifier — that triṃśāṃśa may read as *the native's* evils
   rather than evil events in the domain — with the fallback "domain varga + D30 as secondary,
@@ -97,7 +165,7 @@ under the MACRO_PLAN Ethical Framework, not a technical one.
   authority inversion §N.5 forbids.
 - So for this chart Rāhu's nakṣatra-pāda is **Rohiṇī pāda 3** (L1 fact `060bb63b81a073bb`), with the
   true-node value (pāda 4; Swiss 50.049248° at 05:13 UT) retained as the **declared variant** and the
-  **177″ disagreement published on every row that carries it**. Anything citing the pāda cites the
+  **both quantities published on every row that carries it, each named** — the **mean↔true convention gap of 3658.3″ (1.016204°)**, which is what M-1's disposition (b) requires declared, and the **true node's margin of 177.3″ past the pāda 3/4 boundary at 50°00′**, which is the fragility measure **[CORRECTED 2026-09-23 — K2-07: the author's original text called 177″ "the disagreement", conflating the boundary margin with the convention gap; both reproduced by arithmetic]**. Anything citing the pāda cites the
   convention with it.
 - **Two limits, stated so this is not read wider than it is.** It settles which *convention* governs
   a reading, **not** which node is astronomically more correct. And it does **not** close the
@@ -109,7 +177,7 @@ under the MACRO_PLAN Ethical Framework, not a technical one.
 - **Position (Saṅgam-binding; recommended instrument-wide): graha-dṛṣṭi is not applied to Rāhu or Ketu.** One instrument should not
   grant node aspects in one asset and deny them in another. The citation behind the live
   implementation is refuted at the text (Santhanam Ch.26 names Saturn, Jupiter and Mars; zero
-  rāhu/ketu/node occurrences in the chapter span, against 254 in the file); the practice is not found
+  rāhu/ketu/node occurrences in the chapter span, against 254 *lines* matching rāhu|ketu in the file — 270 lines / 309 occurrences with `node` included; the parenthetical previously conflated lines with occurrences and omitted `node` (K2-09, 2026-09-23)); the practice is not found
   at table level across all 15 corpus texts; Kimi independently graded it `[U] — do not implement by
   default`; and `w30_nodal_drishti.py`'s own docstring already says it is not in BPHS. Continuing
   would keep a **false citation in served data**.
@@ -139,6 +207,45 @@ the review runs **before any code is written in stage 3**, by the independent re
 is not skippable.
 
 ---
+
+## Post-close independent review — Kimi K3 (effort=max), 2026-09-23T04:33:31+05:30
+
+The closed packet was sent for adversarial review to Kimi K3 at max effort via the Kimi CLI
+(`KIMI_REVIEW_PACKET_SANGAM_CLOSED_v1_0.md` → `KIMI_K3_REVIEW_SANGAM_CLOSED_v1_0.md`), specifically
+targeting the two bodies of text no reviewer had ever seen: **plan v0.4** and **D-1…D-8**.
+
+**Verdict: ACCEPT_WITH_CONDITIONS** — 12 findings (4 MAJOR, 5 MINOR, 3 NOTE), no BLOCKER, no
+re-ruling required. **Q1, answered for the first time by an independent reader: v0.4 genuinely closes
+the v0.3 REWORK (RR-01…RR-10)**, with RR-09's harness now stricter than the review demanded.
+
+Every MAJOR was a defect in the **author's** delegated decisions, not in the native's rulings, and
+each was **reproduced at source by the author before acceptance** (a reviewer's confirmation is not
+evidence this session has not itself queried — the rule this campaign ended up writing):
+
+| # | Finding | Status |
+|---|---|---|
+| K2-01 | D-1's α was arithmetically wrong (0.0611, not 0.05) for its stated critical value | **fixed** — gate re-derived: n=35/crit≥12/α=0.0344/power 0.805; n=100/crit≥28/α=0.0342/power 0.833 |
+| K2-02 | D-1's power math assumed i.i.d. windows on a two-chart population, contradicting plan §4 | **fixed** — approximations declared; chart-level concordance + published overdispersion check |
+| K2-03 | D-2 contradicted this sheet's own M-6 record (`ambiguous` in the denominator) | **fixed** — interval whose adverse end *is* condition 4; nothing native-adjacent superseded |
+| K2-04 | D-4's falsifier had no detector and missed served surfaces (§N.8 class, author-authored) | **fixed** — restated as a gate: contract pinned, falsifier in MANIFEST and passing before any D30 row |
+| K2-10 | The pooled instrument claim was Simpson-vulnerable with no pooling-safety rule | **fixed** — stratified CMH-type primary estimand predeclared |
+| K2-11 | Informative censoring; 20% cliff | **fixed** — adverse-end interval; 10%/20% gradient |
+| K2-05 | Stale evidence pointer (Moshier run cited as current) + harness/audit skew | **fixed** in plan §6.1/frontmatter |
+| K2-06 | The sheet's own `[U]` was a false negative | **retracted** in `verification_by_author` |
+| K2-07 | D-5 mislabelled 177″ as the convention gap | **fixed** — both quantities published, named |
+| K2-08 | §0R rows mix author-layer content without per-element markers | **fixed** in plan §0R |
+| K2-09 | Line-vs-occurrence count imprecision; D-6 should be registered, not only stated | count fixed; **registration referred to the governance owner** (see below) |
+| K2-12 | Base-rate circularity risk | **fixed** — null comes from the exposure model a priori |
+
+**One condition NOT discharged here, and deliberately so.** K2-09's second half asks that D-6's
+cross-stream position be entered in `DISAGREEMENT_REGISTER_v1_0.md` so it cannot close silently while
+Gochara's N-14 is unruled. That register is a shared governance artifact owned outside this packet;
+this session referred the entry to the strategic session rather than editing a shared register
+unilaterally at the end of its own close. **It is open until that entry exists.**
+
+**What this review does NOT discharge:** D-8. The third Astra review remains the stage-3 entry gate,
+and it is the correct place to verify that these amendments actually landed — this review is a second
+independent read, not a substitute for the one the author owes before code is written.
 
 **With D-1…D-8 the seven rulings are CLOSED. No open question remains on this sheet.** What remains
 are *dependencies owned elsewhere*, not Saṅgam decisions: E1/E3 wait on the Gochara N-7 ruling
