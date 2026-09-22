@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.4"
+version: "1.5"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.5 (2026-09-23): §11.1 — two sessions' local node computations diverge by 332 arcsec, larger than every margin in dispute and enough to flip the natal pāda between pāda 4 and pāda 3. The withdrawal is upheld on stronger grounds; a peer's proposed arithmetic correction is NOT adopted because its figure does not reproduce here. New §11.9 makes local-ephemeris irreproducibility a first-class finding."
   - "1.4 (2026-09-23): §11 — bg_cohort CONFIRMED as a fifth independent TRUE_NODE declaration (my earlier denial was a truncated grep); the directed-aspect item withdrawn — the engine is correct and the gap is a Saṅgam call-site; §3.1 Gochara row corrected (contacts partially kept, qualification absent); new §11.7 gate rule: a Swiss-vs-kernel gate is not a detector where .se1 is absent."
   - "1.3 (2026-09-23): §11 — the pāda-boundary claim is WITHDRAWN as unresolvable on this host (stored value sits 0.0059° from the boundary; local Moshier error ~0.1°); the three node figures in circulation reconciled; the stale KSHETRA brief on main flagged."
   - "1.2 (2026-09-23): §11 rewritten after three-session convergence — the node split is FOUR-way and `ephemeris_daily` stores TRUE node under a mean contract (measured 5/5 dates); the DAR_CLOSE receipt records the mean value the table does not hold; M-3 carries two producer paths and neither unblocks E1/E3 yet; two of this session's own v1.1 claims corrected."
@@ -470,7 +471,8 @@ move a pāda, so the ruling is reading-visible in class. Maximum divergence ~1.9
 
 Note this cuts the other way too: my five-date residuals of ≤0.10° against TRUE are themselves
 partly Moshier error. The discrimination survives it easily — ~0.1° from true versus 0.95–1.47° from
-mean is tenfold — but no sub-0.1° claim from this host is safe.
+mean is tenfold to two-hundredfold — but no sub-0.1° claim from this host is safe. **See §11.9: the
+local ephemeris is worse than "imprecise", it is not reproducible between sessions.**
 
 **Reach, measured for the canonical chart:** 40 of 765 `gochara_resonance_map` targets are
 Rāhu/Ketu across 9 event classes · **232 of 914** served generation-3.0 rows carry node contacts
@@ -608,3 +610,57 @@ truncated by `head -5`. (4) v1.2's directed-aspect gap measured a JSON field tha
 value. All four are the same failure: **asserting from an incomplete read, then publishing the
 absence as evidence.** The three asset sessions caught all four. The countermeasure that actually
 worked was not care — it was other sessions re-measuring at the authority and saying so.
+
+### 11.9 The local ephemeris is not reproducible between sessions — and that settles the pāda question
+
+The Gochara session proposed a correction to §11.1's margin arithmetic: that on 1984-02-05 the
+stored-vs-recomputed residual is 0.0046° (16.7″), so the natal margin is ~12× the error rather than
+inside it. **That correction is not adopted, because its underlying figure does not reproduce on this
+host** — and chasing why produced a better finding than either of us had.
+
+Measured here, explicitly: `SWE_EPHE_PATH` is unset; `FLG_SWIEPH` returns `FLG_MOSEPH`, and
+`FLG_SWIEPH` and `FLG_MOSEPH` give bit-identical results — Moshier fallback confirmed. True-node at
+the 1984-02-05 knot: **73.725995°**. The peer reports **73.633696°** for the same body, same date.
+**The two sessions differ by 0.0923° = 332 arcsec**, and neither of us can presently account for it.
+
+That divergence is larger than every margin in dispute, and it is decisive in both directions:
+
+| Quantity | Sidereal | Pāda | Margin to the 50.0000° boundary |
+|---|---|---|---|
+| **(B)** the **stored** knot, converted — what Kāla consumes | 49.9941° | 3 | **21″** |
+| (B′) my recomputation at the same knot | 50.0911° | **4** | 328″ |
+| (B″) the peer's figure at the same knot | 49.9988° | 3 | **4″** |
+| **(A)** my recomputation at the birth instant | 50.0502° | **4** | 181″ |
+| (A′) the same, carrying the peer's 332″ offset | 49.9579° | **3** | 152″ |
+| MEAN at the birth instant (analytic, no ephemeris file) | 49.0289° | 3 | 3496″ |
+
+**The withdrawn claim was not merely unproven — under the peer's own numbers it inverts.** Their
+withdrawn assertion was TRUE → pāda 4; carry their offset to the birth instant and true-node Rāhu
+lands in **pāda 3**, the same pāda as mean, and the "ruling moves a pāda" argument disappears
+entirely. So the withdrawal stands on stronger grounds than the ones either of us first gave: not
+"the margin is smaller than the error", but **"two sessions cannot agree on the value to within four
+times the margin, and the disagreement flips the answer."**
+
+Two consequences beyond this one figure:
+
+1. **Every local geometry figure produced by any session in this campaign inherits an unexplained
+   332″ session-to-session divergence** until the cause is found. Prime suspects: a pyswisseph
+   version difference in the Moshier node routine, or a `calc` / `calc_ut` (ET vs UT) mix-up. This is
+   a bounded diagnostic, and it should be run before any numerical acceptance gate is designed — it
+   is the precondition for §11.7's rule, not a footnote to it.
+2. **The stored production value is 16.7″ from the peer's figure and 349″ from mine** — so
+   production, which builds with real `.se1` files, is far closer to the peer's computation. That is
+   weak evidence that my local Moshier node is the outlier, and it is the reason §11.1's
+   store-is-TRUE conclusion is stated on the **tenfold-to-two-hundredfold separation** rather than
+   on any single residual.
+
+**What this does NOT weaken:** the store-is-TRUE finding. 0.005–0.104° from true against 0.95–1.47°
+from mean survives a 0.09° uncertainty with room to spare, and the peer agrees the conclusion should
+stand firmly. Only sub-0.1° claims need the caveat.
+
+**And it sharpens the disposition choice in §11.2.** The mean node is analytic — mean elements, no
+ephemeris file — so option (b), *keep the true knots and derive mean at read time*, **never consumes
+the knot** and is therefore immune to this knife edge entirely. Only consumers wanting the stored
+true value inherit the irreproducibility. That is a substantive argument for (b) that neither the
+cost table nor the frozen-layer argument captures. (Raised by the Gochara session from this
+session's measurement; verified here.)
