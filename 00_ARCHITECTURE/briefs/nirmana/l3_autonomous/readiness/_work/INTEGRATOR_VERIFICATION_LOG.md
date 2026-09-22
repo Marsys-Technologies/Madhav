@@ -165,3 +165,24 @@ This is the same error the conductor disproved on 2026-09-20 ("stranded work", 8
 via PR #2607) and that the kickoff prompt itself warns against ("verify content, not commit
 ancestry"). Rule, restated for the fourth time: **a claim that work is missing from `main` is made
 only by content diff of the touched files, never by SHA ancestry.**
+
+## GOVERNANCE — three brief sessions are writing into worktrees that are not theirs (2026-09-22 18:15 IST)
+
+Measured: `KSHETRA_ELEVATION_BRIEF_v1_0.md` and `SANGAM_ELEVATION_BRIEF_v1_0.md` exist only in
+`/Users/Dev/madhav-l3/readiness` (this session's worktree; mtimes 18:04 and 18:00, actively
+rewritten — Kshetra 628→485 lines, Sangam 514→759); `GOCHARA_FAMILY_ELEVATION_BRIEF_v1_0.md`
+exists only in `/Users/Dev/madhav-l3/integration` (branch `codex/madhav-l3-claude-code`,
+untracked, status `SUPERSEDED`). No other worktree holds them. This session's `git add -A` at
+`bd1a12e03` (17:33) swept the first two into PR #2713, which merged at ~18:12: **two in-progress
+third-party drafts are now on `main` under this session's commit** (Kshetra 628 lines
+`DRAFT_FOR_NATIVE_RULING`; Sangam 514 lines `PROPOSAL_FOR_NATIVE_RULING`), and the Kshetra copy
+on `main` is already *longer* than the session's current draft. Commit `f398492d3` would have
+published a second snapshot; it was rewritten as `4103690c5` with only the four authored files.
+
+Violation class: Layer contract §7 / skill isolation adapter — *"one writer surface … preserve
+dirty/shared/foreign worktrees; no concurrent mutation of the same branch/ref."* The Phase 0/1
+session models the correct pattern (own `p11-b1`, `p12-grants`, `p14-supervisor`, `p15-cascade`
+worktrees). Disposition: the two drafts on `main` are NOT reverted here (that is the authors'
+work to supersede via their own PR); this session stops using `git add -A` in any tree another
+session can reach, and the native is asked to move the three brief sessions into their own
+worktrees.
