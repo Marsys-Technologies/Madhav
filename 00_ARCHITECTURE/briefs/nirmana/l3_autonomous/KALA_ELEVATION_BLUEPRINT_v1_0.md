@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.3"
+version: "2.4"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.4 (2026-09-23): new G18 + §11.17 — the governance frontmatter gate is blind to the entire briefs tree (0 files matched by any governed glob) AND, for files it does govern, a YAML parse failure produces zero violations. Measured, not read."
   - "2.3 (2026-09-23): §11.5 stale-brief warning now points at PR #2722 (supersedes in place, v4.3). New §11.16: a `set -e` chain is not a detector — recorded against this session's own rails, not only a peer's."
   - "2.2 (2026-09-23): §11.15 — the BPHS Ch.29 strike propagates: 39 of 41 vedha-bearing transit rules cite that non-existent gochara chapter, the other 2 cite Phaladīpikā which is not in the admitted corpus, so ZERO vedha rules are corpus-verifiable and the layer has no source-qualified ordinary reference today. Added to §9 as D8."
   - "2.1 (2026-09-23): §11.14 — three defects from the Kshetra packet, all verified here: a wrong classical citation inside an INDEPENDENTLY ACCEPTED W0 record; a coverage gap declaring a table absent that holds 8 live rows; and the stored field being chart-wide where its contract says route-scoped."
@@ -277,6 +278,7 @@ plan resolver with upstream closure.
 | G14 | **Native decision latency** — five gating decisions + Q1–Q8 | The campaign idles on rulings | the decision sheet with recommendations; rule in one sitting | DEGRADES |
 | G15 | **Session isolation** — three brief sessions found writing into foreign worktrees; two drafts leaked to `main` | Shared-write collisions; unattributed publication | one worktree per session, enforced in every prompt | DEGRADES |
 | G16 | **Layer-level tracker projection** — the campaign tracker is phase-first; no per-asset L3 lifecycle view per swarm §11 | The native cannot see, at a glance, each asset's state on both ladders | extend the tracker's projection; never `lit` as done; no % without a denominator | NICE-TO-HAVE → DEGRADES at W2+ |
+| G18 | **The governance frontmatter gate cannot see this campaign's artifacts** — no governed glob reaches `00_ARCHITECTURE/briefs/**` (0 files matched), and for a file it *does* govern a YAML parse failure yields zero violations (§11.17) | Every brief, ruling sheet and packet we are producing is ungoverned; a passing CI run is not evidence the frontmatter is well-formed | extend `artifact_schemas.yaml` to the briefs tree; make a parse failure its own violation | DEGRADES governance |
 | G17 | **Ordinary-period fixtures** absent | Product §9 untestable | Phase 0 baseline adds one; briefs add per asset | DEGRADES proof |
 
 ---
@@ -875,3 +877,33 @@ commit on their own exit status, not lean on shell semantics.
 Concrete instance found while checking PR #2722: four of its five frontmatter blocks parse; the
 fifth, `KIMI_K3_REVIEW_KSHETRA_v1_0.md`, still fails (`ScannerError`, frontmatter line 5 — prose
 inside the `---` fences). The earlier fix landed on a different file than the one still broken.
+
+### 11.17 The governance frontmatter gate is blind in two independent ways (measured)
+
+The Kshetra session shipped a file whose frontmatter does not parse and noted that if the
+Governance schema gate flagged anything, that would be where to look. It will not flag it. I
+measured both reasons against `platform/scripts/governance/schema_validator.py` and
+`schemas/artifact_schemas.yaml` rather than reasoning from the source:
+
+**1 — Scope.** Eleven class/glob pairs exist in total. Expanding every one of them against the repo
+matches **zero files under `00_ARCHITECTURE/briefs/`**. The governance class that would otherwise
+cover us is `architecture_governance`, whose glob is `00_ARCHITECTURE/*.md` — a single-level
+pattern that does not descend. Every artifact this campaign has produced — this blueprint, the three
+asset briefs, the ruling sheets, the packets — sits outside the gate entirely.
+
+**2 — The gate does not fail on a parse failure even in scope.** In
+`validate_frontmatter_for_class`, a `yaml.safe_load` failure does not raise a violation. It sets a
+`__loose_yaml__` marker and falls back to a line-start regex scan for the required keys, at severity
+`LOW`. Run against the exact broken shape (a `**bold**` prose line inside the fences, which YAML
+rejects as an alias indicator), all three required keys are still found by the regex, so the file
+produces **zero violations and exit code 0.** Even had a `LOW` fired, `compute_exit_code` returns 3,
+and exit 3 is the band `ONGOING_HYGIENE_POLICIES` maintains a `known_residuals` whitelist for.
+
+So PR #2722's clean CI run is not evidence its frontmatter is well-formed. It is evidence that
+nothing looked. This is exactly §N.8: *what code path would have to run, and fail, for this signal
+to correctly read false?* For frontmatter parseability in this tree, there is none.
+
+**The fix is small and belongs in W0**, not later: add a `briefs/**` glob to the campaign-artifact
+class, and make a YAML parse failure a violation in its own right rather than a silent downgrade to
+a regex scan. The second half matters more than the first — extending scope to a gate that cannot
+fail only widens the reach of a green light nothing earned.
