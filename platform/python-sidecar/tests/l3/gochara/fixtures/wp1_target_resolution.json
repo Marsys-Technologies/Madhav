@@ -1,0 +1,370 @@
+{
+  "_meta": {
+    "artifact": "wp1_target_resolution",
+    "version": "1.0",
+    "date": "2026-09-23",
+    "executes": "GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md §5.3 + WP1_CONTRACTS.md §2",
+    "convention_id_note": "All cases are convention-independent: they pin target-resolution logic only, not ephemeris values. No longitude in this file was produced by Swiss Ephemeris; every value is an invented synthetic input (derivation: hand-specified).",
+    "chart_id_rule": "All chart ids are synthetic wp1-synth-* ids. No real chart id appears anywhere in this file.",
+    "target_resolution_state_vocab": ["resolved", "unavailable", "unqualified"],
+    "fact_subject_vocab_note": "graha_position fact_subject uses the live 3-letter abbreviation vocabulary (SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN, LAGNA) per services/gochara_intensity/enrichment.py:19-39."
+  },
+  "cases": {
+    "karaka_present": {
+      "target_type": "karaka",
+      "derivation": "hand-specified",
+      "derivation_note": "graha_position row present for the karaka graha -> contract resolves a point target at its stored sidereal longitude (plan §5.3 row 1).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000001",
+      "inputs": {
+        "resonance_target": {"event_class": "marriage", "target_type": "karaka", "target_ref": "Venus", "weight": 0.9},
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "VEN", "fact_key": "longitude_sidereal", "fact_value_num": 123.4567},
+          {"fact_category": "graha_position", "fact_subject": "VEN", "fact_key": "sign", "fact_value_text": "Leo"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "karaka",
+            "target_ref": "Venus",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 123.4567,
+            "target_sign": "Leo",
+            "cited_facts": ["graha_position[VEN].longitude_sidereal"]
+          }
+        ]
+      }
+    },
+    "karaka_node_mean": {
+      "target_type": "karaka",
+      "derivation": "hand-specified",
+      "derivation_note": "Rahu karaka resolves to the RAH_MEAN fact (N-4 mean node), never a true-node row (plan §5.3 row 1, nodes -> RAH_MEAN/KET_MEAN).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000002",
+      "inputs": {
+        "resonance_target": {"event_class": "career_advancement", "target_type": "karaka", "target_ref": "Rahu", "weight": 0.7},
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "RAH_MEAN", "fact_key": "longitude_sidereal", "fact_value_num": 211.02},
+          {"fact_category": "graha_position", "fact_subject": "RAH_TRUE", "fact_key": "longitude_sidereal", "fact_value_num": 212.51}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "karaka",
+            "target_ref": "Rahu",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 211.02,
+            "cited_facts": ["graha_position[RAH_MEAN].longitude_sidereal"],
+            "note": "RAH_TRUE row present but must not be read under the mean-node convention (N-4a(b''))."
+          }
+        ]
+      }
+    },
+    "dasha_lord_portfolio_present": {
+      "target_type": "dasha_lord_portfolio",
+      "derivation": "hand-specified",
+      "derivation_note": "Same resolution as karaka: the dasha lord graha's grha_position longitude becomes the point target (plan §5.3 row 2).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000003",
+      "inputs": {
+        "resonance_target": {"event_class": "wealth_gain", "target_type": "dasha_lord_portfolio", "target_ref": "Jupiter", "weight": 0.8},
+        "chart_dashas": [
+          {"system_id": "vimshottari", "level_n": 1, "lord_graha": "Jupiter"}
+        ],
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "JUP", "fact_key": "longitude_sidereal", "fact_value_num": 45.0}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "dasha_lord_portfolio",
+            "target_ref": "Jupiter",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 45.0,
+            "cited_facts": ["graha_position[JUP].longitude_sidereal"]
+          }
+        ]
+      }
+    },
+    "lord_whole_sign": {
+      "target_type": "lord",
+      "derivation": "hand-specified",
+      "derivation_note": "LAGNA sign Cancer; house 7 whole-sign offset -> Capricorn; classical rulership Capricorn->Saturn; Saturn's longitude becomes the point (plan §5.3 row 3, R-4).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000004",
+      "inputs": {
+        "resonance_target": {"event_class": "marriage", "target_type": "lord", "target_ref": "7L", "weight": 0.8},
+        "chart_facts": [
+          {"fact_category": "graha_sign_attributes", "fact_subject": "LAGNA", "fact_key": "sign_num", "fact_value_num": 4},
+          {"fact_category": "graha_position", "fact_subject": "SAT", "fact_key": "longitude_sidereal", "fact_value_num": 287.25}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "lord",
+            "target_ref": "7L",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 287.25,
+            "resolution_chain": [
+              "lagna_sign=4 (Cancer) from graha_sign_attributes[LAGNA].sign_num",
+              "house 7 whole-sign offset -> sign 10 (Capricorn)",
+              "classical rulership: Capricorn -> Saturn",
+              "graha_position[SAT].longitude_sidereal = 287.25"
+            ],
+            "cited_facts": ["graha_sign_attributes[LAGNA].sign_num", "graha_position[SAT].longitude_sidereal"]
+          }
+        ]
+      }
+    },
+    "bhava_whole_sign_interval": {
+      "target_type": "bhava",
+      "derivation": "hand-specified",
+      "derivation_note": "LAGNA Leo; bhava 4 -> Scorpio span [210,240): an interval (residence) target, no point invented (plan §5.3 row 4, M-5).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000005",
+      "inputs": {
+        "resonance_target": {"event_class": "property_acquisition", "target_type": "bhava", "target_ref": "4", "weight": 0.7},
+        "chart_facts": [
+          {"fact_category": "graha_sign_attributes", "fact_subject": "LAGNA", "fact_key": "sign_num", "fact_value_num": 5}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "bhava",
+            "target_ref": "4",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [210.0, 240.0],
+            "target_sign": "Scorpio",
+            "resolution_chain": [
+              "lagna_sign=5 (Leo)",
+              "bhava 4 whole-sign offset -> sign 8 (Scorpio)",
+              "interval [30*(8-1), 30*8) = [210, 240)"
+            ],
+            "point_contacts": [],
+            "note": "bhava_cusps must not be read; no point contact may be emitted (M-5)."
+          }
+        ]
+      }
+    },
+    "mechanism_node_wired": {
+      "target_type": "mechanism_node",
+      "derivation": "hand-specified",
+      "derivation_note": "Rule jupiter:double_transit:h11 wired in bg_transit_rules; house 11 whole-sign span from LAGNA Taurus -> Pisces [330,360): interval target, relations sign-ingress/residence (plan §5.3 row 5).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000006",
+      "inputs": {
+        "resonance_target": {"event_class": "career_advancement", "target_type": "mechanism_node", "target_ref": "jupiter:double_transit:h11", "weight": 0.5},
+        "bg_transit_rules": [
+          {"id": 42, "rule_type": "double_transit", "graha": "jupiter", "primary_house": 11, "classical_citation": "test-rule", "operand_wired": true}
+        ],
+        "chart_facts": [
+          {"fact_category": "graha_sign_attributes", "fact_subject": "LAGNA", "fact_key": "sign_num", "fact_value_num": 2}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "mechanism_node",
+            "target_ref": "jupiter:double_transit:h11",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [330.0, 360.0],
+            "target_sign": "Pisces",
+            "relations": ["sign_ingress", "residence"],
+            "resolution_chain": [
+              "lagna_sign=2 (Taurus)",
+              "house 11 whole-sign offset -> sign 12 (Pisces)",
+              "interval [330, 360); rule id 42 operand wired -> resolved (else unqualified, M-4)"
+            ]
+          }
+        ]
+      }
+    },
+    "arudha_sign_interval": {
+      "target_type": "arudha",
+      "derivation": "hand-specified",
+      "derivation_note": "arudha sign row fact_value_text=Gemini -> interval [60,90); sibling longitude_sidereal=60.0000 is a cusp placeholder and must never be read as a degree (plan §5.3 row 6, F-20, R-2).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000007",
+      "inputs": {
+        "resonance_target": {"event_class": "wealth_gain", "target_type": "arudha", "target_ref": "ARUDHA.A7.SIGN", "weight": 0.6},
+        "chart_facts": [
+          {"fact_category": "arudha_pada", "fact_subject": "A7", "fact_key": "sign", "fact_value_text": "Gemini", "fact_id": "wp1synth.a7.sign"},
+          {"fact_category": "arudha_pada", "fact_subject": "A7", "fact_key": "longitude_sidereal", "fact_value_num": 60.0, "fact_id": "wp1synth.a7.lon"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "arudha",
+            "target_ref": "ARUDHA.A7.SIGN",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [60.0, 90.0],
+            "target_sign": "Gemini",
+            "point_contacts": [],
+            "note": "The stored longitude 60.0000 equals 30*(sign-1) exactly: a cusp placeholder. Resolving it to a degree would fabricate exact contacts at cusps (F-20)."
+          }
+        ]
+      }
+    },
+    "yoga_constituent_live": {
+      "target_type": "yoga_constituent",
+      "derivation": "hand-specified",
+      "derivation_note": "gajakesari_yoga has a live fired=true row; its two constituent fact ids resolve to the Moon's and Jupiter's longitudes; one independence_group per yoga id (plan §5.3 row 7, H-6).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000008",
+      "inputs": {
+        "resonance_target": {"event_class": "wealth_gain", "target_type": "yoga_constituent", "target_ref": "gajakesari_yoga", "weight": 0.7},
+        "ga_yoga_firings": [
+          {
+            "yoga_canonical_id": "gajakesari_yoga",
+            "fired": true,
+            "constituent_fact_ids": ["wp1synth.moon.lon", "wp1synth.jup.lon"],
+            "constituent_planets": ["Moon", "Jupiter"],
+            "bhanga_active": false
+          }
+        ],
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "MOON", "fact_key": "longitude_sidereal", "fact_value_num": 10.5, "fact_id": "wp1synth.moon.lon"},
+          {"fact_category": "graha_position", "fact_subject": "JUP", "fact_key": "longitude_sidereal", "fact_value_num": 11.0, "fact_id": "wp1synth.jup.lon"}
+        ]
+      },
+      "expected": {
+        "target_count": 2,
+        "targets": [
+          {
+            "target_type": "yoga_constituent",
+            "target_ref": "gajakesari_yoga",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 10.5,
+            "target_fact_id": "wp1synth.moon.lon",
+            "independence_group": "yoga:gajakesari_yoga"
+          },
+          {
+            "target_type": "yoga_constituent",
+            "target_ref": "gajakesari_yoga",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 11.0,
+            "target_fact_id": "wp1synth.jup.lon",
+            "independence_group": "yoga:gajakesari_yoga"
+          }
+        ],
+        "note": "Both constituents share ONE independence_group (H-6): one physical contact through this yoga counts once."
+      }
+    },
+    "sensitive_degree_positive": {
+      "target_type": "sensitive_degree",
+      "derivation": "hand-specified",
+      "derivation_note": "Positive papa_kartari check on Saturn -> resolves to Saturn's OWN grha_position degree and merges into Saturn's independence_group; the check row carries no longitude of its own (plan §5.3 row 8).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000009",
+      "inputs": {
+        "resonance_target": {"event_class": "illness_acute", "target_type": "sensitive_degree", "target_ref": "wp1synth.sat.notgandanta.check", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "sensitive_degree_check", "fact_subject": "SAT", "fact_key": "papa_kartari", "fact_value_text": "papa_kartari", "fact_id": "wp1synth.sat.papakartari.check"},
+          {"fact_category": "graha_position", "fact_subject": "SAT", "fact_key": "longitude_sidereal", "fact_value_num": 200.125, "fact_id": "wp1synth.sat.lon"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "sensitive_degree",
+            "target_ref": "wp1synth.sat.papakartari.check",
+            "object_kind": "point",
+            "target_resolution_state": "resolved",
+            "target_longitude_deg": 200.125,
+            "resolved_subject_graha": "Saturn",
+            "independence_group": "graha:Saturn",
+            "note": "Merged into Saturn's own independence_group, NOT a new group (plan §5.3 row 8)."
+          }
+        ]
+      }
+    },
+    "neg_sensitive_check_zero_targets": {
+      "target_type": "sensitive_degree",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "Negative check result (not_gandanta) must produce ZERO targets, not a target marked negative (F-19; N-12 R-1 pre-approved).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000a",
+      "inputs": {
+        "resonance_target": {"event_class": "marriage", "target_type": "sensitive_degree", "target_ref": "wp1synth.moon.notgandanta.check", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "sensitive_degree_check", "fact_subject": "MOON", "fact_key": "gandanta", "fact_value_text": "not_gandanta", "fact_id": "wp1synth.moon.notgandanta.check"},
+          {"fact_category": "graha_position", "fact_subject": "MOON", "fact_key": "longitude_sidereal", "fact_value_num": 359.9, "fact_id": "wp1synth.moon.lon"}
+        ]
+      },
+      "expected": {
+        "target_count": 0,
+        "targets": [],
+        "note": "WP3c R-1 removes negative-result sensitive rows at the resonance layer; nothing is stored, so there is no row to carry a state."
+      }
+    },
+    "neg_arudha_cusp_placeholder": {
+      "target_type": "arudha",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "Sibling longitude_sidereal=270.0000 (exactly 30*(sign-1)) must never produce a point contact at 270.0; only the Sagittarius sign interval [240,270) may resolve (F-20, R-2).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000b",
+      "inputs": {
+        "resonance_target": {"event_class": "wealth_gain", "target_type": "arudha", "target_ref": "ARUDHA.AL.SIGN", "weight": 0.6},
+        "chart_facts": [
+          {"fact_category": "arudha_pada", "fact_subject": "AL", "fact_key": "sign", "fact_value_text": "Sagittarius", "fact_id": "wp1synth.al.sign"},
+          {"fact_category": "arudha_pada", "fact_subject": "AL", "fact_key": "longitude_sidereal", "fact_value_num": 270.0, "fact_id": "wp1synth.al.lon"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "arudha",
+            "target_ref": "ARUDHA.AL.SIGN",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [240.0, 270.0],
+            "target_sign": "Sagittarius",
+            "point_contacts": [],
+            "forbidden_point_longitudes": [270.0],
+            "note": "Assert the kernel emits NO degree-level contact against 270.0000; the cusp placeholder is a degree the cited fact does not actually carry."
+          }
+        ]
+      }
+    },
+    "neg_dangling_yoga_unavailable": {
+      "target_type": "yoga_constituent",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "Yoga id with no live fired=true ga_yoga_firings row -> target_resolution_state=unavailable, stored by R-6, never a silent skip (F-21; mirrors the live ardhachandra/chatra case).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000c",
+      "inputs": {
+        "resonance_target": {"event_class": "career_advancement", "target_type": "yoga_constituent", "target_ref": "chatra_yoga", "weight": 0.7},
+        "ga_yoga_firings": [],
+        "chart_facts": []
+      },
+      "expected": {
+        "target_count": 0,
+        "targets": [],
+        "unresolved": [
+          {
+            "target_type": "yoga_constituent",
+            "target_ref": "chatra_yoga",
+            "target_resolution_state": "unavailable",
+            "reason": "no ga_yoga_firings row with fired=true for this yoga id"
+          }
+        ],
+        "note": "The honest null is stored on gochara_resonance_map.target_resolution_state (R-6) and counted in kala_gochara_coverage.targets_unresolved; coverage manifest, not silence, is the contract."
+      }
+    }
+  }
+}
