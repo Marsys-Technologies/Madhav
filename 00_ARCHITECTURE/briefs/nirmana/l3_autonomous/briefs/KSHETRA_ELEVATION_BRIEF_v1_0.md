@@ -1,6 +1,6 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.4"
+version: "4.5"
 status: PROPOSED_FOR_NATIVE_RULING
 approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
@@ -39,6 +39,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.5 (2026-09-23) — corpus premise retracted (plan v1.5 §6a.2): the corpus is the served classical_text_chunks table, not the SOURCE_DATA directory; Phaladīpikā is in it. ka_vedha_gochara\u0027s house-vedha rows are mis-cited (39/41 to \"BPHS Ch.29\"), not unsourced — applied on L0 re-citation at page grain."
   - "4.4 (2026-09-23) — independent_review_owner amended: madhav-fc declared a conflict on rulings 7/8/9 (co-produced evidence) and accepts only the non-conflicted scope; the 7/8/9 reviewer is left for the native to name. Kimi files given frontmatter; interior rules in the review rendered as *** ."
   - "4.3 (2026-09-23) — owners assigned on the native's delegation (implementation: the Execution — Data Plane task per Strategy §8; independent review: madhav-fc, not the author). Rulings NOT self-approved: status stays PROPOSED_FOR_NATIVE_RULING; the native signs KSHETRA_RULING_SHEET_v1_0.md (contract §8: a packet never approves itself)."
   - "4.2 (2026-09-23) — Gochara-session corrections, verified: vedha chain → bg_transit_rules + Phaladīpikā Ch.26 (no bg_phaladeepika_vedha relation exists); second v1 COALESCE site stage4_field.py:1386-1389."
@@ -351,7 +352,7 @@ non-reproducible too. **Owner of the upstream half:** L3-U01 (L2→Yojaka/Kshetr
 |---|---|---|---|
 | **receives** | L2 `bodha_pratijna`/`bo_sangati`/`bo_upaya` → S2 (`computation`, `counterevidence`) | signed multidomain mechanism + cancellation | **§4.4** — sign → unsigned conductance |
 | **receives** | L1 `chart_dashas` → S3 (`computation`) | hour grain + `sandhi` | `start_iso/end_iso` **survive** (`stage3_clocks.py:418-437`). Sandhi **is** a term — covariate x9 `sandhi_band` — but it is derived from Kshetra's **own** S3 boundaries (`stage1_symbolization.py:299-330`), never from L1's `sandhi_flag`: the two layers can disagree about where a sandhi is (§N.5). The null collapses to a **1-day grid**; windows declare `day_grade` |
-| **receives (should, does not)** | `ka_vedha_gochara`, `ka_moorti_nirnaya`, `ganita_av_transit_gating`, `ka_kota_chakra`, `ka_sudarshana`, `ka_tithi_pravesha` → S1 covariates (`computation`, `applicability`) | source-qualified vedha; accepted moorti; AV kakṣā gate; kota/sudarshana/tithi applicability | **0 reads**; vedha and moorti re-derived internally; `av_kaksha_gate` and `latta` `not_in_corpus`. The layer's classical suite does not feed the field. |
+| **receives (should, does not)** | `ka_vedha_gochara`, `ka_moorti_nirnaya`, `ganita_av_transit_gating`, `ka_kota_chakra`, `ka_sudarshana`, `ka_tithi_pravesha` → S1 covariates (`computation`, `applicability`) | vedha **verse-cited at Phaladīpikā Adh. XXVI PG322–323 once the 41 `bg_transit_rules` rows are re-cited from the refuted "BPHS Ch.29"** (the text is in the served corpus); accepted moorti; AV kakṣā gate; kota/sudarshana/tithi applicability | **0 reads**; vedha and moorti re-derived internally; `av_kaksha_gate` `not_in_corpus` (re-verify by count); `latta` present at L0 and unread. The layer's classical suite does not feed the field. |
 | **owes** | `field_snapshot_id` → `mi_bhara` (`evaluation`, L3-U10) | a **published** snapshot, selected by manifest | L5 picks `LIMIT 1` unordered from `kala_field` (`mi_bhara.py:403`) and today binds to an unpublished id |
 | **receives** | `ka_gochara_resonance` → S1/S4 (`computation`) | resonance targets | — |
 | **receives** | `ephemeris_daily` (L0) → S0 (`computation`) | 9 daily bodies incl. Rāhu/Ketu at a **declared** node frame and epoch | **Store is TRUE-node at NOON-UT knots, Swiss-exact** — stored tropical Rāhu 73.629058 = Swiss TRUE at 1984-02-05 12:00 UT to 6 dp (verified in-session); `l0_ephemeris.py:77,290` use `swe_id 11` = `TRUE_NODE`. Yet migration 624:30 asserts `node_mode:"mean"` and the code comment says "mean North Node" — §N.8, a convention with no detector. L1 natal is mean, so S0 splines true-node knots against mean-node targets. Neither the node frame nor the noon-UT epoch is carried on the row. Scanner amendments do **not** land here (only `MEAN_MOTIONS`, `:746`). Dependency on the hub ruling |

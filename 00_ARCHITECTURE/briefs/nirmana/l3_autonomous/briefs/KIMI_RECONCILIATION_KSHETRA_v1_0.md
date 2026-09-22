@@ -1,12 +1,14 @@
 ---
 artifact: KIMI_RECONCILIATION_KSHETRA
-version: "1.0"
+version: "1.1"
 status: CURRENT
 date: 2026-09-23
 reviewer: Kimi K3, effort=max (KIMI_K3_REVIEW_KSHETRA_v1_0.md; packet KIMI_REVIEW_PACKET_KSHETRA_v1_0.md)
 reconciled_by: the Kshetra brief session (madhav-d2)
 method: every load-bearing reviewer claim re-verified at source on main @ c58e86662 before acceptance; verdicts ACCEPT / ACCEPT-MODIFIED / REJECT with the evidence line
 applied_to: KSHETRA_ELEVATION_BRIEF_v1_0.md v4.2 · KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md v1.2 (the .2 revisions add the Gochara-session corrections — real vedha source chain; second COALESCE site)
+changelog:
+  - "1.1 (2026-09-23) — §6 added: the corpus-absence claims in the review and in this reconciliation were made from a source-data directory, not the served corpus; re-opened, with the method rule."
 does_not_authorize: any code, migration, build or doctrine
 ---
 
@@ -84,3 +86,31 @@ hedge carried; §7 gains the G3 semantics decision and the ablation-judge decisi
 Only one: the G3 *consequence* ("null biased low"). The reviewer checked three sites and inferred
 the fourth; the fourth (`dhara_sweep.py:43,55`) goes through the same unfiltered path as the null.
 The defect is real and ranks first; its shape is "contract ≠ behaviour," not "test ≠ subject."
+
+## 6. A shared error, re-opened — the corpus is the served table, not the directory
+
+The review's *Review basis* states the corpus inventory as "BPHS Vol 1, BPHS Vol 2, KP Reader Vols
+5-6, Jaimini" and rules Phaladīpikā, Sarvārtha Cintāmaṇi, Jātaka Pārijāta and all Tājika texts
+"NOT in the admitted corpus." **That is the listing of `00_ARCHITECTURE/SOURCE_DATA/classical_texts/`
+— a source-data directory.** The corpus the product serves is `classical_text_chunks` (15 texts with
+content): Phaladīpikā (564 chunks, 17 vedha), Tājaka Nīlakaṇṭhī (290), Sārāvalī, Jātaka Pārijāta,
+Sarvārtha Cintāmaṇi, Uttara Kālāmṛta, Bṛhat Jātaka, Bṛhat Saṃhitā, Horā Sāra, Muhūrta Cintāmaṇi,
+Yavana Jātaka, BPHS, Jaimini — and **no KP text at all**. The reviewer, the author, the Gochara
+session and (by mirroring) the Sangam session all made the same read; the Gochara session caught it
+by re-running the search. Verified four ways (two independent `count(*)`; the live roster; a live
+search hit at `phaladeepika:PG323:C1`, Adh. XXVI ślokas 6–8, `[HIGH]`).
+
+| Claim (source) | Status now |
+|---|---|
+| K-8 #2 "admitted chain … Phaladīpikā not in corpus"; §2.2 above | **Corrected:** house-vedha rows are *mis-cited* (39/41 to "BPHS Ch.29") over content verbatim at Phaladīpikā PG322–323, which is in the corpus → `applied` on L0 re-citation at page grain (Gochara F-23/G-8). G-9 moot. |
+| K-2 #3 / K-3 (v) "no Tājika text in the corpus"; "Kota no corpus occurrence"; "muntha/varṣeśa need source admission" | **Tājika: withdrawn** — `tajaka_neelakanthi` served. **Kota, muntha: re-opened** — count required. |
+| K-2 #4 / K-3 (ii) "kakṣyā is not in the corpus, only SAV thresholds" | **Re-opened** — count required. |
+| K-3 (iii) "sade-sati corpus anchor is only KP Reader Vol 5" | **Re-opened**, and KP is not in the corpus at all — the anchor cited does not exist there. |
+| K-2 (c) "daśā-sandhi as junction doctrine is NOT in the admitted corpus" | **Re-opened** — count required. |
+| K-2 confidence "[U] for Phaladīpikā / Sarvārtha Cintāmaṇi specifics (not in corpus)" | **Both are in the corpus**; the [U] was a directory read, not a verification result. |
+| All *presence* anchors (Ch. 47 vv 5-6; Ch. 57 vv 24-27A; Ch. 9-10; Ch. 12 v 11; Ch. 46; Ch. 72; Ch. 74; Ch. 29 = Bhāva Padas) | **Stand** — made by direct text read. |
+
+**Method rule (adopted):** absence in the corpus is asserted only by `count(*)` against
+`classical_text_chunks` naming the predicate — never from a directory, never from the search tool
+(which ranked the relevant Phaladīpikā chunk 7th of 12 on a vedha query). Presence by search is
+valid; absence by search is not. `verse_ref` is page-based; citations must carry the page anchor.
