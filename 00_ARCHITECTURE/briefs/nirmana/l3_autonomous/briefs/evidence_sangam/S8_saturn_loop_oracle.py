@@ -1,15 +1,25 @@
-"""E5 oracle (RR-09 corrected). Records the ACTUAL ephemeris engine (requested SWIEPH; if Moshier is
-returned, say so — it is NOT pinned Swiss-file provenance). Refines stations by bisection on speed sign
+"""E5 oracle (RR-09 corrected; backend rule). Resolves the ephemeris path as production does, records backend +
+.se1 checksums, and exits NOT_RUN (3) on Moshier — a geometric oracle is never asserted on the fallback. Refines stations by bisection on speed sign
 (tolerance 1 min). Propositions: exactly three SR→SD loops in 2026-2029; for each, an inside point
 crosses 3 times and a control just outside crosses once. Independent referee for E5's grouping — but a
 crossing count is NOT an orb-interval occupancy proof (SPEC E5(b))."""
 import swisseph as swe
 from _common import *
 head("S8 — Saturn retrograde loops 2026–2029 → E5 oracle points (with provenance)")
+# RR-09 / backend rule: resolve the ephemeris path the way production does, record the backend and
+# file checksums, and REFUSE to pass as a geometric oracle on Moshier (NOT_RUN, not PASS).
+import hashlib, os, pathlib as _pl
+try:
+    from brahmagyan import l0_ephemeris as _L0; _ephe = _L0._resolve_ephe_path()
+except Exception: _ephe = os.environ.get('SWE_EPHE_PATH') or ('/tmp/se1' if _pl.Path('/tmp/se1').exists() else None)
+if _ephe: swe.set_ephe_path(_ephe)
 swe.set_sid_mode(swe.SIDM_LAHIRI); FL = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
 r = swe.calc_ut(swe.julday(2026,1,1), swe.SATURN, FL)
-engine = "MOSHIER (fallback — no .se1 files)" if r[1] & swe.FLG_MOSEPH else "SWIEPH files"
-print(f"  provenance: swisseph {swe.version}, requested flags {FL}, returned {r[1]} → {engine}; ayanamsha Lahiri; node n/a")
+on_swiss = bool(r[1] & swe.FLG_SWIEPH) and not (r[1] & swe.FLG_MOSEPH)
+sums = {f.name: hashlib.sha256(f.read_bytes()).hexdigest()[:16] for f in (_pl.Path(_ephe).glob('*.se1') if _ephe else [])}
+print(f"  provenance: swisseph {swe.version}; ephe_path={_ephe}; requested flags {FL}, returned {r[1]} → {'SWIEPH' if on_swiss else 'MOSHIER'}; .se1 sha256[:16]={sums}; ayanamsha Lahiri")
+if not on_swiss:
+    print("VERDICT: NOT_RUN — geometric oracle requires the Swiss files (backend rule); Moshier is not an oracle"); sys.exit(3)
 lon = lambda jd: swe.calc_ut(jd, swe.SATURN, FL)[0][0]; spd = lambda jd: swe.calc_ut(jd, swe.SATURN, FL)[0][3]
 def refine(a, b):                                          # bisection on speed sign to ~1 minute
     while b - a > 1/1440: m = (a+b)/2; (a, b) = (m, b) if (spd(m) < 0) == (spd(a) < 0) else (a, m)
@@ -37,4 +47,4 @@ for sr, sd in loops:
     print(f"  loop SR {y}-{m:02d}-{d:02d} {sr[2]:.3f}° → SD {y2}-{m2:02d}-{d2:02d} {sd[2]:.3f}°  arc {span:.3f}°{' (wraps 0°)' if sd[2]>sr[2] else ''}")
     prop(f"  inside {inside:.3f}° crosses 3×", ci == 3, f"count={ci}")
     prop(f"  control {outside:.3f}° crosses 1×", co == 1, f"count={co}")
-done(kind="ORACLE POINTS CONSTRUCTED (Moshier unless stated otherwise)")
+done(kind="ORACLE POINTS CONSTRUCTED ON SWIEPH (backend + checksums recorded)")
