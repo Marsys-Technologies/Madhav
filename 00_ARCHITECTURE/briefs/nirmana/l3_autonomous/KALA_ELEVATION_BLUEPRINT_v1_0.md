@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.2"
+version: "1.3"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.3 (2026-09-23): §11 — the pāda-boundary claim is WITHDRAWN as unresolvable on this host (stored value sits 0.0059° from the boundary; local Moshier error ~0.1°); the three node figures in circulation reconciled; the stale KSHETRA brief on main flagged."
   - "1.2 (2026-09-23): §11 rewritten after three-session convergence — the node split is FOUR-way and `ephemeris_daily` stores TRUE node under a mean contract (measured 5/5 dates); the DAR_CLOSE receipt records the mean value the table does not hold; M-3 carries two producer paths and neither unblocks E1/E3 yet; two of this session's own v1.1 claims corrected."
   - "1.1 (2026-09-23): §11 addendum — the node-convention hub defect (mean-node natal vs true-node transit engine; reached and served: 232 rows in the served Gochara generation), the M-3 producer-owner decision the Saṅgam FINAL packet raises, and the shared-branch rule. Body unchanged."
   - "1.0 (2026-09-22): first issue."
@@ -448,9 +449,27 @@ the mean value — so it describes an intended computation, not the stored resul
 "FORENSIC-verified" claim was never compared against the table. **Routed to L0's owner as a
 receipt-vs-data discrepancy. No L3 session touches L0.**
 
-**It is visible in a reading, not only in code.** At the native's birth instant the two models
-straddle a nakṣatra pāda boundary — TRUE 50.054° = Rohiṇī pāda 4, MEAN 49.033° = pāda 3 (Gochara
-session; consistent with my 49.99 / 49.04 measurement). Maximum divergence ~1.9° over 1984–2084.
+**Is it visible in a reading? The class yes; the specific claim NO — withdrawn.** Three figures
+have circulated between the sessions and they were measuring three different things. Reconciled:
+
+| Quantity | Sidereal (Lahiri) | Rohiṇī pāda |
+|---|---|---|
+| Swiss TRUE recomputed at the birth instant (05:13 UT) | 50.0502° | 4 |
+| Swiss MEAN recomputed at the birth instant | 49.0289° | 3 |
+| **The stored `ephemeris_daily` knot** (00:00 UT), converted | **49.9941°** | 3 |
+
+So mean-vs-true does move a pāda *when recomputed* — but the **stored** value, which is what Kāla
+actually consumes, sits **0.0059° from the pāda-3/4 boundary**, while this host's ephemeris error is
+~0.1° (no `.se1` files locally → Moshier fallback; the build image ships Swiss files). **The margin
+is sixteen times smaller than the measurement error, so the pāda assignment for the stored value is
+not resolvable here and must not be put to the native as measured.** It needs a run against the
+production ephemeris. The *general* point stands and is enough: a ~1° shift against 3°20′ pādas can
+move a pāda, so the ruling is reading-visible in class. Maximum divergence ~1.9° over 1984–2084
+(Gochara session, not recomputed here).
+
+Note this cuts the other way too: my five-date residuals of ≤0.10° against TRUE are themselves
+partly Moshier error. The discrimination survives it easily — ~0.1° from true versus 0.95–1.47° from
+mean is tenfold — but no sub-0.1° claim from this host is safe.
 
 **Reach, measured for the canonical chart:** 40 of 765 `gochara_resonance_map` targets are
 Rāhu/Ketu across 9 event classes · **232 of 914** served generation-3.0 rows carry node contacts
@@ -526,8 +545,17 @@ data — a gap to close in the producer, not a live wrong answer in serving.
 
 `l3/kala-elevation-readiness` is by use the shared L3 documentation branch. Committed docs there are
 fine, **staged by name only**; uncommitted work belongs in the authoring session's own worktree.
-Verified: the Saṅgam commits swept zero foreign files. The Kshetra brief files still unstaged in the
-readiness worktree are that session's, and where they land is its user's call — untouched here.
+Verified: the Saṅgam commits swept zero foreign files. The Kshetra session's user has since ruled:
+both artifacts moved to `/Users/Dev/madhav-l3/kshetra` on `l3/kshetra-elevation`, and the readiness
+worktree is clean again.
+
+**One consequence of this session's own error, flagged for anyone citing it.** `origin/main` carries
+`briefs/KSHETRA_ELEVATION_BRIEF_v1_0.md` at that session's **stale v1.0**, swept there by this
+session's `git add -A` in `bd1a12e03` (PR #2713). It contains three findings its author has since
+withdrawn — including the "Kshetra is mean/mean, already conformant" conclusion that §11.1's store
+measurement overturns. Until that session's v4.0 lands as an in-place update, **anyone reading that
+path on `main` gets the withdrawn version.** Do not cite it. This is why the staged-by-name rule
+exists.
 
 ### 11.6 Carried but NOT verified by this session
 
@@ -536,7 +564,6 @@ readiness worktree are that session's, and where they land is its user's call �
 its own comments say it *independently reproduces* `l1_positions`' formulas rather than importing
 them (`:49,105-106`). Flagged for the Gochara session to re-check. · Per-importer persisted
 divergence in the `l1_positions` chain. · The century BUILD-PROTECTED "residue" timeline (error
-stamped 2026-08-21 vs migration 588 applied 2026-08-23). · The 1.933° maximum and the pāda-boundary
-straddle (consistent with, but not recomputed from, my five-date sample). · **No natal Rāhu
+stamped 2026-08-21 vs migration 588 applied 2026-08-23). · The 1.933° maximum over 1984–2084. · **No natal Rāhu
 `longitude_sidereal` fact row exists** for the canonical chart at `lahiri_chitrapaksha` — so L1's
 mean convention is confirmed by declaration and by the DAR arithmetic, not by a stored fact.
