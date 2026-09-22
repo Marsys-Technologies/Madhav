@@ -95,7 +95,7 @@ as such. Each carries its reasoning so any one can be overturned with a single l
   per-stratum coverage is years out on a two-chart corpus. That is consistent with L5 being sealed in
   STRUCTURAL mode by design — the instrument-level gate at n=100 is the reachable one and opens first.
 
-### D-2 — `ambiguous`: adjudicated by the native, **censored not scored**, with a censoring ceiling
+### D-2 — `ambiguous`: adjudicated by the native, **out of n but binding at the rate's adverse end**, with a censoring gradient
 
 - Adjudicated by **the native** — not the author, not the instrument: the only party holding the
   lived facts. Every adjudication records its reason.
