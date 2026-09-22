@@ -1796,8 +1796,13 @@ finding_entry:
        own words: the 5/7/9 nodal aspect is 'NOT found in the original Brihat Parashara Hora Shastra
        (BPHS) text itself', is 'later tradition', and the module is labelled a CANDIDATE — while
        running enabled on the served path. A candidate that is live is not a candidate."
-    - "That same docstring names its actual sources as Phaladīpikā and Sārāvalī. BOTH ARE IN THE
-       SERVED CORPUS (564 and 471 chunks). Neither has been read against this question by anyone."
+    - "That same docstring names its actual sources as Phaladīpikā and Sārāvalī. Both are in the
+       served corpus (564 and 471 chunks). CORRECTED 2026-09-23 by the Saṅgam stream: this entry
+       first said neither had been read against this question. That was WRONG — the table-level
+       query behind the attributed absence ground did include both in scope and returned only
+       non-granting rows from them (Phaladīpikā PG429:C1 is an index entry on Jupiter in transit;
+       Sārāvalī PG129:C2 is 7th-house relations). See the amended grading below for why the
+       objection nevertheless survives."
   grounds_attributed_not_yet_verified_by_recording_session:
     - "ATTRIBUTED (Gochara stream, reproduced by Saṅgam): the 'BPHS Ch.26' citation is refuted at
        source — the chapter names Saturn, Jupiter and Mars for the specials and the 7th for all,
@@ -1805,6 +1810,27 @@ finding_entry:
     - "ATTRIBUTED (Saṅgam): a table-level regex across the 15-text corpus finds no nodal 5/7/9
        grant. Stated by its author as 'not found at table level', NOT as absent."
     - "ATTRIBUTED (Kimi K3): graded `[U] do not implement by default`."
+  amendment_2026_09_23_conjunctive_query_limit:
+    logged_by: "recording session, after the Saṅgam stream's correction (1b33c2780)"
+    note: >
+      The attributed absence ground is downgraded, by its own author, from "not found in the
+      corpus" to "NOT FOUND BY A CONJUNCTIVE REGEX THAT INCLUDED BOTH TEXTS". The query required an
+      aspect term AND a 5th/9th term IN THE SAME CHUNK. A grant phrased "Rāhu, like Jupiter, sees
+      the trines", or split across a chunk boundary, or degraded by OCR — and these chunks are
+      badly degraded — is invisible to it. The weaker claim is now stated as the weaker claim in
+      the Saṅgam sheet, and the stronger check remains undone: read EVERY rāhu/ketu chunk in
+      Phaladīpikā and Sārāvalī for the predicate, with NO aspect term conjoined. The SQL is written
+      into SANGAM_RULING_SHEET_v1_0.md ready to run.
+    also_attempted_and_failed: >
+      Both the Saṅgam stream and this recording session hit `ECONNREFUSED 127.0.0.1:5433` on the
+      direct DB path and could not discharge the check. The Saṅgam stream then ran the remote
+      search path, which responded and returned nothing from either text, and recorded that as a
+      NON-RESULT rather than as evidence — because this same campaign measured that same tool
+      returning zero rows for a predicate with seventeen in the table. That refusal is correct and
+      is noted here as the behaviour the register wants, not as a gap.
+    unaffected: >
+      D-6's other three grounds are untouched by this amendment: the refuted Ch.26 citation, the
+      w30 docstring's own concession, and Kimi's independent [U] grade.
   recording_session_caveat: >
     The two attributed corpus grounds are exactly the class of claim that failed catastrophically
     across four sessions on this same day (see §11.21/§11.24 of the blueprint: a four-name corpus
