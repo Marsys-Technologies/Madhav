@@ -9,11 +9,44 @@
 
 | Metric | Value |
 |---|---|
-| **Accepted N/22** | **0 / 22** |
+| **Accepted N/22** | **0 / 22** (unchanged — N1-C's dispatch failed structurally before any write) |
 | Newly accepted this run | — |
 | Campaign definition | `t3-2026-09-11-8b884eac` |
 | Canonical chart | `482012f1-710e-4a25-994a-93821f5871aa` |
 | Run started | 2026-09-20 ~02:10 IST |
+| N1 packet (native-authorized) | N1-A merge-queue-blocked by cross-campaign test coupling (not a defect); N1-B done; N1-C attempted and failed on a real, structural `asset_registry` grant gap; N1-D/E done. See §N1 CLOSE below. |
+
+## ★ N1 CLOSE — native-authorized packet, executed 2026-09-20 ~04:00–05:00 IST
+
+Full account in `EVENTS.jsonl` (N1-A through N1-E rows). Summary:
+
+- **N1-A (digest-path fix + ayanamsha default fix):** both defects fixed, tested, independently
+  verified by a fresh code-reviewer agent (correct/safe; found 2 unrelated follow-up sites —
+  `school-consensus/route.ts:45`, `facts_store.ts:368` — not fixed, out of scope). PR #2695 open,
+  auto-merge enabled, **merge-queue-blocked** by a real cross-campaign finding: the ayanamsha
+  description-text change shifts the shared capability-registry fingerprint two Pūrṇa-owned golden-
+  baseline tests pin byte-for-byte (`route_golden_stream.test.ts`, `beyond_acarya_acceptance.test.ts`,
+  both required checks). Confirmed this is not a defect in the PR — clean on bare `origin/main`.
+  Will land on its own once Pūrṇa regenerates those baselines.
+- **N1-B (credential verify):** `data-plane-builder-db-url` verified read-only:
+  `data_plane_builder`, INSERT confirmed on `build_runs`/`build_run_assets`. No value printed.
+- **N1-C (backup → lease → dispatch):** backup `1789857608546` SUCCESSFUL. Lease claimed/released
+  on `campaign-coordination` with full evidence. Dispatched `ga_positions` for real — **failed
+  structurally**: `data_plane_builder` (the job's own bound identity) has zero role memberships and
+  no grant on `asset_registry`, confirmed by direct privilege introspection. `runner.py`'s
+  registry-verification step needs `SELECT` on that table; none exists. This blocks W1 for **any**
+  asset, any chart, until the grant is added — an IAM/DB change outside this session's authority.
+  `build_runs` self-terminalized via an orphan watchdog; no hand-edit needed. Did not attempt
+  `ga_dashas` or a retry — the cause is deterministic, confirmed, not transient.
+- **N1-D (notify Pūrṇa):** `CAMPAIGN_COORDINATION.md` §6 LOG entry + `NOTICE_TO_PURNA_2026-09-20.md`
+  cover both findings above. Live-re-tested `ganita_dashas_get`: refusal did **not** clear (measured).
+- **N1-E (brief/plan scope + correction):** `CLAUDECODE_BRIEF.md` v1.1 (Applicability clause) and
+  `MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` v1.1 (superseded the "stranded, none on main" claim
+  in place with the 874/874-lines-present measurement) both done.
+
+**Net effect on `Accepted N/22`: none — still 0/22, honestly.** The one actionable new fact for a
+future session or the native: **`data_plane_builder` needs `SELECT` on `asset_registry`** before
+any W1 dispatch (CLI or `/api/cockpit/runs`) can succeed.
 
 ## Phase-0 scorecard (SEPARATE — never merged into Accepted N/22)
 
@@ -22,12 +55,12 @@
 | Preservation branches on origin | **9 / 9 ✅** |
 | Integration worktree + branch | ✅ `codex/madhav-l3-claude-code` @ `cdc701afa` |
 | Governing docs staged in worktree | ✅ 4 / 4 extracted + 3 planning docs |
-| Governing docs merged to main (B1) | 🟡 committed on integration branch, PR pending |
+| Governing docs merged to main (B1) | ✅ **MERGED** — PR #2692 → `330cc7a14`, deploy run `35471990635` success (migrate + web deploy ✅, MCP/sidecar/pipeline-job correctly skipped, earned-deployment ✅), web ready revision `amjis-web-probe-330cc7a14e89-35471990635-1` independently confirmed via `gcloud run services describe` |
 | DP-SD-021 authored (B2) | ✅ strategic ledger §13 |
-| Governance surfaces refreshed (B3, main-branch part) | ✅ CLAUDE.md §C.5+§E, CURRENT_STATE §2, CLAUDECODE_BRIEF.md — coordination-branch part pending |
+| Governance surfaces refreshed (B3) | ✅ CLAUDE.md §C.5+§E, CURRENT_STATE §2, CLAUDECODE_BRIEF.md (PR #2692) + CAMPAIGN_COORDINATION.md L3 party row (pushed directly to `campaign-coordination` per its own protocol) — **all done** |
 | Deployment re-verified independently (C1) | ✅ **gate is OPEN — see finding below, corrects the restart notice** |
-| 22-asset baseline (C2) | 🟡 partially blocked — see finding |
-| W1 function contract read (C3) | 🟡 in progress |
+| 22-asset baseline (C2) | ✅ done to the extent credentials allow — live MCP-based serving snapshot (8 assets sampled); raw row counts blocked, recorded as BL-3 |
+| W1 function contract read (C3) | ✅ complete — full dispatch plan ready, see finding |
 | Salvage packets verified (D1–D6) | **6 / 6 ✅ — all already satisfied on `main` via PR #2607, zero PRs needed** |
 | Branch triage record (D7) | ✅ 112 branches classified |
 | Field dossiers | 2 / 22 (ka_graha_sancara, ka_dasha_kala — full field-contract dossier complete) |
@@ -71,9 +104,9 @@ All rows start `— / — / — / — / — / NO`.
 | A1 preservation push | strategy session | main checkout | — | **DONE** | 9/9 SHAs match origin (see EVENTS) | — |
 | A2 integration worktree | strategy session | `/Users/Dev/madhav-l3/integration` | `codex/madhav-l3-claude-code` | **DONE** | clean @ `cdc701afa` | — |
 | A3 durable state | strategy session | integration | — | **DONE** | this file + EVENTS.jsonl | — |
-| B1 governing docs → main | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE (committed), PR next** | 10 files at `9e3a9c1c4`, docs-only, verified diff-only vs main | open PR from this branch tip |
-| B2 DP-SD-021 | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE** | `MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md` §13 | include in B1 PR |
-| B3 governance refresh | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE (main-branch part)** | CLAUDE.md v7.5, CURRENT_STATE v6.79, CLAUDECODE_BRIEF.md v1.0 ACTIVE | include in B1 PR; still owe CAMPAIGN_COORDINATION.md L3 row (separate push to `campaign-coordination` branch) |
+| B1 governing docs → main | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE — MERGED** | PR #2692 → `330cc7a14`; deploy run `35471990635` success, web ready revision `amjis-web-probe-330cc7a14e89-…` independently confirmed | — |
+| B2 DP-SD-021 | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE — MERGED** | `MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md` §13, in PR #2692 | — |
+| B3 governance refresh | conductor (run 2) | integration | `codex/madhav-l3-claude-code` | **DONE — MERGED** | CLAUDE.md v7.5, CURRENT_STATE v6.79, CLAUDECODE_BRIEF.md v1.0 ACTIVE (PR #2692) + CAMPAIGN_COORDINATION.md L3 party row (pushed directly to `campaign-coordination`) | — |
 | C1 deploy re-verify | conductor (run 2) | read-only | — | **DONE** | see finding below: web@`cdc701afa` 100% traffic, MCP/sidecar@`66b962f29`, builder image@`66b962f29`, both deploy runs' job-level status independently read via `gh run view --json jobs`, Codex lease independently read as RELEASED on `origin/campaign-coordination` | — |
 | C2 22-asset baseline | conductor (run 2) | read-only | — | **PARTIAL / BLOCKED_STRUCTURAL(no-read-role-on-public-schema)** | `retrieval_census_ro` (the only documented read-only DB role, `platform/scripts/harvest/_db.ts`) has USAGE only on `information_schema`/`pg_catalog` — **not** `public`, where `kala_*` and the generation-head tables live. Did not escalate to a stronger credential (out of proportionality/role-separation scope for an ad hoc query). Row-count baseline deferred to the orchestrator's own build-time reporting in Wave E rather than hand-queried. | native ruling optional: authorize a scoped read-only grant on `public` for verification, or accept orchestrator-reported state as sufficient (recommend the latter — matches doctrine that builders/orchestrator, not ad hoc sessions, are the legitimate reader/writer of `public`) |
 | C3 W1 function contract | conductor (run 2) | read-only | — | **DONE (signatures)** | `open_l1_data_plane_generation` (migration 1035) requires literal `session_user = 'data_plane_builder'` — **SECURITY DEFINER but caller-identity-gated**; W1 generation can only be executed by the real `brahma-build-pipeline-job` authenticated as `data_plane_builder`, never by an ad hoc session even with elevated creds. This resolves E1/E2 planning: dispatch the real builder job, do not hand-write SQL. | — |
@@ -93,7 +126,9 @@ All rows start `— / — / — / — / — / NO`.
 
 | Fact | Value | Observed |
 |---|---|---|
-| `origin/main` | `cdc701afad40c1ffe8d83468df5127b26e370fba` (#2691, docs-only) | independently re-read 02:20 IST |
+| `origin/main` | `330cc7a14e89932daddaa47e84b48e67f890e1ca` (#2692, docs-only, this session's own governance PR) | independently re-read ~03:50 IST |
+| web ready revision (latest) | `amjis-web-probe-330cc7a14e89-35471990635-1`, deploy run `35471990635` success (migrate ✅ web ✅, MCP/sidecar/pipeline-job correctly skipped, earned-deployment ✅) | independently read via `gcloud run services describe` + `gh run view --json jobs`, ~03:55 IST |
+| `origin/main` (prior, still relevant to C1) | `cdc701afad40c1ffe8d83468df5127b26e370fba` (#2691, docs-only) | independently re-read 02:20 IST |
 | web ready revision | `amjis-web-probe-cdc701afad40-35467786237-1`, 100% traffic → source `cdc701afa` | **independently read via `gcloud run services describe`, 02:20 IST** |
 | MCP ready revision | `amjis-mcp-probe-66b962f2994f-35464335676-1` → source `66b962f29` | independently read, 02:20 IST |
 | sidecar ready revision | `amjis-sidecar-probe-66b962f2994f-35464335676-1` → source `66b962f29` | independently read, 02:20 IST |
@@ -267,7 +302,8 @@ less risk, not less progress.
 
 ## Active leases held by this campaign
 
-None yet — claim one on `origin/campaign-coordination` before any Wave E production mutation.
+None — `MADHAV-L3-KALA-W1-DISPATCH-20260920` claimed and released this session (04:16→~04:50 IST),
+full evidence on `origin/campaign-coordination` §1 and §6 LOG.
 
 ## Open blockers
 
@@ -275,16 +311,18 @@ None yet — claim one on `origin/campaign-coordination` before any Wave E produ
 |---|---|---|---|
 | BL-1 | `WATCHDOG_SECRET` literal in tagged zero-traffic revision `amjis-web-02826-huf` | **human (native)** | rotate/revoke + audit tag exposure; neither campaign may act |
 | BL-2 | ~~Codex lease active until 04:30 IST~~ **RESOLVED — lease independently confirmed RELEASED at 01:50 IST** | — | none; re-check `origin/campaign-coordination` immediately before claiming L3's own lease, per standing doctrine |
-| BL-3 (new) | No documented read-only DB role can read `public` schema (`kala_*`, generation-head tables) — `retrieval_census_ro` is scoped to `information_schema`/`pg_catalog` only. Confirmed the legitimate app-level route (`GET /api/cockpit/stats`, which reads `asset_registry.count_sql`/`asset_throughput` — the actual §N.4 "cockpit truth" mechanism) requires an authenticated Firebase user session with chart read-permission; no such session is available to this conductor without native-provided browser/API credentials. | native (optional) | either authorize a scoped read grant for verification, provide a session/token for `/api/cockpit/stats`, or accept orchestrator/CI-reported state as the legitimate evidence source (recommended — matches the role-separation doctrine already in force) |
+| BL-3 | No documented read-only DB role can read `public` schema (`kala_*`, generation-head tables) — `retrieval_census_ro` is scoped to `information_schema`/`pg_catalog` only. | native (optional) | still open; superseded in practice by BL-4's direct evidence below for this session's purposes |
+| BL-4 (new, N1-C) | **`data_plane_builder` — the identity `brahma-build-pipeline-job` itself authenticates as — has zero role memberships and no grant on `asset_registry`.** Confirmed via `has_table_privilege`/`pg_auth_members` (not inferred). `runner.py:345 _verify_registry_still_matches_manifest` needs `SELECT` on that table before any write; without it, **W1 cannot succeed for any asset, any chart.** A second, already-self-healed defect: `execute_run`'s `try/except ValueError` around that call doesn't catch `psycopg.Error`, so a `build_runs` row can be left stuck at `state='planned'` until the orphan watchdog reaps it (observed working correctly here — no hand-edit was needed). | **native / Codex (IAM+DB grant, outside this conductor's authority and outside L3 territory — shared infra)** | grant `data_plane_builder` `SELECT` on `asset_registry` (or membership in `role_orchestrator`), then re-dispatch `ga_positions`/`ga_dashas` with a fresh `run_id` |
+| BL-5 (new, N1-A) | PR #2695 merge-queue-blocked: an in-scope L3 description-text fix shifts the full shared capability-catalog `stableFingerprint()`, breaking two Pūrṇa-owned golden-baseline tests (`route_golden_stream.test.ts`, `beyond_acarya_acceptance.test.ts`) that are required merge-queue checks. Confirmed not a defect in the PR (clean on bare `origin/main`). | Pūrṇa/Codex (regenerate their two baselines) | auto-merge already enabled on #2695; no action needed from L3 once Pūrṇa's side clears |
 
 ## Budget consumed
 
 | Resource | Used | Ceiling |
 |---|---|---|
-| Subagent dispatches | 0 | 80 |
-| Worktrees | 1 | 12 |
-| PRs opened | 0 (B1 PR next) | 15 |
-| Merges to main | 0 | 12 |
-| Deploy dispatches | 0 | 4 |
-| Production mutations | 0 | 2 |
-| Surrogate invocations | 0 | 10 |
+| Subagent dispatches | 10 (5 Wave D salvage + 1 W1-research + 1 dossier + 1 ayanamsha-verify fork + 1 MCP-sampling fork + 1 N1-A independent PR verifier) | 80 |
+| Worktrees | 1 integration + 5 ephemeral (Wave D, auto-cleaned) + 2 ephemeral (N1: campaign-coordination edit worktree, origin/main clean-check worktree, both removed) | 12 |
+| PRs opened | 2 (#2692 merged; #2695 open, auto-merge enabled, merge-queue-blocked by BL-5) | 15 |
+| Merges to main | 1 (#2692 → `330cc7a14`) — #2695 not yet merged | 12 |
+| Deploy dispatches | 0 (deploys observed were CI-triggered by merges, not manually dispatched) | 4 |
+| Production mutations | 1 — one Cloud SQL on-demand backup (`1789857608546`, precautionary, non-destructive). Zero data-plane writes: the one real dispatch attempt (`ga_positions`) failed before any write (BL-4). | 2 |
+| Surrogate invocations | 0 — all decisions (Wave E withholding earlier; N1's merge-with-disclosed-red-check decision, N1-C's stop-after-one-failure decision) reasoned through directly with cited evidence, none needed escalation beyond this conductor's own authority | 10 |
