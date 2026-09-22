@@ -105,14 +105,15 @@ under the MACRO_PLAN Ethical Framework, not a technical one.
 
 ### D-6 — M-1: "no node dṛṣṭi" is **instrument-level**; execution belongs to the Gochara stream
 
-- **Doctrine: the instrument does not apply graha-dṛṣṭi to Rāhu or Ketu.** One instrument cannot
+- **Scope, corrected 2026-09-23 at the Gochara session's boundary-setting, and they are right.** The native's delegation covered **Saṅgam's** residual items. So D-6 **binds Saṅgam** and states a **cross-stream position with its grounds** for every other family — it is **not** authority over an asset the delegation did not cover. Whether the Gochara family applies it is **N-14's to rule, by that stream's native**, doctrine included, not merely its schedule. The author's first wording ("instrument-level doctrine") overstated the reach and is corrected here rather than defended: this campaign has already shown what a shared premise does when nobody re-scopes it.
+- **Position (Saṅgam-binding; recommended instrument-wide): graha-dṛṣṭi is not applied to Rāhu or Ketu.** One instrument should not
   grant node aspects in one asset and deny them in another. The citation behind the live
   implementation is refuted at the text (Santhanam Ch.26 names Saturn, Jupiter and Mars; zero
   rāhu/ketu/node occurrences in the chapter span, against 254 in the file); the practice is not found
   at table level across all 15 corpus texts; Kimi independently graded it `[U] — do not implement by
   default`; and `w30_nodal_drishti.py`'s own docstring already says it is not in BPHS. Continuing
   would keep a **false citation in served data**.
-- **Execution is the Gochara stream's, under its N-14 — not this sheet's to impose.** The shape this
+- **Execution and the ruling itself are the Gochara stream's, under its N-14 — neither is this sheet's to impose.** The Gochara session has adopted the three conditions below on their own merits, independent of who rules N-14. The shape this
   decision requires of it: a **same-generation** change (drop `w30_modifier` from the λ product and
   regenerate every stored λ within that generation, never a patch over live rows); the absence
   declared as `completeness_state`, never silently dropped; and the removed term preserved for one
