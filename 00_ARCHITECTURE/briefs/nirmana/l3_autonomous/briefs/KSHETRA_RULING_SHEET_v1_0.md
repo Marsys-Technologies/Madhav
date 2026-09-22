@@ -13,7 +13,14 @@ how_to_rule: >
   One word per line in the "Native ruling" field — AFFIRM (adopt the recommendation), or a written
   alternative. When every line carries a ruling, the brief's status moves to APPROVED_FOR_EXECUTION
   with this sheet's commit as approval_record. Until then nothing in the packet is authorised.
-independent_reviewer: madhav-fc (assigned by delegation; overridable)
+independent_reviewer: >
+  PARTIAL — madhav-fc (strategic session) accepts review of the parts it did not shape (stage
+  decomposition and DAG packeting; contract §1–§8 conformance; the ten rulings' framing and whether
+  each is the native's to decide; preservation/migration/rollback; test sufficiency) and DECLINES
+  to certify rulings 7 (node), 8 (vedha admission / G-9) and 9 (G3), whose evidence it co-produced.
+  Gochara (madhav-e6) is likewise conflicted on 7 and 8. Reviewer for rulings 7/8/9 — NATIVE TO NAME
+  (likely a fresh session with no stake in the cross-cutting findings). Assigned by delegation;
+  overridable.
 implementation_owner: Execution — Data Plane task (codex/madhav-data-plane-execution), per Strategy §8 (assigned by delegation; overridable)
 ---
 
@@ -39,7 +46,15 @@ native writes in the last field.**
 
 **Also delegated and done, overridable by a line here:** implementation owner = the Execution —
 Data Plane task (Strategy §8, the sole execution destination); independent reviewer = madhav-fc
-(strategic session, not the author). **Native ruling on the owners:** ______
+(strategic session, not the author) — **partial, by its own declaration**: it accepts the
+non-conflicted scope (stage decomposition, contract conformance, the rulings' framing,
+preservation/rollback, test sufficiency) and declines to certify **rulings 7, 8 and 9**, whose
+evidence it co-produced (node measurement and disposition; the corpus-verifiability finding that
+became ruling 8 and G-9; the G3 verification). Gochara is likewise conflicted on 7 and 8. Its
+recommendation, for you to affirm or override: a reviewer with no stake in those findings for
+7/8/9 — probably a fresh session — with madhav-fc taking the remainder; or madhav-fc for the whole
+packet with the conflict on the record per file and per ruling. **Native ruling on the owners
+and on the 7/8/9 reviewer:** ______
 
 **On signing.** When all ten lines and the owners line carry a ruling, the brief's `status` becomes
 `APPROVED_FOR_EXECUTION` and its `approval_record` cites this sheet's commit. Any line ruled

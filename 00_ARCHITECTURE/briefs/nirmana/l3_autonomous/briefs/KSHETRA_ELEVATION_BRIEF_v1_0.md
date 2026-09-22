@@ -1,6 +1,6 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.3"
+version: "4.4"
 status: PROPOSED_FOR_NATIVE_RULING
 approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
@@ -16,7 +16,11 @@ accepted_upstream_contract: >
   3f109869d; DHARA midpoint fix 87cc8c9baf; DHARA_SWEEP_SEMANTIC_VERSION='1.2' (dhara_sweep.py:52).
   Physical L1/L2 generation heads ABSENT in the connected environment.
 implementation_owner: "Execution — Data Plane task (codex/madhav-data-plane-execution), the sole execution destination per Strategy §8 — assigned 2026-09-23 on the native's delegation ('do the rest on my behalf'); overridable by native record"
-independent_review_owner: "madhav-fc (L3 strategic session; owner of l3/kala-elevation-readiness) — exact-tip review, not the author; assigned 2026-09-23 on the native's delegation; overridable by native record"
+independent_review_owner: >
+  PARTIAL — madhav-fc (L3 strategic session) for the parts it did not shape; it declines to certify
+  rulings 7/8/9 (node; vedha admission/G-9; G3), whose evidence it co-produced. Reviewer for 7/8/9:
+  NATIVE TO NAME. Assigned 2026-09-23 on the native's delegation; overridable by native record. See
+  KSHETRA_RULING_SHEET_v1_0.md owners line.
 release_authority: "NONE"
 may_touch: >
   services/ka_kshetra/{hazard,layer1,writer,stage2_promise,stage3_clocks,uncertainty}.py;
@@ -35,6 +39,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.4 (2026-09-23) — independent_review_owner amended: madhav-fc declared a conflict on rulings 7/8/9 (co-produced evidence) and accepts only the non-conflicted scope; the 7/8/9 reviewer is left for the native to name. Kimi files given frontmatter; interior rules in the review rendered as *** ."
   - "4.3 (2026-09-23) — owners assigned on the native's delegation (implementation: the Execution — Data Plane task per Strategy §8; independent review: madhav-fc, not the author). Rulings NOT self-approved: status stays PROPOSED_FOR_NATIVE_RULING; the native signs KSHETRA_RULING_SHEET_v1_0.md (contract §8: a packet never approves itself)."
   - "4.2 (2026-09-23) — Gochara-session corrections, verified: vedha chain → bg_transit_rules + Phaladīpikā Ch.26 (no bg_phaladeepika_vedha relation exists); second v1 COALESCE site stage4_field.py:1386-1389."
   - "4.1 (2026-09-23) — post independent review (Kimi K3 max; KIMI_RECONCILIATION_KSHETRA_v1_0.md). CORRECTED an overclaim of my own: suppression is route-scoped only in layer1.project_layer1, a projection; the stored field and its null both evaluate through FieldEvaluator.terms_at with every active obstruction (G3) — now rank 0. BPHS Ch.29 struck (corpus Ch.29 = Bhāva Padas; inherited from W0 §5:207). mi_bhara path made full. PK-P4 defined. Ablation → three arms + rubric + judge. P1 contract pins tolerance and grid. U11 fields extended. Q07 proof row reworded (attenuation)."

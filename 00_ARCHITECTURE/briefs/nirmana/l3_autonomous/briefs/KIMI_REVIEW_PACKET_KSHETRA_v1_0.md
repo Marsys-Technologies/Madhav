@@ -1,3 +1,14 @@
+---
+artifact: KIMI_REVIEW_PACKET_KSHETRA
+canonical_id: KIMI_REVIEW_PACKET_KSHETRA
+version: "1.0"
+status: CURRENT
+date: 2026-09-23
+kind: review request sent to Kimi K3 (effort=max) — the packet the review answers
+reviews: KSHETRA_ELEVATION_BRIEF_v1_0.md v4.0 and KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md v1.0 as they stood at send time
+output: KIMI_K3_REVIEW_KSHETRA_v1_0.md
+---
+
 # Review packet — Kṣetra (ka_kshetra): the continuous temporal field, its elevation brief and ecosystem plan
 
 You are Kimi K3, asked for a **thorough independent review** of two documents and for

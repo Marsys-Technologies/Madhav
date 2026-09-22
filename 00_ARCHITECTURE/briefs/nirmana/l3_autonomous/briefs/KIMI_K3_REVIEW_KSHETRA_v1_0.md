@@ -1,3 +1,17 @@
+---
+artifact: KIMI_K3_REVIEW_KSHETRA
+canonical_id: KIMI_K3_REVIEW_KSHETRA
+version: "1.0"
+status: CURRENT
+date: 2026-09-23
+kind: independent-review record (reviewer output, verbatim; not authored by the packet author)
+reviewer: "Kimi K3, effort=max (k3 default_effort and [thinking].effort both max; resolution verified in the CLI binary)"
+packet: KIMI_REVIEW_PACKET_KSHETRA_v1_0.md
+reconciled_in: KIMI_RECONCILIATION_KSHETRA_v1_0.md
+generated_via: "kimi -m kimi-code/k3 -p <packet>; cwd /Users/Dev/madhav-l3/kshetra (l3/kshetra-elevation)"
+note: "Horizontal rules inside the reviewer output are rendered as *** so no fence-splitting reader mistakes one for a frontmatter opener."
+---
+
 # Kimi K3 (effort=max) review — Kṣetra brief v4.0 + ecosystem plan v1.0
 # generated 2026-09-23T01:34:50+05:30 via: kimi -m kimi-code/k3 -p <KIMI_REVIEW_PACKET_KSHETRA_v1_0.md>; k3 default_effort=max, thinking.effort=max; cwd=/Users/Dev/madhav-l3/kshetra (branch l3/kshetra-elevation)
 
@@ -16,15 +30,11 @@
 • All technical reading is done. I need the classical-corpus verification to finalize citations — waiting on it now.
 
 • All reading is complete: both documents in full, the strategy and product contracts, the nine cited code regions, the §N rails, the classical corpus (via a verification pass), and the source-level confirmation of Pūrṇa's G3. Here is the review.
-
-  ---
-
+***
   # Independent review — `ka_kshetra` elevation brief v4.0 + ecosystem plan v1.0
 
   **Review basis.** Brief and plan read in full; `layer1.py`, `hazard.py`, `dhara_null.py`, `contracts.py:100-297`, `stage2_promise.py:1-540`, `stage1_symbolization.py:200-384`, `stage3_clocks.py:940-1120`, `stage4_field.py:180-215, 866-876, 1140-1254`, `uncertainty.py:100-206`, `stage5_null.py:67-170`, `integrator.py:1-60`, `writers/mi_bhara.py:398-410` read at source. Classical citations verified against `00_ARCHITECTURE/SOURCE_DATA/classical_texts/` — whose actual inventory is BPHS Vol 1 (Santhanam, Ch. 1-45), BPHS Vol 2 (Kapoor, Ch. 46-97), KP Reader Vols 5-6, Jaimini (Adhyayas 1-2). **Phaladīpikā, Sarvārtha Cintāmaṇi, Jātaka Pārijāta, and all Tājika/Varṣaphala texts are NOT in the admitted corpus**; where the tradition is invoked from them, I tag it and note the project's own L0 disclosure route instead.
-
-  ---
-
+***
   ## K-1 — Value proposition and the ablation
 
   **Recommendation.** Keep **Q06 as the primary home, but narrowed to the claim that is actually unique**: not "mechanism change" (Sangam's witness lists already gesture at that), but (i) **continuous sub-threshold shape** — the background/enabling/contact trichotomy that Strategy §2 Q01 names and no window can express, since a window only exists where found; and (ii) **driver decomposition** — two intervals at equal λ with different clock/modifier/suppression composition are *different chapters* in Q06's own sense ("recurrence with changes in participants, conditions, clocks, relationships"), and no window field distinguishes them. Q07 stays "strong, not unique" (shared knot grid). Q08 is earnable **within class only** — the plan says this correctly; do not let it drift. **Strengthen the ablation**: three arms (A: Sangam windows; A′: Sangam + Taranga's monthly waveform; B: A′ + segments/term composition), several class/chapter pairs including an ordinary undramatic period, a pre-registered rubric keyed to Q06's own distinction text, and a named judge. Sangam+Taranga is the right *stronger* baseline: Taranga supplies a monthly shape (so "Sangam has no shape" stops being the argument) but no per-term composition and no null — exactly the gap B must earn.
@@ -40,9 +50,7 @@
   **Not decided here.** Whether the judge is the native, an independent reviewer, or a scored ensemble — that is the native's to name before the test runs.
 
   **Confidence.** High that Q06-narrowed is the right claim **[J]**; high that the current ablation text is under-specified **[P]**; medium that B wins the ablation — the honest prior is genuinely uncertain **[U]**.
-
-  ---
-
+***
   ## K-2 — The model form, term by term, from an ācārya's chair
 
   **Recommendation — (a) λ⁰ actuarial constant: tolerable engineering departure, correctly tagged; the constant-over-life part is the weak joint.** A chart-independent base rate is the right "null Jyotiṣa" floor *if and only if* it stays a tagged structural prior (Product §5.2 keeps structural prior, classical prior, and calibrated claim distinct). Age-variation has both actuarial and classical warrant; E3 is justified.
@@ -79,9 +87,7 @@
   **Not decided here.** The functional form of the interaction (product in log space vs gated); the bhaṅga channel's exact placement; naisargika-vs-actuarial weighting inside E3.
 
   **Confidence.** [D] for the Ch. 47/57/9-10/46/72 anchors (corpus-verified); [J] for the re-ranking; [U] for Phaladīpikā/Sarvārtha Cintāmaṇi specifics (not in corpus).
-
-  ---
-
+***
   ## K-3 — The covariate set and the varṣa layer
 
   **Recommendation.** The twelve are a defensible v0 set — the plan is right that this is a classical vector, not "transit intensity". What an ācārya would insist on, in order: (i) **the daśā lord's own transit state/dignity during the period** (Ch. 47 vv 5-6 — the single strongest omission; it is neither x1/x2 contact geometry nor clock relevance); (ii) **AV gating live**, same source as Sangam E2, after the polarity reconciliation (K-2 #4); (iii) **sade-sati as a named duration arc** — its classical identity is a 7.5-year *arc*, not a contact; x1 sees the peak but nothing names the arc — corpus anchor is only KP Reader Vol 5 (modern), so admit it as a declared convention, not as cited classical doctrine **[U]** for a classical source; (iv) **lattā via the existing `bg_phaladeepika_latta`** with per-kind qualification, not corpus extraction; (v) **the varṣa layer as applicability gates** — Sudarśana is anchored (BPHS Vol 2 Ch. 74, sole corpus occurrence); **Kota has no corpus occurrence**; muntha/varṣeśa need a Tājika source admission — none exists in the corpus; tithi-praveśa rides `ka_tithi_pravesha` after its own qualification; (vi) transit-over-natal-lord and transit-over-daśā-lord as *named contacts* (these are the interaction terms of K-2(d), not new covariates).
@@ -97,9 +103,7 @@
   **Not decided here.** Which AV bindu/rekha convention the layer ratifies (hub-level); the Tājika source admission.
 
   **Confidence.** [D] Ch. 12 v 11, Ch. 74, Ch. 72 thresholds; [P] the moorti term-split (source-verified); [U] Kota/muntha/lattā-as-doctrine; [J] the insistence ordering.
-
-  ---
-
+***
   ## K-4 — The null: is "surprise vs a re-phased sky" a Jyotiṣa claim?
 
   **Recommendation.** Yes, with its scope stated exactly: a low `null_p` licenses *"within this chart's fixed natal structure and daśā ladder, the actual phase of the transit stream carries timing information that no rigid re-phasing of the sky reproduces"* — in classical terms, **the gochara-krama (the sky's actual order) is load-bearing, not merely the daśā texture**. It does NOT license: event probability, reliability, mechanism truth, or daśā-vs-gochara attribution — and it currently says nothing about the ladder, which is held fixed. The **two-factor null is the right next step, but as specified it delivers two marginals, not the conjunction**. The actual "daśā AND gochara concur" claim needs the **third arm: both shifted independently** — observed λ exceeding the transit-only null, the ladder-only null, *and* the both-shifted null is the alignment-concurrence statement; the ladder-shift oracle is its own enumeration (piecewise ladder — enumerable), not the brief's transit-shift one. `q_threshold` (95th pct of pooled replicate λ): it is a **detection screen, not an exceedance bar** — the bar is the duration-bucketed `max_stats`; the two should be named as such wherever served, because a pooled pointwise quantile conflates slow clock variation with sharp envelope peaks (acceptable for screening since the test is on window maxima). The exhaustive 36,525-shift enumeration is the right independent oracle — and it matters more than the brief says: at R=1024 the shift step is ~35.7 days, so narrow features (1.5-3-day syzygy/station bands) are coarsely sampled in the null; the enumeration, never the estimator, settles the grid question. P1's "full shift set" must mean the declared R-grid (brief is right).
@@ -115,9 +119,7 @@
   **Not decided here.** The multiple-comparison posture across 10 duration buckets × classes (propose: declared, not invented — a native ratification).
 
   **Confidence.** [D] the concurrence doctrine; [P] the G3-null mechanism (source-verified); [J] the three-arm design; [U] bucket-multiplicity policy.
-
-  ---
-
+***
   ## K-5 — Baseline honesty and the 6-vs-25 configuration
 
   **Recommendation.** Ratify the plan: **the calibrated 6-class run is the product**; the 25-class run is substrate until priors are sourced. Serve shape-only classes **within-class rank only** — and upgrade A1 from "untested" to what it actually is: **provable by construction**. λ⁰ enters as a constant multiplier of λ(t); every replicate scales identically; therefore q_threshold, window bounds (α+γ(t−t_i)=ln q), and window maxima all scale by the same constant, and `null_p` — a rank statistic — is invariant up to float64 rounding. The honest statement is "invariant by construction; asserted on a fixture," not "should be invariant." Absolute fields (`expected_count`) stay suppressed on synthetic rows per the `stage8_spec.py:136` precedent. **A demographic life-table λ⁰(t) is a legitimate structural prior, not a category error** — provided it is tagged structural, never merged into classical promise, and never silently double-counts age effects the classical operands also carry (declared at fit time, mi_bhara's lane). Product §5.2's tier discipline is exactly this.
@@ -133,9 +135,7 @@
   **Not decided here.** Who sources the 19 priors and on what citation standard (the documents say "Pūrṇa P4" without defining it — K-8 #9).
 
   **Confidence.** [P] the invariance mechanism (form verified in `hazard.py`/`stage5_null.py`/`integrator.py`); [D] the age-warrant; [J] the legitimacy call.
-
-  ---
-
+***
   ## K-6 — The ecosystem: upstream and downstream guarantees
 
   **Recommendation.** The guarantee lists are strong; add: **(In)** (a) a **class-set reconciliation receipt** — the 25 discovered classes vs the 27 ontology classes — as a standing detector, not a §10 "one query" item; (b) `kala_gochara_authority` gets an owner and the `'v1'` COALESCE default is removed — a COALESCE to a literal is precisely the implicit fall-through Strategy §4 step 3 forbids; (c) the **G3 convergence guarantee**: field path ≡ evaluator path suppression semantics, tested, before any null is served (K-8 #1); **(Out)** (d) served rows carry `weights_version`/`x_schema_version` alongside the listed fields (comparability); (e) a **standing detector for `null_resolution` = 1/R** against the register — a prose delta rots (§N.8); (f) `mi_bhara` must *consume* `baseline_is_synthetic`: synthetic classes excluded from absolute-skill scoring, admissible to rank-based skill only.
@@ -153,9 +153,7 @@
   **Not decided here.** The hub node ruling itself; the L1 amendment scope for birth-time precision.
 
   **Confidence.** [P] the COALESCE/authority mechanics; [J] the L0-placement of the mean derivation; [D] n/a (plumbing), except the §N.5 principle.
-
-  ---
-
+***
   ## K-7 — Technical: identity, publication, efficiency order, serving
 
   **Recommendation.** **P6 → P2 → P1 is right**, and the reasoning (pin rule ⇒ publication preserves capital) is sound. Three contract additions: (1) the P1 equivalence contract must pin **`_EXCEEDANCE_REL_TOL` (1e-12) and the shift-grid construction itself** (`range(1,R)`, δ = r·H/R) — both are semantics, and neither currently appears in the equivalence text (brief §4.6); (2) U11's material fields add `weights_version`/`x_schema_version`; (3) U10's interim behavior should be **refusal, not a degraded bind**: L5 binds via the manifest with content-hash verification, `ORDER BY built_at DESC`, and when no manifest exists it reports not-built (the current unordered `LIMIT 1` on the canonical chart binds to a dangling id — a silent wrong answer, worse than none). **Physical representation: keep the full-horizon lossless segment store.** It is not a "dense sample"; it is the *definition* of the field — log-linear segments with closed-form integrals, monotone-per-segment peaks at breakpoints, `expm1`-stable arithmetic, and a `refinement_residual` bound field (`integrator.py:1-59`, `contracts.py:143-160`). Strategy §5's "qualified compact substrate with explicit refinement semantics" is the right model for **serving projections**, not for the store; P2's direct segment reader is that answer. **Do not dedupe breakpoints** — 343k segments/class is dense, but thinning the knot set is exactly the "coarser grid as optimisation" the binding constraints forbid. Storage cost is a P2/P6 problem.
@@ -167,9 +165,7 @@
   **Not decided here.** Whether P6's "optional exact complement" is needed in v1 (declare at packet time); the manifest schema itself (W7).
 
   **Confidence.** [P] throughout; the representation judgment is [J] but anchored in Strategy §5's own three-representation rule.
-
-  ---
-
+***
   ## K-8 — Defects in the two documents
 
   1. **Omission — the G3 suppression-semantics split (both documents).** *Section:* brief §3 rank list, plan §2 gap list. *What is wrong:* neither discloses that `FieldEvaluator.terms_at` (`stage4_field.py:866-873`) passes **all** active obstructions into `hazard.evaluate` with no route filter, while `layer1.project_layer1` (`:143-159`) applies SM-R-7 Option B — and `dhara_null.py:145-163` builds every replicate through the **unfiltered** evaluator path. The served field is route-scoped; the null and any re-evaluation are chart-wide. Pūrṇa's G3 is therefore not an open wording question: **the null is computed under a different model than the field it tests**, biasing `null_p` low wherever an active obstruction is not route-named. *Replacement:* a §3 rank-0 defect; hoist the `suppressed_keys` filter into `hazard.evaluate` (passed explicitly), add a proof row "an obstruction named by no route's `suppressed_by` is inert," and gate the W7 null layer on the field/evaluator byte-equality test.
@@ -186,9 +182,7 @@
   12. **Missing comparability fields — brief §4.7.** U11 material fields omit `weights_version`/`x_schema_version`. *Replacement:* K-7 (2).
   13. **Overclaim — brief §4.1 Q07 proof ("removing a bridge removes a route… the inference must disappear").** With noisy-OR over K=5 routes, bridge removal may attenuate without removing. *Replacement:* the proof row asserts disappearance, or attenuation is declared a failure of the proof (not of the asset).
   14. **Superlative without audit — plan §0 "the most disciplined in L3."** No comparator audit is cited. *Replacement:* the brief's own defensible wording: "against VA §10.2, otherwise unusually clean."
-
-  ---
-
+***
   ## K-9 — The offensive question
 
   **Recommendation. The missing comparison operator: window-versus-counterfactual-self — "what the vighna costs."** For every window, serve λ̂(t) = λ(t) with the suppression term removed — derivable today from the stored per-segment `suppression_term_start` (ln λ − ln S), no new storage. Consumer: **`explain.ts` / `kala_story` (experience 4)**, answering the one L3-Q nobody owns: **Q04 — "why can activity coexist with strain?"** A chapter whose peak is clock-driven with suppression active ("the period is strong *despite* the obstruction, and here is the magnitude it is costing") reads completely differently from a chapter weak *because* of suppression — and that is a distinction an ācārya makes constantly and no current surface can show.
@@ -202,9 +196,7 @@
   **Not decided here.** Whether the counterfactual is ever shown for synthetic-baseline classes (recommend: rank-qualified only); the served name.
 
   **Confidence.** [P] the derivability (columns verified in brief §4.2 and `hazard.py`); [J] that Q04 is the highest-value unowned question; [U] consumer-side presentation.
-
-  ---
-
+***
   ## Overall verdict
 
   **Astrological (value proposition).** The skeleton is genuinely Jyotiṣa: a daśā-lord clock scored against stored causal routes, a classical covariate vector (dual-reference concordance, moorti, station, syzygy, panchanga), route-scoped vighna, an honest refusal to invent confidence. That is more disciplined than most human readings. But the flesh is missing where the tradition is explicit: the clock is blind to the daśā lord's dignity at the time (BPHS Ch. 47 vv 5-6, corpus-verified), gochara is additive where the texts are conditional (Ch. 57 vv 24-27A), denial reads as weak support against the niṣedha/bhaṅga doctrine (Vol 1 Ch. 9-10), the annual limb is absent with no Tājika source admitted, and the AV gate is an empty slot over a corpus whose two BPHS volumes invert bindu/rekha polarity. The plan's §2 ranking is right in spirit; I re-rank sign loss above the transit-suite and add the G3 split above everything. As formalized Jyotiṣa the hazard form is defensible *once* sign, interaction, and the annual gate land — all correctly gated behind the ablation.
