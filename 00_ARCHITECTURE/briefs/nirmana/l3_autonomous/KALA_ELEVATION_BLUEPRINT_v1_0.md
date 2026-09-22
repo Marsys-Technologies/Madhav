@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.8"
+version: "2.9"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.9 (2026-09-23): the wrong corpus list is HARDCODED IN PRODUCTION CODE with a verification claim behind it (ka_vedha_gochara/logic.py). And the Sarvatobhadra grid IS in the corpus at phaladeepika PG345/PG332 — G10 re-graded from unsourceable to OCR-blocked. New §11.24."
   - "2.8 (2026-09-23): §11.18 mechanism corrected — a lock is not a configuration; the 0.314″ origin is v3_spline_accuracy.py, decorated but unconfigured. New §11.22: M-1's 'no node dṛṣṭi' would flip a LIVE multiplicative term in the served λ (gochara_v3, not ka_sangam) and invalidate every stored λ. Six-rule ledger consolidated."
   - "2.7 (2026-09-23): §11.15 CITATION STRIKE RETRACTED IN ITS CENTRAL CLAIM. Phaladeepika IS in the served corpus (564 chunks, 17 vedha rows, the actual Adhyāya XXVI vedha + laṭṭā doctrine at PG322/323/339). My admitted-corpus list was a SOURCE_DATA directory listing, not the corpus. Ruling 8 rests on this. New §11.21."
   - "2.6 (2026-09-23): G4 RETRACTED (the .se1 files are on this host and the production resolver finds them). New §11.18: the ephemeris backend is process-global and unowned — w2g, which owns the 0.314″ figure, never sets it, and panchang_engine forces Moshier. New §11.19: the century writer is live-active and DELETEs production in its staging transaction while declaring only the staging table. M-1..M-7 now recorded in writing."
@@ -275,7 +276,7 @@ plan resolver with upstream closure.
 | G7 | **No admissible receipts** for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | Headline cannot move past `DATA_ACCEPTED` | native decision 2; a `z.enum` member + payload contract, no migration | BLOCKS the headline |
 | G8 | **No retrieval capability over `kala_field*`** | The largest asset is unreadable by the product | Kshetra brief → L3-U11 packet → Pūrṇa | BLOCKS Kshetra value |
 | G9 | **Unowned capabilities** — cross-clock disagreement; provenance-aware de-correlation | Two L3-Qs unanswerable | synergy contracts 2 + 4 (§3.3) | BLOCKS Q05 |
-| G10 | **Source qualification** — tithi-praveśa `not_in_corpus`; Sarvatobhadra unqualified | Cannot reach `DATA_ACCEPTED` without it (F23) | native decision 4; source steward | BLOCKS those assets |
+| G10 | **Source qualification — RE-GRADED (§11.24).** Sarvatobhadra is **not** unsourceable: the chakra is in the corpus at `phaladeepika:PG345:C1` ("I shall now describe the Sarvatobhadrachakra"), with grid pages at PG332/PG345, same Adhyāya XXVI as the vedha rules. The blocker is **OCR quality, not absence**. Tithi-praveśa qualification is unchanged | The disposition changes from "cannot be built, do not try" to "re-OCR two known pages" — a bounded task with a named target | re-OCR PG332 + PG345 from source images; then transcribe with a checkable partition invariant | DEGRADES → bounded task |
 | G11 | **No determinism gate** (`date.today()`; naive-timezone persistence) | "Wipe and rebuild" is unsafe | temporal contract + CI build-twice-diff | BLOCKS rebuild-freely |
 | G12 | **Serving is Pūrṇa's** — `kala_views` collides if L3 edits it; `dissent: []` ×7; mortality exclusion on 2 of 9 tools | The last inch fails silently; a binding-boundary gap on live surfaces | L3-U04/U11 interface packets + a priority request to Codex for the safety gap | DEGRADES / safety |
 | G13 | **Independent-verifier capacity** — every packet needs a reviewer who is not its author | Builders certifying themselves | one verifier lane reserved per wave (Brief §4) | DEGRADES |
@@ -1160,3 +1161,57 @@ finding above.
 A recurring mechanism worth naming separately: three of my errors trace to piping a `grep` through
 `head`, which silently truncated the evidence I then reasoned from. The fix is procedural, not
 intellectual — count first, then read.
+
+### 11.24 The wrong corpus list is in production code, with a verification claim behind it — and the Sarvatobhadra grid was there all along
+
+Two findings, and the second one recovers an asset we had written off.
+
+**The error was not only mine. It is hardcoded, and it is asserted as verified.**
+`platform/python-sidecar/services/ka_vedha_gochara/logic.py` states in its own docstring:
+
+> "The ingested classical-text corpus (`00_ARCHITECTURE/SOURCE_DATA/classical_texts/`) was checked
+> this session: it holds BPHS, Jaimini Sutram, KP, and KP_Reader material only — NO Muhurta
+> Chintamani or Jyotish Sara Sangraha text … Tier (i) (ingested-corpus citation) is therefore
+> UNAVAILABLE for this specific table, **confirmed by direct search, not assumed**."
+
+Every load-bearing part of that is false, and the parenthetical is the whole defect: it equates the
+**ingested corpus** with a **source-data folder**. Measured against the live table:
+
+| the docstring's claim | the table |
+|---|---|
+| corpus holds four texts | **15 populated texts** |
+| no Muhurta Chintamani | `muhurta_chintamani`, **274 chunks** |
+| `kp` / `kp_reader` are corpus texts | **zero** such text_ids exist |
+| tier (i) unavailable for SBC | **false — see below** |
+
+This is §N.8 in its purest form, and worse than the usual case because the signal *says* it has a
+detector. "Confirmed by direct search, not assumed" is exactly the sentence that stops the next
+reader checking. I did not check it. Two other sessions did not check it. The claim propagated from
+a docstring into three independent analyses and into a native ruling within one day. **A verification
+claim in prose is not a detector; it is a sentence.** The Saṅgam session found the same list copied
+into a migration.
+
+**And the Sarvatobhadra chakra is in the corpus.** The docstring's conclusion sent us to write the
+asset off as unsourceable, and it worried at length about having to fabricate a grid layout from
+memory because regional traditions disagree. That worry is unnecessary:
+
+- `phaladeepika:PG345:C1` — *"I shall now describe the (Sarvatobhadrachakra) which has become
+  famous"*, followed by a grid with `NORTH` and nakshatra cells.
+- `phaladeepika:PG332:C1` — a second grid page carrying `WEST` / `NORTH` and named cells (Śravaṇa,
+  Abhijit, U. Āṣāḍhā, P. Āṣāḍhā, Mūla, Jyeṣṭhā, Anurādhā).
+
+Same Adhyāya XXVI as the vedha rules and the laṭṭā rules. There are **ten** rows corpus-wide matching
+`sarvato`; nobody had looked, because a docstring said not to.
+
+**The honest limit, stated so this does not swing too far the other way.** These pages are severely
+OCR-degraded — the grid renders as scattered tokens, not a table. Present in the corpus is not the
+same as extractable today. Recovering a reliable 9×9 layout will need a re-OCR of two known pages
+against the source images, and it should still land with the checkable partition invariant the
+docstring itself proposed. But that is a **bounded task with a named target**, which is a different
+thing entirely from "unavailable, do not attempt." G10 is re-graded accordingly.
+
+**The governance point, which outlives all of this.** Three sessions converged on a wrong answer
+because all three inherited it from the same docstring. Convergence is not confirmation when the
+premise is shared. The only thing that broke it was reading the table with `count(*)`. Whenever an
+artifact claims a corpus fact — present, absent, admitted, unqualified — the check is a query
+against `classical_text_chunks`, not a search tool and not another document's assurance.
