@@ -1,3 +1,15 @@
+---
+title: "KIMI_K3_REVIEW_SANGAM_SUMMARY_v1_0"
+version: "1.0"
+status: COMPLETED_EXTERNAL_REVIEWER_OUTPUT
+role: reviewer_output
+owner: "L3 Saṅgam design session (madhav-d9)"
+layer: L3
+asset: ka_sangam
+description: "Verbatim Kimi K3 output (SEND_WITH_EDITS; all 8 edits applied to the summary v1.2). Frontmatter prepended for gate parity only; body unchanged."
+frontmatter_added: "2026-09-23 — prepended for governance-gate parity (madhav-fc G18 finding: briefs tree is outside the frontmatter gate); body byte-identical to the prior commit"
+---
+
 # Kimi K3 (effort=max) review — layman summary of the seven Saṅgam rulings
 # generated 2026-09-23T02:03:39+05:30 via: kimi -m kimi-code/k3 -p <KIMI_REVIEW_PACKET_SANGAM_SUMMARY_v1_0.md>; k3 default_effort=max, thinking.effort=max
 

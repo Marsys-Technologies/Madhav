@@ -1,3 +1,15 @@
+---
+title: "KIMI_REVIEW_PACKET_SANGAM_SUMMARY_v1_0"
+version: "1.0"
+status: COMPLETED
+role: review_request
+owner: "L3 Saṅgam design session (madhav-d9)"
+layer: L3
+asset: ka_sangam
+description: "Author-written packet sending the layman ruling summary to Kimi K3 (max effort) for review."
+frontmatter_added: "2026-09-23 — prepended for governance-gate parity (madhav-fc G18 finding: briefs tree is outside the frontmatter gate); body byte-identical to the prior commit"
+---
+
 # Review request — the layman summary of the seven Saṅgam rulings
 
 You are Kimi K3, acting as an independent reviewer. Earlier you produced recommendations on these
