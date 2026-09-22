@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "3.2"
+version: "3.3"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.3 (2026-09-23): the governance rule sharpened to its final form (madhav-d9) — mutual checking among sessions that share a premise is agreement, not verification; a peer's confirmation counts for nothing the reviewer has not itself queried. Proposed for doctrine."
   - "3.2 (2026-09-23): PG332 correction — it is the 28-asterism RING chakra for the Sun-vedha rule at śl. 26-27, NOT a second SBC page. My 'two grid pages' framing would have spliced two instruments. Verified against PG331/PG333. Fifth correction of the day."
   - "3.1 (2026-09-23): §11.27 — Sade-Sati, a live serving factor consuming 4,492 verified facts on the canonical chart, has ZERO primary-text attestation: all 5 corpus rows are in one MEDIUM-provenance modern nāḍī text. Highest-severity item of the day. Kota confirmed 0 rows."
   - "3.0 (2026-09-23): my own OCR caveat corrected — PG346-352 is a COMPLETE, legible primary construction of the Sarvatobhadra chakra; only the diagram page is degraded, and the prose rules make it unnecessary. G10 re-graded again, to BUILDABLE. §11.25 closes the day with the W0 corpus re-audit task."
@@ -1286,11 +1287,25 @@ ranking demonstrably buries the answer. And never another artifact's assurance t
 checked — "confirmed by direct search, not assumed" was the sentence that propagated this error into
 three analyses and a native ruling inside one day.
 
-**The governance finding this day produced, which outranks any individual defect above:**
-**convergence between independent sessions is not independent confirmation when they inherit a
-shared premise.** Four sessions agreed. The agreement was real, the independence was not, and only a
-direct query broke it. Any review protocol that treats cross-session agreement as verification needs
-this caveat written into it.
+**The governance finding this day produced, which outranks any individual defect above.** The first
+statement was: convergence between independent sessions is not independent confirmation when they
+inherit a shared premise. The Saṅgam session sharpened it against this day's own record, and its
+version is the one that should stand:
+
+> Four sessions checked each other. I checked their claims, they checked mine, and two more checked
+> both. All four were still wrong together for a day — because every check ran against *another
+> session* and the shared premise, never against the object. **Mutual checking among sessions that
+> share a premise is agreement, not verification.** Only a query against the object broke it, and
+> the moment one session ran one, the whole chain corrected itself in under two hours.
+
+**The operational form, for any independent reviewer:** a peer's confirmation counts for nothing the
+reviewer has not itself queried. The reviewer's own `count(*)`, or its own read of the file, is the
+detector. *"Session X also found this"* is evidence only that session X read the same sentence.
+
+This is §N.8 turned on our own review process: **what would have to be true for cross-session
+agreement to correctly read false?** Nothing, as long as the sessions are talking to each other. So
+the signal is null, and the count is the detector. I am proposing this for doctrine rather than
+leaving it in four packets, because it is the one finding today that generalizes past Kāla.
 
 ### 11.27 Sade-Sati: 4,492 served facts, zero primary attestation
 
