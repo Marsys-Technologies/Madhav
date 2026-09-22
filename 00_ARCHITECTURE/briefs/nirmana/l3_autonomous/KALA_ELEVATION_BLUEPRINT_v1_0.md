@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.6"
+version: "1.7"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.7 (2026-09-23): natal figures corrected by 14.82″ — my manual tropical−ayanāṃśa subtraction disagrees with FLG_SIDEREAL, and L1's stored RAH_MEAN arbitrates for the latter. A THIRD undeclared convention (ayanāṃśa application method). §11.10 refined: the epoch is declared correctly in code, never in the data, and the fix extends the row's existing ayanamsha_id pattern."
   - "1.6 (2026-09-23): §11.9 RETRACTED IN FULL — the 332″ was my own epoch error (knots are noon UT; I differenced against midnight). With set_ephe_path and noon, real Swiss reproduces the stored knots to 0.00″ on 5/5 dates, so store-is-TRUE is EXACT. The pāda claim is RESTORED as measured: natal TRUE 50.0451 = pāda 4, MEAN 49.0289 = pāda 3. New §11.10 records the undeclared epoch convention."
   - "1.5 (2026-09-23): §11.1 — two sessions' local node computations diverge by 332 arcsec, larger than every margin in dispute and enough to flip the natal pāda between pāda 4 and pāda 3. The withdrawal is upheld on stronger grounds; a peer's proposed arithmetic correction is NOT adopted because its figure does not reproduce here. New §11.9 makes local-ephemeris irreproducibility a first-class finding."
   - "1.4 (2026-09-23): §11 — bg_cohort CONFIRMED as a fifth independent TRUE_NODE declaration (my earlier denial was a truncated grep); the directed-aspect item withdrawn — the engine is correct and the gap is a Saṅgam call-site; §3.1 Gochara row corrected (contacts partially kept, qualification absent); new §11.7 gate rule: a Swiss-vs-kernel gate is not a detector where .se1 is absent."
@@ -457,12 +458,13 @@ receipt-vs-data discrepancy. No L3 session touches L0.**
 
 | Convention | Sidereal | Rohiṇī pāda | Margin to the 50.0000° boundary |
 |---|---|---|---|
-| **MEAN** (analytic; what L1 stores) | 49.028927° | **3** | 3496″ |
-| **TRUE** (what the store and the scanner carry) | 50.045130° | **4** | 163″ |
+| **MEAN** (analytic; what L1 stores) | 49.033044° | **3** | 3492″ |
+| **TRUE** (what the store and the scanner carry) | 50.049248° | **4** | 177″ |
 
 A mean-vs-true ruling therefore **moves this native's Rāhu from Rohiṇī pāda 3 to pāda 4** as a
-measured fact. The 163″ margin is an order of magnitude above any plausible ephemeris-version
-difference. L1's own served `RAH_MEAN` (49.0330441°) agrees with the analytic mean to 15″.
+measured fact. The 177″ margin is an order of magnitude above any plausible ephemeris-version
+difference, and the mean figure reproduces L1's own served `RAH_MEAN` (49.0330441°) to **0.00″**.
+Instant: 1984-02-05 05:13 UT (10:43 IST), `jd 2445735.717361`. A cited number carries its instant.
 
 **And store-is-TRUE is exact, not statistical.** Computed at **noon UT** — the epoch
 `l0_ephemeris.py:164,278` actually uses — with `set_ephe_path('/tmp/se1')`, real Swiss reproduces
@@ -640,3 +642,46 @@ position. It says nothing about the natal pāda, which comes from L1's birth-ins
 (§11.1). Two different quantities; only the natal one bears on a reading. (Raised by the Kshetra
 session.)
 
+### 11.11 A third undeclared convention: how the ayanāṃśa is applied (14.82″)
+
+Found while reconciling a 15″ spread between sessions that was assumed to be a birth-instant
+difference. It is not — it is **method**:
+
+| Getting sidereal from Swiss | MEAN at 05:13 UT | vs L1's stored `RAH_MEAN` |
+|---|---|---|
+| `tropical − get_ayanamsa_ut()` (manual subtraction) | 49.028927° | **off by 14.82″** |
+| `FLG_SIDEREAL` (Swiss's own transform) | **49.033044°** | **0.00″** |
+
+**L1's stored fact is the arbiter, and it validates `FLG_SIDEREAL`.** My manual subtraction — used
+for every sidereal figure this session published before v1.7 — is the one that disagrees with what
+L1 actually serves. Both natal figures in §11.1 are corrected accordingly (mean 49.028927 →
+49.033044; true 50.045130 → 50.049248; margin 163″ → 177″). The pāda conclusion is unchanged; the
+method finding is the durable part.
+
+So three conventions govern a single longitude and **none is recoverable from the data**: the node
+frame (declared *wrongly* — §11.1), the epoch (declared correctly in code, never in the row —
+§11.10), and now the ayanāṃśa application method (declared nowhere, worth 15″, and silently
+divergent between two correct-looking call shapes). Each cost a session an error today.
+
+### 11.12 §11.10 refined, and the fix is smaller than it looks
+
+The Kshetra session's correction, adopted: *"declares neither"* was slightly too strong. Precisely —
+**the node frame is declared wrongly in two places** (`624:30` `node_mode="mean"`;
+`l0_ephemeris.py:77` comment "Mean North Node"), while **the epoch is declared correctly in exactly
+one place a consumer never reads** (`l0_ephemeris.py:164,278`). A reader of `ephemeris_daily` can
+recover neither: its columns are `id, date, body, ayanamsha_id, tropical_longitude, latitude,
+speed_dps, is_retrograde, sign_number, degree_in_sign, nakshatra_number, source_citation,
+computed_at`. `date` carries no time-of-day; `source_citation` is the constant string
+*"pyswisseph + Swiss Ephemeris .se1"*.
+
+**And the fix is not new machinery — it is this table's own established pattern.** The row already
+carries `ayanamsha_id` (value: `tropical`) precisely to declare a frame. `node_mode`,
+`epoch_convention` and the ayanāṃśa application method belong beside it, each with a detector, rather
+than in a probe contract that asserts without measuring. §11.10 therefore reads as *"extend the
+row's existing frame declaration to the three frames it omits"*, not *"add declaration machinery"* —
+which should make it considerably easier to land. (Framing by the Kshetra session.)
+
+**And the consumer cost, in one sentence** (madhav-d9's, adopted): because L1 stores no `RAH_TRUE`,
+the true natal value is computed at read time and stored nowhere — so any consumer wanting it
+recomputes it and silently inherits its caller's epoch, backend and ayanāṃśa method. Today that is
+three ways to be wrong, none of them visible in the data.
