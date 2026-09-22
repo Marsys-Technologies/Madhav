@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "3.3"
+version: "3.4"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.4 (2026-09-23): §11.28 — Saṅgam CLOSED at 3f62f3468. Delegation recorded verbatim and author decisions D-1…D-8 kept separate, which is the discipline the M-1…M-7 episode was missing. D-8 discloses that plan v0.4, which v1.0 is built from, has never been reviewed; the third Astra review is now a stage-3 ENTRY gate."
   - "3.3 (2026-09-23): the governance rule sharpened to its final form (madhav-d9) — mutual checking among sessions that share a premise is agreement, not verification; a peer's confirmation counts for nothing the reviewer has not itself queried. Proposed for doctrine."
   - "3.2 (2026-09-23): PG332 correction — it is the 28-asterism RING chakra for the Sun-vedha rule at śl. 26-27, NOT a second SBC page. My 'two grid pages' framing would have spliced two instruments. Verified against PG331/PG333. Fifth correction of the day."
   - "3.1 (2026-09-23): §11.27 — Sade-Sati, a live serving factor consuming 4,492 verified facts on the canonical chart, has ZERO primary-text attestation: all 5 corpus rows are in one MEDIUM-provenance modern nāḍī text. Highest-severity item of the day. Kota confirmed 0 rows."
@@ -1345,3 +1346,46 @@ false absence this whole chain was made of.
 **Kota chakra is the counter-example worth noting**: zero rows corpus-wide, established the way the
 rule requires. That is a real absence, honestly reached, and it supports keeping Kota at
 proposed-use rather than promoting it. The rule does not only demote things.
+
+### 11.28 Saṅgam closed — and the one disclosure in it that should not close quietly
+
+Saṅgam is CLOSED at `3f62f3468`. Sheet CLOSED, plan v1.0 `APPROVED_FOR_EXECUTION_STAGE_3`, brief
+v1.5. For the L3 row and CURRENT_STATE.
+
+**The delegation is recorded the way the earlier episode was not, and that is worth marking.** When
+M-1…M-7 were first reported to me as ruled, nothing in the repository recorded them and I refused
+the report. The close does it properly: `delegation_recorded` carries a timestamp
+(2026-09-23T03:39:33+05:30) and names the delegated scope; the delegation is quoted verbatim in the
+CLOSE block; and D-1…D-8 are marked, typographically and in the frontmatter, as **the author's
+decisions under delegation, not the native's words**, each with reasoning so any can be reversed in
+one line. That is the correct shape for a session deciding under delegation, and it is a direct
+improvement on the same day's earlier practice.
+
+**The limit that remains, stated plainly.** I can verify that the sheet *records* a delegation. I
+cannot verify the delegation itself — no session can verify a claim about what the native said
+outside the repository. Everything a session can do here has been done; the last step is the
+native's alone. This is the standing residue of §11.23: a peer's account of an off-repository
+exchange is not something a peer can confirm.
+
+**D-8 is the disclosure that matters, and it nearly closed quietly.** The sheet states that **plan
+v0.4 — the text v1.0 is built from — has never been reviewed by anyone.** v0.1 returned REWORK on 19
+findings and v0.3 on 10; v0.4 is the text that answered the second round, and no reviewer has seen
+it. Rather than let an `APPROVED_FOR_EXECUTION` label paper over that, the session made the third
+Astra review a **stage-3 entry gate**: it runs before any code is written, by the independent
+reviewer, and is explicitly not discharged by the author. That is the right call, and it is §N.8
+applied to an approval label — *what would have to run and fail for "approved" to correctly read
+false?* Until that review runs, the honest answer was "nothing," and now it is the gate.
+
+**D-1 deserves note for the same reason.** The E6 evaluation gate is set at n=30 per
+`(domain × route × method_version)` and n=100 for a pooled instrument-level claim, with
+`method_version` never pooled and anything short reporting `PROVISIONAL_INSUFFICIENT_N` **with its
+actual n**. The numbers are stated as functions of the measured base rate and recompute at equal
+power if it moves off 0.20. That is a threshold with a detector behind it rather than a convention,
+which is the distinction this whole campaign has been about.
+
+**D-7** adopts the successor condition: the legacy scan is withdrawn only when the R-5 preservation
+manifest shows every dependent claim has an authorized successor — a state, not a date.
+
+**What Saṅgam still depends on, all owned elsewhere:** the Gochara N-7 ruling (gates E1/E3), the
+`ephemeris_daily` undeclared-contract finding (§11.1), and the house-vedha re-citation under
+F-23/G-8.
