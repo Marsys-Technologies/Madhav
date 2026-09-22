@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.8"
+version: "1.9"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.9 (2026-09-23): the Moshier node bound is 65.3″ over the full 55,152-knot domain — both earlier sparse samples under-reported it (mine by half). Natal-pāda safety is 2.7×, not 'well under'. New rule: a sample is not a bound."
   - "1.8 (2026-09-23): the 14.82″ method gap IS nutation in longitude — verified identical; so the three sessions' figures were one value under two ayanāṃśa conventions, both giving pāda 4. Moshier's true-node error measured at ≤32.5″ (1950–2100), retiring 'unbounded' — and that bound is what makes the natal pāda reportable and the stored-knot pāda not. §11.7 gains two counterexamples."
   - "1.7 (2026-09-23): natal figures corrected by 14.82″ — my manual tropical−ayanāṃśa subtraction disagrees with FLG_SIDEREAL, and L1's stored RAH_MEAN arbitrates for the latter. A THIRD undeclared convention (ayanāṃśa application method). §11.10 refined: the epoch is declared correctly in code, never in the data, and the fix extends the row's existing ayanamsha_id pattern."
   - "1.6 (2026-09-23): §11.9 RETRACTED IN FULL — the 332″ was my own epoch error (knots are noon UT; I differenced against midnight). With set_ephe_path and noon, real Swiss reproduces the stored knots to 0.00″ on 5/5 dates, so store-is-TRUE is EXACT. The pāda claim is RESTORED as measured: natal TRUE 50.0451 = pāda 4, MEAN 49.0289 = pāda 3. New §11.10 records the undeclared epoch convention."
@@ -594,10 +595,34 @@ test the MOSEPH bit. Provision and checksum your own `.se1` rather than assuming
 copy persists — the one on this host sits under `/tmp`, placed by another session, and may not
 survive a reboot.
 
-**Measured, so "unbounded Moshier error" is retired:** Moshier's true-node error against Swiss is
-**≤32.5″ across 1950–2100** (10-year samples), not the ~360″ two sessions feared. That bound is
-exactly what separates a reportable figure from an unreportable one here: the natal pāda margin is
-177″ (reportable even on Moshier), the stored-knot margin is ~6″ (not reportable on any backend).
+**Measured over the whole domain, so "unbounded Moshier error" is retired — and so are two sparse
+samples of it.** Moshier's true-node error against Swiss, computed at **every** noon knot from
+1950-01-01 to 2100-12-31 (**n = 55,152**, `retflag` asserted Swiss on every call): **min −58.1″, max
++65.3″, worst 65.3″ on 1972-11-20.** Two earlier sparse estimates both under-reported it in the same
+direction — a five-date sample said 18.1″, my sixteen-date decade sample said 32.5″, the truth is
+**65.3″**, half as much again as my figure and over three times the other. Independently reproduced
+here to the arcsecond and the date.
+
+That bound is what separates a reportable figure from an unreportable one, with the real ratios:
+
+| Quantity | Margin | vs the 65.3″ bound |
+|---|---|---|
+| Natal pāda (birth instant) | 177.3″ | **2.7× safety — reportable even on Moshier** |
+| Stored noon knot | 6.3″ | **10.4× over — not reportable on any backend** |
+
+2.7× is a real margin but a thin one; state it as 2.7×, not as "well under".
+
+**New rule, earned the same way as the other two: a sparse sample is not a bound.** The node's error
+oscillates on timescales shorter than a decade, so decade spacing samples it about as badly as five
+dates do. Two sessions each produced a confident bound from a sample and both were wrong in the same
+direction; only measuring the full domain settled it. This sits beside *"a date is not an epoch"* and
+*"a flag is not a backend"*.
+
+**Consequence for the inherited 0.314″ spline figure:** 65.3″ is two orders of magnitude above it.
+If the W2G V3 validation ran without `set_ephe_path`, it compared its spline against a reference
+~200× coarser than its own claim, and the figure says nothing about Swiss-grade accuracy. Whether
+that runner calls `set_ephe_path` is answerable from source and should be answered before 0.314″
+anchors any gate. (Raised by the Gochara session.)
 
 **Rule for every numerical acceptance gate in this campaign:** require `.se1` present, verify
 `retflag`, and record the file checksums in the evidence, or the result is `NOT_RUN` — never `PASS`. Any inherited
