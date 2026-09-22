@@ -75,3 +75,46 @@ connection is lost`, 1,183,134 rows claimed), `ka_avadhi` (`post-write integrity
 `ka_gochara_v3_century_materialize` (`BUILD-PROTECTED`, guard working as designed),
 `ka_gochara_sweep` (`no writer registered`, retired identity). Diagnosis of the first:
 `LANE_A2_KSHETRA_CRASH_DIAGNOSIS.md`.
+
+## CORRECTED (downgraded) — Lane F: the `ka_graha_sancara` ayanāṃśa gate is latent, not live
+
+Lane F reported "a hard equality gate in `ka_graha_sancara` (the foundational ephemeris service)
+that would reject the canonical `lahiri_chitrapaksha` string outright." The gate is real —
+`services/ka_graha_sancara/engine.py:306` (`if ayanamsha != "lahiri": raise`) and `:376`
+(`if ayanamsha not in SUPPORTED_AYANAMSHAS`, a set of engine-level names:
+`{lahiri, raman, kp, krishnamurti, yukteshwar, surya_siddhanta}`).
+
+**But it is not a present-tense defect, and the framing matters.** The codebase carries a
+documented two-name convention, stated explicitly by a writer that handles it correctly
+(`services/ka_tithi_pravesha/writer.py:61-62`):
+
+```
+CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"    # the DB / chart_facts id
+ENGINE_AYANAMSHA    = "lahiri"                 # pyjhora_adapter's own id for the SAME ayanamsha
+```
+
+Measured: every call site into the sancara engine passes the engine-level literal `'lahiri'`
+(`services/ka_graha_sancara/__init__.py:9`, `writers/ka_graha_sancara.py:122,178,234`) or an
+already-validated parameter. Every external importer takes only constants — `NAKSHATRAS`, `SIGNS`,
+`ALL_GRAHAS`, `NAK_SIZE_DEG` — never the ayanāṃśa-taking functions
+(`ka_moorti_nirnaya`, `ka_sudarshana_varsha`, `ka_kota_chakra`, `ka_vedha_gochara`).
+Search scope: `platform/python-sidecar/services/` and `pipeline/`. **No live caller can trip the
+gate.**
+
+**The real, smaller finding:** there is no translation layer between the canonical DB
+`ayanamsha_id` vocabulary and the engine vocabulary — correctness depends on each writer author
+knowing the convention and hardcoding the right literal. `ka_tithi_pravesha` documents it;
+the engine does not enforce or translate it. Any future caller that reads `ayanamsha_id` from
+`chart_facts` and passes it straight into the engine fails at `:376`. That is a genuine hazard
+for an elevation campaign that will edit these writers, and the fix is cheap (a shared
+`to_engine_ayanamsha()` mapping, or accepting both spellings at the boundary). Record it as a
+**latent hazard with a cheap guard**, not as a blocker — and note that the separately-confirmed
+`?? 'lahiri'` default in `call_service_wrappers.ts:328` IS a live defect of this same family,
+already fixed in the unmerged PR #2695.
+
+**Classification note.** This is the third instance in this exercise of the F2 error shape — a
+correct observation reported in the wrong frame (Lane B found two in the audit; I have now found
+one each in Lanes E and F). The pattern is consistent enough to name: **a lane verifies that a
+mechanism exists and can fail, then reports it as failing, without measuring whether any live
+caller reaches it.** The consolidated package must state, for every hazard it carries, whether a
+live path reaches it today.
