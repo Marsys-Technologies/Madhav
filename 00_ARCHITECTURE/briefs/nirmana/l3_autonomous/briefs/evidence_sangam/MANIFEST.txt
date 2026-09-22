@@ -1,0 +1,14 @@
+# script | expected exit (positive run) | must FAIL under NEG=1
+S1_target_default_zero.py|0|1
+S2_directed_aspect_arithmetic.py|0|1
+S3_ashtakavarga_producer_vs_reader.py|0|1
+S4_moon_contact_count.py|0|1
+S5_rarity_angle_fraction.py|0|1
+S6_overlap_key_exact_pair.py|0|1
+S7_gate_after_accumulation.py|0|1
+S8_saturn_loop_oracle.py|0|1
+S9_sandhi_flag_meaning.py|0|1
+S10_mode_a_necessary_terms.py|0|1
+S11_dignity_zero_erases_activity.py|0|1
+S12_lagna_default_aries.py|0|1
+S13_trigger_composition_post_engine.py|0|1

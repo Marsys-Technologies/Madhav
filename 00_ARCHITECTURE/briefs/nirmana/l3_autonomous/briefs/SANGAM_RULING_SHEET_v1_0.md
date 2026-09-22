@@ -1,0 +1,275 @@
+---
+artifact: SANGAM_RULING_SHEET
+canonical_id: SANGAM_RULING_SHEET
+version: "1.0"
+status: AWAITING_NATIVE_RULING
+date: 2026-09-23
+for: the native — seven method rulings on the Saṅgam algorithm elevation (plan v0.4 §8)
+inputs:
+  - SANGAM_ALGORITHM_ELEVATION_PLAN_v0_4.md (the decisions, as framed after two Astra reviews)
+  - KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0.md (Kimi K3, effort=max; read plan, both reviews, June ruling, corpus)
+  - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md / _v0_3.md (constraints each ruling must respect)
+verification_by_author: "every BPHS line Kimi cited re-read at the corpus (BP1:16605-16652, 7569-7593, 22725-22742; BP2:8955-8962, 35666-35676, 42332-42369) — all verbatim; Phaladīpikā 23.10/23.11/23.20 re-read online (wisdomlib doc1621595) — verbatim; Hāyanaratna 2.1/3.3 NOT re-verified by the author (Kimi and Astra both cite the same online edition) — tagged [D-online]; Kimi's '0 dots = loss of life' not found on the page — [U]"
+does_not_authorize: anything. Each row becomes authority only when the native answers it.
+answer_format: "M-n: agree / agree, but … / no — …"
+---
+
+# Saṅgam — the seven rulings
+
+How to read each row: **Kimi recommends** (condensed) · **Verified** (what I checked) · **My
+position** (agree / agree with change / push back — with the reason) · **Astra's constraint** (what
+any ruling must not violate) · **Your question**, with options.
+
+---
+
+## M-1 / M-1a — Contact contracts · legacy scan · targets per rule class · nodes
+
+**Kimi recommends.** Adopt four versioned contracts in this order: Parāśari directed graha-dṛṣṭi
+(full + fractional ¼/½/¾) → Moon-gochara + vedha → a Tājika *motion qualifier* (apply/separate/
+station) folded into all contracts → Jaimini rāśi-dṛṣṭi only on a qualified Jaimini route → full
+Tājika aspects only on the annual route. Keep the legacy scan one generation, never pooled; retire
+it only after R-5's preservation manifest shows every dependent claim has a successor. Targets:
+**sign** for gochara/vedha, rāśi-dṛṣṭi, aṣṭakavarga; **natal longitude** for graha targets under
+dṛṣṭi; **bhāva-madhya** for house targets under dṛṣṭi (Śrīpati as default); relational predicates
+get their own detector. Nodes: no dṛṣṭi (unverified); **mean node** as default convention.
+
+**Verified.** BPHS 26.2-5 (sign-level aspects + fractional slabs), 26.6-8 (the six virupa rules;
+Mars +15 at 90-120/210-240, Jupiter +30 at 120-150/240-270, Saturn +45 at 60-90/270-300; "for
+house in aspect, consider the cusp") — **verbatim at BP1:16605-16652**. BPHS 8.1-3 Jaimini
+degree-irrelevance — verbatim (per Astra, BP1:8686-8723). "Rāhu and Ketu who are always
+retrograde" — **verbatim BP2:8959-8960**. Hāyanaratna valences [D-online].
+**Code:** L1's natal positions are **mean-node** (`pyjhora_adapter/strength.py:195-197`: "mean-node-
+patched … consistent with every other position fact this project stores"); the transit scanner is
+**true-node** (`transit_search.py:10, 64`) — a live inconsistency that R-3 must close either way.
+L1 already computes **Placidus** cusps (`ga_positions_writer.py`, `ga_kp_significators.py`) and
+whole-sign; no Śrīpati anywhere.
+
+**My position.** *Agree* on the four contracts, the order, directed search, fractional aspects
+shipping in v1, the hybrid (sign interval survives without an exact pass), and the legacy-scan
+retention rule. *Agree* on mean node — it is what L1 stores, so it is the §N.5-consistent default;
+the scanner's true-node is the outlier. **Push back on Śrīpati:** L1 stores Placidus cusps today;
+defaulting to Śrīpati adds a third house frame with no L1 fact behind it (B.10). Recommend:
+bhāva-madhya = the cusp L1 *already stores* (Placidus, via the KP cusp facts), house system recorded
+on every row; Śrīpati only as a ratified variant with its own L1 amendment.
+
+**Astra's constraint.** Direction must be tested per special aspect and reverse branch (F-02); the
+same geometry under two contracts is one root (A.3); relational/house triggers may need a different
+detector, never coerced onto a natal point (F-01/RR-03).
+
+**Your question.** (a) Confirm the four contracts and order? (b) Retire the legacy scan after one
+generation, or sooner? (c) **House frame for cusp targets: Placidus-as-stored (my recommendation) /
+Śrīpati (Kimi) / whole-sign only?** (d) **Node convention: mean (L1, Kimi, me) / true (scanner)?**
+(e) Any graha-dṛṣṭi for Rāhu/Ketu — which houses, on the authority of which text?
+
+---
+
+## M-2 — Aṣṭakavarga ledger
+
+**Kimi recommends.** (i) Record the mapping: *stored integer = count of auspicious marks*;
+Santhanam calls these **rekhās** (his *bindus* are the adverse dots); say "benefic marks" in prose.
+(ii) Do **not** ratify "≥4 support / ≤3 obstruct": Phaladīpikā 23.11's own enumeration puts 4 with 3
+("fear"); ratify a **three-state verdict {support ≥5, indeterminate = 4, obstruct ≤3}**, every verdict
+conditioned by the transiting planet's dignity in the sign (23.10). (iii) Keep both SAV bands
+school-labelled, BPHS three-band primary (>30 / 25-30 / <25, in rekhās), Phaladīpikā >28 as
+alternate, 28 → middle band by declaration; never two votes. (iv) Mode D → BAV-supported ingress
+with SAV as context. (v) Kakṣyā deferred; **missing-planet producer receipt now**.
+
+**Verified.** BPHS 66.13-15 vocabulary — **verbatim BP2:35666-35676** ("inauspicious … dots (bindus)
+… auspicious … small vertical lines (rekhas)"). BPHS 72.3-5 bands in rekhās, plus Santhanam's
+*note* on 6/8/12 inversion being a gloss — **verbatim BP2:42332-42369**. **Phaladīpikā 23.11 —
+verified online, verbatim:** one…eight benefic dots → "destruction or loss, expenditure, fear,
+**fear**, accomplishment of the desired object, acquisition of a damsel, gain of wealth, kingdom."
+23.10 conditioning ("in their own, exaltation, friendly or upacaya places … advance") and 23.20
+(>28) on the same page. Kimi's "0 = loss of life" — **not on the page, [U]**.
+
+**My position.** *Agree in full.* The three-state verdict is the honest encoding of a text that puts
+4 in the adverse half while practice calls it average; it neither inflates nor contradicts. The
+vocabulary mapping is a dictionary amendment, not a data change (A-02). Producer receipt now is
+right — RR-02 proved reader-level recovery impossible.
+
+**Astra's constraint.** Not `BAV/8` into a nonnegative combiner (F-04/RR-05); SAV contains BAV —
+one lineage (D.3); the frame is *settled*, not open (RR-02).
+
+**Your question.** (a) **BAV = 4: indeterminate (text; Kimi; me) or support (modern practice)?**
+(b) Within "indeterminate", does 4 lean adverse (23.11 says "fear") or neutral? (c) BPHS bands
+primary with Phaladīpikā as alternate — confirm? (d) Does the 6/8/12 SAV inversion (Santhanam's
+gloss, not verse) ship at all?
+
+---
+
+## M-3 — The integrated June ruling (blocking E1 and E3)
+
+**Kimi recommends.** **Re-affirm §4.5 as the governing mechanism** — no ephemeris scan inside the
+Saṅgam writer/engine; Saṅgam consumes pre-computed transit events from an upstream producer;
+`planet` becomes a LIST, absent when nothing fires — and **declare §4.6 superseded as authority for
+in-writer scans**, keeping three of its rulings as refinements (per-signature *attribution* within
+the slow channel; no count caps; inline threshold applied *upstream*). Retire the READY prompt as
+written. E1's directed geometry is within the ruling **if produced upstream**. E3's fast tier is
+within intent only as conditional refinement inside a qualified parent, evidence count unchanged —
+grant it as a one-paragraph bounded amendment. Ranked fast witnesses: Moon's house-from-Moon
+(Ph. 26.2/26.12), tārā-vedha stars (26.26-29), laṭṭā (26.42-44, producer already served), Sun's
+house/saṅkrānti (26.9-11, 26.29), decanate phase (26.25). The muhūrta tārā-bala form stays [U].
+
+**Verified.** June §6 prohibition ("Do NOT re-introduce any ephemeris scan inside ka_sangam") — read
+this session; the landed code scans (`find_aspect_events` inside `mode_a_search`, S1/S7). BPHS 47
+per-strength delivery — verbatim. Phaladīpikā 26.x fast-body gochara [D-online]; tārā-vedha stars
+and laṭṭā verses [D-online, not re-verified by me].
+
+**My position.** *Agree with the reading* — it is the only one consistent with §6, and it turns E1's
+geometry into an upstream event contract, which is where R-3's scanner amendment already had to
+land. **Add one thing Kimi did not say:** the upstream producer is `transit_search.py` /
+`ka_gochara`'s service — **the Gochara stream's territory**, frozen against Saṅgam edits (S-I). So
+this ruling creates a cross-stream obligation: name the owner of the directed-event producer and its
+bounded amendment before E1 can proceed. Without that, "§4.5 re-affirmed" is a ruling nobody can
+execute. On the E3 amendment: *agree* to grant it in exactly the bounded form (inside qualified
+parents, all families enumerated, no cap, evidence count unchanged).
+
+**Astra's constraint.** Existing fast-trigger reachability is not retrospective authority; the
+integrated ruling must cover both E1 and E3 (B.3, D.1); "complete inside selected parents" ≠
+"complete chart refinement" (D.2).
+
+**Your question.** (a) **§4.5 re-affirmed as mechanism, §4.6 kept as attribution — yes/no?**
+(b) If yes: **who owns the upstream directed-event producer** (Gochara stream? a new bounded
+service?), since `transit_search.py` may not be edited from Saṅgam. (c) **Grant the bounded E3 fast
+tier?** (d) Is the Sun in the slow set as a calendar witness (§4.5 lists Saturn/Jupiter/Rāhu/Ketu)?
+(e) Mark `CLAUDE_CODE_PROMPT_KA_SANGAM_TRANSIT_REDESIGN.md` SUPERSEDED-and-reissued?
+
+---
+
+## M-7 — Score-kernel separation (new)
+
+**Kimi recommends.** Adopt the four fields — `activity` (nonnegative), `valence` (signed),
+`applicability`, `availability` — with **dignity removed from the necessary product** and re-seated
+in valence. *No classical warrant for dignity as a gate*: BPHS 47.3-4 scales delivery by strength
+(a nīca lord delivers *trouble*, not silence — nīca-bhaṅga presupposes delivery); Phaladīpikā
+23.23-24 composes valence from nature × dignity × lordship (a benefic owning a duḥsthāna injures
+even exalted); 23.10 "generally fails to sustain" is graded. The shape maps the classical
+**bala** (nonnegative) / **phala** (signed) distinction. `activity` on the 26.6-8 virupa scale
+(leans). Genuine gates survive only where classical: orb of light, itthaśāla motion, route
+eligibility. Legacy `kernel_version = legacy_i16`, never pooled.
+
+**Verified.** BPHS 47.3-4 — verbatim BP2:8939-8960. BPHS 27.21-23 cheṣṭā values (vakra **60**,
+maximum) — **verbatim BP1:22725-22742**. Phaladīpikā 23.10 — verified online; 23.23-24 [D-online].
+Code: `convergence_score([0,1,1], full support)` → **0.0** (S11).
+
+**My position.** *Agree in full.* This is the strongest recommendation in the set — three
+independent anchors, and it dissolves the reviewer's RR-05 without inventing a scalar. The virupa
+scale for `activity` is attractive because it is self-documenting; I would still leave normalised
+vs virupa to you (`[J]`).
+
+**Astra's constraint.** Signed labels around a nonnegative combiner cannot carry adverse testimony
+(RR-05); legacy/new must have explicit compatibility selection; consumers select fields explicitly.
+
+**Your question.** (a) **Dignity leaves the necessary product — yes?** (b) Four fields, or a fifth
+`route` dimension outside applicability? (c) `activity` in virupas (textual) or [0,1]? (d) Is there
+any configuration in your practice that produces *nothing* (as opposed to evil) — if so it becomes
+an applicability rule, never a multiplier.
+
+---
+
+## M-4 — Typed natal / clock conditions
+
+**Kimi recommends.** Confirm D7/D9/D10/D4 and extend from the same verse: D2 wealth, D3 co-born,
+D12 parents, D16 conveyances, D20 worship, D24 learning, D27 strength, **D30 evil effects** (natural
+varga for DOSHA-class predicates), D60 deferred. Relevant lords per domain = D1 domain-bhāva lord +
+natural kāraka + (per school) the domain varga's lagna lord — each one's *natal* dignity in the
+domain varga, with cancellation evidence. **No typed condition ever vetoes.** Carry
+`boundary_distance` as annotation *with the drekkāṇa-phase rule alongside it* (BPHS 47.3-4: lord in
+first/second/third drekkāṇa → effect at start/middle/end; reversed when retrograde; nodes always
+reversed), so the annotation carries doctrine, not a bare number.
+
+**Verified.** BPHS 7.1-8 full sixteen-varga table — **verbatim BP1:7569-7593** (D2 wealth, D12
+parents, D24 learning, D27 "strength and weakness from Bhamsa", D30 "evil effects", D40, D45, D60).
+BPHS 47.3-4 drekkāṇa phasing + reversal — verbatim. L1 stores a `retrograde_flag`
+(`ga_prashna_writer.py:142`; `ga_positions_writer.py` handles retrograde) — natal retrograde state
+is available [C-partial]. Kāraka verse pins [U]. D30-for-DOSHA is Kimi's [J].
+
+**My position.** *Agree* on the table, no-veto, natal-only, and carrying the drekkāṇa rule with the
+annotation — that last point improves on my plan (a bare `boundary_distance` was a number without
+doctrine). *Agree with change:* the "relevant lords" registry must be ratified **line by line**, as
+Kimi says; do not automate it. The D30-for-DOSHA mapping is a proposal to rule, not doctrine.
+
+**Astra's constraint.** Adverse ≠ inapplicable (F-08); capability aggregate cited, never re-voted;
+"hold every other fact fixed" fixtures (RR-03).
+
+**Your question.** (a) Confirm the extended varga–domain table? (b) Per-domain relevant-lords list —
+rule it line by line (I will draft from BPHS kāraka verses for your ratification). (c) D30 as the
+DOSHA varga — yes/no? (d) Confirm: no typed condition vetoes.
+
+---
+
+## M-5 — Episode conventions
+
+**Kimi recommends.** Station loop is the **sole** linkage (it is the only generator of multiple
+contacts for one graha/target/angle); nearness must not link across loops. Children = each pass
+with orb entry/peak/exit, identity, precision, truncation flag; hull = envelope; occupied time =
+union; no default peak. Aborted approaches (station before exactness) are children labelled
+`approached, never perfected` — classically "no itthaśāla" but sign-level applicability survives.
+>3-contact and truncated episodes carry `truncated: start|end` with measured partial occupancy.
+**`ka_taranga` unit: occupied-day union per month per (method-contract × valence-sign)** —
+additive, duplicate-invariant, respects partial months.
+
+**Verified.** BPHS 27.21-23 vakra = 60 (max), vikala = 15 — verbatim: the retrograde pass is the
+*strongest* phase, so it is neither noise nor an automatic event date. Hāyanaratna 3.3 motion rules
+[D-online]. Code: `ka_taranga.py:161-169` averages one contribution per intersecting row per month
+(RR-05 sibling) — confirmed.
+
+**My position.** *Agree in full.* The taranga unit is the concrete answer Astra asked for
+("month-set union is insufficient"); it is mechanically checkable by duplicate-insertion
+invariance. Aborted-approach children are a real gap in my plan — adopt.
+
+**Astra's constraint.** Crossings ≠ orb-interval occupancy (RR-03 E5); every child and its interval
+survive (D.2); grouping is not an ICC repair (F-09).
+
+**Your question.** (a) Loop-as-sole-linkage — confirm? (b) Do aborted approaches count in E6's
+episode numerator (Kimi leans yes as `perfected: false`)? (c) Taranga unit as proposed?
+
+---
+
+## M-6 — Consumption and evaluation boundary
+
+**Kimi recommends.** Yes — once R-5 identity is qualified in the harness and outcomes are on two
+axes, L5 may consume Saṅgam windows as **prediction candidates**. `EMPIRICALLY_EVALUATED` stays
+closed until five conditions hold: predeclared protocol (estimand, horizon, population, version
+frozen); held-out issuance chronology (reuse `01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md`,
+`06_LEARNING_LAYER/PREDICTION_LEDGER/`); native-ratified minimum n per (domain × route × version)
+stratum; censoring rules (open windows `censored`, never misses; `unobserved` ≠ `miss`; `ambiguous`
+stays in the denominator, fraction disclosed); base-rate discipline (hit rate vs coverage fraction).
+No classical basis — and saying so is part of the discipline.
+
+**Verified.** Both cited artifacts exist. Two-axis record matches RR-07. Existing Bhaviṣya writer
+fails closed on ambiguous reattachment (per Astra).
+
+**My position.** *Agree in full.* The one sentence worth underlining: *the machinery must be willing
+to say "no demonstrated skill," or it is RR-01 rebuilt at L5.*
+
+**Astra's constraint.** Model invalidation ≠ outcome miss (F-12/RR-07); an L5 hook permits
+observation, it does not earn `EMPIRICALLY_EVALUATED` (B.6).
+
+**Your question.** (a) Open consumption on those preconditions — yes? (b) Minimum n per stratum —
+your number. (c) Who adjudicates `ambiguous`?
+
+---
+
+## Cross-decision coherence (Kimi's check, endorsed)
+
+M-1 supplies geometry; M-7 rules geometric intensity can never be erased by natal condition; M-2 and
+M-4 supply signed valence — so an adverse-but-intense window is representable end to end. M-3's
+mechanism (upstream events) is what licenses M-1's directed contracts under the June ruling; E3's
+children never increment witnesses, the same one-root discipline as M-1's two-labels-one-root,
+M-2's SAV-contains-BAV, M-4's cite-don't-revote. M-5's occupancy union feeds both `ka_taranga` and
+M-6's exposure denominator. No new scalar anywhere. **One tension, named:** M-3's slow-channel
+discipline vs contract (a)'s Moon-centrism — resolved only if the E3 amendment is granted; if it is
+refused, contract (a) narrows to slow carriers and Phaladīpikā 26.12's Moon material waits.
+
+## The three questions Kimi would ask before you rule (endorsed, with my additions)
+
+1. **June integration + E3 amendment** (M-3 a/c) — the only "no" that *deletes* textual capability
+   rather than deferring it. **My addition:** name the upstream producer's owner in the same breath.
+2. **BAV = 4** (M-2 a/b) — the text says "fear"; practice says "average"; the highest-blast-radius
+   threshold in the ledger.
+3. **Nodes** (M-1 d/e) — mean vs true, and any dṛṣṭi. **My addition:** the codebase is already split
+   (L1 mean, scanner true), so this is a live repair either way, not a preference.
+
+**And one Kimi did not ask, which I would:** **House frame for cusp targets** (M-1 c) — L1 stores
+Placidus; Śrīpati would be a third system with no fact behind it.
