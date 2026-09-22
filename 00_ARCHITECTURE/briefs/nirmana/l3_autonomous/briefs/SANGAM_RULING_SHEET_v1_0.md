@@ -2,7 +2,7 @@
 artifact: SANGAM_RULING_SHEET
 canonical_id: SANGAM_RULING_SHEET
 version: "1.0"
-status: RULED  # M-1…M-5, M-7 ruled; M-6 ruled "agree" with minimum n OPEN (placeholder unfilled)
+status: RULED   # M-1…M-5, M-7 ruled; M-6 ruled agree with minimum n OPEN (placeholder unfilled)
 date: 2026-09-23
 for: the native — seven method rulings on the Saṅgam algorithm elevation (plan v0.4 §8)
 inputs:
@@ -10,8 +10,8 @@ inputs:
   - KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0.md (Kimi K3, effort=max; read plan, both reviews, June ruling, corpus)
   - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md / _v0_3.md (constraints each ruling must respect)
 verification_by_author: "every BPHS line Kimi cited re-read at the corpus (BP1:16605-16652, 7569-7593, 22725-22742; BP2:8955-8962, 35666-35676, 42332-42369) — all verbatim; Phaladīpikā 23.10/23.11/23.20 re-read online (wisdomlib doc1621595) — verbatim; Hāyanaratna 2.1/3.3 NOT re-verified by the author (Kimi and Astra both cite the same online edition) — tagged [D-online]; Kimi's '0 dots = loss of life' not found on the page — [U]"
-rulings_recorded: 2026-09-23T02:42:50+05:30 — by the native, in writing, in the Saṅgam session (madhav-d9), transcribed verbatim below; attribution: Abhisek Mohanty
-does_not_authorize: implementation. The rulings below are the native's record and make plan v1.0 APPROVED_FOR_EXECUTION for stage 3 under the conditions stated; M-6's minimum count remains OPEN.
+rulings_recorded: "2026-09-23T02:42:50+05:30 — by the native, in writing, in the Saṅgam session (madhav-d9), transcribed verbatim below; attribution: Abhisek Mohanty"
+does_not_authorize: "implementation. The rulings below are the native's record and make plan v1.0 APPROVED_FOR_EXECUTION for stage 3 under the conditions stated; M-6's minimum count remains OPEN."
 answer_format: "M-n: agree / agree, but … / no — …"
 ---
 
