@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.3"
+version: "1.4"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.4 (2026-09-23): §11 — bg_cohort CONFIRMED as a fifth independent TRUE_NODE declaration (my earlier denial was a truncated grep); the directed-aspect item withdrawn — the engine is correct and the gap is a Saṅgam call-site; §3.1 Gochara row corrected (contacts partially kept, qualification absent); new §11.7 gate rule: a Swiss-vs-kernel gate is not a detector where .se1 is absent."
   - "1.3 (2026-09-23): §11 — the pāda-boundary claim is WITHDRAWN as unresolvable on this host (stored value sits 0.0059° from the boundary; local Moshier error ~0.1°); the three node figures in circulation reconciled; the stale KSHETRA brief on main flagged."
   - "1.2 (2026-09-23): §11 rewritten after three-session convergence — the node split is FOUR-way and `ephemeris_daily` stores TRUE node under a mean contract (measured 5/5 dates); the DAR_CLOSE receipt records the mean value the table does not hold; M-3 carries two producer paths and neither unblocks E1/E3 yet; two of this session's own v1.1 claims corrected."
   - "1.1 (2026-09-23): §11 addendum — the node-convention hub defect (mean-node natal vs true-node transit engine; reached and served: 232 rows in the served Gochara generation), the M-3 producer-owner decision the Saṅgam FINAL packet raises, and the shared-branch rule. Body unchanged."
@@ -135,7 +136,7 @@ The Strategy §3 defines the logical objects of the layer. Each has an owning as
 
 | Strategy §3 object | Owning asset(s) | State today (measured) |
 |---|---|---|
-| **Contact** — moving body, target, contact type, orb, applying/separating, station/retrograde, brackets, tolerance, coverage | Gochara family (`ka_gochara`, century, resonance, vedha, moorti) | `kala_gochara_windows_v2`: 23 fields, **zero** of these; contacts computed then discarded |
+| **Contact** — moving body, target, contact type, orb, applying/separating, station/retrograde, brackets, tolerance, coverage | Gochara family (`ka_gochara`, century, resonance, vedha, moorti) | Partial. `term_breakdown.activity_terms` keeps 25,518 contact records over 380 of 914 served rows, but its only keys are `primitive, transit_planet, target_ref, target_weight, event_datetime_ist, orb_decay, p_i` — **no orb in degrees, no applying/separating, no station/retrograde branch, no bracket or root time, no tolerance, no coverage**, and no record at all on the other 534 rows. The contact is kept; its **qualification** is discarded. |
 | **Clock interval** — method, hierarchy, parent, lord, exact start/end, inclusivity, applicability, failure reason | `ka_dasha_kala` (service), `ka_avadhi`, `ka_tithi_pravesha`, `ka_sudarshana_varsha` | tithi-praveśa instants 5.5 h late in production; hour grain lost in `ka_temporal` |
 | **Temporal testimony** — roots, method/family, polarity, applicability, support/opposition/silence, **independence group**, uncertainty | `ka_sangam` (+ `ka_vighnakara` for opposition) | independence as a SMALLINT count; roots only in JSONB; no silence, no applicability per method |
 | **Engagement route** — binding + necessary/optional temporal clauses, satisfying/failed evidence, enablement/inhibition, alternatives | `ka_sangam`, `ka_kalasutra` | no route field; score cut is a mode filter |
@@ -519,13 +520,24 @@ an owner. **Therefore E1/E3 must not be recorded as unblocked by a proposal.**
 **The owner is the native's to name.** All three sessions have declined to name it between
 themselves — correctly. The native rules shape *and* owner together.
 
-**Directed aspects, verified here:** `find_aspect_events` searches `(target_longitude_deg +
-aspect_deg)` (`transit_search.py:312,320`); no caller negates it. Saṅgam passes symmetric degrees
-`[0,60,90,120,180]` (`engine.py:213,467`), while the special-aspect table is asymmetric —
-`gochara_grammar/primitives.py:190-194`: Mars `[90,180,210]`, Jupiter/Rāhu/Ketu `[120,180,240]`,
-Saturn `[60,180,270]`. **No served generation-3.0 row carries any of the asymmetric degrees** (0
-rows matched), so the directed-aspect gap is real at the engine and currently unexercised in served
-data — a gap to close in the producer, not a live wrong answer in serving.
+**Directed aspects — an earlier item in this section is WITHDRAWN.** v1.2 recorded a
+"directed-aspect gap at the engine, unexercised in served data." Re-verified, none of that holds:
+`find_aspect_events` computing `(target_longitude_deg + aspect_deg)` (`transit_search.py:320`) is
+**correct** — dṛṣṭi is directional, and a symmetric search would be the defect. The Gochara path
+already uses the classical per-graha table: `gochara_grammar/primitives.py:342-343` passes
+`SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)` into it (Mars `[90,180,210]`, Jupiter/Rāhu/
+Ketu `[120,180,240]`, Saturn `[60,180,270]`, everything else `[180]`, BPHS Ch.26 cited at
+`:189-196`). And it **is** exercised: `drishti_contact` appears on 379 of 914 served generation-3.0
+rows. My "zero rows carry an asymmetric degree" was measuring `activity_terms`, whose keys are
+`primitive, transit_planet, target_ref, target_weight, event_datetime_ist, orb_decay, p_i` — the raw
+aspect degree is **not a field it has**. Absence in a field that cannot hold the value is not absence
+of the value.
+
+**The real defect is a Saṅgam call-site, not a producer gap:** `services/ka_sangam/engine.py:464-466`
+passes the symmetric generic set `[0,60,90,120,180]` for the benefics Jupiter and Venus, where
+Jupiter's classical dṛṣṭi is `[120,180,240]`. Attributing this to the Gochara producer would send
+the fix to the wrong owner. It belongs in Saṅgam's R-series. (Found by the Gochara session; verified
+here.)
 
 ### 11.4 Corrections to this session's own v1.1
 
@@ -559,11 +571,40 @@ exists.
 
 ### 11.6 Carried but NOT verified by this session
 
-`bg_cohort` as a registered writer carrying TRUE_NODE — my read of
-`pipeline/orchestrator/writers/bg_cohort.py` found **no** `@register` and **no** `TRUE_NODE`, and
-its own comments say it *independently reproduces* `l1_positions`' formulas rather than importing
-them (`:49,105-106`). Flagged for the Gochara session to re-check. · Per-importer persisted
+**`bg_cohort` is CONFIRMED, and my earlier denial was my own measurement error.** Re-grepped
+without truncation: `@register("bg_cohort")` at `:470`, `("Rahu", swe.TRUE_NODE)` at `:333`, and the
+provenance string *"Lahiri ayanamsha; TRUE_NODE Rahu"* at `:159`; 691 lines, byte-identical to
+`origin/main`. My v1.2 statement that the file had neither came from a grep I had piped through
+`head -5`, which truncated away everything after line 106 — I then published that absence as a
+finding against a peer's correct claim. The peer's own correction also stands and *strengthens* the
+finding: `bg_cohort` does **not** import `l1_positions` (`:49`, `:105-106` say it independently
+reproduces the formulas), so it is a **fifth independent TRUE_NODE declaration**, not a dependent
+one. · Per-importer persisted
 divergence in the `l1_positions` chain. · The century BUILD-PROTECTED "residue" timeline (error
 stamped 2026-08-21 vs migration 588 applied 2026-08-23). · The 1.933° maximum over 1984–2084. · **No natal Rāhu
 `longitude_sidereal` fact row exists** for the canonical chart at `lahiri_chitrapaksha` — so L1's
 mean convention is confirmed by declaration and by the DAR arithmetic, not by a stored fact.
+
+### 11.7 A gate rule this week produced: a Swiss-vs-kernel comparison is not a detector here
+
+Raised by the Gochara session, and it generalises the §11.1 caveat. This environment ships no `.se1`
+files, so `FLG_SWIEPH` silently falls back to Moshier and returns bit-identical values to a Moshier
+call. **Any acceptance gate phrased "our kernel agrees with Swiss to N arcseconds" therefore compares
+Moshier with Moshier where `.se1` is absent — it cannot fail, and under §N.8 it is not a detector at
+all.** Production does carry real Swiss data (`Dockerfile:24`, `Dockerfile.pipeline:17`,
+sha256-verified into `/app/ephe`), so the gate is meaningful there and vacuous here.
+
+**Rule for every numerical acceptance gate in this campaign:** require `.se1` present and record the
+file checksums in the evidence, or the result is `NOT_RUN` — never `PASS`. Any inherited
+arcsecond-level parity figure whose run environment is not established is `[UNVERIFIED]` until it is.
+This is the same defect class as migration 624's probe (§11.1): a check that cannot return false.
+
+### 11.8 Four measurement errors by this session, and the pattern
+
+Recorded because the pattern matters more than the individual slips. (1) v1.1 listed Kshetra as a
+`transit_search` position reader — it imports one constant. (2) v1.1's "242 rows" conflated two
+generations and two carriers. (3) v1.2 denied `@register`/`TRUE_NODE` in `bg_cohort` from a grep
+truncated by `head -5`. (4) v1.2's directed-aspect gap measured a JSON field that cannot hold the
+value. All four are the same failure: **asserting from an incomplete read, then publishing the
+absence as evidence.** The three asset sessions caught all four. The countermeasure that actually
+worked was not care — it was other sessions re-measuring at the authority and saying so.
