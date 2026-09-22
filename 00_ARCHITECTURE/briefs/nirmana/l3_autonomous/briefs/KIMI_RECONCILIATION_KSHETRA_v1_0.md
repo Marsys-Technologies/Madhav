@@ -107,6 +107,7 @@ search hit at `phaladeepika:PG323:C1`, Adh. XXVI ślokas 6–8, `[HIGH]`).
 | K-2 #4 / K-3 (ii) "kakṣyā is not in the corpus, only SAV thresholds" | **Re-opened** — count required. |
 | K-3 (iii) "sade-sati corpus anchor is only KP Reader Vol 5" | **Re-opened**, and KP is not in the corpus at all — the anchor cited does not exist there. |
 | K-2 (c) "daśā-sandhi as junction doctrine is NOT in the admitted corpus" | **Re-opened** — count required. |
+| K-3 / plan "sarvatobhadra: algorithmic approximation, unqualified" | **Refined:** `unqualified` today because the grid table is empty; the primary construction is in the corpus (`phaladeepika:PG346:C1`–PG352, legible prose; only the PG345 diagram is illegible) — populatable to `verse_cited`, an L0 work item. |
 | K-2 confidence "[U] for Phaladīpikā / Sarvārtha Cintāmaṇi specifics (not in corpus)" | **Both are in the corpus**; the [U] was a directory read, not a verification result. |
 | All *presence* anchors (Ch. 47 vv 5-6; Ch. 57 vv 24-27A; Ch. 9-10; Ch. 12 v 11; Ch. 46; Ch. 72; Ch. 74; Ch. 29 = Bhāva Padas) | **Stand** — made by direct text read. |
 
