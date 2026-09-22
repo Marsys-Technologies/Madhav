@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.2"
+version: "2.3"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.3 (2026-09-23): §11.5 stale-brief warning now points at PR #2722 (supersedes in place, v4.3). New §11.16: a `set -e` chain is not a detector — recorded against this session's own rails, not only a peer's."
   - "2.2 (2026-09-23): §11.15 — the BPHS Ch.29 strike propagates: 39 of 41 vedha-bearing transit rules cite that non-existent gochara chapter, the other 2 cite Phaladīpikā which is not in the admitted corpus, so ZERO vedha rules are corpus-verifiable and the layer has no source-qualified ordinary reference today. Added to §9 as D8."
   - "2.1 (2026-09-23): §11.14 — three defects from the Kshetra packet, all verified here: a wrong classical citation inside an INDEPENDENTLY ACCEPTED W0 record; a coverage gap declaring a table absent that holds 8 live rows; and the stored field being chart-wide where its contract says route-scoped."
   - "2.0 (2026-09-23): §9 rewritten as the native's actual decision queue — it predated every finding of 23 Sep. Adds D6 (node frame + its paired disposition + the two sibling conventions), D7 (M-3 producer shape and owner), and the two items that are cheap and unblock others. The 65.3″ bound is now reproduced by three sessions independently."
@@ -855,3 +856,22 @@ and laṭṭā unqualified on one stated ground.
 **The fix is a corpus/L0 decision, not an L3 one** (Gochara's G-9): admit Phaladīpikā — and
 Sārāvalī / Jātaka Pārijāta if the non-vedha rows citing them are to stay verse-cited — or re-grade
 every gochara-vedha row uniformly as *cited-outside-admitted-corpus*. Routed to the corpus owner.
+
+### 11.16 `set -e` is not a detector either — recorded against this session's own rails
+
+The Kshetra session reported that a commit chain pushed a file whose frontmatter did not parse,
+because `set -e` did not halt the chain. That is worth recording here rather than in one packet,
+because **this session has been running the same shape all day**: a heredoc Python step that
+validates or rewrites an artifact, followed by `git add`/`commit`/`push` in the same compound
+command. `set -e` does not abort when the failing command sits inside a pipeline, a command
+substitution, or a construct the shell treats as tested — so a validation step can fail silently and
+the commit still lands.
+
+It is the §11.1 pattern one layer down, in our own tooling: **a check that cannot fail the thing it
+guards is not a detector.** Migration 624 asserted a node frame it never measured; a `set -e` chain
+asserts a validation it does not enforce. Verification steps should assert explicitly and gate the
+commit on their own exit status, not lean on shell semantics.
+
+Concrete instance found while checking PR #2722: four of its five frontmatter blocks parse; the
+fifth, `KIMI_K3_REVIEW_KSHETRA_v1_0.md`, still fails (`ScannerError`, frontmatter line 5 — prose
+inside the `---` fences). The earlier fix landed on a different file than the one still broken.
