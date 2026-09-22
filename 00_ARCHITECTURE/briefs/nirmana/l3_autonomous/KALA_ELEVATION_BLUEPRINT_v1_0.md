@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.0"
+version: "2.1"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.1 (2026-09-23): §11.14 — three defects from the Kshetra packet, all verified here: a wrong classical citation inside an INDEPENDENTLY ACCEPTED W0 record; a coverage gap declaring a table absent that holds 8 live rows; and the stored field being chart-wide where its contract says route-scoped."
   - "2.0 (2026-09-23): §9 rewritten as the native's actual decision queue — it predated every finding of 23 Sep. Adds D6 (node frame + its paired disposition + the two sibling conventions), D7 (M-3 producer shape and owner), and the two items that are cheap and unblock others. The 65.3″ bound is now reproduced by three sessions independently."
   - "1.9 (2026-09-23): the Moshier node bound is 65.3″ over the full 55,152-knot domain — both earlier sparse samples under-reported it (mine by half). Natal-pāda safety is 2.7×, not 'well under'. New rule: a sample is not a bound."
   - "1.8 (2026-09-23): the 14.82″ method gap IS nutation in longitude — verified identical; so the three sessions' figures were one value under two ayanāṃśa conventions, both giving pāda 4. Moshier's true-node error measured at ≤32.5″ (1950–2100), retiring 'unbounded' — and that bound is what makes the natal pāda reportable and the stored-knot pāda not. §11.7 gains two counterexamples."
@@ -773,3 +774,40 @@ at the instant; a stored knot is an interpolation input, never an answer.** It i
 knife-edge finding must not be cited against the natal figure (§11.10): the knot's 6″ margin is
 smaller than any backend's error, while the instant's 177″ margin is five times larger than the
 measured 32.5″ worst case. One is reportable, the other never will be.
+
+### 11.14 Three defects from the Kshetra packet — verified here, one of them governance-level
+
+**(a) A wrong classical citation, carrying an acceptance stamp.** `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md:207`
+states the source-qualified reference is *"the BPHS Ch.29 Sun third-from-Moon favourable transit and
+paired ninth-house Vedha case."* Checked in the corpus: **BPHS Volume 1 Chapter 29 is titled
+"Bhava Padas"** (`00_ARCHITECTURE/SOURCE_DATA/classical_texts/BPHS/bphs_vol1_rsanthanam_djvu.txt`),
+and the whole of Volume 1 contains **2** occurrences of "gochara". There is no gochara chapter there.
+Line 39 of that same record lists *"source-qualified Vedha case"* as **INDEPENDENTLY ACCEPTED**.
+
+So a citation naming the wrong text carries an acceptance stamp in a W0 record that the whole
+campaign treats as settled. The admitted chain is `bg_phaladeepika_vedha` — **Phaladīpikā** PG353,
+ADJUDICATION-11 — a different work entirely. This is the source-qualification discipline failing at
+the one place it is supposed to be strongest, and it propagated: the Kshetra session inherited the
+phrase verbatim into two documents before catching it. **Routed to the W0 record's owner.** No L3
+session edits an accepted W0 record.
+
+**(b) A coverage gap that declares a table absent while it holds live rows.** `stage1_symbolization.py`'s
+`latta_coverage()` returns `"not_in_corpus"` with *"No classical latta-kick rule table found in this
+codebase."* Live: **`bg_phaladeepika_latta` holds 8 rows.** An unearned signal in the *opposite*
+direction from the usual — declaring absence where there is presence — and it suppresses a source
+the layer has already admitted. Fix belongs with the comment's owner; the coverage detector should
+query rather than assert (the §11.12 pattern again).
+
+**(c) The stored field is chart-wide; its contract says route-scoped.** Verified: `layer0.py:200-201`
+states plainly *"Store ALL chart-level vighna instances. Per-class SM-R-7 filtering is Layer 1's
+responsibility"*, and the SM-R-7 filter lives in `layer1.py` — a projection that never writes
+`kala_field`. The field path passes `obstructions=self.envelopes.obstructions_at(t)` unfiltered
+(`stage4_field.py:866-873`), and the null path does the same. So field and null are **mutually
+consistent and chart-wide**, and the documented route-scoped contract is what no stored row honours.
+
+Note what the Kshetra session did *not* claim: its reviewer inferred a further consequence — that
+`null_p` is biased low by a field/null split — and that session **rejected it** after checking the
+fourth site, because there is no split. Contract ≠ behaviour, not field ≠ null. Rejecting a
+reviewer's consequence while accepting the finding is the right discipline and worth recording as
+such. The native's decision is which semantics governs, gated on a byte-equality test
+`field ≡ null ≡ projection` before any `null_p` is served.
