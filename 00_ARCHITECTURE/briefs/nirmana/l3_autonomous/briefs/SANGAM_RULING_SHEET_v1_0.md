@@ -286,7 +286,7 @@ M-6: agree; minimum n = <your number>
 4. **"No node dṛṣṭi" — the "BPHS Ch.26" citation is REFUTED, the practice is UNCITED in the corpus, and the cost in Gochara is a whole λ factor, not 172 rows.** (i) Santhanam Ch.26 in the raw OCR (`SOURCE_DATA/classical_texts/BPHS/bphs_vol1_rsanthanam_djvu.txt`, chapter head at line 16490): *"All planets aspect the 7th fully. Saturn, Jupiter and Mars have special aspects respectively on 3rd and 10th, 5th and 9th, and 4th and 8th"* — and the whole chapter span (16457–18361) has **zero** occurrences of rāhu/ketu/node (254 in the file overall). (ii) Table-level regex over all 15 texts for (rāhu|ketu|node) ∧ (aspect|dṛṣṭi) ∧ (5th…9th) returns only noise (Ketu *in* the 5th, malefics in 5th/9th, Sarvārtha Cintāmaṇi st.103 on planets' "sight" as physiognomy)
 
   **[RE-CHECK ATTEMPTED AND BLOCKED, 2026-09-23 — strategic session / DIS.031.** That session entered D-6 in
-  `DISAGREEMENT_REGISTER_v1_0.md` as **DIS.031** and graded this ground **ATTRIBUTED, not verified by
+  `DISAGREEMENT_REGISTER_v1_0.md` as **DIS.031** (entered `20c21568e`, **corrected in place `68b0fd09d`** — cite the corrected revision) and graded this ground **ATTRIBUTED, not verified by
   the recording session** — correctly, and for the reason this campaign exists: it had not run the
   query itself. It also raised a sharper objection: `w30_nodal_drishti.py`'s docstring names
   **Phaladīpikā and Sārāvalī** as the rule's actual sources, and the BPHS Ch.26 refutation therefore
@@ -299,7 +299,7 @@ M-6: agree; minimum n = <your number>
   the objection still bites:* that query required an aspect term **and** a 5th/9th term **in the same
   chunk**, so a differently-phrased grant ("Rāhu, like Jupiter, sees the trines"), one split across
   chunk boundaries, or one degraded by OCR would be missed. A predicate-level read of **every**
-  rāhu/ketu chunk in those two texts is the stronger check and **has not been done**.
+  rāhu/ketu chunk in those two texts is the stronger check and **has not been done**. *(DIS.031 `68b0fd09d` adopted this downgraded grading and corrected its own 'not read by anyone' claim to the author's attribution; that session independently hit the same `ECONNREFUSED` twice, minutes apart, so neither session can discharge the item — the register says so, and the item stays OPEN pending N-14, 2026-09-23.)*
 
   **It could not be done when this was written.** The direct database path returned
   `ECONNREFUSED 127.0.0.1:5433` (the same outage that stopped the strategic session), and the remote
