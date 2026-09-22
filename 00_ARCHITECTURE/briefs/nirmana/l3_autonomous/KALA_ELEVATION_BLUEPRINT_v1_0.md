@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.7"
+version: "2.8"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.8 (2026-09-23): §11.18 mechanism corrected — a lock is not a configuration; the 0.314″ origin is v3_spline_accuracy.py, decorated but unconfigured. New §11.22: M-1's 'no node dṛṣṭi' would flip a LIVE multiplicative term in the served λ (gochara_v3, not ka_sangam) and invalidate every stored λ. Six-rule ledger consolidated."
   - "2.7 (2026-09-23): §11.15 CITATION STRIKE RETRACTED IN ITS CENTRAL CLAIM. Phaladeepika IS in the served corpus (564 chunks, 17 vedha rows, the actual Adhyāya XXVI vedha + laṭṭā doctrine at PG322/323/339). My admitted-corpus list was a SOURCE_DATA directory listing, not the corpus. Ruling 8 rests on this. New §11.21."
   - "2.6 (2026-09-23): G4 RETRACTED (the .se1 files are on this host and the production resolver finds them). New §11.18: the ephemeris backend is process-global and unowned — w2g, which owns the 0.314″ figure, never sets it, and panchang_engine forces Moshier. New §11.19: the century writer is live-active and DELETEs production in its staging transaction while declaring only the staging table. M-1..M-7 now recorded in writing."
   - "2.5 (2026-09-23): RETRACTION — my ScannerError diagnosis of PR #2722's file was my own naive splitter, not the gate. The file had no byte-0 frontmatter at all. §11.17 rewritten; new rule: a naive parser is not the gate. G18 item 1 (scope) and the constructed in-scope parse-blindness finding both survive."
@@ -946,11 +947,23 @@ Both figures match the Saṅgam sheet to six decimals, and the MEAN value matche
 **What replaces G4 is sharper.** The files being present does not mean a computation uses them.
 `swe.set_ephe_path` sets *process-global* state, and the components disagree about who owns it:
 
-- `services/w2g/` — the module that owns the 0.314″ worst-case spline figure — **never sets it**. It
-  references `l0_ephemeris` only in comments about the noon-UT knot abscissa.
+- **The 0.314″ figure's actual origin is `services/w2g_validations/v3_spline_accuracy.py`** (the
+  Gochara session located it precisely; I had said "w2g", which is the consumer, not the producer).
+  It imports `serialized_swiss_state` at line 42, decorates `_swe_longitude` at 111, and calls with
+  `swe.FLG_SWIEPH | swe.FLG_SPEED` at 118 — **and never calls `set_ephe_path` at all.** Requesting
+  the SWIEPH flag does not load the files; `calc_ut` falls back silently.
+- **The mechanism is sharper than "nobody sets it": a lock is not a configuration.**
+  `serialized_swiss_state` (`panchang_engine/swiss_state.py`) takes `SWISS_STATE_LOCK` and calls the
+  function. That is all it does. A decorated function is *serialized*, not *configured* — and the
+  decorator's presence reads, at a glance, like the Swiss state has been handled. `transit_search.py`
+  is decorated **and** sets the path at 249-250, so the contact path is genuinely configured; the
+  spline validator is decorated and is not. Same decorator, opposite guarantees.
 - `ka_gochara_v3_century_materialize.py` imports `swisseph` directly at line 2022 and **never sets
   it**.
-- `panchang_engine/__init__.py` calls `swe.set_ephe_path(None)` twice, which **forces Moshier**.
+- `panchang_engine/__init__.py` calls `swe.set_ephe_path(None)` **four** times, and
+  `l0_ephemeris.py` twice more, each forcing Moshier. (I first reported two, from a grep I had piped
+  through `head`. There are **23** non-test `set_ephe_path` call sites in the sidecar. Truncating my
+  own greps is now the single most frequent mechanism behind my errors this session — see §11.8.)
 - `bg_cohort.py`, `bg_sky_calendar.py`, `transit_search.py`, `routers/pyhora.py` and
   `service_probes.py` each set it themselves.
 
@@ -1089,3 +1102,61 @@ against the search tool.
 wrong in its central term. The ruling may still be the right call on other grounds, but it should be
 re-put with the corrected premise while the sheet is reversible. I am not asking for it to be
 reversed; I am saying it should not stand on a fact I got wrong.
+
+### 11.22 "No node dṛṣṭi" is a formula change, not a record trim — and the engine is not the one named
+
+M-1's closing clause, "no graha-dṛṣṭi for Rāhu/Ketu," reads like a scoping decision about which rows
+ship. It is not. The Gochara session flagged this and I verified it, with one correction: the code
+is in **`services/gochara_v3/engine.py`**, not `services/ka_sangam/engine.py`. Two files named
+`engine.py`; the finding is right and the address was wrong. That is the "a filename is not a table"
+family again, and it caught a session that had just caught three of mine — which is the argument for
+the rule rather than against anyone.
+
+Verified at `services/gochara_v3/engine.py`:
+
+- `_W30_NODAL_DRISHTI_ENABLED: bool = True` at line 107. **Live, not dormant.**
+- Line 628: `_w30.compute(context, t_jd, swe=swe, enabled=_W30_NODAL_DRISHTI_ENABLED)`.
+- Line 632: `raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates`.
+- Lines 668 and 778 emit `w30_modifier` into the stored output.
+
+So `w30_modifier` is a **live multiplicative factor in the served λ**. Setting the toggle to False
+does not remove records; it changes the formula, and every stored λ computed with the factor becomes
+incomparable to every λ computed without it. The codebase already says so in its own comment at line
+132: removing the term "automatically invalidates every stored" score.
+
+**Two things follow for the native's ruling.** First, if "no node dṛṣṭi" extends to this mechanism,
+it implies a full gochara_v3 rebuild, and that cost belongs in the ruling rather than being
+discovered afterwards. Second, the mechanism is declared a **CANDIDATE** in its own module docstring
+(`w30_nodal_drishti.py:4`) while running enabled in the served path — a candidate that is live is
+not a candidate, and that gap deserves its own line whatever the node ruling says.
+
+**One thing here is genuinely well-built, and it is worth saying.** `scoring_signature.py` exists
+specifically to detect toggle and constant changes in these mechanisms and to invalidate stored
+scores when they move. Unlike most of what §N.8 has turned up this session, this signal has a real
+detector behind it. It is the model the rest of the layer should copy.
+
+### 11.23 The rule ledger, consolidated
+
+Six instances of one failure mode, found in a single day across four sessions. Each is the same
+move: reading something adjacent to the thing being described, then publishing the result with more
+precision than the method earned.
+
+| rule | what was mistaken for what | whose |
+|---|---|---|
+| a date is not an epoch | midnight differenced against noon-UT knots | mine |
+| a flag is not a backend | `FLG_SWIEPH` requested without the files loaded | shared |
+| a sparse sample is not a bound | 16 dates reported as a 150-year bound (32.5″ vs the true 65.3″) | mine |
+| a filename is not a table | `gochara_*` basenames; two files named `engine.py` | Gochara's, and its reviewer's |
+| a naive parser is not the gate | my splitter vs the gate's byte-0 `.match()` | mine |
+| **a source directory is not the corpus** | `SOURCE_DATA/classical_texts/` folders read as the admitted corpus | **mine, then inherited by two other sessions** |
+| a lock is not a configuration | `serialized_swiss_state` read as having handled Swiss state | shared |
+
+The last one in the table is the one that did the most damage, because it was not caught by
+disagreement: three sessions held it simultaneously, and it took reading the corpus table directly
+to break it. **Convergence between sessions is not independent confirmation when the sessions share
+a premise.** That is the governance lesson of this day, and it is worth more than any individual
+finding above.
+
+A recurring mechanism worth naming separately: three of my errors trace to piping a `grep` through
+`head`, which silently truncated the evidence I then reasoned from. The fix is procedural, not
+intellectual — count first, then read.
