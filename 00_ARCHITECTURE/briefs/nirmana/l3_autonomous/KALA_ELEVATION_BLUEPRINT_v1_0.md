@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.6"
+version: "2.7"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.7 (2026-09-23): §11.15 CITATION STRIKE RETRACTED IN ITS CENTRAL CLAIM. Phaladeepika IS in the served corpus (564 chunks, 17 vedha rows, the actual Adhyāya XXVI vedha + laṭṭā doctrine at PG322/323/339). My admitted-corpus list was a SOURCE_DATA directory listing, not the corpus. Ruling 8 rests on this. New §11.21."
   - "2.6 (2026-09-23): G4 RETRACTED (the .se1 files are on this host and the production resolver finds them). New §11.18: the ephemeris backend is process-global and unowned — w2g, which owns the 0.314″ figure, never sets it, and panchang_engine forces Moshier. New §11.19: the century writer is live-active and DELETEs production in its staging transaction while declaring only the staging table. M-1..M-7 now recorded in writing."
   - "2.5 (2026-09-23): RETRACTION — my ScannerError diagnosis of PR #2722's file was my own naive splitter, not the gate. The file had no byte-0 frontmatter at all. §11.17 rewritten; new rule: a naive parser is not the gate. G18 item 1 (scope) and the constructed in-scope parse-blindness finding both survive."
   - "2.4 (2026-09-23): new G18 + §11.17 — the governance frontmatter gate is blind to the entire briefs tree (0 files matched by any governed glob) AND, for files it does govern, a YAML parse failure produces zero violations. Measured, not read."
@@ -1026,3 +1027,65 @@ the two frames fall on **opposite sides of a pāda boundary** — true 50.049° 
 49.033° is pāda 3. Ruling "mean" makes pāda 3 the answer and makes the stored knots a derivation
 input rather than a servable value. It does not by itself repair the undeclared contract on
 `ephemeris_daily`, which remains the §N.8 finding of §11.1.
+
+### 11.21 The citation strike was wrong where it mattered — Phaladīpikā IS in the corpus
+
+**This retracts the central claim of §11.15 and it bears directly on ruling 8, which the native has
+already ruled. It should be read before stage 3 proceeds.**
+
+**What I published.** That the admitted corpus is (BPHS, Jaimini_Sutram, KP, KP_Reader); that 39 of
+41 vedha rules cite "BPHS Ch.29" which is actually *Bhāva Padas*; that the remaining 2 cite
+Phaladīpikā, "which is not in the admitted corpus"; and therefore that **zero vedha rules are
+corpus-verifiable**. The Gochara session reached a compatible conclusion, and ruling 8 turns on it.
+
+**What is true, read from the live corpus table rather than from a file listing:**
+
+| text_id | chunks | rows containing "vedha" |
+|---|---|---|
+| `phaladeepika` | 564 | **17** |
+| `bphs` | 1459 | 2 |
+| `hora_sara` | 460 | 0 |
+| `saravali` | 471 | 0 |
+| `brihat_jataka` | 607 | 0 |
+
+The served corpus holds **fifteen populated texts**, not four. Phaladīpikā is one of them, and it is
+the single **richest** source of vedha material in the entire corpus. The doctrine itself is there,
+in Adhyāya XXVI: the Sun's vedha pairs at `PG322:C1` (auspicious in the 11th, 3rd, 10th, 6th,
+provided the corresponding 5th, 9th, 4th and 12th are unmarred, Saturn excepted), Mercury's at
+`PG323:C1`, and the laṭṭā rules at `PG339:C1` (the 9th from Rāhu, the 22nd from the Moon). That is
+precisely the material the 41 rules need.
+
+**Where my error came from.** `Jaimini_Sutram` and `KP_Reader` are **directory names** under
+`00_ARCHITECTURE/SOURCE_DATA/classical_texts/`. I read a source-data folder listing and published it
+as the admitted corpus. It is the same family as every other error I have made today, and it now has
+its own line: **a source directory is not the corpus.** Note also that `jaimini_sutram` exists as a
+text_id with `chunk_count: 0` — admitted in name, empty in substance, which is a separate §N.8
+finding worth its own row.
+
+**What survives, and it still matters.** The BPHS Ch.29 mis-citation is real: 39 rules cite a
+chapter that is *Bhāva Padas*, and BPHS itself carries only 2 vedha rows. So the rules do cite the
+wrong text. But the conclusion inverts. It is **not** "nothing is verifiable, admit nothing." It is
+**"the citations point at the wrong source, and the right source is in the corpus."** Those call for
+opposite remedies: the first would have us drop or permanently flag 41 rules; the second is a
+re-citation against Phaladīpikā Adhyāya XXVI, after which they are verifiable.
+
+**One honest limit on the remedy.** Phaladīpikā's chunks are heavily OCR-degraded and their
+`verse_ref` is **page-based** (`PG322:C1`), not chapter-and-śloka. So a citation of the form
+"Phaladīpikā 23.11" — which the Saṅgam ruling sheet's M-2 relies on — cannot be resolved against
+this corpus as written. Precise verse citation needs either a chapter/śloka index or a
+page-anchored convention. Hard to cite precisely is a real cost; it is not the same as absent.
+
+**And the retrieval layer cannot be trusted for absence claims.** Two measured demonstrations:
+`find_verses_about` returned **zero** results for a Phaladīpikā gochara/vedha topic that has 17
+matching rows in the table; and a Rāhu/Ketu aspect query returned five rows, **all** from a
+MEDIUM-provenance grey-upload nadi text, three of them near-identical table headers, with nothing
+from BPHS, Hora Sāra, Phaladīpikā or Bṛhat Jātaka. The Saṅgam session was right to report its
+node-aspect finding as "unverified so far" rather than "absent," and this is the concrete
+counterexample that justifies the caution. **A hybrid search returning nothing is not evidence of
+absence in this corpus.** Absence claims must be made against the table, with a `count(*)`, not
+against the search tool.
+
+**Consequence for ruling 8.** The native ruled on a premise that two sessions supplied and that was
+wrong in its central term. The ruling may still be the right call on other grounds, but it should be
+re-put with the corrected premise while the sheet is reversible. I am not asking for it to be
+reversed; I am saying it should not stand on a fact I got wrong.
