@@ -2,7 +2,7 @@
 artifact: SANGAM_RULING_SHEET
 canonical_id: SANGAM_RULING_SHEET
 version: "1.0"
-status: RULED   # M-1…M-5, M-7 ruled; M-6 ruled agree with minimum n OPEN (placeholder unfilled)
+status: CLOSED   # M-1…M-7 confirmed by the native; residual items decided by the author under written delegation (see CLOSE D-1…D-8)
 date: 2026-09-23
 for: the native — seven method rulings on the Saṅgam algorithm elevation (plan v0.4 §8)
 inputs:
@@ -11,9 +11,138 @@ inputs:
   - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md / _v0_3.md (constraints each ruling must respect)
 verification_by_author: "every BPHS line Kimi cited re-read at the corpus (BP1:16605-16652, 7569-7593, 22725-22742; BP2:8955-8962, 35666-35676, 42332-42369) — all verbatim; Phaladīpikā 23.10/23.11/23.20 re-read online (wisdomlib doc1621595) — verbatim; Hāyanaratna 2.1/3.3 NOT re-verified by the author (Kimi and Astra both cite the same online edition) — tagged [D-online]; Kimi's '0 dots = loss of life' not found on the page — [U]"
 rulings_recorded: "2026-09-23T02:42:50+05:30 — by the native, in writing, in the Saṅgam session (madhav-d9), transcribed verbatim below; attribution: Abhisek Mohanty"
-does_not_authorize: "implementation. The rulings below are the native's record and make plan v1.0 APPROVED_FOR_EXECUTION for stage 3 under the conditions stated; M-6's minimum count remains OPEN."
+does_not_authorize: "implementation. This sheet records the native's rulings plus the author's delegated decisions; plan v1.0 is APPROVED_FOR_EXECUTION_STAGE_3 with the third Astra review as a stage-3 ENTRY GATE (D-8). No code, migration or build is authorized by this document."
 answer_format: "M-n: agree / agree, but … / no — …"
+delegation_recorded: "2026-09-23T03:39:33+05:30 — the native confirmed M-1…M-7 as delivered and delegated the residual open items (M-6 n, D30 hold shape, pāda, node-dṛṣṭi scope) to the author; delegation quoted verbatim in CLOSE. Author decisions D-1…D-8 are the author's, not the native's."
 ---
+
+# CLOSE — native confirmation and delegated decisions (2026-09-23T03:39:33+05:30)
+
+**Native confirmation.** The native confirmed the seven lines as delivered and delegated the
+residual open items to the author, in writing, in this session:
+
+> "I want you to consider what Kimi has proposed, but the decision is yours final. With this can you
+> close All the rulings as native delivered."
+
+Two things follow and are kept apart on purpose. **(1) M-1…M-7 are the NATIVE'S rulings** —
+transcribed verbatim below and now explicitly confirmed. The transparency note (they matched the
+author's example lines, adopted by paste) stands as the historical record of how they were
+delivered; the native has since affirmed them as their own. **(2) D-1…D-8 below are the AUTHOR'S
+decisions, made under the delegation quoted above.** They are not native words and are not recorded
+as such. Each carries its reasoning so any one can be overturned with a single line.
+
+### D-1 — M-6 minimum n: **30 per stratum · 100 instrument-level · `method_version` never pooled**
+
+- **Hard partition: `method_version`.** Windows scored under different kernel/contract versions are
+  different estimands and are never pooled. This is the calibration-leak discipline the project
+  already enforces, not a new rule.
+- **Per-stratum claim** — a claim about one `(domain × route × method_version)`, Kimi's stratum shape,
+  adopted: **n = 30** fully observed, non-censored evaluated windows. Chosen for power, not
+  roundness: against a 0.20 base rate at α=0.05 one-sided, n=30 puts the critical value at ≥10 hits
+  and gives ≈80% power to detect a lift to 0.40. It is underpowered below that lift and must say so.
+- **Instrument-level claim** — Saṅgam's windows beat measured exposure within ONE frozen
+  `method_version`, pooled across domain and route with both carried as reported covariates and the
+  per-stratum counts published alongside (never suppressed): **n = 100**; ≈85% power for 0.20 → 0.32.
+- **Below either threshold:** `EMPIRICALLY_EVALUATED` stays closed and the result reports as
+  `PROVISIONAL_INSUFFICIENT_N` carrying the actual n and the lift that n can see — never as a
+  calibration, never silently (§N.8: the gate needs a detector, and "not enough data yet" is a real
+  answer).
+- **Both numbers are functions of the measured base rate, not constants.** E6's exposure computation
+  supplies it; if the measured base rate differs materially from 0.20, the thresholds are
+  **recomputed at the same power**, not kept.
+- **Reasoning.** Kimi deliberately named no number ("the number is yours **[NATIVE-RATIFY]**") and was
+  right to; the native has now delegated it. A smaller gate (n≈12) can only see a 3× lift and would
+  let a weak result wear a calibrated label. **Consequence stated honestly:** at ~16 strata, full
+  per-stratum coverage is years out on a two-chart corpus. That is consistent with L5 being sealed in
+  STRUCTURAL mode by design — the instrument-level gate at n=100 is the reachable one and opens first.
+
+### D-2 — `ambiguous`: adjudicated by the native, **censored not scored**, with a censoring ceiling
+
+- Adjudicated by **the native** — not the author, not the instrument: the only party holding the
+  lived facts. Every adjudication records its reason.
+- `ambiguous` is **censored, excluded from n** (hence "fully observed, non-censored" above). Scoring
+  it a miss biases against the instrument; scoring it a hit biases for it.
+- **The censoring rate is published per stratum, and if it exceeds 20% of that stratum's windows the
+  stratum's claim is blocked regardless of n.** Without that ceiling, n counts only the clean cases
+  and a high-ambiguity predicate looks well-evidenced precisely because it is ill-defined.
+
+### D-3 — Evaluation population: consenting persons with real outcomes only
+
+Only charts with a consenting person behind them and a real outcome record are evaluation-eligible —
+today the two production charts. Synthetic and test charts may exercise the machinery; their rows
+carry `evaluation_eligible = false` and can never enter n (Kimi: "synthetic charts are non-persons
+and cannot supply outcomes"). Extending beyond the two charts is a consent-and-outcome question
+under the MACRO_PLAN Ethical Framework, not a technical one.
+
+### D-4 — M-4: the **shape** of the D30 hold — domain varga primary, D30 secondary and non-scoring
+
+- The native held D30 as the DOSHA varga. **Held means "not the authority", not "erased".** DOSHA
+  predicates take the **domain varga as primary**; D30 is computed, stored and carried as
+  `varga_role: 'secondary_dosha'`, labelled, and **excluded from every score, grade and verdict
+  path** until ruled.
+- **Falsifier** (mirroring Kimi's own for `boundary_distance`): *any D30 term appearing in a DOSHA
+  score path fails the suite.*
+- **Reasoning.** Kimi recommended adopting D30 with verse support ("evil effects from Triṃśāṃśa",
+  BP1:7569-7593) and named its own falsifier — that triṃśāṃśa may read as *the native's* evils
+  rather than evil events in the domain — with the fallback "domain varga + D30 as secondary,
+  labelled". The hold selects exactly that branch, so this is not a reversal of Kimi's advice but its
+  declared alternate. Dropping D30 outright would discard a computed, verse-attested signal (B.10,
+  §N.6) and force recomputation when the native rules; carrying it non-scoring costs nothing and
+  keeps the option open.
+
+### D-5 — M-1: the mean convention governs the **reading** — Rohiṇī **pāda 3** for this chart
+
+- **Yes.** If the served node is L1's `RAH_MEAN`, every derivation of it — sign, nakṣatra, pāda —
+  follows from it. Serving the mean longitude and reading the true node's pāda is precisely the
+  authority inversion §N.5 forbids.
+- So for this chart Rāhu's nakṣatra-pāda is **Rohiṇī pāda 3** (L1 fact `060bb63b81a073bb`), with the
+  true-node value (pāda 4; Swiss 50.049248° at 05:13 UT) retained as the **declared variant** and the
+  **177″ disagreement published on every row that carries it**. Anything citing the pāda cites the
+  convention with it.
+- **Two limits, stated so this is not read wider than it is.** It settles which *convention* governs
+  a reading, **not** which node is astronomically more correct. And it does **not** close the
+  `ephemeris_daily` undeclared-contract finding (§11.1) — that stays open under its own owner.
+
+### D-6 — M-1: "no node dṛṣṭi" is **instrument-level**; execution belongs to the Gochara stream
+
+- **Doctrine: the instrument does not apply graha-dṛṣṭi to Rāhu or Ketu.** One instrument cannot
+  grant node aspects in one asset and deny them in another. The citation behind the live
+  implementation is refuted at the text (Santhanam Ch.26 names Saturn, Jupiter and Mars; zero
+  rāhu/ketu/node occurrences in the chapter span, against 254 in the file); the practice is not found
+  at table level across all 15 corpus texts; Kimi independently graded it `[U] — do not implement by
+  default`; and `w30_nodal_drishti.py`'s own docstring already says it is not in BPHS. Continuing
+  would keep a **false citation in served data**.
+- **Execution is the Gochara stream's, under its N-14 — not this sheet's to impose.** The shape this
+  decision requires of it: a **same-generation** change (drop `w30_modifier` from the λ product and
+  regenerate every stored λ within that generation, never a patch over live rows); the absence
+  declared as `completeness_state`, never silently dropped; and the removed term preserved for one
+  generation as a **labelled, non-scoring** annotation so every dependent claim has an authorized
+  successor.
+- Saṅgam's own cost is **zero** — its engine applies no node dṛṣṭi today (only C8 eclipse proximity
+  at `engine.py:180`). The whole live cost falls in Gochara, and that asymmetry is why the doctrine
+  is decided here and the schedule is not.
+
+### D-7 — Legacy scan withdrawal: Kimi's condition adopted
+
+`legacy_unsigned_angles` is kept exactly one generation, labelled, never pooled or ranked with new
+rows, and **withdrawn only after the R-5 preservation manifest shows every dependent claim has an
+authorized successor** — on that condition, not on a date.
+
+### D-8 — The third Astra review: a **stage-3 entry gate**, not a close condition
+
+Recorded plainly because it is the one discipline this packet is short of: **plan v0.4 — the text
+v1.0 is built from — has never been reviewed by anyone.** v0.1 returned REWORK (19 findings), v0.3
+returned REWORK (10), and v0.4 is the text that answered the second REWORK. The packet closes now;
+the review runs **before any code is written in stage 3**, by the independent reviewer, with
+`ASTRA_REVIEW_REQUEST_SANGAM_ALGO_v0_4.md` re-pointed at v1.0. It is not discharged by the author and
+is not skippable.
+
+---
+
+**With D-1…D-8 the seven rulings are CLOSED. No open question remains on this sheet.** What remains
+are *dependencies owned elsewhere*, not Saṅgam decisions: E1/E3 wait on the Gochara N-7 ruling
+(producer path); the `ephemeris_daily` undeclared-contract finding (§11.1) is open under its owner;
+and house-vedha's 39 mis-cited rules await L0 re-citation under Gochara F-23/G-8.
 
 # RULINGS — recorded 2026-09-23T02:42:50+05:30
 
@@ -35,7 +164,7 @@ M-5: agree
 M-6: agree; minimum n = <your number>
 ```
 
-**Two clarifications put to the native after recording (2026-09-23T02:52:53+05:30) — questions, not rulings; M-1 stands as written until answered:**
+**Two clarifications put to the native after recording (2026-09-23T02:52:53+05:30) — **ANSWERED 2026-09-23 by the author under the native's delegation: see CLOSE D-5 (pāda) and D-6 (node-dṛṣṭi scope). Retained as the record of what was asked and on what evidence:**
 
 - **M-1 / pāda.** "Mean node" has a chart-level consequence the line does not state: at this native's birth instant the mean node is Rohiṇī **pāda 3** (L1 fact `060bb63b81a073bb`) and the true node is **pāda 4** (Swiss 50.049248°, 177″ apart = 2.7× the Moshier bound). Does the ruling mean only *"the citable (mean) value governs"*, or also *"pāda 3 is the reading for this chart"*? The `ephemeris_daily` undeclared-contract finding (§11.1) stays open either way. (Raised by the strategic session on verifying the sheet; author agrees it needs one line.)
 - **M-3 / E3's vedha standing — transparency, not a question.** E3's bounded tier was granted "under the uniform admission rule" while this sheet said the rule's outcome was `unqualified` for *every* vedha row. The rule is unchanged, but its outcome is now per `vedha_kind` (§Corrections item 2): laṭṭā and the malefic scale qualify today; house-vedha qualifies on L0 re-citation; SBC on population. So the vedha evidence E3 admits will carry **higher standing** than the native was shown at ruling time — more `applied` rows, not fewer. M-3 stands as ruled unless the native says otherwise; recorded so the grant is not read as having been made on the lower figure. (Raised by the Kshetra session, 2026-09-23.)
@@ -56,9 +185,9 @@ M-6: agree; minimum n = <your number>
 | M-2 | agree, but 4 leans adverse; 6/8/12 inversion does not ship | Three-state own-BAV verdict (≥5 support / 4 indeterminate / ≤3 obstruct), conditioned by dignity in sign; **4 is recorded as indeterminate-leaning-adverse** (Phaladīpikā 23.11 "fear"). Vocabulary ledger (Santhanam bindu = adverse mark). BPHS bands primary, Phaladīpikā alternate, 28 → middle band. **Santhanam's 6/8/12 inversion gloss does not ship.** Mode D = BAV-supported ingress; producer completeness receipt now; kakṣyā deferred. **Cross-stream lock:** Kshetra S1 consumes the same admitted AV source. |
 | M-3 | agree — §4.5 governs; owner = Gochara stream (kernel path if N-7 approved); E3 tier granted | **§4.5 re-affirmed as mechanism** — no ephemeris scan inside Saṅgam; consume pre-computed directed contact events; `planet` as a list, absent when nothing fires; §4.6's per-signature attribution kept as a refinement; inline-threshold principle applied upstream. **Owner = the Gochara stream**; **Path B (the pure kernel, N-5/N-7) if the native approves N-7 on the Gochara brief, else Path A (bounded `transit_search` amendment) under the same owner.** E1 and E3 remain gated on that N-7 ruling landing — **not unblocked today**. **E3 bounded fast tier granted**: Moon/Sun, tārā-vedha, laṭṭā inside qualified parents, all families enumerated, no cap, evidence count unchanged; vedha rows under the uniform admission rule (all `unqualified` today). `CLAUDE_CODE_PROMPT_KA_SANGAM_TRANSIT_REDESIGN.md` → SUPERSEDED-and-reissued against this integrated reading. |
 | M-7 | agree | R-6 kernel separation: `activity` · `valence` · `applicability` · `availability`; dignity leaves the necessary product → valence; genuine gates survive only where classical; `kernel_version = legacy_i16` never pooled; `activity` scale (virupa vs [0,1]) left to implementation with the choice recorded. |
-| M-4 | agree, but D30 for DOSHA held | Full ṣoḍaśavarga domain table adopted; no typed condition ever vetoes; relevant lords ratified line by line; boundary annotation carries the drekkāṇa rule; cancellation (nīca-bhaṅga) detector is a precondition; `chart_divisionals` becomes a declared L1 read with explicit missing states. **D30 as the DOSHA-predicate varga is HELD** — not adopted; DOSHA predicates use the domain varga only until ruled. |
+| M-4 | agree, but D30 for DOSHA held | Full ṣoḍaśavarga domain table adopted; no typed condition ever vetoes; relevant lords ratified line by line; boundary annotation carries the drekkāṇa rule; cancellation (nīca-bhaṅga) detector is a precondition; `chart_divisionals` becomes a declared L1 read with explicit missing states. **D30 as the DOSHA-predicate varga is HELD** — not adopted; DOSHA predicates take the domain varga as primary; D30 is computed and carried as a labelled `secondary_dosha` condition excluded from every score path, with a falsifier test (author decision under delegation, CLOSE D-4). |
 | M-5 | agree | Station-loop episodes with child contact intervals; no default peak (vakra = 60 is strength, not date); aborted approaches kept as labelled children; `ka_taranga` unit = occupied-day union per month per (contract × valence-sign); split/merge/supersession published before any key change (R-5 first). |
-| M-6 | agree; minimum n = `<your number>` — **OPEN** | L5 may consume Saṅgam windows as prediction candidates once R-5 identity is qualified in the harness and outcomes are on two axes; `EMPIRICALLY_EVALUATED` stays closed behind the five conditions. **The per-stratum minimum count is not yet supplied** — recorded as OPEN; the E6 evaluation gate cannot open until the native names it. Adjudicator of `ambiguous`: not yet named. |
+| M-6 | agree; minimum n — **DECIDED under delegation, CLOSE D-1** | L5 may consume Saṅgam windows as prediction candidates once R-5 identity is qualified in the harness and outcomes are on two axes; `EMPIRICALLY_EVALUATED` stays closed behind the five conditions. **Minimum counts set by the author under delegation (D-1): n=30 per `(domain × route × method_version)` stratum; n=100 for an instrument-level pooled claim; `method_version` never pooled; below either → `PROVISIONAL_INSUFFICIENT_N`.** `ambiguous` adjudicated by the native and censored, not scored, with a 20% per-stratum censoring ceiling (D-2). Evaluation restricted to consenting charts with real outcomes (D-3). |
 
 ---
 

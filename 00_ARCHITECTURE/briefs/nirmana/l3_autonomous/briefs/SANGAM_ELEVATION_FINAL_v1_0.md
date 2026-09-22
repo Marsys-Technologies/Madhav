@@ -2,7 +2,7 @@
 artifact: SANGAM_ELEVATION_FINAL
 canonical_id: SANGAM_ELEVATION_FINAL
 version: "1.0"
-status: RULED_APPROVED_FOR_STAGE_3   # native rulings recorded 2026-09-23T02:42:50+05:30 (sheet §RULINGS); plan v1.0 + brief v1.4; M-6 minimum n OPEN; E1/E3 gated on Gochara N-7
+status: CLOSED_APPROVED_FOR_STAGE_3   # 2026-09-23: native rulings confirmed + author decisions D-1…D-8 under delegation (sheet §CLOSE); plan v1.0 + brief v1.5; third Astra review = stage-3 entry gate; E1/E3 wait on Gochara N-7
 date: 2026-09-23
 asset: ka_sangam (Saṅgam — the L3 Kāla convergence engine; seven downstream consumers; rebuild reaches sealed L4)
 this_is: the single pointer every other session uses. When the complete L3 elevation runs, THIS packet governs Saṅgam.
@@ -15,6 +15,20 @@ does_not_authorize: any code, migration, build, L4 rebuild, L5 consumption, or d
 ---
 
 # Saṅgam elevation — the final packet
+
+## 0a. CLOSED — 2026-09-23T03:39:33+05:30
+
+All seven rulings are closed. The native confirmed M-1…M-7 as delivered and delegated the residual
+open items to the author; **D-1…D-8** (`SANGAM_RULING_SHEET_v1_0.md §CLOSE`) decide them with
+reasoning, recorded as the author's decisions under delegation, not as native words. Headlines:
+E6 gate = **n 30 per `(domain × route × method_version)` / 100 instrument-level pooled**, never
+pooled across versions; `ambiguous` censored with a 20% ceiling; evaluation limited to consenting
+charts; **D30 held as a labelled non-scoring secondary** with a falsifier; **mean convention governs
+the pāda reading (Rohiṇī pāda 3)**; **no node dṛṣṭi is instrument-level**, Gochara owning execution
+as a same-generation λ regeneration; legacy scan withdrawn only on the R-5 successor manifest; the
+**third Astra review is a stage-3 entry gate** (plan v0.4 has never been reviewed — v0.1 and v0.3
+both returned REWORK). Remaining items are dependencies owned elsewhere: Gochara N-7 (E1/E3),
+`ephemeris_daily` §11.1, house-vedha re-citation (F-23/G-8).
 
 ## 0. Rulings — recorded 2026-09-23T02:42:50+05:30
 

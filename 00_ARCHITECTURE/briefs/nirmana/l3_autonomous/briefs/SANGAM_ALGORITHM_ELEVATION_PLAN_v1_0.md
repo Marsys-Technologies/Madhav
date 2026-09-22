@@ -2,10 +2,10 @@
 artifact: SANGAM_ALGORITHM_ELEVATION_PLAN
 canonical_id: SANGAM_ALGORITHM_ELEVATION_PLAN
 version: "1.0"
-status: APPROVED_FOR_EXECUTION_STAGE_3   # on the native's record of M-1…M-7 (2026-09-23T02:42:50+05:30); conditions in §0R; M-6 minimum n OPEN; E1/E3 gated on the Gochara N-7 ruling
+status: APPROVED_FOR_EXECUTION_STAGE_3   # native rulings M-1…M-7 confirmed + author decisions D-1…D-8 under delegation (2026-09-23T03:39:33+05:30); no open question remains; third Astra review is a stage-3 ENTRY GATE (D-8); E1/E3 wait on the Gochara N-7 ruling
 date: 2026-09-22
 supersedes: SANGAM_ALGORITHM_ELEVATION_PLAN_v0_4.md (content unchanged from v0.4 except §0R and frontmatter — v0.4 is the reviewed text; v1.0 is v0.4 + the native's rulings)
-approval_record: "SANGAM_RULING_SHEET_v1_0.md §RULINGS — native, in writing, 2026-09-23T02:42:50+05:30; M-6 minimum n OPEN"
+approval_record: "SANGAM_RULING_SHEET_v1_0.md §RULINGS (native, 2026-09-23T02:42:50+05:30, confirmed 2026-09-23T03:39:33+05:30) + §CLOSE D-1…D-8 (author, under the native's written delegation)"
 reviews_incorporated:
   - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md  # F-01…F-19, A-01, A-02 — dispositioned in v0.2/v0.3
   - ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_3.md  # RR-01…RR-10 + A.1 re-dispositions — dispositioned in §0 below; 8 new factual claims re-verified at source
@@ -45,9 +45,18 @@ M-6: agree; minimum n = <your number>
 | M-2 | E2 as written; **4 = indeterminate-leaning-adverse** (Phaladīpikā 23.11 = `phaladeepika:PG299:C1`, verified at the table 2026-09-23; note 3 and 4 both read "fear" there — the 4/≤3 boundary is BPHS's); **6/8/12 inversion does not ship**; BPHS bands primary; producer completeness receipt now; kakṣyā deferred; Kshetra S1 shares the source. |
 | M-3 | **§4.5 governs.** R-1's directed events are produced **upstream by the Gochara stream** — Path B (kernel, N-5/N-7) if the native approves N-7 on the Gochara brief, else Path A (bounded `transit_search` amendment). **E1 and E3 stay gated until N-7 is ruled**; E3's bounded tier is granted in principle. `_resolve_transit_planet` is replaced by event consumption at that point, not extended. TRANSIT_REDESIGN prompt → SUPERSEDED-and-reissued. |
 | M-7 | R-6 as written. |
-| M-4 | E4 as written; **D30-for-DOSHA HELD** (not adopted); cancellation detector precondition binds. |
+| M-4 | E4 as written; **D30-for-DOSHA HELD** — domain varga primary, D30 computed and carried as labelled `secondary_dosha`, excluded from every score path, falsifier: any D30 term in a DOSHA score path fails the suite (D-4); cancellation detector precondition binds. |
 | M-5 | E5 as written. |
-| M-6 | E6 as written; L5 consumption opens on the two preconditions; **`EMPIRICALLY_EVALUATED` cannot open until the native supplies the per-stratum minimum n** (OPEN) and names the `ambiguous` adjudicator. |
+| M-6 | E6 as written; L5 consumption opens on the two preconditions. **`EMPIRICALLY_EVALUATED` gate set (D-1): n=30 per `(domain × route × method_version)`; n=100 instrument-level pooled within one frozen `method_version`; never pooled across versions; below either → `PROVISIONAL_INSUFFICIENT_N` with actual n. Thresholds recompute at equal power if the measured base rate ≠ 0.20.** `ambiguous` → native-adjudicated, censored not scored, 20% per-stratum censoring ceiling (D-2). Evaluation population: consenting charts with real outcomes only; synthetic `evaluation_eligible = false` (D-3). |
+
+**Author decisions under delegation (2026-09-23).** The native confirmed M-1…M-7 and delegated the
+residual items; `SANGAM_RULING_SHEET_v1_0.md §CLOSE` carries D-1…D-8 with reasoning. Binding on this
+plan: **D-1** (E6 gate numbers), **D-2** (`ambiguous` censoring + ceiling), **D-3** (evaluation
+population), **D-4** (D30 secondary, non-scoring, with falsifier), **D-5** (mean convention governs
+the pāda reading — Rohiṇī pāda 3, true retained as declared variant, 177″ published), **D-6**
+(instrument-level no-node-dṛṣṭi; Gochara owns execution, same-generation λ regeneration),
+**D-7** (legacy scan withdrawn only on the R-5 successor manifest), **D-8** (third Astra review =
+stage-3 entry gate, before any code).
 
 **Execution order under the rulings (unchanged from §4):** step 1 (companion amendments — done in
 brief v1.3/v1.4; June reconciliation — ruled) → step 2 (**R-5 in the disposable harness first**) →

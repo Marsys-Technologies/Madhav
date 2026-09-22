@@ -1,9 +1,9 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
 canonical_id: SANGAM_ELEVATION_BRIEF
-version: "1.4"
-status: APPROVED_FOR_EXECUTION_STAGE_3      # native record 2026-09-23T02:42:50+05:30: SANGAM_RULING_SHEET §RULINGS; M-6 n OPEN; E1/E3 gated on Gochara N-7
-approval_record: "SANGAM_RULING_SHEET_v1_0.md §RULINGS — M-1…M-7 in writing by the native, 2026-09-23T02:42:50+05:30 (M-6 minimum n OPEN)"
+version: "1.5"
+status: APPROVED_FOR_EXECUTION_STAGE_3      # CLOSED 2026-09-23: native rulings M-1…M-7 confirmed + author decisions D-1…D-8 under delegation; third Astra review = stage-3 entry gate; E1/E3 wait on Gochara N-7
+approval_record: "SANGAM_RULING_SHEET_v1_0.md §RULINGS (native, confirmed 2026-09-23T03:39:33+05:30) + §CLOSE D-1…D-8 (author, under written delegation)"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 asset_or_interface_ids: ["ka_sangam", "L3-U02", "L3-U07", "L3-U04/U11"]
@@ -495,6 +495,8 @@ asserted "no `date.today()` in this asset"; a grep found three time-of-run reads
 so the reviewer knows the claim was checked, not assumed.
 
 ## Changelog
+
+- **1.5** (2026-09-23) — **CLOSED.** Native confirmed M-1…M-7 as delivered and delegated the residual open items; author decisions D-1…D-8 recorded on the ruling sheet §CLOSE with reasoning and kept typographically separate from the native's words. E6 gate numbers set (30 per stratum / 100 pooled); D30 held as labelled non-scoring secondary; mean convention governs the pāda reading (Rohiṇī pāda 3); no-node-dṛṣṭi is instrument-level with Gochara owning execution; third Astra review becomes a stage-3 entry gate. No open question remains on the packet.
 
 - **1.4** (2026-09-23) — Native rulings M-1…M-7 recorded on the sheet and applied; status → APPROVED_FOR_EXECUTION_STAGE_3 with conditions (M-6 minimum n open; E1/E3 gated on the Gochara N-7 ruling; D30-for-DOSHA held; 6/8/12 inversion does not ship; legacy scan one generation; no node dṛṣṭi). No content change beyond frontmatter and this entry.
 
