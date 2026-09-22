@@ -1761,3 +1761,68 @@ finding_entry:
     (MARSYS_DEFECT_GAP_REGISTER_v2_0.md); the D-4b B-1 re-run that superseded the quarantined
     branch]
 ```
+
+---
+
+## DIS.031 (L3 Kāla campaign ref: D-6 / N-14) — Node dṛṣṭi: Saṅgam binds it off, the Gochara family applies it live — OPEN
+
+*Referred to this session by the Saṅgam stream (madhav-d9) on a Kimi K3 adversarial-review
+condition (K2-09). That session declined to edit a shared governance artifact at the end of its own
+close, which is the correct boundary; the entry is recorded here by the strategic session under its
+own hand. Evidentiary grading below is deliberate: grounds I verified myself are marked CONFIRMED,
+grounds taken from other sessions are marked ATTRIBUTED and are NOT yet independently checked by
+me. Per DIS.031's own lesson (see `KALA_ELEVATION_BLUEPRINT_v1_0.md` §11.23), a peer's confirmation
+is not verification the recording session has not itself performed.*
+
+```yaml
+finding_entry:
+  logged_by: "L3 Kāla strategic session (madhav-fc), l3/kala-elevation-readiness, 2026-09-23"
+  dr_id: DIS.031
+  campaign_ref: D-6 / N-14
+  question: >
+    The instrument holds two incompatible positions on whether Rāhu and Ketu cast graha-dṛṣṭi.
+    Saṅgam binds "no graha-dṛṣṭi for Rāhu/Ketu" as an author decision under native delegation
+    (SANGAM_RULING_SHEET_v1_0.md §CLOSE D-6, following the native's M-1 line). The Gochara family
+    applies nodal dṛṣṭi live in the served scoring path. Until the Gochara stream's N-14 is ruled,
+    the two streams compute different answers from the same chart, and the contradiction is
+    recorded in only one packet — where it can close silently when that packet closes.
+  grounds_confirmed_by_recording_session:
+    - "`_W30_NODAL_DRISHTI_ENABLED: bool = True` — services/gochara_v3/engine.py:107. Live, not dormant."
+    - "`raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates`
+       — services/gochara_v3/engine.py:632. w30_modifier is a MULTIPLICATIVE term in the served λ,
+       stored at :668 and :778. Disabling the toggle is therefore a formula change that invalidates
+       every stored λ, not a record filter — the engine's own comment at :132 says so."
+    - "The module's docstring (mechanisms/w30_nodal_drishti.py:1-21) concedes the textual gap in its
+       own words: the 5/7/9 nodal aspect is 'NOT found in the original Brihat Parashara Hora Shastra
+       (BPHS) text itself', is 'later tradition', and the module is labelled a CANDIDATE — while
+       running enabled on the served path. A candidate that is live is not a candidate."
+    - "That same docstring names its actual sources as Phaladīpikā and Sārāvalī. BOTH ARE IN THE
+       SERVED CORPUS (564 and 471 chunks). Neither has been read against this question by anyone."
+  grounds_attributed_not_yet_verified_by_recording_session:
+    - "ATTRIBUTED (Gochara stream, reproduced by Saṅgam): the 'BPHS Ch.26' citation is refuted at
+       source — the chapter names Saturn, Jupiter and Mars for the specials and the 7th for all,
+       with zero rāhu/ketu occurrences in its span."
+    - "ATTRIBUTED (Saṅgam): a table-level regex across the 15-text corpus finds no nodal 5/7/9
+       grant. Stated by its author as 'not found at table level', NOT as absent."
+    - "ATTRIBUTED (Kimi K3): graded `[U] do not implement by default`."
+  recording_session_caveat: >
+    The two attributed corpus grounds are exactly the class of claim that failed catastrophically
+    across four sessions on this same day (see §11.21/§11.24 of the blueprint: a four-name corpus
+    list read off a SOURCE_DATA directory listing propagated into three analyses and a native
+    ruling inside 24 hours). They are recorded as attributed rather than confirmed, and the
+    recording session's live DB access was down at the time of entry, so it could not run its own
+    count(*). BEFORE N-14 IS RULED, the corpus grounds must be re-checked by query — and critically,
+    checked BY PREDICATE, NOT BY TERM, against Phaladīpikā and Sārāvalī specifically, which the
+    module's own docstring names and which nobody has read. A term-search for "nodal aspect" that
+    returns nothing is not evidence; the retrieval layer demonstrably ranked the load-bearing
+    Adhyāya XXVI chunk 7th of 12 on a vedha query the same day.
+  status: OPEN — awaiting the Gochara stream's native ruling on N-14
+  resolution_shape: >
+    If N-14 rules to KEEP nodal dṛṣṭi, the instrument holds a NATIVE-RULED divergence between two
+    streams rather than an accidental one, and that is what this register exists to make visible.
+    If N-14 rules to DROP it, the cost is a gochara_v3 rebuild, not a record trim, and that cost
+    belongs in the ruling rather than being discovered after it. Either way the ruling should be
+    made on re-checked corpus grounds, not on the grounds as currently stated.
+  consumed_by: [Gochara stream N-14; Saṅgam SANGAM_RULING_SHEET_v1_0.md §CLOSE D-6;
+    KALA_ELEVATION_BLUEPRINT_v1_0.md §11.22; any stage-3 execution session touching gochara_v3]
+```
