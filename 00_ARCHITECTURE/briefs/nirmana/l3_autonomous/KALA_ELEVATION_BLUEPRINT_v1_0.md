@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.0"
+version: "2.0"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,16 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.0 (2026-09-23): §9 rewritten as the native's actual decision queue — it predated every finding of 23 Sep. Adds D6 (node frame + its paired disposition + the two sibling conventions), D7 (M-3 producer shape and owner), and the two items that are cheap and unblock others. The 65.3″ bound is now reproduced by three sessions independently."
+  - "1.9 (2026-09-23): the Moshier node bound is 65.3″ over the full 55,152-knot domain — both earlier sparse samples under-reported it (mine by half). Natal-pāda safety is 2.7×, not 'well under'. New rule: a sample is not a bound."
+  - "1.8 (2026-09-23): the 14.82″ method gap IS nutation in longitude — verified identical; so the three sessions' figures were one value under two ayanāṃśa conventions, both giving pāda 4. Moshier's true-node error measured at ≤32.5″ (1950–2100), retiring 'unbounded' — and that bound is what makes the natal pāda reportable and the stored-knot pāda not. §11.7 gains two counterexamples."
+  - "1.7 (2026-09-23): natal figures corrected by 14.82″ — my manual tropical−ayanāṃśa subtraction disagrees with FLG_SIDEREAL, and L1's stored RAH_MEAN arbitrates for the latter. A THIRD undeclared convention (ayanāṃśa application method). §11.10 refined: the epoch is declared correctly in code, never in the data, and the fix extends the row's existing ayanamsha_id pattern."
+  - "1.6 (2026-09-23): §11.9 RETRACTED IN FULL — the 332″ was my own epoch error (knots are noon UT; I differenced against midnight). With set_ephe_path and noon, real Swiss reproduces the stored knots to 0.00″ on 5/5 dates, so store-is-TRUE is EXACT. The pāda claim is RESTORED as measured: natal TRUE 50.0451 = pāda 4, MEAN 49.0289 = pāda 3. New §11.10 records the undeclared epoch convention."
+  - "1.5 (2026-09-23): §11.1 — two sessions' local node computations diverge by 332 arcsec, larger than every margin in dispute and enough to flip the natal pāda between pāda 4 and pāda 3. The withdrawal is upheld on stronger grounds; a peer's proposed arithmetic correction is NOT adopted because its figure does not reproduce here. New §11.9 makes local-ephemeris irreproducibility a first-class finding."
+  - "1.4 (2026-09-23): §11 — bg_cohort CONFIRMED as a fifth independent TRUE_NODE declaration (my earlier denial was a truncated grep); the directed-aspect item withdrawn — the engine is correct and the gap is a Saṅgam call-site; §3.1 Gochara row corrected (contacts partially kept, qualification absent); new §11.7 gate rule: a Swiss-vs-kernel gate is not a detector where .se1 is absent."
+  - "1.3 (2026-09-23): §11 — the pāda-boundary claim is WITHDRAWN as unresolvable on this host (stored value sits 0.0059° from the boundary; local Moshier error ~0.1°); the three node figures in circulation reconciled; the stale KSHETRA brief on main flagged."
+  - "1.2 (2026-09-23): §11 rewritten after three-session convergence — the node split is FOUR-way and `ephemeris_daily` stores TRUE node under a mean contract (measured 5/5 dates); the DAR_CLOSE receipt records the mean value the table does not hold; M-3 carries two producer paths and neither unblocks E1/E3 yet; two of this session's own v1.1 claims corrected."
+  - "1.1 (2026-09-23): §11 addendum — the node-convention hub defect (mean-node natal vs true-node transit engine; reached and served: 232 rows in the served Gochara generation), the M-3 producer-owner decision the Saṅgam FINAL packet raises, and the shared-branch rule. Body unchanged."
   - "1.0 (2026-09-22): first issue."
 ---
 
@@ -132,7 +142,7 @@ The Strategy §3 defines the logical objects of the layer. Each has an owning as
 
 | Strategy §3 object | Owning asset(s) | State today (measured) |
 |---|---|---|
-| **Contact** — moving body, target, contact type, orb, applying/separating, station/retrograde, brackets, tolerance, coverage | Gochara family (`ka_gochara`, century, resonance, vedha, moorti) | `kala_gochara_windows_v2`: 23 fields, **zero** of these; contacts computed then discarded |
+| **Contact** — moving body, target, contact type, orb, applying/separating, station/retrograde, brackets, tolerance, coverage | Gochara family (`ka_gochara`, century, resonance, vedha, moorti) | Partial. `term_breakdown.activity_terms` keeps 25,518 contact records over 380 of 914 served rows, but its only keys are `primitive, transit_planet, target_ref, target_weight, event_datetime_ist, orb_decay, p_i` — **no orb in degrees, no applying/separating, no station/retrograde branch, no bracket or root time, no tolerance, no coverage**, and no record at all on the other 534 rows. The contact is kept; its **qualification** is discarded. |
 | **Clock interval** — method, hierarchy, parent, lord, exact start/end, inclusivity, applicability, failure reason | `ka_dasha_kala` (service), `ka_avadhi`, `ka_tithi_pravesha`, `ka_sudarshana_varsha` | tithi-praveśa instants 5.5 h late in production; hour grain lost in `ka_temporal` |
 | **Temporal testimony** — roots, method/family, polarity, applicability, support/opposition/silence, **independence group**, uncertainty | `ka_sangam` (+ `ka_vighnakara` for opposition) | independence as a SMALLINT count; roots only in JSONB; no silence, no applicability per method |
 | **Engagement route** — binding + necessary/optional temporal clauses, satisfying/failed evidence, enablement/inhibition, alternatives | `ka_sangam`, `ka_kalasutra` | no route field; score cut is a mode filter |
@@ -394,19 +404,46 @@ F03). Not row counts. Not agreement counts. Not longer prose.
 
 ## §9 — Decisions, holds, risks
 
-**Decisions (the native's, gating stage 4+):** D1 release the W1 hold under the frozen generation
-design · D2 receipts for the two missing states (an enum member; no migration) · D3 the three
-protected classes · D4 tithi-praveśa source qualification · D5 baseline authority — all in
-`KALA_PHASE2_DECISIONS_v1_0.md`; plus Q1–Q8 of the elevation plan and each brief's own list.
+Rewritten at v2.0: the original predated every finding of 23 September. Ordered by what each
+unblocks, not by when it was raised.
 
-**Holds (not decisions):** W1 on the cutover; century v3 on its BUILD-PROTECTED guard; Kshetra
-populated replacement until W7; Bhavishya until its W6 packet; RI-01 on production-owner authority.
+### 9.1 The native's decision queue
 
-**Risks:** an L2 rebuild during the campaign empties five tables again (mitigation: build-order rule
-+ `cascade_check.sql` until W1); Pūrṇa and L3 collide on `kala_views` (mitigation: interface packets
-only); the three brief sessions write into foreign worktrees (found; fix in §7); decision latency
-idles the fleet (mitigation: recommendations attached, one sitting); every cost number is
-unmeasured until Phase 0.3 lands (mitigation: no schedule promised before it).
+| # | Decision | Unblocks | Recommendation |
+|---|---|---|---|
+| **D6** | **Node frame** — mean or true — **and its paired disposition** (§11.2): (a) rebuild `ephemeris_daily` mean, (b) keep true knots and derive mean at read with the disagreement declared per row, (c) mixed-frame per consumer. Rule the **two sibling conventions with it**: the undeclared **epoch** and the undeclared **ayanāṃśa application method** (§11.10–11.12). | Every Kāla rebuild; three critical assets; an L0 repair | Mean frame (it is what L1 stores, F27); **(b)** for the disposition — it never consumes the knot, so it is immune to the §11.13 knife edge; and declare all three conventions on the row, extending the `ayanamsha_id` pattern the table already has |
+| **D1** | Release the W1 hold under the frozen generation design | Stage 4+ for all 22 assets | Yes — the design is already accepted at W0; this releases a hold, it does not adopt a design |
+| **D7** | **M-3** — the directed contact-event producer: **shape** (Path A, a bounded `transit_search` amendment; or Path B, the Gochara kernel) **and owner** (§11.3) | Saṅgam E1/E3 | Shape is yours; the owner must be named either way. Path B is gated on that brief's own N-5/N-7, so E1/E3 is not unblocked by a proposal |
+| **D2** | Receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | The headline metric past `DATA_ACCEPTED` | Add the enum member; **no migration needed** |
+| **D3** | The three protected classes | Safe rebuild semantics | Confirm: sweep snapshot, issued claims/observations, retained outcomes |
+| **D4** | Tithi-praveśa source qualification | That asset's `DATA_ACCEPTED` | Needs a source steward; its own citation reads `not_in_corpus` |
+| **D5** | Baseline authority | Proof discipline | L3-Q01–Q13 + the §14 proving set + one ordinary period |
+
+Plus Q1–Q8 of the elevation plan and each brief's own list. Full evidence and options:
+`KALA_PHASE2_DECISIONS_v1_0.md`.
+
+**Two items that are cheap and unblock others:** D2 (one enum member) and D3 (a confirmation).
+Ruling those two costs little and removes a ceiling and a safety ambiguity from every other lane.
+
+### 9.2 Holds (not decisions — they clear on evidence, not on a ruling)
+
+W1 on the production cutover · century v3 on its BUILD-PROTECTED guard — **and note the guard may be
+residue: the stored error predates migration 588's removal of it by two days, and there is currently
+no database guard at all** (carried from the Gochara session, unverified here) · Kshetra populated
+replacement until W7 · Bhavishya until its W6 packet · RI-01 on production-owner authority.
+
+### 9.3 Risks
+
+An L2 rebuild during the campaign empties five tables again (mitigation: build-order rule +
+`cascade_check.sql` until W1) · Pūrṇa and L3 collide on `kala_views` (mitigation: interface packets
+only) · decision latency idles the fleet (mitigation: recommendations attached; D2 and D3 are one
+sitting) · every cost number is unmeasured until Phase 0.3 lands (mitigation: promise no schedule
+before it) · **numerical gates built on unverified backends** — the §11.7 rule and the 65.3″ bound
+exist because two sessions nearly anchored a gate on a figure 200× finer than its own reference.
+
+**Resolved since v1.0:** the three brief sessions now work in their own worktrees. One residue: the
+Kshetra session's **stale v1.0 brief is still on `main`** under this session's sweep (§11.5) — do not
+cite that path until its v4.0 lands.
 
 ## §10 — What this blueprint does not establish
 
@@ -415,3 +452,324 @@ the two measured; that the frozen generation design works physically (W1 will); 
 consumer-value distinction exists yet (`VALUE_EVALUATED` is N for all sixteen questions examined);
 or that the five decisions will be ruled as recommended. It is the map. The territory is measured
 one wave at a time.
+
+---
+
+## §11 — Addendum (v1.2, 2026-09-23): the node-convention split, and M-3
+
+Opened by the Saṅgam session's FINAL packet, corrected and extended by the Gochara and Kshetra
+sessions, and re-measured independently here. **Two claims in v1.1 of this section were wrong and
+are corrected in §11.4.** Everything below is marked verified-here or carried-unverified.
+
+### 11.1 The node convention is split FOUR ways, and the store disagrees with its own contract
+
+| Surface | Convention | Evidence (verified here unless marked) |
+|---|---|---|
+| **L1 natal facts** (`ga_positions`) | **MEAN** | `pyjhora_adapter/positions.py:21-22` `_USE_TRUE_NODES = False`, "classical convention"; `:61` passes it. Three further declarations reported by the Gochara session (`vargas.py:21,65`; `_jhora.py:23-55` patching `drik.sidereal_longitude` to `MEAN_NODE`) — *carried, not re-verified here*. |
+| **L0 `ephemeris_daily`** (`bg_ephemeris`) | **TRUE — under a "mean" contract** | `brahmagyan/l0_ephemeris.py:77` `{"name":"Rahu","swe_id":11}` commented *"Mean North Node"*; `:289` `swe.calc_ut(jd, 11, ...)`; docstring `:8` "Rahu (mean)". **`swe.MEAN_NODE = 10`, `swe.TRUE_NODE = 11`** — so id 11 is TRUE. Empirically decisive: stored tropical longitude matches Swiss TRUE on **5 of 5 sampled dates** (residual ≤ 0.10°) and MEAN on 0 of 5 (off by up to 1.47°). |
+| **Transit engine** `pipeline/transit_search.py` | **TRUE** (correctly labelled) | `:10`, `:64` `"Rahu": 11, # swe.TRUE_NODE` |
+| **Legacy `brahmagyan/ganita/l1_positions.py`** | **TRUE** | `:128` `("Rahu", swe.TRUE_NODE)`. Importers confirmed: `l1_dashas`, `l1_strength`, `l1_divisionals`, `l1_sensitive_points`, `l1_panchanga_birth`, `graha_sthana_writer`. **Whether each importer's persisted output actually diverges is UNVERIFIED** — a bounded L1 check, not a claim. |
+
+**The store contradicts its own declared contract.** Migration
+`624_nirmana_l0_ephemeris_probe_contract.sql:30` pins `"node_mode": "mean"`. The data is true node.
+A contract with no detector that can falsify it is an unearned signal (§N.8) — here it stayed green
+for a year over data it never checked.
+
+**And the L0 closure receipt records a value the table does not hold.** `DAR_CLOSE_v1_0.md:20`:
+*"ephemeris_daily: Rebuilt with MEAN_NODE Rahu/Ketu; Rahu at 1984-02-05 = 49.04° Taurus/Rohiṇī
+(FORENSIC-verified delta 0.01°)."* Measured: stored tropical 73.629058 − ayanāṃśa 23.6349 =
+**49.9941° sidereal**; Swiss MEAN for that instant = **49.0405°**. The receipt's 49.04 is *exactly*
+the mean value — so it describes an intended computation, not the stored result, and its
+"FORENSIC-verified" claim was never compared against the table. **Routed to L0's owner as a
+receipt-vs-data discrepancy. No L3 session touches L0.**
+
+**It IS visible in a reading, and the figure is measured.** At the birth instant (1984-02-05
+05:13 UT, Lahiri, real Swiss — `retflag 258`, no Moshier bit):
+
+| Convention | Sidereal | Rohiṇī pāda | Margin to the 50.0000° boundary |
+|---|---|---|---|
+| **MEAN** (analytic; what L1 stores) | 49.033044° | **3** | 3492″ |
+| **TRUE** (what the store and the scanner carry) | 50.049248° | **4** | 177″ |
+
+A mean-vs-true ruling therefore **moves this native's Rāhu from Rohiṇī pāda 3 to pāda 4** as a
+measured fact. The 177″ margin is an order of magnitude above any plausible ephemeris-version
+difference, and the mean figure reproduces L1's own served `RAH_MEAN` (49.0330441°) to **0.00″**.
+Instant: 1984-02-05 05:13 UT (10:43 IST), `jd 2445735.717361`. A cited number carries its instant.
+
+**And store-is-TRUE is exact, not statistical.** Computed at **noon UT** — the epoch
+`l0_ephemeris.py:164,278` actually uses — with `set_ephe_path('/tmp/se1')`, real Swiss reproduces
+the stored knot on **5 of 5 dates to 0.00 arcsec at six decimals**, while mean is 317–5380″ away.
+There is no residual to caveat.
+
+### 11.2 The ruling needs a paired disposition, not just a convention
+
+"Rule mean node" is **not** a one-line hub repair, because the store itself is true. Whatever is
+ruled, the native must also rule *where the repair lands*:
+
+| Option | What it costs |
+|---|---|
+| **(a) Rebuild `ephemeris_daily` mean-node** | Matches the DAR receipt's own claim; touches a frozen layer and every downstream consumer of the knots. |
+| **(b) Keep the knots TRUE; derive mean Rāhu/Ketu analytically at read time** | Cheap, no L0 rebuild, auditable against Swiss — but store and derivation then disagree by ~1° and that must be **declared per row**, never silent. Recommended by the Gochara session (its N-4a) and the Saṅgam session; **I concur.** |
+| **(c) A declared mixed-frame contract per consumer** | Most honest about current reality, most surface area to police. |
+
+Whichever is ruled, the paired obligations are: repair migration 624's probe so it *detects* rather
+than declares; correct the `l0_ephemeris.py` comment and docstring; and decide the legacy
+`l1_positions` chain separately. Riding with it: the **cusp frame** (L1 stores Placidus; the Saṅgam
+plan assumed Śrīpati) — which the Kshetra session confirms does not touch Kshetra (whole-sign
+arithmetic only, `writer.py:1783`).
+
+### 11.3 M-3 — two producer paths, and E1/E3 is **not** unblocked by either yet
+
+If the native re-affirms June §4.5 (no ephemeris scan inside Saṅgam; Saṅgam consumes pre-computed
+directed contact events; `planet` as a list), a directed contact-event producer becomes an upstream
+obligation. Two shapes are now on the table:
+
+- **Path A — a bounded amendment to `transit_search.py`** under one named owner (frame/ayanāṃśa/node
+  arguments; directed special-aspect search). Faster; **edits a frozen shared hub**.
+- **Path B — a new pure module** (`services/gochara_kernel`), proposed in the Gochara brief v1.2:
+  emits directed contact episodes natively (t_in / t_exact / t_out, bracket, tolerance, branch, orb
+  + orb_source, plus a Search-coverage row per partition), with frame/ayanāṃśa/node as arguments by
+  construction. Edits neither `transit_search.py` nor `ka_dasha_kala` (both in its `must_not_touch`).
+  Saṅgam E1/E3 would bind to the kernel; Kshetra S0 could adopt it later without a second amendment.
+
+**Path B's own caveat, stated by its author and carried verbatim:** the kernel becomes a shared hub
+the moment two assets bind to it — *"the exact property that made `transit_search` hard to change"* —
+so it must carry an additive-only signature rule and a versioned contract from day one. And it
+**exists only if the native approves that brief's N-5 (served-product owner) and N-7 (persisted
+Contact ledger), both unruled**. If N-7 is refused, the obligation reverts to Path A and still needs
+an owner. **Therefore E1/E3 must not be recorded as unblocked by a proposal.**
+
+**The owner is the native's to name.** All three sessions have declined to name it between
+themselves — correctly. The native rules shape *and* owner together.
+
+**Directed aspects — an earlier item in this section is WITHDRAWN.** v1.2 recorded a
+"directed-aspect gap at the engine, unexercised in served data." Re-verified, none of that holds:
+`find_aspect_events` computing `(target_longitude_deg + aspect_deg)` (`transit_search.py:320`) is
+**correct** — dṛṣṭi is directional, and a symmetric search would be the defect. The Gochara path
+already uses the classical per-graha table: `gochara_grammar/primitives.py:342-343` passes
+`SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)` into it (Mars `[90,180,210]`, Jupiter/Rāhu/
+Ketu `[120,180,240]`, Saturn `[60,180,270]`, everything else `[180]`, BPHS Ch.26 cited at
+`:189-196`). And it **is** exercised: `drishti_contact` appears on 379 of 914 served generation-3.0
+rows. My "zero rows carry an asymmetric degree" was measuring `activity_terms`, whose keys are
+`primitive, transit_planet, target_ref, target_weight, event_datetime_ist, orb_decay, p_i` — the raw
+aspect degree is **not a field it has**. Absence in a field that cannot hold the value is not absence
+of the value.
+
+**The real defect is a Saṅgam call-site, not a producer gap:** `services/ka_sangam/engine.py:464-466`
+passes the symmetric generic set `[0,60,90,120,180]` for the benefics Jupiter and Venus, where
+Jupiter's classical dṛṣṭi is `[120,180,240]`. Attributing this to the Gochara producer would send
+the fix to the wrong owner. It belongs in Saṅgam's R-series. (Found by the Gochara session; verified
+here.)
+
+### 11.4 Corrections to this session's own v1.1
+
+1. **Kshetra is not a `transit_search` position reader.** v1.1 listed three readers. Verified:
+   `services/ka_kshetra/stage0_kinematics.py` imports only the `MEAN_MOTIONS` constant (`:746`) for
+   dwell normalisation — **zero** scan/search call-sites — and reads all nine bodies from
+   `ephemeris_daily` through its own Hermite spline. Correct position readers of `transit_search`:
+   **`ka_gochara/service.py` and `ka_sangam/engine.py`**. Kshetra is an `ephemeris_daily` reader —
+   which, per §11.1, still makes it **contract-mean / store-true**, so it is affected, just at a
+   different repair site. (Raised by the Kshetra session; its own "Kshetra is mean/mean" conclusion
+   is withdrawn by the store measurement.)
+2. **The "242 rows" figure was wrong.** It summed two generations and two carriers without a
+   generation filter. Correct: **232 of 914** at `g3_utkarsha` via `term_breakdown`, **50 of 87** at
+   generation 2.0 via `active_sentences`. Raised by the Gochara session; reconciled here.
+
+### 11.5 The shared branch
+
+`l3/kala-elevation-readiness` is by use the shared L3 documentation branch. Committed docs there are
+fine, **staged by name only**; uncommitted work belongs in the authoring session's own worktree.
+Verified: the Saṅgam commits swept zero foreign files. The Kshetra session's user has since ruled:
+both artifacts moved to `/Users/Dev/madhav-l3/kshetra` on `l3/kshetra-elevation`, and the readiness
+worktree is clean again.
+
+**One consequence of this session's own error, flagged for anyone citing it.** `origin/main` carries
+`briefs/KSHETRA_ELEVATION_BRIEF_v1_0.md` at that session's **stale v1.0**, swept there by this
+session's `git add -A` in `bd1a12e03` (PR #2713). It contains three findings its author has since
+withdrawn — including the "Kshetra is mean/mean, already conformant" conclusion that §11.1's store
+measurement overturns. Until that session's v4.0 lands as an in-place update, **anyone reading that
+path on `main` gets the withdrawn version.** Do not cite it. This is why the staged-by-name rule
+exists.
+
+### 11.6 Carried but NOT verified by this session
+
+**`bg_cohort` is CONFIRMED, and my earlier denial was my own measurement error.** Re-grepped
+without truncation: `@register("bg_cohort")` at `:470`, `("Rahu", swe.TRUE_NODE)` at `:333`, and the
+provenance string *"Lahiri ayanamsha; TRUE_NODE Rahu"* at `:159`; 691 lines, byte-identical to
+`origin/main`. My v1.2 statement that the file had neither came from a grep I had piped through
+`head -5`, which truncated away everything after line 106 — I then published that absence as a
+finding against a peer's correct claim. The peer's own correction also stands and *strengthens* the
+finding: `bg_cohort` does **not** import `l1_positions` (`:49`, `:105-106` say it independently
+reproduces the formulas), so it is a **fifth independent TRUE_NODE declaration**, not a dependent
+one. · Per-importer persisted
+divergence in the `l1_positions` chain. · The century BUILD-PROTECTED "residue" timeline (error
+stamped 2026-08-21 vs migration 588 applied 2026-08-23). · The 1.933° maximum over 1984–2084. · **No natal Rāhu
+`longitude_sidereal` fact row exists** for the canonical chart at `lahiri_chitrapaksha` — so L1's
+mean convention is confirmed by declaration and by the DAR arithmetic, not by a stored fact.
+
+### 11.7 A gate rule this week produced: a Swiss-vs-kernel comparison is not a detector here
+
+Raised by the Gochara session, and it generalises the §11.1 caveat. This environment ships no `.se1`
+files, so `FLG_SWIEPH` silently falls back to Moshier and returns bit-identical values to a Moshier
+call. **Any acceptance gate phrased "our kernel agrees with Swiss to N arcseconds" therefore compares
+Moshier with Moshier where `.se1` is absent — it cannot fail, and under §N.8 it is not a detector at
+all.** Production does carry real Swiss data (`Dockerfile:24`, `Dockerfile.pipeline:17`,
+sha256-verified into `/app/ephe`), so the gate is meaningful there and vacuous here.
+
+**Both backend inferences failed here, in opposite directions.** "Two flags return identical values,
+therefore Moshier" was right by luck. "No `.se1` found, therefore Moshier" was right by luck too —
+the files existed and the path was simply never set. **Only `retflag` survives both**: read it and
+test the MOSEPH bit. Provision and checksum your own `.se1` rather than assuming another session's
+copy persists — the one on this host sits under `/tmp`, placed by another session, and may not
+survive a reboot.
+
+**Measured over the whole domain, so "unbounded Moshier error" is retired — and so are two sparse
+samples of it.** Moshier's true-node error against Swiss, computed at **every** noon knot from
+1950-01-01 to 2100-12-31 (**n = 55,152**, `retflag` asserted Swiss on every call): **min −58.1″, max
++65.3″, worst 65.3″ on 1972-11-20.** Two earlier sparse estimates both under-reported it in the same
+direction — a five-date sample said 18.1″, my sixteen-date decade sample said 32.5″, the truth is
+**65.3″**, half as much again as my figure and over three times the other. **Independently reproduced by three
+sessions** — measured by the Gochara session, reproduced here and by the Saṅgam session, each to the
+arcsecond and the date.
+
+That bound is what separates a reportable figure from an unreportable one, with the real ratios:
+
+| Quantity | Margin | vs the 65.3″ bound |
+|---|---|---|
+| Natal pāda (birth instant) | 177.3″ | **2.7× safety — reportable even on Moshier** |
+| Stored noon knot | 6.3″ | **10.4× over — not reportable on any backend** |
+
+2.7× is a real margin but a thin one; state it as 2.7×, not as "well under".
+
+**New rule, earned the same way as the other two: a sparse sample is not a bound.** The node's error
+oscillates on timescales shorter than a decade, so decade spacing samples it about as badly as five
+dates do. Two sessions each produced a confident bound from a sample and both were wrong in the same
+direction; only measuring the full domain settled it. This sits beside *"a date is not an epoch"* and
+*"a flag is not a backend"*.
+
+**Consequence for the inherited 0.314″ spline figure:** 65.3″ is two orders of magnitude above it.
+If the W2G V3 validation ran without `set_ephe_path`, it compared its spline against a reference
+~200× coarser than its own claim, and the figure says nothing about Swiss-grade accuracy. Whether
+that runner calls `set_ephe_path` is answerable from source and should be answered before 0.314″
+anchors any gate. (Raised by the Gochara session.)
+
+**Rule for every numerical acceptance gate in this campaign:** require `.se1` present, verify
+`retflag`, and record the file checksums in the evidence, or the result is `NOT_RUN` — never `PASS`. Any inherited
+arcsecond-level parity figure whose run environment is not established is `[UNVERIFIED]` until it is.
+This is the same defect class as migration 624's probe (§11.1): a check that cannot return false.
+
+### 11.8 Four measurement errors by this session, and the pattern
+
+Recorded because the pattern matters more than the individual slips. (1) v1.1 listed Kshetra as a
+`transit_search` position reader — it imports one constant. (2) v1.1's "242 rows" conflated two
+generations and two carriers. (3) v1.2 denied `@register`/`TRUE_NODE` in `bg_cohort` from a grep
+truncated by `head -5`. (4) v1.2's directed-aspect gap measured a JSON field that cannot hold the
+value. All four are the same failure: **asserting from an incomplete read, then publishing the
+absence as evidence.** The three asset sessions caught all four. The countermeasure that actually
+worked was not care — it was other sessions re-measuring at the authority and saying so.
+
+### 11.9 RETRACTED IN FULL — there was no session disagreement; the 332″ was my own epoch error
+
+v1.5 recorded that two sessions' node computations diverged by 332 arcsec, called it unexplained,
+and reasoned the disagreement might invert the pāda finding. **All of that is withdrawn.** Both
+peers independently found the cause; verified here:
+
+- **`l0_ephemeris` stores every knot at NOON UT** (`:164` *"Julian Day Number (noon UT)"*, `:278`
+  `swe.julday(..., 12.0)`). I differenced against **midnight**. Midnight − noon for the true node on
+  that date is **+332.3″** — precisely the "disagreement" I reported. Both hosts agree bit-for-bit
+  at the same epoch.
+- **This host *does* carry `.se1`** at `/private/tmp/se1`, and the production resolver
+  `brahmagyan.l0_ephemeris._resolve_ephe_path()` returns `/tmp/se1` — its own documented
+  development/CI candidate. `swisseph` finds them only after `set_ephe_path()`; without that call
+  `FLG_SWIEPH` silently returns `retflag 260` (Moshier bit set), with it `retflag 258` — real Swiss.
+  My "Moshier fallback" was true of *my calls*, not of *this host*.
+
+Everything v1.5 derived from the phantom divergence is void: the "(A′) peer-offset" row, the claim
+that the pāda finding inverts, and "weak evidence my local node is the outlier." Neither session was
+an outlier. **§11.7's rule survives with a better detector:** never infer the backend from flags
+matching or from `.se1` appearing absent — **read `retflag` and test the MOSEPH bit**, the only
+thing a silent fallback cannot fool.
+
+### 11.10 The epoch convention is undeclared too — the other half of the §N.8 finding
+
+`ephemeris_daily` carries neither the node frame nor the knot epoch on the row. The frame is
+declared *wrongly* (migration 624 says `"mean"`; the data is true — §11.1). The epoch is not
+declared **at all**. That undeclared epoch fooled two independent sessions on one day, produced a
+332″ phantom finding that reached v1.5 of this document, and was caught only because a third session
+re-derived it from the builder source.
+
+Both belong in one repair: whatever is ruled on the node, `ephemeris_daily` should carry its
+**frame and its epoch, each with a detector behind it**, and migration 624's probe should verify
+both against the data rather than assert them. A spline built on the wrong epoch assumption is wrong
+by half a day — W2G's own validation note puts that at ~6.6° for the Moon.
+
+**One conflation to drop from every sheet, including this one:** the "0.0059° from the boundary"
+figure belongs to the **stored noon knot** — a transit sample on the birth date, not the natal
+position. It says nothing about the natal pāda, which comes from L1's birth-instant computation
+(§11.1). Two different quantities; only the natal one bears on a reading. (Raised by the Kshetra
+session.)
+
+### 11.11 A third undeclared convention: how the ayanāṃśa is applied (14.82″)
+
+Found while reconciling a 15″ spread between sessions that was assumed to be a birth-instant
+difference. It is not — it is **method**:
+
+| Getting sidereal from Swiss | MEAN at 05:13 UT | vs L1's stored `RAH_MEAN` |
+|---|---|---|
+| `tropical − get_ayanamsa_ut()` (manual subtraction) | 49.028927° | **off by 14.82″** |
+| `FLG_SIDEREAL` (Swiss's own transform) | **49.033044°** | **0.00″** |
+
+**The gap is nutation in longitude, exactly.** Nutation at that instant is **−14.82″**, and the
+method gap is **−14.82″** — identical to two decimals. `get_ayanamsa_ut()` returns the *mean*
+ayanāṃśa; `FLG_SIDEREAL` applies the *apparent* one, which includes nutation. So the three sessions'
+figures were never three measurements — they were **one value under two conventions**, and the
+convention split we spent the day documenting reproduced itself inside our own instruments. Both
+conventions put Rāhu in pāda 4 (177″ and 162″ margins), so the conclusion is convention-independent.
+(Closed by the Gochara session; verified here.)
+
+**L1's stored fact is the arbiter, and it validates `FLG_SIDEREAL`.** My manual subtraction — used
+for every sidereal figure this session published before v1.7 — is the one that disagrees with what
+L1 actually serves. Both natal figures in §11.1 are corrected accordingly (mean 49.028927 →
+49.033044; true 50.045130 → 50.049248; margin 163″ → 177″). The pāda conclusion is unchanged; the
+method finding is the durable part.
+
+So three conventions govern a single longitude and **none is recoverable from the data**: the node
+frame (declared *wrongly* — §11.1), the epoch (declared correctly in code, never in the row —
+§11.10), and now the ayanāṃśa application method (declared nowhere, worth 15″, and silently
+divergent between two correct-looking call shapes). Each cost a session an error today.
+
+### 11.12 §11.10 refined, and the fix is smaller than it looks
+
+The Kshetra session's correction, adopted: *"declares neither"* was slightly too strong. Precisely —
+**the node frame is declared wrongly in two places** (`624:30` `node_mode="mean"`;
+`l0_ephemeris.py:77` comment "Mean North Node"), while **the epoch is declared correctly in exactly
+one place a consumer never reads** (`l0_ephemeris.py:164,278`). A reader of `ephemeris_daily` can
+recover neither: its columns are `id, date, body, ayanamsha_id, tropical_longitude, latitude,
+speed_dps, is_retrograde, sign_number, degree_in_sign, nakshatra_number, source_citation,
+computed_at`. `date` carries no time-of-day; `source_citation` is the constant string
+*"pyswisseph + Swiss Ephemeris .se1"*.
+
+**And the fix is not new machinery — it is this table's own established pattern.** The row already
+carries `ayanamsha_id` (value: `tropical`) precisely to declare a frame. `node_mode`,
+`epoch_convention` and the ayanāṃśa application method belong beside it, each with a detector, rather
+than in a probe contract that asserts without measuring. §11.10 therefore reads as *"extend the
+row's existing frame declaration to the three frames it omits"*, not *"add declaration machinery"* —
+which should make it considerably easier to land. (Framing by the Kshetra session.)
+
+**And the consumer cost, in one sentence** (madhav-d9's, adopted): because L1 stores no `RAH_TRUE`,
+the true natal value is computed at read time and stored nowhere — so any consumer wanting it
+recomputes it and silently inherits its caller's epoch, backend and ayanāṃśa method. Today that is
+three ways to be wrong, none of them visible in the data.
+
+### 11.13 The knot and the instant fall on opposite sides of the boundary
+
+Measured on Swiss, the sharpest form of the whole episode: the **stored noon knot** for the birth
+date is TRUE 49.998247° → **pāda 3**, while the **birth instant** is 50.049248° → **pāda 4**. Same
+body, same day, same backend — opposite sides of a classical boundary, 6″ and 177″ from it
+respectively.
+
+That is the argument for a design rule the Gochara family had already reached independently: **solve
+at the instant; a stored knot is an interpolation input, never an answer.** It is also why the
+knife-edge finding must not be cited against the natal figure (§11.10): the knot's 6″ margin is
+smaller than any backend's error, while the instant's 177″ margin is five times larger than the
+measured 32.5″ worst case. One is reportable, the other never will be.

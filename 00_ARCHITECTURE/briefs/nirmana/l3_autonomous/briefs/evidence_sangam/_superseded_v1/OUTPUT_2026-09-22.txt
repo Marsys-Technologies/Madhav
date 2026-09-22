@@ -1,0 +1,89 @@
+
+==============================================================================
+S10 — Mode A necessary vs supporting terms
+==============================================================================
+  services/ka_sangam/engine.py:1221:         necessary = [dignity_score, orb_s, vedha_factor]
+  services/ka_sangam/engine.py:1222:         supporting = {
+  services/ka_sangam/engine.py:1223:             'constituent_lord_transit':    float(dasha_score),
+  services/ka_sangam/engine.py:1224:             **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
+VERDICT: CONFIRMED — necessary = dignity × orb × vedha; dasha under 'constituent_lord_transit'
+
+==============================================================================
+S1 — target_longitude_deg: binder emits it? engine default?
+==============================================================================
+binder.py occurrences of 'target_longitude': 0  (expected 0 = OMITTED)
+engine.py default-to-0.0 sites: [1148, 1377]   writer: [662]
+  :1148: target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+  :662: target_lon = float((pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg', 0.0))
+VERDICT: CONFIRMED — unbound targets scan 0° Aries
+
+==============================================================================
+S2 — directed special aspects vs unsigned 'target + angle' search
+==============================================================================
+  Mars 4th/8th     target 0°: naive [90, 210]  directed [150, 270]   sets DIFFER → mis-searched
+  Saturn 3rd/10th  target 0°: naive [60, 270]  directed [90, 300]   sets DIFFER → mis-searched
+  Jupiter 5th/9th  target 0°: naive [120, 240]  directed [120, 240]   sets EQUAL → error hidden
+  source: transit_search.py:312: of (target_longitude_deg + aspect_deg) for each aspect_deg in aspect_degrees.
+VERDICT: CONFIRMED — Mars/Saturn special aspects mis-searched; only Jupiter's mirror pair conceals it
+
+==============================================================================
+S3 — ashtakavarga frame: what L1 writes vs what Sangam reads; non-Aries synthetic
+==============================================================================
+ga_strength_writer.py lines writing HOUSE/SIGN keys: [142, 143, 175, 176, 179, 180, 183, 184]
+ka_sangam.py reads category: [(1004, "AND fact_category = 'ashtakavarga_bindu'")]
+  synthetic lagna=Capricorn(10); Saturn transits sign 1 (Aries)
+  correct BAV (sign-keyed) for sign 1         : 4
+  HOUSE-keyed map[1] (house 1 = Capricorn)      : 2   ← returns Capricorn's bindus for an Aries transit
+  same lookup on an ARIES-lagna chart          : 4 == 4  (frames coincide; bug invisible)
+VERDICT: CONFIRMED — read `ashtakavarga_bindu_sign`; falsifier requires a non-Aries synthetic chart
+
+==============================================================================
+S4 — Moon contacts in a window: v0.1 bound vs conj+opp arithmetic
+==============================================================================
+   60-day window: v0.1 bound ≤4; conj+opp contacts = 5 at days [0.0, 13.7, 27.3, 41.0, 54.6]
+   90-day window: v0.1 bound ≤5; conj+opp contacts = 7 at days [0.0, 13.7, 27.3, 41.0, 54.6, 68.2, 81.9]
+VERDICT: CONFIRMED — bound false; E3 bounds scope, never count
+
+==============================================================================
+S5 — rarity_years: opposition vs conjunction for Saturn (period ≈ 29.46y)
+==============================================================================
+  Saturn aspect   0°: rarity_years = 29.46
+  Saturn aspect 180°: rarity_years = 14.73
+  Saturn aspect  90°: rarity_years = 7.37
+  expected for a fixed natal target: every aspect of a fixed target recurs once per sidereal period
+VERDICT: CONFIRMED — angle fraction is not a recurrence model; rename/redefine in E6
+
+==============================================================================
+S6 — _build_overlap_key: overlapping intervals with different endpoints
+==============================================================================
+  A=(datetime.date(2027, 1, 1), datetime.date(2027, 12, 31))  B=(datetime.date(2027, 3, 1), datetime.date(2028, 2, 28))  actually overlap=True (by 305 days)  keys equal=False
+  services/ka_dasha_kala/service.py:76: def _build_overlap_key(interval: DashaInterval) -> tuple[date, date]:
+  services/ka_dasha_kala/service.py:77:     """Key for grouping overlapping intervals across systems."""
+  services/ka_dasha_kala/service.py:78:     return (interval.start_date, interval.end_date)
+VERDICT: CONFIRMED — 305-day overlap, keys differ → no 'agreement'
+
+==============================================================================
+S7 — inline gate: accumulate-then-filter, not stream
+==============================================================================
+  transit_search appends at [351, 446, 484, 548, 591, 653, 695, 782, 870], returns full list at [371, 501, 568, 625, 673, 732, 810, 893]; engine filters at [1171, 1400]
+VERDICT: CONFIRMED — memory benefit claimed in the comment is not what the path does
+
+==============================================================================
+S8 — Saturn retrograde loops 2026-2029 (Lahiri sidereal) → E5 oracle points
+==============================================================================
+  loop 2026: SR 350.52° → SD 343.70°  swept arc 6.82° = [343.70°, 350.52°]
+     point INSIDE  347.11° → crossings ±200d: 3   (E5 expects 3) OK
+     control OUTSIDE 352.52° → crossings: 1   (E5 expects 1; must NOT group) OK
+  loop 2027: SR 3.63° → SD 356.77°  swept arc 6.86° = [356.77°, 3.63°] (wraps 0°)
+     point INSIDE    0.20° → crossings ±200d: 3   (E5 expects 3) OK
+     control OUTSIDE   5.63° → crossings: 1   (E5 expects 1; must NOT group) OK
+  loop 2028: SR 17.05° → SD 10.15°  swept arc 6.90° = [10.15°, 17.05°]
+     point INSIDE   13.60° → crossings ±200d: 3   (E5 expects 3) OK
+     control OUTSIDE  19.05° → crossings: 1   (E5 expects 1; must NOT group) OK
+VERDICT: oracle points constructed; 'any natal point' claim withdrawn — only points inside the swept arc triple-cross
+
+==============================================================================
+S9 — what sandhi_flag actually means (ga_dashas_writer)
+==============================================================================
+  :1062: sandhi_flag = duration_days < 20
+VERDICT: CONFIRMED — E4 uses start_iso/end_iso boundary distance instead; no multiplier
