@@ -16,14 +16,29 @@ does_not_authorize: any code, migration, build, L4 rebuild, L5 consumption, or d
 
 # Saṅgam elevation — the final packet
 
+## 0b. Post-close independent review — Kimi K3 (effort=max), 2026-09-23
+
+**ACCEPT_WITH_CONDITIONS**, 12 findings (4 MAJOR, 5 MINOR, 3 NOTE), no BLOCKER, no re-ruling. First
+independent confirmation that **plan v0.4 closes the v0.3 REWORK (RR-01…RR-10)**. Every MAJOR was a
+defect in the *author's* delegated decisions — corrected α arithmetic, an i.i.d. assumption the plan's
+own §4 disclaims, a D-2/M-6 contradiction on the denominator, a falsifier with no detector (§N.8), and
+Simpson-vulnerable pooling — each reproduced at source before acceptance and all applied. Full record:
+`KIMI_K3_REVIEW_SANGAM_CLOSED_v1_0.md` + ruling sheet §Post-close. **Two items not discharged:** D-6's
+entry in `DISAGREEMENT_REGISTER_v1_0.md` (referred to the governance owner) and **D-8**, the third
+Astra review, which remains the stage-3 entry gate — this review is a second independent read, not a
+substitute for it.
+
 ## 0a. CLOSED — 2026-09-23T03:39:33+05:30
 
 All seven rulings are closed. The native confirmed M-1…M-7 as delivered and delegated the residual
 open items to the author; **D-1…D-8** (`SANGAM_RULING_SHEET_v1_0.md §CLOSE`) decide them with
 reasoning, recorded as the author's decisions under delegation, not as native words. Headlines:
-E6 gate = **n 30 per `(domain × route × method_version)` / 100 instrument-level pooled**, never
-pooled across versions; `ambiguous` censored with a 20% ceiling; evaluation limited to consenting
-charts; **D30 held as a labelled non-scoring secondary** with a falsifier; **mean convention governs
+E6 gate = **n 35 per `(domain × route × method_version)` (crit ≥12, α=0.0344, power 0.805) / 100
+instrument-level pooled (crit ≥28, α=0.0342, power 0.833)** via a stratified CMH-type estimand, never
+pooled across versions, figures declared as first-order approximations on a two-chart population;
+`ambiguous` excluded from n but binding at the reported rate's adverse end, with a 10%/20% censoring
+gradient; evaluation limited to consenting charts; **D30 held as a labelled non-scoring secondary**
+with a falsifier that must exist and pass before the first D30 row ships; **mean convention governs
 the pāda reading (Rohiṇī pāda 3)**; **no node dṛṣṭi is instrument-level**, Gochara owning execution
 as a same-generation λ regeneration; legacy scan withdrawn only on the R-5 successor manifest; the
 **third Astra review is a stage-3 entry gate** (plan v0.4 has never been reviewed — v0.1 and v0.3
@@ -46,7 +61,7 @@ on v1.0, then a separate stage-3 execution session with an independent reviewer.
 | `SANGAM_ELEVATION_BRIEF_v1_0.md` **v1.3** | the **output contract** — contract §1–§8: typed testimony (independence groups, per-method F06 states, route, coverage, comparability), four grains/one key, bidirectional generation binding, cascade to sealed L4, the two registry edges | PROPOSED_FOR_NATIVE_RULING; amended v1.3 to match the plan (§7 of the plan) |
 | `SANGAM_ALGORITHM_ELEVATION_PLAN_v1_0.md` (= v0.4 + §0R rulings) | the **method** — six repairs (R-1…R-6) before six elevations (E1…E6); falsifier per item; inputs-consumed contract (18 rows); 7×6 consumer matrix; preservation spec | PROPOSAL_FOR_NATIVE_RULING after two independent REWORKs, both fully dispositioned |
 | `SANGAM_RULING_SHEET_v1_0.md` | the **seven decisions** M-1/M-1a, M-2, M-3, M-7, M-4, M-5, M-6 — Kimi K3 (max) recommendation, author verification, author position, Astra constraint, the question with options — plus §RULINGS (native) and §CLOSE D-1…D-8 (author, under delegation) | CLOSED |
-| `evidence_sangam/` (v2) | **13 assertion-based falsifiers** with negative controls; manifest-checked, non-truncating runner; `OUTPUT_2026-09-22T234243.txt` SUITE-PASS; the failing run retained | runnable read-only, no DB |
+| `evidence_sangam/` (v2) | **13 assertion-based falsifiers** with negative controls; manifest-checked, non-truncating runner; `OUTPUT_2026-09-23T012041.txt` SUITE-PASS (S8 on SWIEPH with .se1 checksums; re-pointed 2026-09-23 per K2-05 — the earlier 2026-09-22T2342 run had S8 passing as an oracle on Moshier, which S8 v2.1 now refuses); the failing run retained | runnable read-only, no DB |
 | `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md`, `_v0_3.md` | the two independent adversarial reviews (Codex gpt-6-astra, xhigh) — F-01…F-19, RR-01…RR-10 | immutable |
 | `KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0.md` | second independent opinion on the seven rulings (Kimi K3, effort max) — every BPHS citation re-verified at the corpus by the author | immutable |
 | `ASTRA_REVIEW_REQUEST_SANGAM_ALGO_v0_4.md` | ready-to-run third review request — to be run on **v1.0 after the rulings**, not before | ready |
