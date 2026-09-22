@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.5"
+version: "2.6"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "2.6 (2026-09-23): G4 RETRACTED (the .se1 files are on this host and the production resolver finds them). New §11.18: the ephemeris backend is process-global and unowned — w2g, which owns the 0.314″ figure, never sets it, and panchang_engine forces Moshier. New §11.19: the century writer is live-active and DELETEs production in its staging transaction while declaring only the staging table. M-1..M-7 now recorded in writing."
   - "2.5 (2026-09-23): RETRACTION — my ScannerError diagnosis of PR #2722's file was my own naive splitter, not the gate. The file had no byte-0 frontmatter at all. §11.17 rewritten; new rule: a naive parser is not the gate. G18 item 1 (scope) and the constructed in-scope parse-blindness finding both survive."
   - "2.4 (2026-09-23): new G18 + §11.17 — the governance frontmatter gate is blind to the entire briefs tree (0 files matched by any governed glob) AND, for files it does govern, a YAML parse failure produces zero violations. Measured, not read."
   - "2.3 (2026-09-23): §11.5 stale-brief warning now points at PR #2722 (supersedes in place, v4.3). New §11.16: a `set -e` chain is not a detector — recorded against this session's own rails, not only a peer's."
@@ -921,3 +922,107 @@ well-formed; nothing looked. Two small fixes belong in W0: extend the campaign-a
 downgrade to a regex scan. The second matters more — widening the reach of a gate that cannot fail
 only spreads a green light nothing earned. That is §N.8 read against our own tooling: *what code
 path would have to run, and fail, for this signal to correctly read false?*
+
+### 11.18 The ephemeris backend is process-global and unowned — G4 retracted, replaced by something worse
+
+**RETRACTION of G4.** I recorded that this host has no `.se1` files and that every local benchmark
+therefore ran on Moshier. That is wrong as of 2026-09-22 17:20. All five files — `sepl_18.se1`,
+`semo_18.se1`, `seas_18.se1`, `sefstars.txt`, `seleapsec.txt` — are at `/private/tmp/se1`, and the
+*production* resolver `brahmagyan.l0_ephemeris._resolve_ephe_path()` returns `/tmp/se1`, its own
+third candidate. The Saṅgam session established this; I reproduced it directly rather than accept it.
+
+With the path set I reproduce, at L1's own birth instant (jd 2445735.717361 = 1984-02-05 05:13 UT =
+10:43 IST), `retflag` carrying the SWIEPH bit and no Moshier bit:
+
+| quantity | sidereal Lahiri |
+|---|---|
+| TRUE node | 50.049248° → Rohiṇī pāda 4 |
+| MEAN node | 49.033044° → Rohiṇī pāda 3 |
+
+Both figures match the Saṅgam sheet to six decimals, and the MEAN value matches L1's stored
+`RAH_MEAN` fact, which is what pins the instant.
+
+**What replaces G4 is sharper.** The files being present does not mean a computation uses them.
+`swe.set_ephe_path` sets *process-global* state, and the components disagree about who owns it:
+
+- `services/w2g/` — the module that owns the 0.314″ worst-case spline figure — **never sets it**. It
+  references `l0_ephemeris` only in comments about the noon-UT knot abscissa.
+- `ka_gochara_v3_century_materialize.py` imports `swisseph` directly at line 2022 and **never sets
+  it**.
+- `panchang_engine/__init__.py` calls `swe.set_ephe_path(None)` twice, which **forces Moshier**.
+- `bg_cohort.py`, `bg_sky_calendar.py`, `transit_search.py`, `routers/pyhora.py` and
+  `service_probes.py` each set it themselves.
+
+So the backend a given computation receives depends on which unrelated component last touched a
+global in that process. `bg_sky_calendar.py:234` documents the trap in its own docstring: setting
+the path does not fail when files are missing, and `calc_ut` falls back silently.
+
+**This closes the question the Gochara session routed to me.** It asked whether the V3 runner sets
+the path, because if the 0.314″ validation ran without it, it compared a spline against a reference
+two orders of magnitude coarser than its own claim — the Moshier true-node error is bounded at
+65.3″ over the full 1950–2100 domain, roughly 200× the 0.314″ figure. **Answer: neither the V3
+runner nor w2g sets it.** The figure cannot anchor any gate until its owner asserts its own
+`retflag` on every call. This is §N.8 again: a precision claim with no detector for the backend that
+produced it.
+
+**One caution for whoever picks this up.** The string `0.314` appears in this corpus as two
+unrelated quantities: the w2g worst-case spline error in **arcseconds**, and a CPU sample of
+0.314605 **seconds** in the W0 benchmark baseline. Same digits, different units, different subject.
+That is the "a filename is not a table" family, which the Gochara session and its reviewer both hit
+independently this week.
+
+### 11.19 The century hold is procedural only, and the registry understates the blast radius
+
+The Gochara session reported that the held century writer is still registered and active and deletes
+production in the same transaction as its staging write. I verified it, and the live registry makes
+it worse than reported.
+
+Source: `ka_gochara_v3_century_materialize.py` carries `@register(ASSET_ID)` at line 1717. In one
+`conn` — the orchestrator's transaction, which a writer must never commit or close — it executes
+two deletes back to back: `DELETE FROM kala_gochara_windows_v2` (staging, generation `g3_utkarsha`)
+at line 2247, then `DELETE FROM kala_gochara_windows … generation = '3.0'` (**production**) at line
+2257.
+
+Live registry, read just now:
+
+| asset_id | is_active | target_table | clear_tables |
+|---|---|---|---|
+| `ka_gochara_v3_century_materialize` | **true** | `kala_gochara_windows_v2` | NULL |
+| `ka_gochara` | true | `kala_gochara_windows` | NULL |
+
+Two things follow that the source alone does not show. First, the asset **declares only the staging
+table**, so every registry-driven view of what it touches — the Atlas display, any clear-scope
+reasoning, any blast-radius estimate — omits the production table it deletes from. Second,
+`clear_tables` is NULL, so there is no second declaration to catch it. The asset's declared reach
+understates its real reach by exactly one production table, and that table is `ka_gochara`'s own
+declared target. Two active assets write the same production table; one declares it, one does not.
+
+The "hold" on the century writer is a note in a document. Nothing in code, registry or database
+prevents it running and wiping production generation `3.0` for a chart. It is G19, and it blocks
+unattended build until the native sets it inactive.
+
+### 11.20 M-1 through M-7 are now recorded in writing
+
+The gap I escalated is closed, by the Saṅgam session and correctly. `SANGAM_RULING_SHEET_v1_0.md`
+is on this branch at `101046052`, status `RULED`, with the rulings verbatim, attribution to the
+native by name, and a timestamp of 2026-09-23T02:42:50+05:30. I confirmed the file and read the
+block rather than accept the report.
+
+Two qualifications, both of which that session stated **on the sheet itself** rather than leaving
+me to find:
+
+1. The seven lines are character-for-character its own *example* answer lines, which the native
+   adopted by pasting them back. That is recorded as what happened, not dressed up as independent
+   drafting. A reader should weigh it accordingly, and the session says any line meant differently
+   is corrected on request.
+2. M-6's minimum-n is a literal unfilled placeholder, `<your number>`, recorded as **OPEN**, not
+   closed. A placeholder cannot be a ruling. The E6 evaluation gate stays shut until the native
+   supplies the number.
+
+**The one ruling that changes chart facts is M-1: node = mean.** Read against §11.1 and §11.18 that
+is a decision with teeth, not a formality. `ephemeris_daily` stores the **true** node under a
+contract declaring mean; L1 serves `RAH_MEAN` and no `RAH_TRUE`; and at this native's birth instant
+the two frames fall on **opposite sides of a pāda boundary** — true 50.049° is Rohiṇī pāda 4, mean
+49.033° is pāda 3. Ruling "mean" makes pāda 3 the answer and makes the stored knots a derivation
+input rather than a servable value. It does not by itself repair the undeclared contract on
+`ephemeris_daily`, which remains the §N.8 finding of §11.1.
