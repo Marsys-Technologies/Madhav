@@ -1,6 +1,6 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.5"
+version: "4.6"
 status: PROPOSED_FOR_NATIVE_RULING
 approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
@@ -39,6 +39,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.6 (2026-09-23) — §4.1 ablation gains the outcome semantics mirrored from Sangam CLOSE D-2/D-3 (3f62f3468, verified at source; plan v1.6 §6a/§7.10; ruling sheet v1.1 row 10). No stage, contract or ruling otherwise changed."
   - "4.5 (2026-09-23) — corpus premise retracted (plan v1.5 §6a.2): the corpus is the served classical_text_chunks table, not the SOURCE_DATA directory; Phaladīpikā is in it. ka_vedha_gochara\u0027s house-vedha rows are mis-cited (39/41 to \"BPHS Ch.29\"), not unsourced — applied on L0 re-citation at page grain."
   - "4.4 (2026-09-23) — independent_review_owner amended: madhav-fc declared a conflict on rulings 7/8/9 (co-produced evidence) and accepts only the non-conflicted scope; the 7/8/9 reviewer is left for the native to name. Kimi files given frontmatter; interior rules in the review rendered as *** ."
   - "4.3 (2026-09-23) — owners assigned on the native's delegation (implementation: the Execution — Data Plane task per Strategy §8; independent review: madhav-fc, not the author). Rulings NOT self-approved: status stays PROPOSED_FOR_NATIVE_RULING; the native signs KSHETRA_RULING_SHEET_v1_0.md (contract §8: a packet never approves itself)."
@@ -259,7 +260,7 @@ chapters?"* — **Arm A:** Sangam's windows. **Arm A′:** Sangam + Taranga's mo
 stronger baseline — shape but no per-term composition and no null). **Arm B:** A′ plus the field's
 segments and term composition. A **rubric keyed to Q06's own distinction text** ("recurrence with
 changes in participants, conditions, clocks, relationships and uncertainty") and a **named judge**
-(the native's to name), both fixed before any arm is read. **If Arm A′ conveys the *driver* change — which classical operand moved — and not merely which
+(the native's to name), both fixed before any arm is read. **Outcome semantics** follow Sangam's close D-2/D-3 (plan §6a, §7.10; ruling 10): an outcome the native adjudicates `ambiguous` is censored, not scored, with a per-stratum censoring rate and a 20% ceiling that blocks the stratum's claim; only consenting charts with real outcome records are evaluation-eligible, synthetic charts carrying `evaluation_eligible = false`. **If Arm A′ conveys the *driver* change — which classical operand moved — and not merely which
 witnesses, the segment earns nothing and the asset loses its unique claim** → park-with-preservation; P1 never funded. Supporting: **A1** within-class rank
 invariance, 2 calibrated vs 12 synthetic classes (one aggregate query — λ⁰ is a multiplier, rank
 *should* be invariant; never run); **A2** zero the clock term, regenerate the top-10 mechanism
