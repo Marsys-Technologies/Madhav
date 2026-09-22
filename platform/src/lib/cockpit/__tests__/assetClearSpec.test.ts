@@ -188,3 +188,51 @@ describe('deriveDeleteSqlFromCountSql', () => {
     expect(deriveDeleteSqlFromCountSql('SELECT count(*) FROM a INNER JOIN b ON a.id=b.id WHERE a.chart_id=$1')).toBeNull()
   })
 })
+
+/**
+ * B1 live-path evidence (Kāla pre-elevation Phase 1.1).
+ *
+ * This block does NOT test a fix — it PINS the exact hazard the fix stands in
+ * front of, so that if anyone later removes the `is_active` filter the SQL this
+ * derivation produces is on the record rather than rediscovered under a live
+ * incident. It passed before the fix and passes after it; the detector for the
+ * fix is `clear/__tests__/route.authz.test.ts`'s B1 block and migration 1071's
+ * live-DB suite, not this.
+ *
+ * The parallel-lane question this settles, at the code: the execute route's
+ * resolution order (execute/route.ts:160-183) is
+ *   1. EXPLICIT_CLEAR_OPS   — `ka_gochara_sweep` has NO entry (see this file's
+ *                             own map), so the branch is skipped;
+ *   2. count_sql            — present, and auto-transformable → THIS WINS at :168;
+ *   3. target_table fallback — :175, never reached for this asset.
+ * So the live vector is the registry `count_sql`, not `target_table`. Correcting
+ * a `target_table` alone would not have closed it.
+ */
+describe('B1 — the ka_gochara_sweep live deletion vector', () => {
+  // Verbatim from production asset_registry, measured 2026-09-22.
+  const LIVE_SWEEP_COUNT_SQL =
+    "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'"
+
+  it('transforms the retired sweep count_sql into a DELETE of the protected v1 snapshot', () => {
+    expect(deriveDeleteSqlFromCountSql(LIVE_SWEEP_COUNT_SQL)).toBe(
+      "DELETE FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'"
+    )
+  })
+
+  it('has no EXPLICIT_CLEAR_OPS entry, so nothing diverts that derivation', () => {
+    // If a future change adds one, this assertion fails and forces a re-read of
+    // which layer is actually protecting the snapshot.
+    expect('ka_gochara_sweep' in EXPLICIT_CLEAR_OPS).toBe(false)
+  })
+
+  it('the ACTIVE ka_gochara sibling derives a _v2-scoped DELETE — it is a different table', () => {
+    // Production value, measured the same day. It never names kala_gochara_windows,
+    // which is why `ka_gochara`'s stale `target_table` was not itself the live
+    // deletion vector (Part A of this task).
+    expect(
+      deriveDeleteSqlFromCountSql(
+        "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation='2.0'"
+      )
+    ).toBe("DELETE FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation='2.0'")
+  })
+})
