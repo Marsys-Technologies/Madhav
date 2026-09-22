@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.1"
+version: "1.2"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.2 (2026-09-23): §11 rewritten after three-session convergence — the node split is FOUR-way and `ephemeris_daily` stores TRUE node under a mean contract (measured 5/5 dates); the DAR_CLOSE receipt records the mean value the table does not hold; M-3 carries two producer paths and neither unblocks E1/E3 yet; two of this session's own v1.1 claims corrected."
   - "1.1 (2026-09-23): §11 addendum — the node-convention hub defect (mean-node natal vs true-node transit engine; reached and served: 232 rows in the served Gochara generation), the M-3 producer-owner decision the Saṅgam FINAL packet raises, and the shared-branch rule. Body unchanged."
   - "1.0 (2026-09-22): first issue."
 ---
@@ -419,49 +420,123 @@ one wave at a time.
 
 ---
 
-## §11 — Addendum (v1.1, 2026-09-23): a hub defect, a decision, and a branch rule
+## §11 — Addendum (v1.2, 2026-09-23): the node-convention split, and M-3
 
-Raised by the Saṅgam session's FINAL packet (`briefs/SANGAM_ELEVATION_FINAL_v1_0.md`, commit
-`04ec54a91`) and verified by this session at source and live.
+Opened by the Saṅgam session's FINAL packet, corrected and extended by the Gochara and Kshetra
+sessions, and re-measured independently here. **Two claims in v1.1 of this section were wrong and
+are corrected in §11.4.** Everything below is marked verified-here or carried-unverified.
 
-### 11.1 The node-convention defect — hub-level, reached, served
+### 11.1 The node convention is split FOUR ways, and the store disagrees with its own contract
 
-L1 stores natal Rahu/Ketu in **mean node**: `platform/python-sidecar/pyjhora_adapter/positions.py:21-22`
-(`_USE_TRUE_NODES = False`, "classical convention"), confirmed by `strength.py:195-197` ("mean-node-
-patched … consistent with every other position fact this project stores"). The shared transit engine
-computes Rahu in **true node**: `platform/python-sidecar/pipeline/transit_search.py:10` and `:64`
-(`"Rahu": 11, # swe.TRUE_NODE`). Mean and true node differ by up to ~1.7°. Every transit contact to or
-from a node is therefore computed in a different frame from the natal point it contacts.
+| Surface | Convention | Evidence (verified here unless marked) |
+|---|---|---|
+| **L1 natal facts** (`ga_positions`) | **MEAN** | `pyjhora_adapter/positions.py:21-22` `_USE_TRUE_NODES = False`, "classical convention"; `:61` passes it. Three further declarations reported by the Gochara session (`vargas.py:21,65`; `_jhora.py:23-55` patching `drik.sidereal_longitude` to `MEAN_NODE`) — *carried, not re-verified here*. |
+| **L0 `ephemeris_daily`** (`bg_ephemeris`) | **TRUE — under a "mean" contract** | `brahmagyan/l0_ephemeris.py:77` `{"name":"Rahu","swe_id":11}` commented *"Mean North Node"*; `:289` `swe.calc_ut(jd, 11, ...)`; docstring `:8` "Rahu (mean)". **`swe.MEAN_NODE = 10`, `swe.TRUE_NODE = 11`** — so id 11 is TRUE. Empirically decisive: stored tropical longitude matches Swiss TRUE on **5 of 5 sampled dates** (residual ≤ 0.10°) and MEAN on 0 of 5 (off by up to 1.47°). |
+| **Transit engine** `pipeline/transit_search.py` | **TRUE** (correctly labelled) | `:10`, `:64` `"Rahu": 11, # swe.TRUE_NODE` |
+| **Legacy `brahmagyan/ganita/l1_positions.py`** | **TRUE** | `:128` `("Rahu", swe.TRUE_NODE)`. Importers confirmed: `l1_dashas`, `l1_strength`, `l1_divisionals`, `l1_sensitive_points`, `l1_panchanga_birth`, `graha_sthana_writer`. **Whether each importer's persisted output actually diverges is UNVERIFIED** — a bounded L1 check, not a claim. |
 
-**Live path — reached, not latent.** For the canonical chart: 40 `gochara_resonance_map` targets are
-Rahu/Ketu; 242 rows in `kala_gochara_windows_v2` and **232 rows in the served generation 3.0** of
-`kala_gochara_windows` carry node contacts. `kala_convergence`: 0 (the table is empty for the chart).
+**The store contradicts its own declared contract.** Migration
+`624_nirmana_l0_ephemeris_probe_contract.sql:30` pins `"node_mode": "mean"`. The data is true node.
+A contract with no detector that can falsify it is an unearned signal (§N.8) — here it stayed green
+for a year over data it never checked.
 
-**Blast radius — all three critical assets.** `transit_search` is read by `services/ka_gochara/
-service.py`, `services/ka_kshetra/stage0_kinematics.py` and `services/ka_sangam/engine.py`, and is
-shared with frozen L0 `bg_sky_calendar`. This is a **hub repair**, not a Saṅgam preference: whatever
-the native rules lands in every reader, before any of the three rebuild. Recommendation (agreeing with
-the Saṅgam sheet's M-1d): **mean node** — it is what L1 stores, hence the §N.5/F27-consistent frame;
-the scanner is the outlier. The same packet flags a second frame question — L1 stores Placidus cusps,
-the plan assumed Śrīpati — to be ruled with it. Gap register: **G18**.
+**And the L0 closure receipt records a value the table does not hold.** `DAR_CLOSE_v1_0.md:20`:
+*"ephemeris_daily: Rebuilt with MEAN_NODE Rahu/Ketu; Rahu at 1984-02-05 = 49.04° Taurus/Rohiṇī
+(FORENSIC-verified delta 0.01°)."* Measured: stored tropical 73.629058 − ayanāṃśa 23.6349 =
+**49.9941° sidereal**; Swiss MEAN for that instant = **49.0405°**. The receipt's 49.04 is *exactly*
+the mean value — so it describes an intended computation, not the stored result, and its
+"FORENSIC-verified" claim was never compared against the table. **Routed to L0's owner as a
+receipt-vs-data discrepancy. No L3 session touches L0.**
 
-### 11.2 M-3 — who owns the upstream directed-event producer (blocking Saṅgam E1/E3)
+**It is visible in a reading, not only in code.** At the native's birth instant the two models
+straddle a nakṣatra pāda boundary — TRUE 50.054° = Rohiṇī pāda 4, MEAN 49.033° = pāda 3 (Gochara
+session; consistent with my 49.99 / 49.04 measurement). Maximum divergence ~1.9° over 1984–2084.
 
-If the native re-affirms the June §4.5 mechanism (no ephemeris scan inside Saṅgam; upstream directed
-contact events; `planet` as a list), then a *directed contact-event producer* becomes an upstream
-obligation on `transit_search` — which Saṅgam is frozen against editing. **Until an owner is named,
-Saṅgam E1 and E3 cannot start.** Blueprint §3.1 already assigns the Contact object to the Gochara
-family, and §7's hub-first rule forbids in-stream edits to `transit_search.py`. Recommendation: the
-**Gochara stream owns the bounded amendment** (frame/ayanāṃśa/node arguments; directed special-aspect
-search) as part of its Contact-object work, with Kshetra and Saṅgam as named consumers and the
-scanner-signature change landing in all three. Native decision: name the owner. Gap register: **G19**.
+**Reach, measured for the canonical chart:** 40 of 765 `gochara_resonance_map` targets are
+Rāhu/Ketu across 9 event classes · **232 of 914** served generation-3.0 rows carry node contacts
+(carrier: `term_breakdown`; `active_sentences` is `[]` on all 914) · **50 of 87** generation-2.0
+rows in `_v2` (carrier: `active_sentences`) · `kala_convergence` 0 (table empty for this chart) ·
+**6,225 of 16,297 protected v1 rows** carry node contacts — so a node change also alters how any
+successor compares against the protected benchmark.
 
-### 11.3 The shared branch
+### 11.2 The ruling needs a paired disposition, not just a convention
 
-`l3/kala-elevation-readiness` has become, by use, the L3 documentation branch: the Saṅgam session
-committed its packet there (36 files, zero foreign files swept — verified) from inside this session's
-worktree. Rule from here: committed documentation on this branch is fine, **staged by name only**;
-*uncommitted* work belongs in the authoring session's own worktree, never a shared one. The
-`KSHETRA_ELEVATION_BRIEF_v1_0.md` still unstaged in this worktree is the Kshetra session's, not this
-session's, and stays untouched.
+"Rule mean node" is **not** a one-line hub repair, because the store itself is true. Whatever is
+ruled, the native must also rule *where the repair lands*:
 
+| Option | What it costs |
+|---|---|
+| **(a) Rebuild `ephemeris_daily` mean-node** | Matches the DAR receipt's own claim; touches a frozen layer and every downstream consumer of the knots. |
+| **(b) Keep the knots TRUE; derive mean Rāhu/Ketu analytically at read time** | Cheap, no L0 rebuild, auditable against Swiss — but store and derivation then disagree by ~1° and that must be **declared per row**, never silent. Recommended by the Gochara session (its N-4a) and the Saṅgam session; **I concur.** |
+| **(c) A declared mixed-frame contract per consumer** | Most honest about current reality, most surface area to police. |
+
+Whichever is ruled, the paired obligations are: repair migration 624's probe so it *detects* rather
+than declares; correct the `l0_ephemeris.py` comment and docstring; and decide the legacy
+`l1_positions` chain separately. Riding with it: the **cusp frame** (L1 stores Placidus; the Saṅgam
+plan assumed Śrīpati) — which the Kshetra session confirms does not touch Kshetra (whole-sign
+arithmetic only, `writer.py:1783`).
+
+### 11.3 M-3 — two producer paths, and E1/E3 is **not** unblocked by either yet
+
+If the native re-affirms June §4.5 (no ephemeris scan inside Saṅgam; Saṅgam consumes pre-computed
+directed contact events; `planet` as a list), a directed contact-event producer becomes an upstream
+obligation. Two shapes are now on the table:
+
+- **Path A — a bounded amendment to `transit_search.py`** under one named owner (frame/ayanāṃśa/node
+  arguments; directed special-aspect search). Faster; **edits a frozen shared hub**.
+- **Path B — a new pure module** (`services/gochara_kernel`), proposed in the Gochara brief v1.2:
+  emits directed contact episodes natively (t_in / t_exact / t_out, bracket, tolerance, branch, orb
+  + orb_source, plus a Search-coverage row per partition), with frame/ayanāṃśa/node as arguments by
+  construction. Edits neither `transit_search.py` nor `ka_dasha_kala` (both in its `must_not_touch`).
+  Saṅgam E1/E3 would bind to the kernel; Kshetra S0 could adopt it later without a second amendment.
+
+**Path B's own caveat, stated by its author and carried verbatim:** the kernel becomes a shared hub
+the moment two assets bind to it — *"the exact property that made `transit_search` hard to change"* —
+so it must carry an additive-only signature rule and a versioned contract from day one. And it
+**exists only if the native approves that brief's N-5 (served-product owner) and N-7 (persisted
+Contact ledger), both unruled**. If N-7 is refused, the obligation reverts to Path A and still needs
+an owner. **Therefore E1/E3 must not be recorded as unblocked by a proposal.**
+
+**The owner is the native's to name.** All three sessions have declined to name it between
+themselves — correctly. The native rules shape *and* owner together.
+
+**Directed aspects, verified here:** `find_aspect_events` searches `(target_longitude_deg +
+aspect_deg)` (`transit_search.py:312,320`); no caller negates it. Saṅgam passes symmetric degrees
+`[0,60,90,120,180]` (`engine.py:213,467`), while the special-aspect table is asymmetric —
+`gochara_grammar/primitives.py:190-194`: Mars `[90,180,210]`, Jupiter/Rāhu/Ketu `[120,180,240]`,
+Saturn `[60,180,270]`. **No served generation-3.0 row carries any of the asymmetric degrees** (0
+rows matched), so the directed-aspect gap is real at the engine and currently unexercised in served
+data — a gap to close in the producer, not a live wrong answer in serving.
+
+### 11.4 Corrections to this session's own v1.1
+
+1. **Kshetra is not a `transit_search` position reader.** v1.1 listed three readers. Verified:
+   `services/ka_kshetra/stage0_kinematics.py` imports only the `MEAN_MOTIONS` constant (`:746`) for
+   dwell normalisation — **zero** scan/search call-sites — and reads all nine bodies from
+   `ephemeris_daily` through its own Hermite spline. Correct position readers of `transit_search`:
+   **`ka_gochara/service.py` and `ka_sangam/engine.py`**. Kshetra is an `ephemeris_daily` reader —
+   which, per §11.1, still makes it **contract-mean / store-true**, so it is affected, just at a
+   different repair site. (Raised by the Kshetra session; its own "Kshetra is mean/mean" conclusion
+   is withdrawn by the store measurement.)
+2. **The "242 rows" figure was wrong.** It summed two generations and two carriers without a
+   generation filter. Correct: **232 of 914** at `g3_utkarsha` via `term_breakdown`, **50 of 87** at
+   generation 2.0 via `active_sentences`. Raised by the Gochara session; reconciled here.
+
+### 11.5 The shared branch
+
+`l3/kala-elevation-readiness` is by use the shared L3 documentation branch. Committed docs there are
+fine, **staged by name only**; uncommitted work belongs in the authoring session's own worktree.
+Verified: the Saṅgam commits swept zero foreign files. The Kshetra brief files still unstaged in the
+readiness worktree are that session's, and where they land is its user's call — untouched here.
+
+### 11.6 Carried but NOT verified by this session
+
+`bg_cohort` as a registered writer carrying TRUE_NODE — my read of
+`pipeline/orchestrator/writers/bg_cohort.py` found **no** `@register` and **no** `TRUE_NODE`, and
+its own comments say it *independently reproduces* `l1_positions`' formulas rather than importing
+them (`:49,105-106`). Flagged for the Gochara session to re-check. · Per-importer persisted
+divergence in the `l1_positions` chain. · The century BUILD-PROTECTED "residue" timeline (error
+stamped 2026-08-21 vs migration 588 applied 2026-08-23). · The 1.933° maximum and the pāda-boundary
+straddle (consistent with, but not recomputed from, my five-date sample). · **No natal Rāhu
+`longitude_sidereal` fact row exists** for the canonical chart at `lahiri_chitrapaksha` — so L1's
+mean convention is confirmed by declaration and by the DAR arithmetic, not by a stored fact.
