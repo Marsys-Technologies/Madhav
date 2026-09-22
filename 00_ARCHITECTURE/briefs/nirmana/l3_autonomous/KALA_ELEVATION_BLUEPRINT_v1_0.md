@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "3.0"
+version: "3.1"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.1 (2026-09-23): §11.27 — Sade-Sati, a live serving factor consuming 4,492 verified facts on the canonical chart, has ZERO primary-text attestation: all 5 corpus rows are in one MEDIUM-provenance modern nāḍī text. Highest-severity item of the day. Kota confirmed 0 rows."
   - "3.0 (2026-09-23): my own OCR caveat corrected — PG346-352 is a COMPLETE, legible primary construction of the Sarvatobhadra chakra; only the diagram page is degraded, and the prose rules make it unnecessary. G10 re-graded again, to BUILDABLE. §11.25 closes the day with the W0 corpus re-audit task."
   - "2.9 (2026-09-23): the wrong corpus list is HARDCODED IN PRODUCTION CODE with a verification claim behind it (ka_vedha_gochara/logic.py). And the Sarvatobhadra grid IS in the corpus at phaladeepika PG345/PG332 — G10 re-graded from unsourceable to OCR-blocked. New §11.24."
   - "2.8 (2026-09-23): §11.18 mechanism corrected — a lock is not a configuration; the 0.314″ origin is v3_spline_accuracy.py, decorated but unconfigured. New §11.22: M-1's 'no node dṛṣṭi' would flip a LIVE multiplicative term in the served λ (gochara_v3, not ka_sangam) and invalidate every stored λ. Six-rule ledger consolidated."
@@ -1277,3 +1278,42 @@ three analyses and a native ruling inside one day.
 shared premise.** Four sessions agreed. The agreement was real, the independence was not, and only a
 direct query broke it. Any review protocol that treats cross-session agreement as verification needs
 this caveat written into it.
+
+### 11.27 Sade-Sati: 4,492 served facts, zero primary attestation
+
+The Gochara session ran the `count(*)` rule against its own remaining absence claims rather than
+leave them, which is the right instinct and produced the most serious finding of the day. I verified
+it and the severity holds.
+
+| quantity | measured |
+|---|---|
+| Sade-Sati facts on the canonical chart | **4,492** |
+| corpus rows mentioning it, any spelling | **5** |
+| of those, in a primary text | **0** |
+| Kota chakra rows, corpus-wide | **0** |
+| kakṣyā rows (none in BPHS proper) | 14 |
+
+All five rows are in `nadi_navamsa_patel`, the MEDIUM-provenance grey upload that our retrieval layer
+has been over-ranking all day. Worse, of the five, only `PG1334:C1` states the doctrine at all
+(*"the transit of Saturn through the 12th, 1st and 2nd houses from the Moon"*). The other four are a
+modern author's **empirical observation** correlating outcomes with bindu counts across two example
+charts. That is a twentieth-century claim about charts, not a classical rule.
+
+So a serving factor that consumes 4,492 facts for this native rests on one paragraph in one
+medium-provenance modern text. Under F23 that cannot reach `DATA_ACCEPTED` on its current citation,
+and under §N.7's honest-null discipline it should not be narrating with unqualified confidence in
+the meantime.
+
+**The caveat that keeps this from becoming a fifth over-claim, and it is important.** I searched for
+a **name**, not a **doctrine**. "Sade-sati" is a late vernacular term — the rows themselves note the
+southern "elarata" and the popular "7½-year Panoti" framing. Saturn's transit results reckoned from
+the Moon may well be attested in the primaries under entirely different wording, inside the gochara
+chapters we have already been reading. **What is established is that the name and its 7½-year
+framing have no primary attestation. Whether the underlying transit doctrine does is a separate
+question that nobody has asked.** Asking it is a bounded task and it belongs in the W0 re-audit of
+§11.26 — and it must be asked by predicate, not by term, or it will produce exactly the class of
+false absence this whole chain was made of.
+
+**Kota chakra is the counter-example worth noting**: zero rows corpus-wide, established the way the
+rule requires. That is a real absence, honestly reached, and it supports keeping Kota at
+proposed-use rather than promoting it. The rule does not only demote things.
