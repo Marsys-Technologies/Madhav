@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "1.7"
+version: "1.8"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "1.8 (2026-09-23): the 14.82″ method gap IS nutation in longitude — verified identical; so the three sessions' figures were one value under two ayanāṃśa conventions, both giving pāda 4. Moshier's true-node error measured at ≤32.5″ (1950–2100), retiring 'unbounded' — and that bound is what makes the natal pāda reportable and the stored-knot pāda not. §11.7 gains two counterexamples."
   - "1.7 (2026-09-23): natal figures corrected by 14.82″ — my manual tropical−ayanāṃśa subtraction disagrees with FLG_SIDEREAL, and L1's stored RAH_MEAN arbitrates for the latter. A THIRD undeclared convention (ayanāṃśa application method). §11.10 refined: the epoch is declared correctly in code, never in the data, and the fix extends the row's existing ayanamsha_id pattern."
   - "1.6 (2026-09-23): §11.9 RETRACTED IN FULL — the 332″ was my own epoch error (knots are noon UT; I differenced against midnight). With set_ephe_path and noon, real Swiss reproduces the stored knots to 0.00″ on 5/5 dates, so store-is-TRUE is EXACT. The pāda claim is RESTORED as measured: natal TRUE 50.0451 = pāda 4, MEAN 49.0289 = pāda 3. New §11.10 records the undeclared epoch convention."
   - "1.5 (2026-09-23): §11.1 — two sessions' local node computations diverge by 332 arcsec, larger than every margin in dispute and enough to flip the natal pāda between pāda 4 and pāda 3. The withdrawal is upheld on stronger grounds; a peer's proposed arithmetic correction is NOT adopted because its figure does not reproduce here. New §11.9 makes local-ephemeris irreproducibility a first-class finding."
@@ -586,8 +587,20 @@ Moshier with Moshier where `.se1` is absent — it cannot fail, and under §N.8 
 all.** Production does carry real Swiss data (`Dockerfile:24`, `Dockerfile.pipeline:17`,
 sha256-verified into `/app/ephe`), so the gate is meaningful there and vacuous here.
 
-**Rule for every numerical acceptance gate in this campaign:** require `.se1` present and record the
-file checksums in the evidence, or the result is `NOT_RUN` — never `PASS`. Any inherited
+**Both backend inferences failed here, in opposite directions.** "Two flags return identical values,
+therefore Moshier" was right by luck. "No `.se1` found, therefore Moshier" was right by luck too —
+the files existed and the path was simply never set. **Only `retflag` survives both**: read it and
+test the MOSEPH bit. Provision and checksum your own `.se1` rather than assuming another session's
+copy persists — the one on this host sits under `/tmp`, placed by another session, and may not
+survive a reboot.
+
+**Measured, so "unbounded Moshier error" is retired:** Moshier's true-node error against Swiss is
+**≤32.5″ across 1950–2100** (10-year samples), not the ~360″ two sessions feared. That bound is
+exactly what separates a reportable figure from an unreportable one here: the natal pāda margin is
+177″ (reportable even on Moshier), the stored-knot margin is ~6″ (not reportable on any backend).
+
+**Rule for every numerical acceptance gate in this campaign:** require `.se1` present, verify
+`retflag`, and record the file checksums in the evidence, or the result is `NOT_RUN` — never `PASS`. Any inherited
 arcsecond-level parity figure whose run environment is not established is `[UNVERIFIED]` until it is.
 This is the same defect class as migration 624's probe (§11.1): a check that cannot return false.
 
@@ -652,6 +665,14 @@ difference. It is not — it is **method**:
 | `tropical − get_ayanamsa_ut()` (manual subtraction) | 49.028927° | **off by 14.82″** |
 | `FLG_SIDEREAL` (Swiss's own transform) | **49.033044°** | **0.00″** |
 
+**The gap is nutation in longitude, exactly.** Nutation at that instant is **−14.82″**, and the
+method gap is **−14.82″** — identical to two decimals. `get_ayanamsa_ut()` returns the *mean*
+ayanāṃśa; `FLG_SIDEREAL` applies the *apparent* one, which includes nutation. So the three sessions'
+figures were never three measurements — they were **one value under two conventions**, and the
+convention split we spent the day documenting reproduced itself inside our own instruments. Both
+conventions put Rāhu in pāda 4 (177″ and 162″ margins), so the conclusion is convention-independent.
+(Closed by the Gochara session; verified here.)
+
 **L1's stored fact is the arbiter, and it validates `FLG_SIDEREAL`.** My manual subtraction — used
 for every sidereal figure this session published before v1.7 — is the one that disagrees with what
 L1 actually serves. Both natal figures in §11.1 are corrected accordingly (mean 49.028927 →
@@ -685,3 +706,16 @@ which should make it considerably easier to land. (Framing by the Kshetra sessio
 the true natal value is computed at read time and stored nowhere — so any consumer wanting it
 recomputes it and silently inherits its caller's epoch, backend and ayanāṃśa method. Today that is
 three ways to be wrong, none of them visible in the data.
+
+### 11.13 The knot and the instant fall on opposite sides of the boundary
+
+Measured on Swiss, the sharpest form of the whole episode: the **stored noon knot** for the birth
+date is TRUE 49.998247° → **pāda 3**, while the **birth instant** is 50.049248° → **pāda 4**. Same
+body, same day, same backend — opposite sides of a classical boundary, 6″ and 177″ from it
+respectively.
+
+That is the argument for a design rule the Gochara family had already reached independently: **solve
+at the instant; a stored knot is an interpolation input, never an answer.** It is also why the
+knife-edge finding must not be cited against the natal figure (§11.10): the knot's 6″ margin is
+smaller than any backend's error, while the instant's 177″ margin is five times larger than the
+measured 32.5″ worst case. One is reportable, the other never will be.
