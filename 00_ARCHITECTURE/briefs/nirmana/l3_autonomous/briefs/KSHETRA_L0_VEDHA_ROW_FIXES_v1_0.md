@@ -1,8 +1,8 @@
 ---
 artifact: KSHETRA_L0_VEDHA_ROW_FIXES
 canonical_id: KSHETRA_L0_VEDHA_ROW_FIXES
-version: "1.1"
-status: ROUTED_TO_L0_OWNER  # via Gochara (madhav-e6) F-23/G-8 lane, delivered 2026-09-23; the L0 owner's identity is NOT established by any session — surfaced to the native
+version: "1.2"
+status: ROUTED_TO_L0_OWNER  # accepted into Gochara's lane 2026-09-23: recorded under G-9 in GOCHARA_RULING_SHEET_v2_0.md (unmerged branch l3/gochara-autonomous-wp0-7; verified by a read-only look at that worktree), marked 'not yet re-verified by this session' by Gochara; G-9 is now a repair, not only a re-citation; node rows → N-14; stamp columns → WP9. The L0 owner behind that lane is still not named by any session — surfaced to the native
 date: 2026-09-23
 routed_to: >
   the L0 owner of `bg_transit_rules`, via the Gochara family stream (madhav-e6), whose
