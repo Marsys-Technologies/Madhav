@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CHECKLIST
 canonical_id: KALA_PRE_ELEVATION_CHECKLIST
-version: "1.3"
+version: "1.4"
 status: CURRENT
 date: 2026-09-24
 revision_note: "v1.2 — after the L0 repair (PR #2727): §A shrinks to three native items; §C becomes the PR close-out; §D gains the Sade-Sati query result; §E records that the Saṅgam entry gate did not gate; §B4 downgraded (production reachable via proxy on 5432)."
@@ -25,8 +25,8 @@ Grouped by what each item blocks. **[V]** verified by this session at source; **
 
 | # | item | why only the native |
 |---|---|---|
-| A1 | **Release the W1 hold** on the frozen L3 generation design (G1) | nothing reaches `DATA_ACCEPTED` without it [V] |
-| A2 | **Authorize Kṣetra stage 3** — prompt at `AWAITING_NATIVE_AUTHORIZATION` | [A] |
+| ~~A1~~ | ~~Release the W1 hold~~ **RULED — RELEASED 2026-09-24** (native, verbatim: "Yes, release the hold. On the generation infrastructure.") | build the §6 design physically; the cutover (B1) still gates W1 [V] |
+| A2 | **Authorize Kṣetra stage 3** — raised by the native 2026-09-24 in a sentence that then asks for stages 4–5 first; **held pending one-word confirmation**, not recorded as authorized | [A] |
 | A3 | ~~Rule Gochara N-18~~ **CORRECTED: N-18 is already `NATIVE_RATIFIED`** on the Gochara v2.0 sheet (read from that session's worktree, read-only). N-18 is a *delivery* item — push the 13-commit WP0-7 branch and open a code-only PR, no build — not a doctrinal question. **The remaining action is the Gochara session's push, not a native ruling.** One new blocker on it: the ratified plan assigned that branch migrations **1075/1076**, which the L0 repair applied to production last night under the same numbers (my prompt said "1075 or higher" without knowing). Renumber to 1077/1078 before push — sent to that session | [V] |
 
 *Closed: the L0 scope authorization (executed), the E6 gate numbers, the node scope, the reviewer for the three conflicted rulings.*
@@ -51,8 +51,11 @@ Seven of eight items applied to production and **verified live by this session w
 
 | # | item | note |
 |---|---|---|
-| C1 | **Name an independent reviewer from outside the Saṅgam, Kṣetra and Gochara streams** | required by the prompt; none requested [V] |
-| C2 | Wait for `Build Check` and the re-run `Unit Tests`; merge | three checks pending at last look [V] |
+| ~~C1~~ | **DONE — an independent review ran** (agent outside the three streams; six findings, three real defects fixed in `2d3b25fb2`, dispositions posted in the PR thread under the author's account). No GitHub review object exists, which is why my earlier "none requested" was true and misleading | [V] |
+| C2 | **PR is RED on two required checks** (`Unit Tests`, `Governance Gates`) for one shared cause: `nirmana-analysis-layer-pins.json` pins a per-layer `writer_inventory_sha256`, and the repair legitimately moves 38 writer digests (a digest hashes the transitive source closure, not the file). Re-pin under the governed procedure, then merge | [V — author's diagnosis read; not reproduced by me] |
+| C2b | **All FIVE migrations are applied to production, not two:** 1075, 1076 (21:07–21:08 UTC), 1077, 1078 (21:17), 1079 (22:03). I reported two because my query only named two. 1077/1078 reseal the frozen integrity contracts items 1/2/3/5 correctly broke (the old seal went red as designed; the reseal records the prior hash as its precondition). 1079 fixes 1078's own false description | [V — live query] |
+| C2c | **Nineteen `bg_transit_rules` rows still carry the refuted "BPHS Ch.29" citation** — 18 unfavourable + 1 favourable-without-vedha — outside item 1's row-verified predicate, correctly left un-recited rather than re-cited unverified. A residual for a later, separately-verified re-citation | [V — reviewer finding, confirmed in 1079] |
+| C2d | Migration 1075's header arithmetic ("640× tighter") is wrong; correct is ~366×. 1075 is applied so it is not edited; recorded in 1079 | trivial [A] |
 | C3 | **Two consumers are now silently stale.** `kala_vedha_gochara` (355 rows) and `kala_moorti_nirnaya` (143 rows) were built from the *old* citations and **neither writer fingerprints its `bg_transit_rules` input**; `ka_sangam` does. Rebuild both, or add the fingerprint first so the staleness is detectable | the repair's own §N.8 consequence, unflagged by the PR [V] |
 | C4 | **Sarvatobhadra grid — blocked correctly, against my claim.** Partially recoverable (outer ring, rāśis, tithi groups, weekdays, 3 worked asterisms), not buildable in full: letter cells OCR-destroyed, 3/28 networks, traversal direction unstated. If a partial build is wanted: native ruling on the direction convention + source images or another edition. Otherwise stays empty with its docstring saying why | [V] |
 | C5 | PR body calls migration 1042 "unapplied"; it was applied 2026-09-19. Skipping it was right, the reason was wrong | trivial [V] |
