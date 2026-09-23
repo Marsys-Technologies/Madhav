@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_BINDING
 canonical_id: KALA_SYNERGY_BINDING
-version: "2.0"
+version: "2.1"
 status: PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -34,7 +34,7 @@ the named packet and bind nothing until that layer accepts. Rows marked DECISION
 | `t_exact` / `t_peak` | `timestamptz` or NULL, never a sentinel | OFFERS | MUST CONVERT | MUST CONVERT |
 | `inclusivity` | enum `{closed_closed, closed_open}`, **declared on every row by the asset, stating its own kernel's semantics** — the binding records findings and dictates none | finding: orb-crossing endpoints → `closed_closed`; MUST DECLARE | finding: split (daśā `[s,e)` at `engine.py:437`, vedha closed at `:672`); MUST UNIFY and DECLARE | finding: `closed_open` in code, unstated; MUST DECLARE |
 | `time_basis` | enum `{event_instant, noon_ut_knot, date_grain_midpoint}` | OFFERS (column exists; no production caller populates it — D-S4) | MUST ADD | MUST ADD |
-| **`precision_regime`** — the ruled name (Kṣetra ruling 8, Gochara G-9, Saṅgam M-3 all name it) | **no rename.** Values unified to enum `{instant_grain, date_grain}`; `day_grade` aliased to `date_grain` until the successor condition of Saṅgam D-7 is met (every dependent claim has an authorized successor), **not for a count of generations**. Gochara's contacts table names the same concept `claim_grain`: whether it aliases to the ruled name is **Gochara D-S4** | D-S4 | MUST EMIT (inherited in prose only today) | OFFERS the column; MUST re-value `day_grade` → `date_grain` |
+| **`precision_regime`** — the ruled name (Kṣetra ruling 8, Gochara G-9, Saṅgam M-3 all name it) | **no rename.** Values unified to enum `{instant_grain, date_grain}`; `day_grade` aliased to `date_grain` until the successor condition of Saṅgam D-7 is met (every dependent claim has an authorized successor), **not for a count of generations**. Gochara's contacts table names the same concept `claim_grain`; **Gochara's D-S4 now recommends renaming it to the ruled `precision_regime`** in 1081, the ledger, the kernel dataclasses and tests before the migration is ever applied (it exists only in disposable DBs), so no alias generation is needed — still the native's, B8-9 | D-S4 → rename recommended | MUST EMIT (inherited in prose only today) | OFFERS the column; MUST re-value `day_grade` → `date_grain` |
 | tz source | the **birth instant's** offset, never `datetime.now()`; no `date.today()` | conformant | MUST FIX (`writer.py:897`, `:558-559`) | conformant |
 | resolver | every stream converts date↔instant through `services/ka_temporal/date_resolver`; no private conversion | MUST ADOPT | MUST ADOPT | MUST ADOPT |
 
@@ -102,7 +102,7 @@ group must change the union, never pass silently).
 | house-vedha, laṭṭā, malefic scale | `ka_vedha_gochara` | consume by `window_ref`; Kṣetra retires `build_vedha_primitive` **after one cross-check generation (ruling 4)** and once every dependent claim has a successor | a test that fails if two writers emit a vedha verdict for one instant | ruled |
 | mūrti | `ka_moorti_nirnaya` | Kṣetra retires `build_moorti_primitive` (ruling 4) | same | ruled |
 | contact episodes | Gochara kernel (`contact_id`) | Kṣetra `find_contact_episodes` becomes a consumer, or is declared `evaluation`-only with `comparable_with = different_convention` | same | **DECISION B8-6 — no ruling covers this** |
-| node longitude | **mean** (M-1 / N-4a / ruling 7) — a convention split, not a second producer | **Gochara owns the fix** (N-7 kernel; Saṅgam may not edit `transit_search.py`); Saṅgam consumes; interim: every Saṅgam row stamps `comparable_with = different_convention` against Kṣetra | **L0's degree-level anchor — already applied (L0 item 6)** — plus a per-call node-mode assertion inside each L3 reader | ruled; fix in flight |
+| node longitude | **mean** (M-1 / N-4a / ruling 7) — a convention split, not a second producer | **Gochara owns the fix** — vehicle is packet S-1/S-2: `services/ka_gochara/service.py` returns kernel episodes (mean node, N-4) through a new `find_episodes`, and Saṅgam stops bypassing the service. **`pipeline/transit_search.py` stays `must_not_touch` for every stream**; "kernel path" never means editing that file. Saṅgam consumes; interim: every Saṅgam row stamps `comparable_with = different_convention` against Kṣetra | **L0's degree-level anchor — already applied (L0 item 6)** — plus a per-call node-mode assertion inside each L3 reader | ruled; fix in flight |
 
 ## B7 — What conformance proves
 
