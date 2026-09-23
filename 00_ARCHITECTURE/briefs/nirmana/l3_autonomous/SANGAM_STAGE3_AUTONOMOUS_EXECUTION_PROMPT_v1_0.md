@@ -15,7 +15,12 @@ basis: >
   D-1…D-8 under the native's written delegation) + KIMI_K3_REVIEW_SANGAM_CLOSED_v1_0.md
   (ACCEPT_WITH_CONDITIONS, K2-01…K2-12, all applied).
 usage: >
-  Start Kimi Code in /Users/Dev/madhav-l3/readiness, choose "Trust this folder" at the prompt
+  Create a FRESH worktree first — never run in another session's checkout:
+  `git worktree add /Users/Dev/madhav-l3/sangam-stage3 -b sangam/stage3 origin/l3/kala-elevation-readiness`
+  (v1.0 said to start in /Users/Dev/madhav-l3/readiness, the design session's own worktree; the executor
+  checked out sangam/stage3 THERE, and a third session later committed into the same directory without
+  noticing the branch had changed — CORRECTED 2026-09-23.) Start Kimi Code in that new directory, choose
+  "Trust this folder" at the prompt
   (without trust the project MCP servers are skipped and the DB/corpus checks below cannot run),
   set k3 effort to max, and paste this ENTIRE file as the first message. The prompt is idempotent
   and resumable: re-pasting it into a fresh session resumes from the durable state file in §8,
@@ -192,7 +197,7 @@ fresh session re-pasting this prompt resumes exactly where you stopped.
 
 ## §9 — First actions, verbatim
 
-1. `git fetch -q origin l3/kala-elevation-readiness && git checkout -b sangam/stage3 origin/l3/kala-elevation-readiness`
+1. Confirm you are in your OWN worktree: `git worktree list` and `git rev-parse --abbrev-ref HEAD` must show the directory and branch from `usage`; if either is another session's, STOP. Then `git fetch -q origin`.
 2. Read the Phase 0(a) list in order. Write nothing yet.
 3. `cd 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam && ./RUN_ALL.sh` — confirm
    13/13 positive and 13/13 negative. If any script passes under `NEG=1`, **that script is broken**;

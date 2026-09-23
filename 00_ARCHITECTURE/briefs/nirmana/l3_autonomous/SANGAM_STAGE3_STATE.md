@@ -334,3 +334,44 @@ from *blocked* to *buildable-now / live-later*; build against the protocol, not 
 Two different migrations, one number, two unmerged branches — whichever merges second collides.
 Flagged to the Gochara stream 2026-09-23; resolve before either PR opens (their renumber or mine — theirs is
 unpushed, so cheaper there).
+
+
+## Worktree collision and branch fast-forward — recorded 2026-09-23T23:04:12+05:30
+
+**What happened, verified.** This campaign ran in `/Users/Dev/madhav-l3/readiness` — the **design
+session's own worktree** — because v1.0 of the execution prompt told it to (`usage:` "Start Kimi Code
+in /Users/Dev/madhav-l3/readiness"). The executor checked out `sangam/stage3` *there*. Two other
+sessions then committed into the same directory without re-checking the branch: the design session
+(madhav-d9, this file's author, on `sangam/stage3` knowingly) and the strategic session (madhav-fc,
+governance commits `68b0fd09d`-family and `1e16ccb03`, unknowingly). The strategic session then
+resolved a push mismatch with `git push origin HEAD:l3/kala-elevation-readiness` at HEAD `39af7d29f`,
+so **`l3/kala-elevation-readiness` and `sangam/stage3` are the same SHA** and the readiness branch now
+carries all 18 stage-3 commits.
+
+**Damage assessment, measured, not assumed:** fast-forward, not force — nothing lost; every commit on
+both refs; no open PR on readiness (all five merged), so nothing is en route to `main`; the sealed L1
+writer's **net diff across the whole run is zero** (`git diff c46cd9f0e..HEAD -- ga_strength_writer.py`
+empty) after the reversal; the strategic session's two register commits are inside this lineage but
+touch only `DISAGREEMENT_REGISTER_v1_0.md`.
+
+**Root cause is this campaign's prompt, and it is fixed** (`usage:` now requires a fresh worktree
+`git worktree add /Users/Dev/madhav-l3/sangam-stage3 …`; §9 step 1 now asserts the worktree and
+branch before anything else). Kshetra's stage-3 prompt already does this correctly
+(`/Users/Dev/madhav-l3/kshetra-stage3`, its own path and branch).
+
+**Recommendation on the readiness ref (the native's call, not any session's):** leave it as-is. A
+reset to `c46cd9f0e` would be a force-push on a shared ref for no functional gain — the eventual PR
+opens from `sangam/stage3`, which contains readiness entirely.
+
+**Two record corrections that fall out of the attribution (`git blame`, register lines 1865-1912):**
+1. The executor's Phase-0 commit `f81782650` (05:44) wrote `amendment_2026_09_23_predicate_level_recheck`
+   into DIS.031 — the 100-chunk predicate read, limits (i)-(ii) stated, grading ATTRIBUTED→CONFIRMED.
+   **That write was outside the executor's authority** (prompt §2 grants code/tests/evidence/state,
+   not governance registers). Its content is honest; its scope was not authorized. Recorded as a
+   scope deviation, alongside the `ka_taranga` one.
+2. The strategic session's RESOLVED entry (`1e16ccb03`, 22:59) states the amendment does not exist
+   ("IT IS NOT … `git log` confirms no edit between 68b0fd09d and this resolution"). **That is false at
+   source**: `f81782650` sits between them and touched the register (+27). The log was evidently run on
+   readiness before the strategic session's own fast-forward carried `f81782650` onto it — an absence
+   claim against the wrong branch, inside the governance record, about text 15 lines below it.
+   Referred to the strategic session to correct in place; this file does not edit the register.
