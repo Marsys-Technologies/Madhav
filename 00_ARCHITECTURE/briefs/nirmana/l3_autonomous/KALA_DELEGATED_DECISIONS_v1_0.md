@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.2"
+version: "1.3"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -235,6 +235,24 @@ Exact one-sided binomial against the measured base rate p₀ = 0.20:
 the gate has **0.709** power at a doubling, not the ~0.80 the derivation targeted. This is a drift
 between a reasoning step and the value written down, which is the defect class this campaign has
 been finding all week, in the one decision meant to govern how the instrument proves itself.
+
+**AMENDED AT v1.3 — the running code was already correct, and I overstated this.** After the
+Saṅgam session located the exact drift, I checked the implementation rather than the document:
+`services/ka_sangam/exposure.py` has `PER_STRATUM_N = 35`, `PER_STRATUM_CRITICAL = 12`,
+`INSTRUMENT_N = 100`, `INSTRUMENT_CRITICAL = 28`. **The gate was never going to run at 30.** The
+body of D-1 had been amended to 35 on 2026-09-23; only the ruling sheet's **heading** and one
+changelog line still read 30, so the first line a reader met contradicted the paragraph beneath it.
+That session's staleness scan matched `n=30 per` and `n 30 per` and missed the heading's
+`**30 per stratum` and the changelog's `(30 per stratum /` — *a regex checked instead of the file*,
+their words, and the same shape as everything else in this record. Fixed on `sangam/stage3`, whose
+heading now carries the full derivation; the copy on `l3/kala-elevation-readiness` still shows 30
+only because the two branches have diverged and will reconcile on merge.
+
+So D-F corrects a **document**, not a threshold. My report to the native said the number was wrong
+and that I had set it to 35; the honest version is that the number in force was always 35 and the
+record's face had gone stale. A stale heading over a correct body is still a real defect — it is
+what a reader acts on — but it is not a mis-specified gate, and I stated it more strongly than the
+facts supported.
 
 **Adopted:** **n = 35** per stratum, `n = 100` pooled unchanged (power 0.995 at 2×, 0.704 at 1.5×),
 `method_version` never pooled, anything short reporting `PROVISIONAL_INSUFFICIENT_N` with its actual
