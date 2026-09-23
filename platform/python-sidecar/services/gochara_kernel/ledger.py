@@ -121,6 +121,9 @@ def compute_contact_id(
     ids — the §10 identity test enforces it.
     """
     if _ids_contact_id is not None:
+        t_exact_jd = None
+        if t_exact is not None:
+            t_exact_jd = t_exact.timestamp() / 86400.0 + 2440587.5
         return _ids_contact_id(
             chart_id=chart_id,
             convention_id=convention_id,
@@ -130,7 +133,7 @@ def compute_contact_id(
             target_ref=target_ref,
             relation=relation,
             aspect_deg=aspect_deg,
-            t_exact=t_exact,
+            t_exact_jd=t_exact_jd,
             method_version=method_version,
         )
     aspect = 0.0 if aspect_deg is None else float(aspect_deg)
