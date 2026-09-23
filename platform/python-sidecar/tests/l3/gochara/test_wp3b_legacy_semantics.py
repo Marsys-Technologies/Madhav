@@ -425,7 +425,18 @@ class TestClassifiedArtifacts:
 
     def test_f10_peak_cap_truncation(self):
         """F-10 / H-5: MAX_PEAKS_PER_ERA_WINDOW=3 truncates admitted peaks
-        BEFORE persistence — truncation as absence. REPRODUCED, labelled."""
+        BEFORE persistence — truncation as absence. REPRODUCED, labelled.
+
+        LEGACY BASELINE, SUPERSEDED (N-17/H-5, 2026-09-24,
+        GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.2): this pins the FROZEN
+        pre-H-5 semantics reproduced in services/gochara_kernel/
+        legacy_semantics.py — the WP3b baseline, which must NOT be
+        "modernised". The LIVE pipeline (services/gochara_v3/
+        resolution_hierarchy.py) no longer caps or trims at admission:
+        every admitted peak persists by default and the 90-day separation
+        filter is an explicit serve-time trim parameter. See
+        services/gochara_v3/tests/test_w33_resolution_hierarchy.py
+        TestN17CapFreeAdmission for the live golden."""
         admitted = [LS.PeakCandidate(jd=float(T0 + 100 * i), lam=0.9 - 0.01 * i)
                     for i in range(6)]  # 6 well-separated candidates
         retained = LS.retain_candidates(admitted)
