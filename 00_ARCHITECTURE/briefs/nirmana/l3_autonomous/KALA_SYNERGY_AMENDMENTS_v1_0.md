@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AMENDMENTS
 canonical_id: KALA_SYNERGY_AMENDMENTS
-version: "1.1"
+version: "1.2"
 status: PROPOSED_TO_THE_THREE_STREAMS
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -33,7 +33,7 @@ for: "each stream folds its section into its own brief (§4 semantic change, §6
 
 ## Kṣetra — adopt §B1–B7; fix
 
-1. **The two t-axes.** `stage0_kinematics` emits days-since-J2000; `stage4_field.load_kinematics_breakpoints` merges them into the birth-relative axis with **no offset** (`stage4_field.py:1361-1369` → `writer.py:2049`). This is a correctness defect on every field row that uses kinematic breakpoints, and it is unmentioned in the packet. Fix before anything else in this list.
+1. **The t-axis — rank 0, ahead of G3.** *(Corrected by the Kṣetra session, verified live by the strategic session.)* The **entire knot set is J2000** — kinematics, primitives, clock boundaries — and the clip/horizon/decade constants are **birth-relative**; nothing converts. The kinematics roots are excluded from the segment knot set by design (`dhara_sweep.py:66`), so the roots are not the mechanism — **the clip is**. Live: `kala_field` spans `t` 0…36525 on the J2000 axis = **2000-01-01 → 2100-01-01**, 8.57 M rows; kinematics span 1984-02-05 → 2084-02-06. **The native's first sixteen years are missing from the field and the last sixteen are extrapolated.** Detector that fails on current data: `min(t_start)` must equal the birth instant and `max(t_end)` birth + 36525 on ONE declared convention. This is Phase 1 item zero of the stage-3 prompt and the plan's new rank-0.
 2. **Serve instants, not float day-offsets**: convert through the birth instant with the tz-aware resolver; declare `inclusivity=closed_open`, which the code already does and the packet never says.
 3. **Rename `precision_regime` → `claim_grain`**, `day_grade` → `date_grain` (alias one generation).
 4. **Stop being a second producer**: retire `build_vedha_primitive` and `build_moorti_primitive` per rulings 8 and 4 (ratified, not executed); reconcile `find_contact_episodes` with the Gochara kernel — consume `kala_gochara_contacts` by `window_ref`, or declare your episodes `evaluation`-only with `comparable_with = different_convention`.
