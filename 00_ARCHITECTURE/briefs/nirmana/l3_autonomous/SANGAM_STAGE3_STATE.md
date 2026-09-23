@@ -478,3 +478,34 @@ Also from the same record: the native declined a standalone restore drill — th
 backup-and-isolated-restore gate is what the stage-3 rebuild path inherits; and `CONSUMER_INTEGRATED` is
 earned by an acceptance record (`KALA_ACCEPTANCE_RECORD_CONTRACT_v1_0.md`), not an enum, when Saṅgam's
 windows reach a receiving operator.
+
+
+## Synergy audit — nine Saṅgam findings, each verified at this tip (2026-09-24T04:56:31+05:30)
+
+Source: strategic session, `KALA_SYNERGY_AUDIT_v1_0.md` / `_BINDING_` / `_AMENDMENTS_` @ `63b5fb429`,
+with the instruction "every file:line came from a read that was not yours; verify at source." Verified at
+`sangam/stage3` HEAD `0b439b0c7`. **These are conformance gaps between the build and the plan's intent — the
+exact material for the merge-gate review (D-K, re-aimed). None is fixed here: most need schema columns and
+belong to a numbered, reviewed engineering pass, not a close-out edit.**
+
+| # | Claim | Verified | Note |
+|---|---|---|---|
+| 1 | R-6 computed and discarded: `separate_kernel()` returns activity/valence/applicability/availability; INSERT persists only `availability`; `comparability_class`/`kernel_version` never written | **CONFIRMED** (`engine.py:942-944`; INSERT at `writer.py:990` persists `availability`, `episode_uuid`, `target_provenance` only; no `comparability_class`/`kernel_version` anywhere in the writer; set in-memory at `engine.py:1608/1914/2121`) | **The largest gap.** Phase 2a's "R-6 landed engine-side" was literally true and materially incomplete: the kernel separation never reached the table, so §4.5's never-pool rule is unenforceable in SQL. Needs columns. |
+| 2 | `comparability_class` vocabulary disagrees with the brief; Gochara ships `comparable_with` (4-value enum) | CONFIRMED — the brief carries the small enum; code emits the namespaced signature class | Binding proposal (one name `comparable_with`, Gochara's enum) is sound cross-stream alignment — adopt at the same schema pass as #1. |
+| 3 | Inclusivity split; tz offset at run time; `date.today()` with a 29-Feb crash | **CONFIRMED, line numbers transposed**: the daśā/eligible-window read at `engine.py:437` is half-open `[s,e)` (R-2 comment); the vedha read at `:672` is closed-closed `s ≤ p ≤ e`. `writer.py:897` takes `ZoneInfo(tzid).utcoffset(datetime.now())` — the birth *tz id* but the *current* offset. `writer.py:558-559`: `date(today.year + N, today.month, today.day)` raises on 29 Feb when the target year is not leap. | R-2 fixed one convention and left the other; declare per row and unify. Offset must be evaluated at the birth instant. The 29-Feb crash is real and cheap to fix. |
+| 4 | No coverage object; empty result ≡ failure | **CONFIRMED** (the only "coverage" in the writer is a docstring word at `:1442`) | My own §3 object "Search coverage" — E6's exposure manifest covers strata, not windows. Under N-7 the producer's row carries coverage; the binding's `window_ref` is the join key. |
+| 5 | `independence_group` not emitted; `independent_current_count` has zero `ka_*` readers | **CONFIRMED** (no emission in engine/writer; no reader among `ka_*` writers/services) | Seven named readers cannot inherit a field that does not exist. |
+| 6 | `convergence_id` is a BIGSERIAL surrogate reissued per rebuild; only `episode_uuid` is stable | **CONFIRMED** (`brahma_kala_convergence.sql:27`; `contact_uuid` never persisted — R-5 qualified in the disposable harness, migration 1072 added `episode_uuid` only) | R-5's identity never reached the production key. `mi_adhilepa` binds `convergence_id` (RRV-04) — fragile across every rebuild until `contact_uuid` is a column. |
+| 7 | The `kala_vedha_gochara` read is undeclared | **CONFIRMED, and worse:** `asset_registry_seed.ts` declares **NO upstream edges into `ka_sangam` at all** (outgoing edge to `ph_nimitta` exists) | Every read — `chart_facts`, daśā, vedha, MSR signals, AV — is undeclared at the seed. (Caveat: if a second DAG source exists outside the seed, it was not checked here.) |
+| 8 | Scanner hard-coded `TRUE_NODE` while M-1 rules mean and Kṣetra reads mean | **CONFIRMED** (`transit_search.py:10, :64, :246`; = RRV-16) | Interim stamp `comparable_with = different_convention` against Kṣetra rows until the kernel/amendment lands — adopted as the honest label. |
+| 9 | Brief mandates removing `confidence_score`/`confidence_label`; writer still emits both | CONFIRMED — the brief mandates removal; the writer still emits both | **Removal blast radius, measured:** `ka_bhavishya_lekha.py`, `ka_kala_darshana.py`, `ka_tulana/writer.py`, `ka_tulana/ranker.py`, `platform/src/lib/retrieval/registry/layers/register_d7_channel.ts`, and the capability census read `confidence_label`. Packet and code must agree **and** the §6.2 sentinel must run before removal. |
+
+**Kṣetra ↔ Saṅgam share no data edge** (Saṅgam windows are only their ablation baseline) — accepted as
+stated; the binding contract is the instrument that would create one, and it is a decision for the native at
+the synergy layer, not for this campaign.
+
+**Order for the engineering pass (agreeing with the audit):** #1 and #6 first (columns for
+activity/valence/applicability/`comparable_with`/`kernel_version`/`contact_uuid` — one migration under the
+scan-every-branch rule), then #3's three fixes, then #4/#5 (coverage + `independence_group` as columns or as
+N-7 pass-throughs), #7 (declare the edges — a seed change), #9 (coordinated with its five readers), #8 (interim
+stamp now; resolved by S-2). **The merge-gate reviewer should be pointed at this table.**
