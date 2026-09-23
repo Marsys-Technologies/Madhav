@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_BINDING
 canonical_id: KALA_SYNERGY_BINDING
-version: "1.0"
+version: "1.1"
 status: PROPOSED_FOR_ADOPTION_BY_THE_THREE_STREAMS
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), under the native's instruction to elevate the three critical assets synergistically"
@@ -27,7 +27,7 @@ non-conformant until it renames or aliases with a declared mapping.
 |---|---|---|---|---|
 | `t_start`, `t_end` | **`timestamptz`, UTC**, never a naive date, never a float day-offset as the *served* type | OFFERS (has `t_in/t_out`; alias) | MUST CONVERT (`DATE` → instant at the chart's tz-aware midnight; keep `peak_date` as a derived view) | MUST CONVERT (birth-relative float → instant via the birth instant; **first fix the J2000/birth-relative axis merge**) |
 | `t_exact` / `t_peak` | `timestamptz` or NULL, never a sentinel | OFFERS | MUST CONVERT | MUST CONVERT |
-| `inclusivity` | enum `{closed_closed, closed_open}` — **declared on every row** | MUST DECLARE (absent) | MUST DECLARE and **unify** (daśā/vedha split) | MUST DECLARE (half-open in code, unstated) |
+| `inclusivity` | enum `{closed_closed, closed_open}` — **declared on every row; each asset declares what its kernel's semantics actually are**, the binding does not impose one | MUST DECLARE (undeclared; orb-crossing endpoints → `closed_closed`) | MUST DECLARE and **unify** (daśā/vedha split) | MUST DECLARE (half-open in code, unstated) |
 | `time_basis` | enum `{event_instant, noon_ut_knot, date_grain_midpoint}` | OFFERS | MUST ADD | MUST ADD |
 | `claim_grain` | enum `{instant_grain, date_grain, day_grade}` — **`day_grade` is admitted as an alias of `date_grain` for one generation, then retired** | MUST CHECK-CONSTRAIN (free text today) | MUST EMIT (inherited prose only) | MUST RENAME `precision_regime` → `claim_grain`, value `day_grade` → `date_grain` |
 | tz source | the **birth instant's** offset, never `datetime.now()`; no `date.today()` anywhere | conformant | MUST FIX (W:897, W:558) | conformant |
@@ -52,7 +52,7 @@ non-conformant until it renames or aliases with a declared mapping.
 |---|---|---|---|---|
 | per-asset stable id | **content-addressed sha256 over the natural key + method version**, never a bigint surrogate | OFFERS `contact_id` | MUST LAND R-5 (today `convergence_id` is new every rebuild) | OFFERS `window_id` |
 | `generation` | on every row; part of the PK | OFFERS (`'4.0'` unimplemented — land it) | MUST ADD | MUST PUBLISH (`field_snapshot_id` dangling) |
-| **`window_ref`** | **the cross-asset handle**: `{asset_id, generation, id}` — the only way one asset cites another's window | MUST ACCEPT as target_ref type | MUST EMIT on every window that cites a contact | MUST EMIT on every segment that cites a resonance target or a sweep window; **remove the `'v1'` fall-through** |
+| **`window_ref`** | **the cross-asset handle**: `{asset_id, generation, id}` — the only way one asset cites another's window. **Resolves against the cited asset's existing PK; it is NOT a new `target_type` and never lets a producer target a consumer's window** (Gochara plan R2 one-way dependency preserved — the Gochara session's form, adopted) | n/a as producer — consumers cite `{asset_id:'ka_gochara', generation, id: contact_id}`; no schema change | MUST EMIT on every window that cites a contact | MUST EMIT on every segment that cites a resonance target or a sweep window; **remove the `'v1'` fall-through** |
 | L2 identity | natural key from Yojaka (DP06 ancestry), never a reassigned bigserial | MUST ADD (no L2 column) | MUST REPLACE `signal_id` FK with generation-bound identity | MUST FIX `_routes.path_edge_ids` |
 
 ## B4 — Inherited independence (Layer contract §7: shared inputs ≠ independent evidence)
