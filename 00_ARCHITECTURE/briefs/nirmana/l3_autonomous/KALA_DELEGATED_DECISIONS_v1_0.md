@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.1"
+version: "1.2"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -173,10 +173,90 @@ lifts. If it returns nothing, the demotion stands on a real check rather than on
 
 ---
 
+## D-E — The L0 lane: **not a role to fill. A bounded work package to authorize.**
+
+**Decision: reframe the question, so what remains for the native is one word, not a search.**
+
+I told the native twice that naming the L0 owner was not delegable. That was true of the question as
+I had framed it, and the framing was the problem. I was asking *"who is the standing L0 owner?"* —
+which has no answer, because no such person or session exists and nothing in the repository ever
+created one. The answerable question is *"what is the outstanding L0 work, and is it a role or a
+job?"*
+
+**It is a job.** Enumerated from the three packets, the entire outstanding L0 surface is:
+
+| # | item | source |
+|---|---|---|
+| 1 | Re-cite 39 `bg_transit_rules` rows from "BPHS Ch.29" (refuted) to Phaladīpikā Adh. XXVI, page-anchored (`PG322:C1`–`PG323:C1`) | Gochara F-23/G-8 |
+| 2 | Repair Venus rows 35/44/45 → 1/5/11 by UPDATE, never DELETE; INSERT the missing Mercury 8→1 row | `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md` |
+| 3 | Six Rāhu/Ketu vedha rows → disposition under N-14 | Kṣetra ruling 8 / Gochara N-14 |
+| 4 | Populate `bg_sarvatobhadra_grid` by transcription from Phaladīpikā `PG346:C1`–`PG352:C1`, under migration 526's own partition invariant | §11.25 |
+| 5 | Pin which of Adh. XXVI's **two** 1–5 malefic scales `bg_vedha_malefic_scale` cites (`PG349` vs `PG353`) | Saṅgam |
+| 6 | Add a **degree-level** anchor to migration 624's node-frame declaration — expected mean-node longitude 49.033° ± arcseconds at JD 2445735.717361 — replacing a sign-level anchor that provably cannot detect the slip it guards | Kimi C-1, sharpened §11.1 |
+| 7 | Declare `ephemeris_daily`'s node frame **and** epoch (noon UT), currently undeclared while the table stores TRUE under a contract asserting mean | §11.1 |
+| 8 | Correct `ka_vedha_gochara/logic.py`'s docstring, which asserts a four-text corpus "confirmed by direct search, not assumed" and is false in every load-bearing part | §11.24 |
+
+That is a finite, fully-specified list with every source located. It is one session's work, not a
+standing office. Items 1–5 are data repair with the target values already written down; 6–8 are
+declarations and a docstring.
+
+**So the decision reduces to:** authorize one L0 repair session with items 1–8 as its scope, an
+independent reviewer who is none of the three L3 streams, and no authority beyond those eight
+items. The three L3 streams stay **holders** — they have staged the work correctly and none of them
+should apply it, both because they are its consumers and because they are conflicted on the
+findings that produced it.
+
+**What is NOT in scope, deliberately:** anything that would change what the instrument tells the
+native. Every item above is a citation, a declaration, a repair to a known-wrong value, or a
+transcription from a cited primary. Nothing re-interprets a chart.
+
+---
+
+## D-F — The E6 evaluation thresholds: **shape accepted, one number wrong. n = 35, not 30.**
+
+**Decision: adopt with a correction, and state the limitation plainly.**
+
+I refused to accept these on the native's behalf when a peer offered them, because that would have
+laundered the native's delegation through two hands. The native has now asked me directly, which is
+a different thing, so I have checked the arithmetic rather than the reasoning.
+
+Exact one-sided binomial against the measured base rate p₀ = 0.20:
+
+| n | crit | actual α | power @ 2× (0.40) | power @ 1.5× (0.30) | min lift detectable @ 80% |
+|---|---|---|---|---|---|
+| **30** | 11 | 0.0256 | **0.709** | 0.270 | 2.13× |
+| **35** | 12 | 0.0344 | **0.805** | 0.348 | 1.99× |
+| 50 | 16 | 0.0308 | 0.904 | 0.431 | 1.84× |
+| **100** | 28 | 0.0342 | 0.995 | 0.704 | 1.57× |
+
+**The recorded number does not match the session's own arithmetic.** D-1 records `n = 30` per
+`(domain × route × method_version)`. That same session, correcting its own α error, derived
+**n = 35, crit ≥ 12, α = 0.0344, power 0.805** — and the recorded threshold stayed at 30. At n = 30
+the gate has **0.709** power at a doubling, not the ~0.80 the derivation targeted. This is a drift
+between a reasoning step and the value written down, which is the defect class this campaign has
+been finding all week, in the one decision meant to govern how the instrument proves itself.
+
+**Adopted:** **n = 35** per stratum, `n = 100` pooled unchanged (power 0.995 at 2×, 0.704 at 1.5×),
+`method_version` never pooled, anything short reporting `PROVISIONAL_INSUFFICIENT_N` with its actual
+n, all recomputed at equal power if the base rate moves off 0.20.
+
+**The limitation the native should hear in plain terms, because it is not a defect and should not be
+discovered later as a disappointment.** A gate of this size can only ever see **large** effects. At
+n = 35 the smallest detectable lift is essentially *a doubling*; a genuine 1.5× improvement is
+invisible (power 0.348) and stays weak even pooled at 100 (0.704). So "no signal detected" will be
+the common result for a long time, and it will mean *"not large enough to see at this n"*, never
+*"nothing there."* Any report from this gate must say which of those two it means. That is the
+`PROVISIONAL_INSUFFICIENT_N` discipline doing real work rather than decorating a null.
+
+---
+
 ## What this record does not decide
 
-The native's own four-times-raised items are now closed, but three things remain genuinely theirs
-and are not delegable by any reading of the delegation: **who the L0 owner is** (D-B), whether the
-`PROVISIONAL_INSUFFICIENT_N` evaluation thresholds the Saṅgam stream set under its own delegation
-are acceptable, and any disposition that would change what the instrument *tells the native about
-their own life* beyond the honest-gap demotions above.
+With D-E and D-F the four consolidated items and both residuals are closed. What remains genuinely
+the native's is narrower than before and is now a list of two one-word answers, not open questions:
+
+1. **Authorize the L0 repair session** with D-E's eight-item scope and an independent reviewer from
+   outside the three L3 streams. Yes or no.
+2. **Confirm n = 35** (D-F) over the recorded 30, or overrule with a number of their choosing.
+
+Everything else in this record is the author's under delegation and reversible by one line.
