@@ -565,6 +565,21 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     # v1_0.md §(C)1; §N.8). This is a SEPARATE check (not folded into check 3)
     # so a caller sees the coarser and finer detectors as distinct evidence,
     # never one flattened verdict (§N.6).
+    #
+    # HONEST SCOPE (narrowed after independent review of PR #2727 — the earlier
+    # wording overclaimed): what this detects is a mixup in THIS PROBE's own node
+    # constant and ayanamsha configuration, because it calls swe.calc_ut(MEAN_NODE)
+    # itself and compares the result against a pinned longitude. It does NOT read
+    # `ephemeris_daily`, so it cannot detect the STORED node frame drifting. The
+    # store is covered instead by migration 1076's row-level node_mode/
+    # epoch_convention declaration, which has no probe of its own — a real,
+    # disclosed gap, not a covered one.
+    #
+    # Tolerance sizing, stated correctly (migration 1075's own header got this
+    # arithmetic wrong and is applied, so the correction lives here and in 1079):
+    # the TRUE-vs-MEAN separation this must catch is 1.016204 deg = 3658.3 arcsec,
+    # so a 10-arcsec tolerance is ~366x tighter than the defect — not the "640x"
+    # 1075 claims, which mistakenly used the 177.3-arcsec Rohini pada-4 margin.
     try:
         if node_lon is None:
             raise RuntimeError("MEAN_NODE longitude unavailable (check 3 raised)")
