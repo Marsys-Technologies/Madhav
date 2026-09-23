@@ -20,7 +20,7 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 | 0 — Entry gate | **PASSED 2026-09-23** | (a) packet read in order; (b) D-8 discharged — Astra third review `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` = PROCEED_WITH_AMENDMENTS, RRV-01…09 dispositioned in plan §10 + brief changelog + inline [S3-E] amendments; (c) evidence suite re-run `OUTPUT_2026-09-23T050513.txt` SUITE-PASS 13/13 + 13/13 NEG (4 scripts spot-verified by hand, exit 1 under NEG=1); reviewer independently re-ran + mutation-tested (`OUTPUT_2026-09-23T051310.txt`); (d) DB reachable via Cloud SQL proxy **127.0.0.1:5434** (5433 down; `source /Users/Dev/madhav-l3/dbenv.sh`); D-6 staged SQL executed, 100 chunks read, no nodal aspect grant — recorded in DIS.031 `amendment_2026_09_23_predicate_level_recheck` (ground upgraded ATTRIBUTED→CONFIRMED, OCR/400-char limits stated). |
 | 1 — R-5 harness | **PASSED 2026-09-23** | Identity D-R5-1 implemented (`r5_identity.py`: contact_uuid uuid5 over the 8-field tuple with peak_date deliberately excluded; episode_uuid over sorted-member set-hash; FIELD_EXCLUSIONS = surrogate id / computed_at / generation-head pointers, named in code at :38-43). Five-rule rebuild/mapping (no-op / supersede / decisive-geometry-reattach / **ambiguous fail-closed** / explicit-withdrawal-only) with journal + replay, in a schema-faithful SQLite mirror of the §5.2 cascade graph (245/247 CASCADE, 249 SET NULL, 363 CASCADE, 334 CASCADE, 331/332 SET NULL, 339 FK-free resolved semantically). Seven §6.3 attacks executable (40 assertions, VERDICT PASS): empty rebuild, moved date (identity stable, content v+1), one-to-many split, many-to-one merge, ambiguous match (no auto-reattach; adjudicated re-run reattaches exactly then), interrupted/resumed (byte-identical manifest, exactly-once), unchanged-count content-swap (per-id canonical diff fires). S14 joined the manifest (`r5_harness/S14_r5_preservation_harness.py\|0\|1`); suite re-run `OUTPUT_2026-09-23T060527.txt` SUITE-PASS 14/14 + 14/14 NEG; NEG mutation = `FAIL_CLOSED_AMBIGUOUS` flipped to False (evidence-bearing: six attack-5 propositions read false on a genuinely re-attached DB). |
 | 2 — R-1…R-4, R-6 | **PASSED 2026-09-23** | all six repairs detector-backed — R-6, R-1, R-3(b), R-4, R-2 each with a new MANIFEST entry; suite `OUTPUT_2026-09-23T132601.txt` SUITE-PASS 17/17 + 17/17 NEG; full `tests/l3` minus ka_kshetra 1104 passed / 2 failed = the two known pre-existing pollution flakes (pristine-tree identical). Details per repair below. |
-| 3 — E2, E5 | **IN_PROGRESS — E2 PASSED 2026-09-23** | Verdict-based own-BAV + SAV repair landed engine-side; 235 targeted tests pass; evidence suite `OUTPUT_2026-09-23T143516.txt` SUITE-PASS 17/17 + 17/17 NEG (S3 post-fix detector). E5 implementation pending. |
+| 3 — E2, E5 | **PASSED 2026-09-23** | E2: verdict-based own-BAV + SAV repair landed engine-side; 235 targeted tests pass; evidence suite `OUTPUT_2026-09-23T143516.txt` SUITE-PASS 17/17 + 17/17 NEG (S3 post-fix detector). E5: station-loop episodes group contacts by child contact interval (`_loop_for_contact` replaces `_loop_for_peak`); aborted approaches whose interval overlaps a loop are included and labelled `loop_phase='approach'` with `approached_never_perfected=True`; horizon-truncated loops mark `perfected=False`; singletons pass through unchanged. Targeted tests 11 passed (`tests/l3/test_ka_sangam_e5_episodes.py`); broader ka_sangam regression 163 passed; full `tests/l3 -k 'not ka_kshetra'` 989 passed / 1 failed = known pre-existing pyswisseph parity flake. Evidence suite `OUTPUT_2026-09-23T150956.txt` SUITE-PASS 18/18 + 18/18 NEG; S18 joined MANIFEST. |
 | 4 — E4 + annual-Tājika gate | NOT STARTED | — |
 | 5 — E6 (E3 gated on N-7) | NOT STARTED | — |
 
@@ -41,6 +41,22 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 - Targeted pytest run (235 tests): `tests/l3/test_ka_sangam.py tests/l3/test_panchanga_term_honest_null.py tests/l3/test_ka_sangam_r6_kernel.py tests/l3/test_ka_sangam_r1_r4_repairs.py tests/l3/test_ka_sangam_r2_intersection.py tests/test_u3_convergence_currents.py tests/l3/test_ka_sangam_a3_fixes.py` → **235 passed**.
 - Full `tests/l3 -k 'not ka_kshetra'`: **978 passed, 1 failed, 7 skipped, 626 deselected**; the single failure is the known pre-existing pyswisseph parity flake `tests/l3/test_transit_search_cache.py::test_cached_call_matches_direct_swe_calc_ut`.
 - Evidence suite `OUTPUT_2026-09-23T143516.txt`: **SUITE-PASS 17/17 positive + 17/17 NEG**; S3 rewritten as a post-fix detector (producer receipt, sign-keyed reader, BAV/SAV verdict bands, missing-planet unavailable).
+
+### E5 — Station-loop episodes by child contact interval (PASSED 2026-09-23)
+
+**Design pins applied (plan §3 E5 + M-5 + RRV-05/06 + ASTRA [S3-E] E5 amendments):**
+- `services/ka_sangam/engine.py`: `group_station_loop_episodes` now assigns each contact to its station loop using `_loop_for_contact(window_start, window_end, loops)` instead of `_loop_for_peak(peak, loops)`. A contact whose interval overlaps the loop belongs to the episode even if its peak falls before the retrograde station (aborted approach). Horizon-truncated opening/closing halves remain included so boundary contacts are not silently dropped.
+- Child summaries carry `loop_phase` (`approach` / `retrograde` / `direct`) and `approached_never_perfected` (`True` when the contact peaks before an in-horizon SR that the loop actually reaches; `False` otherwise), preserving the RRV-06 aborted-approach label.
+- `perfected` is `True` only when both the SR and SD of the loop lie inside the horizon; truncated-start or truncated-end loops are `perfected=False`.
+- `pipeline/orchestrator/writers/ka_sangam.py` already calls `group_station_loop_episodes` after window generation and persists the episode columns.
+- `pipeline/orchestrator/writers/ka_taranga.py` already consumes `episode_children` for occupancy union in the chart's birth timezone.
+- Migration `1072_kala_convergence_episodes.sql` adds `is_episode`, `episode_uuid`, `episode_children`, `episode_hull`, `perfected` (additive-only, no existing column/table touched).
+
+**Qualification:**
+- `tests/l3/test_ka_sangam_e5_episodes.py` (new, 11 tests): single-loop multi-contact grouping; singleton pass-through; horizon-truncated loop marks `perfected=False`; no-service pass-through; different `signal_id` contracts do not group; aborted-approach child labelled `approach` + `approached_never_perfected=True`; taranga birth-timezone occupancy helpers.
+- Broader regression: `test_ka_sangam.py + test_ka_sangam_r6_kernel.py + test_ka_sangam_r1_r4_repairs.py + test_ka_sangam_r2_intersection.py + test_ka_sangam_a3_fixes.py + test_ka_sangam_e5_episodes.py` = **163 passed**.
+- Full `tests/l3 -k 'not ka_kshetra'`: **989 passed, 1 failed, 7 skipped, 626 deselected**; the single failure is the known pre-existing pyswisseph parity flake `tests/l3/test_transit_search_cache.py::test_cached_call_matches_direct_swe_calc_ut`.
+- Evidence: `S18_e5_station_loop_episodes.py` joined MANIFEST (`|0|1`); suite `OUTPUT_2026-09-23T150956.txt` **SUITE-PASS 18/18 positive + 18/18 NEG**; NEG control flips every E5 expectation (aborted approach not grouped, retrograde child marked approached, singleton grouped, horizon-truncated loop marked perfected).
 
 ## Binding pins added at the gate (D-8 dispositions — plan §10)
 
@@ -153,11 +169,12 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 
 ## Last commit
 
-`6109ac3f3` — "sangam stage3: Phase 3 E2 — verdict-based ashtakavarga (BAV/SAV)".
+`ea4a598d0` — "sangam stage3: Phase 3 E5 — station-loop episodes by contact interval".
 
 ## Evidence artifacts this phase
 
 - `evidence_sangam/OUTPUT_2026-09-23T050513.txt` (executor run) · `OUTPUT_2026-09-23T051310.txt` (reviewer run)
+- `evidence_sangam/OUTPUT_2026-09-23T150956.txt` (E5 executor run) · `S18_e5_station_loop_episodes.py` (E5 post-fix detector)
 - `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` (D-8 gate output)
 - DIS.031 `amendment_2026_09_23_predicate_level_recheck` (D-6 corpus ground)
 - /tmp/d6_node_drishti_recheck.txt (raw SQL output, 100 rows; regenerable from the staged SQL)

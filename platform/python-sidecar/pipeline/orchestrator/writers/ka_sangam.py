@@ -32,6 +32,7 @@ from services.ka_sangam.engine import (
     NativeChartContext,
     derive_sade_sati_signs,
     derive_sade_sati_severity,
+    group_station_loop_episodes,
 )
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
@@ -756,6 +757,16 @@ class KaSangamWriter(WriterBase):
                     logger.warning("ka_sangam: Mode D failed for signal %s: %s", sig_id, exc)
                 if keepalive:
                     keepalive()
+
+        # E5: group contacts linked by a station loop into episodes.  This runs
+        # once per horizon call so loops are discovered over the full tier horizon.
+        all_windows = group_station_loop_episodes(
+            all_windows,
+            gochara_service,
+            horizon_start_jd,
+            horizon_end_jd,
+            chart_id=chart_id,
+        )
         return all_windows
 
     def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':
@@ -894,10 +905,19 @@ class KaSangamWriter(WriterBase):
 
     @staticmethod
     def _dedup(all_windows: list[dict]) -> list[dict]:
-        """Deduplicate by (mode, peak_date, signal_id) — keep highest score."""
+        """Deduplicate by (mode, peak_date, signal_id, episode_uuid) — keep highest score.
+
+        E5: episode rows share peak_date=None and signal_id; episode_uuid keeps
+        distinct episodes from collapsing into one another.
+        """
         seen: dict[tuple, dict] = {}
         for w in all_windows:
-            key = (w.get('mode'), w.get('peak_date'), str(w.get('signal_id', '')))
+            key = (
+                w.get('mode'),
+                w.get('peak_date'),
+                str(w.get('signal_id', '')),
+                str(w.get('episode_uuid', '')) if w.get('is_episode') else '',
+            )
             if key not in seen or w['convergence_score'] > seen[key]['convergence_score']:
                 seen[key] = w
         return sorted(seen.values(), key=lambda w: w['convergence_score'], reverse=True)
@@ -960,7 +980,8 @@ class KaSangamWriter(WriterBase):
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
                         confidence_label_relative, tier_basis,
-                        target_provenance, availability
+                        target_provenance, availability,
+                        is_episode, episode_uuid, episode_children, episode_hull, perfected
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -969,7 +990,8 @@ class KaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s::jsonb, %s::jsonb
+                        %s::jsonb, %s::jsonb,
+                        %s, %s, %s::jsonb, %s::jsonb, %s
                     )
                     """,
                     (
@@ -996,6 +1018,11 @@ class KaSangamWriter(WriterBase):
                         'relative_uncalibrated',
                         json.dumps(target_provenance) if target_provenance is not None else None,
                         json.dumps(availability) if availability is not None else None,
+                        w.get('is_episode', False),
+                        str(w.get('episode_uuid')) if w.get('episode_uuid') else None,
+                        json.dumps(w.get('episode_children')) if w.get('episode_children') is not None else None,
+                        json.dumps(w.get('episode_hull')) if w.get('episode_hull') is not None else None,
+                        w.get('perfected'),
                     ),
                 )
                 rows_inserted += 1

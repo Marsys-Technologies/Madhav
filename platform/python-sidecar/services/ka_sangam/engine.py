@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import math
+import uuid
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Optional
@@ -2201,6 +2202,302 @@ def mode_d_av_bindhu(
     return windows
 
 
+# ── E5 station-loop episode grouping ─────────────────────────────────────────
+
+# Deterministic namespace for episode UUIDv5 generation.  A fixed project
+# namespace is sufficient because the episode name already includes chart_id,
+# signal_id and loop bounds.
+_EPISODE_UUID_NAMESPACE = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
+
+
+def _extract_target_fact_id(w: dict) -> Optional[str]:
+    """Return the L1 target fact_id from a window's target provenance (R-1)."""
+    tp = (w.get('constituent_factors') or {}).get('target_provenance')
+    if isinstance(tp, dict):
+        return tp.get('target_fact_id')
+    return None
+
+
+def _station_loops_for_planet(
+    gochara_service: Any,
+    planet: str,
+    horizon_start_jd: float,
+    horizon_end_jd: float,
+) -> list[dict]:
+    """Fetch retrograde/direct stations and pair them into loops.
+
+    Returns a list of loops, each dict with:
+      - 'sr_jd', 'sd_jd': station-retrograde and station-direct Julian days
+      - 'sr_date', 'sd_date': corresponding Python dates
+      - 'truncated_start', 'truncated_end': booleans
+    Horizon-truncated halves are included so contacts near the boundary are not
+    silently dropped from episode grouping.
+    """
+    loops: list[dict] = []
+    if gochara_service is None:
+        return loops
+    try:
+        events = gochara_service.find_stations(planet, horizon_start_jd, horizon_end_jd)
+    except Exception as exc:
+        logger.debug("E5: station search failed for %s: %s", planet, exc)
+        return loops
+
+    # Sort by JD and build a clean sequence of station markers.
+    markers: list[tuple[float, str]] = []
+    for ev in events:
+        st = (ev.extra or {}).get('station_type') if hasattr(ev, 'extra') else None
+        if st not in ('retrograde', 'direct'):
+            continue
+        markers.append((float(ev.event_jd), st))
+    markers.sort(key=lambda x: x[0])
+
+    # Pair retrograde -> direct.  Include truncated opening/closing halves so
+    # contacts before the first SR or after the last SD still belong to an
+    # episode when multiple contacts exist in that horizon-truncated loop.
+    i = 0
+    while i < len(markers):
+        jd, st = markers[i]
+        if st == 'retrograde':
+            sr_jd = jd
+            # Look for the matching direct station.
+            sd_jd = None
+            for j in range(i + 1, len(markers)):
+                if markers[j][1] == 'direct':
+                    sd_jd = markers[j][0]
+                    i = j + 1
+                    break
+            if sd_jd is None:
+                # Horizon-truncated loop: no SD within horizon.
+                loops.append({
+                    'sr_jd': sr_jd,
+                    'sd_jd': horizon_end_jd,
+                    'sr_date': _jd_to_date(sr_jd),
+                    'sd_date': _jd_to_date(horizon_end_jd),
+                    'truncated_start': False,
+                    'truncated_end': True,
+                })
+                break
+            loops.append({
+                'sr_jd': sr_jd,
+                'sd_jd': sd_jd,
+                'sr_date': _jd_to_date(sr_jd),
+                'sd_date': _jd_to_date(sd_jd),
+                'truncated_start': False,
+                'truncated_end': False,
+            })
+        elif st == 'direct':
+            # Horizon-truncated opening: this direct station closes a loop whose
+            # SR fell before the horizon start.
+            loops.append({
+                'sr_jd': horizon_start_jd,
+                'sd_jd': jd,
+                'sr_date': _jd_to_date(horizon_start_jd),
+                'sd_date': _jd_to_date(jd),
+                'truncated_start': True,
+                'truncated_end': False,
+            })
+            i += 1
+        else:
+            i += 1
+
+    # If the sequence ended on an unmatched retrograde, it was handled above.
+    return loops
+
+
+def _loop_for_contact(window_start: date, window_end: date, loops: list[dict]) -> Optional[dict]:
+    """Return the station loop whose span overlaps this contact's interval.
+
+    E5: an episode groups contacts linked by a station loop.  A contact whose
+    interval overlaps the loop belongs to it even if its peak falls just before
+    the retrograde station (aborted approach).
+    """
+    for loop in loops:
+        if window_start <= loop['sd_date'] and window_end >= loop['sr_date']:
+            return loop
+    return None
+
+
+def _episode_contract_key(w: dict) -> tuple:
+    """Canonical contract key for grouping contacts into episodes.
+
+    Episode linkage is by (graha, target, directed angle, frame/method).
+    signal_id captures the predicate/method/frame discriminator; target_fact_id
+    captures the L1 provenance of the target.
+    """
+    cf = w.get('constituent_factors') or {}
+    return (
+        str(cf.get('planet') or ''),
+        str(_extract_target_fact_id(w) or ''),
+        str(cf.get('aspect_deg') or ''),
+        str(w.get('signal_id') or ''),
+    )
+
+
+def group_station_loop_episodes(
+    windows: list[dict],
+    gochara_service: Any,
+    horizon_start_jd: float,
+    horizon_end_jd: float,
+    chart_id: str = '',
+) -> list[dict]:
+    """Group contacts that fall inside the same planet's station loop into episodes.
+
+    E5 ruling (M-5 / RRV-05 / RRV-06): an episode links contacts of one
+    (graha, target, directed angle, frame, method) by a station loop.  Child
+    intervals are retained; the hull is the search envelope; occupied time is
+    the union of child intervals; there is no default peak date.  Singletons
+    pass through unchanged; horizon-truncated loops are not forced to a template.
+
+    Returns a new list where child rows that belong to an episode with >=2
+    members are replaced by a single episode row.  The episode row carries:
+      - is_episode = True
+      - episode_uuid = deterministic UUIDv5
+      - episode_children = JSONB-serializable list of child summaries
+      - episode_hull = {'window_start': ..., 'window_end': ...}
+      - perfected = True iff the loop is complete (both SR and SD inside horizon)
+      - peak_date = None
+      - window_start/window_end = hull envelope
+      - convergence_score = max child score
+    """
+    if not windows or gochara_service is None:
+        return windows
+
+    # Group windows by planet so we fetch station events once per planet.
+    by_planet: dict[str, list[dict]] = {}
+    for w in windows:
+        cf = w.get('constituent_factors') or {}
+        planet = str(cf.get('planet') or '')
+        if planet:
+            by_planet.setdefault(planet, []).append(w)
+
+    # For each planet, build loops and bucket contacts by contract + loop.
+    out: list[dict] = []
+    for planet, pwindows in by_planet.items():
+        loops = _station_loops_for_planet(
+            gochara_service, planet, horizon_start_jd, horizon_end_jd
+        )
+        if not loops:
+            out.extend(pwindows)
+            continue
+
+        # bucket[contract_key][loop_index] -> list of windows
+        buckets: dict[tuple, dict[int, list[dict]]] = {}
+        for w in pwindows:
+            ws = w.get('window_start')
+            we = w.get('window_end')
+            if ws is None or we is None:
+                out.append(w)
+                continue
+            loop = _loop_for_contact(ws, we, loops)
+            if loop is None:
+                out.append(w)
+                continue
+            key = _episode_contract_key(w)
+            loop_idx = loops.index(loop)
+            buckets.setdefault(key, {}).setdefault(loop_idx, []).append(w)
+
+        for key, loop_buckets in buckets.items():
+            for loop_idx, members in loop_buckets.items():
+                loop = loops[loop_idx]
+                if len(members) < 2:
+                    out.extend(members)
+                    continue
+
+                # Build the episode row.
+                members_sorted = sorted(
+                    members,
+                    key=lambda w: (w.get('window_start') or date.min,
+                                   w.get('window_end') or date.min)
+                )
+                hull_start = min(
+                    (w.get('window_start') for w in members_sorted if w.get('window_start')),
+                    default=None,
+                )
+                hull_end = max(
+                    (w.get('window_end') for w in members_sorted if w.get('window_end')),
+                    default=None,
+                )
+                if hull_start is None or hull_end is None:
+                    out.extend(members)
+                    continue
+
+                max_score = max(
+                    float(w.get('convergence_score') or 0.0) for w in members_sorted
+                )
+
+                # Deterministic episode identity: UUIDv5 over canonical name.
+                child_keys = sorted(
+                    f"{w.get('peak_date')}:{w.get('window_start')}:{w.get('window_end')}"
+                    for w in members_sorted
+                )
+                name = (
+                    f"episode:{chart_id}:{key[0]}:{key[1]}:{key[2]}:{key[3]}:"
+                    f"{loop['sr_jd']}:{loop['sd_jd']}:" + "|".join(child_keys)
+                )
+                episode_uuid = uuid.uuid5(_EPISODE_UUID_NAMESPACE, name)
+
+                children = []
+                for w in members_sorted:
+                    peak = w.get('peak_date')
+                    phase = 'unknown'
+                    approached = None
+                    if peak is not None:
+                        if peak < loop['sr_date']:
+                            phase = 'approach'
+                            approached = not loop['truncated_start']
+                        elif peak > loop['sd_date']:
+                            phase = 'direct'
+                            approached = False
+                        else:
+                            phase = 'retrograde'
+                            approached = False
+                    child = {
+                        'window_start': str(w.get('window_start')) if w.get('window_start') else None,
+                        'window_end': str(w.get('window_end')) if w.get('window_end') else None,
+                        'peak_date': str(peak) if peak else None,
+                        'convergence_score': float(w.get('convergence_score') or 0.0),
+                        'orb_strength': w.get('orb_strength'),
+                        'loop_phase': phase,
+                        'approached_never_perfected': approached,
+                    }
+                    children.append(child)
+
+                representative = members_sorted[0]
+                rep_cf = dict(representative.get('constituent_factors') or {})
+                # Stamp episode metadata into the representative's factors.
+                rep_cf['episode_uuid'] = str(episode_uuid)
+                rep_cf['episode_member_count'] = len(members_sorted)
+                rep_cf['episode_loop_truncated_start'] = loop['truncated_start']
+                rep_cf['episode_loop_truncated_end'] = loop['truncated_end']
+
+                episode_row = {
+                    **representative,
+                    'mode': representative.get('mode', 'A'),
+                    'window_start': hull_start,
+                    'window_end': hull_end,
+                    'peak_date': None,
+                    'convergence_score': round(max_score, 4),
+                    'is_episode': True,
+                    'episode_uuid': episode_uuid,
+                    'episode_children': children,
+                    'episode_hull': {
+                        'window_start': str(hull_start),
+                        'window_end': str(hull_end),
+                    },
+                    'perfected': not (loop['truncated_start'] or loop['truncated_end']),
+                    'constituent_factors': rep_cf,
+                }
+                out.append(episode_row)
+
+    # Preserve any windows whose planet was empty (should not happen, but be safe).
+    seen_ids = {id(w) for group in by_planet.values() for w in group}
+    for w in windows:
+        if id(w) not in seen_ids:
+            out.append(w)
+
+    return out
+
+
 __all__ = [
     'SUPPORTING_WEIGHTS',
     'HIGH_CONFIDENCE_ORB_THRESHOLD',
@@ -2227,4 +2524,5 @@ __all__ = [
     '_SAV_SCAN_THRESHOLD',
     '_AV_SCAN_PLANETS',
     '_SIGN_NAMES',
+    'group_station_loop_episodes',
 ]
