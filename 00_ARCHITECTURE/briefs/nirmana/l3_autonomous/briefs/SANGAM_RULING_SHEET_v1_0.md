@@ -31,7 +31,9 @@ delivered; the native has since affirmed them as their own. **(2) D-1…D-8 belo
 decisions, made under the delegation quoted above.** They are not native words and are not recorded
 as such. Each carries its reasoning so any one can be overturned with a single line.
 
-### D-1 — M-6 minimum n: **30 per stratum · 100 instrument-level · `method_version` never pooled**
+### D-1 — M-6 minimum n: **35 per stratum (crit ≥12, α=0.0344, power 0.805) · 100 instrument-level (crit ≥28, α=0.0342, power 0.833) · `method_version` never pooled**
+
+**[HEADING CORRECTED 2026-09-24.** The body of this decision was amended to n=35 on 2026-09-23 (K2-01) and the executor's `exposure.py` computes 35/12 and 100/28 from exact binomial tails — but this heading still read "30", so the first line a reader saw contradicted the paragraph beneath it. Caught by the strategic session while checking the arithmetic under the native's direct instruction (`KALA_DELEGATED_DECISIONS_v1_0.md` **D-F** at `59cd0390e`: n=35 adopted, pooled 100 unchanged). The drift class this campaign has been finding, in the decision meant to govern how the instrument proves itself; corrected in place.]**
 
 - **Hard partition: `method_version`.** Windows scored under different kernel/contract versions are
   different estimands and are never pooled. This is the calibration-leak discipline the project

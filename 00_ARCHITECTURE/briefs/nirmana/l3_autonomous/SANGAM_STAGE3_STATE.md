@@ -409,3 +409,24 @@ native's delegation to the strategic session quoted verbatim) — verified at th
 - **Not delegated, correctly:** the strategic session declined to accept this campaign's E6 gate numbers
   (D-1: 35/crit≥12; 100/crit≥28) on the native's behalf — a second-order delegation. **That acceptance
   remains with the native.**
+
+
+## D-F adopted; a handoff rule; the L0 lane reframed (2026-09-24T00:48:20+05:30)
+
+- **D-F (`KALA_DELEGATED_DECISIONS_v1_0.md` @ `59cd0390e`, the native's direct instruction to the strategic
+  session — not a second-order delegation):** E6 gate **n = 35 per stratum** adopted, pooled 100 unchanged,
+  everything else in D-1 as written. This matches the sheet body and `exposure.py` (`PER_STRATUM_N = 35`,
+  `PER_STRATUM_CRITICAL = 12`; `INSTRUMENT_N = 100`, `INSTRUMENT_CRITICAL = 28`). **What had drifted: the
+  D-1 heading on the ruling sheet and the brief's 1.5 changelog still said 30** — both corrected 2026-09-24.
+- **Handoff rule (from D-F's stated limitation, adopted verbatim in substance):** a gate this size sees
+  only **large** effects. At n=35 the smallest lift detectable at 80% power is ≈2×; a genuine 1.5×
+  improvement is invisible per stratum (power 0.35) and weak even pooled (0.70). So **"no signal detected"
+  will be the common result for a long time, and it always means *not large enough to see at this n*,
+  never *nothing there*.** Every E6 report must say which of the two it means, or
+  `PROVISIONAL_INSUFFICIENT_N` becomes decoration on a null. Implement in E6's output text at the next
+  touch (alongside the perfected/unperfected split from B-3).
+- **L0 lane (D-B reframed by its author):** not a standing *role* nobody holds, but a *job* — eight
+  fully-specified items with sources located, one session's work, requiring the native's "authorize this
+  scope: yes/no" and an independent reviewer from outside the three L3 streams. **This campaign's B-5
+  (`ephemeris_daily` frame-and-epoch declaration) is item 7; Kimi's C-1 degree-level anchor is item 6.**
+  Neither moves until that session exists; this stream remains a holder.
