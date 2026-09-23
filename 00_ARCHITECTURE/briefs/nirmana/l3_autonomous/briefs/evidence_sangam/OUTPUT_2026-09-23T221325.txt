@@ -1,0 +1,270 @@
+==============================================================================
+S1 — unbound transit target is refused, not defaulted to 0.0
+==============================================================================
+  PASS  binder emits no target_longitude  — occurrences=0
+  PASS  engine has fail-loud unresolvable-target guard  — lines=[1462, 1783]
+  PASS  writer resolves target from L1 chart_facts  — lines=[393, 1383]
+  PASS  writer no longer defaults target to 0.0  — lines=[]
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S1_target_default_zero.py] positive exit=0  negative-control exit=1
+==============================================================================
+S2 — directed special aspects vs 'target + angle'
+==============================================================================
+  PASS  Mars pair search sets differ  — naive=[90, 210] directed=[150, 270]
+  PASS  Saturn pair search sets differ  — naive=[60, 270] directed=[90, 300]
+  PASS  Jupiter pair search sets coincide  — naive=[120, 240] directed=[120, 240]
+  PASS  scanner documents target+angle search  — transit_search.py:312
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S2_directed_aspect_arithmetic.py] positive exit=0  negative-control exit=1
+==============================================================================
+S3 — ashtakavarga producer receipt vs reader verdict (E2 post-fix)
+==============================================================================
+  PASS  (a) planet absent from receipt -> unavailable (None), never measured zero
+  PASS  (a) planet present in receipt -> verdict produced  — {'value': 6, 'rule': 'own_bav', 'source': 'ashtakavarga_bindu_sign:Jupiter-SIGN_1', 'availability': 'computed', 'verdict': 'support', 'school': 'BPHS'}
+  PASS  (b) Sangam reader reads ashtakavarga_bindu_sign
+  PASS  (b) Sangam reader reads completeness receipt
+  PASS  (b) Sangam reader reads school-primary label
+  PASS  (c) BAV ≥5 → support  — {'value': 5, 'rule': 'own_bav', 'source': 'ashtakavarga_bindu_sign:Jupiter-SIGN_1', 'availability': 'computed', 'verdict': 'support', 'school': 'BPHS'}
+  PASS  (c) BAV =4 → indeterminate  — {'value': 4, 'rule': 'own_bav', 'source': 'ashtakavarga_bindu_sign:Jupiter-SIGN_1', 'availability': 'computed', 'verdict': 'indeterminate', 'school': 'BPHS'}
+  PASS  (c) BAV ≤3 → obstruct  — {'value': 3, 'rule': 'own_bav', 'source': 'ashtakavarga_bindu_sign:Jupiter-SIGN_1', 'availability': 'computed', 'verdict': 'obstruct', 'school': 'BPHS'}
+  PASS  (d) missing planet → unavailable
+  PASS  (e) BPHS SAV >30 → support  — {'value': 31, 'rule': 'sav_bphs', 'source': 'ashtakavarga_bindu_sign:SARVA-SIGN_1', 'availability': 'computed', 'verdict': 'support', 'school': 'BPHS'}
+  PASS  (e) BPHS SAV 25-30 → indeterminate  — {'value': 27, 'rule': 'sav_bphs', 'source': 'ashtakavarga_bindu_sign:SARVA-SIGN_1', 'availability': 'computed', 'verdict': 'indeterminate', 'school': 'BPHS'}
+  PASS  (e) BPHS SAV <25 → obstruct  — {'value': 24, 'rule': 'sav_bphs', 'source': 'ashtakavarga_bindu_sign:SARVA-SIGN_1', 'availability': 'computed', 'verdict': 'obstruct', 'school': 'BPHS'}
+  PASS  (e) Phaladīpikā SAV >28 → support  — {'value': 29, 'rule': 'sav_phaladeepika', 'source': 'ashtakavarga_bindu_sign:SARVA-SIGN_1', 'availability': 'computed', 'verdict': 'support', 'school': 'Phaladīpikā'}
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S3_ashtakavarga_producer_vs_reader.py] positive exit=0  negative-control exit=1
+==============================================================================
+S4 — Moon contact count vs the withdrawn bound
+==============================================================================
+  PASS  60-day window: contacts == 5 and > bound 4  — n=5
+  PASS  90-day window: contacts == 7 and > bound 5  — n=7
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S4_moon_contact_count.py] positive exit=0  negative-control exit=1
+==============================================================================
+S5 — rarity_years opposition = period/2 (defect)
+==============================================================================
+  PASS  opposition reported at half the conjunction recurrence  — conj=29.46 opp=14.73
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S5_rarity_angle_fraction.py] positive exit=0  negative-control exit=1
+==============================================================================
+S6 — overlap registers agreement across unequal endpoints (R-2 oracle)
+==============================================================================
+  PASS  intervals overlap  — elapsed overlap=305 d (inclusive 306)
+  PASS  exact-endpoint key removed from service  — occurrences=0
+  PASS  agreement for A's span == 2 (distinct systems)  — count=2 systems=('vim', 'yog')
+  PASS  agreement for B's span == 2 (distinct systems)  — count=2 systems=('vim', 'yog')
+  PASS  exactly one shared atomic segment spanning the overlap  — shared=[(datetime.date(2027, 3, 1), datetime.date(2027, 12, 31))]
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S6_overlap_key_exact_pair.py] positive exit=0  negative-control exit=1
+==============================================================================
+S7 — orb gate runs after full accumulation (AST)
+==============================================================================
+  PASS  append occurs inside the search loop  — append lines=[351]
+  PASS  single return of the full list after the loop  — return lines=[371]
+  PASS  engine gate line follows the scan call  — gate=[1490, 1811] call=[1473]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S7_gate_after_accumulation.py] positive exit=0  negative-control exit=1
+==============================================================================
+S8 — Saturn retrograde loops 2026–2029 → E5 oracle points (with provenance)
+==============================================================================
+  provenance: swisseph 2.10.03; ephe_path=/tmp/se1; requested flags 65794, returned 65858 → SWIEPH; .se1 sha256[:16]={'seas_18.se1': 'a2cd8fc33807c78c', 'sepl_18.se1': 'ca1393ceab3a44fb', 'semo_18.se1': '1ca07bd67c24374d'}; ayanamsha Lahiri
+  PASS  exactly three SR→SD loops found  — found=3
+  loop SR 2026-07-26 350.519° → SD 2026-12-11 343.695°  arc 6.824°
+  PASS    inside 347.107° crosses 3×  — count=3
+  PASS    control 352.519° crosses 1×  — count=1
+  loop SR 2027-08-09 3.634° → SD 2027-12-24 356.769°  arc 6.865° (wraps 0°)
+  PASS    inside 0.201° crosses 3×  — count=3
+  PASS    control 5.634° crosses 1×  — count=1
+  loop SR 2028-08-22 17.052° → SD 2029-01-05 10.149°  arc 6.902°
+  PASS    inside 13.601° crosses 3×  — count=3
+  PASS    control 19.052° crosses 1×  — count=1
+VERDICT: PASS — ORACLE POINTS CONSTRUCTED ON SWIEPH (backend + checksums recorded)
+  [S8_saturn_loop_oracle.py] positive exit=0  negative-control exit=1
+==============================================================================
+S9 — sandhi_flag semantics
+==============================================================================
+  PASS  sandhi_flag = duration_days < 20 (exact line)  — line=[1062]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S9_sandhi_flag_meaning.py] positive exit=0  negative-control exit=1
+==============================================================================
+S10 — Mode A necessary vs supporting
+==============================================================================
+  PASS  necessary terms are dignity/orb/vedha  — lines=[1546, 1859]
+  PASS  dasha enters as a supporting current  — lines=[1548]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S10_mode_a_necessary_terms.py] positive exit=0  negative-control exit=1
+==============================================================================
+S11 — dignity 0 zeroes the score (adverse activity erased)
+==============================================================================
+  PASS  dignity 0 → score exactly 0.0 despite full support  — score=0.0
+  PASS  dignity 0.2 → nonzero (kernel is multiplicative in dignity)  — score=0.0524
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S11_dignity_zero_erases_activity.py] positive exit=0  negative-control exit=1
+==============================================================================
+S12 — lagna lookup is fail-loud, no Aries fallback
+==============================================================================
+  PASS  default assignment lagna_sign = 'Aries' is removed  — occurrences=0
+  PASS  fallback docstring removed  — occurrences=0
+  PASS  fail-loud guard exists  — lines=[1365]
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S12_lagna_default_aries.py] positive exit=0  negative-control exit=1
+==============================================================================
+S13 — post-engine TRIGGER composition
+==============================================================================
+  PASS  apply_trigger_suppression is defined in the writer  — line=[56]
+  PASS  it is called after both mode searches  — calls=[56, 715, 741] mode_a=[698] mode_b=[728]
+  PASS  admitted weights 0.2/0.2 referenced  — lines=[47, 52, 53, 61, 711]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S13_trigger_composition_post_engine.py] positive exit=0  negative-control exit=1
+==============================================================================
+S14 — R-5 identity/history preservation: seven §6.3 attacks on the disposable harness
+==============================================================================
+  PASS  attack 1 — empty rebuild: empty rebuild leaves every claim/binding/content byte-identical  — manifest digest unchanged
+  PASS  attack 1 — empty rebuild: no relations published for an empty rebuild  — relations=0
+  PASS  attack 1 — empty rebuild: nothing orphaned (CASCADE children, SET NULL parents, FK-free anchor)  — orphaned references=0
+  PASS  attack 1 — empty rebuild: no detached claims/bindings  — detached buckets empty
+  PASS  attack 1 — empty rebuild: FK-free phaladesa resolved semantically to anchor content  — top_anchor_id resolved by anchor content, not surrogate id
+  PASS  attack 2 — moved date (same contract version): same contact_uuid across a 3-day peak move  — uuid stable
+  PASS  attack 2 — moved date (same contract version): content version bumped +1  — version=2
+  PASS  attack 2 — moved date (same contract version): supersession edge exists (self-successor)  — supersedes edges=1
+  PASS  attack 2 — moved date (same contract version): issued claim content bytes unchanged  — 3 claims compared
+  PASS  attack 2 — moved date (same contract version): every dependent binding intact  — obstruction/darshana/anchors/phaladesa bindings identical
+  PASS  attack 2 — moved date (same contract version): exposure retained on contact and claims  — 30y
+  PASS  attack 2 — moved date (same contract version): canonical field-exclusion list is load-bearing (RRV-09)  — id/computed_at/generation-head-pointer excluded; content fields kept
+  PASS  attack 3 — one-to-many split: both split candidates exist  — 2 new rows
+  PASS  attack 3 — one-to-many split: split_from edges from the original (one per child)  — split_from=2
+  PASS  attack 3 — one-to-many split: original withdrawn with recorded reason  — withdrawn
+  PASS  attack 3 — one-to-many split: claims mapped to the declared authorized successor only  — successor holds 2 claims
+  PASS  attack 3 — one-to-many split: non-successor child holds none of the original claims  — other child holds 0
+  PASS  attack 3 — one-to-many split: successor mapping published in the manifest  — manifest edge
+  PASS  attack 4 — many-to-one merge: merged candidate exists  — 1 new row
+  PASS  attack 4 — many-to-one merge: merged_into edges from both originals  — 2 edges
+  PASS  attack 4 — many-to-one merge: both originals withdrawn with reason  — withdrawn
+  PASS  attack 4 — many-to-one merge: claims of BOTH originals mapped to the successor  — successor holds 3 claims
+  PASS  attack 4 — many-to-one merge: no claim orphaned (every claim bound to a live contact)  — 3/3 bound
+  PASS  attack 5 — ambiguous match (fail-closed): no automatic reattachment on ambiguity  — reattached edges=0
+  PASS  attack 5 — ambiguous match (fail-closed): both originals retained (active)  — retained
+  PASS  attack 5 — ambiguous match (fail-closed): claims still bound to their original contacts  — claims unmoved
+  PASS  attack 5 — ambiguous match (fail-closed): ambiguous_needs_adjudication flag present on both originals  — flagged
+  PASS  attack 5 — ambiguous match (fail-closed): adjudicated re-run reattaches the declared successor  — exactly original 1's claims moved
+  PASS  attack 5 — ambiguous match (fail-closed): the other original stays active with its claims  — untouched
+  PASS  attack 5 — ambiguous match (fail-closed): exactly one reattached edge, published  — 1 edge
+  PASS  attack 6 — interrupted/resumed rebuild: the simulated crash actually fired mid-rebuild  — killed
+  PASS  attack 6 — interrupted/resumed rebuild: resumed manifest byte-identical to the uninterrupted run  — 14 ops compared
+  PASS  attack 6 — interrupted/resumed rebuild: no double effects (relations/withdrawals/claims counted)  — resumed={'relations': 4, 'withdrawn': 2, 'claims': 4, 'flags': 0} uninterrupted={'relations': 4, 'withdrawn': 2, 'claims': 4, 'flags': 0}
+  PASS  attack 6 — interrupted/resumed rebuild: journal replay applied each op exactly once  — journaled 14/14 distinct 14/14
+  PASS  attack 7 — unchanged-count content-swap: row counts AND total claim bytes unchanged (the naive check misses it)  — naive snapshot identical: True
+  PASS  attack 7 — unchanged-count content-swap: manifest comparison fires exactly one per-id diff  — diffs=[('claim:1', 'claim_content')]
+  PASS  attack 7 — unchanged-count content-swap: the diff names the tampered claim id and the claim_content field  — key=claim:1 field=claim_content
+  PASS  attack 7 — unchanged-count content-swap: outcome bytes and bindings of the tampered claim are still compared  — verbatim outcome bytes intact
+VERDICT: PASS — POST-FIX BEHAVIOUR PRESENT
+  [r5_harness/S14_r5_preservation_harness.py] positive exit=0  negative-control exit=1
+==============================================================================
+S15 — R-6 kernel: adverse activity visible, availability honest, ordering valence-free
+==============================================================================
+  PASS  dignity 0, full intensity → new-kernel activity > 0  — activity=0.262
+  PASS  dignity 0, full intensity → new-kernel valence < 0  — valence=-1.0
+  PASS  legacy I-16 composite still 0.0 (labelled legacy reading)  — legacy=0.0
+  PASS  dignity 1 → valence > 0  — valence=1.0
+  PASS  eligibility failure → availability['dasha'] == 'unavailable'
+  PASS  eligibility failure → dasha applicability False (no manufactured support)
+  PASS  zero manufactured support: activity without dasha term < with neutral 0.5 term  — activity=0.0
+  PASS  equal-activity opposite-valence both survive a LIMIT-2 page cut  — page valences=[1.0, -1.0]
+  PASS  tiebreak is contact instant ASC (valence not consulted)
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S15_r6_kernel_adverse_visible.py] positive exit=0  negative-control exit=1
+==============================================================================
+S16 — Mode B R-1 provenance + R-4 withdrawal
+==============================================================================
+  PASS  Mode B supporting dict excludes withdrawn keys  — occurrences=0
+  PASS  benefic_dristi lineage key still computed  — lines=[1662, 1953]
+  PASS  transit_to_transit lineage key still computed  — lines=[1632, 1937]
+  PASS  c_benefic_dristi_withdrawn reason key present  — lines=[1663, 1954]
+  PASS  c9_transit_to_transit_withdrawn reason key present  — lines=[1633, 1938]
+  PASS  Mode B availability stamps target  — lines=[1587, 1893]
+  PASS  Mode B constituent_factors carries target_provenance  — lines=[1624, 1930]
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S16_r1_r4_post_fix.py] positive exit=0  negative-control exit=1
+==============================================================================
+S17 — R-2 intersection oracle falsifier cases
+==============================================================================
+  PASS  boundary convention declared as [start, end) (S-H)  — convention=[start, end)
+  PASS  chain: A agrees with 2 systems (no transitive merge)  — count=2 systems=('vim', 'yog')
+  PASS  chain: C agrees with 2 systems (no transitive merge)  — count=2 systems=('chara', 'yog')
+  PASS  chain: A and C never directly share a segment  — direct_ac=False
+  PASS  nested: same-system levels do not inflate agreement  — count=2
+  PASS  nested: shared segment carries levels {1,2,3} + parent identity  — levels={1, 3, 2}
+  PASS  degenerate [d,d) is an evaluated zero (not unavailable)  — count=0
+  PASS  S-H: contiguous intervals partition; end point not co-covered  — segments=[(datetime.date(2027, 1, 1), datetime.date(2027, 6, 30), ('vim',)), (datetime.date(2027, 6, 30), datetime.date(2027, 12, 31), ('yog',))]
+  PASS  sub-day datetime boundaries intersect atomically  — shared=[(datetime.datetime(2027, 3, 1, 12, 0), datetime.datetime(2027, 3, 1, 18, 0))]
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S17_r2_intersection_oracle.py] positive exit=0  negative-control exit=1
+==============================================================================
+S18 — E5 station-loop episodes by contact interval
+==============================================================================
+  PASS  aborted approach is grouped into the episode
+  PASS  aborted child labelled loop_phase='approach'
+  PASS  aborted child is approached_never_perfected
+  PASS  retrograde child is not approached-never-perfected
+  PASS  singleton passes through unchanged
+  PASS  horizon-truncated loop marks perfected=False
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S18_e5_station_loop_episodes.py] positive exit=0  negative-control exit=1
+==============================================================================
+S19 — E4 typed natal/clock conditioning + annual Tājika gate
+==============================================================================
+  PASS  Exalted counts as strong dignity
+  PASS  Moolatrikona counts as strong dignity
+  PASS  Own counts as strong dignity
+  PASS  Debilitated does NOT count as strong dignity
+  PASS  negative speed is retrograde
+  PASS  positive speed is direct
+  PASS  day birth flag True
+  PASS  day birth flag False
+  PASS  kendra from Aries lagna at Aries
+  PASS  non-kendra from Aries lagna at Taurus
+  PASS  mode A stamps typed_conditions
+  PASS  mode A tajika computed when covering varsha exists
+  PASS  mode A tajika unavailable when no covering varsha
+  PASS  mode B stamps typed_conditions
+  PASS  mode C stamps typed_conditions
+  PASS  mode D stamps typed_conditions
+  PASS  typed_conditions do not veto score
+  PASS  mode A tajika_covering matches availability
+  PASS  mode D kendra_from_lagna correct
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S19_e4_typed_conditions_and_tajika_gate.py] positive exit=0  negative-control exit=1
+==============================================================================
+S20 — E6 exposure manifest + evaluation-boundary gates (D-1/D-2/D-3)
+==============================================================================
+  PASS  per-stratum alpha reproduces 0.0344  — alpha=0.034357
+  PASS  instrument alpha reproduces 0.0342  — alpha=0.034152
+  PASS  find_critical_value recovers 12 @ n=35
+  PASS  find_critical_value recovers 28 @ n=100
+  PASS  stratum power ~0.805 at 0.40  — power=0.804825
+  PASS  instrument power ~0.833 at 0.32  — power=0.832450
+  PASS  method versions never pool
+  PASS  domain inferred from signature class
+  PASS  manifest counts windows per stratum
+  PASS  completeness: 0 exposure unavailable
+  PASS  completeness: <30y incomplete
+  PASS  completeness: >=30y complete
+  PASS  n excludes ambiguous+censored
+  PASS  claim is the lower bound hits/total
+  PASS  12 hits in 35 passes the stratum gate
+  PASS  11 hits in 35 is below critical
+  PASS  n=20 is provisional insufficient
+  PASS  22.5% censoring blocks regardless of n
+  PASS  synthetic chart not eligible
+  PASS  empty stratum unavailable
+  PASS  gate never claims EMPIRICALLY_EVALUATED
+  PASS  instrument gate pools one method_version
+  PASS  writer defines near substep
+  PASS  writer defines lifetime substep
+  PASS  writer imports compute_exposure_manifest
+  PASS  writer calls compute_exposure_manifest in both substeps  — 2 call sites (near + lifetime)
+  PASS  writer attaches manifest JSON to notes in both substeps
+VERDICT: PASS — POST-FIX BEHAVIOUR
+  [S20_e6_exposure_and_gates.py] positive exit=0  negative-control exit=1
+scripts run: 20; verdict: SUITE-PASS

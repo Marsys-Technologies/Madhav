@@ -40,7 +40,6 @@ R6 1a-strength fix (M-1/M-2/M-3, see 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER)
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -1068,63 +1067,6 @@ def _build_ashtakavarga_rows(
         # ADDED (CR-99a): raasi pinda — was computed by the engine then dropped.
         _mk("ashtakavarga_pinda_raasi", subject, "total", float(pinda_raasi), "bindu")
         _mk("ashtakavarga_pinda_sarva", subject, "total", float(sum(bindus_list)), "bindu")
-
-    # CR-99a/E2: completeness and primary-school receipt. Missing-planet zeros are
-    # indistinguishable from measured zeros without this row. The receipt lists the
-    # planets that PyJHora actually computed (the 7 classical grahas present in
-    # `bav`); consumers treat an absent planet as "missing", not "measured zero".
-    # Primary school is BPHS 72.3-5 per M-2/BPHS-primary ruling; Phaladīpikā 23.20
-    # is retained as an alternate label only, never a second vote.
-    computed_planets = [norm_graha(p) for p in planet_subjects if p != "SARVA"]
-    rows.append({
-        "fact_id": _fact_id(
-            "ashtakavarga_completeness_receipt", "computed_planets", "list",
-            chart_id, ayanamsha_id, build_id),
-        "chart_id": chart_id,
-        "ayanamsha_id": ayanamsha_id,
-        "build_id": build_id,
-        "fact_category": "ashtakavarga_completeness_receipt",
-        "fact_subject": "computed_planets",
-        "fact_key": "list",
-        "fact_value_text": None,
-        "fact_value_num": None,
-        "fact_value_jsonb": json.dumps(sorted(computed_planets)),
-        "unit": "jsonb",
-        "citation_ref": _citation_ref(
-            "ashtakavarga_completeness_receipt", "computed_planets", "list",
-            chart_id, ayanamsha_id, eng_ver),
-        "citation_human": (
-            "Aṣṭakavarga completeness receipt: "
-            f"{len(computed_planets)} classical planets computed ({ay})."
-        ),
-        "source_calculation": src,
-        "verification_pass_status": verif_status,
-        "engine_version": eng_ver,
-        "computed_at": computed_at,
-    })
-    rows.append({
-        "fact_id": _fact_id(
-            "ashtakavarga_school_primary", "BPHS", "label",
-            chart_id, ayanamsha_id, build_id),
-        "chart_id": chart_id,
-        "ayanamsha_id": ayanamsha_id,
-        "build_id": build_id,
-        "fact_category": "ashtakavarga_school_primary",
-        "fact_subject": "BPHS",
-        "fact_key": "label",
-        "fact_value_text": "BPHS 72.3-5 (>30 / 25-30 / <25 rekhas); Phaladīpikā 23.20 (>28) alternate",
-        "fact_value_num": None,
-        "fact_value_jsonb": None,
-        "unit": "text",
-        "citation_ref": _citation_ref(
-            "ashtakavarga_school_primary", "BPHS", "label",
-            chart_id, ayanamsha_id, eng_ver),
-        "citation_human": "Primary SAV band school: BPHS 72.3-5 (Phaladīpikā 23.20 alternate).",
-        "source_calculation": src,
-        "verification_pass_status": verif_status,
-        "engine_version": eng_ver,
-        "computed_at": computed_at,
-    })
 
     # ADDED (CR-99a): kakṣyā sub-arc boundaries — 8 fixed classical constants
     # (chart-independent; stored per chart×ayanamsha for a uniform L1 contract).
