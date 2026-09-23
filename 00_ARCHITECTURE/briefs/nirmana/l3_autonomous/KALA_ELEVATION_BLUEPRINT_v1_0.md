@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "4.0"
+version: "4.1"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "4.1 (2026-09-24): G10 corrected a third time, against me: the SBC grid is partially recoverable and NOT buildable in full — the L0 repair session read every chunk; I had read 260-char previews. A preview is not a page. Rule ledger gains that line."
   - "4.0 (2026-09-24): RESTRUCTURE. The 920-line §11 addendum log moved verbatim to KALA_ELEVATION_CHRONICLE_v1_0.md; the body rewritten from it. §9 decision queue rebuilt (D6/D7/D8 RULED, D1 still open, D2/D3/D5 confirmed UNRULED with the receipts enum verified absent from code). §4 stream rows carry their rulings. §6 W0 exit corrected (G4 retracted; three cited close artifacts do not exist). §8 corrected: KALA_BASELINE_v1_0.md was NEVER CREATED and the W0 benchmark is not it. §7 migration floor 1075. Denominator derivation stated: 27 registered, 3 deleted, 1 tombstone, 1 proxy unknown → 22 ±1. Companion review: KALA_BLUEPRINT_REVIEW_v1_0.md."
   - "3.5 (2026-09-24): G4 retraction and G19 APPLIED — the v2.6 edits that claimed them were silent no-ops (unasserted string replace against a non-matching anchor); the commit succeeded, the edit did not. G19 now carries its N-6a ruling."
   - "3.4 (2026-09-23): §11.28 — Saṅgam CLOSED at 3f62f3468. Delegation recorded verbatim and author decisions D-1…D-8 kept separate, which is the discipline the M-1…M-7 episode was missing. D-8 discloses that plan v0.4, which v1.0 is built from, has never been reviewed; the third Astra review is now a stage-3 ENTRY gate."
@@ -291,7 +292,7 @@ plan resolver with upstream closure.
 | G7 | **No admissible receipts** for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | Headline cannot move past `DATA_ACCEPTED` | native decision 2; a `z.enum` member + payload contract, no migration | BLOCKS the headline |
 | G8 | **No retrieval capability over `kala_field*`** | The largest asset is unreadable by the product | Kshetra brief → L3-U11 packet → Pūrṇa | BLOCKS Kshetra value |
 | G9 | **Unowned capabilities** — cross-clock disagreement; provenance-aware de-correlation | Two L3-Qs unanswerable | synergy contracts 2 + 4 (§3.3) | BLOCKS Q05 |
-| G10 | **Source qualification — RE-GRADED (§11.24).** Sarvatobhadra is **not** unsourceable: the chakra is in the corpus at `phaladeepika:PG345:C1` ("I shall now describe the Sarvatobhadrachakra"), with grid pages at PG332/PG345, same Adhyāya XXVI as the vedha rules. The blocker is **OCR quality, not absence**. Tithi-praveśa qualification is unchanged | The disposition changes from "cannot be built, do not try" to "re-OCR two known pages" — a bounded task with a named target | re-OCR PG332 + PG345 from source images; then transcribe with a checkable partition invariant | DEGRADES → bounded task |
+| G10 | **Source qualification — CORRECTED A THIRD TIME at v4.1, this time against me.** The Sarvatobhadra chakra IS in the corpus (Phaladīpikā Adh. XXVI, `PG345`–`PG354`) — that stands. But the L0 repair session read every chunk in full and established what my 260-character previews could not: the construction *procedure* is legible prose, the construction *content* is not. Every consonant and vowel glyph is OCR-destroyed ("the consonant &", "the vowel bt"), PG348's four consonant triplets are noise, PG353's letter-per-pāda table is noise, the nine-point vedha network is worked for only **3 of 28** asterisms (Kṛttikā, Rohiṇī, Mṛgaśiras), and the traversal direction from the stated north-east start is never given — a school-selecting choice `ADJUDICATION-11 Part 1` already forbids seating unqualified. Tithi-praveśa qualification unchanged | The grid is **partially recoverable** (28-asterism outer ring, 12 rāśis from Vṛṣabha, 5 tithi groups, 7 weekdays, 3 worked examples) and **not buildable in full** from this OCR. Table stays empty and its docstring now says exactly why, with chunk ids | source images or another edition for the letter cells; a native ruling on the direction convention before any partial build | BLOCKS the asset; a bounded reason, not a mystery |
 | G11 | **No determinism gate** (`date.today()`; naive-timezone persistence) | "Wipe and rebuild" is unsafe | temporal contract + CI build-twice-diff | BLOCKS rebuild-freely |
 | G12 | **Serving is Pūrṇa's** — `kala_views` collides if L3 edits it; `dissent: []` ×7; mortality exclusion on 2 of 9 tools | The last inch fails silently; a binding-boundary gap on live surfaces | L3-U04/U11 interface packets + a priority request to Codex for the safety gap | DEGRADES / safety |
 | G13 | **Independent-verifier capacity** — every packet needs a reviewer who is not its author | Builders certifying themselves | one verifier lane reserved per wave (Brief §4) | DEGRADES |

@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.4"
+version: "1.5"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -190,7 +190,7 @@ job?"*
 | 1 | Re-cite 39 `bg_transit_rules` rows from "BPHS Ch.29" (refuted) to Phaladīpikā Adh. XXVI, page-anchored (`PG322:C1`–`PG323:C1`) | Gochara F-23/G-8 |
 | 2 | Repair Venus rows 35/44/45 → 1/5/11 by UPDATE, never DELETE; INSERT the missing Mercury 8→1 row | `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md` |
 | 3 | Six Rāhu/Ketu vedha rows → disposition under N-14 | Kṣetra ruling 8 / Gochara N-14 |
-| 4 | Populate `bg_sarvatobhadra_grid` by transcription from Phaladīpikā `PG346:C1`–`PG352:C1`, under migration 526's own partition invariant | §11.25 |
+| 4 | ~~Populate `bg_sarvatobhadra_grid`~~ **Attempted and correctly BLOCKED by the L0 session** — letter cells OCR-destroyed, 3/28 asterisms worked, direction unstated; the §11.25 claim this rested on was mine and was wrong | PR #2727 |
 | 5 | Pin which of Adh. XXVI's **two** 1–5 malefic scales `bg_vedha_malefic_scale` cites (`PG349` vs `PG353`) | Saṅgam |
 | 6 | Add a **degree-level** anchor to migration 624's node-frame declaration — expected mean-node longitude 49.033° ± arcseconds at JD 2445735.717361 — replacing a sign-level anchor that provably cannot detect the slip it guards | Kimi C-1, sharpened §11.1 |
 | 7 | Declare `ephemeris_daily`'s node frame **and** epoch (noon UT), currently undeclared while the table stores TRUE under a contract asserting mean | §11.1 |

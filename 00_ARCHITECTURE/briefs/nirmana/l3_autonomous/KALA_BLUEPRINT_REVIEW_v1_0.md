@@ -1,7 +1,7 @@
 ---
 artifact: KALA_BLUEPRINT_REVIEW
 canonical_id: KALA_BLUEPRINT_REVIEW
-version: "1.0"
+version: "1.1"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -190,3 +190,20 @@ layer across that line, and here is how each part of it does that:
    give it something true to show.
 
 The L0 repair runs in parallel and blocks none of these.
+
+## 7. Correction after the L0 repair (2026-09-24)
+
+Item 4 of the L0 scope — populating the Sarvatobhadra grid — was **attempted and correctly
+blocked** by the repair session, against this review's own premise. That session read every chunk
+of Phaladīpikā Adh. XXVI in full; this review's author had read 260-character previews and called
+the span "a complete primary construction in legible prose." The procedure is legible. The content
+is not: every consonant and vowel glyph is OCR-destroyed, the nine-point vedha network is worked
+for three asterisms of twenty-eight, and the traversal direction from the stated north-east start
+is never given — a school-selecting choice the adjudication record already forbids seating
+unqualified. The grid is partially recoverable and not buildable in full from this OCR.
+
+This is the third correction on one asset in two days and the mechanism was identical each time:
+a partial read published with the precision of a full one. **A preview is not a page** joins the
+rule ledger. The right disposition now is the one the repair session recorded in the table's own
+docstring: empty, with the exact chunk ids and quoted fragments, so no future session re-attempts
+it blind.

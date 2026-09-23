@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CHECKLIST
 canonical_id: KALA_PRE_ELEVATION_CHECKLIST
-version: "1.0"
+version: "1.1"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -54,7 +54,7 @@ All eight have their target values already located. None reinterprets the chart.
 | C1 | Re-cite 39 `bg_transit_rules` rows from the refuted "BPHS Ch.29" to Phaladīpikā Adh. XXVI, page-anchored | `PG322:C1`–`PG323:C1` [V] |
 | C2 | Repair Venus rows 35/44/45 → 1/5/11 by UPDATE, never DELETE; INSERT the missing Mercury 8→1 | Kṣetra L0 spec [A] |
 | C3 | Six Rāhu/Ketu vedha rows → disposition under N-14 | ruled [V] |
-| C4 | Populate `bg_sarvatobhadra_grid` by transcription, under migration 526's own partition invariant | `PG346:C1`–`PG352:C1` [V] |
+| C4 | ~~Populate `bg_sarvatobhadra_grid` by transcription~~ **BLOCKED, correctly, by the L0 repair session (PR #2727)** — the letter cells are OCR-destroyed, the vedha network is worked for 3 of 28 asterisms, and the traversal direction is unstated. My earlier [V] rested on previews, not pages. Needs source images or another edition, plus a native ruling on direction | `PG345`–`PG354` read in full by that session [A→V] |
 | C5 | Pin which of Adh. XXVI's **two** 1–5 malefic scales `bg_vedha_malefic_scale` cites | `PG349` vs `PG353` [V] |
 | C6 | Replace migration 624's **sign-level** node anchor with a **degree-level** one — expected mean node 49.033° ± arcsec at JD 2445735.717361 | both frames give the same sign, so the existing anchor provably cannot fail [V] |
 | C7 | Declare `ephemeris_daily`'s node frame **and** epoch (noon UT) — it stores TRUE under a contract asserting mean | [V] |
