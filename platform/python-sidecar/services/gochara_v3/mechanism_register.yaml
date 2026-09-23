@@ -292,6 +292,31 @@ mechanisms:
     weight_type: structural_modifier=1.0
     module_path: services.gochara_v3.mechanisms.w29_citation_resolution
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # LEGACY ENABLED (1 mechanism) — live in engine.py today; N-14 retires behind a flag
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - toggle_key: w30_nodal_drishti
+    mechanism_id: w30_nodal_drishti
+    wave: "W3.0"
+    lane: nodal_drishti
+    admission_state: legacy_enabled
+    description: >-
+      Nodal dṛṣṭi — Rāhu and Ketu cast their sign-level aspect on the transited sign.
+      Live in services/gochara_v3/engine.py lambda_v3 today. Ruling N-14 will retire it
+      behind input-vector flag nodal_drishti ∈ {enabled(legacy), removed}; until then it
+      is tracked as legacy_enabled so the wiring-truth detector (N-16) records its
+      production contribution honestly.
+    classical_citation: >-
+      Nodal dṛṣṭi is attested in classical sources as a gochara amplifier, but the specific
+      sign-aspect rule used here was not independently verified against the served corpus
+      (classical_text_chunks unreachable from this checkout). Marked corpus_verifiable=false
+      per N-21 until G-9/G-10 re-citation lands.
+    uncited_extension: false
+    evidence_link: "Engine.py lambda_v3 product (N-16 wiring-truth detector); N-14 retires behind a flag"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w30_nodal_drishti
+
 # ─────────────────────────────────────────────────────────────────────────
 # SUMMARY
 # ─────────────────────────────────────────────────────────────────────────
@@ -301,7 +326,9 @@ mechanisms:
 #   w27a_tajaka_year_lord, w27b_tithi_pravesha, w27c_sudarshana
 # structural_only_count: 2
 #   w28_bhava_degrees, w29_citation_resolution
-# total: 12
+# legacy_enabled_count: 1
+#   w30_nodal_drishti
+# total: 13
 #
 # Fits stored: gochara_v3_calibration (migration 561, W4.4)
 # Prospective ledger seeded: W4.5 (w45_post_fit_rebuild.py)
