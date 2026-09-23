@@ -93,12 +93,80 @@ from services.gochara_intensity.permission import (
     _relevant_grahas, _relevant_signs, _lord_matches, YOGINI_LORD_TO_GRAHA,
 )
 from services.gochara_intensity.beta_priors import beta_for
-from pipeline.transit_search import _jd_to_ist_iso
+from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events
 
-from .context import ClassContext, VedhaRow, MaleficScaleRow
+from .context import ClassContext, VedhaRow, MaleficScaleRow, KakshyaBoundaryRow
 from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
 from services.gochara_v3.mechanisms import w23_tara_bala as _w23  # W2.3 tara bala
 from services.gochara_v3.mechanisms import w30_nodal_drishti as _w30  # W3.0 nodal drishti
+from services.gochara_kernel import ids as _kernel_ids
+
+# WP5 H-4/H-5/H-6 identity adapter — CORRECTED during the WP0-WP7 branch
+# reconciliation (2026-09-23): the version of this wiring first written
+# (outside this worktree, before being moved onto this branch) called a
+# second, ad-hoc contact_id(sentence)/independence_group(sentence) pair with
+# a different signature and a different docstring than the pinned kernel
+# contract below. That would have produced ids that do NOT agree with the
+# WP3a kernel's ledger ids for the same physical event — exactly the
+# "independent reimplementation produces different ids" failure
+# WP1_CONTRACTS.md §3.2 exists to prevent. This adapter calls the ONE
+# canonical `services.gochara_kernel.ids` functions instead.
+#
+# `_WP5_PROVISIONAL_CONVENTION_ID` / `_WP5_METHOD_VERSION` are declared
+# literals, not silently invented per call: WP1_CONTRACTS.md defines the
+# convention vector as a design document only (no executable convention_id
+# yet exists in code). Replace both once WP1's convention table lands as
+# real code.
+_WP5_PROVISIONAL_CONVENTION_ID = "wp1-design-pending"
+_WP5_METHOD_VERSION = "gochara_v3_engine.wp5"
+
+
+def _sentence_identity(sentence: "ConfigurationSentence"):
+    """WP5 H-4/H-5/H-6: derive (contact_id, independence_group) for a
+    ConfigurationSentence using the pinned kernel identity contract
+    (services.gochara_kernel.ids / WP1_CONTRACTS.md §3.2) — never a
+    second, local reimplementation, so ids agree with the WP6 ledger built
+    from the same kernel functions.
+
+    Returns (None, None) when the sentence carries no exact instant — an
+    identity cannot be computed without one, and that must surface as an
+    honest gap (no identity attached) rather than a fabricated epoch.
+    """
+    if sentence.event_jd is None:
+        return (None, None)
+    detail = sentence.detail or {}
+    try:
+        aspect_deg = float(detail.get("aspect_deg", 0.0))
+    except (TypeError, ValueError):
+        aspect_deg = 0.0
+    target_deg_raw = detail.get("target_longitude_deg", detail.get("boundary_deg"))
+    try:
+        target_deg = float(target_deg_raw) if target_deg_raw is not None else 0.0
+    except (TypeError, ValueError):
+        target_deg = 0.0
+    body = sentence.transit_planet or "unknown"
+    relation = sentence.primitive
+
+    cid = _kernel_ids.contact_id(
+        chart_id=sentence.chart_id,
+        convention_id=_WP5_PROVISIONAL_CONVENTION_ID,
+        body=body,
+        target_type=sentence.target_type or "unknown",
+        relation=relation,
+        aspect_deg=aspect_deg,
+        t_exact_jd=sentence.event_jd,
+        target_ref=sentence.target_ref,
+        method_version=_WP5_METHOD_VERSION,
+    )
+    igroup = _kernel_ids.independence_group(
+        body=body,
+        relation=relation,
+        aspect_deg=aspect_deg,
+        target_deg=target_deg,
+        t_exact_jd=sentence.event_jd,
+        t_fallback_jd=sentence.event_jd,
+    )
+    return (cid, igroup)
 
 # W3.0 nodal drishti toggle — Rahu/Ketu 5/7/9 aspect modifier.
 # When True the engine will call _w30.compute() in _evaluate_single_from_context
@@ -1060,6 +1128,74 @@ def _resolve_valence_v3(
         return "adverse", True, False
 
 
+def _kakshya_cell_crossing_from_context(
+    swe,
+    context: ClassContext,
+    target: ResonanceTarget,
+    start_jd: float,
+    end_jd: float,
+    planets: Optional[list[str]] = None,
+    orb_deg: float = 0.1,
+) -> list[ConfigurationSentence]:
+    """WP5 H-1a: kakṣyā-cell crossing using L1 boundaries pre-fetched in context.
+
+    Mirrors gochara_grammar.primitives.kakshya_cell_crossing but reads
+    kakṣyā boundaries from context.kakshya_boundaries instead of making a DB
+    call. When no L1 rows exist for a planet, falls back to the equal-eighths
+    fixture exactly as the primitive does, honestly flagged with
+    uncited_extension=True and source='equal_eighths_fixture_approximation'.
+    """
+    if not target.target_sign:
+        logger.debug(
+            "[_kakshya_cell_crossing_from_context] target_ref=%s has no target_sign; skipping.",
+            target.target_ref,
+        )
+        return []
+
+    sign_start = P._sign_index(target.target_sign) * 30.0
+    sentences: list[ConfigurationSentence] = []
+
+    # Build a fast lookup: planet -> list of KakshyaBoundaryRow
+    by_planet: dict[str, list[KakshyaBoundaryRow]] = {}
+    for row in context.kakshya_boundaries:
+        by_planet.setdefault(row.planet, []).append(row)
+
+    for planet in (planets or P.ALL_GRAHAS):
+        l1_rows = by_planet.get(planet, [])
+        if l1_rows:
+            boundary_degs = sorted(
+                {float(r.start_deg) for r in l1_rows if r.start_deg is not None}
+            )
+            citation = P.C.KAKSHYA_BPHS_66 if hasattr(P, "C") else None
+            uncited = False
+            source = "chart_facts.ashtakavarga_kakshya_boundary"
+        else:
+            boundary_degs = [sign_start + i * (30.0 / 8.0) for i in range(8)]
+            citation = None
+            uncited = True
+            source = "equal_eighths_fixture_approximation"
+
+        for i, b in enumerate(boundary_degs):
+            events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
+            for ev in events:
+                sentences.append(ConfigurationSentence(
+                    primitive="kakshya_cell_crossing",
+                    chart_id=context.chart_id,
+                    event_class=target.event_class,
+                    target_type=target.target_type,
+                    target_ref=target.target_ref,
+                    transit_planet=planet,
+                    secondary_planet=None,
+                    event_jd=ev.event_jd,
+                    event_datetime_ist=ev.event_datetime_ist,
+                    temporal_shape="point",
+                    classical_citation=citation,
+                    uncited_extension=uncited,
+                    detail={"boundary_deg": b, "kakshya_index": i, "source": source},
+                ))
+    return sentences
+
+
 def _gather_sentences_no_db(
     swe,
     context: ClassContext,
@@ -1077,13 +1213,16 @@ def _gather_sentences_no_db(
     skip them here (their DB-dependent data is already in context) or
     call them without conn (they degrade honestly to []).
 
-    This approach trades some accuracy on the 3 DB-needing primitives
-    for ZERO per-JD DB access. The trade is acceptable because:
-      - kakshya_cell_crossing: reads chart_facts for kakshya boundaries —
-        these are natal (time-invariant) and could be pre-fetched, but
-        the primitive's internal format is tightly coupled to its DB query.
-        Skipping it means we lose kakshya contributions to X(t) — a minor
-        signal in practice.
+    WP5 H-1a: kakṣyā-cell crossing is now evaluated from L1 boundaries
+    pre-fetched into ClassContext, restoring its signal instead of skipping
+    it. Only the remaining 2 DB-needing primitives (gochara_vedha_pair,
+    sarvatobhadra_vedha) still degrade on this path.
+
+    This approach trades some accuracy on the 2 remaining DB-needing
+    primitives for ZERO per-JD DB access. The trade is acceptable because:
+      - kakshya_cell_crossing: now served from context.kakshya_boundaries
+        (chart_facts ashtakavarga_kakshya_boundary rows) with honest
+        equal-eighths fallback when L1 rows are absent (WP5 H-1a).
       - gochara_vedha_pair: reads `bg_transit_rules` (rule_type=
         'favourable', vedha_house IS NOT NULL — corrected predicate, MR-41(a)
         / PK-R-9) for vedha houses. Called here with `conn=None`, so it is
@@ -1130,16 +1269,30 @@ def _gather_sentences_no_db(
                     getattr(fn, "__name__", fn), target.target_ref, exc,
                 )
 
-        # The 2 conn-needing primitives: call with conn=None so they
-        # degrade honestly (return []) rather than crashing.
-        for fn in (P.kakshya_cell_crossing, P.gochara_vedha_pair):
-            try:
-                out.extend(fn(swe, context.chart_id, target, start_jd, end_jd, conn=None))
-            except Exception as exc:  # noqa: BLE001
-                logger.debug(
-                    "[v3.engine] %s (no-conn degrade) failed for target_ref=%s: %s",
-                    getattr(fn, "__name__", fn), target.target_ref, exc,
-                )
+        # WP5 H-1a: kakṣyā-cell crossing now uses pre-fetched L1 boundaries from
+        # context instead of the conn-needing primitive. Falls back honestly to
+        # the equal-eighths fixture when no L1 rows exist.
+        try:
+            out.extend(_kakshya_cell_crossing_from_context(
+                swe, context, target, start_jd, end_jd,
+            ))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "[v3.engine] _kakshya_cell_crossing_from_context failed for target_ref=%s: %s",
+                target.target_ref, exc,
+            )
+
+        # The remaining conn-needing primitive: call with conn=None so it
+        # degrades honestly (return []) rather than crashing.
+        try:
+            out.extend(P.gochara_vedha_pair(
+                swe, context.chart_id, target, start_jd, end_jd, conn=None,
+            ))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "[v3.engine] gochara_vedha_pair (no-conn degrade) failed for target_ref=%s: %s",
+                target.target_ref, exc,
+            )
 
         # sarvatobhadra_vedha (conn-needing)
         try:
@@ -1151,7 +1304,24 @@ def _gather_sentences_no_db(
                 "[v3.engine] sarvatobhadra_vedha (no-conn degrade) failed: %s", exc,
             )
 
-    return out
+    # WP5 H-4/H-5/H-6: attach physical-event identity to every sentence and
+    # collapse duplicate independence_group values to one row per build.
+    for s in out:
+        cid, igroup = _sentence_identity(s)
+        s.detail["contact_id"] = cid
+        s.detail["independence_group"] = igroup
+
+    seen_groups: set[str] = set()
+    deduped: list[ConfigurationSentence] = []
+    for s in out:
+        group = s.detail.get("independence_group")
+        if group is not None and group in seen_groups:
+            continue
+        if group is not None:
+            seen_groups.add(group)
+        deduped.append(s)
+
+    return deduped
 
 
 def _compute_permission_from_context(

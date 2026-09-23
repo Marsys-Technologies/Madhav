@@ -162,6 +162,9 @@ class WindowResolutionRecord:
                         only (same honest-None rule as term_breakdown).
     ci_source           'structural_prior' | 'fitted_posterior' disclosure tag,
                         era-tier only (same honest-None rule as term_breakdown).
+    completeness_state  'qualified' | 'unqualified'. WP5 H-2: 'unqualified'
+                        when the source IntervalBoundary failed evaluation.
+    failure_detail      Non-None when completeness_state='unqualified'.
     """
     window_id: str
     parent_window_id: Optional[str]
@@ -174,6 +177,8 @@ class WindowResolutionRecord:
     lambda_v3_ci_low: Optional[float] = None
     lambda_v3_ci_high: Optional[float] = None
     ci_source: Optional[str] = None
+    completeness_state: str = "qualified"
+    failure_detail: Optional[str] = None
 
 
 @dataclass
@@ -256,6 +261,13 @@ class HierarchyResult:
                          own candidate globally rejected while the pool as
                          a whole still retains something else). Empty list
                          for calls with zero era windows.
+    requested_start_jd   WP5 H-3: the JD horizon the caller requested.
+    requested_end_jd     WP5 H-3: the JD horizon the caller requested.
+    completed_start_jd   WP5 H-3: the actual start of detected era windows,
+                         or None when no era window was detected (honest
+                         empty, never silently padded to the requested span).
+    completed_end_jd     WP5 H-3: the actual end of detected era windows,
+                         or None when no era window was detected.
     """
     era_windows: list[WindowResolutionRecord]
     month_windows: list[WindowResolutionRecord]
@@ -267,6 +279,10 @@ class HierarchyResult:
     peaks_retained: int = 0
     zero_peaks_reason: Optional[str] = None
     era_window_accounting: list["EraWindowAccounting"] = field(default_factory=list)
+    requested_start_jd: Optional[float] = None
+    requested_end_jd: Optional[float] = None
+    completed_start_jd: Optional[float] = None
+    completed_end_jd: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +374,8 @@ def assign_parent_window_ids(
             lambda_v3_ci_low=w.lambda_v3_ci_low,
             lambda_v3_ci_high=w.lambda_v3_ci_high,
             ci_source=w.ci_source,
+            completeness_state=w.completeness_state,
+            failure_detail=w.failure_detail,
         ))
 
     return result
@@ -838,6 +856,8 @@ def build_era_windows(
             lambda_v3_ci_low=interval.lambda_v3_ci_low,
             lambda_v3_ci_high=interval.lambda_v3_ci_high,
             ci_source=interval.ci_source,
+            completeness_state=interval.completeness_state,
+            failure_detail=interval.failure_detail,
         ))
 
     return records
@@ -887,6 +907,10 @@ def build_resolution_hierarchy(
         return HierarchyResult(
             era_windows=[], month_windows=[], day_windows=[],
             resolution_facet={"era": 0, "month": 0, "day": 0},
+            requested_start_jd=start_jd,
+            requested_end_jd=end_jd,
+            completed_start_jd=None,
+            completed_end_jd=None,
         )
 
     intervals, series_jds, series_lambdas = find_threshold_crossings(
@@ -915,6 +939,8 @@ def build_resolution_hierarchy(
             lambda_v3_ci_low=interval.lambda_v3_ci_low,
             lambda_v3_ci_high=interval.lambda_v3_ci_high,
             ci_source=interval.ci_source,
+            completeness_state=interval.completeness_state,
+            failure_detail=interval.failure_detail,
         )
         era_windows.append(era_record)
 
@@ -1029,6 +1055,13 @@ def build_resolution_hierarchy(
         total_scanned, total_admitted, total_retained, start_jd, end_jd,
     )
 
+    if era_windows:
+        completed_start_jd = min(w.enter_jd for w in era_windows)
+        completed_end_jd = max(w.exit_jd for w in era_windows)
+    else:
+        completed_start_jd = None
+        completed_end_jd = None
+
     return HierarchyResult(
         era_windows=era_windows,
         month_windows=all_month,
@@ -1040,6 +1073,10 @@ def build_resolution_hierarchy(
         peaks_retained=total_retained,
         zero_peaks_reason=overall_zero_reason,
         era_window_accounting=era_window_accounting,
+        requested_start_jd=start_jd,
+        requested_end_jd=end_jd,
+        completed_start_jd=completed_start_jd,
+        completed_end_jd=completed_end_jd,
     )
 
 

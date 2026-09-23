@@ -111,6 +111,21 @@ class MaleficScaleRow:
 
 
 @dataclass(frozen=True)
+class KakshyaBoundaryRow:
+    """One L1 kakṣyā boundary row from chart_facts.
+
+    fact_category='ashtakavarga_kakshya_boundary',
+    fact_subject='{planet}.{kakshya_index}',
+    fact_key in {'lord','start_deg','end_deg'}.
+    """
+    planet: str
+    kakshya_index: int
+    lord: Optional[str] = None
+    start_deg: Optional[float] = None
+    end_deg: Optional[float] = None
+
+
+@dataclass(frozen=True)
 class ClassContext:
     """All data needed to evaluate lambda_e for a (chart x event_class) pair,
     fetched ONCE. After construction this object is immutable and contains
@@ -170,6 +185,11 @@ class ClassContext:
     # malefic_scale: bg_vedha_malefic_scale rows {malefic_count: MaleficScaleRow}.
     # Empty when table is absent — suppression factor falls back to a fixed schedule.
     malefic_scale: tuple[MaleficScaleRow, ...] = ()
+
+    # WP5 H-1a: L1 ashtakavarga kakṣyā boundaries pre-fetched from chart_facts.
+    # Empty when the chart has no L1 boundary rows — the engine falls back to
+    # the equal-eighths fixture approximation, honestly flagged.
+    kakshya_boundaries: tuple[KakshyaBoundaryRow, ...] = ()
 
     # F-MOORTI-2 (L3-W3, N3): kala_moorti_nirnaya rows for the W2.2 moorti_nirnaya
     # CANDIDATE mechanism (services/gochara_v3/mechanisms/w22_moorti_nirnaya.py).
@@ -247,7 +267,10 @@ class ClassContext:
         vedha_rows = _fetch_vedha_rows(conn, chart_id)
         malefic_scale = _fetch_malefic_scale(conn)
 
-        # 13. F-MOORTI-2 (L3-W3, N3): moorti_nirnaya rows for the W2.2 candidate
+        # 13. WP5 H-1a: L1 ashtakavarga kakṣyā boundaries (time-invariant).
+        kakshya_boundaries = _fetch_kakshya_boundaries(conn, chart_id)
+
+        # 14. F-MOORTI-2 (L3-W3, N3): moorti_nirnaya rows for the W2.2 candidate
         # mechanism (data-wiring only — see moorti_rows field docstring above)
         moorti_rows = _fetch_moorti_rows(conn, chart_id, ayanamsha_id)
 
@@ -271,6 +294,7 @@ class ClassContext:
             sade_sati_phases=tuple(sade_sati_phases),
             vedha_rows=tuple(vedha_rows),
             malefic_scale=tuple(malefic_scale),
+            kakshya_boundaries=tuple(kakshya_boundaries),
             moorti_rows=tuple(moorti_rows),
         )
 
@@ -578,7 +602,70 @@ def _fetch_malefic_scale(conn) -> list[MaleficScaleRow]:
     return result
 
 
+def _fetch_kakshya_boundaries(conn, chart_id: str) -> list[KakshyaBoundaryRow]:
+    """Pre-fetch L1 ashtakavarga kakṣyā boundaries from chart_facts.
+
+    Reads fact_category='ashtakavarga_kakshya_boundary' rows (written by
+    ga_strength_writer.py). Empty list when the rows are absent — the engine
+    falls back to the equal-eighths fixture approximation and honestly flags
+    the source (WP5 H-1a).
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_kakshya_boundaries"):
+            cur = conn.execute(
+                """
+                SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND fact_category = 'ashtakavarga_kakshya_boundary'
+                """,
+                [chart_id],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] kakshya_boundaries fetch failed: %s", exc)
+        return []
+
+    by_subject: dict[str, dict] = {}
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["fact_subject", "fact_key", "fact_value_text", "fact_value_num"], row)
+        )
+        by_subject.setdefault(d["fact_subject"], {})[d["fact_key"]] = (
+            d.get("fact_value_text") if d.get("fact_value_text") is not None else d.get("fact_value_num")
+        )
+
+    result = []
+    for subject, facts in by_subject.items():
+        # fact_subject format: "{planet}.{kakshya_index}"
+        parts = subject.split(".")
+        if len(parts) != 2:
+            continue
+        planet = parts[0]
+        try:
+            kakshya_index = int(parts[1])
+        except (TypeError, ValueError):
+            continue
+        try:
+            start_deg = float(facts["start_deg"]) if facts.get("start_deg") is not None else None
+        except (TypeError, ValueError):
+            start_deg = None
+        try:
+            end_deg = float(facts["end_deg"]) if facts.get("end_deg") is not None else None
+        except (TypeError, ValueError):
+            end_deg = None
+        result.append(KakshyaBoundaryRow(
+            planet=planet,
+            kakshya_index=kakshya_index,
+            lord=facts.get("lord"),
+            start_deg=start_deg,
+            end_deg=end_deg,
+        ))
+    return result
+
+
 __all__ = [
     "ClassContext", "NatalFacts", "DashaPeriod", "AVGateRow",
-    "VedhaRow", "MaleficScaleRow",
+    "VedhaRow", "MaleficScaleRow", "KakshyaBoundaryRow",
 ]
