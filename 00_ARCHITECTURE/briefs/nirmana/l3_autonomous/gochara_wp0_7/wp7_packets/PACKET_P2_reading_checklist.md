@@ -1,7 +1,7 @@
 ---
 artifact: WP7_PACKET_P2
 packet_id: P-2
-version: "1.0"
+version: "1.1"
 status: DESIGN_ONLY_NOT_IMPLEMENTED
 date: 2026-09-23
 owner: "Owner of platform/src/lib/retrieval/registry/layers/reading_checklist.ts (D8 assess-domain and D9 judgment inherit this via fetchGocharaSweep)"
@@ -72,6 +72,15 @@ Three fields, two of them in the SQL projection and one derived:
 Why the cap itself is fine: §N.6 density layering wants a **trimmed display** with
 **honest counts**, not a full dump. The defect is that the cap discards the
 qualification data needed to layer, then counts the remainder as homogeneous.
+
+H-5 boundary (measured in WP4, WP4_DECOMPOSED_COMPARISON_v1_0.md §2 row 5): the trim
+is legal **only because admission upstream is cap-free** — the kernel
+(`gochara_kernel/peaks.py::admit_peaks`) persists every admitted peak, plateau ties all
+at rank 1; legacy dropped 2 of 5 peaks pre-persistence (A-5) and admitted a plateau
+once at its first point (B-4). The 5-window display trim here must therefore take the
+first N rows in stored rank order and **never re-rank or re-admit** — re-ranking at
+serve time would reintroduce B-4's first-point-only plateau behavior one layer up, and
+any admission-side cap would reintroduce A-5's truncation-as-absence.
 
 ## 3. Proposed shape change
 

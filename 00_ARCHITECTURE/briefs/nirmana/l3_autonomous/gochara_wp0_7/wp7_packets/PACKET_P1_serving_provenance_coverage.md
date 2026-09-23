@@ -1,7 +1,7 @@
 ---
 artifact: WP7_PACKET_P1
 packet_id: P-1
-version: "1.0"
+version: "1.1"
 status: DESIGN_ONLY_NOT_IMPLEMENTED
 date: 2026-09-23
 owner: "Owner of platform-mcp/src/tools/retrieval/register_gochara_windows.ts (+ the /api/mcp/db/query whitelist owner for §6)"
@@ -260,6 +260,24 @@ introduces a new basis value, the TS mirror at `:369-375` and the Python vocabul
 change in the same PR — the existing comment already says "Mirrors
 services/gochara_v3/peak_basis_vocab.py exactly". Recorded so the owner does not
 discover it late; nothing to do now.
+
+### 3.6 P-1e — H-5 serving rule: admission is cap-free; trim at serve time, never re-rank
+
+WP4 measured the legacy defect this guards against (WP4_DECOMPOSED_COMPARISON_v1_0.md
+§2 row 5, classes A-5 + B-4): legacy `retain_candidates` kept 3 of 5 peaks and dropped
+the rest **before persistence** — truncation as absence — and `find_local_maxima`
+admitted a plateau once at its first point. The kernel contract
+(`services/gochara_kernel/peaks.py::admit_peaks`, `max_rows=None`) is: **every admitted
+peak is persisted**, plateau ties all carry rank 1, and any row-count limit is applied
+**only at serve time** as a display trim. Consequences for this serving layer:
+
+- A serving query that limits rows must say so (`trimmed: true` + the pre-trim count in
+  the response envelope); a trimmed response is a *view*, never evidence that the
+  trimmed peaks do not exist.
+- The trim must preserve stored ranks — it takes the first N rows in stored rank order
+  and **never re-ranks** (re-ranking at serve time would reintroduce B-4's
+  first-point-only plateau behavior in a new place).
+- Coverage/provenance must report the persisted peak count, not the served count.
 
 ## 4. §6 — WP0 E-004 item 1: the `/api/mcp/db/query` whitelist (separate owner)
 

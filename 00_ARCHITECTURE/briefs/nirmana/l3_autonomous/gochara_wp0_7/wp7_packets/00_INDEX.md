@@ -25,7 +25,7 @@ source files identical to the pinned revision).
 | **P-3** | `PACKET_P3_l5_ledger.md` | L5 claim/prediction ledger gains a nullable `contact_id` (the WP1 §3.2 `sha256:` id) so frozen claims keep identity across rebuilds/republishes/rollbacks via the chain `contact_id → window_id → manifest_id`. |
 | **P-4** | `PACKET_P4_contact_ledger_read_capability.md` | New density-layered read capability over `kala_gochara_contacts` + `kala_gochara_coverage`: confirmed episodes on a trim-proof `hard_floor`, catalog-only rows in a separate context layer, `searched_horizon` exposed for `moon_on_demand` partitions. |
 | **S-1/S-2** | `PACKET_S1_S2_gochara_transit_service.md` | S-1: `find_aspects` keeps its exact shape for the duck-typed callers (`kala_trigger` :96/:150/:199, `currents.py:59`, `ka_sangam/engine.py:464`); the enriched interface arrives as a new `find_episodes(chartId, targets, horizon) → {episodes, coverage}` with grain + `contact_id`. S-2: this stream produces Saṅgam's directed contact events per M-3 — full Parāśari per-graha dṛṣṭi (Mars 90/180/210, Jupiter 120/180/240, Saturn 60/180/270, others 180; **no node dṛṣṭi, N-14**), both directions, `planets` as a list, absent-when-nothing-fires, no ephemeris scan inside Saṅgam (`_resolve_transit_planet` replaced by event consumption). |
-| **T-1** | `PACKET_T1_kala_trigger.md` | One-paragraph note to the kala_trigger owner on whether `find_episodes` reduces per-window fan-out — **with the WP4 measurement placeholder left explicit** (`[WP4 NUMBERS PENDING — parent run fills this after WP4 with the measured fan-out comparison]`) and the measurement structure drafted so the numbers slot in. |
+| **T-1** | `PACKET_T1_kala_trigger.md` | One-paragraph note to the kala_trigger owner on whether `find_episodes` reduces per-window fan-out — **WP4 kernel-side numbers folded in** (one batched solve per (chart, horizon): 4 search-matrix cells, 1 era window, 0.00062 s search / 0.00212 s end-to-end cold on WP4-SYNTH-1); trigger-side instrumentation remains honestly open, and the adoption decision stays evidence-gated. |
 | **C-1** | `PACKET_C1_cockpit_clear.md` | The exact `EXPLICIT_CLEAR_OPS['ka_gochara']` entry: three generation-scoped DELETEs in dependency order (coverage → contacts → windows, each `WHERE chart_id=$1 AND generation='4.0'`), the authoritative-generation refusal (non-release principal refused; release authority cascades authority reset + manifest `cleared`), the no-JOIN rule, the `ClearOp` guard-extension design, and the `clear_tables` display value with the F-24 "display-only" caveat. |
 | **V-1** | `PACKET_V1_sangam_dependency.md` | Saṅgam declares `→ka_vedha_gochara` (the undeclared read at `ka_sangam.py:1057-1065`, F-17) with role `counterevidence`, and re-types `→ka_gochara` as `service` per S-1/S-2. |
 | **K-1** | `PACKET_K1_kshetra_dependency.md` | Kṣetra declares `→ka_gochara` (+ `→ka_vedha_gochara` after one cross-check generation), pins provenance edges by `(generation, id)` instead of bare row id (`writer.py:952,1063`), and removes its own `'v1'` COALESCE fall-throughs (`stage4_field.py:1386-1389`, `writer.py:2328-2330`) so absent authority = `unpublished`. |
@@ -67,9 +67,11 @@ the load-bearing ones; the remainder are recorded here so no owner is surprised:
   `independence_group` value surviving WP6 storage + simulated retrieval/budget/
   delivery + simulated replay) runs **after WP6 and is owned by the parent run** — it
   is not a WP7 packet deliverable and is not claimed here.
-- **T-1's numbers** — the WP4 measured fan-out comparison fills the explicit
-  placeholder in `PACKET_T1_kala_trigger.md` after WP4; until then T-1's recommendation
-  is deliberately unmade (evidence-gated by design).
+- **T-1's numbers** — WP4 landed the kernel-side measurement (folded into
+  `PACKET_T1_kala_trigger.md` v1.1); the trigger-side instrumentation
+  (`find_aspects` calls per window, `compute_trigger_currents()` wall time) is owned
+  by the kala_trigger owner and stays open — the adoption recommendation remains
+  evidence-gated by design.
 - **WP1_CONTRACTS §11 (E-001)** — `KALA_COST_PROFILE_v1_0.md` / `KALA_BASELINE_v1_0.md`
   unreachable from this branch; WP4 proceeds with fresh numbers. Recorded in
   `ESCALATIONS.md` by the WP1 run; no WP7 action.
