@@ -1,8 +1,8 @@
 ---
 artifact: KSHETRA_INDEPENDENT_REVIEW_7_8_9
 canonical_id: KSHETRA_INDEPENDENT_REVIEW_7_8_9
-version: "1.0"
-status: COMPLETED_INDEPENDENT_REVIEW
+version: "1.1"
+status: COMPLETED_INDEPENDENT_REVIEW  # amended 2026-09-23: three corrections from a second, independent review (Kimi K3 desktop app, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md), each re-verified at source by the author before adoption
 date: 2026-09-23
 reviews: KSHETRA_RULING_SHEET_v1_0.md rulings 7 (node frame), 8 (vedha admission / G-9), 9 (G3 suppression semantics)
 reviewer: a fresh review agent opened with no prior context on this packet, briefed to re-derive
@@ -52,10 +52,18 @@ Rāhu served for the canonical chart is the MEAN node under every ayanamsha (793
    sites beyond the migration and the code comment the packet cited: the orchestrator's fail-closed
    probe validator (`service_probes.py:339-340`, which raises `ValueError` unless the registry probe
    reads "mean"), and two served declarations (`routers/ephemeris.py:49`, `routers/panchang.py:572`)
-   that broadcast "mean" to every MCP caller today. A disposition-(b) implementation that changes
-   what `node_mode` means must reconcile these three sites, or keep "mean" as the declared semantics
-   of a newly-derived column — the ruling should say which, not describe the change as invisible to
-   L0.
+   that broadcast "mean" to every MCP caller today. A disposition-(b) implementation must reconcile the *store* to these three sites, not the other
+   way around: two of the three — `routers/ephemeris.py:82` (`swe.calc_ut(jd, swe.MEAN_NODE, ...)`
+   direct, documented as "distinct from the bounded 1900-2150 daily-grain ephemeris_daily table")
+   and `panchang_engine/planets.py` (an assertion-guarded, explicitly-documented "Phase 4B" mandate
+   that raises `AssertionError` if `TRUE_NODE` is ever passed for Rāhu) — independently re-verify as
+   already correct and MEAN-compliant today; a disposition-(b) executor should not touch either. The
+   defect is confined to the *store* (`ephemeris_daily`, migration 624, and `l0_ephemeris.py:77`'s
+   "Mean North Node" comment on a body that is in fact TRUE) and its own fail-closed probe validator
+   (`service_probes.py:339-340`) — the store must gain the derived mean column and correct its own
+   declaration to match the two already-correct served engines, not the reverse (a directional
+   sharpening by Kimi K3's independent desktop review, reproduced here at source before adoption —
+   see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`).
 
 **Verdict: sound as written, with the two corrections above.**
 
@@ -81,12 +89,18 @@ opening session using the served retrieval tools directly:
 - **3 rows contradict the text** (all Venus, all favourable, all citing "BPHS Ch.29"): id 35
   stores 3rd-house vedha as the 11th where the text (śloka 8) gives the 1st; id 44 stores 8th-house
   vedha as the 1st where the text gives the 5th; id 45 stores 9th-house vedha as the 2nd where the
-  text gives the 11th. These need an **L0 geometry correction**, not a citation fix, before they
-  qualify under the uniform rule.
+  text gives the 11th. **Two of the three (ids 35, 44) are exact transpositions of already-correct
+  rows elsewhere in the same table** — id 35's (3,11) is id 179's (11,3) reversed; id 44's (8,1)
+  is id 33's (1,8) reversed — so their repair is dedup against an existing correct row, not fresh
+  geometry; only id 45's (9,2) is a genuine content error with no matching row to dedup against
+  (a refinement by Kimi K3's independent desktop review, reproduced here from the served rules
+  table before adoption — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`). All three still need an L0-side fix, not a citation
+  fix, before they qualify under the uniform rule.
 - **6 rows have no source in Phaladīpikā at all:** the three Rāhu vedha rows (ids 187, 188, 189)
-  and the three Ketu vedha rows (196, 197, 198). PG322–323 (ślokas 3–8) name only the seven
-  classical grahas; no vedha-bearing Phaladīpikā chunk anywhere in the corpus mentions Rāhu or Ketu
-  transit vedha. These remain genuinely unsourced, not merely mis-cited, and stay `unqualified`
+  and the three Ketu vedha rows (196, 197, 198). PG322–323 (ślokas 3–8, the specific verses this
+  house-vedha mechanism cites) name only the seven classical grahas; the six rows have no
+  counterpart there. The corpus is not silent on Rāhu/Ketu vedha altogether, though — PG348:C1 gives an explicit rule ("In the case of Rahu and Ketu, which are always retrograde, the Vedha will be on the right") — but that is the Sarvatobhadra chakra's asterism-direction vedha, a different mechanism from the house-transit pairs these six rows need (caught by Kimi K3's independent desktop review of the closed packet, reproduced here at the served corpus before adoption — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`). These 6 rows remain genuinely
+  unsourced for the house-vedha mechanism, not merely mis-cited, and stay `unqualified`
   under the uniform admission rule exactly as written — they do not become `applied` on re-citation
   because there is no citation to give them.
 

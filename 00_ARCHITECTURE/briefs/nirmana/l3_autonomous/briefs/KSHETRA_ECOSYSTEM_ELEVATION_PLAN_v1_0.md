@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.8"
-status: APPROVED_FOR_EXECUTION  # CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
+version: "1.9"
+status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.9 (2026-09-23) — Second independent review (Kimi K3 desktop app) on the closed packet; three corrections adopted after independent re-verification at source: ruling-8's \"no chunk anywhere mentions Rahu/Ketu vedha\" narrowed to the correct mechanism (PG348:C1 has a Sarvatobhadra-chakra Rahu/Ketu vedha-direction rule); two Venus rows (35, 44) identified as transpositions of already-correct rows (179, 33), not fresh geometry errors; ruling 7's reconciliation direction corrected to store-to-declarations, since routers/ephemeris.py and panchang_engine/planets.py independently re-verify as already MEAN-compliant. Full report: KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md."
   - "1.8 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md), corroborated at the served corpus by the author, folded in: margin corrected 0.045°→0.049°; disposition (b) also touches service_probes.py's fail-closed validator and two served node_mode declarations; dhara_sweep.py line refs corrected to :212,227,243,248; the \"structurally impossible\" docstring reattributed to polarity separation, not route-scoping; the house-vedha citation claim corrected from \"all 41 verbatim, applied on re-citation\" to 32 applied / 3 deferred (Venus geometry contradictions, ids 35,44,45) / 6 unqualified (Rahu/Ketu, no source); the sarvatobhadra \"buildable from prose\" claim narrowed to the vedha-pair partitions. Status moves to APPROVED_FOR_EXECUTION."
   - "1.7 (2026-09-23) — CORRECTION of 1.6's stated reason. Measured across every mi_*.py: no L5 writer consumes both streams (mi_bhara declares ka_kshetra at :122-130; mi_adhilepa references ka_sangam at :305; none both), so the sentence one L5 loop (mi_bhara) scores both streams in §6a and §7.10 was false and is withdrawn — Sangam caught it, I measured it. Replaced by the adjudicator reason: the native adjudicates ambiguous in both streams, so divergent semantics would count the same human judgement differently by accident of asset. The reasoning is this packet's own; Sangam's D-2 rests on bias and D-3 on the Ethical Framework, and neither mentions mi_bhara. D-2/D-3 mirror unchanged."
   - "1.6 (2026-09-23) — Sangam CLOSED (3f62f3468). Its delegated decisions D-2 (ambiguous censored not scored, per-stratum 20% censoring ceiling) and D-3 (evaluation population = consenting persons with real outcome records only; synthetic charts evaluation_eligible=false) are mirrored into §6a and §7.10, both verified at source in the sheet §CLOSE. Reason: one L5 loop scores both streams. M-2 confirmed untouched, so §6a rulings 4 and 8 need no further reconciliation. No stage, guarantee or other decision changed."
@@ -138,8 +139,10 @@ order of classical weight:**
    Moon 6/6, Mars 3/3, Saturn 3/3, Mercury 5/5 — the text's 8th-house Mercury vedha has no row at all —
    Jupiter 5/5, Venus 6/9) **and become source-qualified on the L0 re-citation; 3 Venus rows (ids 35, 44,
    45) contradict the text and are deferred pending an L0 geometry fix, not applied; 6 Rāhu/Ketu rows
-   (ids 187,188,189,196,197,198) have no counterpart anywhere in Phaladīpikā and stay unqualified** — not
-   because Rāhu/Ketu vedha is doctrinally absent but because this specific vedha-pair set is not in the
+   (ids 187,188,189,196,197,198) have no counterpart in ślokas 3–8 (the house-vedha mechanism these
+   rows cite) and stay unqualified** — not because Rāhu/Ketu vedha is doctrinally absent (PG348:C1 gives an explicit
+   Rāhu/Ketu vedha-direction rule for the Sarvatobhadra chakra, a different mechanism — caught by a
+   second independent review, Kimi K3 desktop, `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`) but because this specific vedha-pair set is not in the
    served corpus under any citation. "Mis-cited, not unsourced" is true of 35 of the 41 rows; 6 are
    genuinely unsourced. Sarvatobhadra from `bg_sarvatobhadra_grid` (empty — the vedha-pair construction is
    in the corpus at `phaladeepika:PG346:C1`–PG352 and is populatable today; the grid's vowel/consonant
@@ -390,16 +393,19 @@ hard to cite precisely is a real cost, not absence.
    reading-visible: it moves the native's Rāhu between Rohiṇī pāda 3 (mean, **L1's served fact**)
    and pāda 4 (true — **an author computation on Swiss ephemeris, 0.049° margin (corrected from 0.045°,
    independent review); L1 serves no `RAH_TRUE`, so if the ruling goes true L1 must serve it and these documents
-   cease to be its source**, §6a.1(i)). Disposition (b) also reconciles `service_probes.py:339-340`'s fail-closed
-   validator and the two served `node_mode` declarations (`routers/ephemeris.py:49`, `routers/panchang.py:572`),
-   not only the migration comment — independent review.
+   cease to be its source**, §6a.1(i)). Disposition (b) corrects the *store* — `ephemeris_daily`, migration 624, and `service_probes.py:339-340`'s
+   fail-closed validator — to match, not the reverse: `routers/ephemeris.py:82` and `panchang_engine/planets.py`'s
+   assertion-guarded Phase-4B MEAN_NODE mandate independently re-verify as already correct and should not be
+   touched (a second independent review, Kimi K3 desktop, sharpened this from the first review's more general "reconcile
+   the two served declarations" — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`).
 8. **Shared vedha/moorti source (§6a):** ratify `ka_vedha_gochara` and `ka_moorti_nirnaya` as the
    layer's single producers; Kshetra's internal derivations become one-generation cross-checks,
    then retire under contract §5. Ratify the uniform admission rule (F06 `applied` iff
    `corpus_verifiable` and geometry passes) — whose outcome today, **corrected by independent review**,
    is: **`applied` for 32 of 41 house-vedha rows on the L0 re-citation at page grain (F-23/G-8);
-   `deferred` for 3 Venus rows (ids 35, 44, 45) pending an L0 geometry fix; `unqualified` for 6
-   Rāhu/Ketu rows (ids 187,188,189,196,197,198), genuinely unsourced; `applied` for laṭṭā and the
+   `deferred` for 3 Venus rows (ids 35, 44, 45 — two of which, 35 and 44, are transpositions of already-correct
+   rows 179 and 33, i.e. dedup, not fresh geometry) pending an L0 fix; `unqualified` for 6
+   Rāhu/Ketu rows (ids 187,188,189,196,197,198), genuinely unsourced for this mechanism; `applied` for laṭṭā and the
    malefic scale; `unqualified` for sarvatobhadra** (buildable from prose for its vedha-pair cells,
    not its letter cells). G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
 9. **G3 — which suppression semantics is the contract:** route-scoped SM-R-7 Option B (the
