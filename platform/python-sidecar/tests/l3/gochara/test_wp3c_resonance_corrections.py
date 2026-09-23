@@ -44,7 +44,7 @@ FIXTURES = json.loads(
 )
 MIGRATION_1071 = (
     Path(__file__).parent.parent.parent.parent.parent
-    / "migrations/1075_nirmana_l3_gochara_resonance_target_resolution_state.sql"
+    / "migrations/1080_nirmana_l3_gochara_resonance_target_resolution_state.sql"
 )
 
 RESOLVED_STATES = set(_TARGET_RESOLUTION_STATES)

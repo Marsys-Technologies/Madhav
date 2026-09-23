@@ -16,7 +16,7 @@ database: postgresql://wp6:disposable@localhost:55433/wp6 (docker gochara-wp6-di
 
 | item | path |
 |---|---|
-| Migration (one file, four relations) | `platform/migrations/1076_nirmana_l3_gochara_ledger_coverage_publication.sql` |
+| Migration (one file, four relations) | `platform/migrations/1081_nirmana_l3_gochara_ledger_coverage_publication.sql` (renumbered 1072 → 1076 → 1081; E-007 addendum) |
 | Writer layer | `platform/python-sidecar/services/gochara_kernel/ledger.py` |
 | Package init (created when absent; since replaced by the WP3a sibling — left untouched) | `platform/python-sidecar/services/gochara_kernel/__init__.py` |
 | Tests | `platform/python-sidecar/tests/l3/gochara/test_wp6_ledger.py` |
@@ -28,7 +28,7 @@ database: postgresql://wp6:disposable@localhost:55433/wp6 (docker gochara-wp6-di
 Both directories of the shared global sequence were listed, plus `git status`
 for untracked concurrent files:
 
-- `platform/migrations/` — highest 10xx: **1070** (`1070_data_plane_builder_orchestrator_grants.sql`, applied) and **1071** (`1075_nirmana_l3_gochara_resonance_target_resolution_state.sql`, untracked, owned by the concurrent WP3c agent — not touched).
+- `platform/migrations/` — highest 10xx: **1070** (`1070_data_plane_builder_orchestrator_grants.sql`, applied) and **1071** (now `1080_nirmana_l3_gochara_resonance_target_resolution_state.sql`, untracked, owned by the concurrent WP3c agent — not touched).
 - `platform/supabase/migrations/` — highest 10xx: 1041 (`1035`/`1036`/`1038`/`1041` present; 1033–1036 are must_not_touch and were not modified).
 - `git status --short` at run start showed exactly one untracked migration (1071, sibling's).
 
@@ -199,7 +199,7 @@ the covering index does its job (zero heap fetches on the P-4 shape).
 - Only the disposable DSN was used; no credentials in any file (DSN appears
   only as the documented disposable URL in conftest, overridable by env).
 - All test data uses synthetic wp6-synth UUIDs; no real chart id.
-- No `must_not_touch` path touched; migration 1075 (sibling, renumbered from 1071) untouched; no
+- No `must_not_touch` path touched; migration 1080 (sibling, renumbered 1071 → 1075 → 1080) untouched; no
   commits, nothing staged; `kala_gochara_authority` not touched (WP10-only
   authority flip).
 - One deliberate disposable-container restart (for the cold measurement) —

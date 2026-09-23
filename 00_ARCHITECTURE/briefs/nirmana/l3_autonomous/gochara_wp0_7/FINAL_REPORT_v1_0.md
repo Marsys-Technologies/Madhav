@@ -34,7 +34,7 @@ condition never fired.
 | WP3c | Resonance corrections R-1..R-6 (N-12 pre-approved honesty fixes) | `services/gochara_v3/` + docs | bd65433f8 |
 | WP4 | **Decomposed comparison on workload WP4-SYNTH-1 (this session)** | `gochara_wp0_7/WP4_DECOMPOSED_COMPARISON_v1_0.md` + `tests/l3/gochara/test_wp4_decomposed.py` | this commit |
 | WP5 | Honesty fixes H-1a/H-2/H-3/H-4/H-6 implemented; H-5 + N-14 escalated (may_touch/frozen contracts) | `services/gochara_v3/interval_solver.py`; `ESCALATIONS.md` | 719cf980b, 59bebe7dc, 28fd59245 |
-| WP6 | Ledger/coverage/publication schema + writer layer on disposable DB; measured 200k-row pricing | `gochara_wp0_7/WP6_LEDGER.md`; migration 1076 (renumbered from 1072, 2026-09-23) | 25aeab607 |
+| WP6 | Ledger/coverage/publication schema + writer layer on disposable DB; measured 200k-row pricing | `gochara_wp0_7/WP6_LEDGER.md`; migration 1081 (renumbered 1072 → 1076 on 2026-09-23 → 1081 on 2026-09-24, E-007 addendum) | 25aeab607 |
 | WP7 | 8 receiving-contract design packets + sentinel exit-gate test | `gochara_wp0_7/wp7_packets/` (00_INDEX, P-1..P-4, S-1/S-2, T-1, C-1, V-1, K-1) | 46b9529cc, 3d884a0c2, this commit (T-1/P-1/P-2 folds) |
 
 ## 3. WP4 measured results (headline)

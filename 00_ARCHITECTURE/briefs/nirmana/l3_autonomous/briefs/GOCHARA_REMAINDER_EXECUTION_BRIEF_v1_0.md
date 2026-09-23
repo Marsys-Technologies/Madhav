@@ -54,7 +54,7 @@ add anything. Do not create another worktree. Do not write to `/Users/Dev/Vibe-C
 any other checkout of this repository — a previous session did, by mistake, and it cost a day.
 
 Done and committed (do not redo): WP0, WP1, WP2, WP3a (kernel), WP3b, WP3c (R-1..R-6), WP4, WP5
-(H-1a/H-2/H-3/H-4/H-6), WP6 (ledger on a disposable DB; migrations **1075/1076** — renumbered, see §3),
+(H-1a/H-2/H-3/H-4/H-6), WP6 (ledger on a disposable DB; migrations **1080/1081** — renumbered twice, see §3 and ESCALATIONS.md E-007 addendum),
 WP7 (sentinel chain + eight design packets). Ratified since: the sheet v2.0 (M-1..M-8 parameters
 and semantics; N-15..N-22; A-1..A-3; O-1..O-3; G-6..G-10).
 
@@ -89,7 +89,7 @@ change rides the first `'4.0'` candidate, never a patch over live rows).
   exactly which lines) — you do not refactor their algorithms.
 - **Migrations:** files only, numbered by **scanning every `origin/*` head across BOTH
   `platform/migrations/` and `platform/supabase/migrations/`** (`git fetch --all` first; the next free
-  number after 1076 at brief time — re-scan at run time; four branches already collided on 1071–1074).
+  number after 1081 at the 2026-09-24 amendment is **1082** — re-scan at run time; five branches have already collided on 1071–1079, and `origin/l0/vedha-and-frame-repair` (PR #2727) holds 1075–1079 in `platform/supabase/migrations/` with its 1075/1076 APPLIED to production, which is why this branch's pair moved 1075/1076 → 1080/1081; see ESCALATIONS.md E-007 addendum).
   Applied only to a disposable database you provision and tear down (`docker` Postgres, as WP6 did;
   name it `gochara-remainder-disposable`; **tear it down at the end of the run** — WP6's container was
   found still running two hours after its work finished). **Never renumber a migration after it has
@@ -196,7 +196,7 @@ authority flip is the last act of step 8 and is logged with `evidence_ref = mani
 
 | # | Task | Exit gate |
 |---|---|---|
-| 8.1 | **N-18 push + PR.** Push `l3/gochara-autonomous-wp0-7`; open the PR to `main` (title `feat(l3-gochara): …`; body states: merge lands code only, no build runs under the 2026-08-21 standing order, R-1..R-6 take effect only at a resonance rebuild sequenced at WP10 step 6, migrations 1075/1076 unapplied to any shared DB, the four-branch number collision and its resolution). End the body with the attribution line the repo's PR convention uses | PR URL recorded in the final report |
+| 8.1 | **N-18 push + PR.** Push `l3/gochara-autonomous-wp0-7`; open the PR to `main` (title `feat(l3-gochara): …`; body states: merge lands code only, no build runs under the 2026-08-21 standing order, R-1..R-6 take effect only at a resonance rebuild sequenced at WP10 step 6, migrations 1080/1081 unapplied to any shared DB, the number collisions (1071–1074 on four branches; 1075–1079 on the L0 repair branch, whose 1075/1076 are applied to production since 2026-09-23) and their resolution). End the body with the attribution line the repo's PR convention uses | PR URL recorded in the final report |
 | 8.2 | **N-19.** Bring `KALA_COST_PROFILE_v1_0.md` and `KALA_BASELINE_v1_0.md` onto this branch from `origin/l3/kala-setup-phase01` (`bb7857b07`, `de2a7f269`) with attribution in the commit; make the plan §10 Value row's CI gate real (test asserts presence; `NOT_RUN` otherwise) | files present; test green |
 | 8.3 | **N-20.** Reader-inventory update: add the ten WP0 consumers (`WP0_FINDINGS.md`) to plan §6.1's table in `GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md` (a v2.2 changelog entry), cross-reference w44 ↔ N-16; no guard for the W41–W45 `_v2` scripts | table updated |
 | 8.4 | **G-9 repair as a migration file (L0 data; file only).** From `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md` (PR #2725 @ `3b5821bcd` — fetch and read it; **attributed, so verify each before/after SELECT against the OCR-independent evidence the spec carries before writing**): re-cite 32 rows to `phaladeepika:PG322:C1`/`PG323:C1`; UPDATE `vedha_house` on ids 35→1, 44→5, 45→11 (never delete); INSERT the Mercury 8th-house pair (vedha from the 1st, `PG323:C1`); strike `"BPHS Ch.29"` from every `classical_citation` (G-8); the six Rāhu/Ketu rows (187–189, 196–198) → `uncited_extension=true` + a note that their disposition follows N-14 (do not delete). Down-migration included. Applied to the disposable DB only; its verification test asserts the before/after row states the spec prints | migration file numbered per §3; test green on the disposable DB |

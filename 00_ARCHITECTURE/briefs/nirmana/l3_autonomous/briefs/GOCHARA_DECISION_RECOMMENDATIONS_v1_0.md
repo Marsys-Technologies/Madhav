@@ -35,7 +35,7 @@ authority: "Recommendations only. The native rules; nothing here executes anythi
 | 12 | **N-19** *(new)* E-001 artifacts | delivery | land `KALA_COST_PROFILE_v1_0.md` + `KALA_BASELINE_v1_0.md` on `main` from `l3/kala-setup-phase01` (`bb7857b07`, `de2a7f269`) |
 | 13 | **N-20** *(new)* E-004 admin scripts on `_v2` | scope | **no new guard**; add to the reader inventory; re-check at N-11 (they touch `'2.0'`, which N-11 deletes) |
 | 14 | **A-1** WP9 authorization + Moorti method | authorization + method | authorize WP9's engineering half now (A-class); rule Moorti **at the true ingress instant** with the day-grade error rate reported |
-| 15 | **A-2** WP10 tranche 1 (runbook steps 0–5) | authorization (P-class) | authorize as a tranche: Clear fix → grant → restore drill → guard + N-6a → schema 1075/1076 → registry re-pin + C-1 |
+| 15 | **A-2** WP10 tranche 1 (runbook steps 0–5) | authorization (P-class) | authorize as a tranche: Clear fix → grant → restore drill → guard + N-6a → schema 1075/1076 [→ 1080/1081, 2026-09-24] → registry re-pin + C-1 |
 | 16 | **A-3** WP10 tranche 2 (steps 6–10) | authorization (P-class) | gated on tranche-1 evidence **and** P-1 + C-1 landed; the first `'4.0'` candidate carries N-14, N-15, N-17 together |
 | 17 | **O-1 / O-2 / O-3** owners | assignment | name an implementation owner per packet, an independent reviewer who is not the author, and a fresh session for Kṣetra rulings 7/8/9 |
 | 18 | **G-6..G-10** commissions | routing | L0: G-6 receipt, G-8 strike, G-9 re-cite at page grain (+ the ch.66 re-OCR); L1: G-10; Saṅgam: G-7 (likely closed by their M-1) |
@@ -139,7 +139,7 @@ Whole-sign primary; cusp only as a labeled KP-school variant. No parameter remai
 
 **A-1 — WP9.** Authorize the engineering half now: Vedha and Moorti onto the kernel, coverage = requested horizon, the three-consumer stamps (`source_qualification`, `precision_regime`, `corpus_verifiable`), M-8's rows. **Rule the Moorti method:** grade at the **true ingress instant** (the reviewer affirmed it; the day-grade misclassification rate is reported alongside). Kota only after M-4's w25 row.
 
-**A-2 — WP10 tranche 1 (runbook steps 0–5).** Authorize as one tranche with its evidence: Phase 1.1 Clear fix → Phase 1.2 grant → restore drill (38,287 rows content-checked) → (table, generation) guard + N-6a century `is_active=false` → migrations 1075/1076 applied and *verified* → registry re-pin + `EXPLICIT_CLEAR_OPS` (C-1). Nothing in this tranche builds or serves a row. Preconditions: N-18 merged; C-1 implemented by its owner.
+**A-2 — WP10 tranche 1 (runbook steps 0–5).** Authorize as one tranche with its evidence: Phase 1.1 Clear fix → Phase 1.2 grant → restore drill (38,287 rows content-checked) → (table, generation) guard + N-6a century `is_active=false` → migrations 1075/1076 [→ 1080/1081, 2026-09-24] applied and *verified* → registry re-pin + `EXPLICIT_CLEAR_OPS` (C-1). Nothing in this tranche builds or serves a row. Preconditions: N-18 merged; C-1 implemented by its owner.
 
 **A-3 — WP10 tranche 2 (steps 6–10).** Gated on tranche-1 evidence and on P-1 landed. The first `'4.0'` candidate on the canonical chart carries **N-14 (w30 out), N-15 (Sade-Sati to testimony), N-17 (cap-free peaks), M-1's shape, M-8's rows** — one candidate, one regeneration, one manifest — then the four flip gates, flip, soak, second chart, N-11.
 

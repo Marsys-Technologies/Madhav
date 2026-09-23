@@ -1,3 +1,9 @@
+-- RENUMBERED 1076->1081 on 2026-09-24: after the 1075 renumbering below, origin/l0/vedha-and-frame-repair
+-- (PR #2727, L0 vedha-and-frame repair) claimed 1075-1079 in platform/supabase/migrations and its 1075/1076
+-- were APPLIED to production on 2026-09-23. Both directories form one runner sequence; two 1075s would
+-- order deterministically (l0_ before l3_) but would let "1075/1076 applied" read as this file. 1080/1081
+-- were the lowest free numbers across every remote head, local head and worktree at renumbering time.
+-- This file had never been applied outside a disposable DB. Record: ESCALATIONS.md E-007 addendum.
 -- RENUMBERED 1072->1076 on 2026-09-23: 1072/1072 and 1073/1074 were found claimed on other unmerged
 -- branches (sangam/stage3 + l3/kala-elevation-readiness in platform/supabase/migrations;
 -- l3/kala-p1-1-b1-clear-guard and l3/kala-p1-2-builder-grants-timeout in platform/migrations).
