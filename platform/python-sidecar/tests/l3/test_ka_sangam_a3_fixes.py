@@ -27,6 +27,7 @@ from services.ka_sangam.engine import (
     mode_d_av_bindhu,
     _date_to_jd,
     _SAV_STRONG_THRESHOLD,
+    _SAV_SCAN_THRESHOLD,
     _AV_SCAN_PLANETS,
     _SIGN_NAMES,
 )
@@ -316,10 +317,16 @@ class TestO7AvBindhuMode:
         # Already imported at top of file; this test just makes it explicit
         assert callable(mode_d_av_bindhu), "O7: mode_d_av_bindhu not callable"
 
-    def test_sav_threshold_is_28(self):
-        """O7: classical SAV threshold must be 28 (Phaladeepika / BPHS)."""
+    def test_sav_strong_threshold_is_28(self):
+        """O7: classical SAV strong threshold must remain 28 (Phaladeepika / BPHS)."""
         assert _SAV_STRONG_THRESHOLD == 28, (
-            f"O7: SAV threshold must be 28, got {_SAV_STRONG_THRESHOLD}"
+            f"O7: SAV strong threshold must be 28, got {_SAV_STRONG_THRESHOLD}"
+        )
+
+    def test_sav_scan_threshold_is_25(self):
+        """E2: Mode D scan prefilter is BPHS 'not adverse' floor (25)."""
+        assert _SAV_SCAN_THRESHOLD == 25, (
+            f"E2: Mode D scan threshold must be 25, got {_SAV_SCAN_THRESHOLD}"
         )
 
     def test_av_scan_planets_include_slow_movers(self):
@@ -374,10 +381,10 @@ class TestO7AvBindhuMode:
             f"got {len(windows)} windows"
         )
 
-    def test_av_bindhu_threshold_boundary_at_28(self):
-        """O7: SAV exactly at threshold (28) → windows emitted (inclusive)."""
+    def test_av_bindhu_threshold_boundary_at_25(self):
+        """E2: SAV exactly at scan threshold (25) → windows emitted (inclusive)."""
         pred     = self._make_predicate()
-        ctx      = EnrichmentContext(ashtakavarga_bindu={'SARVA': {9: 28}})  # Sagittarius SAV=28
+        ctx      = EnrichmentContext(ashtakavarga_bindu={'SARVA': {9: 25}})  # Sagittarius SAV=25
         mock_gs  = self._make_gochara_service(sign_name='Sagittarius')
         start_jd = _date_to_jd(date(2026, 1, 1))
         end_jd   = _date_to_jd(date(2030, 1, 1))
@@ -391,13 +398,13 @@ class TestO7AvBindhuMode:
         )
 
         assert len(windows) > 0, (
-            "O7: SAV=28 (at threshold) must be INCLUDED (>= not >)"
+            "E2: SAV=25 (at scan threshold) must be INCLUDED (>= not >)"
         )
 
     def test_av_bindhu_just_below_threshold(self):
-        """O7: SAV=27 (one below threshold) → no windows."""
+        """E2: SAV=24 (one below scan threshold) → no windows."""
         pred     = self._make_predicate()
-        ctx      = EnrichmentContext(ashtakavarga_bindu={'SARVA': {9: 27}})
+        ctx      = EnrichmentContext(ashtakavarga_bindu={'SARVA': {9: 24}})
         mock_gs  = self._make_gochara_service(sign_name='Sagittarius')
         start_jd = _date_to_jd(date(2026, 1, 1))
         end_jd   = _date_to_jd(date(2030, 1, 1))
@@ -411,7 +418,7 @@ class TestO7AvBindhuMode:
         )
 
         assert len(windows) == 0, (
-            "O7: SAV=27 (below threshold=28) must produce 0 windows"
+            "E2: SAV=24 (below scan threshold=25) must produce 0 windows"
         )
 
     # ── Window structure ────────────────────────────────────────────────────────
@@ -522,7 +529,10 @@ class TestO7AvBindhuMode:
             assert 'sav_bindhu' in cf, "O7: constituent_factors must include 'sav_bindhu'"
             assert 'sav_threshold' in cf, "O7: constituent_factors must include 'sav_threshold'"
             assert cf['sav_bindhu'] == 35, f"O7: sav_bindhu mismatch: {cf['sav_bindhu']}"
-            assert cf['sav_threshold'] == 28
+            assert cf['sav_threshold'] == 25, (
+                f"E2: sav_threshold must reflect scan threshold 25, got {cf['sav_threshold']}"
+            )
+            assert 'sav_verdict' in cf, "E2: constituent_factors must include structured sav_verdict"
 
     def test_av_bindhu_source_citation_starts_with_mode_d(self):
         """O7: source_citation must start with 'mode_d/'."""

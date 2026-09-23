@@ -20,9 +20,27 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 | 0 — Entry gate | **PASSED 2026-09-23** | (a) packet read in order; (b) D-8 discharged — Astra third review `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` = PROCEED_WITH_AMENDMENTS, RRV-01…09 dispositioned in plan §10 + brief changelog + inline [S3-E] amendments; (c) evidence suite re-run `OUTPUT_2026-09-23T050513.txt` SUITE-PASS 13/13 + 13/13 NEG (4 scripts spot-verified by hand, exit 1 under NEG=1); reviewer independently re-ran + mutation-tested (`OUTPUT_2026-09-23T051310.txt`); (d) DB reachable via Cloud SQL proxy **127.0.0.1:5434** (5433 down; `source /Users/Dev/madhav-l3/dbenv.sh`); D-6 staged SQL executed, 100 chunks read, no nodal aspect grant — recorded in DIS.031 `amendment_2026_09_23_predicate_level_recheck` (ground upgraded ATTRIBUTED→CONFIRMED, OCR/400-char limits stated). |
 | 1 — R-5 harness | **PASSED 2026-09-23** | Identity D-R5-1 implemented (`r5_identity.py`: contact_uuid uuid5 over the 8-field tuple with peak_date deliberately excluded; episode_uuid over sorted-member set-hash; FIELD_EXCLUSIONS = surrogate id / computed_at / generation-head pointers, named in code at :38-43). Five-rule rebuild/mapping (no-op / supersede / decisive-geometry-reattach / **ambiguous fail-closed** / explicit-withdrawal-only) with journal + replay, in a schema-faithful SQLite mirror of the §5.2 cascade graph (245/247 CASCADE, 249 SET NULL, 363 CASCADE, 334 CASCADE, 331/332 SET NULL, 339 FK-free resolved semantically). Seven §6.3 attacks executable (40 assertions, VERDICT PASS): empty rebuild, moved date (identity stable, content v+1), one-to-many split, many-to-one merge, ambiguous match (no auto-reattach; adjudicated re-run reattaches exactly then), interrupted/resumed (byte-identical manifest, exactly-once), unchanged-count content-swap (per-id canonical diff fires). S14 joined the manifest (`r5_harness/S14_r5_preservation_harness.py\|0\|1`); suite re-run `OUTPUT_2026-09-23T060527.txt` SUITE-PASS 14/14 + 14/14 NEG; NEG mutation = `FAIL_CLOSED_AMBIGUOUS` flipped to False (evidence-bearing: six attack-5 propositions read false on a genuinely re-attached DB). |
 | 2 — R-1…R-4, R-6 | **PASSED 2026-09-23** | all six repairs detector-backed — R-6, R-1, R-3(b), R-4, R-2 each with a new MANIFEST entry; suite `OUTPUT_2026-09-23T132601.txt` SUITE-PASS 17/17 + 17/17 NEG; full `tests/l3` minus ka_kshetra 1104 passed / 2 failed = the two known pre-existing pollution flakes (pristine-tree identical). Details per repair below. |
-| 3 — E2, E5 | NOT STARTED | — |
+| 3 — E2, E5 | **IN_PROGRESS — E2 PASSED 2026-09-23** | Verdict-based own-BAV + SAV repair landed engine-side; 235 targeted tests pass; evidence suite `OUTPUT_2026-09-23T143516.txt` SUITE-PASS 17/17 + 17/17 NEG (S3 post-fix detector). E5 implementation pending. |
 | 4 — E4 + annual-Tājika gate | NOT STARTED | — |
 | 5 — E6 (E3 gated on N-7) | NOT STARTED | — |
+
+## Phase 3 progress
+
+### E2 — Aṣṭakavarga signed verdicts (PASSED 2026-09-23)
+
+**Design pins applied (plan §3 E2 + M-7 + ASTRA [S3-E] RRV-01/RRV-11):**
+- `services/ka_sangam/engine.py`: replaced the held-null `_c7_ashtakavarga_potency` with `_c7_ashtakavarga_verdict` (own-BAV verdict: ≥5 support, 4 indeterminate-leaning-adverse, ≤3 obstruct; returns `None` when the planet is not in the producer’s `computed_planets` receipt). Verdict is wired into `separate_kernel` for Modes A/B (indeterminate −0.1, obstruct −0.2 valence modulation) and removed from the positive supporting combiner. Added `_sav_verdict` for Mode D using BPHS bands (>30 support, 25–30 indeterminate, <25 obstruct) with a retained Phaladīpiká alternate (>28/<28).
+- Mode D scans signs with SAV ≥ 25 (`_SAV_SCAN_THRESHOLD = 25`), keeps the classical `_SAV_STRONG_THRESHOLD = 28`, and records the structured `sav_verdict` on every window.
+- `pipeline/orchestrator/writers/ka_sangam.py`: `ashtakavarga_transit_potency` current now fires only on `c7_ashtakavarga_verdict.verdict == 'support'` (Mode A/B) or `sav_verdict.verdict == 'support'` (Mode D).
+- `ga_writers/ga_strength_writer.py` already emits `ashtakavarga_completeness_receipt` and `ashtakavarga_school_primary`; E2 relies on these columns as the producer receipt.
+
+**Qualification:**
+- `tests/l3/test_ka_sangam_a3_fixes.py` — Mode D threshold assertions updated to the 25-scan model; `_SAV_SCAN_THRESHOLD` import and test added.
+- `tests/test_u3_convergence_currents.py` — `TestAshtakavarga` rewritten for verdict semantics.
+- `tests/l3/test_panchanga_term_honest_null.py` — C7 section rewritten for verdict semantics.
+- Targeted pytest run (235 tests): `tests/l3/test_ka_sangam.py tests/l3/test_panchanga_term_honest_null.py tests/l3/test_ka_sangam_r6_kernel.py tests/l3/test_ka_sangam_r1_r4_repairs.py tests/l3/test_ka_sangam_r2_intersection.py tests/test_u3_convergence_currents.py tests/l3/test_ka_sangam_a3_fixes.py` → **235 passed**.
+- Full `tests/l3 -k 'not ka_kshetra'`: **978 passed, 1 failed, 7 skipped, 626 deselected**; the single failure is the known pre-existing pyswisseph parity flake `tests/l3/test_transit_search_cache.py::test_cached_call_matches_direct_swe_calc_ut`.
+- Evidence suite `OUTPUT_2026-09-23T143516.txt`: **SUITE-PASS 17/17 positive + 17/17 NEG**; S3 rewritten as a post-fix detector (producer receipt, sign-keyed reader, BAV/SAV verdict bands, missing-planet unavailable).
 
 ## Binding pins added at the gate (D-8 dispositions — plan §10)
 

@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 from datetime import date
+from typing import Optional
 
 import psycopg
 
@@ -933,10 +934,10 @@ class KaSangamWriter(WriterBase):
                     'benefic_dristi': bool(cf.get('c_benefic_dristi', 0) > 0.0),
                     'cross_dasha_agreement': bool(cf.get('c_cross_dasha_agreement', 0) > 0.0),
                     'nakshatra_subsystem': bool(cf.get('c_nakshatra_subsystem', 0) > 0.0),
-                    # U3 C7-C12 currents (Mode D: ashtakavarga_transit_potency from sav_bindhu)
+                    # U3 C7-C12 currents (E2: verdict-based, not raw bindus)
                     'ashtakavarga_transit_potency': (
-                        bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0)
-                        or (mode == 'D' and bool(cf.get('sav_bindhu', 0) >= 28))
+                        bool(cf.get('c7_ashtakavarga_verdict', {}).get('verdict') == 'support')
+                        or (mode == 'D' and bool(cf.get('sav_verdict', {}).get('verdict') == 'support'))
                     ),
                     'eclipse_proximity': bool(cf.get('c8_eclipse_proximity', 0) > 0.0),
                     'transit_to_transit': bool(cf.get('c9_transit_to_transit', 0) > 0.0),
@@ -1011,42 +1012,48 @@ class KaSangamWriter(WriterBase):
         tajika_year_lords: list[dict] = []
         # school_consensus_by_domain: pre-U4 default — not yet built; stays empty
 
+        ashtakavarga_computed_planets: set[str] = set()
+        ashtakavarga_school_primary: Optional[str] = None
+
         # C7: ashtakavarga bindus from chart_facts
-        # Schema: fact_category='ashtakavarga_bindu', fact_subject='<Planet>-HOUSE_<N>',
-        # fact_key='bindus', fact_value_num=bindu_count, ayanamsha_id='lahiri_chitrapaksha'
-        # B6 fix: stored value is 'lahiri_chitrapaksha', not bare 'lahiri'.
+        # Schema (E2 fix): fact_category='ashtakavarga_bindu_sign',
+        # fact_subject='<Planet>-SIGN_<N>', fact_key='bindus',
+        # fact_value_num=bindu_count, ayanamsha_id='lahiri_chitrapaksha'.
+        # Legacy 'ashtakavarga_bindu' HOUSE_<N> rows are also read for backward
+        # compatibility, but SIGN-keyed rows take precedence (the sign-keyed value
+        # is authoritative; the HOUSE label was a misnomer for the same rāśi index).
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_ashtak")
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT fact_subject, fact_value_num
+                    SELECT fact_category, fact_subject, fact_value_num
                     FROM chart_facts
                     WHERE chart_id = %s
-                      AND fact_category = 'ashtakavarga_bindu'
                       AND ayanamsha_id = 'lahiri_chitrapaksha'
                       AND fact_key = 'bindus'
+                      AND fact_category IN ('ashtakavarga_bindu', 'ashtakavarga_bindu_sign')
                     """,
                     (chart_id,),
                 )
                 for row in cur.fetchall():
-                    # fact_subject like 'Sun-HOUSE_3' or 'SARVA-HOUSE_3'
                     subj = row['fact_subject'] or ''
-                    if '-HOUSE_' not in subj:
-                        continue
-                    parts = subj.rsplit('-HOUSE_', 1)
-                    if len(parts) != 2:
-                        continue
-                    planet, house_str = parts
-                    try:
-                        house_num = int(house_str)
-                        bindus = int(row['fact_value_num']) if row['fact_value_num'] is not None else 0
-                        if planet not in ashtakavarga_bindu:
-                            ashtakavarga_bindu[planet] = {}
-                        ashtakavarga_bindu[planet][house_num] = bindus
-                    except (ValueError, TypeError):
-                        continue
+                    for delim in ('-SIGN_', '-HOUSE_'):
+                        if delim in subj:
+                            parts = subj.rsplit(delim, 1)
+                            if len(parts) != 2:
+                                continue
+                            planet, num_str = parts
+                            try:
+                                sign_num = int(num_str)
+                                bindus = int(row['fact_value_num']) if row['fact_value_num'] is not None else 0
+                                if planet not in ashtakavarga_bindu:
+                                    ashtakavarga_bindu[planet] = {}
+                                ashtakavarga_bindu[planet][sign_num] = bindus
+                            except (ValueError, TypeError):
+                                continue
+                            break
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_ashtak")
         except Exception as exc:
@@ -1054,6 +1061,49 @@ class KaSangamWriter(WriterBase):
             try:
                 with conn.cursor() as sp:
                     sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_ashtak")
+            except Exception:
+                pass
+
+        # E2: completeness/validity receipt so missing-planet zeros are
+        # distinguishable from measured zeros.
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_av_receipt")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_category, fact_value_jsonb, fact_value_text
+                    FROM chart_facts
+                    WHERE chart_id = %s
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND fact_category IN ('ashtakavarga_completeness_receipt', 'ashtakavarga_school_primary')
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    cat = row['fact_category']
+                    if cat == 'ashtakavarga_completeness_receipt':
+                        val = row['fact_value_jsonb']
+                        if isinstance(val, str):
+                            try:
+                                val = json.loads(val)
+                            except Exception:
+                                val = None
+                        if isinstance(val, list):
+                            ashtakavarga_computed_planets.update(val)
+                    elif cat == 'ashtakavarga_school_primary':
+                        text = row['fact_value_text'] or ''
+                        if text.startswith('BPHS'):
+                            ashtakavarga_school_primary = 'BPHS'
+                        elif text.startswith('Phaladīpikā') or text.startswith('Phaladeepika'):
+                            ashtakavarga_school_primary = 'Phaladīpikā'
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_av_receipt")
+        except Exception as exc:
+            logger.debug("ka_sangam: ashtakavarga receipt fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_av_receipt")
             except Exception:
                 pass
 
@@ -1151,14 +1201,21 @@ class KaSangamWriter(WriterBase):
 
         if ashtakavarga_bindu or vedha_rules or tajika_year_lords:
             logger.info(
-                "ka_sangam: EnrichmentContext built — ashtak_planets=%d, vedha_rules=%d, tajika_years=%d",
-                len(ashtakavarga_bindu), len(vedha_rules), len(tajika_year_lords),
+                "ka_sangam: EnrichmentContext built — ashtak_planets=%d "
+                "(computed=%d, school=%s), vedha_rules=%d, tajika_years=%d",
+                len(ashtakavarga_bindu),
+                len(ashtakavarga_computed_planets),
+                ashtakavarga_school_primary,
+                len(vedha_rules),
+                len(tajika_year_lords),
             )
         else:
             logger.warning("ka_sangam: EnrichmentContext is empty — C7/C11/C12 will score 0.0")
 
         return EnrichmentContext(
             ashtakavarga_bindu=ashtakavarga_bindu if ashtakavarga_bindu else None,
+            ashtakavarga_computed_planets=ashtakavarga_computed_planets if ashtakavarga_computed_planets else None,
+            ashtakavarga_school_primary=ashtakavarga_school_primary,
             vedha_rules=vedha_rules if vedha_rules else None,
             tajika_year_lords=tajika_year_lords if tajika_year_lords else None,
         )

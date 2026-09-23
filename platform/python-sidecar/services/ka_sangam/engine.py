@@ -76,8 +76,13 @@ class EnrichmentContext:
     Passed in by the ka_sangam writer to avoid passing db_conn into engine.py.
 
     ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
-        Sourced from chart_facts (sarvashtakavarga) via ga_strength writer.
-        Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
+        Sourced from chart_facts (ashtakavarga_bindu_sign) via ga_strength writer.
+        Sign-keyed (1=Aries). Classical threshold: ≥ 5 bindus = strong; 4 =
+        indeterminate-leaning-adverse (M-2); ≤ 3 = weak/obstruct.
+    ashtakavarga_computed_planets: set of planet names that the producer actually
+        computed. A planet absent from this set is "missing", not "measured zero".
+    ashtakavarga_school_primary: 'BPHS' | 'Phaladīpikā' | None — the school whose
+        bands are primary for SAV verdicts (BPHS per M-2/BPHS-primary ruling).
     vedha_rules: list of dicts with keys {graha, window_start, window_end}
         Sourced from kala_vedha_gochara WHERE vedha_kind='house_vedha', pinned to
         ayanamsha_id='lahiri_chitrapaksha'.
@@ -93,11 +98,15 @@ class EnrichmentContext:
     def __init__(
         self,
         ashtakavarga_bindu: Optional[dict[str, dict[int, int]]] = None,
+        ashtakavarga_computed_planets: Optional[set[str]] = None,
+        ashtakavarga_school_primary: Optional[str] = None,
         vedha_rules: Optional[list[dict]] = None,
         tajika_year_lords: Optional[list[dict]] = None,
         school_consensus_by_domain: Optional[dict[str, int]] = None,
     ):
         self.ashtakavarga_bindu = ashtakavarga_bindu or {}
+        self.ashtakavarga_computed_planets = ashtakavarga_computed_planets or set()
+        self.ashtakavarga_school_primary = ashtakavarga_school_primary or None
         self.vedha_rules = vedha_rules or []
         self.tajika_year_lords = tajika_year_lords or []
         self.school_consensus_by_domain = school_consensus_by_domain or {}
@@ -109,42 +118,91 @@ class EnrichmentContext:
 
 # ── U3 current derivation helpers ─────────────────────────────────────────────
 
-def _c7_ashtakavarga_potency(
+def _c7_ashtakavarga_verdict(
     planet: str,
     transit_sign: Optional[int],
     ctx: EnrichmentContext,
-) -> Optional[float]:
+) -> Optional[dict[str, Any]]:
     """
-    C7: ashtakavarga_transit_potency — does the transit DELIVER?
-    Bindus ≥ 5 → strong (→ 1.0 scaled linearly). ≤ 2 → weak (→ 0.0).
-    Range: 0.0 (0 bindus) … 1.0 (8 bindus). Formula: bindus / 8.0.
-    Classical source: Parāśara, Ashtakavarga adhyāya.
-    """
-    if not ctx.ashtakavarga_bindu or transit_sign is None:
-        return None
+    C7: own-BAV structured verdict (E2/M-2). Returns None when unavailable.
 
-    # NIRMĀṆA L3-W3 (§N.8). This lookup has NEVER matched: `ctx.ashtakavarga_bindu` is keyed by
-    # the stored L1 vocabulary — JUP / MAR / MER / MOON / SAT / SUN / VEN / SARVA — while `planet`
-    # arrives Title-case from `_resolve_transit_planet` ("Jupiter"). So `sign_map` is always {},
-    # bindus always 0, and the term has been 0.0 on **4,729 of 4,729** rows carrying the key.
-    #
-    # The vocabulary half is fixable here via the L0 SSoT. The SECOND half is NOT, and is why this
-    # returns an honest None rather than a repaired number:
-    #
-    #   the stored facts are keyed `<GRAHA>-HOUSE_<N>`, and this function looks up by
-    #   `transit_sign` (1-12 rāśi). HOUSE and SIGN are different frames. Classical ashtakavarga
-    #   counts bindus per RĀŚI, which suggests the lookup is right and the fact label is a
-    #   misnomer — but that is an inference about an L1 fact's meaning, not a fact.
-    #
-    # **Both canonical charts have Āries lagna**, where house N ≡ sign N, so the two frames are
-    # indistinguishable on every chart this campaign builds. A vocabulary-only fix would therefore
-    # look perfectly correct here and be silently wrong for any non-Āries-lagna chart. Guessing the
-    # frame to make a number appear is precisely the invented judgment §N.7 item 6 forbids.
-    #
-    # Held pending the frame adjudication. Until then the term is DROPPED, not scored zero —
-    # `sup.get(key, 0.0)` in the saturating combiner makes an absent key contribute nothing, which
-    # is arithmetically what it has always done, but now says so.
-    return None
+    Verdict ∈ {support, indeterminate, obstruct}:
+      ≥ 5 bindus  → support
+      = 4 bindus  → indeterminate-leaning-adverse (M-2)
+      ≤ 3 bindus  → obstruct
+
+    The verdict is recorded as data; it does NOT feed the positive supporting
+    combiner (R-6). A missing planet (not in the producer's computed_planets
+    receipt) is unavailable, not a measured zero.
+    """
+    if transit_sign is None:
+        return None
+    # Vocabulary normalisation: producer subjects are Title-case ('Saturn'),
+    # but callers may pass all-caps pyjhora keys. Accept both.
+    canon = planet.capitalize()
+    if canon not in ctx.ashtakavarga_computed_planets:
+        return None
+    sign_map = ctx.ashtakavarga_bindu.get(canon)
+    if not sign_map:
+        return None
+    bindus = sign_map.get(transit_sign)
+    if bindus is None:
+        return None
+    if bindus >= 5:
+        verdict = 'support'
+    elif bindus == 4:
+        verdict = 'indeterminate'
+    else:
+        verdict = 'obstruct'
+    return {
+        'value': int(bindus),
+        'rule': 'own_bav',
+        'source': f"ashtakavarga_bindu_sign:{canon}-SIGN_{transit_sign}",
+        'availability': 'computed',
+        'verdict': verdict,
+        'school': ctx.ashtakavarga_school_primary or 'BPHS',
+    }
+
+
+def _sav_verdict(
+    transit_sign: Optional[int],
+    ctx: EnrichmentContext,
+) -> Optional[dict[str, Any]]:
+    """
+    Mode D: SAV structured verdict (E2). BPHS 72.3-5 bands primary:
+      > 30 rekhas → support
+      25–30       → indeterminate
+      < 25        → obstruct
+    Phaladīpikā 23.20 (>28/<28) is retained as an alternate label only.
+    """
+    if transit_sign is None:
+        return None
+    sarva = ctx.ashtakavarga_bindu.get('SARVA', {})
+    sav = sarva.get(transit_sign)
+    if sav is None:
+        return None
+    school = ctx.ashtakavarga_school_primary or 'BPHS'
+    if school == 'BPHS':
+        if sav > 30:
+            verdict = 'support'
+        elif 25 <= sav <= 30:
+            verdict = 'indeterminate'
+        else:
+            verdict = 'obstruct'
+    else:
+        # Phaladīpikā 23.20: >28 favourable, <28 unfavourable.
+        if sav > 28:
+            verdict = 'support'
+        else:
+            verdict = 'obstruct'
+    return {
+        'value': int(sav),
+        'rule': 'sav_bphs' if school == 'BPHS' else 'sav_phaladeepika',
+        'source': f"ashtakavarga_bindu_sign:SARVA-SIGN_{transit_sign}",
+        'availability': 'computed',
+        'verdict': verdict,
+        'school': school,
+    }
 
 
 def _c8_eclipse_score(
@@ -784,43 +842,29 @@ def separate_kernel(
     supporting: dict[str, float],
     availability: Optional[dict[str, str]] = None,
     applicability: Optional[dict[str, bool]] = None,
+    c7_verdict: Optional[dict[str, Any]] = None,
 ) -> dict:
     """
-    R-6 (RR-05, decision M-7; ASTRA amendments RRV-03/RRV-08 dispositioned
-    2026-09-23 in ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0 §B/R-6): the single I-16
-    composite splits into four carried-as-data fields —
+    R-6 (RR-05, decision M-7; ASTRA amendments RRV-03/RRV-08).
 
-      activity      geometric/clock intensity in [0,1]. The I-16 form MINUS
-                    DIGNITY: Π(genuine necessity — orb presence, route
-                    satisfied, vedha modulator) × saturating_sum(supporting).
-                    Dignity left the necessary product (it becomes valence),
-                    so a dignity-0 yet intensely active configuration keeps
-                    activity > 0 — S11's erased-adverse-activity defect cannot
-                    recur in this kernel.
-      valence       signed, in [-1,1], from dignity: 2·dignity − 1. Dignity 0
-                    → −1 (adverse, STILL APPLICABLE — BPHS 47.3-4: a weak
-                    lord delivers trouble, not silence; ASTRA verified the
-                    verse verbatim); dignity 1 → +1.
-      applicability F06-per-method record: which terms were actually
-                    evaluated for this window (True) vs unavailable/not
-                    applicable (False). Carried as data, never pooled into the
-                    ordering key (RRV-03).
-      availability  per-input stance vocabulary ('computed' | 'unavailable').
-                    RRV-08: a term whose input could not be established (e.g.
-                    daśā eligibility with no service or no covering window) is
-                    recorded ABSENT here and OMITTED from `supporting` — never
-                    manufactured as neutral 0.5/1.0 support. C11 vedha
-                    unavailability is likewise recorded, not silently folded
-                    into a neutral 1.0 factor.
-
-    The legacy composite `convergence_score` (dignity still inside the
-    necessary product) is computed and carried UNCHANGED on the same window
-    for backward compatibility — the legacy_i16 reading, labelled
-    kernel_version, never re-derived from these four fields.
+    E2 (M-2): C7 own-BAV is a structured verdict, not BAV/8 in the positive
+    supporting combiner. When `c7_verdict` is supplied, it modulates valence:
+      support       → no change
+      indeterminate → −0.1
+      obstruct      → −0.2
+    The verdict itself is carried in constituent_factors, not in `supporting`.
     """
+    valence = 2.0 * max(0.0, min(1.0, float(dignity_score))) - 1.0
+    if c7_verdict and c7_verdict.get('availability') == 'computed':
+        verdict = c7_verdict.get('verdict')
+        if verdict == 'indeterminate':
+            valence -= 0.1
+        elif verdict == 'obstruct':
+            valence -= 0.2
+        valence = max(-1.0, min(1.0, valence))
     return {
         'activity': round(convergence_score(necessary_without_dignity, supporting), 4),
-        'valence': round(2.0 * max(0.0, min(1.0, float(dignity_score))) - 1.0, 4),
+        'valence': round(valence, 4),
         'applicability': dict(applicability or {}),
         'availability': dict(availability or {}),
     }
@@ -1392,7 +1436,7 @@ def mode_a_search(
 
         transit_sign = int(ev.exact_longitude_deg // 30) + 1 if hasattr(ev, 'exact_longitude_deg') else None
 
-        c7  = _c7_ashtakavarga_potency(planet, transit_sign, ctx)
+        c7_verdict  = _c7_ashtakavarga_verdict(planet, transit_sign, ctx)
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
@@ -1420,7 +1464,7 @@ def mode_a_search(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    float(dasha_score),
-            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
+            # E2: own-BAV is a verdict, NOT BAV/8 in the supporting product.
             **({'cross_dasha_agreement': c_cross} if c_cross is not None else {}),
             # R-4 (RR-06): benefic_dristi and transit_to_transit are WITHDRAWN from
             # the scored product; weights stay declared/dormant in SUPPORTING_WEIGHTS.
@@ -1459,12 +1503,15 @@ def mode_a_search(
                 'vedha': 'computed' if vedha_available else 'unavailable',
                 'transit_search': 'computed',
                 'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
+                'ashtakavarga': 'computed' if c7_verdict is not None else 'unavailable',
             },
             applicability={
                 **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
                 'vedha_cancellation': vedha_available,
                 'orb_presence': True,  # event found above the orb threshold
+                'ashtakavarga_verdict': c7_verdict is not None,
             },
+            c7_verdict=c7_verdict,
         )
 
         windows.append({
@@ -1491,10 +1538,10 @@ def mode_a_search(
                 **({'target_provenance': _target_provenance_dict(transit_trig)}
                    if _has_target_provenance(transit_trig) else {}),
                 # U3 per-current breakdown (§3.5 — explainability)
-                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
-                   {'c7_ashtakavarga_potency_unavailable':
-                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
-                    'term dropped, NOT scored zero (L3-W3)'}),
+                **({'c7_ashtakavarga_verdict': c7_verdict} if c7_verdict is not None else
+                   {'c7_ashtakavarga_verdict_unavailable':
+                    'planet not in computed-planets receipt, or sign-keyed BAV missing — '
+                    'term dropped, NOT scored zero (E2)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
                 'c9_transit_to_transit_withdrawn': (
@@ -1547,8 +1594,9 @@ def mode_a_search(
                 'current_stances': {
                     'constituent_lord_transit':     _current_stance(dasha_score),
                     'ashtakavarga_transit_potency': _current_stance(
-                        c7, 'graha-vocabulary mismatch AND an unresolved '
-                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                        c7_verdict.get('value') if c7_verdict else None,
+                        'planet not in computed-planets receipt, or sign-keyed BAV missing '
+                        '(E2); own-BAV verdict is support|indeterminate|obstruct, never a score'),
                     'cross_dasha_agreement':        _current_stance(
                         c_cross, 'R-2: dasha query failed (unavailable) or evaluated-empty — '
                                  'see c_cross_dasha_agreement_* reason key'),
@@ -1696,7 +1744,7 @@ def mode_b_sweep(
 
         transit_sign = int(ev.exact_longitude_deg // 30) + 1 if hasattr(ev, 'exact_longitude_deg') else None
 
-        c7  = _c7_ashtakavarga_potency(planet, transit_sign, ctx)
+        c7_verdict = _c7_ashtakavarga_verdict(planet, transit_sign, ctx)
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
@@ -1719,7 +1767,6 @@ def mode_b_sweep(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    0.0,   # mode B has no dasha prior
-            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             'cross_dasha_agreement':        0.0,  # no dasha context in mode B
             # R-4 (RR-06): benefic_dristi and transit_to_transit are WITHDRAWN from
             # the scored product; weights stay declared/dormant in SUPPORTING_WEIGHTS.
@@ -1752,12 +1799,15 @@ def mode_b_sweep(
                 'vedha': 'computed' if vedha_available else 'unavailable',
                 'transit_search': 'computed',
                 'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
+                'ashtakavarga': 'computed' if c7_verdict is not None else 'unavailable',
             },
             applicability={
                 **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
                 'vedha_cancellation': vedha_available,
                 'orb_presence': True,
+                'ashtakavarga_verdict': c7_verdict is not None,
             },
+            c7_verdict=c7_verdict,
         )
 
         windows.append({
@@ -1783,10 +1833,10 @@ def mode_b_sweep(
                 # R-1 (RR-03): carry target provenance as data.
                 **({'target_provenance': _target_provenance_dict(transit_trig)}
                    if _has_target_provenance(transit_trig) else {}),
-                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
-                   {'c7_ashtakavarga_potency_unavailable':
-                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
-                    'term dropped, NOT scored zero (L3-W3)'}),
+                **({'c7_ashtakavarga_verdict': c7_verdict} if c7_verdict is not None else
+                   {'c7_ashtakavarga_verdict_unavailable':
+                    'planet not in computed-planets receipt, or sign-keyed BAV missing — '
+                    'term dropped, NOT scored zero (E2)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
                 'c9_transit_to_transit_withdrawn': (
@@ -1827,8 +1877,9 @@ def mode_b_sweep(
                         'empty_reason': 'mode B has no dasha prior — structural, not per-window',
                     },
                     'ashtakavarga_transit_potency': _current_stance(
-                        c7, 'graha-vocabulary mismatch AND an unresolved '
-                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                        c7_verdict.get('value') if c7_verdict else None,
+                        'planet not in computed-planets receipt, or sign-keyed BAV missing '
+                        '(E2); own-BAV verdict is support|indeterminate|obstruct, never a score'),
                     'cross_dasha_agreement': {
                         'state': 'honest_empty',
                         'empty_reason': 'no dasha context in mode B — structural, not per-window',
@@ -2001,6 +2052,11 @@ def mode_c_subsystem_period(
 # activation window (Phaladeepika Ch.26; BPHS Ch.66 Gochara-Ashtakavarga).
 # SAV per sign ranges 0-56 (7 classical planets × 8 bindus each); 28 = midpoint.
 _SAV_STRONG_THRESHOLD: int = 28
+# E2 scan prefilter: BPHS 72.3-5 treats SAV ≥ 25 as "not adverse" (adverse only
+# when < 25). Mode D therefore emits windows for SAV 25-30 as indeterminate,
+# records the BPHS/Phaladīpikā verdict in constituent_factors, and lets the
+# caller decide how to weigh the indeterminate band.
+_SAV_SCAN_THRESHOLD: int = 25
 
 # Sign names indexed 1–12 (Aries … Pisces)
 _SIGN_NAMES: dict[int, str] = {
@@ -2019,15 +2075,17 @@ def mode_d_av_bindhu(
     horizon_end_jd: float,
     gochara_service: Any,
     enrichment_context: Optional[EnrichmentContext] = None,
-    sav_threshold: int = _SAV_STRONG_THRESHOLD,
+    sav_threshold: int = _SAV_SCAN_THRESHOLD,
 ) -> list[dict]:
     """
     Mode D: Sarva-Ashtakavarga (SAV) bindhu convergence sub-mode.
 
     Classical basis: Phaladeepika Ch.26 + BPHS Ch.66.  A planet transiting a
-    sign with SAV ≥ threshold bindhu (default 28) is a strong activation window.
-    Only Jupiter, Saturn, and Mars are scanned — fast planets (Sun/Moon/Mercury/
-    Venus) produce too many events to be meaningful timing discriminants.
+    sign with SAV ≥ threshold bindhu (default 25, BPHS "not adverse") is an
+    activation window; the BPHS verdict (>30 support, 25-30 indeterminate,
+    <25 obstruct) is recorded per window. Only Jupiter, Saturn, and Mars are
+    scanned — fast planets (Sun/Moon/Mercury/Venus) produce too many events to
+    be meaningful timing discriminants.
 
     Algorithm:
       1. Read SAV per sign from EnrichmentContext.ashtakavarga_bindu['SARVA'].
@@ -2036,6 +2094,7 @@ def mode_d_av_bindhu(
       3. Emit one window per ingress, spanning the planet's sign-transit duration.
       4. Convergence score = (sav / 56.0) × dignity_score.  Orb_strength = 1.0
          (sign-level: no angular orb — the window is the full sign transit).
+      5. Record the structured SAV verdict in constituent_factors.
 
     Returns windows with mode='D' and is_off_dasha_discovery=False.
     Requires gochara_service; returns [] if unavailable.
@@ -2088,12 +2147,22 @@ def mode_d_av_bindhu(
                 sav_score  = min(1.0, sav / 56.0)
                 cscore     = round(dignity_score * sav_score, 4)
                 rarity     = _rarity_years(planet, 30.0)   # sign-ingress ≈ 30° transit
+                sav_verdict = _sav_verdict(sign_num, ctx)
                 # R-6: sign-level route — SAV fraction is the non-dignity
                 # activity; dignity becomes valence (legacy composite unchanged).
                 kernel = separate_kernel_sign_level(
                     dignity_score, sav_score,
-                    availability={'dasha': 'unavailable', 'sav_bindhu': 'computed'},
-                    applicability={'av_bindhu_route': bool(sav >= sav_threshold)},
+                    availability={
+                        'dasha': 'unavailable',
+                        'sav_bindhu': 'computed',
+                        'sav_verdict': sav_verdict['verdict'] if sav_verdict else 'unavailable',
+                    },
+                    applicability={
+                        'av_bindhu_route': bool(sav >= sav_threshold),
+                        'sav_support': sav_verdict is not None and sav_verdict['verdict'] == 'support',
+                        'sav_indeterminate': sav_verdict is not None and sav_verdict['verdict'] == 'indeterminate',
+                        'sav_obstruct': sav_verdict is not None and sav_verdict['verdict'] == 'obstruct',
+                    },
                 )
 
                 windows.append({
@@ -2114,6 +2183,7 @@ def mode_d_av_bindhu(
                         'sav_bindhu': sav,
                         'sav_threshold': sav_threshold,
                         'sav_score': round(sav_score, 4),
+                        'sav_verdict': sav_verdict,
                         'dignity_score': dignity_score,
                         'signature_class': sig_class,
                         'mode': 'D',
@@ -2154,6 +2224,7 @@ __all__ = [
     '_PLANET_PERIOD_YR',
     '_resolve_transit_planet',
     '_SAV_STRONG_THRESHOLD',
+    '_SAV_SCAN_THRESHOLD',
     '_AV_SCAN_PLANETS',
     '_SIGN_NAMES',
 ]
