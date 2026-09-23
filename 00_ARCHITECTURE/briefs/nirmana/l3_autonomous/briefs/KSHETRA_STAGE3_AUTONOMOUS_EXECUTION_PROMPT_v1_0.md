@@ -1,12 +1,13 @@
 ---
 artifact: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
 canonical_id: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
-version: "1.2"
+version: "1.3"
 status: AUTHORIZED_STAGE_3_ONLY  # native record 2026-09-24 (see authorized_by); stage 4 explicitly NOT opened; executor not yet started
 layer: L3
 asset: ka_kshetra
 campaign_id: kshetra-stage3
 changelog:
+  - "1.3 (2026-09-24) — Phase 1 item zero added ABOVE G3: the time-axis defect (J2000 knots under birth-relative clip/horizon constants), measured live; detector-first fix. Phase 0 gains check (g) reproducing the measurement. Phase 2 gains the six synergy-binding items from the strategic session's audit, spot-verified. Nothing else changed; authorization unchanged; executor not started."
   - "1.2 (2026-09-24) — status AUTHORIZED_STAGE_3_ONLY on the native's verbatim record (blueprint v4.3 / checklist v1.5, verified at source); stage 4 explicitly not opened; W1 release and the live L0 repair carried into §2; migration facts refreshed (next free 1082, verify). Executor NOT started by this change."
   - "1.1 (2026-09-23) — migration-number allocation rule: list both directories across every origin head; 1071–1074 claimed on origin by four unmerged branches, 1075/1076 by Gochara locally (Gochara madhav-e6's finding, verified here). Nothing else changed."
 produced_on: 2026-09-23
@@ -193,7 +194,27 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   (f) **Open the goal:** append the L3 stage entry for `KSHETRA-STAGE3-SOURCE-ELEVATION-01` to
       `MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md` (append-only, its own format), citing the brief's
       `goal_objective`, this prompt's commit, and the authorization line the native filled.
-  **Exit:** all five checks recorded in `KSHETRA_STAGE3_STATE.md`; the ledger entry committed.
+  (g) **Reproduce the time-axis measurement** (plan §2 item 00): on the canonical chart, `min(t_start)`,
+      `max(t_end)` of `kala_field`, and `min/max` of `t_days` in `kala_field_kinematics` and `t_boundary` in
+      `kala_field_boundaries`. Expected today: field 0 … 36525; kinematics −5808.75 … 30717. Record it; it is
+      the baseline your Phase 1 detector must turn red.
+  **Exit:** all six checks recorded in `KSHETRA_STAGE3_STATE.md`; the ledger entry committed.
+
+**Phase 1, item zero — THE TIME AXIS (rank 0, above G3; plan §2 item 00).** Every knot source is J2000
+  days (stage 0 roots, stage 1 primitives, stage 3 boundaries); the sweep, the evaluator's `breakpoints()`
+  and the writer's decade partition clip and partition as birth-relative `[0, H]`; migration 492 and L5
+  (`mi_bhara/living_lel.py:113`) say "days since birth". Choose ONE convention end to end — the DDL and L5
+  say birth-relative, so the least-surprise fix is to convert at load (`t − t_birth_J2000`, birth epoch
+  from `ctx.config` birth_params, the same instant stage 0's horizon uses) in `load_ladder`,
+  `load_primitives` and `load_kinematics_breakpoints`, and to render `event_ts`/dates from the same epoch —
+  or, if you find a reason the axis must stay J2000, carry `t_birth` on the evaluator and clip to
+  `[t_birth, t_birth+H]` and fix the DDL comment and L5's reader. Either way: pin `t_axis_convention` in
+  `config_pin`; write the **detector first and watch it fail on today's rows** — `min(t_start)` = birth,
+  `max(t_end)` = birth+36525 on the declared axis, every window date round-trips through the same epoch,
+  and no primitive or boundary knot lies outside `[birth−ε, birth+H]` after conversion; negative control
+  under `NEG=1`. Record which convention you chose and why in the state file.
+  **Exit:** the detector is green on fixture-bound source and would be red on the held substrate; the
+  kinematics roots, primitives and boundaries all land inside the birth horizon.
 
 **Phase 1 — G3 (rank 0): the suppression contract, then the gate.**
   Hoist the SM-R-7 route filter (`layer1.py:143-160`'s `suppressed_keys`) into `hazard.evaluate`,
@@ -221,6 +242,20 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   ~10 read-never-declared tables; `bo_sangati`/`bo_upaya` declared-never-read); F12 role per edge.
   **SAVEPOINT** on the cohort read (`writer.py:1754-1770`; pattern `ka_sangam.py:997,1028,1033`).
   Second `'v1'` COALESCE at `stage4_field.py:1386-1389` resolved with `writer.py:2330-2347`.
+  **Synergy-binding items (strategic session's `KALA_SYNERGY_AUDIT_v1_0.md` @ 63b5fb429; the author spot-verified
+  the marked ones, re-verify all before acting):** (i) [verified: 0 hits] the layer's temporal object is
+  `timestamptz` UTC via the shared `ka_temporal` resolver — Kshetra has no reference to it; adopt it for served
+  dates once item zero fixes the axis; (ii) [verified: 8 sites] `precision_regime='day_grade'` collides with
+  Gochara's `date_grain`/`instant_grain` — rename to `claim_grain`, alias `day_grade → date_grain` for one
+  generation; (iii) [verified: half-open convention at `dhara_sweep.py:138,222`; `inclusivity` appears in
+  migration 492 — check whether the column exists on `kala_field`/`kala_field_windows` or only in prose]
+  declare `inclusivity` per row; (iv) [verified: `find_contact_episodes` at `stage0_kinematics.py:329` mints
+  its own `episode_id` (:490,:506)] Kshetra is a second producer of contact-shaped rows beside the Gochara
+  kernel's `contact_id` — in the S1 packet either consume `kala_gochara_contacts` by the binding's
+  `window_ref` or declare episodes `evaluation`-only with `comparable_with = different_convention`; never both
+  silently; (v) [verified: 0 hits] no coverage object on any result and no `independence_group` inherited from
+  any witness — both are binding rows, add them in S5/S1; (vi) the `'v1'` COALESCE fall-throughs and the
+  `_routes` surrogate ids are already above.
   **Exit:** every seam has an assertion-based test with a negative control; the register census
   (`FROM`-census over every module vs the seed) is clean; the migration is verified applied.
 
