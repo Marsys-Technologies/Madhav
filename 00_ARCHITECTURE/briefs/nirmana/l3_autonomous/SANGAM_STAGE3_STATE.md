@@ -18,7 +18,7 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 | Phase | Status | Exit evidence |
 |---|---|---|
 | 0 — Entry gate | **PASSED 2026-09-23** | (a) packet read in order; (b) D-8 discharged — Astra third review `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` = PROCEED_WITH_AMENDMENTS, RRV-01…09 dispositioned in plan §10 + brief changelog + inline [S3-E] amendments; (c) evidence suite re-run `OUTPUT_2026-09-23T050513.txt` SUITE-PASS 13/13 + 13/13 NEG (4 scripts spot-verified by hand, exit 1 under NEG=1); reviewer independently re-ran + mutation-tested (`OUTPUT_2026-09-23T051310.txt`); (d) DB reachable via Cloud SQL proxy **127.0.0.1:5434** (5433 down; `source /Users/Dev/madhav-l3/dbenv.sh`); D-6 staged SQL executed, 100 chunks read, no nodal aspect grant — recorded in DIS.031 `amendment_2026_09_23_predicate_level_recheck` (ground upgraded ATTRIBUTED→CONFIRMED, OCR/400-char limits stated). |
-| 1 — R-5 harness | NOT STARTED | — |
+| 1 — R-5 harness | **PASSED 2026-09-23** | Identity D-R5-1 implemented (`r5_identity.py`: contact_uuid uuid5 over the 8-field tuple with peak_date deliberately excluded; episode_uuid over sorted-member set-hash; FIELD_EXCLUSIONS = surrogate id / computed_at / generation-head pointers, named in code at :38-43). Five-rule rebuild/mapping (no-op / supersede / decisive-geometry-reattach / **ambiguous fail-closed** / explicit-withdrawal-only) with journal + replay, in a schema-faithful SQLite mirror of the §5.2 cascade graph (245/247 CASCADE, 249 SET NULL, 363 CASCADE, 334 CASCADE, 331/332 SET NULL, 339 FK-free resolved semantically). Seven §6.3 attacks executable (40 assertions, VERDICT PASS): empty rebuild, moved date (identity stable, content v+1), one-to-many split, many-to-one merge, ambiguous match (no auto-reattach; adjudicated re-run reattaches exactly then), interrupted/resumed (byte-identical manifest, exactly-once), unchanged-count content-swap (per-id canonical diff fires). S14 joined the manifest (`r5_harness/S14_r5_preservation_harness.py\|0\|1`); suite re-run `OUTPUT_2026-09-23T060527.txt` SUITE-PASS 14/14 + 14/14 NEG; NEG mutation = `FAIL_CLOSED_AMBIGUOUS` flipped to False (evidence-bearing: six attack-5 propositions read false on a genuinely re-attached DB). |
 | 2 — R-1…R-4, R-6 | NOT STARTED | — |
 | 3 — E2, E5 | NOT STARTED | — |
 | 4 — E4 + annual-Tājika gate | NOT STARTED | — |
@@ -55,9 +55,35 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 - DB path: 5434 proxy is the same amjis database the 5433 MCP config points at; recording 5433 outage noted, 5434 used read-only (PGOPTIONS read-only in dbenv.sh).
 - Ruling-vs-plan discrepancies RRV-05/06: ruling sheet resolution table is the binding document; plan text amended, discrepancy recorded (not smoothed, not re-opened — §2 hierarchy).
 
+## Phase 1 — R-5 identity design (executor decision D-R5-1, binding for the harness and later production code)
+
+**Harness ratifications (2026-09-23, executor):** (i) manifest line carries the `r5_harness/` path — correct, since RUN_ALL checks the path relative to evidence_sangam/; (ii) geometry-match rule 3 additionally requires same chart_id and method_contract_version (cross-chart/contract matches are never the same testimony) — adopted; (iii) split/merge/adjudicated reattachments are declared inputs (authorized successor) to the rebuild — matches the attack specs; (iv) split children must differ in an identity field (orb), since peak-only differences collide on contact_uuid by design — a design property, exercised as such; (v) attack 7's load-bearing property is the per-id canonical comparison, not any aggregate hash.
+
+**Design:**
+
+**Contact identity** `contact_uuid` = UUIDv5 over the canonical tuple
+`(chart_id, method_contract_version, graha, target_fact_id, directed_angle_deg, frame_vector, orb_deg, contact_kind)`:
+- `target_fact_id` = the L1 `chart_facts.fact_id` the target is bound to (R-1: provenance, never a longitude; unresolvable target → `unavailable`, no row, no identity).
+- `frame_vector` = `(ayanamsha_id, ephemeris_backend, epoch_convention, ayanamsa_application, node_convention, house_frame)` — R-3's convention vector; two frames never coalesce.
+- `contact_kind` ∈ {exact_contact, sign_interval, ingress}.
+- **Deliberately excluded:** peak_date, interval start/end, orb shoulders — algorithm-versioned *content*, not identity. A peak move within one `method_contract_version` = same identity, new content version + supersession edge. A contract-version change = new identity family; old rows carried as legacy, never pooled.
+
+**Episode identity** `episode_uuid` = UUIDv5 over `(chart_id, method_contract_version, graha, target_fact_id, directed_angle_deg, frame_vector, set_hash(sorted member contact_uuids))` — deterministic, rebuild-stable when membership is unchanged; membership changes produce split/merge edges from the old episode.
+
+**Claim attachment**: dependent claims bind to `contact_uuid` (natural, stable), never the surrogate `convergence_id` — mi_adhilepa's surrogate binding (RRV-04) is the defect this removes; production migration resolves existing bindings semantically via the manifest *before* any key change (D-7's condition).
+
+**Rebuild/mapping (candidate generation)** — five rules:
+1. Candidate uuid + identical content-hash → keep (no-op).
+2. Candidate uuid + different content → supersede: new content version, supersession edge, claims re-point via the same uuid (successor = self, version+1).
+3. New candidate, no uuid match → geometry match against unmatched originals (same target fact, angle, frame, overlapping orb). Exactly one decisive match → reattach + supersession edge. Zero or >1 plausible → **AMBIGUOUS: original retained, claim NOT reattached (fail-closed), flagged `ambiguous_needs_adjudication`** — never silently re-pointed.
+4. Original with no candidate successor and no explicit withdrawal → retained (nothing deletes implicitly). Explicit withdrawal (e.g. invalidated geometry like a defaulted-0° target) → withdrawn with recorded reason; claims mapped only to an authorized successor, else flagged.
+5. Interrupted/resume: mapping decisions journaled; resume replays the journal; assertions prove exactly-once effects.
+
+**Manifest (§6.3 + RRV-09)**: keyed by stable id. Per id: canonical serialization of full claim content with explicit field-exclusion list (surrogate row id, `computed_at`, generation-head pointers; JSONB sorted-keys framing), version, exposure; outcome bytes (`outcome_recorded`/`outcome_notes` verbatim); every dependent binding resolved semantically incl. FK-free `top_anchor_id`; successor mappings. Comparison = exact content per id, never counts/hashes of unframed content. Every rebuild declares its expected delta.
+
 ## Last commit
 
-(pending — Phase 0 commit made immediately after this file and EVENTS.jsonl are written)
+`f81782650` — "sangam stage3: Phase 0 entry gate closed" (D-8 dispositions, suite re-run, D-6 recheck, DIS.031 amendment, state file).
 
 ## Evidence artifacts this phase
 
