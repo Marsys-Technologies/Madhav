@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AUDIT
 canonical_id: KALA_SYNERGY_AUDIT
-version: "1.0"
+version: "1.1"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -38,7 +38,7 @@ see it is disagreeing.
 
 | contract | Gochara family | Saṅgam | Kṣetra |
 |---|---|---|---|
-| **1 Temporal** — one interval type, declared inclusivity, tz-explicit, no `date.today()` | `t_in / t_exact / t_out` **timestamptz UTC**; kernel in JD floats; **inclusivity ABSENT**; own `convention.py`; no `date.today()` | `window_start / window_end / peak_date` **DATE**; inclusivity **split** — daśā `[s,e)`, vedha `s≤p≤e`, recorded as unresolved; tz offset taken at **run time** not birth instant; `date.today()` horizon with a 29-Feb crash; own | `t_start / t_end / t_peak` **float days since birth**, dates derived naive, **no timezone on any column**; half-open in code, **unstated in packet**; own. **Defect:** `stage0_kinematics` `t_days` is days-since-**J2000**, merged into the birth-relative axis with **no offset** (`stage4_field.py:1361-1369` → `writer.py:2049`) |
+| **1 Temporal** — one interval type, declared inclusivity, tz-explicit, no `date.today()` | `t_in / t_exact / t_out` **timestamptz UTC**; kernel in JD floats; **inclusivity ABSENT**; own `convention.py`; no `date.today()` | `window_start / window_end / peak_date` **DATE**; inclusivity **split** — daśā `[s,e)` at `engine.py:437`, vedha `s≤p≤e` at `engine.py:672` (v1.0 had the two addresses transposed; corrected by the Saṅgam session), recorded as unresolved; tz offset taken at **run time** not birth instant; `date.today()` horizon with a 29-Feb crash; own | `t_start / t_end / t_peak` **float days since birth**, dates derived naive, **no timezone on any column**; half-open in code, **unstated in packet**; own. **Defect:** `stage0_kinematics` `t_days` is days-since-**J2000**, merged into the birth-relative axis with **no offset** (`stage4_field.py:1361-1369` → `writer.py:2049`) |
 | shared `ka_temporal` resolver | no | no (`UNRESOLVED_USE`) | no (0 hits) |
 | **2 Typed qualification** — F04/F06/F12 + comparability, one vocabulary | `epistemic_class`, `completeness_state`, `operator_role`, `claim_grain`, `time_basis`, `comparable_with` **(enum, 4 values)**; but `completeness_state` free text with **two** live values + one ad-hoc; `source_qualification` **absent from all Gochara code** (prose only) | R-6 four-way `activity·valence·applicability·availability` **computed, three of four dropped at INSERT**; `tier_basis` hard-coded; F06 six-state **proposed only**; `comparability_class` **brief says `A_B_contact…`, code emits `ka_sangam/{sig}`** | `precision_regime='day_grade'`; `confidence_tier` two values; F06 `unavailable` on σ_t; comparability **proposed only**; `baseline_is_synthetic` absent from row |
 | the comparability concept's **name** | `comparable_with` | `comparability_class` | (none yet) |
@@ -60,7 +60,7 @@ see it is disagreeing.
 
 ## 4. Cross-edges — what actually connects them today (code, `origin/main`)
 
-- Saṅgam → Gochara: `gochara_service.find_aspects` (duck-typed, in-process), the **only** live edge. Saṅgam also reads `ka_vedha_gochara` **undeclared**.
+- Saṅgam → Gochara: `gochara_service.find_aspects` (duck-typed, in-process), the **only** live edge. Saṅgam also reads `ka_vedha_gochara` **undeclared** — confirmed against the LIVE registry 2026-09-24: `ka_sangam.depends_on` carries ten edges (`ka_yojaka, ka_dasha_kala, ka_gochara, ka_muhurta_seva, bo_laksana, ga_dashas, ga_strength, ga_positions, ga_tajaka, bg_transit_rules`) and `ka_vedha_gochara` is not among them. *(A peer correction claiming "no upstream edges into `ka_sangam` at all" was checked and is false: the seed file lists `depends_on` before `asset_id`, so a block read from the name forward attributes the edges to the wrong asset. Recorded so nobody repeats the misread.)* **Latent DAG trap found while checking:** `supabase/migrations/224_…:85` sets `ka_sangam.depends_on = ['ka_kalasutra']` while `ka_kalasutra` depends on `ka_sangam` — a cycle. It is not live (the seed's ten edges won; a recursive walk over the live active DAG finds no cycle), but two DAG sources disagree on this asset's upstream and only re-seeding keeps the acyclic one current.
 - Kṣetra → Gochara: reads `gochara_resonance_map` (declared) and the retired sweep as evaluation corpus with a **`'v1'` COALESCE fall-through at two sites**.
 - Kṣetra ↔ Saṅgam: **no data edge either way.** Saṅgam's windows are Kṣetra's ablation baseline, nothing more.
 - Gochara → anyone: reads nothing; `ka_sangam/**`, `ka_kshetra/**` in its `must_not_touch`.

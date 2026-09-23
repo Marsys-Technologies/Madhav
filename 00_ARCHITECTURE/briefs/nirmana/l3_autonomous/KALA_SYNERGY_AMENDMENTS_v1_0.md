@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AMENDMENTS
 canonical_id: KALA_SYNERGY_AMENDMENTS
-version: "1.0"
+version: "1.1"
 status: PROPOSED_TO_THE_THREE_STREAMS
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -23,13 +23,13 @@ for: "each stream folds its section into its own brief (§4 semantic change, §6
 
 1. **Persist all four R-6 components** (`activity, valence, applicability`) — computed at `engine.py:915-946`, dropped at `writer.py:990-999`. The §4.5 inheritance rule is unenforceable until they are columns.
 2. **Rename `comparability_class` → `comparable_with`** and emit the binding's enum; today the brief says one vocabulary and the code emits `ka_sangam/{sig}`.
-3. **Unify inclusivity** (daśā half-open vs vedha closed) and declare it per row; take the tz offset at the **birth instant**; remove `date.today()` and the 29-Feb crash.
+3. **Unify inclusivity** (daśā half-open at `engine.py:437`, vedha closed at `:672`) and declare it per row; take the tz offset at the **birth instant**; remove `date.today()` and the 29-Feb crash.
 4. **Emit `coverage`** on every window and every empty result; when consuming Gochara events, join the producer's coverage by `window_ref`.
 5. **Emit `independence_group`** (proposed) and rename the scalar to `declared_current_count`; then the seven named readers can inherit it — today zero read even the scalar.
 6. **Land R-5 identity**: `convergence_id` is a bigint surrogate reissued every rebuild; nothing can cite a Saṅgam window across a rebuild.
-7. **Declare the `ka_vedha_gochara` read** (undeclared today) as computational, F12 counterevidence.
+7. **Declare the `ka_vedha_gochara` read** (undeclared today — confirmed live: it is absent from `ka_sangam`'s ten `depends_on` edges) as computational, F12 counterevidence. While there, resolve the two-source conflict: migration 224 still carries a single-edge `['ka_kalasutra']` version of your upstream that would be a cycle if it ever won.
 8. **Scanner off `TRUE_NODE`** (`transit_search.py:10,64`) — M-1 rules mean; the contract binds and the scanner does not. This is the Gochara stream's N-7 kernel or the bounded amendment; until it lands, stamp `comparable_with = different_convention` against every Kṣetra row.
-9. Your brief mandates removing `confidence_score`/`confidence_label`; the writer still emits both. Packet and code must agree before stage-3 close.
+9. Your brief mandates removing `confidence_score`/`confidence_label`; the writer still emits both. Blast radius (measured by the Saṅgam session): `ka_bhavishya_lekha.py`, `ka_kala_darshana.py`, `ka_tulana/writer.py`, `ka_tulana/ranker.py`, `platform/src/lib/retrieval/registry/layers/register_d7_channel.ts`, plus the capability census — five readers and a serving layer, so removal is a coordinated change behind the §6.2 sentinel, not a writer edit. Packet and code must agree before the merge gate.
 
 ## Kṣetra — adopt §B1–B7; fix
 
