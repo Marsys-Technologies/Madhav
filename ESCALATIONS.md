@@ -140,7 +140,6 @@ what a human needs to decide.
   needs the P-1/P-2 serving-side design this file's other entries already describe.
 
 ## E-006-ORIGINAL (superseded above; kept for the record) — WP5 honesty fixes (H-1a, H-2..H-6) not completed in this run
-## E-006 — WP5 honesty fixes (H-1a, H-2..H-6) not completed in this run
 
 - **What:** WP5 is in-scope per the execution brief, but its implementation
   requires changes that intersect with contracts/files outside this run's
