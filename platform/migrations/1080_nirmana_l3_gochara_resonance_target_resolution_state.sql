@@ -1,6 +1,6 @@
 -- RENUMBERED 1075->1080 on 2026-09-24: after the 1075 renumbering below, origin/l0/vedha-and-frame-repair
--- (PR #2727, L0 vedha-and-frame repair) claimed 1075-1079 in platform/supabase/migrations and its 1075/1076
--- were APPLIED to production on 2026-09-23. Both directories form one runner sequence; two 1075s would
+-- (PR #2727, L0 vedha-and-frame repair) claimed 1075-1079 in platform/supabase/migrations and all five
+-- (1075-1079) were APPLIED to production on 2026-09-23. Both directories form one runner sequence; two 1075s would
 -- order deterministically (l0_ before l3_) but would let "1075/1076 applied" read as this file. 1080/1081
 -- were the lowest free numbers across every remote head, local head and worktree at renumbering time.
 -- This file had never been applied outside a disposable DB. Record: ESCALATIONS.md E-007 addendum.
