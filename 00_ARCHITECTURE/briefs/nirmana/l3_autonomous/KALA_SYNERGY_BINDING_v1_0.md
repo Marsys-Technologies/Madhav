@@ -1,86 +1,136 @@
 ---
 artifact: KALA_SYNERGY_BINDING
 canonical_id: KALA_SYNERGY_BINDING
-version: "1.1"
-status: PROPOSED_FOR_ADOPTION_BY_THE_THREE_STREAMS
+version: "2.0"
+status: PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION
 date: 2026-09-24
-author: "L3 Kāla strategic session (madhav-fc), under the native's instruction to elevate the three critical assets synergistically"
+author: "L3 Kāla strategic session (madhav-fc)"
 binds: [ka_gochara family, ka_sangam, ka_kshetra]
-shape: "Layer execution brief contract §5 (demand / offer / interplay) — one row per shared field"
-derived_from: "Strategy §3 'Temporal context' and 'Search coverage' objects; blueprint §3.3; KALA_SYNERGY_AUDIT_v1_0.md"
-authority_note: >
-  Nothing here changes a ruling. It names the fields, vocabularies and keys each stream already
-  claims in prose, fixes them to ONE spelling, and makes each a testable offer/demand. Where a
-  packet and its code disagree, the binding sides with the ruled plan and names the code gap.
+shape: "Layer execution brief contract §5 (demand / offer / interplay), per shared field, with Grain · Use · Failure · Proof stated per section and an interplay map in §B9"
+posture: >
+  v2.0 replaces v1.1 after an independent governance check found v1.1's own claim "nothing here
+  changes a ruling" to be false in seven places and its MUSTs to reach into L0, L2 and Pūrṇa.
+  v2.0 IMPOSES only on the three streams' own L3 tables and code; it DEMANDS of other layers through
+  named interface packets; it RENAMES no column that a ruling names; it lists every new decision in
+  §B8 for the native rather than embedding it as a requirement; and each stream's kernel semantics
+  are recorded as findings, not dictated.
+verdict_tier: "Conformance proves COMPUTATIONAL_CORRECTNESS only (Layer contract §9). It proves no explanatory value and no empirical performance."
 ---
 
-# The synergy binding — one language for the three critical assets
+# The synergy binding — one language for the three critical assets (v2.0)
 
-**Rule of adoption.** Each stream adds this artifact by reference to its brief §1 and proves each
-row it OFFERS or DEMANDS in its brief §6 proof matrix, with a detector that fails when the row is
-absent or misspelled. A stream that emits a differently-named field for the same concept is
-non-conformant until it renames or aliases with a declared mapping.
+**Rule of adoption.** Each stream cites this artifact in its brief §1 and proves each row it OFFERS
+or MUST in its brief §6 with a detector that fails when the row is absent, misspelled or
+mis-valued. A stream that emits a differently-named field for a concept below is non-conformant
+until it aliases with a declared mapping. Rows marked DEMAND are addressed to another layer through
+the named packet and bind nothing until that layer accepts. Rows marked DECISION are the native's
+(§B8) and bind nothing until ruled.
 
 ## B1 — Temporal (Strategy §3 "Temporal context")
 
-| field | type / vocabulary | Gochara | Saṅgam | Kṣetra |
+| field | rule | Gochara | Saṅgam | Kṣetra |
 |---|---|---|---|---|
-| `t_start`, `t_end` | **`timestamptz`, UTC**, never a naive date, never a float day-offset as the *served* type | OFFERS (has `t_in/t_out`; alias) | MUST CONVERT (`DATE` → instant at the chart's tz-aware midnight; keep `peak_date` as a derived view) | MUST CONVERT (birth-relative float → instant via the birth instant; **first fix the J2000/birth-relative axis merge**) |
+| `t_start`, `t_end` | served type **`timestamptz` UTC**; never a naive date or a float day-offset as the *served* value | OFFERS (`t_in`/`t_out`, alias) | MUST CONVERT `DATE` → instant at the chart's tz-aware midnight; `peak_date` stays as a derived view | MUST CONVERT birth-relative float → instant via the birth instant, **after** the J2000/birth-axis defect is fixed (amendments Kṣetra 1) |
 | `t_exact` / `t_peak` | `timestamptz` or NULL, never a sentinel | OFFERS | MUST CONVERT | MUST CONVERT |
-| `inclusivity` | enum `{closed_closed, closed_open}` — **declared on every row; each asset declares what its kernel's semantics actually are**, the binding does not impose one | MUST DECLARE (undeclared; orb-crossing endpoints → `closed_closed`) | MUST DECLARE and **unify** (daśā/vedha split) | MUST DECLARE (half-open in code, unstated) |
-| `time_basis` | enum `{event_instant, noon_ut_knot, date_grain_midpoint}` | OFFERS | MUST ADD | MUST ADD |
-| `claim_grain` | enum `{instant_grain, date_grain, day_grade}` — **`day_grade` is admitted as an alias of `date_grain` for one generation, then retired** | MUST CHECK-CONSTRAIN (free text today) | MUST EMIT (inherited prose only) | MUST RENAME `precision_regime` → `claim_grain`, value `day_grade` → `date_grain` |
-| tz source | the **birth instant's** offset, never `datetime.now()`; no `date.today()` anywhere | conformant | MUST FIX (W:897, W:558) | conformant |
-| resolver | every stream imports `services/ka_temporal/date_resolver` for date↔instant; no private conversion | MUST ADOPT | MUST ADOPT | MUST ADOPT |
+| `inclusivity` | enum `{closed_closed, closed_open}`, **declared on every row by the asset, stating its own kernel's semantics** — the binding records findings and dictates none | finding: orb-crossing endpoints → `closed_closed`; MUST DECLARE | finding: split (daśā `[s,e)` at `engine.py:437`, vedha closed at `:672`); MUST UNIFY and DECLARE | finding: `closed_open` in code, unstated; MUST DECLARE |
+| `time_basis` | enum `{event_instant, noon_ut_knot, date_grain_midpoint}` | OFFERS (column exists; no production caller populates it — D-S4) | MUST ADD | MUST ADD |
+| **`precision_regime`** — the ruled name (Kṣetra ruling 8, Gochara G-9, Saṅgam M-3 all name it) | **no rename.** Values unified to enum `{instant_grain, date_grain}`; `day_grade` aliased to `date_grain` until the successor condition of Saṅgam D-7 is met (every dependent claim has an authorized successor), **not for a count of generations**. Gochara's contacts table names the same concept `claim_grain`: whether it aliases to the ruled name is **Gochara D-S4** | D-S4 | MUST EMIT (inherited in prose only today) | OFFERS the column; MUST re-value `day_grade` → `date_grain` |
+| tz source | the **birth instant's** offset, never `datetime.now()`; no `date.today()` | conformant | MUST FIX (`writer.py:897`, `:558-559`) | conformant |
+| resolver | every stream converts date↔instant through `services/ka_temporal/date_resolver`; no private conversion | MUST ADOPT | MUST ADOPT | MUST ADOPT |
+
+*Grain:* per row, subject = chart, instant/interval as above. *Use:* the receiving finding is any
+cross-asset alignment of two windows (Saṅgam ↔ Kṣetra ↔ Gochara) — none exists today; the first
+one is the proof. *Failure:* a row without `inclusivity` or with a naive instant is rejected at
+write. *Proof:* Layer test 7 (boundary/timezone) with a fixture at a DST edge and at a chart
+whose birth tz differs from the run tz.
 
 ## B2 — Typed qualification (F04 / F06 / F12 + comparability)
 
 | field | vocabulary (closed, CHECK-constrained) | Gochara | Saṅgam | Kṣetra |
 |---|---|---|---|---|
 | `epistemic_class` (F04) | as the Foundation defines | OFFERS | MUST ADD | MUST ADD |
-| `completeness_state` (F06) | **exactly six**: `applied, inapplicable, unavailable, unqualified, contradictory_unresolved, unexplored` | MUST CONSTRAIN (two live values + one ad-hoc) | MUST EMIT (proposed only; today two-valued `computed/honest_empty`) | MUST EMIT (has `unavailable` on σ_t only) |
-| `operator_role` (F12) | as the Foundation defines | OFFERS | MUST EMIT (assigned per edge in prose, not on rows) | MUST EMIT |
-| **`comparable_with`** | **one name**: `comparable_with`; enum `{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}` | OFFERS (canonical) | MUST RENAME `comparability_class` → `comparable_with` and emit the enum, not `ka_sangam/{sig}` | MUST ADD |
-| `tier_basis` | `{relative_uncalibrated, calibrated:<gate_id>}` | MUST ADD | OFFERS (hard-coded value is fine; the *name* is the contract) | OFFERS |
-| `source_qualification` | `{verse_cited, algorithmic_approximation, unsourced}` **on the producer row** | MUST EMIT on `kala_vedha_gochara` (the three stamp columns Gochara §5.4 promised and no code has) | consumes | consumes |
-| `corpus_verifiable` | boolean, producer row | MUST EMIT | consumes | consumes |
-| R-6 separation | `activity, valence, applicability, availability` — **all four persisted**, never a product | n/a | MUST PERSIST (three of four dropped at INSERT) | MUST ADOPT for windows |
+| `completeness_state` (F06) | **exactly six**: `applied, inapplicable, unavailable, unqualified, contradictory_unresolved, unexplored` | MUST CONSTRAIN — column comment (`1081:176`) promises six; live values are `qualified` (not an F06 name) and `unqualified` (is one) | MUST EMIT (proposed; today `computed`/`honest_empty`) | MUST EMIT |
+| `operator_role` (F12) | as the Foundation defines | OFFERS | MUST EMIT | MUST EMIT |
+| **`comparable_with`** | **one name.** Values pinned by Gochara at WP1 (N-7); proposed enum `{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}` | OFFERS | MUST RENAME `comparability_class` → `comparable_with`; emit the enum, not `ka_sangam/{sig}` | MUST ADD |
+| `tier_basis` | `{relative_uncalibrated, calibrated:<gate_id>}` | MUST ADD | OFFERS | PROMISED (brief 333-334); MUST EMIT |
+| `source_qualification` · `corpus_verifiable` · `precision_regime` on the **producer row** (`kala_vedha_gochara`) | the three stamps Gochara §5.4 promised; **none exist on that table today** (`corpus_verifiable` exists on `kala_gochara_contacts`; `precision_regime` is emitted by Kṣetra) | MUST EMIT (L3's own table, WP9) | consumes | consumes |
+| R-6 separation `activity, valence, applicability, availability` | all four **persisted**, never a product | n/a | MUST PERSIST (M-7; three of four dropped at `writer.py:990-999`) | DECISION B8-7 — not ruled for Kṣetra |
 
-## B3 — Co-reference (the same window, addressable by any asset)
+*Grain:* per row. *Use:* the reconciling reader weighs rows only within `comparable_with` classes
+and only at `completeness_state = applied`. *Failure:* a value outside the enum is rejected at
+write; an F06 state absent is `unexplored`, never NULL. *Proof:* Layer test 1 (qualification/source
+scope) and test 4 (order/presentation control).
+
+## B3 — Co-reference
 
 | field | rule | Gochara | Saṅgam | Kṣetra |
 |---|---|---|---|---|
-| per-asset stable id | **content-addressed sha256 over the natural key + method version**, never a bigint surrogate | OFFERS `contact_id` | MUST LAND R-5 (today `convergence_id` is new every rebuild) | OFFERS `window_id` |
-| `generation` | on every row; part of the PK | OFFERS (`'4.0'` unimplemented — land it) | MUST ADD | MUST PUBLISH (`field_snapshot_id` dangling) |
-| **`window_ref`** | **the cross-asset handle**: `{asset_id, generation, id}` — the only way one asset cites another's window. **Resolves against the cited asset's existing PK; it is NOT a new `target_type` and never lets a producer target a consumer's window** (Gochara plan R2 one-way dependency preserved — the Gochara session's form, adopted) | n/a as producer — consumers cite `{asset_id:'ka_gochara', generation, id: contact_id}`; no schema change | MUST EMIT on every window that cites a contact | MUST EMIT on every segment that cites a resonance target or a sweep window; **remove the `'v1'` fall-through** |
-| L2 identity | natural key from Yojaka (DP06 ancestry), never a reassigned bigserial | MUST ADD (no L2 column) | MUST REPLACE `signal_id` FK with generation-bound identity | MUST FIX `_routes.path_edge_ids` |
+| per-asset stable id | content-addressed sha256 over the natural key + method version, never a bigint surrogate (**DECISION B8-1** to ratify the pattern) | OFFERS `contact_id` | MUST LAND R-5 (`convergence_id` reissued every rebuild) | OFFERS `window_id` |
+| `generation` | on every row; PK membership is **DECISION B8-2** | OFFERS (`'4.0'` is the tranche-2 candidate, gated) | MUST ADD | MUST PUBLISH (`field_snapshot_id` dangling) |
+| **`window_ref`** | the cross-asset handle `{asset_id, generation, id}`, resolving against the cited asset's **existing PK**; **not** a `target_type`; a producer never targets a consumer's window (Gochara R2). Ratifying it as *the* handle is **DECISION B8-3** | n/a as producer | MUST EMIT on every window that cites a contact | MUST EMIT on every segment that cites a resonance target or a sweep window; remove the `'v1'` fall-through |
+| L2 identity | natural key from Yojaka (DP06) | **DEMAND on L2 via L3-U01**; lands at R8 as planned | DEMAND: replace `signal_id` FK with generation-bound identity | DEMAND: `_routes.path_edge_ids` |
+
+*Failure:* an unresolvable `window_ref` sets `completeness_state = unavailable` and appears in the
+citing row's `coverage.exclusions`; it never silently drops. *Proof:* Layer test 10
+(revision/replay/rollback): the same `window_ref` resolves identically after a rebuild of the cited
+asset at the same generation and fails loudly at a different one.
 
 ## B4 — Inherited independence (Layer contract §7: shared inputs ≠ independent evidence)
 
 | field | rule | Gochara | Saṅgam | Kṣetra |
 |---|---|---|---|---|
-| `independence_group` | jsonb `[{group_id, family, roots[], members[], basis:'declared_lineage'}]` — **basis is always declared, never "demonstrated"** | OFFERS (column exists) | MUST EMIT (proposed); rename `independent_current_count` → `declared_current_count` | MUST INHERIT: every segment carries the union of its witnesses' groups |
-| downstream rule | any projection carrying a score carries `independence_group` + `comparable_with` | — | binding on its 7 named readers | binding |
+| `independence_group` | jsonb `[{group_id, family, roots[], members[], basis}]`; `basis` is always `declared_lineage`, never "demonstrated" (**shape is DECISION B8-4**) | OFFERS (column) | MUST EMIT; rename `independent_current_count` → `declared_current_count` | MUST INHERIT the union of its witnesses' groups |
+| downstream rule | any projection carrying a score carries `independence_group` + `comparable_with` | — | binding on its seven named readers | binding |
+
+*Proof:* Layer test 5 (duplicate/shared-root) and test 8 (omission challenge: dropping a witness's
+group must change the union, never pass silently).
 
 ## B5 — Coverage on every result (Strategy §3 "Search coverage")
 
 | field | rule | Gochara | Saṅgam | Kṣetra |
 |---|---|---|---|---|
-| `coverage` | **on every result, including every empty result**: `{requested_horizon, completed_horizon, resolution, partitions_searched[], exclusions[], unsearched_regions[], completion_detector}` | OFFERS the table; **MUST fix `coverage: None` on non-Moon** | MUST EMIT (absent; empty = failure today); when consuming Gochara events, **join the producer's coverage row by `window_ref`** | MUST EMIT (absent) |
-| empty result | a row **and** coverage, never "no row" | conformant when fixed | MUST | MUST |
+| `coverage` | on every result **including every empty result**; proposed shape `{requested_horizon, completed_horizon, resolution, partitions_searched[], exclusions[], unsearched_regions[], completion_detector}` — beyond A-1's "requested horizon", the full shape is **DECISION B8-5** | OFFERS the table; MUST fix `coverage: None` on non-Moon (`engine.py:1755`) | MUST EMIT; when consuming Gochara events, join the producer's coverage by `window_ref` | MUST EMIT |
+| empty result | a row **and** coverage, never "no row" | — | MUST | MUST |
+
+*Proof:* Layer test 6 (missingness) and test 8 (omission): an unsearched partition must appear in
+`unsearched_regions`, and its absence must fail.
 
 ## B6 — Single producer per verdict
 
-| verdict | sole producer | everyone else | detector |
-|---|---|---|---|
-| house-vedha, laṭṭā, malefic scale | `ka_vedha_gochara` | consume by `window_ref`; Kṣetra retires `build_vedha_primitive` after one `evaluation` generation (ruling 8) | a test that fails if two writers emit a vedha verdict for one instant |
-| mūrti | `ka_moorti_nirnaya` | Kṣetra retires `build_moorti_primitive` (ruling 4) | same |
-| contact episodes | Gochara kernel (`contact_id`) | Kṣetra `stage0_kinematics.find_contact_episodes` becomes a **consumer** of `kala_gochara_contacts` or is declared `evaluation`-only with its own `comparable_with = different_convention` | same |
-| node longitude | **mean** (M-1 / N-4a / ruling 7) | Saṅgam scanner off `TRUE_NODE`; both streams read one convention | the degree-level anchor (L0 item 6) plus a per-call `retflag`/node-mode assertion |
+| verdict | sole producer | everyone else | detector | status |
+|---|---|---|---|---|
+| house-vedha, laṭṭā, malefic scale | `ka_vedha_gochara` | consume by `window_ref`; Kṣetra retires `build_vedha_primitive` **after one cross-check generation (ruling 4)** and once every dependent claim has a successor | a test that fails if two writers emit a vedha verdict for one instant | ruled |
+| mūrti | `ka_moorti_nirnaya` | Kṣetra retires `build_moorti_primitive` (ruling 4) | same | ruled |
+| contact episodes | Gochara kernel (`contact_id`) | Kṣetra `find_contact_episodes` becomes a consumer, or is declared `evaluation`-only with `comparable_with = different_convention` | same | **DECISION B8-6 — no ruling covers this** |
+| node longitude | **mean** (M-1 / N-4a / ruling 7) — a convention split, not a second producer | **Gochara owns the fix** (N-7 kernel; Saṅgam may not edit `transit_search.py`); Saṅgam consumes; interim: every Saṅgam row stamps `comparable_with = different_convention` against Kṣetra | **L0's degree-level anchor — already applied (L0 item 6)** — plus a per-call node-mode assertion inside each L3 reader | ruled; fix in flight |
 
-## B7 — What conformance proves (maps to Layer contract §9)
+## B7 — What conformance proves
 
-Tests 5 (duplicate/shared-root), 6 (missingness/wrong generation), 7 (boundary/timezone) and 9
-(served-evidence sentinel) are the binding's own tests. Each stream's brief §6 names the fixture,
-command and the negative case that makes the detector fire. A green run that could not go red does
-not count.
+Required: Layer contract §9 tests **1, 5, 6, 7, 8, 9, 10**, each with a negative fixture that makes
+the detector fire. Scheduled, not gated: test **12** (simpler baseline) once `KALA_BASELINE_v1_0.md`
+exists (D-J). Out of scope: test 11 (serving is Pūrṇa's). **Verdict tier: `COMPUTATIONAL_CORRECTNESS`
+only.** Nothing here proves a better reading or an outcome.
+
+## B8 — Decisions this binding needs from the native (not requirements)
+
+1. Ratify content-addressed sha256 ids as the per-asset identity pattern (B3).
+2. `generation` as a PK member on every L3 row (B3).
+3. `window_ref` `{asset_id, generation, id}` as the only cross-asset handle (B3; Gochara's form).
+4. The `independence_group` jsonb shape and `declared_current_count` (B4).
+5. The seven-field `coverage` shape (B5).
+6. **Contact episodes: one producer** — Gochara kernel, with Kṣetra as consumer or evaluation-only (B6).
+7. R-6 four-way separation extended to Kṣetra windows (B2).
+8. The `time_basis` and `tier_basis` vocabularies (B1/B2).
+9. Whether Gochara's `claim_grain` aliases to the ruled `precision_regime` or the reverse (Gochara D-S4).
+10. Kṣetra's re-rank of the t-axis defect ahead of ruling 9's G3 (Kṣetra's own delegated call; record it).
+
+## B9 — Interplay map (who does what to each shared field)
+
+| field | defines | computes | enriches | projects/serves | records | evaluates |
+|---|---|---|---|---|---|---|
+| temporal (B1) | `ka_temporal` resolver | each producer | — | Pūrṇa (interface packet) | producer row | test 7 |
+| qualification (B2) | Foundation F04/F06/F12; WP1 for `comparable_with` | each producer | `ka_vedha_gochara` stamps | Pūrṇa | producer row | test 1 |
+| co-reference (B3) | this binding + B8-1..3 | each producer | — | any citing asset | producer PK | test 10 |
+| independence (B4) | Saṅgam (group) | Saṅgam, Gochara | Kṣetra (union) | Pūrṇa | producer row | tests 5, 8 |
+| coverage (B5) | this binding + B8-5 | each search asset | consumer joins by `window_ref` | Pūrṇa | producer row | tests 6, 8 |
+| single producer (B6) | rulings 4, 7, 8; B8-6 | the named producer | — | — | — | the B6 detector |

@@ -1,8 +1,8 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "4.6"
-status: PROPOSED_FOR_NATIVE_RULING
+version: "4.7"
+status: CURRENT
 date: 2026-09-22
 position: >
   The operating blueprint for elevating the Kāla (L3) layer, written UNDER the adopted authorities
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "4.7 (2026-09-24): second pass by three independent verifiers — status PROPOSED_FOR_NATIVE_RULING→CURRENT (stale since v1.0); §3.3/§9.5 corrected (four edges not one; two names and an absence; convention split); binding 2.0 posture change and its ten native decisions referenced."
   - "4.6 (2026-09-24): synergy audit of the three critical assets — NOT synergistic at the data level; §3.3 carries the measured matrix; the binding (KALA_SYNERGY_BINDING) and per-stream amendments written; §9.5 risk restated."
   - "4.5 (2026-09-24): D-K premise RETRACTED — the Saṅgam entry review did run (my head -5 cut it off); the merge gate stands on the true grounds: builder-certified dispositions with one breach. §4 row and §9.5 risk corrected."
   - "4.4 (2026-09-24): pre-elevation close-out — PITR declined by the native; D-G…D-N decided under delegation; D2 corrected (no enum exists — acceptance-record contract instead); baseline freeze authorized and its prompt written."
@@ -218,17 +219,19 @@ naive-timezone persistence.
 
 **Measured 2026-09-24 against the three critical assets (`KALA_SYNERGY_AUDIT_v1_0.md`).** None of the
 five contracts is shared by all three. Three temporal types (timestamptz UTC / DATE / float days
-since birth), three qualification vocabularies with three names for the comparability concept
+since birth), three qualification vocabularies with two names and an absence for the comparability concept
 (`comparable_with` / `comparability_class` / none), no key any two assets share, an independence
 group emitted by Gochara and read by nobody, a coverage object emitted by Gochara on one branch and
 by neither of the others. Two verdicts (vedha, mūrti) and the contact episode are each produced
-**twice** inside the layer. The code shares one edge. The "shared vocabulary" two packets adopted
+**twice** inside the layer, and the node longitude is read under two conventions. The code shares
+four edges, all into the Gochara family, two undeclared, none between Kṣetra and Saṅgam. The "shared vocabulary" two packets adopted
 exists in a third packet's prose and in no code. **The remedy is the binding** —
 `KALA_SYNERGY_BINDING_v1_0.md`, one layer contract in the Layer contract §5 demand/offer shape,
 adopted by reference and proved by Layer tests 5/6/7/9 — plus per-stream amendments in
-`KALA_SYNERGY_AMENDMENTS_v1_0.md`. This is the first W1 packet and it precedes any further
-per-asset stage-3 work on these three; a stream that lands stage 3 without it has elevated an
-asset, not the layer.
+`KALA_SYNERGY_AMENDMENTS_v1_0.md`. It is adopted **into** each stream's stage 3 as its
+first packet — Kṣetra has already placed its t-axis item at rank 0 — not as a gate before stage 3
+starts; a stream that closes stage 3 without it has elevated an asset, not the layer. Binding v2.0
+lists ten decisions (§B8) that are the native's before any row of it binds.
 
 ### 3.4 Where the consumer questions are unowned
 
@@ -509,8 +512,9 @@ two staged SQL actions and every live measurement wait on it.
   change, not elevation.
 - **The five synergy contracts now have a packet (the binding) and a measured baseline (the audit);
   they still have no lane.** Until each of the three streams adopts the binding in its brief and
-  proves it, the layer holds three temporal types, two producers per verdict, and one code edge —
-  the campaign is elevating three assets, not a layer.
+  proves it, the layer holds three temporal types, two producers for three verdicts and a convention
+  split on a fourth, and four code edges all into one family — the campaign is elevating three
+  assets, not a layer.
 - **No determinism gate.** The one CI hit for "determinism" is a Pariprashna reducer golden test,
   unrelated. "Wipe and rebuild" remains a stance.
 - **Builder-certified dispositions on the Saṅgam build** — the entry review ran, but its sixteen
