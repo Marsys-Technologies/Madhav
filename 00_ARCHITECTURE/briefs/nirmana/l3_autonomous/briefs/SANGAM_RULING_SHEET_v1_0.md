@@ -208,6 +208,74 @@ is not skippable.
 
 ---
 
+## Residual rulings closed — second delegation (2026-09-23T22:57:26+05:30)
+
+**The native's instruction, verbatim, in the Saṅgam session:**
+
+> "First on my rulings, point number one, on my behalf, can you Respond to the four decisions and
+> close out my rulings."
+
+The four were listed to the native as: **B-1** (N-7, the producer path), **B-2** (a Path-A owner if
+N-7 were declined), **B-3** (aborted approaches in E6's frequency numerator), and **N-14** (node
+dṛṣṭi in the Gochara family). Same discipline as §CLOSE: what follows is the **author's** record
+under the native's delegation, kept apart from the native's words; any line is reversible by the
+native in one sentence.
+
+**Two of the four were already ruled — by the native, on the Gochara sheet — and are ADOPTED, not
+re-ruled.** `GOCHARA_RULING_SHEET_v1_0.md` (branch `l3/gochara-elevation`, commit `50b5e1822`,
+`status: RULED`, `ruled_by: Native … by explicit delegated instruction to session madhav-e6, recorded
+verbatim in §0`, 2026-09-23 03:55 IST) carries:
+
+- **N-7 — RULED: persist the Contact object** as `kala_gochara_contacts`, owned by `ka_gochara`,
+  exact-instant grain, with the coverage manifest `kala_gochara_coverage` — i.e. **the kernel, Path
+  B**. Its own consequence line: *"the producer path is the kernel (Path B); packet S-2 binds;
+  **Saṅgam E1/E3 are released from their N-7 gate**."* → **B-1 CLOSED.** E1 and E3 are no longer
+  gated by authority; they are built when the kernel's contact ledger and `find_episodes` exist
+  (S-2), and until then they are unbuilt **for lack of a producer, not for lack of a ruling**. The
+  scanner-dependent R-3(b)/R-4 SPECs (RRV-02) release on the same terms.
+- **B-2 — MOOT.** Path B was chosen; no Path-A owner is needed. If the kernel were ever abandoned,
+  the Gochara sheet already names the same owner for the bounded `transit_search` amendment.
+- **N-14 — RULED: extend "no graha-dṛṣṭi for Rāhu/Ketu" to this family.** `drishti_contact` casts
+  no dṛṣṭi from the nodes; `w30_nodal_drishti` leaves the λ product; the nodes remain full gochara
+  agents and targets; the three implementation conditions from D-6 adopted (same-generation
+  regeneration in a new candidate, absence declared as `completeness_state`, one-generation labelled
+  non-scoring successor); cost "accepted knowingly". → **DIS.031 can close as RESOLVED (instrument
+  consistent)** — referred to the register's owner with this pointer. D-6's cross-stream position is
+  now the instrument's doctrine by the native's own ruling, not by this sheet's reach.
+
+**Correction to this campaign's record.** `SANGAM_STAGE3_STATE.md` B-1 and plan §0R M-3 stated
+*"N-7 status at 2026-09-23: UNRULED (verified by full-text search of the campaign tree)"*. The
+search covered the executor's branch; the ruling lived on `l3/gochara-elevation`, ruled earlier the
+same morning. **B-1 was stale when written** — one more instance of a claim of absence made against
+the wrong place. Corrected in both files.
+
+**The one decision that was genuinely open, decided now — B-3.**
+
+### B-3 — Aborted approaches **count** in E6's numerator, as `perfected: false`, stratified
+
+- **Decision.** An aborted-approach child (`approached_never_perfected = true`, `perfected = false`,
+  E5/RRV-06) **is an issued window** and enters E6's frequency numerator. `perfected` is carried as a
+  **mandatory reported covariate**: every E6 output publishes the perfected / unperfected split per
+  stratum alongside the pooled figure, and the convention is stated on the output. RRV-06's interim
+  ("excluded until ruled, convention stated") is superseded; RRV-13's "*all issued windows*" is
+  read consistently — *all* includes unperfected.
+- **Why include.** (i) **Numerator–denominator consistency.** E5's occupied-day union — which feeds
+  `ka_taranga` *and* E6's exposure denominator — already includes approach children whose interval
+  overlaps a loop. Counting their days in exposure while excluding them as candidates biases the
+  measured frequency **down** and makes the base-rate comparison incoherent. (ii) **Erasure is the
+  defect this plan repaired.** R-6 exists because the old kernel erased adverse activity; an
+  applying-then-separating approach is real geometry (the classical applying/separating distinction
+  is a *strength* grading, not a nullity), and silently dropping it from the record repeats the
+  erasure one layer up. (iii) **It is an empirical question, and E6 is the instrument for answering
+  it.** Whether unperfected approaches carry lower skill is exactly what the stratified split will
+  show; baking the answer in as an exclusion would hide the data E6 is built to produce. (iv) The
+  independent reviewer leaned the same way (*"Kimi leans yes as `perfected: false`"*).
+- **Limit stated.** This decides *counting*, not *weight*: an unperfected child's `activity` remains
+  whatever R-6 computes for its geometry; nothing here inflates it.
+
+**With this, all residual rulings are closed.** Remaining open items are engineering or belong to
+other owners (state file B-4…B-6; plan §10 RRV-13/RRV-14 carried into E6 and E1/E3).
+
 ## Post-close independent review — Kimi K3 (effort=max), 2026-09-23T04:33:31+05:30
 
 The closed packet was sent for adversarial review to Kimi K3 at max effort via the Kimi CLI

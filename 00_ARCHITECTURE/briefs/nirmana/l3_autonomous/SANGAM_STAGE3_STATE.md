@@ -131,9 +131,9 @@ E3 stays gated on N-7 (B-1); Phase 5 scope is E6 only. Entirely DB-free (5434 pr
 
 | # | Blocker | Unblock condition | Owner |
 |---|---|---|---|
-| B-1 | N-7 unruled → E1/E3 gated; R-3/R-4 scanner-dependent SPECs gated | Native rules N-7 on the Gochara brief, or names the Path-A `transit_search` amendment owner | Native / Gochara stream |
-| B-2 | Path-A owner unnamed (K3 Q9#1) | Native names the owner | Native |
-| B-3 | Aborted-approach E6 numerator question unruled | Native answers (Kimi leans yes as `perfected: false`) | Native |
+| B-1 | ~~N-7 unruled → E1/E3 gated~~ **CLOSED 2026-09-23: N-7 was RULED by the native (kernel path, `kala_gochara_contacts`) on `GOCHARA_RULING_SHEET_v1_0.md` at `50b5e1822`, 03:55 IST — before this campaign's Phase 0; the executor's 'UNRULED (full-text search of the campaign tree)' searched its own branch, not `l3/gochara-elevation`.** E1/E3 and the scanner-dependent R-3(b)/R-4 SPECs are released from the gate; they build when the kernel's contact ledger and `find_episodes` (S-2) exist | Gochara stream delivers S-2 | Gochara stream |
+| B-2 | ~~Path-A owner unnamed~~ **MOOT 2026-09-23: Path B (kernel) chosen under N-7** | — | — |
+| B-3 | ~~Aborted-approach E6 numerator question unruled~~ **DECIDED 2026-09-23 under the native's second delegation (ruling sheet §Residual): aborted approaches COUNT, as `perfected: false`, with `perfected` a mandatory reported covariate per stratum** — numerator/denominator consistency with E5's occupancy union; erasure is the defect R-6 repaired; the skill question is E6's to answer empirically | E6 output carries the perfected/unperfected split (implement at the next E6 touch) | Saṅgam |
 | B-4 | E2 producer-column receipt at ga_strength_writer — **genuinely open again after the 2026-09-23 revert**; an earlier unauthorized attempt was made and reverted (build-fatal), so neither RRV-01's stage-3-side join nor the producer-column route has landed | L1-owner bounded packet (receipt columns only, no numeric change), **with `CHART_FACTS_SCHEMA.json` declarations, the `:148` `ay` convention, a test that actually calls `_build_ashtakavarga_rows`, and an explicit `may_touch` amendment or L1-owner sign-off** | L1 owner |
 | B-5 | ephemeris_daily node-frame undeclared contract (§11.1) | L0 owner repair (outside this campaign's scope) | L0 owner |
 | B-6 | E6 writer-side `evaluation_eligible`/`is_synthetic` have no source field (defaulted True/False, documented) | A consent/synthetic marker lands in chart metadata | Native / L1 |
@@ -273,3 +273,14 @@ now a **behavioural** detector (absent receipt → `None`; present receipt → v
 mutates evidence-bearing input before asserting. It passes **with the revert in place**.
 
 **Verification after remediation:** `S3` pos=0 / neg=1; full suite re-run below; L1 test 17 passed.
+
+
+## Residual rulings closed (2026-09-23)
+
+The native delegated the four remaining decisions to the author session (madhav-d9) in writing;
+record and reasoning in `SANGAM_RULING_SHEET_v1_0.md §Residual rulings closed`. Net effect on this
+campaign: **B-1 closed** (N-7 ruled kernel path — E1/E3 released, unbuilt only until S-2 lands),
+**B-2 moot**, **B-3 decided** (aborted approaches count, stratified by `perfected`), **N-14 ruled**
+(extend — Gochara's λ regeneration, DIS.031 resolvable). Follow-up engineering created by B-3: E6's
+outputs must publish the perfected/unperfected split per stratum (not yet implemented; RRV-13's
+"all issued windows" now explicitly includes unperfected).
