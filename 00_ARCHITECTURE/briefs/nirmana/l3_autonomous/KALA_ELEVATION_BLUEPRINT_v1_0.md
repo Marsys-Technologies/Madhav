@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "4.4"
+version: "4.5"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "4.5 (2026-09-24): D-K premise RETRACTED — the Saṅgam entry review did run (my head -5 cut it off); the merge gate stands on the true grounds: builder-certified dispositions with one breach. §4 row and §9.5 risk corrected."
   - "4.4 (2026-09-24): pre-elevation close-out — PITR declined by the native; D-G…D-N decided under delegation; D2 corrected (no enum exists — acceptance-record contract instead); baseline freeze authorized and its prompt written."
   - "4.3 (2026-09-24): E2 RULED — Kṣetra stage 3 AUTHORIZED (native, verbatim); stage 4 explicitly not opened."
   - "4.2 (2026-09-24): D1 RULED — the W1 hold on the generation design is released (native, verbatim). E3 struck (N-18 was already ratified). Kṣetra stage-3 authorization raised but held pending one-word confirmation."
@@ -237,7 +238,7 @@ of every asset's plan are open **today**; stage 4+ waits on W1.
 | **Frontier** (single, W2-eligible) | `ka_gochara_resonance`, `ka_kota_chakra`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_tithi_pravesha`, `ka_sudarshana_varsha`, `ka_yojaka`, `ka_avadhi` | W2 | Source **already accepted** for eight of these (`47131772b`; Yojaka's later repair `7697c43b3`). Their elevation is qualification (method/source), the temporal contract, and honest coverage. `ka_tithi_pravesha` is the path proof (0.61 s, fix the 5.5 h, source-qualify, freeze). Kota/Tithi/Sudarshana have no proven consumer — a *receiving operator* is owed (A07/A09/A10), not rows. |
 | **Services** (single, service proof) | `ka_graha_sancara`, `ka_dasha_kala`, `ka_muhurta_seva`, `ka_tulana` | W2 pure / W7 data-bound | Service semantics, failure semantics, consumer use — never row floors. `ka_dasha_kala` is the clock authority every interval inherits from; `ka_tulana` must actually be called by ranking (it is not). |
 | **Gochara family** (group) | `ka_gochara`, `ka_gochara_v3_century_materialize`, + resonance/vedha/moorti | W3 | **RULED (sheet v1.0, `50b5e1822`, native by delegation).** N-5: `ka_gochara` owns the served product and writes generation `'4.0'`; the century writer donates its engine and stays held. N-6a: century `is_active=false` at runbook step 3, reversible, nothing deleted; registry declares its production write at step 5 (F-30). N-10: `'4.0'` publication, `'3.0'` the rollback surface. N-14: no graha-dṛṣṭi from the nodes — a same-generation λ regeneration, cost accepted knowingly. Plan v2.1 `PROPOSED_FOR_NATIVE_RULING`; WP0-7 branch deliberately unpushed pending N-18. Brief: `ELEVATION_PROMPT_GOCHARA_FAMILY_v2.md`. |
-| **Spine — convergence** (single, chokepoint) | `ka_sangam` | W3 | **CLOSED (`3f62f3468`).** M-1…M-7 ruled by the native; residual D-1…D-8 by the author under written delegation, typographically separate. Plan v1.0 `APPROVED_FOR_EXECUTION_STAGE_3` behind one **entry gate (D-8): the text v1.0 is built from was never reviewed** — the third independent review runs before any code. E6 gate set by the native directly at n=20/50 (see §8). Stage-3 executor has landed Phases 0–5 on `sangam/stage3`. Brief: `ELEVATION_PROMPT_SANGAM_v2.md`. |
+| **Spine — convergence** (single, chokepoint) | `ka_sangam` | W3 | **CLOSED (`3f62f3468`).** M-1…M-7 ruled by the native; residual D-1…D-8 by the author under written delegation, typographically separate. Plan v1.0 `APPROVED_FOR_EXECUTION_STAGE_3`; the D-8 entry review **ran** (`ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md`, gpt-6-astra, `PROCEED_WITH_AMENDMENTS`, at the Phase-0 commit). What remains is a **merge gate** on the build itself, because the dispositions were builder-certified and one was breached (D-K v1.9). E6 gate set by the native directly at n=20/50 (see §8). Stage-3 executor has landed Phases 0–5 on `sangam/stage3`. Brief: `ELEVATION_PROMPT_SANGAM_v2.md`. |
 | **Spine — activation/obstruction** (single) | `ka_kalasutra`, `ka_vighnakara`, `ka_taranga` | W4 | All qualified recurrences (no default-eight); a single obstruction root that does not attenuate twice (U03); Taranga's transit term is dead in 91% of domain-scoped rows — qualify or repair. |
 | **Spine — publication** (single) | `ka_kala_darshana`, `ka_jivana_parva`, `ka_bhavishya_lekha` | W5–W6 | Darshana's cut is a mode filter; Jivana's `LIMIT 1` unordered; Bhavishya needs its stable-generation packet before rebuild (fence 7; U10). |
 | **Kshetra** (staged internal DAG) | `ka_kshetra` (15 tables) | W2–W7 by stage | **CLOSED on `main` (PR #2724).** All ten rulings under written delegation; rulings 7/8/9 taken by a fresh-context agent plus an isolated second tool, since the three streams were mutually conflicted. Brief 4.8 / plan 1.12 `APPROVED_FOR_EXECUTION`; stage-3 prompt `AWAITING_NATIVE_AUTHORIZATION`; ablation judge named and rubric sealed (PR #2725). The Interval/trajectory object; read path still owed (G8). Brief: `ELEVATION_PROMPT_KSHETRA_v2.md`. |
@@ -496,8 +497,9 @@ two staged SQL actions and every live measurement wait on it.
   consumers. Until owned, the campaign elevates 22 assets, not a layer.
 - **No determinism gate.** The one CI hit for "determinism" is a Pariprashna reducer golden test,
   unrelated. "Wipe and rebuild" remains a stance.
-- **A stage-3 plan approved on unreviewed text** (Saṅgam D-8) — mitigated by the entry gate, which
-  must actually fire.
+- **Builder-certified dispositions on the Saṅgam build** — the entry review ran, but its sixteen
+  amendments were dispositioned by the session that then built the code and breached one. The
+  merge gate (D-K) reviews the build against the plan, not the text.
 - **Shared-premise convergence.** Four sessions agreed on a false corpus claim for a day; only a
   `count(*)` broke it. Any review protocol counting cross-session agreement as verification
   inherits this (chronicle §11.26).

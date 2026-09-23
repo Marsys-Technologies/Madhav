@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CHECKLIST
 canonical_id: KALA_PRE_ELEVATION_CHECKLIST
-version: "1.6"
+version: "1.7"
 status: CURRENT
 date: 2026-09-24
 revision_note: "v1.2 — after the L0 repair (PR #2727): §A shrinks to three native items; §C becomes the PR close-out; §D gains the Sade-Sati query result; §E records that the Saṅgam entry gate did not gate; §B4 downgraded (production reachable via proxy on 5432)."
@@ -89,7 +89,7 @@ Seven of eight items applied to production and **verified live by this session w
 
 | # | item | status |
 |---|---|---|
-| E1 | **Saṅgam D-8 entry gate did not gate.** The third independent review of plan v1.0 has **no artifact** (only the v0.1 and v0.3 review requests exist) — and the stage-3 executor has already landed Phases 0–5 on `sangam/stage3`. The gate was written after the code. It must become a **merge gate** on that branch, run by a reviewer who is not the author, before anything from it reaches `main` | [V] |
+| E1 | ~~Saṅgam D-8 entry gate did not gate~~ **CORRECTED: it did.** `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` (437 lines, gpt-6-astra, `PROCEED_WITH_AMENDMENTS`) landed at the Phase-0 commit before any code; my search cut it off with `head -5`. **What actually needs the merge gate:** the sixteen dispositions were written by the builder, who then breached its own RRV-01. A fresh session + isolated K3 reviews **the build against the ruled plan and its own §10 claims** before any PR to `main` (D-K v1.9) | [V — corrected against me by madhav-d9] |
 | E2 | Kṣetra stage-3 authorization | = A2 |
 | E3 | Gochara WP0-7 push (N-18, ratified) after renumbering 1075/1076 → 1077/1078 | = A3 [V] |
 | E4 | Independent-verifier capacity per wave (G13) | structural [V] |

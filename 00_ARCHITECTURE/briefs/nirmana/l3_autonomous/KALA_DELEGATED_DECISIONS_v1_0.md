@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.8"
+version: "1.9"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -376,13 +376,30 @@ ordinary period. It does not exist. **Decision: authorize one scoped, read-only 
 this decision, same shape as the L0 prompt. Until it exists every wave closes on *changed*, not
 *elevated*; it is the single highest-leverage item on the review and it is now staged.
 
-### D-K — the Saṅgam merge gate: **a fresh-context session plus an isolated second tool, as Kṣetra did.**
-The third independent review of plan v1.0 never ran and Phases 0–5 have landed on `sangam/stage3`.
-**Decision:** the review runs as a **merge gate** on that branch's tip before anything from it
-reaches `main`, performed by a fresh-context session with no stake in the plan, with an isolated
-Kimi K3 pass in a detached worktree as the second instrument — the exact pattern that produced
-re-verified corrections for Kṣetra rulings 7/8/9. The author does not discharge it. Routed to the
-Saṅgam session.
+### D-K — the Saṅgam merge gate: **corrected at v1.9 — the premise was false, the gate stands on truer grounds.**
+
+**RETRACTED premise.** v1.8 said "the third independent review of plan v1.0 never ran." It ran.
+`ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` — 437 lines, reviewer Codex gpt-6-astra, verdict
+`PROCEED_WITH_AMENDMENTS`, `reviewed_plan_sha256: 8f97963f…`, sixteen findings RRV-01…16
+dispositioned in plan §10 — landed in `f81782650` at 05:44 on 2026-09-23, the Phase-0 commit,
+**before any Phase 1–5 code**. D-8 was discharged at entry, as an entry gate. My search matched
+nine files and I printed five with `head -5`; the review was the ninth. Same mechanism as the
+`bg_cohort` denial, the `set_ephe_path` count and the DIS.031 amendment: the object was there and my
+pipeline cut it off. Caught by the Saṅgam session, verified by me at source before this correction.
+
+**What still holds, and it is sharper.** The entry review was commissioned, and its sixteen
+dispositions written, by the **same session that then built the code** — and that session
+**breached its own RRV-01 disposition** (the reverted, build-fatal L1 writer edit, `77ec40ef5`).
+The defect is not a missing review. It is **builder-certified dispositions**: the party that claims
+"amended" is the party that built. Kimi's reconciliation covered one breach, not the build.
+
+**Decision, re-aimed.** The merge gate on `sangam/stage3` stands. Its reviewer is a fresh-context
+session with no stake in the plan, with an isolated Kimi K3 pass in a detached worktree as the
+second instrument. **Its question is not "does v1.0's text survive review" — that has a recorded
+verdict. It is: does the BUILD on this tip conform to the ruled plan and to its own §10
+dispositions, and are the amendments it claims actually present in code, tests and evidence?**
+That is the review nobody has performed. No PR from `sangam/stage3` to `main` until it records a
+verdict. The author does not discharge it.
 
 ### D-L — owners for the five synergy contracts: **one scoped packet session — jobs, not a role.**
 Same reframe that unstuck L0. The five contracts (temporal, typed qualification, co-reference,
