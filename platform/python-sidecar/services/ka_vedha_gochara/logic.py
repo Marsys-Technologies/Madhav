@@ -51,13 +51,48 @@ found:
     this session): no INSERT statements exist in that migration or its
     follow-on (`_archive/144_vedha_extended.sql`), and no other file in this
     repository populates them.
-  - The ingested classical-text corpus (`00_ARCHITECTURE/SOURCE_DATA/
-    classical_texts/`) was checked this session: it holds BPHS, Jaimini
-    Sutram, KP, and KP_Reader material only — NO Muhurta Chintamani or
-    Jyotish Sara Sangraha text, the two sources migration 140's own table
-    comments cite for the SBC grid. Tier (i) (ingested-corpus citation) is
-    therefore UNAVAILABLE for this specific table, confirmed by direct
-    search, not assumed.
+  - CORRECTED (L0 repair item 8, 2026-09; the paragraph below is what this
+    docstring said until then, and every load-bearing part of it was false).
+    The prior text checked `00_ARCHITECTURE/SOURCE_DATA/classical_texts/` — a
+    source-data FOLDER of raw procurement files — and reported that as "the
+    ingested classical-text corpus." It is not: the ingested corpus this
+    writer actually reads at runtime is the `classical_text_chunks` DB table,
+    and absence must be established by `count(*)` against that table, never a
+    directory listing (CLAUDE.md, this L0 repair session's hard rules). Against
+    the real corpus: 15 texts are populated (not "BPHS, Jaimini Sutram, KP,
+    and KP_Reader material only" — that four-text list is itself wrong, since
+    there is NO `kp`/`kp_reader` text_id in the corpus AT ALL);
+    `muhurta_chintamani` alone holds 274 chunks. Tier (i) citation is NOT
+    categorically unavailable for the SBC grid the way the prior paragraph
+    claimed: Phaladipika Adh. XXVI PG346:C1-PG352:C1 (a different served text
+    from Muhurta Chintamani/Jyotish Sara Sangraha, the two migration 140's
+    older table comments name) IS in the corpus and carries clean, legible
+    prose covering the grid's construction — confirmed independently by
+    multiple sessions (see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`,
+    `KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md`). L0 repair item 4 (this same
+    repair pass) ATTEMPTED the transcription and did NOT complete it:
+    `bg_sarvatobhadra_grid` remains genuinely empty as of this docstring fix
+    — this L0 session's own live corpus access was down (both DB endpoints
+    refusing) and a web-fetch attempt against the cited archive.org scan did
+    not reliably reproduce the PG346-352 page range, so no cell/pair data was
+    transcribed rather than risk fabricating exact classical-text content
+    (B.10). The prior version of THIS specific claim ("tier (i) UNAVAILABLE")
+    was wrong for the reason above; the corrected honest state is "available
+    in the corpus, not yet transcribed" — a narrower and different gap than
+    "no source exists." This module's `bg_sarvatobhadra_grid`-first lookup,
+    described below, activates with zero code change once a future session
+    with live corpus access completes the transcription. Provenance of the
+    corrected figures above: this
+    L0 repair session's own DB endpoints (127.0.0.1:5433/:5434) were down
+    throughout, so the 15/274/0 figures above are NOT independently
+    re-verified by a `count(*)` run from this docstring fix — they are
+    carried from `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md` ("Corpus roster —
+    confirmed: 15 texts; phaladeepika = 564 chunks; no KP text"), an
+    independent desktop review with live corpus/MCP access, itself run
+    against `classical_text_chunks` directly rather than a directory
+    listing. A future session with DB access should re-run
+    `SELECT text_id, count(*) FROM classical_text_chunks GROUP BY text_id`
+    to confirm these are still current before relying on them further.
   - Unlike `ka_kota_chakra`'s ring table (which had a single, internally
     consistent tier-(iii) secondary description this session could transcribe
     with a checkable partition invariant — see that writer's own docstring),
