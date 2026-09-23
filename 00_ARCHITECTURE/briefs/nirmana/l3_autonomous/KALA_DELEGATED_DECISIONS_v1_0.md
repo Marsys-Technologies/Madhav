@@ -1,8 +1,8 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.0"
-status: DECIDED
+version: "1.1"
+status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
 delegation: "The native, 2026-09-23, verbatim: 'Can you take the call on my behalf since you
@@ -68,44 +68,63 @@ Gochara stream has taken G-9 into its lane and recorded the transit-row repair s
 3. The row qualifications that depend on them (`house_vedha` → `applied` on re-citation) stay at
    their current grade until the re-citation actually lands, not from the moment it was specified.
 
+**Note added at v1.1:** the Saṅgam session has adopted this distinction verbatim and its B-5 now
+reads `UNOWNED-BY-AUTHORITY` rather than naming "the L0 owner", on the ground that the latter names
+a lane, not a person. The Gochara brief implements it independently: §8.4 applies the G-9 row
+repairs to a disposable database only, and §5.1 stamps `house_vedha corpus_verifiable = true` only
+once the re-citation is on the row.
+
 **For the native, the one thing only they can settle:** whether the L0 owner is a session to be
 opened, an existing stream given the authority, or the native directly. Until then this is the
 single largest unowned surface in the campaign, and it now says so in a durable place.
 
 ---
 
-## D-C — The century writer: **do NOT set it inactive. Fix the declaration instead.**
+## D-C — **WITHDRAWN AT v1.1. My reversal was wrong; the original recommendation was already a native ruling.**
 
-**Decision: reject the action I originally recommended to the native, on new information.**
+**What v1.0 decided:** do NOT set the century writer inactive, because N-14's regeneration needs it;
+declare `clear_tables` instead and bar the asset from unattended builds.
 
-I put "set the century writer inactive before any unattended build" to the native four times. I am
-reversing it, and the reason is the N-14 ruling that landed after I first raised it.
+**Why that was wrong.** The Gochara session refused it and I verified its grounds at source in
+`GOCHARA_RULING_SHEET_v1_0.md` on `origin/l3/gochara-elevation`. Three rulings I had not read
+decide this, and two of them decide it against me:
 
-`ka_gochara_v3_century_materialize` is `is_active = true` and DELETEs `kala_gochara_windows`
-generation `3.0` — production — inside its staging transaction, while its registry row declares
-only `kala_gochara_windows_v2` and carries `clear_tables = NULL`. That remains true and remains the
-hazard.
+| ruling | what it says |
+|---|---|
+| **N-5** | `ka_gochara` owns the served product and writes a NEW generation into `kala_gochara_windows`; **"the century writer donates its engine and stays held."** |
+| **N-6a** | **RULED: century `is_active=false` at runbook step 3**, reversible at WP10, nothing deleted; the registry declares its production write (F-30) at step 5. |
+| **N-10** | the publication generation is `'4.0'`; `'3.0'` is the rollback surface. |
 
-**But N-14 now requires a same-generation gochara_v3 regeneration** to remove the `w30_modifier`
-term from every stored λ, and the ruling explicitly requires it be done "inside a new candidate,
-never a patch over live rows." Disabling the century writer would block the exact work the native
-just ruled for. **Flipping the toggle treats the symptom and obstructs the remedy.**
+So the regeneration is `ka_gochara` writing `'4.0'`. It never needs the century writer to run.
+`'3.0'` is never regenerated — the "never a patch over live rows" condition I leaned on is a
+**prohibition on touching `'3.0'`**, which is the opposite of what I read it to mean. And
+`is_active=false` was **already ruled by the native at N-6a**, at a named runbook step, reversible,
+with nothing deleted.
 
-**The real defect is not that the writer deletes production. It is that nothing declares that it
-does.** An undeclared deletion is invisible to Atlas, to clear-scope reasoning and to every
-blast-radius estimate. A declared one is an ordinary, reviewable build step.
+**So my four-times-raised original recommendation was correct, the native had already ruled it, and
+I reversed it into a weaker procedural form.** "No unattended build may include the asset" is a
+convention someone must remember; `is_active=false` at step 3 is structural. I replaced a ruled
+structural guard with an unruled procedural one, on a premise the ruling set excludes.
 
-**Decided action, staged on the outage:**
+**How I got it wrong — the same mechanism, third time today.** I drew a consequence from N-14, the
+one ruling I had read, without reading N-5, N-6 or N-6a beside it. I checked *a* ruling, not the
+*ruling set*. Yesterday's forms of this were checking a ref instead of a file, a directory instead
+of a table, and one page instead of a chapter.
 
-1. Add `kala_gochara_windows` to that asset's `clear_tables` so the registry states its true reach.
-   Non-destructive, one `UPDATE`, reversible, blocks nobody.
-2. Until that lands, **no unattended or overnight build may include this asset.** Attended runs are
-   fine — the hazard is silent deletion nobody is watching, not deletion as such.
-3. The N-14 regeneration proceeds under its own three conditions, which already forbid patching
-   live rows.
+**What stands, and it is the part that was mine:** the diagnosis. The registry declares only
+`kala_gochara_windows_v2` while the writer DELETEs `kala_gochara_windows` generation `'3.0'`, and
+`clear_tables` is NULL, so the production write is invisible to Atlas and to every blast-radius
+estimate. That is F-30 and the Gochara session has adopted it as registry work at runbook step 5.
+The Gochara session's own summary is the fair one: my diagnosis was right and stays right; only the
+inference that the writer must remain dispatchable was wrong.
+
+**Decided at v1.1:** N-6a governs. The century writer goes `is_active=false` at runbook step 3,
+reversible at WP10, nothing deleted; `clear_tables` is declared at step 5. This session's D-C adds
+nothing and is withdrawn rather than reconciled, because a decision that merely re-states a native
+ruling in weaker words is worse than no decision — it gives an executor two records that disagree.
 
 ```sql
--- staged; run when an endpoint is reachable
+-- v1.0 staged this as the whole remedy; at v1.1 it is step 5 of N-6a's runbook, not a substitute
 UPDATE asset_registry
    SET clear_tables = ARRAY['kala_gochara_windows_v2','kala_gochara_windows']
  WHERE asset_id = 'ka_gochara_v3_century_materialize';
