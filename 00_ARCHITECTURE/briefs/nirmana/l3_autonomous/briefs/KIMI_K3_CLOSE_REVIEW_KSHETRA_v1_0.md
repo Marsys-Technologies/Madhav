@@ -1,7 +1,7 @@
 ---
 artifact: KIMI_K3_CLOSE_REVIEW_KSHETRA
 canonical_id: KIMI_K3_CLOSE_REVIEW_KSHETRA
-version: "1.0"
+version: "1.1"
 status: COMPLETED_EXTERNAL_REVIEWER_OUTPUT
 date: 2026-09-23
 reviews: the CLOSED Kshetra packet (KSHETRA_RULING_SHEET_v1_0.md v1.3, KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md v1.0,
@@ -10,6 +10,8 @@ reviews: the CLOSED Kshetra packet (KSHETRA_RULING_SHEET_v1_0.md v1.3, KSHETRA_I
   Code desktop app in an isolated detached-HEAD worktree (`/Users/Dev/madhav-l3/kshetra-kimi-review`,
   no branch, no write access, no shared checkout with any other active worktree).
 prompt: KIMI_REVIEW_PACKET_KSHETRA_CLOSE_v1_0.md (not committed; held in the author's scratchpad)
+changelog:
+  - "1.1 (2026-09-23) — the Venus repair semantics corrected: UPDATE not delete; Kimi's dedup framing withdrawn as an instruction, kept as an origin explanation."
 disposition: three corrections adopted into the packet (v1.4/v1.9/v1.1), each independently
   re-verified by the author at the served corpus or in the code before adoption, per this
   campaign's standing rule never to adopt a reviewer's claim on trust. No ruling re-opened.
@@ -277,8 +279,10 @@ of already-correct rows 179 and 33 — was checked directly against the served r
 (`ref_transit_rules_get`): id 35 = (primary_house 3, vedha_house 11); id 179 = (11, 3) — an exact
 reversal. id 44 = (8, 1); id 33 = (1, 8) — an exact reversal. Confirmed. Only id 45 = (9, 2), with
 no matching row anywhere in the table to reverse against, is a genuine content error (text gives
-9→11). This refines "L0 geometry correction" into "dedup for two rows, geometry fix for one,"
-folded into the sheet and plan.
+9→11). The transposition explains the *origin* of two rows; it does not change the repair, which is an
+UPDATE of `vedha_house` on all three (35→1, 44→5, 45→11) — deleting 35/44 would lose the text's 3→1
+and 8→5 pairs. Kimi's "dedup" framing was adopted for one revision and is withdrawn as a repair
+instruction (v1.1 of this file; spec routed to L0: `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md`).
 
 **3. Ruling 7's reconciliation direction.** Kimi's claim — that `routers/ephemeris.py` and
 `panchang_engine/planets.py` already comply with MEAN_NODE and should not be touched by a

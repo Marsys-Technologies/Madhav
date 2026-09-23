@@ -1,8 +1,8 @@
 ---
 artifact: KSHETRA_INDEPENDENT_REVIEW_7_8_9
 canonical_id: KSHETRA_INDEPENDENT_REVIEW_7_8_9
-version: "1.1"
-status: COMPLETED_INDEPENDENT_REVIEW  # amended 2026-09-23: three corrections from a second, independent review (Kimi K3 desktop app, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md), each re-verified at source by the author before adoption
+version: "1.2"
+status: COMPLETED_INDEPENDENT_REVIEW  # amended again 2026-09-23 (v1.2): the Venus repair is UPDATE-not-delete, the v1.1 dedup wording withdrawn. v1.1: three corrections from a second, independent review (Kimi K3 desktop app, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md), each re-verified at source by the author before adoption
 date: 2026-09-23
 reviews: KSHETRA_RULING_SHEET_v1_0.md rulings 7 (node frame), 8 (vedha admission / G-9), 9 (G3 suppression semantics)
 reviewer: a fresh review agent opened with no prior context on this packet, briefed to re-derive
@@ -91,11 +91,13 @@ opening session using the served retrieval tools directly:
   vedha as the 1st where the text gives the 5th; id 45 stores 9th-house vedha as the 2nd where the
   text gives the 11th. **Two of the three (ids 35, 44) are exact transpositions of already-correct
   rows elsewhere in the same table** — id 35's (3,11) is id 179's (11,3) reversed; id 44's (8,1)
-  is id 33's (1,8) reversed — so their repair is dedup against an existing correct row, not fresh
-  geometry; only id 45's (9,2) is a genuine content error with no matching row to dedup against
-  (a refinement by Kimi K3's independent desktop review, reproduced here from the served rules
-  table before adoption — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`). All three still need an L0-side fix, not a citation
-  fix, before they qualify under the uniform rule.
+  is id 33's (1,8) reversed — which explains their origin as a column swap (Kimi K3's refinement,
+  reproduced from the served rules table). **The repair is nonetheless an UPDATE of `vedha_house` on all
+  three (35→1, 44→5, 45→11), never a delete:** their `primary_house` values are the text's and needed,
+  and deleting 35/44 would lose the 3→1 and 8→5 pairs; the v1.1 "dedup" wording was wrong as a repair
+  instruction and is withdrawn. Spec with verification SQL routed to the L0 owner:
+  `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md`. All three need that L0-side fix, not a citation fix, before they qualify under
+  the uniform rule.
 - **6 rows have no source in Phaladīpikā at all:** the three Rāhu vedha rows (ids 187, 188, 189)
   and the three Ketu vedha rows (196, 197, 198). PG322–323 (ślokas 3–8, the specific verses this
   house-vedha mechanism cites) name only the seven classical grahas; the six rows have no
