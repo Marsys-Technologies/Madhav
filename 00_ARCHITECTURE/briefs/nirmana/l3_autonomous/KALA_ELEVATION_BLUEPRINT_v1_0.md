@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "3.4"
+version: "3.5"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.5 (2026-09-24): G4 retraction and G19 APPLIED — the v2.6 edits that claimed them were silent no-ops (unasserted string replace against a non-matching anchor); the commit succeeded, the edit did not. G19 now carries its N-6a ruling."
   - "3.4 (2026-09-23): §11.28 — Saṅgam CLOSED at 3f62f3468. Delegation recorded verbatim and author decisions D-1…D-8 kept separate, which is the discipline the M-1…M-7 episode was missing. D-8 discloses that plan v0.4, which v1.0 is built from, has never been reviewed; the third Astra review is now a stage-3 ENTRY gate."
   - "3.3 (2026-09-23): the governance rule sharpened to its final form (madhav-d9) — mutual checking among sessions that share a premise is agreement, not verification; a peer's confirmation counts for nothing the reviewer has not itself queried. Proposed for doctrine."
   - "3.2 (2026-09-23): PG332 correction — it is the 28-asterism RING chakra for the Sun-vedha rule at śl. 26-27, NOT a second SBC page. My 'two grid pages' framing would have spliced two instruments. Verified against PG331/PG333. Fifth correction of the day."
@@ -275,7 +276,8 @@ plan resolver with upstream closure.
 | G1 | **Physical L3 generation infrastructure** — design frozen (FOUNDATION_SAFETY §6), not built; zero L1/L2 generations ever opened | Nothing can reach `DATA_ACCEPTED`; cascade and determinism have no substrate | W1; native decision 1 = *release the hold* | BLOCKS stage 4+ |
 | G2 | **Production cutover** — DP-SD-020: backup + isolated restore proven, cutover not executed | Holds RI-01 → W1 | administrator authority outside the campaign | BLOCKS W1 |
 | G3 | **Disaster recovery** — PITR disabled; no restore drill ever run for `kala_*` | A mutating overnight campaign with no rehearsed way back | native ruling + one drill | BLOCKS unattended mutation |
-| G4 | **Local harness fidelity** — the local host has no `.se1` files; the W0 baseline ran on Moshier while production is Swiss-backed | Local numbers are not production numbers; contact geometry differs at the arc-second level | ship the three `.se1` files (GCS bucket exists) into the disposable harness; pin and record | DEGRADES every benchmark |
+| G4 | ~~Local harness fidelity — the host has no `.se1` files~~ **RETRACTED (§11.18).** All five files are at `/private/tmp/se1` since 2026-09-22 17:20 and `_resolve_ephe_path()` returns `/tmp/se1`. The real gap is narrower and worse: **the ephemeris backend is process-global and unowned** — `v3_spline_accuracy.py` (the 0.314″ figure's origin) is `serialized_swiss_state`-decorated but never sets the path, and `panchang_engine` forces Moshier with `set_ephe_path(None)` ×4 | Which backend a computation gets depends on which unrelated component last touched a global. A lock is not a configuration. The 0.314″ figure cannot anchor a gate until its owner asserts its own `retflag` per call | every ephemeris entry point resolves-and-asserts, or takes an explicit backend argument | BLOCKS the 0.314″ gate |
+| G19 | **The century writer deletes production from a staging build** (§11.19) — `@register`ed, `is_active = true`, `target_table` declares only `kala_gochara_windows_v2`, but the code DELETEs `kala_gochara_windows` generation `'3.0'` in the same orchestrator transaction; `clear_tables` is NULL | The asset's declared blast radius understates its real one by one production table — invisible to Atlas and to every clear-scope estimate | **Ruled: N-6a** — `is_active=false` at runbook step 3, reversible at WP10, nothing deleted; registry declares the production write (F-30) at step 5 | RULED — closes at step 3 |
 | G5 | **No cost budget** per chart build; registry estimates are fiction (24 min claimed; ≥ 7.5 h measured) | Cannot promise the person a build time; cannot optimize | Phase 0 cost profile → a budget set *after* measurement (Strategy §5) | DEGRADES build UX |
 | G6 | **No cancel / pause / resume; no substep progress; unearned `rows_written`** in the cockpit | §1.2 / §10.2 violated at the person's first touch | cockpit owner; W0/W1 packet (§1.2) | DEGRADES build UX |
 | G7 | **No admissible receipts** for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | Headline cannot move past `DATA_ACCEPTED` | native decision 2; a `z.enum` member + payload contract, no migration | BLOCKS the headline |
