@@ -447,3 +447,34 @@ with `*_POWER_AT_*` publishing power at the old lifts), every fixture in `test_k
 every proposition in `S20`. `KALA_DELEGATED_DECISIONS` D-F (35/100) is superseded by this later, direct
 instruction. **Standing rule for every E6 report (unchanged, now more important):** "no signal" means *not
 large enough to see at this n*, never *nothing there*. **The E6 gate is CLOSED as a decision.**
+
+
+## Merge gate — D-K adopted on corrected grounds (2026-09-24T04:18:18+05:30)
+
+`KALA_DELEGATED_DECISIONS_v1_0.md` v1.8 **D-K** (strategic session, under the native's delegation of the
+close-out items) rules that the third independent review runs as a **merge gate** on the tip of
+`sangam/stage3`, by a **fresh-context session with no stake in the plan** plus an isolated Kimi K3 pass in a
+detached worktree; the author does not discharge it; **no PR from `sangam/stage3` to `main` until a recorded
+verdict.** **Adopted — this campaign opens no PR until then.** Reviewer's tip: the current HEAD of
+`sangam/stage3` at the time the review starts (record the SHA in the verdict).
+
+**Premise corrected at source.** D-K states "no third-review artifact exists on `sangam/stage3` — only the
+v0.1 and v0.3 review requests." **False:** `briefs/ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` is PRESENT on
+both `origin/sangam/stage3` and `origin/l3/kala-elevation-readiness` (437 lines; reviewer Codex gpt-6-astra;
+verdict PROCEED_WITH_AMENDMENTS; `reviewed_plan_sha256` recorded), landed in `f81782650` at **05:44 on
+2026-09-23 — Phase 0, before any Phase 1–5 code**. D-8 *was* discharged at entry, as an entry gate.
+
+**Why the merge gate is still right, on the true grounds:** the entry review was commissioned *and its
+sixteen findings dispositioned* (plan §10, RRV-01…16) by the **same session that then built the code** —
+and that session **breached its own RRV-01 disposition** (the reverted L1 writer edit). So the sequencing
+defect is not "the review never ran"; it is "the review's dispositions were self-certified by the
+builder." **The merge-gate question should therefore be re-aimed:** not "does v1.0 read cold survive
+review" (answered: PROCEED_WITH_AMENDMENTS), but **"does the BUILD on this tip conform to the ruled plan
+and to its own §10 dispositions, and are the amendments it claims actually present in code, tests and
+evidence?"** — the review nobody has performed. Kimi's reconciliation (`KIMI_K3_RECONCILE_SANGAM_L1EDIT`)
+covered one breach, not the build.
+
+Also from the same record: the native declined a standalone restore drill — the cutover's own
+backup-and-isolated-restore gate is what the stage-3 rebuild path inherits; and `CONSUMER_INTEGRATED` is
+earned by an acceptance record (`KALA_ACCEPTANCE_RECORD_CONTRACT_v1_0.md`), not an enum, when Saṅgam's
+windows reach a receiving operator.
