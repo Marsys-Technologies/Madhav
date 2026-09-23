@@ -1,10 +1,10 @@
 ---
 artifact: GOCHARA_SYNERGY_RESPONSE
 canonical_id: GOCHARA_SYNERGY_RESPONSE
-version: "1.0"
+version: "1.1"
 status: VERIFIED_AT_SOURCE — decisions D-S1..D-S5 await the native
 date: 2026-09-24
-responds_to: "KALA_SYNERGY_AUDIT_v1_0.md / KALA_SYNERGY_BINDING_v1_0.md / KALA_SYNERGY_AMENDMENTS_v1_0.md §Gochara (strategic session madhav-fc, commit 63b5fb429 on l3/kala-elevation-readiness; corrections below accepted into audit 1.3 / binding 1.1 / amendments 1.3 on that branch at 11729a34b, 2026-09-24 — verified here by reading the three files at that commit, not on report)"
+responds_to: "KALA_SYNERGY_AUDIT_v1_0.md / KALA_SYNERGY_BINDING_v1_0.md / KALA_SYNERGY_AMENDMENTS_v1_0.md §Gochara (strategic session madhav-fc, commit 63b5fb429 on l3/kala-elevation-readiness; corrections below accepted into audit 1.3 / binding 1.1 / amendments 1.3 at 11729a34b, then SUPERSEDED by the three-verifier second pass — audit 1.4 / binding 2.0 / amendments 2.0 at 5c05a0e2f, 2026-09-24 — each verified here by reading the files at that commit, not on report; §5 below records what 2.0 changes for this family)"
 branch: "l3/gochara-autonomous-wp0-7 — verified against HEAD 9250741cc (+ the executor's three uncommitted WP8 files, untouched)"
 method: "Every file:line the audit cites was re-read at source on this branch; line numbers drifted by the executor's commits and are restated as they stand now. Labels: [S] source at HEAD · [R] repository record · [J] judgment."
 authority: "Nothing here changes a ruling, the brief, or its two production flags. The binding is PROPOSED; adopting it, and the five decisions below, are the native's. This file is the verified input for that decision."
@@ -60,3 +60,21 @@ authority: "Nothing here changes a ruling, the brief, or its two production flag
 ## 4. What this file does not do
 
 It does not edit the brief, the ruling sheet, WP1_CONTRACTS, any code, or the audit on the other branch. The executor run on this worktree is idle since 03:18 IST at WP8 M-1 (three uncommitted test files); its instruction set is left unchanged until the native rules on D-S1..D-S5, so that a resumed run reads one consistent brief.
+
+## 5. Second pass — binding 2.0 / amendments 2.0 at `5c05a0e2f` (verified at source 2026-09-24)
+
+What changed for this family, and what it does to D-S1..D-S5 `[R][S][J]`:
+
+| 2.0 change | verified | effect on the decisions |
+|---|---|---|
+| **No column is renamed by the binding.** `precision_regime` is the ruled name (Kṣetra ruling 8, this family's G-9, Saṅgam M-3); whether `kala_gochara_contacts.claim_grain` aliases to it or the reverse is left to D-S4 (binding B8-9). Values unify to `{instant_grain, date_grain}` either way | binding 2.0 B1/B8-9; amendments 2.0 §Gochara 2 | **D-S4 recommendation revised:** three rulings already name `precision_regime`, and the contacts table is a design artifact applied only on disposable DBs, so the cheap and honest move is to rename `claim_grain → precision_regime` in migration 1081, `ledger.py`, the kernel dataclasses and the tests **before the file is ever applied** (no alias generation needed: nothing served carries the old name), and pin the values in WP1 §3.1. This reverses §3's earlier "adopt `claim_grain` everywhere" |
+| **"Gochara owns the node fix (N-7 kernel path); Saṅgam may not edit `transit_search.py`"**; interim Saṅgam stamps `comparable_with='different_convention'`; L0's degree-level anchor already applied; **each L3 reader adds a per-call node-mode assertion** | binding 2.0 B6:105; amendments 2.0 §Gochara 8 | Consistent with the plan of record and needs no new decision: the vehicle is **packet S-1/S-2** (brief §6 row 159; plan §7 S-1) — `services/ka_gochara/service.py` returns kernel episodes (mean node, N-4) through a new `find_episodes`, and Saṅgam stops bypassing the service. `pipeline/transit_search.py` stays in brief §3's hard must_not_touch and is not edited by this run. **Added to D-S1:** a per-call node-mode assertion (`RAH_MEAN`/`KET_MEAN`, never TRUE) inside this family's own readers |
+| `comparable_with` values are pinned by this family at WP1 (N-7 condition); the binding adopts them and offers its four values as a proposal | WP1_CONTRACTS §6 closed enum of four = the binding's four | no change |
+| Inclusivity `closed_closed` recorded as a finding; this family declares it | binding 2.0 B1; amendments 2.0 §Gochara 1 | D-S1 unchanged |
+| L2 identity demanded of L2 via L3-U01, landing at R8; `'4.0'` "gated"; primitives comment fix on this family's sequencing | amendments 2.0 §Gochara 5–6 | no change |
+| Stamp columns stand as WP9; audit 1.4 now states precisely: `corpus_verifiable` ships on `kala_gochara_contacts`, `precision_regime` is emitted by Kṣetra, `source_qualification` exists nowhere, and the producer row the contract names has none of the three | amendments 2.0 §Gochara 3 | no change (brief §5.1) |
+| `window_ref = {asset_id:'ka_gochara', generation, id: contact_id}` is binding B8-3, for the native to ratify; credited to this family | binding 2.0 B3/B8-3 | D-S5 = B8-3 |
+| New: `tier_basis` MUST ADD on contacts (B2) | amendments 2.0 §Gochara 9 | **added to D-S2's column set** (`tier_basis ∈ {relative_uncalibrated, calibrated:<gate_id>}`), same migration |
+| Verifiers' credit carried in audit 1.4: this family emits the substantial majority of the Strategy "Temporal context" object via `kala_gochara_convention`; v1.3's "adopted by nobody" withdrawn | audit 1.4 | none — recorded |
+
+**Mapping to the binding's ten B8 decisions:** B8-1 (sha256 ids), B8-2 (`generation` in PK) and B8-5 (coverage shape) are already this family's practice (1081); B8-3 = D-S5; B8-8 (`time_basis`, `tier_basis` vocabularies) = D-S2; B8-9 = D-S4 (revised above); B8-6 (one contact producer) is Kṣetra's side of the line and needs nothing from this family; B8-4, B8-7, B8-10 are Saṅgam's and Kṣetra's. Nothing in §5 executes on this file alone; D-S1..D-S5 remain the native's.
