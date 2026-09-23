@@ -497,12 +497,19 @@ def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> Optional
     """
     C6: cross_dasha_agreement — how many dasha systems agree at peak_date.
 
-    Uses the cross_dasha_agreement.count on EligibleWindow (already computed
-    by KaDashaKalaService across 7 dasha systems).
-    Score = max(count across overlapping windows) / 7.0, capped at 1.0.
+    Uses the cross_dasha_agreement.count on EligibleWindow (computed by
+    KaDashaKalaService across 7 dasha systems via the R-2 intersection
+    oracle — direct co-support, not exact-endpoint keys).
+    Score = max(count across covering windows) / 7.0, capped at 1.0.
     Returns honest None when no eligible window covers peak_date — distinct
     from a real 0.0, which means "a window covers this date, and its own
     agreement count is genuinely zero".
+
+    R-2 (2026-09-23, SPEC R-2 / F-13): covering test uses the declared S-H
+    boundary convention [start, end) — start-inclusive, end-exclusive
+    (services/ka_dasha_kala/intersection.py BOUNDARY_CONVENTION). A peak_date
+    exactly equal to a window's end_date is NOT covered (the contiguous next
+    window covers it).
 
     NIRMĀṆA L3-W3 (§N.8). Measured live against the canonical chart: 95.7%
     of Mode A rows (868/907 post-birth) score 0.0 here, and this is NOT the
@@ -528,7 +535,7 @@ def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> Optional
         return None
     best: Optional[float] = None
     for ew in eligible_windows:
-        if ew.start_date <= peak_date <= ew.end_date:
+        if ew.start_date <= peak_date < ew.end_date:   # R-2 S-H: [start, end)
             agreement = getattr(ew, 'cross_dasha_agreement', None)
             count = agreement.count if agreement is not None else 0
             score = min(1.0, count / 7.0)
@@ -1230,6 +1237,12 @@ def mode_a_search(
     '_withdrawn' reason keys. SUPPORTING_WEIGHTS is intentionally not
     renormalised.
 
+    R-2 (SPEC R-2 / F-13): daśā agreement comes from the intersection oracle
+    (direct co-support, never exact-endpoint keys or transitive merging).
+    Boundary convention S-H [start, end) throughout. The query outcome is
+    recorded: 'failed' → c_cross *_unavailable; 'ok' with no covering window →
+    c_cross *_evaluated_empty — never merged.
+
     1. Ask dasha_kala_service (or predicate) for eligible dasha windows.
     2. For each eligible window, use find_aspect_events from transit_search to
        find transit events matching the predicate's transit_trigger.
@@ -1264,6 +1277,9 @@ def mode_a_search(
     # the service is None (preserves old behavior for tests / dry-run).
     static_dasha_score = float(dasha_rule.get('eligibility_score', 0.5))
     eligible_windows: list[Any] = []  # EligibleWindow list from service
+    # R-2: the query outcome itself is data. 'ok' (evaluated — even when zero
+    # windows come back) must never be recorded as 'failed' (unavailable).
+    dasha_query_state = 'not_queried'
     if dasha_kala_service is not None:
         target_lords = set(dasha_rule.get('constituent_lords', []))
         if target_lords:
@@ -1278,14 +1294,21 @@ def mode_a_search(
                     related_lords=set(),
                     date_start=h_start,
                     date_end=h_end,
+                    # R-2: max_level DECLARED = 3 (executor decision, recorded in
+                    # SANGAM_STAGE3_STATE.md): level-3 is the deepest daśā depth
+                    # whose span is commensurate with Mode-A window lengths; the
+                    # service default 4 (Sūkṣma, days-long) is in-window noise
+                    # for a peak-date eligibility prior.
                     max_level=3,
                 )
                 eligible_windows = result.windows
+                dasha_query_state = 'ok'
                 logger.debug(
                     "mode_a_search: dasha query returned %d eligible windows for lords=%s",
                     len(eligible_windows), sorted(target_lords),
                 )
             except Exception as exc:
+                dasha_query_state = 'failed'
                 logger.warning("mode_a_search: dasha_kala_service.query failed: %s", exc)
 
     def _dasha_score_for_date(peak_date: Any) -> tuple[float, str]:
@@ -1293,12 +1316,13 @@ def mode_a_search(
         eligible-window overlap supplied the score; every static-fallback
         branch (no service, query failed, no covering window) is an
         availability state under R-6/RRV-08, not support — the caller must
-        not let it manufacture a neutral supporting contribution."""
+        not let it manufacture a neutral supporting contribution.
+        Covering test: R-2 S-H convention [start, end)."""
         if not eligible_windows:
             return static_dasha_score, 'static_fallback'
         best = 0.0
         for ew in eligible_windows:
-            if ew.start_date <= peak_date <= ew.end_date:
+            if ew.start_date <= peak_date < ew.end_date:   # R-2 S-H: [start, end)
                 best = max(best, ew.eligibility_score)
         if best > 0.0:
             return best, 'service'
@@ -1490,9 +1514,18 @@ def mode_a_search(
                     'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 # Newly wired currents
                 **({'c_cross_dasha_agreement': round(c_cross, 4)} if c_cross is not None else
-                   {'c_cross_dasha_agreement_unavailable':
-                    'no eligible dasha window (dasha-eligible AND cross-system-agreeing) covers '
-                    'this peak_date — term dropped, NOT scored zero (L3-W3)'}),
+                   ({'c_cross_dasha_agreement_unavailable':
+                     'dasha eligibility service query FAILED — R-2 unavailable state; '
+                     'never merged with evaluated-empty'}
+                    if dasha_query_state == 'failed' else
+                    {'c_cross_dasha_agreement_evaluated_empty':
+                     'query succeeded but no eligible dasha window covers this peak_date — '
+                     'R-2 evaluated-empty state, distinct from service failure; term dropped, '
+                     'NOT scored zero (L3-W3)'}
+                    if dasha_query_state == 'ok' else
+                    {'c_cross_dasha_agreement_unavailable':
+                     'no dasha eligibility service / no constituent lords — term dropped, '
+                     'NOT scored zero (L3-W3)'})),
                 'c_benefic_dristi': round(c_dristi, 4),
                 'c_benefic_dristi_withdrawn': (
                     'R-4/RR-06: no qualified classical method binds the generic angular-weight '
@@ -1516,7 +1549,9 @@ def mode_a_search(
                     'ashtakavarga_transit_potency': _current_stance(
                         c7, 'graha-vocabulary mismatch AND an unresolved '
                             'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
-                    'cross_dasha_agreement':        _current_stance(c_cross),
+                    'cross_dasha_agreement':        _current_stance(
+                        c_cross, 'R-2: dasha query failed (unavailable) or evaluated-empty — '
+                                 'see c_cross_dasha_agreement_* reason key'),
                     'benefic_dristi':                _current_stance(c_dristi),
                     'transit_to_transit':            _current_stance(c9),
                     'panchanga_quality':             _current_stance(

@@ -19,7 +19,7 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 |---|---|---|
 | 0 — Entry gate | **PASSED 2026-09-23** | (a) packet read in order; (b) D-8 discharged — Astra third review `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` = PROCEED_WITH_AMENDMENTS, RRV-01…09 dispositioned in plan §10 + brief changelog + inline [S3-E] amendments; (c) evidence suite re-run `OUTPUT_2026-09-23T050513.txt` SUITE-PASS 13/13 + 13/13 NEG (4 scripts spot-verified by hand, exit 1 under NEG=1); reviewer independently re-ran + mutation-tested (`OUTPUT_2026-09-23T051310.txt`); (d) DB reachable via Cloud SQL proxy **127.0.0.1:5434** (5433 down; `source /Users/Dev/madhav-l3/dbenv.sh`); D-6 staged SQL executed, 100 chunks read, no nodal aspect grant — recorded in DIS.031 `amendment_2026_09_23_predicate_level_recheck` (ground upgraded ATTRIBUTED→CONFIRMED, OCR/400-char limits stated). |
 | 1 — R-5 harness | **PASSED 2026-09-23** | Identity D-R5-1 implemented (`r5_identity.py`: contact_uuid uuid5 over the 8-field tuple with peak_date deliberately excluded; episode_uuid over sorted-member set-hash; FIELD_EXCLUSIONS = surrogate id / computed_at / generation-head pointers, named in code at :38-43). Five-rule rebuild/mapping (no-op / supersede / decisive-geometry-reattach / **ambiguous fail-closed** / explicit-withdrawal-only) with journal + replay, in a schema-faithful SQLite mirror of the §5.2 cascade graph (245/247 CASCADE, 249 SET NULL, 363 CASCADE, 334 CASCADE, 331/332 SET NULL, 339 FK-free resolved semantically). Seven §6.3 attacks executable (40 assertions, VERDICT PASS): empty rebuild, moved date (identity stable, content v+1), one-to-many split, many-to-one merge, ambiguous match (no auto-reattach; adjudicated re-run reattaches exactly then), interrupted/resumed (byte-identical manifest, exactly-once), unchanged-count content-swap (per-id canonical diff fires). S14 joined the manifest (`r5_harness/S14_r5_preservation_harness.py\|0\|1`); suite re-run `OUTPUT_2026-09-23T060527.txt` SUITE-PASS 14/14 + 14/14 NEG; NEG mutation = `FAIL_CLOSED_AMBIGUOUS` flipped to False (evidence-bearing: six attack-5 propositions read false on a genuinely re-attached DB). |
-| 2 — R-1…R-4, R-6 | **IN PROGRESS** — R-6, R-1, R-3(b), R-4 PASSED 2026-09-23; R-2 remains | see "Phase 2 progress" below |
+| 2 — R-1…R-4, R-6 | **PASSED 2026-09-23** | all six repairs detector-backed — R-6, R-1, R-3(b), R-4, R-2 each with a new MANIFEST entry; suite `OUTPUT_2026-09-23T132601.txt` SUITE-PASS 17/17 + 17/17 NEG; full `tests/l3` minus ka_kshetra 1104 passed / 2 failed = the two known pre-existing pollution flakes (pristine-tree identical). Details per repair below. |
 | 3 — E2, E5 | NOT STARTED | — |
 | 4 — E4 + annual-Tājika gate | NOT STARTED | — |
 | 5 — E6 (E3 gated on N-7) | NOT STARTED | — |
@@ -114,9 +114,28 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 - **Evidence:** `S1_target_default_zero.py` and `S12_lagna_default_aries.py` rewritten as POST-FIX detectors (positive = guard exists, negative control removes the guard); `S16_r1_r4_post_fix.py` joined MANIFEST. Suite `OUTPUT_2026-09-23T130106.txt` SUITE-PASS 16/16 positive + 16/16 negative controls.
 - Executor independently re-reviewed every diff (engine combiner math — withdrawn weights inert not renormalised; migration additive-only; test edits legitimate) before accepting the subagent's implementation.
 
+### R-2 clock-intersection oracle — PASSED 2026-09-23 (F-13 repair; closes Phase 2)
+
+**Oracle** (`services/ka_dasha_kala/intersection.py`, pure functions, no DB/I/O):
+- `intersect_segments(intervals)` — atomic simultaneous intersection over ALL intervals (every level, every system): every maximal sub-interval with a constant supporter set becomes one `IntersectionSegment` carrying its sorted supporter tuple (`SupporterRef`: system_id, level_n, lord_graha, dasha_row_id, parent_row_id). Degenerate `[d, d)` intervals are inert (support nothing).
+- `agreement_for(start, end, segments)` — distinct systems DIRECTLY co-supporting ≥1 atomic segment of `[start, end)`; a degenerate or uncovered interval returns a real, EVALUATED zero.
+- **Boundary convention declared: `[start, end)` (S-H)** — start-inclusive, end-exclusive; contiguous daśā chains partition time instead of double-covering boundary instants; `date` and `datetime` flow through the same code path (sub-day boundaries work).
+- Anti-transitivity is structural: A∩B and B∩C never makes A agree with C unless they directly share a segment. Nested levels of the SAME system never inflate the count (distinct systems, not intervals; parent identity carried on refs).
+
+**Wiring:**
+- `ka_dasha_kala/service.py`: `_build_overlap_key` DELETED. `query()` builds atomic segments once over all walked intervals and computes each `EligibleWindow.cross_dasha_agreement` via the oracle (direct co-support over the window's span — not exact-key grouping, no transitive merging).
+- `ka_sangam/engine.py`: `mode_a_search` tracks `dasha_query_state ∈ {not_queried, ok, failed}`. `_dasha_score_for_date` and `_c_cross_dasha_agreement` use the S-H covering test `start <= peak < end`. `max_level=3` (executor rationale in inline comment). The c_cross constituent factors now distinguish three states: covered → `c_cross_dasha_agreement` value key; query succeeded but no window covers peak (or zero windows) → `c_cross_dasha_agreement_evaluated_empty`; query FAILED → `c_cross_dasha_agreement_unavailable` ('FAILED' marker) — evaluated-empty and unavailable are NEVER merged (R-2). `availability['dasha']` reflects the state.
+
+**Qualification:**
+- `tests/l3/test_ka_sangam_r2_intersection.py` (new, 16 tests): oracle falsifier cases (unequal-endpoint agreement 305 d; disjoint; anti-transitive chain; nested levels same system; degenerate evaluated-zero; valid empty; contiguous S-H boundaries; sub-day datetimes; convention declared) + service wiring (fake `walk_eligible_intervals` — agreement across unequal endpoints, evaluated-empty) + engine level (S-H boundary coverage, failure → unavailable, no-covering → evaluated-empty, valid-empty, covering-window score).
+- Targeted regression: `r2 + r6 + r1_r4 + a3_fixes + ka_sangam + l3_convergence + u3_convergence_currents + w2_first_frontier_service_contracts` = 233 passed — no existing pin relied on exact-endpoint dasha coverage.
+- Full `tests/l3` minus ka_kshetra: **1104 passed, 2 failed — both the known pre-existing pollution flakes** (pristine-tree identical).
+
+**Evidence:** `S6_overlap_key_exact_pair.py` rewritten POST-FIX (exact key removed at source + behavioural agreement=2 over the 305-day overlap, NEG flips expectation to interval-count 3); `S17_r2_intersection_oracle.py` joined MANIFEST (falsifier suite, NEG flips the anti-transitive expectation to 3). Suite `OUTPUT_2026-09-23T132601.txt` SUITE-PASS 17/17 positive + 17/17 NEG.
+
 ## Last commit
 
-`656369bda` — "sangam stage3: Phase 2a — R-6 score-kernel separation landed engine-side".
+`a55e1b941` — "sangam stage3: Phase 2b — R-1 target provenance, R-3(b) fail-loud lagna, R-4 C4/C9 withdrawal".
 
 ## Evidence artifacts this phase
 
