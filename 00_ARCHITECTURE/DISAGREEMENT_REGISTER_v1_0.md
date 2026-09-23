@@ -1869,15 +1869,36 @@ finding_entry:
        which is the conservative side of an uncertain ground, and the other three grounds (the
        refuted Ch.26 citation, w30's own docstring concession, the independent reviewer's [U])
        are unaffected."
-    - "ONE CLAIM NOT ADOPTED. The referring session reported that the corpus ground had been
-       independently discharged by a stage-3 executor (100 chunks, predicate-level, no grant) and
-       that this was 'recorded in DIS.031's own amendment'. IT IS NOT. The recording session wrote
-       that amendment and it contains no such record, and `git log` confirms no edit to this file
-       between the amendment (68b0fd09d) and this resolution. The 100-chunk check may well have
-       been run; the recording session could not verify it (direct DB access still refusing at
-       127.0.0.1:5433) and does not restate it as fact. The grounds are therefore NOT all upgraded
-       to CONFIRMED, contrary to the suggested closing line. The entry closes because the
-       DIVERGENCE is resolved by a verified native ruling, not because every ground was discharged."
+    - "WITHDRAWN IN FULL — this caveat was FALSE and is corrected here rather than deleted. It
+       read: 'the referring session reported the corpus ground had been discharged by a stage-3
+       executor … IT IS NOT [recorded] … git log confirms no edit to this file between the
+       amendment (68b0fd09d) and this resolution.' Wrong. The
+       `amendment_2026_09_23_predicate_level_recheck` block sits FIFTEEN LINES ABOVE that
+       assertion, written by `f81782650` at 05:44 — seventeen hours before the 22:59 resolution
+       that denied it. HOW THE RECORDING SESSION GOT IT WRONG: it ran `git log` against
+       `origin/l3/kala-elevation-readiness`, which did not yet carry `f81782650`; that commit
+       reached the branch only via the recording session's own accidental fast-forward minutes
+       later. A `grep` of the working file — the object actually being asserted about — would have
+       found it instantly. This is the day's own failure mode committed INSIDE the register that
+       records it: checking a proxy (a ref's log) instead of the object (the file). Caught by the
+       Saṅgam stream via `git blame`."
+    - "THE CORPUS GROUND IS THEREFORE UPGRADED, with the limits its author stated. The staged
+       predicate-level SQL WAS run: 100 chunks (phaladeepika 89, sārāvalī 11), every one read, no
+       aspect term conjoined, NO chunk in either text grants Rāhu or Ketu graha-dṛṣṭi. The nodes
+       appear as occupants, dāśā lords, transit agents and as TARGETS of other planets' aspects,
+       never as aspect-grantors — so w30's docstring attribution of the 5/7/9 rule to Phaladīpikā
+       and Sārāvalī is unsupported at the page level of both named texts. STANDING LIMITS, from
+       the reading session itself: (i) the query reads the OCR'd translation columns, first 400
+       chars per chunk, so a grant in the Devanagari column or past that window is not caught;
+       (ii) 'not found' is table-level, not proof of absence from the tradition. Graded CONFIRMED
+       subject to (i) and (ii), not absolutely."
+    - "SCOPE DEVIATION, recorded because it matters independently of the content. That amendment
+       was written into this governance register by a stage-3 EXECUTOR whose grant covered code,
+       tests, evidence and state — NOT governance registers. The Saṅgam stream has recorded it as
+       a scope deviation on its own side. The content is honest and states its own limits, and
+       this entry relies on it; the authority to write it was not granted. A register that can be
+       appended by an agent without register authority is a governance-surface gap in its own
+       right, and is flagged here for the owner of `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §K`."
   status_note: "Closed on the ruling, with ground strength recorded as it actually stood."
   resolution_shape: >
     If N-14 rules to KEEP nodal dṛṣṭi, the instrument holds a NATIVE-RULED divergence between two
