@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.3"
+version: "1.4"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -212,7 +212,38 @@ transcription from a cited primary. Nothing re-interprets a chart.
 
 ---
 
-## D-F — The E6 evaluation thresholds: **shape accepted, one number wrong. n = 35, not 30.**
+## D-F — The E6 evaluation thresholds — **SUPERSEDED by the native's own instruction. Now n = 20 / 50.**
+
+**Superseded 2026-09-24.** After D-F was recorded the native instructed the Saṅgam session directly:
+*"The numbers that you've suggested are very high. Can you considerably And reasonably bring it
+down? And please close it."* A direct native instruction outranks a decision I took under
+delegation, so D-F's numbers are withdrawn in favour of **n = 20 per stratum, n = 50
+instrument-level**, closed at `9f29d61ea`.
+
+I verified the new arithmetic rather than accept it, and it reproduces to the digit:
+
+| gate | n | crit | α | power |
+|---|---|---|---|---|
+| per-stratum | 20 | ≥8 | 0.032143 | **0.868 at 2.5×**, 0.584 at 2× |
+| instrument | 50 | ≥16 | 0.030803 | **0.904 at 2×**, 0.553 at 1.6× |
+
+**What moved and what did not.** The false-pass rate is unchanged — ≤5% at both gates, so the
+instrument is no more likely to claim a result it has not earned. What moved is the smallest lift
+visible at ~80% power: from a doubling to **2.5×** per stratum, and from 1.6× to **2×**
+instrument-wide. **So my stated limitation binds harder, not less**, and it is carried unchanged:
+"no signal" means *not large enough to see at this n*, never *nothing there*, and every E6 report
+must say which.
+
+**One trap from that work belongs in this record.** At the design point the p-value *equals* α, so a
+4-dp α rounded **down** (0.0321 against the exact 0.0321426631) made the gate reject its own design
+case. The earlier 35/12 pair had only passed because 0.0344 happened to round *up*. The constants
+are now exact tails to 10 dp with a float epsilon on both boundary comparisons — a latent defect
+that would have surfaced as an inexplicable gate failure much later.
+
+*The v1.2/v1.3 text below is retained as the record of what was decided and why, and is no longer in
+force on the numbers.*
+
+### (superseded) D-F as recorded at v1.2–v1.3: shape accepted, n = 35 not 30
 
 **Decision: adopt with a correction, and state the limitation plainly.**
 
