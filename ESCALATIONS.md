@@ -69,3 +69,93 @@ what a human needs to decide.
 - **Decision needed:** at WP10 authorization time, extend the reader inventory formally and
   decide whether the W41–W45 admission scripts' `_v2` UPDATEs need a staging guard before
   `'4.0'` becomes the registry-pinned target.
+
+## E-005 — N-14 (w30 nodal dṛṣṭi removal) is designed but NOT implemented in this run
+
+- **What:** The native's N-14 ruling removes `w30_nodal_drishti` from the λ product
+  (`engine.py:107` enabled; `:632` the executing product; `:668/:778` stored) and retires
+  nodal dṛṣṭi (85 Rāhu + 87 Ketu served records), with three adopted conditions:
+  same-generation regeneration inside a new candidate (never a patch over live rows),
+  the absence declared as `completeness_state`, and the removed term kept one generation
+  as a labelled non-scoring annotation.
+- **Why out of scope here:** every one of those conditions is a served-data action: it
+  changes every stored λ and belongs to the candidate-generation build that WP10 alone is
+  authorized to run (plan §4.7, §9 step 6; the engine's own comment at `engine.py:132`
+  demands regeneration, not patching). The execution brief's WP5 list contains exactly
+  H-1a/H-2..H-6 — N-14 is not in it; the brief's §5 out-of-scope list covers WP10 in
+  full. Removing the factor now, on the served path, without the candidate-generation
+  machinery would be precisely the "patch over live rows" the ruling forbids.
+- **Evidence:** F-28/F-29 measurements (plan §3); WP3b classification A-9 (w30 enabled
+  with corpus-refuted citation); WP0 nutation/corpus records.
+- **Decision needed:** at WP10, sequence the w30 removal as part of the first `'4.0'`
+  candidate build with its three conditions; until then `w30_modifier` stays as-is
+  (enabled, documented) and the scoring_signature fingerprint detector remains the guard.
+- **Effect on this run:** WP3b's baseline documents w30's current live semantics
+  (labelled A-9); the kernel emits no nodal dṛṣṭi (WP1 §7 orb table; WP2 case 6);
+  WP4 classifies any λ delta attributable to w30 against this record.
+
+## E-006 — WP5 honesty fixes (H-1a, H-2..H-6) not completed in this run
+
+- **What:** WP5 is in-scope per the execution brief, but its implementation
+  requires changes that intersect with contracts/files outside this run's
+  `may_touch` boundary, or with the FROZEN orchestrator/writer contract, in
+  ways that cannot be safely completed without a dedicated, focused session.
+  Specifically:
+  - **H-1a:** reading kakṣyā boundaries from L1 (`chart_facts.fact_category =
+    'ashtakavarga_kakshya_boundary'`) instead of the equal-eighths fixture
+    requires either (a) adding a `conn` parameter through `_compute_activity_v3`
+    → `evaluate_lambda_vector` → `_gather_sentences_no_db`, which re-opens the
+    no-DB contract of the v3 activity path, or (b) pre-fetching boundaries in
+    `ClassContext` and threading them into the frozen primitive
+    `gochara_grammar/primitives.py::kakshya_cell_crossing`. That primitive is
+    frozen; the change therefore needs a new primitive or a contract amendment
+    that is out of scope for an autonomous run.
+  - **H-2:** preventing solver exceptions from becoming `0.0` scores requires
+    the failed row to carry `completeness_state='unqualified'` and
+    `failure_detail` through `_compute_activity_v3` / `interval_solver.py` /
+    `resolution_hierarchy.py` and into the writer/result schema. The writer
+    layer (`platform/src/lib/retrieval/registry/layers/reading_checklist.ts`,
+    `GocharaTransitService`, and downstream `kala_gochara_windows_v2` staging)
+    is outside `may_touch`; adding the field without a receiver creates an
+    orphaned schema change.
+  - **H-3:** honest requested-vs-completed horizon reporting is localized to
+    `interval_solver.py`/`resolution_hierarchy.py`, but the existing test suite
+    (`test_w32_interval_solver.py`, `test_w33_resolution_hierarchy.py`) encodes
+    the current truncation behavior; a safe fix needs a design packet for the
+    P-1/P-2 serving owners because the UI currently expects one window per
+    requested horizon.
+  - **H-4:** already implemented via the w26_real_eclipses mechanism
+    (`services/gochara_v3/mechanisms/w26_real_eclipses.py` and its tests pass);
+    no further work required.
+  - **H-5:** removing the stored-peak cap requires the cap to move to serve
+    time only. `resolution_hierarchy.py::retain_candidates_pooled` currently
+    caps at `MAX_PEAKS_PER_ERA_WINDOW`; storing all admitted peaks changes the
+    natural key cardinality of `kala_gochara_windows` and must be coordinated
+    with the serving/trimming logic in P-1/P-2, which is outside `may_touch`.
+  - **H-6:** physical-contribution identity is already implemented in
+    `services/gochara_kernel/ids.py::independence_group` and used by the WP6
+    ledger; wiring it into the v3 engine/scoring path requires the same
+    writer/schema receiver changes as H-2.
+- **Why not fixed here:** the dispatch subagent for WP5 (agent-19) reported
+  completion but produced no verifiable code changes — only `ESCALATIONS.md`
+  was touched. Manual implementation of the remaining items would require
+  touching frozen primitives or writer/serving code outside `may_touch`,
+  violating §3 constraints. The honest path is to record the partial state
+  (H-4/H-6 kernel-side done, H-1a/H-2/H-3/H-5 blocked on receiver contracts)
+  and continue with WP4, which does not depend on WP5 for its core
+  geometry-vs-legacy comparison.
+- **Evidence:** `git status` after the WP5 subagent shows only
+  `ESCALATIONS.md` modified; no `test_wp5_honesty.py` or code changes were
+  produced. Grep of `resolution_hierarchy.py` shows `MAX_PEAKS_PER_ERA_WINDOW`
+  still governs retention; `engine.py::_gather_sentences_no_db` still swallows
+  exceptions with a debug log; the kakṣyā primitive in `primitives.py` is
+  frozen and still falls back to equal-eighths when `conn is None`.
+- **Decision needed:** A focused follow-up session should (1) amend or replace
+  the kakṣyā primitive to accept L1-fetched boundaries, (2) add the
+  `completeness_state`/`failure_detail` receiver fields in the writer/serving
+  layers, and (3) move the peak cap to serve-time trimming. H-1b remains out
+  of scope per E-003 / the execution brief §5.
+- **Effect on this run:** WP4 proceeds using the WP3b legacy baseline and WP3a
+  kernel geometry; any WP5-related λ deltas are classified as
+  "honesty-fix pending" in the WP4 report rather than treated as passing
+  behavior.
