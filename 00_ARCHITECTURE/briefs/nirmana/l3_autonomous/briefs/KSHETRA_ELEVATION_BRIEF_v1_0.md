@@ -1,7 +1,10 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.7"
+version: "4.8"
 status: APPROVED_FOR_EXECUTION  # CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; PR #2722 merged 54766b5da
+execution_prompt: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md   # AWAITING_NATIVE_AUTHORIZATION
+ablation_preregistration: KSHETRA_ABLATION_PREREGISTRATION_v1_0.md   # judge named; rubric sealed before any arm
+l0_row_fixes_routed: KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md   # bg_transit_rules UPDATE/INSERT spec, L0 owner via Gochara
 approval_record: "KSHETRA_RULING_SHEET_v1_0.md v1.3 (author, under native written delegation 2026-09-23, \"Go ahead and do it.\") + KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md (rulings 7/8/9)"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
@@ -15,7 +18,7 @@ accepted_upstream_contract: >
   CURRENT_STATE §3 table. W0 accepted content on main BY CONTENT (REDIRECT_002 §1): Kshetra P0
   3f109869d; DHARA midpoint fix 87cc8c9baf; DHARA_SWEEP_SEMANTIC_VERSION='1.2' (dhara_sweep.py:52).
   Physical L1/L2 generation heads ABSENT in the connected environment.
-implementation_owner: "Execution — Data Plane task (codex/madhav-data-plane-execution), the sole execution destination per Strategy §8 — assigned 2026-09-23 on the native's delegation ('do the rest on my behalf'); overridable by native record"
+implementation_owner: "Stage-3 executor: a Kimi Code session under KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md in worktree /Users/Dev/madhav-l3/kshetra-stage3 (branch l3/kshetra-stage3), the same shape Saṅgam and Gochara use; the Data Plane execution ledger (codex/madhav-data-plane-execution, Strategy §8) records the goal when the executor opens it. Assigned 2026-09-23 on the native's delegation; AWAITING_NATIVE_AUTHORIZATION to start; overridable by native record"
 independent_review_owner: >
   madhav-fc (L3 strategic session) for the parts it did not shape; declined to certify rulings 7/8/9
   (node; vedha admission/G-9; G3), whose evidence it co-produced. Reviewer for 7/8/9, discharged
@@ -40,6 +43,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.8 (2026-09-23) — three delegated items discharged: judge named and rubric sealed (§4.1 → KSHETRA_ABLATION_PREREGISTRATION_v1_0.md); stage-3 executor named with its prompt and isolated worktree (implementation_owner amended; AWAITING_NATIVE_AUTHORIZATION); L0 row fixes routed (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md). Three new frontmatter pointers. No stage, contract or ruling changed."
   - "4.7 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 discharged (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md); the house-vedha citation claim corrected (32/41 applied, 3 deferred, 6 unqualified — see plan v1.8). status -> APPROVED_FOR_EXECUTION, approval_record filled."
   - "4.6 (2026-09-23) — §4.1 ablation gains the outcome semantics mirrored from Sangam CLOSE D-2/D-3 (3f62f3468, verified at source; plan v1.6 §6a/§7.10; ruling sheet v1.1 row 10). No stage, contract or ruling otherwise changed."
   - "4.5 (2026-09-23) — corpus premise retracted (plan v1.5 §6a.2): the corpus is the served classical_text_chunks table, not the SOURCE_DATA directory; Phaladīpikā is in it. ka_vedha_gochara\u0027s house-vedha rows are mis-cited (39/41 to \"BPHS Ch.29\"), not unsourced — applied on L0 re-citation at page grain."
@@ -262,7 +266,7 @@ chapters?"* — **Arm A:** Sangam's windows. **Arm A′:** Sangam + Taranga's mo
 stronger baseline — shape but no per-term composition and no null). **Arm B:** A′ plus the field's
 segments and term composition. A **rubric keyed to Q06's own distinction text** ("recurrence with
 changes in participants, conditions, clocks, relationships and uncertainty") and a **named judge**
-(the native's to name), both fixed before any arm is read. **Outcome semantics** follow Sangam's close D-2/D-3 (plan §6a, §7.10; ruling 10): an outcome the native adjudicates `ambiguous` is censored, not scored, with a per-stratum censoring rate and a 20% ceiling that blocks the stratum's claim; only consenting charts with real outcome records are evaluation-eligible, synthetic charts carrying `evaluation_eligible = false`. **If Arm A′ conveys the *driver* change — which classical operand moved — and not merely which
+(named 2026-09-23 under delegation — `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md` §2: a fresh-context agent and Kimi K3 on the sealed rubric, native adjudicates), both fixed before any arm is read — the rubric, pairs, blinding and pass/fail are sealed in that file. **Outcome semantics** follow Sangam's close D-2/D-3 (plan §6a, §7.10; ruling 10): an outcome the native adjudicates `ambiguous` is censored, not scored, with a per-stratum censoring rate and a 20% ceiling that blocks the stratum's claim; only consenting charts with real outcome records are evaluation-eligible, synthetic charts carrying `evaluation_eligible = false`. **If Arm A′ conveys the *driver* change — which classical operand moved — and not merely which
 witnesses, the segment earns nothing and the asset loses its unique claim** → park-with-preservation; P1 never funded. Supporting: **A1** within-class rank
 invariance, 2 calibrated vs 12 synthetic classes (one aggregate query — λ⁰ is a multiplier, rank
 *should* be invariant; never run); **A2** zero the clock term, regenerate the top-10 mechanism

@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.9"
+version: "1.10"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.10 (2026-09-23) — delegated items discharged: §7.10 points at the sealed ablation pre-registration (judge named); §7.8 repair instruction corrected to UPDATE-not-delete with the L0 spec routed; stage-3 execution prompt prepared (AWAITING_NATIVE_AUTHORIZATION). No stage, guarantee or ruling changed."
   - "1.9 (2026-09-23) — Second independent review (Kimi K3 desktop app) on the closed packet; three corrections adopted after independent re-verification at source: ruling-8's \"no chunk anywhere mentions Rahu/Ketu vedha\" narrowed to the correct mechanism (PG348:C1 has a Sarvatobhadra-chakra Rahu/Ketu vedha-direction rule); two Venus rows (35, 44) identified as transpositions of already-correct rows (179, 33), not fresh geometry errors; ruling 7's reconciliation direction corrected to store-to-declarations, since routers/ephemeris.py and panchang_engine/planets.py independently re-verify as already MEAN-compliant. Full report: KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md."
   - "1.8 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md), corroborated at the served corpus by the author, folded in: margin corrected 0.045°→0.049°; disposition (b) also touches service_probes.py's fail-closed validator and two served node_mode declarations; dhara_sweep.py line refs corrected to :212,227,243,248; the \"structurally impossible\" docstring reattributed to polarity separation, not route-scoping; the house-vedha citation claim corrected from \"all 41 verbatim, applied on re-citation\" to 32 applied / 3 deferred (Venus geometry contradictions, ids 35,44,45) / 6 unqualified (Rahu/Ketu, no source); the sarvatobhadra \"buildable from prose\" claim narrowed to the vedha-pair partitions. Status moves to APPROVED_FOR_EXECUTION."
   - "1.7 (2026-09-23) — CORRECTION of 1.6's stated reason. Measured across every mi_*.py: no L5 writer consumes both streams (mi_bhara declares ka_kshetra at :122-130; mi_adhilepa references ka_sangam at :305; none both), so the sentence one L5 loop (mi_bhara) scores both streams in §6a and §7.10 was false and is withdrawn — Sangam caught it, I measured it. Replaced by the adjudicator reason: the native adjudicates ambiguous in both streams, so divergent semantics would count the same human judgement differently by accident of asset. The reasoning is this packet's own; Sangam's D-2 rests on bias and D-3 on the Ethical Framework, and neither mentions mi_bhara. D-2/D-3 mirror unchanged."
@@ -403,8 +404,9 @@ hard to cite precisely is a real cost, not absence.
    then retire under contract §5. Ratify the uniform admission rule (F06 `applied` iff
    `corpus_verifiable` and geometry passes) — whose outcome today, **corrected by independent review**,
    is: **`applied` for 32 of 41 house-vedha rows on the L0 re-citation at page grain (F-23/G-8);
-   `deferred` for 3 Venus rows (ids 35, 44, 45 — two of which, 35 and 44, are transpositions of already-correct
-   rows 179 and 33, i.e. dedup, not fresh geometry) pending an L0 fix; `unqualified` for 6
+   `deferred` for 3 Venus rows (ids 35, 44, 45 — `vedha_house` UPDATE to 1/5/11, never a delete: 35 and 44 are column-swap
+   transpositions of rows 179/33 by origin, but their `primary_house` is the text's; the 1.9 "dedup" wording
+   is withdrawn — spec `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md`) pending the L0 owner; `unqualified` for 6
    Rāhu/Ketu rows (ids 187,188,189,196,197,198), genuinely unsourced for this mechanism; `applied` for laṭṭā and the
    malefic scale; `unqualified` for sarvatobhadra** (buildable from prose for its vedha-pair cells,
    not its letter cells). G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
@@ -414,7 +416,9 @@ hard to cite precisely is a real cost, not absence.
    any `null_p` from the W7 build? (Recommend: yes.)
 10. **The ablation's judge and timing:** who reads the three arms, under what pre-registered
     rubric keyed to Q06's own distinction text — and does the ablation run *before* the S1-ingestion
-    packet? (Recommend: yes; a failed ablation then parks the asset without that spend.)
+    packet? (Recommend: yes; a failed ablation then parks the asset without that spend.) **Discharged
+    2026-09-23 under delegation:** judge, rubric, pairs, blinding and pass/fail are sealed in
+    `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md`; execution per `KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` Phase 3.
     **Outcome semantics for the judge and for L5** (mirrored from Sangam's close, `SANGAM_RULING_SHEET_v1_0.md §CLOSE` D-2/D-3 @ 3f62f3468 — the author's decisions under native delegation, verified at source; §6a): an outcome the native adjudicates `ambiguous` is **censored, not scored** — excluded from n, with the censoring rate published per stratum and a **20% ceiling** above which that stratum's claim is blocked regardless of n; the evaluation population is **consenting persons with real outcome records only** (today the two production charts) — synthetic and test charts may exercise the machinery but carry `evaluation_eligible = false` and never enter n. The reason is the adjudicator, not a shared writer: an outcome adjudicated `ambiguous` means the same thing to the native whichever asset produced the window, and the native adjudicates in both streams, so divergent semantics would make the *same* human judgement count differently by accident of asset. (Measured 2026-09-23 across every `mi_*.py`: **no L5 writer consumes both streams** — `mi_bhara` declares `ka_kshetra` (:122-130), `mi_adhilepa` references `ka_sangam` (:305), none both; my earlier "one L5 loop (`mi_bhara`) scores both streams" sentence was false and is withdrawn. The reasoning is this packet's own, not on Sangam's sheet.) Ruling 10 carries this.
 
 ## §8 — Not settled, and non-claims

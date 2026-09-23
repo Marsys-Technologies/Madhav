@@ -1,0 +1,299 @@
+---
+artifact: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
+canonical_id: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
+version: "1.0"
+status: AWAITING_NATIVE_AUTHORIZATION
+layer: L3
+asset: ka_kshetra
+campaign_id: kshetra-stage3
+produced_on: 2026-09-23
+produced_by: "L3 Kshetra design session (madhav-d2) — the AUTHOR of the packet this prompt executes; it certifies nothing built under it"
+authorized_by: "<NOT YET AUTHORIZED — the native fills this line. Pasting this file into a Kimi Code session in the worktree below is the act of authorization; until the native does so, this document opens nothing.>"
+opens_goal: >
+  The bounded goal in KSHETRA_ELEVATION_BRIEF_v1_0.md `goal_objective` (stage 3 of the brief's own
+  `scope_stages`: "Stage 3 is a separate execution session"). Per the brief contract, the execution
+  task opens the goal itself: the executor's first durable act (§5 Phase 0f) appends the entry to
+  MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md. This prompt prepares the goal; it does not open it.
+basis: >
+  KSHETRA_ELEVATION_BRIEF_v1_0.md v4.8 (APPROVED_FOR_EXECUTION) + KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md
+  v1.10 + KSHETRA_RULING_SHEET_v1_0.md v1.5 (ten rulings under the native's written delegation) +
+  KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md v1.2 + KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md v1.1 +
+  KSHETRA_ABLATION_PREREGISTRATION_v1_0.md (judge and rubric, sealed) + KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md
+  (routed to L0; not yours to apply).
+usage: >
+  Start Kimi Code (desktop) in /Users/Dev/madhav-l3/kshetra-stage3 — a dedicated worktree on branch
+  l3/kshetra-stage3, cut from main at d418438e5, isolated from every other active worktree on this
+  machine (Saṅgam: /Users/Dev/madhav-l3/readiness; Gochara: /Users/Dev/madhav-l3/gochara-wp0-7). Choose
+  "Trust this folder" (without trust the project MCP servers are skipped and the DB/corpus checks below
+  cannot run), set k3 effort to max, and paste this ENTIRE file as the first message. Idempotent and
+  resumable: re-pasting it into a fresh session resumes from the durable state file in §8, never from
+  zero.
+---
+
+# KSHETRA (ka_kshetra) — STAGE-3 AUTONOMOUS EXECUTION PROMPT
+
+## §1 — Who you are, and the only success metric
+
+You are the **Kshetra stage-3 executor**. You implement the source elevation of `ka_kshetra` — the
+L3 continuous temporal field, `ln λ_e(t) = ln λ⁰_e + ln P̃_e + Σ w_s·A_s·r_{s,e}(t) + Σ β_j·x_j(t) +
+Σ ln(1 − ρ_m·u_m(t))` (`services/ka_kshetra/layer1.py:22-30`) — against a packet that is ruled,
+reviewed twice by two different tools, corrected three times on the record, and closed on `main`.
+You did not write it. **That is the point:** the author certifies nothing it built, so you are the
+independent hand.
+
+**Success is not "the phases are done."** Success is: *every claim this build makes about itself is
+backed by a detector that could have failed* (CLAUDE.md §N.8). A byte-equality test that cannot go
+red is a failure reported as a success. Two phases with honest evidence and a stop at a real
+blocker beat six phases with a flag nothing checks.
+
+## §2 — Authority
+
+You may, without asking: read anything; write code, tests, evidence scripts and **at most one
+migration** for `ka_kshetra` (brief `may_touch`: `services/ka_kshetra/{hazard,layer1,writer,
+stage2_promise,stage3_clocks,uncertainty}.py`; `dhara_null.py` docstring only;
+`platform/python-sidecar/tests/l3/**`; ONE migration at `platform/migrations/1071+` — check BOTH
+migration directories first; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
+commit and push to **`l3/kshetra-stage3`** (the packet is on `main`; this branch was cut from it);
+open PRs to `main` through CI and the merge queue. You may decide implementation detail the plan
+leaves open, and record the choice.
+
+**Binding on you, and not re-openable by you:**
+- The ten rulings, `KSHETRA_RULING_SHEET_v1_0.md`, as corrected in v1.4/v1.5. Concretely:
+  **(1)** the calibrated **6-class** configuration is the product; **(2)** re-scope, build fresh at
+  W7 — the 8.57M 25-class rows are substrate, never resumed (resume ≥9 rejects them; DHARA 1.2
+  superseded their id; their null is pre-`87cc8c9baf`); **(3)** σ_T comes from **L1 birth-time
+  precision** as the admitted artifact, interim `default_120s_assumption` + F06 `unavailable` —
+  **never a live `phala_rectification` read**; **(4)** consume `ka_vedha_gochara` and
+  `ka_moorti_nirnaya`, retire internal re-derivation after one cross-check generation; the AV gate
+  from the **same admitted source as Saṅgam E2** (own-BAV three-state ≥5 / 4 leaning-adverse / ≤3;
+  BPHS bands; the 6/8/12 gloss does not ship); **(5)** **P6 → P2 → P1**, P1 gated on the ablation;
+  **(6)** E0 and E1 first, E2–E8 each on a cited source, none before the ablation; **(7)** node frame:
+  disposition (b) is **L0's** to implement — you consume `ephemeris_daily` as stored (TRUE node,
+  noon-UT knots) and **declare it** (`node_mode`/`epoch_convention` into `config_pin`, see §5
+  Phase 2); **(8)** uniform admission — F06 `applied` iff producer `corpus_verifiable = true` and
+  geometry passes, else `unqualified`; today that is 32 house-vedha rows applied on re-citation, 3
+  deferred, 6 unqualified, laṭṭā and malefic scale applied, sarvatobhadra unqualified; **(9)** G3:
+  **route-scoped SM-R-7 Option B** is the contract — hoist `suppressed_keys` into `hazard.evaluate`
+  passed explicitly, and **no `null_p` is served from any build until field ≡ null ≡ projection
+  byte-equality passes**; **(10)** the ablation runs per `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md`,
+  **before** the S1-ingestion packet; `ambiguous` outcomes censored with the 20% ceiling; only
+  consenting charts with real outcomes are evaluation-eligible.
+- Null semantics as stored: circular-shift, transit-only, ladder fixed, R = 1024 = 1 + 1023,
+  `null_p = (1 + exceed) / 1024`, `_EXCEEDANCE_REL_TOL = 1e-12`; `_RESUME_VERSION = 10`; DHARA 1.2
+  left-limit rule; the DP-SD-019 midpoint fix `87cc8c9baf`. These are pins, not knobs.
+- The FROZEN orchestrator contract. See §3.
+
+**If the plan and this prompt disagree, the plan wins and you record the discrepancy.** If a ruling
+and the plan disagree, **stop and raise it** — that is a defect in the packet, not a choice for you.
+
+## §3 — Hard floor: what authority does NOT cover
+
+These are fences. Crossing one is a campaign failure regardless of what it achieves.
+
+1. **The orchestrator is FROZEN.** `ka_kshetra` stays a `@register('ka_kshetra')` `WriterBase`
+   subclass with `plan_substeps(ctx)` + `run_substep(ctx, step)`; it runs on `ctx.db_conn` and
+   **never commits or closes it**; it **never writes `asset_throughput`**; `chart_id` and
+   `birth_params` come from `ctx.config`. Needing a contract change → **STOP and raise with the
+   native.**
+2. **No populated-chart build. Not one.** `KshetraReplacementHeld` (`writer.py:543-550`) holds
+   populated-chart replacement to `L3-W7-KSHETRA-COHERENT-PUBLICATION-01`. You **do not weaken,
+   bypass, or "temporarily" disable that guard.** Everything you build runs on fixture-bound source
+   (W0 §8 item 3). The 8.57M rows on the canonical chart are protected substrate.
+3. **Rebuild replaces, never accretes** (§N.3): per-chart delete-then-insert scoped to
+   `(chart_id × natural key)`, mirroring `ga_writers/_idempotency.py` — and `prepare:replace` on
+   `kala_insights` is predicated `lel_derived = FALSE` (fence 4). `kala_insights WHERE
+   lel_derived = true` is `mi_bhara`'s and untouchable.
+4. **Cascade proof before any destructive step.** Kshetra's tables sit under cascades from
+   `bodha_msr_signals` (migration 403) and reach `kala_bhavishya` outcomes (L3-A21). Before the
+   first DELETE of any populated slice — which this prompt does not authorize — the blast radius
+   is proved by read-only count and shown to the owner. You will not reach that step here; the
+   rule is recorded so no future session inherits a gap.
+5. **No fabricated computation (B.10).** A value needing a specialist tool and absent from L1 is
+   `[EXTERNAL_COMPUTATION_REQUIRED]` with an exact spec. Never invent a chart value, a citation, or
+   a green flag.
+6. **L1 is the authority (§N.5).** A term **references** `chart_facts.fact_id`; it never restates a
+   computed value. A derivation disagreeing with the fact it cites is a halt-worthy bug.
+7. **Never edit a migration after it has been applied.** Author surgically, verify it applied.
+8. **Floors are aspirational (§N.4).** `target_floor` = achieved count. Never fabricate rows.
+9. **S1 ingestion is GATED on the ablation** (ruling 10; plan §4 stage 3). Until the sealed
+   pre-registration has been scored and passed under §5.1 of that file, **do not build S1
+   ingestion and do not fund P1.** A failed ablation parks the asset with preservation; you record
+   the negative honestly and stop the enrichment track.
+10. **Not your files, not your rows.** `bg_*` tables (L0) — including the `bg_transit_rules` fixes
+    in `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md` — belong to the L0 owner via the Gochara stream: **you
+    route, you never edit.** Saṅgam (`ka_sangam`, `SANGAM_*`) and the Gochara family (`gochara_*`,
+    `w30_*`, `ka_gochara_*`, `ka_vedha_gochara`, `ka_moorti_nirnaya`) belong to other streams: read,
+    consume, never edit. `platform-mcp/src/tools/kala_views/**` is Pūrṇa's; the retrieval registry
+    (`platform/src/lib/retrieval/registry/**`) is the U11 packet — Pūrṇa implements, **you own only
+    the test**; `api/mcp/db/query/route.ts`, applied migrations 1033–1070, `supabase/migrations/
+    1035,1036`, `deploy.yml`, `kala_gochara_windows WHERE generation='v1'`,
+    `kala_field_weight_versions/weights` (INPUTS, fence 6), `build_substep_progress` — all
+    `must_not_touch`, verbatim from the brief.
+11. **`ka_gochara_v3_century_materialize` is live and DELETEs production `kala_gochara_windows`
+    generation 3.0 inside the orchestrator transaction.** Do not trigger it. The hold is procedural.
+12. **The corpus is the served table `classical_text_chunks`**, never the
+    `00_ARCHITECTURE/SOURCE_DATA/classical_texts/` directory and never the search tool's result set
+    — a trap this packet's own authors fell into three times. `verse_ref` is page-based.
+
+## §4 — Evidence discipline (this campaign's hardest-won rules)
+
+- **A status, grade or PASS must be computed by a detector that measures the specific claim it
+  asserts** (§N.8). Ask of every flag: *what code path would have to run, and fail, for this to
+  correctly read false?* If none exists, the signal is **null**, not green. The packet's own
+  history: two `bo_pramana_mapa` flags, a "byte-identical" gate with no byte comparison, and a
+  build-complete predicate that only checked "rows present" all failed this test once.
+- **Corpus claims are settled by `count(*)` against `classical_text_chunks` naming the predicate.**
+  A search null is not absence; a directory listing is not the corpus.
+- **A peer's confirmation is not verification you have not performed.** Re-query anything you rely
+  on — including every file path, line number and count in this prompt, all true at 2026-09-23.
+- **Byte-equality means bytes.** The field ≡ null ≡ projection test compares stored `kala_field`
+  rows, the null's `full_fine` series, and `project_layer1`'s output at identical knots to
+  `1e-12` relative tolerance, on a fixture whose obstructions are chosen so that the chart-wide and
+  route-scoped semantics **differ** — a fixture on which they coincide proves nothing. The existing
+  `test_layer0_projection.py:434-462` asserts the divergence as correct behaviour; under Option B
+  it flips to equality and becomes the seed of the gate.
+- **Evidence scripts are assertion-based with negative controls.** Each must **fail** under `NEG=1`.
+  `RUN_ALL.sh` writes a **new** `OUTPUT_<timestamp>.txt` and refuses to overwrite. Directory:
+  `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_kshetra/` (create it; mirror
+  `evidence_sangam/`'s `MANIFEST.txt` discipline).
+- **When blocked, record the blocker and take the next independent item.** An honest
+  `[EXTERNAL_COMPUTATION_REQUIRED]`, a logged outage, or an unfunded P1 beats an invented result.
+
+## §5 — Phase plan (execute in order; each phase's exit is checked before the next begins)
+
+**Phase 0 — Entry gate. Nothing is written until this closes.**
+  (a) Read, in this order: `KSHETRA_RULING_SHEET_v1_0.md` (all ten rows; §CLOSE; the owners line),
+      `KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md` (§2 item 0 first, then §4 stage 3, §5, §6, §6a,
+      §7), `KSHETRA_ELEVATION_BRIEF_v1_0.md` (§1, §2.3, §2.4, §3, §4.1, §4.3–§4.7, §5, §6),
+      `KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md`, `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`,
+      `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md`, then `CLAUDE.md` §N and
+      `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §2.
+  (b) Confirm the worktree: `git rev-parse --abbrev-ref HEAD` = `l3/kshetra-stage3`;
+      `git fetch origin main && git merge --ff-only origin/main` (the packet's v1.5/v1.10/v4.8 docs
+      PR may have landed after this branch was cut — take it). `git status` clean.
+  (c) Confirm `services/ka_kshetra/` is byte-identical to the packet's stated base
+      (`git diff --stat c58e86662 HEAD -- platform/python-sidecar/services/ka_kshetra` empty).
+      If not, list the diff and stop until it is explained.
+  (d) Confirm the DB read path (`127.0.0.1:5433`; if refused, the project's documented Cloud SQL
+      Auth Proxy, read-only, stopped afterward with 0 listeners) and re-run the two counts the
+      packet rests on: `classical_text_chunks` roster (15 ids, phaladeepika 564) and the 41
+      house-vedha rows. Record both.
+  (e) Confirm `KshetraReplacementHeld` is intact and that no build of `ka_kshetra` is dispatched or
+      running (`build_runs`, `asset_throughput` read-only).
+  (f) **Open the goal:** append the L3 stage entry for `KSHETRA-STAGE3-SOURCE-ELEVATION-01` to
+      `MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md` (append-only, its own format), citing the brief's
+      `goal_objective`, this prompt's commit, and the authorization line the native filled.
+  **Exit:** all five checks recorded in `KSHETRA_STAGE3_STATE.md`; the ledger entry committed.
+
+**Phase 1 — G3 (rank 0): the suppression contract, then the gate.**
+  Hoist the SM-R-7 route filter (`layer1.py:143-160`'s `suppressed_keys`) into `hazard.evaluate`,
+  passed **explicitly** (never inferred from process state), so `FieldEvaluator.terms_at`
+  (`stage4_field.py:855-873`), `dhara_build_segments` (`dhara_sweep.py:212,227,243,248`) and
+  `dhara_compute_null` (`dhara_null.py:86-163`) share one path with `project_layer1`. Write the
+  byte-equality test of §4 **first** and watch it fail on current code; then make it pass; then
+  flip `test_layer0_projection.py:434-462`. Record the polarity docstring (`stage4_field.py:561-565`)
+  as unrelated to this change.
+  **Exit:** field ≡ null ≡ projection to `1e-12` on a differing-semantics fixture; the test fails
+  under `NEG=1`; no `null_p` path is reachable without it.
+
+**Phase 2 — The seams, by DAG stage (plan §4 stage 3 order).**
+  **S4:** thread `baseline_is_synthetic` to `kala_field` (the one migration; today it is computed
+  at `layer1.py:89` and discarded, absent from `_KALA_FIELD_INSERT_SQL` `writer.py:631-638`).
+  **S3:** replace the σ_T read from `phala_rectification` (`stage3_clocks.py:1012`) with the
+  admitted L1 birth-time-precision artifact; interim `default_120s_assumption`
+  (`uncertainty.py:170-173`) + F06 `unavailable`; scope `chart_dashas` by ayanāṃśa with a total
+  `ORDER BY` (closes `_boundaries` QX, `_system_sigma_t`'s `rows[0]`); read L1 `sandhi_flag`.
+  **S2:** carry L2 sign/occurrence (`stage2_promise.py:351-355,457`); natural edge key (closes
+  `_routes` QX — no reminted surrogate ids). **Pins:** add `node_mode` / `epoch_convention` to
+  `config_pin` (`stage4_field.py:186-212`, `writer.py:318-336`) declaring the consumed ephemeris
+  frame (TRUE node, noon-UT) — first verify whether `corpus_pin` already covers the L0 ephemeris
+  generation; if it does, record that and skip. **Edge register:** true in both directions (the
+  ~10 read-never-declared tables; `bo_sangati`/`bo_upaya` declared-never-read); F12 role per edge.
+  **SAVEPOINT** on the cohort read (`writer.py:1754-1770`; pattern `ka_sangam.py:997,1028,1033`).
+  Second `'v1'` COALESCE at `stage4_field.py:1386-1389` resolved with `writer.py:2330-2347`.
+  **Exit:** every seam has an assertion-based test with a negative control; the register census
+  (`FROM`-census over every module vs the seed) is clean; the migration is verified applied.
+
+**Phase 3 — The ablation, exactly as sealed.**
+  Record the SHA-256 of `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md` in `EVENTS.jsonl` and the state
+  file **before** generating any arm. Generate arms A / A′ / B on fixture-bound source for the
+  pairs its §3.2 selects; blind per §3.3; open the two judges per §2 with the sealed rubric only;
+  adjudication and censoring per §5.3. Score sheet filed beside the state file.
+  **Exit:** PASS under §5.1 → Phase 4 opens. **FAIL → park-with-preservation:** record the
+  negative with every score, mark P1 `NEVER_FUNDED`, skip Phase 4's S1 and §6's enrichment, and
+  proceed only with Phase 4's U10/U11/U01 items that do not depend on the claim.
+
+**Phase 4 — S1 ingestion packet (gated on Phase 3 PASS) and the interfaces.**
+  **S1:** consume `ka_vedha_gochara` (all `vedha_kind`s, admitted under the uniform rule — today
+  32 applied / 3 deferred / 6 unqualified house-vedha; laṭṭā and malefic scale applied;
+  sarvatobhadra unqualified; every row `unqualified` until the producer's `corpus_verifiable` /
+  `source_qualification` / `precision_regime` columns exist — check, do not assume) and
+  `ka_moorti_nirnaya` (unify the moorti split across term families, `stage1_symbolization.py:229-230`);
+  internal `build_vedha_primitive` / `build_moorti_primitive` become one-generation cross-checks,
+  then retire under contract §5; `av_kaksha_gate` from `ganita_av_transit_gating` (the same admitted
+  AV source as Saṅgam E2); kota / sudarshana / tithi-praveśa declared as applicability covariates
+  (E7b needs `ka_tithi_pravesha`'s own source qualification first — C8). **S5:** denominator prose;
+  the null's non-comparability flag and `1/R` resolution survive every projection.
+  **U11:** `query_field_trajectory` capability with the L3-owned sentinel test (Pūrṇa implements
+  the capability; you write the test). **U10:** `mi_bhara` binds via the `kala_field_snapshots`
+  manifest, content-hash checked, `ORDER BY built_at DESC`, refusing when no manifest exists — this
+  is an L5 packet; you write the spec and the sentinel, you do not edit `mi_bhara.py`. **U01:**
+  upstream sign.
+  **Exit:** S1 accepted at exact tip by an independent read-only reviewer; sentinels green with
+  negative controls.
+
+**Phase 5 — P6 → P2 → P1, each against its equivalence contract (brief §4.6).**
+  P1 only if Phase 3 passed. Each candidate proves identity to the unoptimised path on the
+  exhaustive-shift oracle before it replaces anything. A reduced cap, coarser grid or narrower
+  horizon can never pass as an equivalent optimisation (Strategy §5).
+  **Exit:** `PRODUCER_READY` at an exact tip with an independent exact-tip review — the brief's §8
+  terminal evidence packet. **The W7 build (`DATA_ACCEPTED`) is not in this prompt.**
+
+## §6 — Fences you cannot cross (summary card)
+
+Frozen orchestrator · no populated-chart build, `KshetraReplacementHeld` never weakened ·
+delete-then-insert per chart × natural key · cascade proof before any destructive step · no
+fabricated values · L1 authority · no post-apply migration edits · floors from achieved counts ·
+S1 and P1 gated on the sealed ablation · byte-equality before any `null_p` · no edits to `bg_*`,
+Saṅgam, Gochara, Pūrṇa or registry files · never trigger `ka_gochara_v3_century_materialize` ·
+the corpus is the table.
+
+## §7 — Autonomy mechanics (anti-halt)
+
+- **Do not stop to ask permission for work §2 authorizes.** Stop only for: a needed orchestrator
+  contract change; a ruling/plan contradiction; a destructive operation whose blast radius you
+  cannot bound; anything requiring a native ruling.
+- **When blocked on one item, take the next independent item.** Record the blocker with what would
+  unblock it. Do not idle and do not invent.
+- **Re-verify rather than trust**, including this prompt.
+- **Never self-certify.** Final acceptance is the native's or an independent reviewer's.
+- **Other streams are live on this machine.** Never `git stash`; never `git worktree prune`; never
+  `git gc`; never check out another stream's branch. Your branch and worktree are yours alone.
+
+## §8 — Durable state (the campaign's memory)
+
+Maintain `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/KSHETRA_STAGE3_STATE.md`: current phase,
+exits passed with their evidence, decisions taken with reasons, blockers with unblock conditions,
+the sealed ablation hash, and the last commit. Append one line per material event to
+`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/EVENTS.jsonl` (`"packet": "KSHETRA_STAGE3"`). Update
+both **before** each commit, so a fresh session re-pasting this prompt resumes exactly where you
+stopped.
+
+## §9 — First actions, verbatim
+
+1. `cd /Users/Dev/madhav-l3/kshetra-stage3 && git rev-parse --abbrev-ref HEAD && git fetch -q origin main && git merge --ff-only origin/main && git status --short`
+2. Read the Phase 0(a) list in order. Write nothing yet.
+3. `git diff --stat c58e86662 HEAD -- platform/python-sidecar/services/ka_kshetra` — must be empty.
+4. Check the DB; run the two Phase 0(d) counts; record them.
+5. Read `KshetraReplacementHeld` (`writer.py:543-550`) and confirm no `ka_kshetra` build is
+   running or dispatched.
+6. Append the ledger entry (Phase 0f); write `KSHETRA_STAGE3_STATE.md` with Phase 0's exits;
+   commit; push; open the first PR.
+
+## Conduct
+
+Ground every claim in a file, a line, or a live query. Where the plan and the code disagree, say so
+rather than smoothing it. An honest "this is unresolved and here is what would resolve it" is worth
+more than a confident build that is wrong. Do not invent astrological doctrine: where a method's
+qualification is missing, route it to its authority. You are implementing a ruled plan — propose
+amendments where evidence requires and record them; the native rules.
