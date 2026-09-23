@@ -2,7 +2,7 @@
 artifact: SANGAM_STAGE3_STATE
 canonical_id: SANGAM_STAGE3_STATE
 version: "1.0"
-status: IN_PROGRESS
+status: COMPLETE
 layer: L3
 asset: ka_sangam
 campaign_id: sangam-stage3
@@ -12,6 +12,8 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 ---
 
 # Saṅgam stage-3 — durable state
+
+**Campaign status: COMPLETE 2026-09-23.** Phases 0–5 all PASSED with detector-backed evidence (final suite 20/20 positive + 20/20 negative controls, `OUTPUT_2026-09-23T192333.txt`). E1/E3 remain gated on N-7 by design (blocker B-1) — that gate is part of the plan, not an unmet exit. Open blockers B-1…B-6 stand below with their unblock conditions; none belongs to this campaign's scope.
 
 ## Phase status
 
@@ -216,12 +218,13 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 
 ## Last commit
 
-`31d5a3b14` — "sangam stage3: Phase 4 E4 — typed natal/clock conditioning + annual-Tājika gate".
+`4a7cd89d8` — "sangam stage3: Phase 5 E6 — exposure manifest + evaluation-boundary gates".
 
 ## Evidence artifacts this phase
 
 - `evidence_sangam/OUTPUT_2026-09-23T050513.txt` (executor run) · `OUTPUT_2026-09-23T051310.txt` (reviewer run)
 - `evidence_sangam/OUTPUT_2026-09-23T150956.txt` (E5 executor run) · `S18_e5_station_loop_episodes.py` (E5 post-fix detector)
+- `evidence_sangam/OUTPUT_2026-09-23T192333.txt` (E6 executor run, final suite) · `S20_e6_exposure_and_gates.py` (E6 post-fix detector)
 - `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` (D-8 gate output)
 - DIS.031 `amendment_2026_09_23_predicate_level_recheck` (D-6 corpus ground)
 - /tmp/d6_node_drishti_recheck.txt (raw SQL output, 100 rows; regenerable from the staged SQL)
