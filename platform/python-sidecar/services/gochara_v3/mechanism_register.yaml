@@ -359,6 +359,18 @@ mechanisms:
 # [U]. Flipping the flag changes what the engine emits, so a build under a
 # different flag value is a new candidate (input generation vector diff,
 # WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
+#
+# nodal_drishti ∈ {enabled(legacy), removed}, default enabled — N-14
+# (L3 §4.9) nodal dṛṣṭi removal. Engine constant
+# engine.py::_NODAL_DRISHTI_DEFAULT. When removed: drishti_contact emits no
+# rows with body ∈ {Rahu, Ketu} (nodes stay agents/targets for
+# conjunction, ingress, kakṣyā, return); w30_modifier leaves the λ
+# product; the removed term is kept one generation as a labelled
+# non-scoring annotation (term_breakdown.w30_annotation) and the absence
+# is recorded as completeness_state='removed_by_ruling_N14' on w30_detail.
+# Flipping the flag changes what the engine emits, so a build under a
+# different flag value is a new candidate (input generation vector diff,
+# WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
 
 # ─────────────────────────────────────────────────────────────────────────
 # SUMMARY

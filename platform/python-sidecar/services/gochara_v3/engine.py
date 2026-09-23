@@ -256,6 +256,25 @@ _MOON_CHANNEL_DEFAULT: str = "blended"
 _MOON_CHANNELS: tuple[str, ...] = ("blended", "separate")
 
 # ---------------------------------------------------------------------------
+# N-14 (L3 §4.9): nodal dṛṣṭi removal. Recorded flag `nodal_drishti` (input
+# generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR FLAGS"),
+# default "enabled".
+#
+# nodal_drishti ∈ {"enabled", "removed"}:
+#   enabled  — legacy: P.drishti_contact emits Rahu/Ketu rows and
+#              w30_modifier participates in the λ product.
+#   removed  — drishti_contact emits NO rows with body ∈ {Rahu, Ketu} (the
+#              nodes stay agents/targets for conjunction, ingress, kakṣyā,
+#              and return — only the dṛṣṭi relation is removed);
+#              w30_modifier leaves the λ product; the removed term is kept
+#              one generation as a labelled NON-SCORING annotation
+#              (term_breakdown.w30_annotation) and the absence is recorded
+#              as a completeness_state on w30_detail.
+# ---------------------------------------------------------------------------
+_NODAL_DRISHTI_DEFAULT: str = "enabled"
+_NODAL_DRISHTI_MODES: tuple[str, ...] = ("enabled", "removed")
+
+# ---------------------------------------------------------------------------
 # Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
 # ---------------------------------------------------------------------------
 # These two strings ARE the served, human-readable statement of which
@@ -572,6 +591,7 @@ def evaluate_lambda_vector(
     activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
     orb_max_deg: float | None = None,
     moon_channel: str = _MOON_CHANNEL_DEFAULT,
+    nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
 ) -> list[IntensityResult]:
     """Evaluate lambda_e for ALL JDs simultaneously. ZERO per-JD DB access.
 
@@ -610,6 +630,7 @@ def evaluate_lambda_vector(
             activity_shape=activity_shape,
             orb_max_deg=orb_max_deg,
             moon_channel=moon_channel,
+            nodal_drishti=nodal_drishti,
         )
         results.append(result)
 
@@ -631,6 +652,7 @@ def _evaluate_single_from_context(
     activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
     orb_max_deg: float | None = None,
     moon_channel: str = _MOON_CHANNEL_DEFAULT,
+    nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
 ) -> IntensityResult:
     """Compute ONE lambda value using ONLY the pre-fetched ClassContext.
 
@@ -646,6 +668,10 @@ def _evaluate_single_from_context(
         raise ValueError(
             f"moon_channel must be one of {_MOON_CHANNELS}, got {moon_channel!r}"
         )
+    if nodal_drishti not in _NODAL_DRISHTI_MODES:
+        raise ValueError(
+            f"nodal_drishti must be one of {_NODAL_DRISHTI_MODES}, got {nodal_drishti!r}"
+        )
     # 1. PROMISE — already computed in context (time-invariant)
     promise = context.promise
     promise_detail = context.promise_detail
@@ -659,7 +685,10 @@ def _evaluate_single_from_context(
     # 3. Gather configuration sentences (ephemeris only, no DB)
     start_jd = t_jd - window_days_activity
     end_jd = t_jd + window_days_activity
-    sentences = _gather_sentences_no_db(swe, context, targets, start_jd, end_jd)
+    sentences = _gather_sentences_no_db(
+        swe, context, targets, start_jd, end_jd,
+        nodal_drishti=nodal_drishti,
+    )
 
     notes = []
 
@@ -800,6 +829,16 @@ def _evaluate_single_from_context(
     #     modifier=1.0 when disabled or no natal target signs are aspected.
     _w30_result = _w30.compute(context, t_jd, swe=swe, enabled=_W30_NODAL_DRISHTI_ENABLED)
     w30_modifier = _w30_result.modifier
+    w30_annotation_value: float | None = None
+    if nodal_drishti == "removed":
+        # N-14 (flag nodal_drishti): w30_modifier leaves the λ product. The
+        # computed value is preserved as a labelled non-scoring annotation
+        # (term_breakdown.w30_annotation, below) — never silently dropped.
+        # The variable name `w30_modifier` is deliberately KEPT in the
+        # product line so the N-16 wiring detector's AST trace (modifier
+        # variable → raw_lambda) continues to see the wiring.
+        w30_annotation_value = w30_modifier
+        w30_modifier = 1.0
 
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
     raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
@@ -846,6 +885,15 @@ def _evaluate_single_from_context(
             "skipped": _w30_result.skipped,
             "skip_reason": _w30_result.skip_reason,
             "mechanism_id": _w30_result.mechanism_id,
+            **(
+                {
+                    # N-14 (flag nodal_drishti='removed'): the absence of the
+                    # w30 term is recorded as a completeness_state — an
+                    # honest gap, not a silent zero.
+                    "completeness_state": "removed_by_ruling_N14",
+                }
+                if nodal_drishti == "removed" else {}
+            ),
         },
         # W1.2 signed-channel fields
         "signed_channels": signed_channel_detail,
@@ -954,6 +1002,20 @@ def _evaluate_single_from_context(
         "activity_terms": x_t_detail_compat.get("contributions", []),
         "formula": TERM_BREAKDOWN_FORMULA,
     }
+    if nodal_drishti == "removed":
+        # N-14 (flag nodal_drishti): the removed w30 term is kept one
+        # generation as a labelled NON-SCORING annotation — the value the
+        # mechanism would have contributed, explicitly outside the product.
+        w15_term_breakdown["w30_annotation"] = {
+            "label": (
+                "N-14: nodal dṛṣṭi removed from the λ product — "
+                "non-scoring annotation, kept one generation"
+            ),
+            "scoring": False,
+            "would_be_modifier": round(
+                w30_annotation_value if w30_annotation_value is not None else 1.0, 8,
+            ),
+        }
 
     # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
     # ci_source='structural_prior' until Wave-4.5 fitted posteriors replace this.
@@ -1475,6 +1537,8 @@ def _gather_sentences_no_db(
     targets: list[ResonanceTarget],
     start_jd: float,
     end_jd: float,
+    *,
+    nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
 ) -> list[ConfigurationSentence]:
     """Run v1 configuration primitives EPHEMERIS-ONLY (no conn passed).
 
@@ -1579,6 +1643,20 @@ def _gather_sentences_no_db(
 
     # WP5 H-4/H-5/H-6: attach physical-event identity to every sentence and
     # collapse duplicate independence_group values to one row per build.
+    if nodal_drishti == "removed":
+        # N-14 (flag nodal_drishti): drishti_contact emits no rows with
+        # body ∈ {Rahu, Ketu}. The nodes stay agents/targets for
+        # conjunction, ingress, kakṣyā, and return — only the dṛṣṭi
+        # relation is filtered. Filtered rows never receive identities
+        # (they were never emitted).
+        out = [
+            s for s in out
+            if not (
+                s.primitive == "drishti_contact"
+                and norm_graha(s.transit_planet)
+                in ("RAHU", "KETU", "RAH_MEAN", "KET_MEAN")
+            )
+        ]
     for s in out:
         cid, igroup = _sentence_identity(s)
         s.detail["contact_id"] = cid
