@@ -33,8 +33,8 @@ substitute for it.
 All seven rulings are closed. The native confirmed M-1…M-7 as delivered and delegated the residual
 open items to the author; **D-1…D-8** (`SANGAM_RULING_SHEET_v1_0.md §CLOSE`) decide them with
 reasoning, recorded as the author's decisions under delegation, not as native words. Headlines:
-E6 gate = **n 35 per `(domain × route × method_version)` (crit ≥12, α=0.0344, power 0.805) / 100
-instrument-level pooled (crit ≥28, α=0.0342, power 0.833)** via a stratified CMH-type estimand, never
+E6 gate = **n 20 per `(domain × route × method_version)` (crit ≥8, α=0.0321, power 0.868 at 2.5×) / 50
+instrument-level pooled (crit ≥16, α=0.0308, power 0.904 at 2×)** — re-set 2026-09-24 on the native's instruction from 35/100 via a stratified CMH-type estimand, never
 pooled across versions, figures declared as first-order approximations on a two-chart population;
 `ambiguous` excluded from n but binding at the reported rate's adverse end, with a 10%/20% censoring
 gradient; evaluation limited to consenting charts; **D30 held as a labelled non-scoring secondary**

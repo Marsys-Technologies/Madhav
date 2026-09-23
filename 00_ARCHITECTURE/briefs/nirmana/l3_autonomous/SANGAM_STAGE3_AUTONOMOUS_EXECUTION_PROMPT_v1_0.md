@@ -51,8 +51,7 @@ open a PR. You may decide implementation detail the plan leaves open, and record
 **Binding on you, and not re-openable by you:**
 - The native's seven rulings — `SANGAM_RULING_SHEET_v1_0.md §RULINGS`.
 - The author's eight decisions under delegation — same file, §CLOSE, **D-1…D-8**, as amended by the
-  Kimi review. Concretely: E6 gate **n=35 per `(domain × route × method_version)`, critical ≥12,
-  α=0.0344, power 0.805**; **n=100 instrument-level, critical ≥28, α=0.0342, power 0.833**, pooled
+  Kimi review. Concretely: E6 gate **n=20 per `(domain × route × method_version)`, critical ≥8, α=0.0321, power 0.868 at a 2.5× lift** (0.584 at a doubling); **n=50 instrument-level, critical ≥16, α=0.0308, power 0.904 at a doubling** (0.553 at 1.6×) — re-set 2026-09-24 on the native's instruction from 35/100, pooled
   only within one frozen `method_version` via a **stratified CMH-type estimand with no significant
   opposite-sign stratum**; these are **first-order approximations** — two-chart clustering requires
   **chart-level concordance** plus a **published overdispersion check**; the 0.20 null comes from the

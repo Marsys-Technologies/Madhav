@@ -430,3 +430,20 @@ native's delegation to the strategic session quoted verbatim) — verified at th
   scope: yes/no" and an independent reviewer from outside the three L3 streams. **This campaign's B-5
   (`ephemeris_daily` frame-and-epoch declaration) is item 7; Kimi's C-1 degree-level anchor is item 6.**
   Neither moves until that session exists; this stream remains a holder.
+
+
+## E6 gate re-set on the native's instruction (2026-09-24T00:54:03+05:30)
+
+The native, verbatim: *"The numbers that you've suggested are very high. Can you considerably And reasonably. bring it down? And please close it."* Decision (author's, under that instruction): **20 / 50**, from 35 / 100.
+
+| gate | n | critical | false-pass α | designed lift (power) | power at the old lift |
+|---|---|---|---|---|---|
+| per-stratum | **20** (was 35) | ≥8 | 0.0321 | **2.5×** (0.20→0.50): **0.868** | doubling (0.20→0.40): 0.584 |
+| instrument-level | **50** (was 100) | ≥16 | 0.0308 | **2×** (0.20→0.40): **0.904** | 1.6× (0.20→0.32): 0.553 |
+
+α unchanged at both gates; the detectable lift rose (per-stratum 2× → 2.5×; instrument 1.6× → 2×). Moved
+in the same commit: `exposure.py` constants (`PER_STRATUM_N=20/CRITICAL=8`, `INSTRUMENT_N=50/CRITICAL=16`,
+with `*_POWER_AT_*` publishing power at the old lifts), every fixture in `test_ka_sangam_e6_exposure.py`, and
+every proposition in `S20`. `KALA_DELEGATED_DECISIONS` D-F (35/100) is superseded by this later, direct
+instruction. **Standing rule for every E6 report (unchanged, now more important):** "no signal" means *not
+large enough to see at this n*, never *nothing there*. **The E6 gate is CLOSED as a decision.**

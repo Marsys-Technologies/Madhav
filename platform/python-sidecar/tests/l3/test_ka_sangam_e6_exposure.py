@@ -38,6 +38,9 @@ from services.ka_sangam.exposure import (
 )
 
 
+from services.ka_sangam.exposure import PER_STRATUM_ALTERNATIVE, INSTRUMENT_ALTERNATIVE  # noqa: E402
+
+
 def _window(mode='A', signature_class='CAREER_DIGNITY', kernel_version='separated_v2',
             ws=date(2024, 1, 1), we=date(2024, 6, 1)):
     return {
@@ -53,17 +56,17 @@ class TestGateConstants:
     """The D-1 triples must satisfy the exact binomial design they name."""
 
     def test_per_stratum_alpha_and_power(self):
-        # alpha = P(X >= 12 | Bin(35, 0.20)) must be ~0.0344
+        # alpha = P(X >= 8 | Bin(20, 0.20)) must be ~0.0321
         alpha = _binomial_sf(PER_STRATUM_CRITICAL, PER_STRATUM_N, NULL_RATE)
         assert abs(alpha - PER_STRATUM_ALPHA) < 1e-4
-        # power at 0.40 must be ~0.805 (published value is rounded to 3 decimals)
-        power = compute_power(PER_STRATUM_N, PER_STRATUM_CRITICAL, 0.40)
+        # power at the designed alternative (0.50) must be ~0.868 (published value is rounded to 3 decimals)
+        power = compute_power(PER_STRATUM_N, PER_STRATUM_CRITICAL, PER_STRATUM_ALTERNATIVE)
         assert abs(power - PER_STRATUM_POWER) < 1e-3
 
     def test_instrument_alpha_and_power(self):
         alpha = _binomial_sf(INSTRUMENT_CRITICAL, INSTRUMENT_N, NULL_RATE)
         assert abs(alpha - INSTRUMENT_ALPHA) < 1e-4
-        power = compute_power(INSTRUMENT_N, INSTRUMENT_CRITICAL, 0.32)
+        power = compute_power(INSTRUMENT_N, INSTRUMENT_CRITICAL, INSTRUMENT_ALTERNATIVE)
         assert abs(power - INSTRUMENT_POWER) < 1e-3
 
     def test_find_critical_value_recovers_design(self):
@@ -136,12 +139,12 @@ class TestStratumOutcome:
 
     def test_provisional_insufficient_n(self):
         o = build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
-                                  hits=10, misses=10, ambiguous=0, censored=0, unobserved=0)
+                                  hits=5, misses=5, ambiguous=0, censored=0, unobserved=0)
         assert o.gate_status == 'PROVISIONAL_INSUFFICIENT_N'
-        assert o.actual_n == 20
+        assert o.actual_n == 10
 
     def test_binomial_gate_passed_when_gate_opens(self):
-        # 12 hits in 35 evaluated with no ambiguous/censored passes the per-stratum gate.
+        # 8 hits in 20 evaluated with no ambiguous/censored passes the per-stratum gate.
         o = build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
                                   hits=PER_STRATUM_CRITICAL, misses=PER_STRATUM_N - PER_STRATUM_CRITICAL,
                                   ambiguous=0, censored=0, unobserved=0)
@@ -155,34 +158,34 @@ class TestStratumOutcome:
         assert o.gate_status == 'BELOW_CRITICAL'
 
     def test_alpha_level_test_uses_actual_n(self):
-        # 12 hits in 36 evaluated is NOT significant at level 0.0344
-        # (P(X >= 12 | Bin(36, 0.20)) ~= 0.041 > alpha).  The design critical
-        # value 12 was computed for n = 35; at any other n the exact p-value
+        # 8 hits in 21 evaluated is NOT significant at level 0.0321
+        # (P(X >= 8 | Bin(21, 0.20)) ~= 0.043 > alpha).  The design critical
+        # value 8 was computed for n = 20; at any other n the exact p-value
         # against the actual n decides.
         o = build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
-                                  hits=12, misses=24, ambiguous=0, censored=0, unobserved=0)
-        assert o.n_evaluated == 36
+                                  hits=8, misses=13, ambiguous=0, censored=0, unobserved=0)
+        assert o.n_evaluated == 21
         assert o.gate_status == 'BELOW_CRITICAL'
 
     def test_censoring_elevated_and_blocked(self):
-        # ~10.3% censoring (above the 10% elevated label, below the 20% block);
-        # n = 35 meets the design n, so the gate can still pass.
-        total = 39
-        ambiguous = 4
-        hits = 12
-        misses = total - hits - ambiguous   # 23 -> n = 35
+        # ~13.0% censoring (above the 10% elevated label, below the 20% block);
+        # n = 20 meets the design n, so the gate can still pass.
+        total = 23
+        ambiguous = 3
+        hits = 8
+        misses = total - hits - ambiguous   # 12 -> n = 20
         o = build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
                                   hits=hits, misses=misses, ambiguous=ambiguous, censored=0, unobserved=0)
-        assert o.censoring_rate == pytest.approx(4 / 39)
+        assert o.censoring_rate == pytest.approx(3 / 23)
         assert o.gate_status == 'BINOMIAL_GATE_PASSED'
 
-        # 22.5% censoring blocks regardless of n (n = 31 < 35 here).
-        total = 40
-        ambiguous = 9
-        misses = total - hits - ambiguous   # 19 -> n = 31
+        # 25% censoring blocks regardless of n (n = 18 < 20 here).
+        total = 24
+        ambiguous = 6
+        misses = total - hits - ambiguous   # 10 -> n = 18
         o2 = build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
                                    hits=hits, misses=misses, ambiguous=ambiguous, censored=0, unobserved=0)
-        assert o2.censoring_rate == pytest.approx(0.225, abs=1e-9)
+        assert o2.censoring_rate == pytest.approx(0.25, abs=1e-9)
         assert o2.gate_status == 'CENSORING_BLOCKED'
 
     def test_synthetic_chart_is_not_eligible(self):
@@ -208,30 +211,30 @@ class TestStratumOutcome:
 class TestInstrumentOutcome:
     def test_pools_only_one_method_version(self):
         s1 = build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
-                                   hits=15, misses=15)
+                                   hits=10, misses=10)
         s2 = build_stratum_outcome(domain='HEALTH', route='B', method_version='separated_v2',
-                                   hits=15, misses=15)
+                                   hits=10, misses=10)
         s3 = build_stratum_outcome(domain='CAREER', route='A', method_version='legacy_i16',
                                    hits=10, misses=10)
         # Only the two separated_v2 strata pool.
         io = evaluate_instrument_outcome([s1, s2], method_version='separated_v2')
         assert io.method_version == 'separated_v2'
-        assert io.n_evaluated == 60
-        assert io.hits == 30
-        assert io.gate_status == 'PROVISIONAL_INSUFFICIENT_N'  # 60 < 100
+        assert io.n_evaluated == 40
+        assert io.hits == 20
+        assert io.gate_status == 'PROVISIONAL_INSUFFICIENT_N'  # 40 < 50
 
     def test_instrument_gate_passed(self):
         strata = [
             build_stratum_outcome(domain='CAREER', route='A', method_version='separated_v2',
-                                  hits=15, misses=20),
+                                  hits=8, misses=10),
             build_stratum_outcome(domain='HEALTH', route='B', method_version='separated_v2',
-                                  hits=15, misses=20),
+                                  hits=7, misses=11),
             build_stratum_outcome(domain='RELATIONSHIP', route='A', method_version='separated_v2',
-                                  hits=5, misses=25),
+                                  hits=3, misses=11),
         ]
         io = evaluate_instrument_outcome(strata, method_version='separated_v2')
-        assert io.n_evaluated == 100
-        assert io.hits == 35
+        assert io.n_evaluated == 50
+        assert io.hits == 18
         assert io.gate_status == 'BINOMIAL_GATE_PASSED'
 
     def test_instrument_unavailable(self):

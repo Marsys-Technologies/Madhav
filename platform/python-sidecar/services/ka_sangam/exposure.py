@@ -20,17 +20,25 @@ from datetime import date, timedelta
 from typing import Optional
 
 # ── D-1 gate design constants (exact binomial, first-order approximation) ─────
-PER_STRATUM_N = 35
-PER_STRATUM_CRITICAL = 12
-PER_STRATUM_ALPHA = 0.0344
-PER_STRATUM_POWER = 0.805
-PER_STRATUM_ALTERNATIVE = 0.40
+# Re-set 2026-09-24 on the native's written instruction ("bring it down considerably and
+# reasonably"): 35/100 -> 20/50.  The false-pass rate is unchanged (alpha <= 0.05);
+# what moved is the smallest lift the gate can see at ~80% power: per-stratum from
+# a doubling (0.20->0.40) to 2.5x (0.20->0.50); instrument-level from 1.6x to 2x.
+# Power at the OLD alternatives is published beside the design so "no signal" can
+# be read honestly: per-stratum 0.584 at 0.40; instrument 0.553 at 0.32.
+PER_STRATUM_N = 20
+PER_STRATUM_CRITICAL = 8
+PER_STRATUM_ALPHA = 0.0321426631   # exact P(X>=8 | Bin(20, 0.20)) to 10 dp; presented as 0.0321
+PER_STRATUM_POWER = 0.868
+PER_STRATUM_ALTERNATIVE = 0.50
+PER_STRATUM_POWER_AT_2X = 0.584
 
-INSTRUMENT_N = 100
-INSTRUMENT_CRITICAL = 28
-INSTRUMENT_ALPHA = 0.0342
-INSTRUMENT_POWER = 0.833
-INSTRUMENT_ALTERNATIVE = 0.32
+INSTRUMENT_N = 50
+INSTRUMENT_CRITICAL = 16
+INSTRUMENT_ALPHA = 0.0308034228    # exact P(X>=16 | Bin(50, 0.20)) to 10 dp; presented as 0.0308
+INSTRUMENT_POWER = 0.904
+INSTRUMENT_ALTERNATIVE = 0.40
+INSTRUMENT_POWER_AT_1P6X = 0.553
 
 NULL_RATE = 0.20
 
@@ -218,9 +226,9 @@ def _binomial_sf(k: int, n: int, p: float) -> float:
 
 
 def find_critical_value(n: int, alpha: float, null_rate: float = NULL_RATE) -> int:
-    """Smallest c such that P(X >= c | Bin(n, null_rate)) <= alpha."""
+    """Smallest c such that P(X >= c | Bin(n, null_rate)) <= alpha + 1e-9."""
     for c in range(0, n + 1):
-        if _binomial_sf(c, n, null_rate) <= alpha:
+        if _binomial_sf(c, n, null_rate) <= alpha + 1e-9:
             return c
     return n + 1
 
@@ -314,7 +322,7 @@ def _evaluate_gate(
     if n_evaluated < threshold_n:
         return 'PROVISIONAL_INSUFFICIENT_N'
     p_value = _binomial_sf(hits, n_evaluated, NULL_RATE)
-    if hits >= critical and p_value <= alpha:
+    if hits >= critical and p_value <= alpha + 1e-9:   # +eps: the design point's p-value equals alpha exactly
         # Binomial gate is passed, but EMPIRICALLY_EVALUATED stays closed until
         # the M-6 five conditions (predeclared protocol, held-out chronology,
         # frozen version, native-ratified n, censoring rules) are satisfied.
