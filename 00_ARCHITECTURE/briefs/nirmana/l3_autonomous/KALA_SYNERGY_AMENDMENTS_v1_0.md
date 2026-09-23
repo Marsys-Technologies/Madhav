@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AMENDMENTS
 canonical_id: KALA_SYNERGY_AMENDMENTS
-version: "1.2"
+version: "1.3"
 status: PROPOSED_TO_THE_THREE_STREAMS
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -12,12 +12,13 @@ for: "each stream folds its section into its own brief (§4 semantic change, §6
 
 ## Gochara family — adopt `KALA_SYNERGY_BINDING` §B1–B7; fix
 
-1. **Declare inclusivity** on `[t_in, t_out]` (absent). Pick `closed_open` unless the kernel's bracket semantics say otherwise; say which.
-2. **CHECK-constrain `completeness_state`** to the six F06 states; migrate the ad-hoc `removed_by_ruling_N14` to `inapplicable` with the ruling id in a reason column. CHECK-constrain `claim_grain`.
+1. **Declare inclusivity** on `[t_in, t_out]` (undeclared). The three columns are plain `timestamptz`, not a range; both endpoints are orb-threshold crossing instants, so the kernel's semantics say **`closed_closed`** — declare that, not `closed_open` (v1.0's default was wrong).
+2. **CHECK-constrain `completeness_state`** to the six F06 states — the column's own comment (`1081:176`) promises six and neither live value (`qualified`/`unqualified`) is one. (`removed_by_ruling_N14` is a λ-decomposition dict key, not a column value — v1.0 was wrong.) CHECK-constrain `claim_grain` and `time_basis`; the kernel ledger carries both (`ledger.py:176-177,289`) but no production caller populates them with a vocabulary value — the one writer found is a WP4 test writing `exact_instant`, which matches neither vocabulary (your D-S4).
 3. **Emit the three stamp columns** you promised the other two streams (`source_qualification`, `corpus_verifiable`, and the grain) on `kala_vedha_gochara` — today none exist and two packets adopted them.
 4. **`coverage: None` on the non-Moon branch** (`engine.py:1755`) breaks your own §4.4 guarantee. Every branch returns the coverage row.
-5. **`primitives.py:193-194`** still maps Rāhu/Ketu to `[120,180,240]` citing BPHS Ch.26 — the citation F-29 refuted and the aspects N-14 removed. Retire the entry, not just the w30 factor.
-6. Accept `window_ref` as a `target_type`; add the L2 identity column at R8 as planned.
+5. `services/gochara_grammar/primitives.py:193-194` still maps Rāhu/Ketu to `[120,180,240]` citing BPHS Ch.26. **Correction:** `nodal_drishti='removed'` already drops the w30 factor AND filters every Rāhu/Ketu `drishti_contact` row (`engine.py:1677-1690`); the entry survives only so the A-3 delta report can reproduce the legacy arm, and retires when `'4.0'` is accepted. Mark its BPHS Ch.26 comment refuted now.
+6. `'4.0'` is the tranche-2 candidate, gated behind `PRODUCTION_TRANCHE_2_AUTHORIZED=false` by your own sequencing — say gated, not missing. `inapplicable` is excluded from `target_resolution_state` by ruling N-12, not by oversight. No L2 identity column until R8, as planned.
+7. `window_ref` is **not** a new `target_type` (that would let a contact target a consumer's window and break R2). Consumers cite your contacts as `{asset_id:'ka_gochara', generation, id: contact_id}` against your existing PK — your form, adopted into binding B3, no schema change on your side. Saṅgam and Kṣetra then cite rather than re-derive; Kṣetra's `find_contact_episodes` is Kṣetra's to reconcile.
 
 ## Saṅgam — adopt §B1–B7; fix
 
