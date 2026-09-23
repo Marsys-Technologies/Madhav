@@ -34,6 +34,7 @@ from services.ka_sangam.engine import (
     derive_sade_sati_severity,
     group_station_loop_episodes,
 )
+from services.ka_sangam.exposure import compute_exposure_manifest
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
@@ -575,12 +576,18 @@ class KaSangamWriter(WriterBase):
         near_deduped = self._dedup(near_windows)
         logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
 
+        # E6 exposure manifest: measured window-issuance rates by stratum,
+        # attached to WriterResult.notes as JSON (the frozen WriterBase
+        # contract has no side-channel; notes is the sanctioned carrier).
+        manifest = compute_exposure_manifest(near_deduped, today, horizon_end)
+
         rows = 0
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
             self._record_substep(conn, chart_id, 'near', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows,
+                            notes=manifest.to_json())
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
         pred      = self._lt_preds[idx]
@@ -620,12 +627,16 @@ class KaSangamWriter(WriterBase):
         logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
                     idx, len(self._lt_preds) - 1, len(deduped), chart_id)
 
+        # E6 exposure manifest for this lifetime substep's slice.
+        manifest = compute_exposure_manifest(deduped, horizon_start, horizon_end)
+
         rows = 0
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
             self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows,
+                            notes=manifest.to_json())
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
