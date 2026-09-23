@@ -170,7 +170,7 @@ matching flag in this file is `true`). Specifically: step 0 consumes `origin/l3/
 duplicate them**; reference or cherry-pick with attribution); step 1 the SELECT grant SQL; step 2 the
 restore-drill script with row-by-row digest equality and the 2,667-uncovered-id report (runs
 `NOT_RUN` here — no dump is available locally); step 3 `is_active=false` for the century (N-6a) with
-its reversal; step 4 apply/verify **1075/1076** (+ any migration this run adds) with an
+its reversal — **and note, because another stream's record (`KALA_DELEGATED_DECISIONS_v1_0.md` D-C) reads it otherwise: N-14 does NOT require the century writer to run.** The `'4.0'` candidate that carries N-14 is built by `ka_gochara` (N-5: the served owner; N-6: the century's engine is donated as the projection); `'3.0'` is the rollback surface and is never regenerated (plan §4.7). N-6a therefore blocks nothing the sheet rules for, and it makes D-C's own item 2 ("no unattended build may include the asset") structural rather than procedural. D-C's item 1 — declare `kala_gochara_windows` in the century's `clear_tables` (F-30) — is step 5's registry work here and is adopted; its reversal of N-6a is not; step 4 apply/verify **1075/1076** (+ any migration this run adds) with an
 `information_schema` diff; step 5 the registry re-pin migration (plan §6.3: `count_sql`, `depends_on`
 incl. `bg_transit_rules`, integrity conjuncts (a)–(k), N-9 (iii)–(v)); step 6 the candidate-build
 invocation with **all §4 flags on** and the input generation vector recorded; step 7 the four flip
