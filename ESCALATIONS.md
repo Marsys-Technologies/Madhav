@@ -94,6 +94,52 @@ what a human needs to decide.
   (labelled A-9); the kernel emits no nodal dṛṣṭi (WP1 §7 orb table; WP2 case 6);
   WP4 classifies any λ delta attributable to w30 against this record.
 
+## E-006 — RESOLVED 2026-09-23 (commit 59bebe7dc) — WP5 honesty fixes H-1a, H-2, H-3, H-4, H-6 now implemented
+
+- **What:** This entry originally recorded that WP5's honesty fixes could not be completed
+  in this run because they intersected with the frozen kakshya primitive and with
+  writer/serving receiver contracts outside `may_touch`.
+- **What actually resolved it:** the intersection concerns were real for a naive
+  implementation, but each had a narrower fix that stayed inside this branch's scope:
+  - **H-1a**: rather than threading a `conn` through the frozen `kakshya_cell_crossing`
+    primitive, boundaries are now pre-fetched once per chart into `ClassContext`
+    (`_fetch_kakshya_boundaries`) and a new engine-side function,
+    `_kakshya_cell_crossing_from_context`, mirrors the primitive's logic against that
+    pre-fetched data. The frozen primitive in `gochara_grammar/primitives.py` is
+    untouched.
+  - **H-2**: a new `EvaluationFailure` exception replaces the silent `except Exception
+    -> return 0.0/None` pattern in `_eval_single`/`_eval_single_full`.
+    `find_threshold_crossings` and `score_chain_milestones` catch it and attach
+    `completeness_state`/`failure_detail` fields directly on the existing
+    `IntervalBoundary`/`MilestoneScore` dataclasses — no writer/serving schema change
+    was needed because these are internal computation types, not the served row shape;
+    propagating the fields further downstream (into the actually-served
+    `kala_gochara_windows` row) remains P-1/P-2's task, unchanged from before.
+  - **H-3**: `HierarchyResult` gained `requested_start_jd`/`requested_end_jd` (always
+    populated) and `completed_start_jd`/`completed_end_jd` (`None` on an honest empty
+    result) — an additive dataclass change, no receiver contract needed.
+  - **H-4/H-6**: implemented via a `_sentence_identity` adapter that calls the pinned
+    `services.gochara_kernel.ids.contact_id`/`independence_group` functions (built in
+    WP3a on this same branch) rather than reimplementing identity locally, and a
+    collapse-by-`independence_group` pass in `_gather_sentences_no_db`.
+  - **H-5 remains NOT implemented** and NOT escalated as resolved: removing the stored
+    peak cap genuinely does require serving/trimming coordination in P-1/P-2 — that part
+    of the original analysis was correct and stays as an open item for WP9/P-1 design.
+- **Provenance note:** the implementation above was first drafted during an interactive
+  session that had been pointed at the wrong checkout (the main `Vibe-Coding/Apps/Madhav`
+  working copy on `campaign/nirmana-autonomous`, not this worktree/branch) and sat there
+  uncommitted. During reconciliation onto this branch, the draft's H-4/H-6 wiring was
+  found to call a second, non-canonical `contact_id(sentence)`/`independence_group(sentence)`
+  pair with a different signature than the pinned kernel contract — corrected before
+  committing; see commit `59bebe7dc` message for the full account.
+- **Evidence:** commit `59bebe7dc`; `tests/l3/gochara/test_wp5_honesty.py` (9 new tests,
+  including one that reproduces `_sentence_identity`'s output against a direct call to
+  the pinned kernel functions to prove agreement); full suite `tests/l3/gochara/` 86/86
+  passing after the change.
+- **Decision needed:** none for H-1a/H-2/H-3/H-4/H-6 — implemented and tested. H-5 still
+  needs the P-1/P-2 serving-side design this file's other entries already describe.
+
+## E-006-ORIGINAL (superseded above; kept for the record) — WP5 honesty fixes (H-1a, H-2..H-6) not completed in this run
 ## E-006 — WP5 honesty fixes (H-1a, H-2..H-6) not completed in this run
 
 - **What:** WP5 is in-scope per the execution brief, but its implementation
