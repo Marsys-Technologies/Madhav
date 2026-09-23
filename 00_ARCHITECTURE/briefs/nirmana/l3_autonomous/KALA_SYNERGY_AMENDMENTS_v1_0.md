@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AMENDMENTS
 canonical_id: KALA_SYNERGY_AMENDMENTS
-version: "2.0"
+version: "2.1"
 status: PROPOSED_TO_THE_THREE_STREAMS
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -48,7 +48,7 @@ posture: >
 3. **Re-value `precision_regime`** `day_grade` → `date_grain` (alias until every dependent claim has a successor). No rename — the column name is ruled.
 4. **Stop being a second producer**: retire `build_vedha_primitive` and `build_moorti_primitive` per ruling 4, **after one cross-check generation**. `find_contact_episodes` is a second contact producer alongside the Gochara kernel, reconciled in no packet: until the native rules B8-6, declare your episodes `evaluation`-only with `comparable_with = different_convention`.
 5. **Emit `coverage`** on every result (absent), **inherit `independence_group`** from every witness (absent), and **emit `window_ref`** on every segment that cites a resonance target or a sweep window.
-6. **Two undeclared-or-fragile Gochara reads.** The `'v1'` COALESCE fall-through at `writer.py:2330-2347` and `stage4_field.py:1386-1389`; and — **new finding** — your `depends_on` lists `ka_gochara_resonance` but not `ka_gochara_sweep`, so the `kala_gochara_windows` read at `stage4_field.py:1384` is **undeclared** (the same defect flagged against Saṅgam). Declare it; cite both by `window_ref`.
+6. **Two undeclared-or-fragile Gochara reads.** The `'v1'` COALESCE fall-through at `writer.py:2330-2347` and `stage4_field.py:1386-1389`; and — **new finding** — your `depends_on` does not cover the `kala_gochara_windows` read at `stage4_field.py:1384`, so it is **undeclared** (the same defect flagged against Saṅgam). **Do not declare `ka_gochara_sweep`**: it is RETIRED and migration 569 removed that edge by ruling — v2.0 said otherwise and was wrong. Declare an **evaluation-role edge on the table**, generation resolved through `kala_gochara_authority`, cited by `window_ref`, never a λ contributor, alongside removing the `'v1'` fall-through. *Note:* your interim `comparable_with = unstable_key` for the surrogate key is not in the binding's proposed enum; the enum is Gochara's to pin at WP1 — propose it there or use `different_convention`.
 7. `_routes.path_edge_ids` is a bigserial reassigned each rebuild — the L2 natural key is a **demand on L2 via L3-U01**, not yours to change; publish `field_snapshot_id`; add `baseline_is_synthetic` to the row.
 8. **Binding rows not itemized above that you still carry:** `time_basis` (B1); `epistemic_class`, `operator_role`, six-state `completeness_state`, `comparable_with`, `tier_basis` as your brief promised (B2).
 

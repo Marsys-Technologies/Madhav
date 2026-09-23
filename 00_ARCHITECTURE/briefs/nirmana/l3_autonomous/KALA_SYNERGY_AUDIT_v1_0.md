@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AUDIT
 canonical_id: KALA_SYNERGY_AUDIT
-version: "1.4"
+version: "1.5"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -60,7 +60,7 @@ see it is disagreeing.
 ## 4. Cross-edges — what actually connects them today (code, `origin/main`; corrected at v1.4)
 
 - **Saṅgam → Gochara family (2 edges).** (a) `KaGocharaService` — **hard-imported** at `writers/ka_sangam.py:36` (the engine types it `Any`) — through **five** methods: `find_aspects`, `find_eclipse_proximity`, `find_ingresses` (×3), `find_stations`, `find_transit_to_transit`; declared as `ka_gochara` in `depends_on`. (b) `SELECT … FROM kala_vedha_gochara` at `writers/ka_sangam.py:1037-1060`, live SQL, **undeclared** (absent from the ten `depends_on` edges).
-- **Kṣetra → Gochara family (2 edges).** (a) `gochara_resonance_map` — `ka_gochara_resonance`'s registered `target_table` — at `writer.py:2344, 2363`, declared. (b) `kala_gochara_windows` — `ka_gochara_sweep`'s registered `target_table` — at `stage4_field.py:1384` with the `'v1'` COALESCE at `:1389`, **undeclared**: Kṣetra's `depends_on` lists `ka_gochara_resonance` and not `ka_gochara_sweep`. The same defect the audit flags against Saṅgam.
+- **Kṣetra → Gochara family (2 edges).** (a) `gochara_resonance_map` — `ka_gochara_resonance`'s registered `target_table` — at `writer.py:2344, 2363`, declared. (b) `kala_gochara_windows` — `ka_gochara_sweep`'s registered `target_table` — at `stage4_field.py:1384` with the `'v1'` COALESCE at `:1389`, **undeclared**: Kṣetra's `depends_on` lists `ka_gochara_resonance` and not the sweep. The same defect the audit flags against Saṅgam — **but the fix is not "declare `ka_gochara_sweep`"**: that writer is `catalog_status: RETIRED` (seed `:2170`) and migration 569 (SAMPŪRTI R0, RB-1) removed exactly that edge by ruling. The declaration belongs on the **table**, as an evaluation-role edge resolved through `kala_gochara_authority` and cited by `window_ref`, never a λ contributor. (v1.4 said "declare `ka_gochara_sweep`"; corrected by the Kṣetra session.)
 - **Kṣetra ↔ Saṅgam: no data edge either way.** Saṅgam's windows are Kṣetra's ablation baseline, nothing more.
 - **Gochara → anyone: nothing.** (`gochara_v3/context.py:510` reads `kala_moorti_nirnaya` — intra-family.) `ka_sangam/**`, `ka_kshetra/**` are in its `must_not_touch`.
 - No cross-imports between the three families; only `gochara_v3 → gochara_grammar`.
