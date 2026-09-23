@@ -1,3 +1,7 @@
+-- RENUMBERED 1071->1075 on 2026-09-23: 1071/1072 and 1073/1074 were found claimed on other unmerged
+-- branches (sangam/stage3 + l3/kala-elevation-readiness in platform/supabase/migrations;
+-- l3/kala-p1-1-b1-clear-guard and l3/kala-p1-2-builder-grants-timeout in platform/migrations).
+-- 1075/1076 were the lowest numbers free across every remote branch at renumbering time.
 -- Migration 1071: gochara_resonance_map — target_resolution_state + target_qualifier
 -- Created: 2026-09-23
 -- WP3c (N-12 pre-approved honesty fixes R-5/R-6, GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §WP3c;

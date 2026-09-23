@@ -1,3 +1,7 @@
+-- RENUMBERED 1072->1076 on 2026-09-23: 1072/1072 and 1073/1074 were found claimed on other unmerged
+-- branches (sangam/stage3 + l3/kala-elevation-readiness in platform/supabase/migrations;
+-- l3/kala-p1-1-b1-clear-guard and l3/kala-p1-2-builder-grants-timeout in platform/migrations).
+-- 1075/1076 were the lowest numbers free across every remote branch at renumbering time.
 -- Migration 1072: kala_gochara_convention + kala_gochara_contacts +
 --                 kala_gochara_coverage + kala_gochara_publication
 -- Created: 2026-09-23

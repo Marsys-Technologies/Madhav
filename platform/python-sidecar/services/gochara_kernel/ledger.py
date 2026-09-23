@@ -1,6 +1,6 @@
 """WP6 storage/writer layer for the gochara contact ledger.
 
-Implements the WP1_CONTRACTS.md schemas (migration 1072) against a psycopg 3
+Implements the WP1_CONTRACTS.md schemas (migration 1076) against a psycopg 3
 connection: convention registration, contact-ledger writes, coverage writes,
 publication lifecycle (candidate -> published -> superseded/rolled_back), and
 the C-1-ordered Clear operation.

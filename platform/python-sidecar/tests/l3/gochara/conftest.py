@@ -77,7 +77,7 @@ WP6_DSN = os.environ.get(
 
 WP6_MIGRATION_1072 = (
     Path(__file__).resolve().parents[4]
-    / "migrations/1072_nirmana_l3_gochara_ledger_coverage_publication.sql"
+    / "migrations/1076_nirmana_l3_gochara_ledger_coverage_publication.sql"
 )
 
 WP6_DROP_SQL = """
@@ -100,7 +100,7 @@ def _wp6_check_reachable() -> bool:
 
 @pytest.fixture(scope="session")
 def wp6_schema():
-    """Apply migration 1072 to a fresh schema on the disposable DB.
+    """Apply migration 1076 to a fresh schema on the disposable DB.
 
     Skips the requesting test NOT_RUN when the disposable DB is unreachable.
     """

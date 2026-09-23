@@ -104,7 +104,7 @@ WP1_CONTRACTS.md §2 / plan §5.3):
   R-6 every emitted row stores target_resolution_state IN
       ('resolved','unavailable','unqualified') (WP1 §2.1 closed enum) —
       the honest null is stored, never inferred. Schema: migration
-      platform/migrations/1071_nirmana_l3_gochara_resonance_target_resolution_state.sql
+      platform/migrations/1075_nirmana_l3_gochara_resonance_target_resolution_state.sql
       (design artifact; NEVER applied to a real database from WP3c).
 """
 from __future__ import annotations
