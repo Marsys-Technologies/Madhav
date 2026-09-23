@@ -275,6 +275,29 @@ _NODAL_DRISHTI_DEFAULT: str = "enabled"
 _NODAL_DRISHTI_MODES: tuple[str, ...] = ("enabled", "removed")
 
 # ---------------------------------------------------------------------------
+# N-15 (L3 §4.10): Sade-Sati to testimony. Recorded flag `sade_sati_mode`
+# (input generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR
+# FLAGS"), default "permission_weight".
+#
+# sade_sati_mode ∈ {"permission_weight", "testimony"}:
+#   permission_weight — legacy: sade_sati is one weighted system in
+#                       PERMISSION (SYSTEM_WEIGHTS["sade_sati"], normalized
+#                       by total_weight).
+#   testimony         — sade_sati is DROPPED from the weight set and
+#                       total_weight is renormalised (never a zero-weight
+#                       row, which would depress permission at every
+#                       instant); the phase becomes typed testimony on the
+#                       window (epistemic_class per F04 — source testimony,
+#                       not computed fact; corpus_verifiable=false;
+#                       citation = the nāḍī rows PG1334/PG786/PG1333 at
+#                       MEDIUM provenance per N-21); the global permission
+#                       lift is computed and reported as a first-class
+#                       delta (sade_sati_permission_lift).
+# ---------------------------------------------------------------------------
+_SADE_SATI_MODE_DEFAULT: str = "permission_weight"
+_SADE_SATI_MODES: tuple[str, ...] = ("permission_weight", "testimony")
+
+# ---------------------------------------------------------------------------
 # Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
 # ---------------------------------------------------------------------------
 # These two strings ARE the served, human-readable statement of which
@@ -592,6 +615,7 @@ def evaluate_lambda_vector(
     orb_max_deg: float | None = None,
     moon_channel: str = _MOON_CHANNEL_DEFAULT,
     nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
+    sade_sati_mode: str = _SADE_SATI_MODE_DEFAULT,
 ) -> list[IntensityResult]:
     """Evaluate lambda_e for ALL JDs simultaneously. ZERO per-JD DB access.
 
@@ -631,6 +655,7 @@ def evaluate_lambda_vector(
             orb_max_deg=orb_max_deg,
             moon_channel=moon_channel,
             nodal_drishti=nodal_drishti,
+            sade_sati_mode=sade_sati_mode,
         )
         results.append(result)
 
@@ -653,6 +678,7 @@ def _evaluate_single_from_context(
     orb_max_deg: float | None = None,
     moon_channel: str = _MOON_CHANNEL_DEFAULT,
     nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
+    sade_sati_mode: str = _SADE_SATI_MODE_DEFAULT,
 ) -> IntensityResult:
     """Compute ONE lambda value using ONLY the pre-fetched ClassContext.
 
@@ -672,6 +698,10 @@ def _evaluate_single_from_context(
         raise ValueError(
             f"nodal_drishti must be one of {_NODAL_DRISHTI_MODES}, got {nodal_drishti!r}"
         )
+    if sade_sati_mode not in _SADE_SATI_MODES:
+        raise ValueError(
+            f"sade_sati_mode must be one of {_SADE_SATI_MODES}, got {sade_sati_mode!r}"
+        )
     # 1. PROMISE — already computed in context (time-invariant)
     promise = context.promise
     promise_detail = context.promise_detail
@@ -680,6 +710,7 @@ def _evaluate_single_from_context(
     permission, permission_detail = _compute_permission_from_context(
         swe, context, t_jd, targets,
         window_days=window_days_permission,
+        sade_sati_mode=sade_sati_mode,
     )
 
     # 3. Gather configuration sentences (ephemeris only, no DB)
@@ -1732,6 +1763,7 @@ def _compute_permission_from_context(
     targets: list[ResonanceTarget],
     *,
     window_days: float = 15.0,
+    sade_sati_mode: str = _SADE_SATI_MODE_DEFAULT,
 ) -> tuple[float, dict]:
     """Compute PERMISSION using ONLY pre-fetched ClassContext data.
 
@@ -1744,7 +1776,16 @@ def _compute_permission_from_context(
       10:  guru_shani_double_transit — ephemeris only (no DB)
       11:  av_threshold — from context.av_gate_rows (pre-fetched)
       12:  planetary_return — ephemeris only (no DB)
+
+    N-15 (flag sade_sati_mode, L3 §4.10): when 'testimony', generator 9
+    leaves the weight set (total_weight renormalised, never a zero-weight
+    row) and is reported as typed testimony plus a first-class permission
+    lift delta. Default 'permission_weight' is byte-identical.
     """
+    if sade_sati_mode not in _SADE_SATI_MODES:
+        raise ValueError(
+            f"sade_sati_mode must be one of {_SADE_SATI_MODES}, got {sade_sati_mode!r}"
+        )
     t_iso = _jd_to_ist_iso(swe, t_jd)
     start_jd = t_jd - window_days
     end_jd = t_jd + window_days
@@ -1823,6 +1864,53 @@ def _compute_permission_from_context(
         "window_days": window_days,
         "calibration_state": "structural_prior",
     }
+
+    if sade_sati_mode == "testimony":
+        # N-15: Sade Sati leaves the weight set entirely (never a
+        # zero-weight row); it is reported as typed testimony plus a
+        # first-class permission-lift delta. F04 epistemic classes are
+        # computed_fact / qualified_rule / interpretive_inference —
+        # 'testimony' is the typed non-scoring class per the ruling,
+        # distinct from external_claim (never emitted).
+        legacy_permission = permission
+        systems = [s for s in systems if s["system_id"] != "sade_sati"]
+        active_weight = sum(s["weight"] for s in systems if s["active"])
+        total_weight -= SYSTEM_WEIGHTS["sade_sati"]
+        permission = active_weight / total_weight if total_weight else 0.0
+        systems_active = [s["system_id"] for s in systems if s["active"]]
+        detail["systems"] = systems
+        detail["systems_active"] = systems_active
+        detail["systems_considered"] = [s["system_id"] for s in systems]
+        detail["system_count_active"] = len(systems_active)
+        detail["sade_sati_mode"] = "testimony"
+        detail["sade_sati_permission_lift"] = {
+            "legacy_permission": legacy_permission,
+            "testimony_permission": permission,
+            "delta": permission - legacy_permission,
+        }
+        # Citations per KIMI_RECONCILIATION_GOCHARA_DECISIONS_v1_0.md and
+        # the ruling sheet; nāḍī attestation → testimony, never weight,
+        # without primary corroboration (N-21 standing rule).
+        detail["sade_sati_testimony"] = {
+            "active": sade_sati_active,
+            "epistemic_class": "testimony",
+            "corpus_verifiable": False,
+            "citations": [
+                {
+                    "ref": ref,
+                    "text": "nadi_navamsa_patel",
+                    "provenance": "MEDIUM",
+                    "ruling": "N-15; N-21 standing rule (WP1_CONTRACTS.md §6)",
+                }
+                for ref in ("PG1334", "PG786", "PG1333")
+            ],
+            "detail": sade_sati_detail,
+            "note": (
+                "Nāḍī attestation demoted to testimony: never weight "
+                "without primary corroboration. [U] which primary text "
+                "carries the composite."
+            ),
+        }
     return permission, detail
 
 

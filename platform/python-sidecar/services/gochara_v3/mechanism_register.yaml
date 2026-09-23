@@ -371,6 +371,19 @@ mechanisms:
 # Flipping the flag changes what the engine emits, so a build under a
 # different flag value is a new candidate (input generation vector diff,
 # WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
+#
+# sade_sati_mode ∈ {permission_weight(legacy), testimony}, default
+# permission_weight — N-15 (L3 §4.10) Sade-Sati to testimony. Engine
+# constant engine.py::_SADE_SATI_MODE_DEFAULT. When testimony: sade_sati
+# leaves the PERMISSION weight set entirely (total_weight renormalised,
+# never a zero-weight row) and is reported as typed testimony
+# (epistemic_class='testimony', corpus_verifiable=false, citations
+# PG1334/PG786/PG1333 at MEDIUM provenance per N-21) with the global
+# permission lift reported as a first-class delta
+# (sade_sati_permission_lift). Flipping the flag changes what the engine
+# emits, so a build under a different flag value is a new candidate
+# (input generation vector diff, WP1_CONTRACTS.md §5.3/§4.7), never an
+# in-place refill.
 
 # ─────────────────────────────────────────────────────────────────────────
 # SUMMARY
