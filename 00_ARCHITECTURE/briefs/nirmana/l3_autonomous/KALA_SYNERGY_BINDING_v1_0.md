@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_BINDING
 canonical_id: KALA_SYNERGY_BINDING
-version: "2.1"
+version: "2.2"
 status: PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -51,7 +51,7 @@ whose birth tz differs from the run tz.
 | `epistemic_class` (F04) | as the Foundation defines | OFFERS | MUST ADD | MUST ADD |
 | `completeness_state` (F06) | **exactly six**: `applied, inapplicable, unavailable, unqualified, contradictory_unresolved, unexplored` | MUST CONSTRAIN — column comment (`1081:176`) promises six; live values are `qualified` (not an F06 name) and `unqualified` (is one) | MUST EMIT (proposed; today `computed`/`honest_empty`) | MUST EMIT |
 | `operator_role` (F12) | as the Foundation defines | OFFERS | MUST EMIT | MUST EMIT |
-| **`comparable_with`** | **one name.** Values pinned by Gochara at WP1 (N-7); proposed enum `{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}` | OFFERS | MUST RENAME `comparability_class` → `comparable_with`; emit the enum, not `ka_sangam/{sig}` | MUST ADD |
+| **`comparable_with`** | **one name.** Values pinned by Gochara at WP1 (N-7); enum `{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}` — **stays at four** (Gochara D-S6): it is the *relation* between two rows' conventions and inputs, never a property of one row. An identity property such as an unstable surrogate key is expressed as `NOT_RUN` with reason on the comparison record, as F06 `unqualified` on the row, or as an additive `id_basis ∈ {content_addressed, surrogate_unstable}` on the asset's own table — not as a fifth value | OFFERS | MUST RENAME `comparability_class` → `comparable_with`; emit the enum, not `ka_sangam/{sig}` | MUST ADD |
 | `tier_basis` | `{relative_uncalibrated, calibrated:<gate_id>}` | MUST ADD | OFFERS | PROMISED (brief 333-334); MUST EMIT |
 | `source_qualification` · `corpus_verifiable` · `precision_regime` on the **producer row** (`kala_vedha_gochara`) | the three stamps Gochara §5.4 promised; **none exist on that table today** (`corpus_verifiable` exists on `kala_gochara_contacts`; `precision_regime` is emitted by Kṣetra) | MUST EMIT (L3's own table, WP9) | consumes | consumes |
 | R-6 separation `activity, valence, applicability, availability` | all four **persisted**, never a product | n/a | MUST PERSIST (M-7; three of four dropped at `writer.py:990-999`) | DECISION B8-7 — not ruled for Kṣetra |
