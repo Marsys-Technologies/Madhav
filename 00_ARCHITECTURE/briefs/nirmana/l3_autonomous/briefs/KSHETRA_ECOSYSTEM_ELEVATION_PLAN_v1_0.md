@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.10"
+version: "1.11"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.11 (2026-09-23) — §7.7 gains the sign-anchor finding (a detector that cannot fail; degree-level anchor required for disposition (b)). No stage, guarantee or ruling changed."
   - "1.10 (2026-09-23) — delegated items discharged: §7.10 points at the sealed ablation pre-registration (judge named); §7.8 repair instruction corrected to UPDATE-not-delete with the L0 spec routed; stage-3 execution prompt prepared (AWAITING_NATIVE_AUTHORIZATION). No stage, guarantee or ruling changed."
   - "1.9 (2026-09-23) — Second independent review (Kimi K3 desktop app) on the closed packet; three corrections adopted after independent re-verification at source: ruling-8's \"no chunk anywhere mentions Rahu/Ketu vedha\" narrowed to the correct mechanism (PG348:C1 has a Sarvatobhadra-chakra Rahu/Ketu vedha-direction rule); two Venus rows (35, 44) identified as transpositions of already-correct rows (179, 33), not fresh geometry errors; ruling 7's reconciliation direction corrected to store-to-declarations, since routers/ephemeris.py and panchang_engine/planets.py independently re-verify as already MEAN-compliant. Full report: KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md."
   - "1.8 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md), corroborated at the served corpus by the author, folded in: margin corrected 0.045°→0.049°; disposition (b) also touches service_probes.py's fail-closed validator and two served node_mode declarations; dhara_sweep.py line refs corrected to :212,227,243,248; the \"structurally impossible\" docstring reattributed to polarity separation, not route-scoping; the house-vedha citation claim corrected from \"all 41 verbatim, applied on re-citation\" to 32 applied / 3 deferred (Venus geometry contradictions, ids 35,44,45) / 6 unqualified (Rahu/Ketu, no source); the sarvatobhadra \"buildable from prose\" claim narrowed to the vedha-pair partitions. Status moves to APPROVED_FOR_EXECUTION."
@@ -398,7 +399,7 @@ hard to cite precisely is a real cost, not absence.
    fail-closed validator — to match, not the reverse: `routers/ephemeris.py:82` and `panchang_engine/planets.py`'s
    assertion-guarded Phase-4B MEAN_NODE mandate independently re-verify as already correct and should not be
    touched (a second independent review, Kimi K3 desktop, sharpened this from the first review's more general "reconcile
-   the two served declarations" — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`).
+   the two served declarations" — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`). **Anchor (§N.8, verified by arithmetic — Kimi C-1, sharpened by madhav-fc, reproduced here):** migration 624's forensic anchor is sign-level (`expected_mean_node_rahu_sign: 2`), and at the forensic instant the MEAN node (49.033044°) and the TRUE node (50.049248°) share sign 2 (Vṛṣabha) *and* nakṣatra 4 (Rohiṇī), differing only in pāda — so the anchor **cannot** detect the very mean/true slip it guards: a detector that provably cannot fail. Disposition (b)'s L0 work therefore includes a **degree-level anchor** (expected mean-node longitude 49.033° ± an arcsecond-scale tolerance at JD 2445735.717361) before the declaration can be called verified.
 8. **Shared vedha/moorti source (§6a):** ratify `ka_vedha_gochara` and `ka_moorti_nirnaya` as the
    layer's single producers; Kshetra's internal derivations become one-generation cross-checks,
    then retire under contract §5. Ratify the uniform admission rule (F06 `applied` iff

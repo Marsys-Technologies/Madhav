@@ -1,8 +1,8 @@
 ---
 artifact: KSHETRA_L0_VEDHA_ROW_FIXES
 canonical_id: KSHETRA_L0_VEDHA_ROW_FIXES
-version: "1.0"
-status: ROUTED_TO_L0_OWNER
+version: "1.1"
+status: ROUTED_TO_L0_OWNER  # via Gochara (madhav-e6) F-23/G-8 lane, delivered 2026-09-23; the L0 owner's identity is NOT established by any session — surfaced to the native
 date: 2026-09-23
 routed_to: >
   the L0 owner of `bg_transit_rules`, via the Gochara family stream (madhav-e6), whose
@@ -91,7 +91,10 @@ Kshetra's S1-ingestion packet can admit any vedha row as `applied`; until it lan
 `unqualified` under the rule, by construction.
 
 ## §7 — Not in this spec (pointers only)
-- The node-frame store fix (`ephemeris_daily` TRUE-node knots vs the declared mean; migration 624's
-  sign-level anchor that cannot detect the frame slip) — ruling 7 / Gochara N-4a, L0 owner.
+- The node-frame store fix (`ephemeris_daily` TRUE-node knots vs the declared mean) — ruling 7 / Gochara
+  N-4a, L0 owner — **including a degree-level forensic anchor**: migration 624's sign-level anchor cannot
+  detect the slip (MEAN 49.033° and TRUE 50.049° share sign 2 and nakṣatra 4; only the pāda differs), so it
+  is a detector that provably cannot fail (§N.8); the L0 work adds expected mean-node longitude 49.033° ±
+  arcseconds at JD 2445735.717361.
 - The sarvatobhadra grid population from PG346–352 prose — migration 526's partition invariant,
   L0 owner; vedha-pair partitions transcribable today, letter cells need the PG345 diagram.
