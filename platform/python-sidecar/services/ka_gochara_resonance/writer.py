@@ -8,7 +8,9 @@ Populates `gochara_resonance_map`: for each of a small, deliberately-scoped
 set of event_class values (from `brahma_event_ontology`'s 27-class ontology —
 6 of them as of ṢAḌ-DARŚANA item 9; see GOCHARA_RESONANCE_MAP_SPEC.md §4 for
 the original 3 and §4.2 for the health/adverse extension that closed DP-4),
-emits target rows across all 8 target_type values the schema supports:
+emits target rows across the 11 target_type values the schema supports
+(the original 8 plus the M-6 WP4 contract-extension 3 — see the M-6
+section below):
 
   bhava / lord / karaka        — read straight off brahma_event_ontology's
                                   `signature_model` (BPHS-cited via that
@@ -106,6 +108,49 @@ WP1_CONTRACTS.md §2 / plan §5.3):
       the honest null is stored, never inferred. Schema: migration
       platform/migrations/1075_nirmana_l3_gochara_resonance_target_resolution_state.sql
       (design artifact; NEVER applied to a real database from WP3c).
+
+M-6 derived target rows (GOCHARA_RULING_SHEET_v2_0 §1 M-6; remainder brief
+§4.4; WP1_CONTRACTS.md §2.2 items 9-11; Phaladīpikā Adh. XVII, translation
+verified against corpus source OCR in.ernet.dli.2015.92117):
+
+  gulika_mandi_distance         — PG220:C1 śl.26: N = sign distance from the
+                                  8th-lord's occupied sign to Māndi's sign;
+                                  the target is the rāśi N removed from
+                                  Māndi; Saturn transit → death. Emitted ONLY
+                                  for the classes the chapter names
+                                  (bereavement, illness_acute — M6_EVENT_CLASSES),
+                                  classically cited (uncited_extension=False),
+                                  provisional weight 0.5 (WP8 owns values),
+                                  target_qualifier carries the transit agent.
+  yamakantaka_difference        — PG214:C1 śl.6-8 / PG217:C1 śl.14: whole-sign
+                                  A−B differences over {lagna-lord, Sun,
+                                  Yamakaṇṭaka, Māndi, 5th-star-lord} occupied
+                                  signs; same class scoping, citation and
+                                  qualifier discipline as above. Yamakaṇṭaka's
+                                  own sign is the L1 sensitive_point_gulika_mandi
+                                  [YAMAKANTAKA] fact (native-only persistence;
+                                  no day-table fallback — see E-008).
+  bhava_arudha                  — the ārūḍha of each house in the event
+                                  class's signature_model, keyed by the clean
+                                  symbolic ref BHAVA_ARUDHA_A{h} (natural-key
+                                  stable, mirroring 'NL' for lords). Emitted
+                                  for ALL classes with numeric houses; state
+                                  'resolved' only when the arudha_pada sign
+                                  fact for ARUDHA_A{h} exists and names a
+                                  valid sign, else 'unavailable'.
+                                  uncited_extension=True (own synthesis —
+                                  the primitive is real but its linkage to
+                                  THIS event_class is inferred), weight 0.6.
+
+  Shared arithmetic lives in services.gochara_grammar.derived_points (single
+  importable source for this writer AND the read-side resolver
+  services.gochara_intensity.enrichment — no drift-guarded copies). The
+  verses' navāṃśa refinement and trikona positions are named there and in
+  WP1_CONTRACTS §2.2 but deliberately NOT emitted in v1: sign-grain operands
+  cannot honestly anchor a 3°20′ span. The M-6 rows are stamped by their
+  builder (operands in hand), following the arudha/yoga precedent; missing
+  operand facts → 'unavailable', missing/incomplete reference_signs →
+  'unqualified' (R-4 convention).
 """
 from __future__ import annotations
 
@@ -114,10 +159,21 @@ import re as _re
 from typing import Any, Iterable
 
 from brahmagyan.graha_vocabulary import norm_graha
+from services.gochara_grammar.derived_points import (
+    M6_EVENT_CLASSES,
+    MANDI_DISTANCE_AGENT,
+    MANDI_DISTANCE_CITATION,
+    MANDI_DISTANCE_REF,
+    YAMAKANTAKA_FORMULAS,
+    fifth_star_lord,
+    sign_num_of,
+)
 
 logger = logging.getLogger(__name__)
 
-FORMULA_VERSION = "ka_gochara_resonance_v2.0"
+# v2.1: M-6 derived target rows (gulika_mandi_distance, yamakantaka_difference,
+# bhava_arudha) added per remainder brief §4.4 — emitted row set changes.
+FORMULA_VERSION = "ka_gochara_resonance_v2.1"
 _CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
 # ── Event-class scope ────────────────────────────────────────────────────────
@@ -486,6 +542,131 @@ def _build_arudha_rows(
     return rows
 
 
+def _build_bhava_arudha_rows(
+    event_class: str, house_ints: Iterable[int], arudha_fact_rows: Iterable[dict],
+    report: dict | None = None,
+) -> list[dict]:
+    """M-6 (WP1_CONTRACTS §2.2 item 11): the ārūḍha of each house in the
+    event class's signature_model, keyed by the clean symbolic ref
+    BHAVA_ARUDHA_A{h} (natural-key stable — the ref survives a chart_facts
+    rebuild, unlike a fact_id). The resolution operand is the SAME
+    arudha_pada sign fact the R-2 `arudha` rows are built from (fetched once
+    per event class and passed in here): state is 'resolved' only when that
+    fact exists for ARUDHA_A{h} and names one of the 12 signs, else
+    'unavailable' — the honest null, stored (R-6), never guessed from the
+    cusp-placeholder longitude. Own synthesis: classical_citation NULL,
+    uncited_extension=True; weight 0.6 mirrors the `arudha` rows."""
+    sign_by_subject = {
+        str(r.get("fact_subject") or ""): str(r.get("fact_value_text") or "").strip()
+        for r in arudha_fact_rows or []
+    }
+    rows = []
+    for h in house_ints or []:
+        sign_value = sign_by_subject.get(f"ARUDHA_A{h}", "")
+        state = "resolved" if sign_value in _SIGNS else "unavailable"
+        if report is not None:
+            report["rows"] += 1
+            if state != "resolved":
+                report["unavailable"] += 1
+        rows.append(_base_row(event_class, "bhava_arudha", f"BHAVA_ARUDHA_A{h}",
+                              0.6, None, True, target_resolution_state=state))
+    return rows
+
+
+def _build_m6_derived_rows(
+    event_class: str, m6_ctx: dict, report: dict | None = None,
+) -> list[dict]:
+    """M-6 (WP1_CONTRACTS §2.2 items 9-10): Gulika/Māndi sign-distance and
+    Yamakaṇṭaka-difference targets, emitted ONLY for M6_EVENT_CLASSES
+    (bereavement, illness_acute) — the classes Phaladīpikā Adh. XVII names.
+    Sign-grain arithmetic is imported from services.gochara_grammar.
+    derived_points (single source shared with enrichment; the verses' degree
+    figures, navāṃśa refinement and trikona positions are documented there
+    and deliberately NOT emitted — sign-grain operands cannot honestly
+    anchor them). Rows are stamped here, where the operands are in hand
+    (arudha/yoga precedent): missing operand fact → 'unavailable';
+    missing/incomplete reference_signs rulership → 'unqualified' (R-4).
+
+    m6_ctx keys: lagna_sign_num (int|None), sign_lords ({1..12: lord}|None),
+    graha_sign_nums ({fact_subject: int}), gulika_mandi_signs
+    ({GULIKA|MANDI|YAMAKANTAKA: sign name}), moon_nakshatra_id (int|None)."""
+    rows: list[dict] = []
+    if event_class not in M6_EVENT_CLASSES:
+        return rows
+
+    lagna_sign_num = m6_ctx.get("lagna_sign_num")
+    sign_lords = m6_ctx.get("sign_lords")
+    graha_sign_nums = m6_ctx.get("graha_sign_nums") or {}
+    gm_signs = m6_ctx.get("gulika_mandi_signs") or {}
+    moon_nakshatra_id = m6_ctx.get("moon_nakshatra_id")
+
+    def _graha_sign_num(graha_name: str) -> int | None:
+        subject = _KARAKA_FACT_SUBJECT.get(graha_name)
+        value = graha_sign_nums.get(subject) if subject else None
+        return int(value) if value is not None else None
+
+    def _house_lord_occupied_sign_num(house_n: int) -> tuple[int | None, str]:
+        """Lord of whole-sign house N → that graha's occupied sign.
+        Returns (sign_num|None, state_when_missing)."""
+        if lagna_sign_num is None:
+            return None, "unavailable"
+        house_sign_num = ((int(lagna_sign_num) - 1) + (house_n - 1)) % 12 + 1
+        if not sign_lords or house_sign_num not in sign_lords:
+            return None, "unqualified"
+        sign_num = _graha_sign_num(sign_lords[house_sign_num])
+        return sign_num, "unavailable"
+
+    def _operand_sign_num(role: str) -> tuple[int | None, str]:
+        if role == "lagna_lord":
+            return _house_lord_occupied_sign_num(1)
+        if role == "yamakantaka":
+            return sign_num_of(gm_signs.get("YAMAKANTAKA", "")), "unavailable"
+        if role == "mandi":
+            return sign_num_of(gm_signs.get("MANDI", "")), "unavailable"
+        if role == "fifth_star_lord":
+            if moon_nakshatra_id is None:
+                return None, "unavailable"
+            return _graha_sign_num(fifth_star_lord(moon_nakshatra_id)), "unavailable"
+        # 'Sun' and any other plain graha role
+        return _graha_sign_num(role), "unavailable"
+
+    def _state(*operand_states: tuple[int | None, str]) -> str:
+        missing = [st for sign_num, st in operand_states if sign_num is None]
+        if not missing:
+            return "resolved"
+        return "unqualified" if "unqualified" in missing else "unavailable"
+
+    # ── PG220:C1 śl.26: Māndi sign-distance from the 8th lord ──
+    eighth_lord = _house_lord_occupied_sign_num(8)
+    mandi = _operand_sign_num("mandi")
+    state = _state(eighth_lord, mandi)
+    rows.append(_base_row(
+        event_class, "gulika_mandi_distance", MANDI_DISTANCE_REF, 0.5,
+        MANDI_DISTANCE_CITATION, False,
+        target_resolution_state=state,
+        target_qualifier=f"agent:{MANDI_DISTANCE_AGENT}",
+    ))
+    if report is not None:
+        report["rows"] += 1
+        report[state] += 1
+
+    # ── PG214:C1 śl.6-8 / PG217:C1 śl.14: Yamakaṇṭaka differences ──
+    for formula in YAMAKANTAKA_FORMULAS:
+        minuend = _operand_sign_num(formula["minuend"])
+        subtrahend = _operand_sign_num(formula["subtrahend"])
+        state = _state(minuend, subtrahend)
+        rows.append(_base_row(
+            event_class, "yamakantaka_difference", formula["ref"], 0.5,
+            formula["citation"], False,
+            target_resolution_state=state,
+            target_qualifier=f"agent:{formula['agent']}",
+        ))
+        if report is not None:
+            report["rows"] += 1
+            report[state] += 1
+    return rows
+
+
 def _build_yoga_rows(
     event_class: str, firing_rows: Iterable[dict], report: dict | None = None,
 ) -> list[dict]:
@@ -545,13 +726,22 @@ def build_resonance_rows(
     interval validation, validated yoga ids, and (R-5/F-12) every
     duplicate-root discard with kept-vs-discarded provenance. Callers that
     don't need the record (unit tests, mirrors) omit it; row output is
-    identical either way."""
+    identical either way.
+
+    M-6: also emits bhava_arudha rows — one per numeric house in `houses`,
+    resolved against the same `arudha_fact_rows` the R-2 `arudha` targets
+    are built from. The M-6 gulika_mandi_distance / yamakantaka_difference
+    rows are NOT built here: they need per-chart operands the caller
+    (run()) assembles once per chart — see _build_m6_derived_rows."""
     if report is not None:
         report.setdefault("sensitive_degree", {"kept": 0, "dropped_negative": 0,
                                                "dropped_unknown_value": 0, "kept_subjects": set()})
         report.setdefault("arudha", {"rows": 0, "invalid_sign_value": 0})
+        report.setdefault("bhava_arudha", {"rows": 0, "unavailable": 0})
         report.setdefault("yoga_constituent", {"validated_ids": set(), "constituents": {}})
         report.setdefault("roots", {"discarded": 0, "details": []})
+
+    house_ints = _parse_house_ints(houses)
 
     rows: list[dict] = []
     rows += _build_bhava_rows(event_class, houses, ontology_citation)
@@ -562,6 +752,9 @@ def build_resonance_rows(
         event_class, sensitive_fact_rows, report=report.get("sensitive_degree") if report else None)
     rows += _build_arudha_rows(
         event_class, arudha_fact_rows, report=report.get("arudha") if report else None)
+    rows += _build_bhava_arudha_rows(
+        event_class, house_ints, arudha_fact_rows,
+        report=report.get("bhava_arudha") if report else None)
     rows += _build_yoga_rows(
         event_class, yoga_firing_rows, report=report.get("yoga_constituent") if report else None)
     rows += _build_dasha_portfolio_rows(event_class, dasha_rows)
@@ -671,6 +864,38 @@ SELECT DISTINCT fact_subject
 FROM chart_facts
 WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_key = 'longitude_sidereal'
+"""
+
+# ── M-6 per-chart operand fetches (derived transit targets) ──────────────────
+# Occupied sign (1-based sign_num) of every graha — the operand for the
+# lagna-lord / 8th-lord / Sun / 5th-star-lord roles. LAGNA's own row is
+# fetched separately by _FETCH_LAGNA_SIGN_SQL (R-4); this query does not
+# exclude it, but only graha subjects are read from the result.
+_FETCH_GRAHA_SIGN_NUMS_SQL = """
+SELECT fact_subject, fact_value_num
+FROM chart_facts
+WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_sign_attributes'
+  AND fact_key = 'sign_num'
+"""
+
+# Māndi / Gulika / Yamakaṇṭaka occupied signs (sign NAME text) — produced by
+# ga_writers/ga_sensitive_writer.py's sensitive_point_gulika_mandi rows
+# (Yamakaṇṭaka persisted native-only; no day-table fallback — E-008).
+_FETCH_GULIKA_MANDI_SIGNS_SQL = """
+SELECT fact_subject, fact_value_text
+FROM chart_facts
+WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'sensitive_point_gulika_mandi'
+  AND fact_key = 'sign'
+"""
+
+# Natal Moon nakṣatra number (1..27) — operand for the 5th-star-lord role
+# (PG214:C1 śl.8). ga_panchanga_writer._emit_nakshatra_moon writes this
+# per-ayanamsha (it sits under the ayanamsha-dependent categories).
+_FETCH_MOON_NAKSHATRA_SQL = """
+SELECT fact_value_num
+FROM chart_facts
+WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'panchanga_nakshatra_moon'
+  AND fact_subject = 'NAKSHATRA_MOON_BIRTH' AND fact_key = 'number'
 """
 
 # R-3: the prior build's yoga target_refs, read BEFORE the DELETE so a yoga
@@ -812,6 +1037,43 @@ def _fetch_chart_resolution_context(conn, chart_id: str) -> dict:
     }
 
 
+def _fetch_m6_context(conn, chart_id: str) -> dict:
+    """M-6 per-chart operands for the derived transit targets (WP1_CONTRACTS
+    §2.2 items 9-10). Same best-effort discipline as
+    _fetch_chart_resolution_context: every absence is carried as an honest
+    state on the affected rows by _build_m6_derived_rows, never an
+    exception. Returns {graha_sign_nums {fact_subject: int},
+    gulika_mandi_signs {subject: sign name}, moon_nakshatra_id (int|None)}."""
+    import psycopg.rows
+
+    graha_sign_nums: dict[str, int] = {}
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(_FETCH_GRAHA_SIGN_NUMS_SQL, (chart_id, _CANONICAL_AYANAMSHA))
+        for r in cur.fetchall():
+            if r.get("fact_subject") and r.get("fact_value_num") is not None:
+                graha_sign_nums[str(r["fact_subject"])] = int(r["fact_value_num"])
+
+    gulika_mandi_signs: dict[str, str] = {}
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(_FETCH_GULIKA_MANDI_SIGNS_SQL, (chart_id, _CANONICAL_AYANAMSHA))
+        for r in cur.fetchall():
+            if r.get("fact_subject") and r.get("fact_value_text"):
+                gulika_mandi_signs[str(r["fact_subject"])] = str(r["fact_value_text"]).strip()
+
+    moon_nakshatra_id: int | None = None
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(_FETCH_MOON_NAKSHATRA_SQL, (chart_id, _CANONICAL_AYANAMSHA))
+        row = cur.fetchone()
+    if row is not None and row.get("fact_value_num") is not None:
+        moon_nakshatra_id = int(row["fact_value_num"])
+
+    return {
+        "graha_sign_nums": graha_sign_nums,
+        "gulika_mandi_signs": gulika_mandi_signs,
+        "moon_nakshatra_id": moon_nakshatra_id,
+    }
+
+
 def _resolve_lord_ref(ref: str, ctx: dict) -> tuple[str, str | None]:
     """R-4 (WP1_CONTRACTS §2.2 item 3): resolve a clean 'NL' lord ref.
     Returns (target_resolution_state, resolved_lord_graha|None).
@@ -875,6 +1137,9 @@ def _stamp_target_resolution(all_rows: list[dict], ctx: dict,
         # builders, where the cited input was in hand; mechanism_node rows
         # name a live bg_transit_rules row (the operand wiring itself) and
         # stay 'resolved' — the M-4 operand audit is a later packet.
+        # bhava_arudha / gulika_mandi_distance / yamakantaka_difference
+        # (M-6) were likewise stamped by their builders, where the chart's
+        # arudha/sensitive/graha-sign operands were in hand.
 
 
 def _build_wp3c_notes(report: dict, all_rows: list[dict],
@@ -892,6 +1157,11 @@ def _build_wp3c_notes(report: dict, all_rows: list[dict],
 
     sensitive = report["sensitive_degree"]
     lord = report["lord"]
+    # Tests that build a hand-made report omit the M-6 sections; default
+    # them honestly rather than KeyError (run() always passes them).
+    bhava_arudha = report.get("bhava_arudha", {"rows": 0, "unavailable": 0})
+    m6_derived = report.get("m6_derived",
+                            {"rows": 0, "resolved": 0, "unavailable": 0, "unqualified": 0})
     notes = {
         "wp3c": "N-12 R-1..R-6",
         "event_classes": len(TARGET_EVENT_CLASSES),
@@ -908,6 +1178,23 @@ def _build_wp3c_notes(report: dict, all_rows: list[dict],
             "sign_level_interval": True,
             "cusp_placeholder_longitude_never_read": True,
             "invalid_sign_value_unavailable": report["arudha"]["invalid_sign_value"],
+        },
+        "bhava_arudha": {
+            "rows": bhava_arudha["rows"],
+            "unavailable": bhava_arudha["unavailable"],
+            "symbolic_ref": "BHAVA_ARUDHA_A{h}",
+            "uncited_extension": True,
+        },
+        "m6_derived": {
+            "event_classes": list(M6_EVENT_CLASSES),
+            "rows": m6_derived["rows"],
+            "resolved": m6_derived["resolved"],
+            "unavailable": m6_derived["unavailable"],
+            "unqualified": m6_derived["unqualified"],
+            "sign_grain_only": True,
+            "navamsa_refinement_not_emitted": True,
+            "trikona_positions_not_emitted": True,
+            "weight_provisional_pending_wp8": True,
         },
         "yoga_constituent": {
             "validated_ids": yoga_ids,
@@ -970,6 +1257,7 @@ def _build_writer_class():
                     "resolved_map": {},
                     "rulership_available": resolution_ctx["sign_lords"] is not None,
                 },
+                "m6_derived": {"rows": 0, "resolved": 0, "unavailable": 0, "unqualified": 0},
             }
 
             all_rows: list[dict] = []
@@ -992,6 +1280,20 @@ def _build_writer_class():
                         + "; prior partition preserved"
                     ),
                 )
+
+            # M-6: derived transit targets (Gulika/Māndi sign-distance,
+            # Yamakaṇṭaka difference) — per-chart operands fetched once,
+            # rows built only for the classes Phaladīpikā Adh. XVII names.
+            # Stamped by the builder (operands in hand); placed AFTER the
+            # coverage gate so an aborted build never writes partial data.
+            m6_ctx = dict(resolution_ctx)
+            m6_ctx.update(_fetch_m6_context(conn, chart_id))
+            for event_class in M6_EVENT_CLASSES:
+                derived_rows = _build_m6_derived_rows(
+                    event_class, m6_ctx, report=report["m6_derived"])
+                for row in derived_rows:
+                    row["chart_id"] = chart_id
+                all_rows.extend(derived_rows)
 
             # R-1/R-4/R-6: verify resolvability and stamp the honest state on
             # every row (also pops the internal _fact_subject helper key).

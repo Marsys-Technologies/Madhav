@@ -1,13 +1,14 @@
 {
   "_meta": {
     "artifact": "wp1_target_resolution",
-    "version": "1.0",
-    "date": "2026-09-23",
-    "executes": "GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md §5.3 + WP1_CONTRACTS.md §2",
+    "version": "1.1",
+    "date": "2026-09-24",
+    "executes": "GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md §5.3 + WP1_CONTRACTS.md §2 (v1.1 adds §2.2 items 9-11 M-6 derived target cases)",
     "convention_id_note": "All cases are convention-independent: they pin target-resolution logic only, not ephemeris values. No longitude in this file was produced by Swiss Ephemeris; every value is an invented synthetic input (derivation: hand-specified).",
     "chart_id_rule": "All chart ids are synthetic wp1-synth-* ids. No real chart id appears anywhere in this file.",
     "target_resolution_state_vocab": ["resolved", "unavailable", "unqualified"],
-    "fact_subject_vocab_note": "graha_position fact_subject uses the live 3-letter abbreviation vocabulary (SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN, LAGNA) per services/gochara_intensity/enrichment.py:19-39."
+    "fact_subject_vocab_note": "graha_position fact_subject uses the live 3-letter abbreviation vocabulary (SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN, LAGNA) per services/gochara_intensity/enrichment.py:19-39.",
+    "m6_note": "M-6 cases (gulika_mandi_distance, yamakantaka_difference, bhava_arudha) pin the Phaladīpikā Adh. XVII sign-grain derivations from services/gochara_grammar/derived_points.py; navāṃśa refinement and trikona positions are deliberately absent (declared-coarser, WP1_CONTRACTS §2.2 item 10)."
   },
   "cases": {
     "karaka_present": {
@@ -364,6 +365,302 @@
           }
         ],
         "note": "The honest null is stored on gochara_resonance_map.target_resolution_state (R-6) and counted in kala_gochara_coverage.targets_unresolved; coverage manifest, not silence, is the contract."
+      }
+    },
+    "m6_gulika_mandi_distance_golden": {
+      "target_type": "gulika_mandi_distance",
+      "derivation": "hand-specified",
+      "derivation_note": "PG220:C1 śl.26: LAGNA Cancer -> house 8 = Aquarius -> lord Saturn -> occupied Taurus(2); Māndi Virgo(6); N=(6-2)=4 steps forward from Māndi (Libra 1, Scorpio 2, Sagittarius 3, Capricorn 4) -> Capricorn(10). Saturn transit agent (WP1 §2.2 item 9).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000d",
+      "inputs": {
+        "resonance_target": {"event_class": "bereavement", "target_type": "gulika_mandi_distance", "target_ref": "mandi_sign_distance_from_8L", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "graha_sign_attributes", "fact_subject": "LAGNA", "fact_key": "sign_num", "fact_value_num": 4},
+          {"fact_category": "graha_sign_attributes", "fact_subject": "SAT", "fact_key": "sign_num", "fact_value_num": 2},
+          {"fact_category": "graha_position", "fact_subject": "SAT", "fact_key": "sign", "fact_value_text": "Taurus"},
+          {"fact_category": "graha_position", "fact_subject": "LAGNA", "fact_key": "sign", "fact_value_text": "Cancer"},
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "MANDI", "fact_key": "sign", "fact_value_text": "Virgo"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "gulika_mandi_distance",
+            "target_ref": "mandi_sign_distance_from_8L",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [270.0, 300.0],
+            "target_sign": "Capricorn",
+            "target_qualifier": "agent:Saturn",
+            "classical_citation": "PG220:C1 śl.26",
+            "uncited_extension": false,
+            "resolution_chain": [
+              "lagna_sign=4 (Cancer)",
+              "house 8 whole-sign offset -> sign 11 (Aquarius); classical lord Saturn",
+              "graha_position[SAT].sign = Taurus (2)",
+              "sensitive_point_gulika_mandi[MANDI].sign = Virgo (6)",
+              "N = (6-2) mod 12 = 4 steps; 4th sign forward from Māndi -> 10 (Capricorn)"
+            ]
+          }
+        ]
+      }
+    },
+    "m6_yamakantaka_lagna_lord_golden": {
+      "target_type": "yamakantaka_difference",
+      "derivation": "hand-specified",
+      "derivation_note": "PG214:C1 śl.6 + PG217:C1 śl.14: lagna lord Moon occupies Gemini(3); Yamakaṇṭaka Leo(5); (3-5) mod 12 = 10 -> Capricorn. Jupiter transit agent (WP1 §2.2 item 10).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000e",
+      "inputs": {
+        "resonance_target": {"event_class": "bereavement", "target_type": "yamakantaka_difference", "target_ref": "lagna_lord_minus_yamakantaka", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "graha_sign_attributes", "fact_subject": "LAGNA", "fact_key": "sign_num", "fact_value_num": 4},
+          {"fact_category": "graha_position", "fact_subject": "LAGNA", "fact_key": "sign", "fact_value_text": "Cancer"},
+          {"fact_category": "graha_position", "fact_subject": "MOON", "fact_key": "sign", "fact_value_text": "Gemini"},
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "YAMAKANTAKA", "fact_key": "sign", "fact_value_text": "Leo"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "yamakantaka_difference",
+            "target_ref": "lagna_lord_minus_yamakantaka",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [270.0, 300.0],
+            "target_sign": "Capricorn",
+            "target_qualifier": "agent:Jupiter",
+            "classical_citation": "PG214:C1 śl.6; PG217:C1 śl.14",
+            "uncited_extension": false
+          }
+        ]
+      }
+    },
+    "m6_yamakantaka_sun_golden": {
+      "target_type": "yamakantaka_difference",
+      "derivation": "hand-specified",
+      "derivation_note": "PG214:C1 śl.7: Sun Aries(1) − Yamakaṇṭaka Leo(5) = (1-5) mod 12 = 8 -> Scorpio; Jupiter transit -> father's death.",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000e",
+      "inputs": {
+        "resonance_target": {"event_class": "bereavement", "target_type": "yamakantaka_difference", "target_ref": "sun_minus_yamakantaka", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "SUN", "fact_key": "sign", "fact_value_text": "Aries"},
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "YAMAKANTAKA", "fact_key": "sign", "fact_value_text": "Leo"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "yamakantaka_difference",
+            "target_ref": "sun_minus_yamakantaka",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [210.0, 240.0],
+            "target_sign": "Scorpio",
+            "target_qualifier": "agent:Jupiter",
+            "classical_citation": "PG214:C1 śl.7",
+            "uncited_extension": false
+          }
+        ]
+      }
+    },
+    "m6_yamakantaka_minus_mandi_golden": {
+      "target_type": "yamakantaka_difference",
+      "derivation": "hand-specified",
+      "derivation_note": "PG214:C1 śl.7: Yamakaṇṭaka Leo(5) − Māndi Virgo(6) = (5-6) mod 12 = 11 -> Aquarius; Saturn transit -> father's death.",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000e",
+      "inputs": {
+        "resonance_target": {"event_class": "bereavement", "target_type": "yamakantaka_difference", "target_ref": "yamakantaka_minus_mandi", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "YAMAKANTAKA", "fact_key": "sign", "fact_value_text": "Leo"},
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "MANDI", "fact_key": "sign", "fact_value_text": "Virgo"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "yamakantaka_difference",
+            "target_ref": "yamakantaka_minus_mandi",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [300.0, 330.0],
+            "target_sign": "Aquarius",
+            "target_qualifier": "agent:Saturn",
+            "classical_citation": "PG214:C1 śl.7",
+            "uncited_extension": false
+          }
+        ]
+      }
+    },
+    "m6_yamakantaka_panchama_tara_golden": {
+      "target_type": "yamakantaka_difference",
+      "derivation": "hand-specified",
+      "derivation_note": "PG214:C1 śl.8: natal Moon nakṣatra 1 (Aśvinī); 5th star = 5 (Mṛigaśīrṣa) -> Vimśottari lord Mars -> occupies Scorpio(8); (8-5) mod 12 = 3 -> Gemini; Jupiter transit -> son's death.",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000e",
+      "inputs": {
+        "resonance_target": {"event_class": "bereavement", "target_type": "yamakantaka_difference", "target_ref": "panchama_tara_lord_minus_yamakantaka", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "panchanga_nakshatra_moon", "fact_subject": "NAKSHATRA_MOON_BIRTH", "fact_key": "number", "fact_value_num": 1},
+          {"fact_category": "graha_position", "fact_subject": "MAR", "fact_key": "sign", "fact_value_text": "Scorpio"},
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "YAMAKANTAKA", "fact_key": "sign", "fact_value_text": "Leo"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "yamakantaka_difference",
+            "target_ref": "panchama_tara_lord_minus_yamakantaka",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [60.0, 90.0],
+            "target_sign": "Gemini",
+            "target_qualifier": "agent:Jupiter",
+            "classical_citation": "PG214:C1 śl.8",
+            "uncited_extension": false,
+            "resolution_chain": [
+              "panchanga_nakshatra_moon.number = 1; 5th star (natal counts as 1) = 5",
+              "Vimśottari lord of nakṣatra 5 = Mars",
+              "graha_position[MAR].sign = Scorpio (8)",
+              "(8-5) mod 12 = 3 -> Gemini"
+            ]
+          }
+        ]
+      }
+    },
+    "m6_bhava_arudha_golden": {
+      "target_type": "bhava_arudha",
+      "derivation": "hand-specified",
+      "derivation_note": "BHAVA_ARUDHA_A7 resolves via the arudha_pada sign row of ARUDHA_A7 = Gemini -> interval [60,90); symbolic ref stays natural-key stable; uncited_extension=True (WP1 §2.2 item 11).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-00000000000f",
+      "inputs": {
+        "resonance_target": {"event_class": "marriage", "target_type": "bhava_arudha", "target_ref": "BHAVA_ARUDHA_A7", "weight": 0.6},
+        "chart_facts": [
+          {"fact_category": "arudha_pada", "fact_subject": "ARUDHA_A7", "fact_key": "sign", "fact_value_text": "Gemini", "fact_id": "wp1synth.arudha_a7.sign"}
+        ]
+      },
+      "expected": {
+        "target_count": 1,
+        "targets": [
+          {
+            "target_type": "bhava_arudha",
+            "target_ref": "BHAVA_ARUDHA_A7",
+            "object_kind": "interval",
+            "target_resolution_state": "resolved",
+            "span_deg": [60.0, 90.0],
+            "target_sign": "Gemini",
+            "classical_citation": null,
+            "uncited_extension": true,
+            "point_contacts": [],
+            "note": "Sibling longitude_sidereal (if present) is a cusp placeholder and is never read as a degree (F-20 discipline, same as item 6)."
+          }
+        ]
+      }
+    },
+    "neg_m6_mandi_fact_absent_unavailable": {
+      "target_type": "gulika_mandi_distance",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "No sensitive_point_gulika_mandi[MANDI] sign row -> the distance cannot be computed -> 'unavailable' (the honest null is stored; no sign is guessed).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000010",
+      "inputs": {
+        "resonance_target": {"event_class": "illness_acute", "target_type": "gulika_mandi_distance", "target_ref": "mandi_sign_distance_from_8L", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "graha_sign_attributes", "fact_subject": "LAGNA", "fact_key": "sign_num", "fact_value_num": 4},
+          {"fact_category": "graha_position", "fact_subject": "LAGNA", "fact_key": "sign", "fact_value_text": "Cancer"},
+          {"fact_category": "graha_position", "fact_subject": "SAT", "fact_key": "sign", "fact_value_text": "Taurus"}
+        ]
+      },
+      "expected": {
+        "target_count": 0,
+        "targets": [],
+        "unresolved": [
+          {
+            "target_type": "gulika_mandi_distance",
+            "target_ref": "mandi_sign_distance_from_8L",
+            "target_resolution_state": "unavailable",
+            "reason": "sensitive_point_gulika_mandi[MANDI].sign fact absent"
+          }
+        ]
+      }
+    },
+    "neg_m6_yamakantaka_fact_absent_unavailable": {
+      "target_type": "yamakantaka_difference",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "Yamakaṇṭaka is persisted native-only (no day-table fallback, E-008): when the native value is unavailable the sensitive fact is absent and EVERY yamakantaka_difference row is 'unavailable' — an approximation is never substituted.",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000011",
+      "inputs": {
+        "resonance_target": {"event_class": "bereavement", "target_type": "yamakantaka_difference", "target_ref": "sun_minus_yamakantaka", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "SUN", "fact_key": "sign", "fact_value_text": "Aries"}
+        ]
+      },
+      "expected": {
+        "target_count": 0,
+        "targets": [],
+        "unresolved": [
+          {
+            "target_type": "yamakantaka_difference",
+            "target_ref": "sun_minus_yamakantaka",
+            "target_resolution_state": "unavailable",
+            "reason": "sensitive_point_gulika_mandi[YAMAKANTAKA].sign fact absent (native-only persistence; no fallback)"
+          }
+        ]
+      }
+    },
+    "neg_m6_moon_nakshatra_absent_unavailable": {
+      "target_type": "yamakantaka_difference",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "5th-star-lord operand needs panchanga_nakshatra_moon[NAKSHATRA_MOON_BIRTH].number; absent -> panchama_tara row 'unavailable' (the star lord cannot be named honestly).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000012",
+      "inputs": {
+        "resonance_target": {"event_class": "illness_acute", "target_type": "yamakantaka_difference", "target_ref": "panchama_tara_lord_minus_yamakantaka", "weight": 0.5},
+        "chart_facts": [
+          {"fact_category": "graha_position", "fact_subject": "MAR", "fact_key": "sign", "fact_value_text": "Scorpio"},
+          {"fact_category": "sensitive_point_gulika_mandi", "fact_subject": "YAMAKANTAKA", "fact_key": "sign", "fact_value_text": "Leo"}
+        ]
+      },
+      "expected": {
+        "target_count": 0,
+        "targets": [],
+        "unresolved": [
+          {
+            "target_type": "yamakantaka_difference",
+            "target_ref": "panchama_tara_lord_minus_yamakantaka",
+            "target_resolution_state": "unavailable",
+            "reason": "panchanga_nakshatra_moon[NAKSHATRA_MOON_BIRTH].number fact absent"
+          }
+        ]
+      }
+    },
+    "neg_m6_bhava_arudha_sign_absent_or_invalid_unavailable": {
+      "target_type": "bhava_arudha",
+      "negative_case": true,
+      "derivation": "hand-specified",
+      "derivation_note": "ARUDHA_A7 has no sign row (or one whose value is not one of the 12 signs) -> bhava_arudha 'unavailable'; the cusp-placeholder longitude must not be substituted (F-20).",
+      "chart_id": "wp1-synth-00000000-0000-4000-8000-000000000013",
+      "inputs": {
+        "resonance_target": {"event_class": "marriage", "target_type": "bhava_arudha", "target_ref": "BHAVA_ARUDHA_A7", "weight": 0.6},
+        "chart_facts": [
+          {"fact_category": "arudha_pada", "fact_subject": "ARUDHA_A7", "fact_key": "sign", "fact_value_text": "Ophiuchus", "fact_id": "wp1synth.arudha_a7.sign"}
+        ]
+      },
+      "expected": {
+        "target_count": 0,
+        "targets": [],
+        "unresolved": [
+          {
+            "target_type": "bhava_arudha",
+            "target_ref": "BHAVA_ARUDHA_A7",
+            "target_resolution_state": "unavailable",
+            "reason": "arudha_pada[ARUDHA_A7].sign absent or not one of the 12 signs"
+          }
+        ]
       }
     }
   }

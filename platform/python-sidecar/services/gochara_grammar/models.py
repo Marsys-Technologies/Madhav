@@ -10,7 +10,8 @@ schema (sibling lane, binding contract per the D-5 wave brief §1 row G-1):
       event_class TEXT NOT NULL,
       target_type TEXT NOT NULL,   -- 'bhava'|'lord'|'karaka'|'mechanism_node'|
                                     -- 'sensitive_degree'|'arudha'|'yoga_constituent'|
-                                    -- 'dasha_lord_portfolio'
+                                    -- 'dasha_lord_portfolio'|'gulika_mandi_distance'|
+                                    -- 'yamakantaka_difference'|'bhava_arudha'
       target_ref TEXT NOT NULL,
       weight NUMERIC NOT NULL,
       classical_citation TEXT,
@@ -41,6 +42,14 @@ VALID_TARGET_TYPES = (
     "arudha",
     "yoga_constituent",
     "dasha_lord_portfolio",
+    # M-6 (remainder brief §4.4, ruling sheet v2.0 §1 M-6): additive derived
+    # transit targets. The DB column carries no CHECK constraint (migration
+    # 459 comment only), and the brief's out-of-scope freeze does not name
+    # gochara_grammar's target contract — this extension changes no existing
+    # type's behaviour. All three are sign-grain INTERVAL targets.
+    "gulika_mandi_distance",
+    "yamakantaka_difference",
+    "bhava_arudha",
 )
 
 VALID_TEMPORAL_SHAPES = ("point", "interval", "chain")

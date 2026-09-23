@@ -226,3 +226,33 @@ what a human needs to decide.
   `1074` as the maximum prefix; local branch files
   `platform/migrations/1075_*` and `platform/migrations/1076_*` exist and are
   already committed.
+
+## E-008 — Yamakaṇṭaka honesty in M-6 derived target rows; provisional weights
+
+- **What:** While implementing the M-6 derived target-contract rows (WP1
+  CONTRACTS §2.2 items 9–11: `gulika_mandi_distance`, `yamakantaka_difference`,
+  `bhava_arudha`), it was verified that `ga_sensitive_writer` persists
+  Yamakaṇṭaka's sign **native-only** in
+  `sensitive_point_gulika_mandi[YAMAKANTAKA].sign`. There is no day-table
+  fallback anywhere in the pipeline. Charts lacking the native value therefore
+  emit all four `yamakantaka_difference` rows as `unavailable`; an
+  approximation is never substituted. This matches the honest-state convention
+  (R-4) and is recorded here so the decision is visible rather than buried in
+  writer code.
+- **Also recorded:** (a) Derived M-6 rows are emitted only for the
+  `bereavement` and `illness_acute` event classes, are classically cited
+  (`uncited_extension=False`, ref `mandi_sign_distance_from_8L`, citation
+  `PG220:C1 śl.26`), and carry **provisional weight 0.5** — final factor
+  values are owned by WP8. (b) Navāṃśa refinement and trikona positions are
+  named in the contract but deliberately **not emitted** (declared-coarser,
+  sign-grain only). (c) `bhava_arudha` rows are uncited extensions
+  (weight 0.6) and resolve state only when the `arudha_pada` sign fact for
+  `ARUDHA_A{h}` names a valid sign. (d) `FORMULA_VERSION` bumped
+  `ka_gochara_resonance_v2.0 → v2.1`.
+- **Decision needed:** None for the Yamakaṇṭaka honesty stance. WP8 owns the
+  final factor weights for all three new target types.
+- **Evidence:** `platform/python-sidecar/ga_writers/ga_sensitive_writer.py`
+  (Yamakaṇṭaka branch writes only when a native value exists);
+  `services/gochara_grammar/derived_points.py`; enrichment unavailable-state
+  tests in `tests/l3/gochara/test_m6_derived_target_rows.py` (4 `neg_m6_*`
+  fixture cases, all passing).

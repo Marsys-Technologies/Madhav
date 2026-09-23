@@ -205,6 +205,47 @@ Fact-subject vocabulary note (from `enrichment.py:19-39`, live-verified): L1
    into that graha's `independence_group` (the check row has no longitude of its own).
    **Negative** (`not_gandanta`, `mrityu_bhaga not_fired`, `not_pushkara`,
    `kartari none`) → **no target at all** (F-19; R-1 at WP3c).
+9. **`gulika_mandi_distance`** (M-6, Phaladīpikā Adh. XVII śl.26, served chunk
+   `PG220:C1`) — emitted only for the classes the chapter names (`bereavement`,
+   `illness_acute`). Let e = occupied sign of the 8th-house lord (resolve house 8's
+   whole-sign sign from LAGNA as in (3), take its classical lord, then that graha's
+   occupied sign) and m = Māndi's sign (`sensitive_point_gulika_mandi[MANDI].sign`).
+   N = forward zodiacal distance e→m (0 when they tenant the same sign). Target =
+   the whole-sign interval of the sign N removed from Māndi in the same forward
+   direction (N=0 → Māndi's own sign). Transit agent: Saturn (carried as
+   `target_qualifier='agent:Saturn'`). Any missing operand fact → `unavailable`;
+   missing/incomplete `reference_signs` → `unqualified` (R-4 convention). Shared
+   arithmetic: `services/gochara_grammar/derived_points.py`
+   (`mandi_distance_target_sign_num`) — the single source imported by BOTH the
+   resonance writer and `enrichment.py`.
+10. **`yamakantaka_difference`** (M-6, `PG214:C1` śl.6-8, `PG217:C1` śl.14) — same
+   class scoping as (9). Whole-sign difference rāśis: A−B mod 12 (0 read as 12,
+   Pisces), target = whole-sign interval of the resulting sign. Formulas (ref —
+   minuend − subtrahend, agent, citation): `lagna_lord_minus_yamakantaka` —
+   lagna-lord − Y, Jupiter, `PG214:C1 śl.6; PG217:C1 śl.14`;
+   `sun_minus_yamakantaka` — Sun − Y, Jupiter, `PG214:C1 śl.7`;
+   `yamakantaka_minus_mandi` — Y − Māndi, Saturn, `PG214:C1 śl.7`;
+   `panchama_tara_lord_minus_yamakantaka` — 5th-star-lord − Y, Jupiter,
+   `PG214:C1 śl.8`. Y = Yamakaṇṭaka's sign
+   (`sensitive_point_gulika_mandi[YAMAKANTAKA].sign`, persisted native-only by
+   `ga_sensitive_writer` — no day-table fallback; absent for charts where the
+   native value is unavailable → `unavailable`). 5th-star-lord = Vimśottari lord
+   of the 5th nakṣatra from the natal Moon nakṣatra (natal counts as 1), resolved
+   to that graha's occupied sign. Same state discipline and shared-module rule as
+   (9) (`difference_sign_num`, `fifth_star_lord`). **Declared coarser:** the
+   verses' "figures" carry degree precision and name navāṃśa refinement and
+   trikona positions; with sign-grain served operands only the whole-sign
+   difference is honestly computable, so navāṃśa/trikona are named here and NOT
+   emitted in v1 — never fabricate a midpoint point.
+11. **`bhava_arudha`** (M-6) — the ārūḍha of house N for each numeric house in the
+   event class's `signature_model`, emitted for all classes. `target_ref` is the
+   clean symbolic `BHAVA_ARUDHA_A{N}` (natural-key stable, mirroring `NL` for
+   lords). Resolve via the `arudha_pada` `sign` row of subject `ARUDHA_A{N}`:
+   present and a valid sign → whole-sign interval of that sign (`resolved`);
+   absent or invalid → `unavailable`. The sibling `longitude_sidereal` cusp
+   placeholder is never read as a degree (same F-20 discipline as (6)).
+   `uncited_extension=True` — the ārūḍha primitive is real, but its linkage to
+   THIS event class is this writer's own synthesis.
 
 **M-5 note (ratified):** whole-sign residence is the primary object for bhava, arudha
 and mechanism-node targets; cusp-point contact is admitted only as a KP-school variant
@@ -225,7 +266,11 @@ Machine-readable companion:
 `platform/python-sidecar/tests/l3/gochara/fixtures/wp1_target_resolution.json` —
 one case per §5.3 row (8 cases) plus the three negative cases (negative sensitive
 check → zero targets; cusp-placeholder arudha → no point contact; dangling yoga id →
-`unavailable`). Every case is `"derivation": "hand-specified"` with a one-line note;
+`unavailable`), plus the M-6 cases (one golden per §2.2 items 9-11 row —
+`gulika_mandi_distance`, the four `yamakantaka_difference` formulas,
+`bhava_arudha` — and their `unavailable` variants: missing Māndi/Yamakaṇṭaka
+sensitive fact, missing Moon-nakṣatra fact, missing arudha sign fact, invalid
+sign value). Every case is `"derivation": "hand-specified"` with a one-line note;
 chart ids are synthetic (`wp1-synth-…`), never a real chart.
 
 ---
