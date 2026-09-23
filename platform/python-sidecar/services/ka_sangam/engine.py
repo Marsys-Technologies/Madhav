@@ -18,6 +18,11 @@ U3 pass-2 (2026-06-22): C13 school_consensus activated (post-U4). All 12 current
   EnrichmentContext carries pre-fetched DB data (ashtakavarga, vedha, tajika,
   school_consensus_by_domain) from the writer.
 
+R-4 (2026-09-23, RR-06): C9 transit_to_transit and C4 benefic_dristi are WITHDRAWN
+from the scored supporting product. Their weights in SUPPORTING_WEIGHTS remain
+declared/dormant (not renormalised) for a future qualified method; the two currents
+are still computed and reported as lineage data only.
+
 NEVER calls conn.commit() or conn.rollback() — caller owns the transaction.
 NEVER writes to any bodha_* table.
 """
@@ -43,8 +48,12 @@ SUPPORTING_WEIGHTS: dict[str, float] = {
     'constituent_lord_transit':     0.180,  # spec 0.18, bound [0.14, 0.24] ✓
     'ashtakavarga_transit_potency': 0.120,  # C7, spec 0.12, bound [0.08, 0.16] ✓
     'cross_dasha_agreement':        0.120,  # spec 0.12, bound [0.09, 0.16] ✓
-    'benefic_dristi':               0.100,  # spec 0.10, bound [0.07, 0.13] ✓
-    'transit_to_transit':           0.080,  # C9, spec 0.08, bound [0.05, 0.11] ✓
+    'benefic_dristi':               0.100,  # DORMANT (R-4, RR-06): withdrawn from scored
+                                            # product; weight reserved for a future qualified
+                                            # Parāśari/Tājika dṛṣṭi method.
+    'transit_to_transit':           0.080,  # DORMANT (R-4, RR-06): withdrawn from scored
+                                            # product; weight reserved for a future qualified
+                                            # outer-planet aspect method.
     'panchanga_quality':            0.070,  # spec 0.07, bound [0.05, 0.10] ✓
     'tara_bala':                    0.060,  # spec 0.06, bound [0.04, 0.09] ✓
     'eclipse_proximity':            0.060,  # C8, spec 0.06, bound [0.03, 0.09] ✓
@@ -1089,6 +1098,38 @@ def _rarity_years(planet: str, aspect_deg: float) -> float:
     return round(max(0.5, min(rarity, period)), 2)
 
 
+# ── R-1 target provenance helpers ─────────────────────────────────────────────
+
+_R1_PROVENANCE_KEYS = ('target_fact_id', 'target_type', 'frame', 'ayanamsha_id', 'derivation')
+
+
+def _has_target_provenance(transit_trig: dict) -> bool:
+    """
+    R-1 (RR-03): a sourced trigger carries explicit provenance fields stamped
+    by the writer against L1 chart_facts. Presence of any provenance key (or
+    the legacy-shaped target_point_provenance sub-dict) distinguishes a
+    sourced target from a silently-defaulted coordinate.
+    """
+    if not transit_trig:
+        return False
+    if any(transit_trig.get(k) for k in _R1_PROVENANCE_KEYS):
+        return True
+    if transit_trig.get('target_point_provenance'):
+        return True
+    return False
+
+
+def _target_provenance_dict(transit_trig: dict) -> dict:
+    """Return the provenance sub-dict carried on transit_trigger_jsonb."""
+    if not transit_trig:
+        return {}
+    prov = {k: transit_trig[k] for k in _R1_PROVENANCE_KEYS if transit_trig.get(k)}
+    tpp = transit_trig.get('target_point_provenance')
+    if isinstance(tpp, dict):
+        prov['target_point_provenance'] = tpp
+    return prov
+
+
 def _resolve_transit_planet(predicate: dict) -> Optional[str]:
     """
     Per-signature transit planet resolver (design §4.6).
@@ -1173,6 +1214,22 @@ def mode_a_search(
     caller from chart_facts. No native default; never falls back to another
     chart's value.
 
+    R-1 (RR-03): a trigger is unresolvable when transit_trigger_jsonb lacks
+    both 'target_longitude_deg' and explicit sourced point-target provenance
+    (target_fact_id / target_type / frame / ayanamsha_id / derivation, or a
+    target_point_provenance sub-dict). In that case the function logs a warning
+    naming signal_id and returns [] — no Aries-point default scan. A present
+    target_longitude_deg key (even value 0.0) remains valid and scans as before.
+    When provenance is present it is copied into each window's
+    constituent_factors['target_provenance'] and availability['target'] is set
+    to 'computed'; otherwise availability['target'] defaults to 'unavailable'.
+
+    R-4 (RR-06): C9 transit_to_transit and C4 benefic_dristi are WITHDRAWN
+    from the scored supporting product (both legacy and R-6 kernel). Their
+    measured values still appear in constituent_factors as lineage data, with
+    '_withdrawn' reason keys. SUPPORTING_WEIGHTS is intentionally not
+    renormalised.
+
     1. Ask dasha_kala_service (or predicate) for eligible dasha windows.
     2. For each eligible window, use find_aspect_events from transit_search to
        find transit events matching the predicate's transit_trigger.
@@ -1251,7 +1308,19 @@ def mode_a_search(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+
+    # R-1 (RR-03): refuse the old silent Aries-point default. A trigger is
+    # unresolvable if it carries neither an explicit target_longitude_deg key
+    # nor writer-stamped provenance against L1 chart_facts.
+    has_target_lon = 'target_longitude_deg' in transit_trig
+    if not has_target_lon and not _has_target_provenance(transit_trig):
+        logger.warning(
+            "mode_a_search: unresolvable transit trigger target for signal_id=%s "
+            "(no target_longitude_deg and no target provenance); returning no windows",
+            signal_id,
+        )
+        return []
+    target_lon = float(transit_trig.get('target_longitude_deg', 0.0)) if has_target_lon else 0.0
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
 
@@ -1329,8 +1398,8 @@ def mode_a_search(
             'constituent_lord_transit':    float(dasha_score),
             **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             **({'cross_dasha_agreement': c_cross} if c_cross is not None else {}),
-            'benefic_dristi':               c_dristi,
-            'transit_to_transit':           c9,
+            # R-4 (RR-06): benefic_dristi and transit_to_transit are WITHDRAWN from
+            # the scored product; weights stay declared/dormant in SUPPORTING_WEIGHTS.
             # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
             # ABSENT key already means "contributes nothing" — which is the correct behaviour for
             # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
@@ -1365,6 +1434,7 @@ def mode_a_search(
                 'dasha': 'computed' if dasha_source == 'service' else 'unavailable',
                 'vedha': 'computed' if vedha_available else 'unavailable',
                 'transit_search': 'computed',
+                'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
             },
             applicability={
                 **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
@@ -1393,6 +1463,9 @@ def mode_a_search(
                 'dasha_score': dasha_score,
                 'dignity_score': dignity_score,
                 'signature_class': sig_class,
+                # R-1 (RR-03): carry target provenance as data.
+                **({'target_provenance': _target_provenance_dict(transit_trig)}
+                   if _has_target_provenance(transit_trig) else {}),
                 # U3 per-current breakdown (§3.5 — explainability)
                 **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
                    {'c7_ashtakavarga_potency_unavailable':
@@ -1400,6 +1473,11 @@ def mode_a_search(
                     'term dropped, NOT scored zero (L3-W3)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
+                'c9_transit_to_transit_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic 0/60/90/120/180 '
+                    'outer-planet angle set currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
@@ -1416,6 +1494,11 @@ def mode_a_search(
                     'no eligible dasha window (dasha-eligible AND cross-system-agreeing) covers '
                     'this peak_date — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
+                'c_benefic_dristi_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic angular-weight '
+                    'benefic-dṛṣṭi curve currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 # L3-W3: the key is present ONLY when the term was actually evaluated. Its
                 # absence is read downstream as "not consulted"; a 0.0 would be read as
                 # "consulted, and unsupportive" — which was false on every row.
@@ -1496,6 +1579,17 @@ def mode_b_sweep(
     caller from chart_facts. No native default; never falls back to another
     chart's value.
 
+    R-1 (RR-03): a trigger is unresolvable when transit_trigger_jsonb lacks
+    both 'target_longitude_deg' and explicit sourced point-target provenance.
+    In that case the function logs a warning naming signal_id and returns [].
+    See mode_a_search's docstring for the full provenance/availability rule.
+
+    R-4 (RR-06): C9 transit_to_transit and C4 benefic_dristi are WITHDRAWN
+    from the scored supporting product (both legacy and R-6 kernel). Their
+    measured values still appear in constituent_factors as lineage data, with
+    '_withdrawn' reason keys. SUPPORTING_WEIGHTS is intentionally not
+    renormalised.
+
     Returns windows with is_off_dasha_discovery=True and mode='B'.
     """
     from pipeline.transit_search import search_long_horizon
@@ -1512,7 +1606,17 @@ def mode_b_sweep(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+
+    # R-1 (RR-03): refuse the old silent Aries-point default.
+    has_target_lon = 'target_longitude_deg' in transit_trig
+    if not has_target_lon and not _has_target_provenance(transit_trig):
+        logger.warning(
+            "mode_b_sweep: unresolvable transit trigger target for signal_id=%s "
+            "(no target_longitude_deg and no target provenance); returning no windows",
+            signal_id,
+        )
+        return []
+    target_lon = float(transit_trig.get('target_longitude_deg', 0.0)) if has_target_lon else 0.0
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
 
@@ -1582,12 +1686,9 @@ def mode_b_sweep(
             'constituent_lord_transit':    0.0,   # mode B has no dasha prior
             **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             'cross_dasha_agreement':        0.0,  # no dasha context in mode B
-            'benefic_dristi':               c_dristi,
-            'transit_to_transit':           c9,
-            # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
-            # ABSENT key already means "contributes nothing" — which is the correct behaviour for
-            # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
-            # from a real zero score.
+            # R-4 (RR-06): benefic_dristi and transit_to_transit are WITHDRAWN from
+            # the scored product; weights stay declared/dormant in SUPPORTING_WEIGHTS.
+            # The measured values still appear in constituent_factors as lineage data.
             **({'panchanga_quality': c_pancha} if c_pancha is not None else {}),
             'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
@@ -1615,6 +1716,7 @@ def mode_b_sweep(
                 'dasha': 'unavailable',  # structural: un-gated sweep, no daśā prior
                 'vedha': 'computed' if vedha_available else 'unavailable',
                 'transit_search': 'computed',
+                'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
             },
             applicability={
                 **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
@@ -1643,12 +1745,20 @@ def mode_b_sweep(
                 'dignity_score': dignity_score,
                 'magnitude': round(magnitude, 4),
                 'signature_class': sig_class,
+                # R-1 (RR-03): carry target provenance as data.
+                **({'target_provenance': _target_provenance_dict(transit_trig)}
+                   if _has_target_provenance(transit_trig) else {}),
                 **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
                    {'c7_ashtakavarga_potency_unavailable':
                     'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
                     'term dropped, NOT scored zero (L3-W3)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
+                'c9_transit_to_transit_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic 0/60/90/120/180 '
+                    'outer-planet angle set currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
@@ -1660,6 +1770,11 @@ def mode_b_sweep(
                     'no U4 school-consensus data yet AND signature_class is a signal-type '
                     'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
+                'c_benefic_dristi_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic angular-weight '
+                    'benefic-dṛṣṭi curve currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 # L3-W3: the key is present ONLY when the term was actually evaluated. Its
                 # absence is read downstream as "not consulted"; a 0.0 would be read as
                 # "consulted, and unsupportive" — which was false on every row.

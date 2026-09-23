@@ -36,6 +36,7 @@ from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+from brahmagyan.graha_vocabulary import norm_graha
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
 # wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
@@ -70,7 +71,7 @@ def apply_trigger_suppression(windows: list[dict], *, chart_id: str, target_lon,
     gochara_service serves the pre-TRIGGER convergence_score unchanged, never
     raises.
     """
-    if gochara_service is None:
+    if gochara_service is None or target_lon is None:
         return windows
     for w in windows:
         try:
@@ -376,7 +377,17 @@ class KaSangamWriter(WriterBase):
                 pd['graha_name'] = graha_name_map.get(sid)
             if 'DISPOSITOR_RELATIONAL' in sc:
                 hn = house_num_map.get(sid)
+                pd['house_num'] = hn
                 pd['dispositor_lord'] = house_lord_map.get(hn) if hn else None
+
+        # R-1 (RR-03): stamp each predicate's transit trigger with a sourced
+        # target_longitude_deg + provenance from L1 chart_facts. This is the
+        # ONLY place target defaulting is allowed; after this, the engine
+        # refuses to scan a trigger that still lacks both a coordinate and
+        # provenance.
+        self._target_facts = self._fetch_target_fact_cache(conn, chart_id)
+        for pd in pred_dicts:
+            self._enrich_predicate_target(pd)
 
         # D-3 FIX-PSEL: near and lifetime tiers each get their own
         # independently quota-diversified selection out of the enriched
@@ -659,7 +670,10 @@ class KaSangamWriter(WriterBase):
 
             # D-3 T-6: target_lon feeds TRIGGER's mechanism_lon/target_lon below —
             # same longitude mode_a_search/mode_b_sweep already scan against.
-            target_lon = float((pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg', 0.0))
+            # R-1 (RR-03): no silent default; unresolved targets leave this None and
+            # TRIGGER suppression is skipped (the engine already refused to scan).
+            raw_target = (pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg')
+            target_lon = float(raw_target) if raw_target is not None else None
             moon_sign_idx = _SIGN_NAME_TO_IDX.get(native_ctx.moon_sign)
             vedha_rules = (enrichment_context.vedha_rules if enrichment_context else None) or None
 
@@ -679,11 +693,13 @@ class KaSangamWriter(WriterBase):
                 )
                 # D-3 T-6: TRIGGER suppressive term at the ADMITTED 0.2/0.2 weights
                 # (wave/D-3/ADMIT, receipted ACCEPT) — see apply_trigger_suppression docstring.
-                new_windows_a = apply_trigger_suppression(
-                    new_windows_a, chart_id=chart_id, target_lon=target_lon,
-                    gochara_service=gochara_service, vedha_rules=vedha_rules,
-                    moon_sign_idx=moon_sign_idx,
-                )
+                # R-1: suppression is only meaningful when a sourced target exists.
+                if target_lon is not None:
+                    new_windows_a = apply_trigger_suppression(
+                        new_windows_a, chart_id=chart_id, target_lon=target_lon,
+                        gochara_service=gochara_service, vedha_rules=vedha_rules,
+                        moon_sign_idx=moon_sign_idx,
+                    )
                 for w in new_windows_a:
                     w['primary_domain'] = primary_domain
                 all_windows.extend(new_windows_a)
@@ -930,6 +946,9 @@ class KaSangamWriter(WriterBase):
                 }
                 icc = independent_current_count(currents)
 
+                target_provenance = cf.get('target_provenance')
+                availability = w.get('availability')
+
                 cur.execute(
                     """
                     INSERT INTO kala_convergence (
@@ -939,7 +958,8 @@ class KaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis
+                        confidence_label_relative, tier_basis,
+                        target_provenance, availability
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -947,7 +967,8 @@ class KaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s
+                        %s, %s,
+                        %s::jsonb, %s::jsonb
                     )
                     """,
                     (
@@ -972,6 +993,8 @@ class KaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        json.dumps(target_provenance) if target_provenance is not None else None,
+                        json.dumps(availability) if availability is not None else None,
                     ),
                 )
                 rows_inserted += 1
@@ -1143,24 +1166,178 @@ class KaSangamWriter(WriterBase):
     def _build_house_lord_map(self, conn, chart_id: str) -> dict[int, str]:
         """
         Build {house_num: lord_name} for DISPOSITOR_RELATIONAL predicate enrichment.
-        Derives lords from lagna sign via classical whole-sign house assignment.
-        Falls back to Aries (this native's lagna) on any query failure.
+        Derives lords from this chart's lagna sign via classical whole-sign house
+        assignment. CR-87/R-3(b): fail-loud — any missing or unreadable lagna sign
+        raises; there is no Aries fallback.
         """
-        lagna_sign = 'Aries'
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT fact_value_text FROM chart_facts "
-                    "WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign' LIMIT 1",
-                    (chart_id,),
-                )
-                row = cur.fetchone()
-                if row and row['fact_value_text']:
-                    lagna_sign = row['fact_value_text']
-        except Exception as exc:
-            logger.warning("ka_sangam: could not fetch lagna sign for %s: %s", chart_id, exc)
-        lagna_num = _LAGNA_SIGN_NUM.get(lagna_sign, 1)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT fact_value_text FROM chart_facts "
+                "WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign' "
+                "AND ayanamsha_id = 'lahiri_chitrapaksha' LIMIT 1",
+                (chart_id,),
+            )
+            row = cur.fetchone()
+
+        lagna_sign = row['fact_value_text'] if row else None
+        if not lagna_sign:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve lagna sign for chart {chart_id} "
+                "from chart_facts (fact_subject='LAGNA', fact_key='sign', "
+                "ayanamsha_id='lahiri_chitrapaksha'). Refusing to fall back to "
+                "Aries or any other chart's lagna (CR-87/R-3(b))."
+            )
+        if lagna_sign not in _LAGNA_SIGN_NUM:
+            raise RuntimeError(
+                f"ka_sangam: resolved lagna sign {lagna_sign!r} for chart {chart_id} "
+                "is not a recognised sign name. Refusing to derive house lords."
+            )
+        lagna_num = _LAGNA_SIGN_NUM[lagna_sign]
         return {
             house: _SIGN_LORDS[(lagna_num + house - 2) % 12 + 1]
             for house in range(1, 13)
         }
+
+    # ── R-1 target provenance resolution ───────────────────────────────────────
+
+    def _fetch_target_fact_cache(self, conn, chart_id: str) -> list[dict]:
+        """
+        Fetch the L1 chart_facts rows that can serve as a sourced transit target:
+          - graha_position / <GRAHA> / longitude_sidereal
+          - bhava_cusps / BHAVA_01..12 / sripati_madhya
+        Returns a list of dict rows for in-memory lookup while enriching predicates.
+        """
+        ayanamsha_id = 'lahiri_chitrapaksha'
+        try:
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT fact_id, fact_category, fact_subject, fact_key,
+                           fact_value_num, ayanamsha_id
+                    FROM chart_facts
+                    WHERE chart_id = %s AND ayanamsha_id = %s
+                      AND (
+                          (fact_category = 'graha_position'
+                           AND fact_key = 'longitude_sidereal')
+                       OR (fact_category = 'bhava_cusps'
+                           AND fact_key = 'sripati_madhya')
+                      )
+                    """,
+                    (chart_id, ayanamsha_id),
+                )
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as exc:
+            logger.warning("ka_sangam: could not fetch target facts for %s: %s", chart_id, exc)
+            return []
+
+    def _enrich_predicate_target(self, pd: dict) -> None:
+        """
+        Mutate a predicate's transit_trigger_jsonb with a sourced
+        target_longitude_deg + provenance keys from L1 chart_facts.
+        If no resolvable target exists the trigger is left untouched; the engine
+        will then refuse the scan rather than default to 0.0.
+        """
+        trig = pd.get('transit_trigger_jsonb') or {}
+        # Already stamped by a previous enrichment pass — do not overwrite.
+        if 'target_longitude_deg' in trig and any(
+            trig.get(k) for k in ('target_fact_id', 'target_type', 'frame', 'ayanamsha_id', 'derivation')
+        ):
+            return
+        resolved = self._resolve_target_for_predicate(pd)
+        if not resolved:
+            return
+        trig['target_longitude_deg'] = resolved['target_longitude_deg']
+        trig['target_fact_id'] = resolved['target_fact_id']
+        trig['target_type'] = resolved['target_type']
+        trig['frame'] = resolved['frame']
+        trig['ayanamsha_id'] = resolved['ayanamsha_id']
+        trig['derivation'] = resolved['derivation']
+        pd['transit_trigger_jsonb'] = trig
+
+    def _resolve_target_for_predicate(self, pd: dict) -> dict | None:
+        """
+        Best-effort resolution of a single transit target per predicate class.
+        Returns a provenance dict or None when no unambiguous target exists.
+
+        Current coverage:
+          - DIGNITY: the graha's own natal sidereal longitude.
+          - DISPOSITOR_RELATIONAL: the cusp longitude of the house whose lord is
+            the transiting planet.
+          - YOGA: first resolvable constituent lord's natal longitude (the
+            trigger is multi-target; this is an explicit partial target).
+        All other classes return None — the engine will treat them as
+        target-unavailable for this pass.
+        """
+        sig_class = (pd.get('signature_class') or '').upper()
+        ayanamsha_id = pd.get('ayanamsha_id') or 'lahiri_chitrapaksha'
+
+        def _graha_fact(graha: str | None) -> dict | None:
+            if not graha:
+                return None
+            subject = norm_graha(graha)
+            for f in self._target_facts:
+                if (
+                    f['fact_category'] == 'graha_position'
+                    and f['fact_subject'] == subject
+                    and f['fact_key'] == 'longitude_sidereal'
+                    and f['fact_value_num'] is not None
+                ):
+                    return f
+            return None
+
+        def _bhava_fact(house_num: int | None) -> dict | None:
+            if not house_num:
+                return None
+            subject = f'BHAVA_{int(house_num):02d}'
+            for f in self._target_facts:
+                if (
+                    f['fact_category'] == 'bhava_cusps'
+                    and f['fact_subject'] == subject
+                    and f['fact_key'] == 'sripati_madhya'
+                    and f['fact_value_num'] is not None
+                ):
+                    return f
+            return None
+
+        def _provenance(fact: dict, frame: str, derivation: str) -> dict:
+            return {
+                'target_longitude_deg': float(fact['fact_value_num']),
+                'target_fact_id': fact['fact_id'],
+                'target_type': fact['fact_category'],
+                'frame': frame,
+                'ayanamsha_id': fact.get('ayanamsha_id') or ayanamsha_id,
+                'derivation': derivation,
+            }
+
+        if 'DIGNITY' in sig_class:
+            fact = _graha_fact(pd.get('graha_name'))
+            if fact:
+                return _provenance(
+                    fact,
+                    frame='longitude_sidereal',
+                    derivation='ka_sangam:writer:graha_position:DIGNITY',
+                )
+
+        if 'DISPOSITOR_RELATIONAL' in sig_class:
+            fact = _bhava_fact(pd.get('house_num'))
+            if fact:
+                return _provenance(
+                    fact,
+                    frame='sripati_madhya',
+                    derivation='ka_sangam:writer:bhava_cusps:DISPOSITOR_RELATIONAL',
+                )
+
+        if 'YOGA' in sig_class:
+            lords = (
+                (pd.get('dasha_eligibility_rule_jsonb') or {}).get('constituent_lords') or []
+            )
+            for lord in lords:
+                fact = _graha_fact(lord)
+                if fact:
+                    return _provenance(
+                        fact,
+                        frame='longitude_sidereal',
+                        derivation='ka_sangam:writer:graha_position:YOGA:first_constituent_lord',
+                    )
+
+        return None

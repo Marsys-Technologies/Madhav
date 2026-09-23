@@ -19,7 +19,7 @@ resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a
 |---|---|---|
 | 0 — Entry gate | **PASSED 2026-09-23** | (a) packet read in order; (b) D-8 discharged — Astra third review `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` = PROCEED_WITH_AMENDMENTS, RRV-01…09 dispositioned in plan §10 + brief changelog + inline [S3-E] amendments; (c) evidence suite re-run `OUTPUT_2026-09-23T050513.txt` SUITE-PASS 13/13 + 13/13 NEG (4 scripts spot-verified by hand, exit 1 under NEG=1); reviewer independently re-ran + mutation-tested (`OUTPUT_2026-09-23T051310.txt`); (d) DB reachable via Cloud SQL proxy **127.0.0.1:5434** (5433 down; `source /Users/Dev/madhav-l3/dbenv.sh`); D-6 staged SQL executed, 100 chunks read, no nodal aspect grant — recorded in DIS.031 `amendment_2026_09_23_predicate_level_recheck` (ground upgraded ATTRIBUTED→CONFIRMED, OCR/400-char limits stated). |
 | 1 — R-5 harness | **PASSED 2026-09-23** | Identity D-R5-1 implemented (`r5_identity.py`: contact_uuid uuid5 over the 8-field tuple with peak_date deliberately excluded; episode_uuid over sorted-member set-hash; FIELD_EXCLUSIONS = surrogate id / computed_at / generation-head pointers, named in code at :38-43). Five-rule rebuild/mapping (no-op / supersede / decisive-geometry-reattach / **ambiguous fail-closed** / explicit-withdrawal-only) with journal + replay, in a schema-faithful SQLite mirror of the §5.2 cascade graph (245/247 CASCADE, 249 SET NULL, 363 CASCADE, 334 CASCADE, 331/332 SET NULL, 339 FK-free resolved semantically). Seven §6.3 attacks executable (40 assertions, VERDICT PASS): empty rebuild, moved date (identity stable, content v+1), one-to-many split, many-to-one merge, ambiguous match (no auto-reattach; adjudicated re-run reattaches exactly then), interrupted/resumed (byte-identical manifest, exactly-once), unchanged-count content-swap (per-id canonical diff fires). S14 joined the manifest (`r5_harness/S14_r5_preservation_harness.py\|0\|1`); suite re-run `OUTPUT_2026-09-23T060527.txt` SUITE-PASS 14/14 + 14/14 NEG; NEG mutation = `FAIL_CLOSED_AMBIGUOUS` flipped to False (evidence-bearing: six attack-5 propositions read false on a genuinely re-attached DB). |
-| 2 — R-1…R-4, R-6 | **IN PROGRESS** — R-6 PASSED 2026-09-23; R-1, R-3(b), R-4, R-2 remain | see "Phase 2 progress" below |
+| 2 — R-1…R-4, R-6 | **IN PROGRESS** — R-6, R-1, R-3(b), R-4 PASSED 2026-09-23; R-2 remains | see "Phase 2 progress" below |
 | 3 — E2, E5 | NOT STARTED | — |
 | 4 — E4 + annual-Tājika gate | NOT STARTED | — |
 | 5 — E6 (E3 gated on N-7) | NOT STARTED | — |
@@ -95,9 +95,28 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 **Evidence:** `S15_r6_kernel_adverse_visible.py` joined MANIFEST (`|0|1`); suite `OUTPUT_2026-09-23T120120.txt` SUITE-PASS 15/15 + 15/15 NEG; NEG mutant = a "separated" kernel that secretly keeps dignity in the product and reports valence 0.0 (all nine propositions read false under it).
 **Scope note:** engine-side fields only; writer persistence of the new columns and consumer SQL partitioning (RRV-03 enforcement vehicle) ride with the Phase-2 contact-changing cluster + consumer work, not this increment.
 
+### R-1 target binding, R-3(b) fail-loud lagna, R-4 withdrawals — PASSED 2026-09-23
+
+**R-1 (RR-03) target provenance:**
+- Writer (`pipeline/orchestrator/writers/ka_sangam.py`) is now the ONLY place target defaulting is allowed: `_fetch_target_fact_cache` reads L1 `chart_facts` (graha_position/longitude_sidereal + bhava_cusps/sripati_madhya, ayanamsha `lahiri_chitrapaksha`); `_enrich_predicate_target` stamps each predicate's `transit_trigger_jsonb` with sourced `target_longitude_deg` + provenance (`target_fact_id`, `target_type`, `frame`, `ayanamsha_id`, `derivation`). Coverage: DIGNITY → the graha's own natal sidereal longitude; DISPOSITOR_RELATIONAL → the house cusp longitude (new `house_num` enrichment field); YOGA → first resolvable constituent lord (declared partial target). All other classes return None — the engine then refuses the scan.
+- Engine (`services/ka_sangam/engine.py`): a trigger with NEITHER `target_longitude_deg` (key presence) NOR writer-stamped provenance is unresolvable — `mode_a_search`/`mode_b_sweep` log a warning naming signal_id and return `[]` (no Aries-point default scan). A present key with value 0.0 remains valid (sourced 0°). Sourced provenance is copied into each window's `constituent_factors['target_provenance']` and `availability['target']='computed'`; otherwise `'unavailable'`.
+- Writer TRIGGER suppression (`apply_trigger_suppression`) now takes `target_lon=None` when unresolved and is skipped — no silent 0.0 mechanism longitude.
+- Persistence: additive-only migration `1071_kala_convergence_target_provenance.sql` adds `kala_convergence.target_provenance JSONB` + `kala_convergence.availability JSONB` (IF NOT EXISTS, comments only — no existing column/table touched).
+
+**R-3(b) (CR-87 lagna read):** `_build_house_lord_map` is fail-loud — any missing lagna row (query now also pins `ayanamsha_id='lahiri_chitrapaksha'`) or unrecognised sign name raises RuntimeError; the `lagna_sign = 'Aries'` default assignment and its fallback docstring are removed.
+
+**R-4 (RR-06) C9/C4 withdrawal:** `benefic_dristi` and `transit_to_transit` are removed from the scored supporting dict in modes A and B (legacy I-16 and R-6 kernel alike). `SUPPORTING_WEIGHTS` is intentionally NOT renormalised — the combiner iterates all declared weights, so withdrawn mass is inert (`sup.get(key, 0.0)`), never redistributed. Measured values stay in `constituent_factors` as lineage (`c_benefic_dristi`, `c9_transit_to_transit`) with `_withdrawn` reason keys stating why no qualified classical method binds them; applicability records both as False.
+
+**Qualification:**
+- `tests/l3/test_ka_sangam_r1_r4_repairs.py` (new, 11 tests): mode B refuses unresolvable target; provenance/availability stamping; applicability False for withdrawn terms + lineage keys present; writer resolution for DIGNITY/DISPOSITOR/YOGA/unresolvable; enrichment stamps provenance; lagna fail-loud on missing row and invalid sign.
+- Existing pins updated to the new contract (verified as post-fix updates, not silent re-pins): `test_ka_sangam_a3_fixes.py` domain-param index 16 after the two new INSERT columns; `test_ka_sangam_r6_kernel.py` legacy/kernel reconstructions exclude withdrawn terms.
+- Runs: `test_ka_sangam_r1_r4_repairs.py + test_ka_sangam_r6_kernel.py + test_ka_sangam_a3_fixes.py` = 58 passed; `test_ka_sangam.py + test_l3_convergence.py` = 83 passed; full `tests/l3` minus ka_kshetra: **1088 passed, 2 failed — both the known pre-existing pollution flakes** (`test_m3_graha_sancara_defects` forensic anchor, `test_transit_search_cache` cached-call parity), identical to pristine-tree baseline.
+- **Evidence:** `S1_target_default_zero.py` and `S12_lagna_default_aries.py` rewritten as POST-FIX detectors (positive = guard exists, negative control removes the guard); `S16_r1_r4_post_fix.py` joined MANIFEST. Suite `OUTPUT_2026-09-23T130106.txt` SUITE-PASS 16/16 positive + 16/16 negative controls.
+- Executor independently re-reviewed every diff (engine combiner math — withdrawn weights inert not renormalised; migration additive-only; test edits legitimate) before accepting the subagent's implementation.
+
 ## Last commit
 
-`8d7652585` — "sangam stage3: Phase 1 — R-5 identity/history qualified in disposable harness".
+`656369bda` — "sangam stage3: Phase 2a — R-6 score-kernel separation landed engine-side".
 
 ## Evidence artifacts this phase
 

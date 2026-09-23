@@ -216,8 +216,9 @@ class TestB4SrcDomainPropagation:
         call_args = mock_cur.execute.call_args
         params = call_args[0][1]   # second positional arg = params tuple
 
-        # domain is the last parameter
-        domain_value = params[-3]  # domain, then confidence_label_relative, tier_basis (JL-014)
+        # domain is the 17th parameter (0-based index 16) after adding
+        # target_provenance / availability columns.
+        domain_value = params[16]
         assert domain_value == 'career', (
             f"B4-src: expected domain='career' in INSERT params, got {domain_value!r}"
         )
@@ -248,7 +249,7 @@ class TestB4SrcDomainPropagation:
 
         call_args = mock_cur.execute.call_args
         params = call_args[0][1]
-        domain_value = params[-3]  # domain, then confidence_label_relative, tier_basis (JL-014)
+        domain_value = params[16]  # see test_domain_propagation_end_to_end_logic
         assert domain_value is None, (
             f"B4-src: expected domain=None when no signal domains, got {domain_value!r}"
         )

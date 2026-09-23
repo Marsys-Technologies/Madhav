@@ -194,8 +194,8 @@ class TestR6AdverseActivityVisible:
         cf = w['constituent_factors']
         sup_legacy = {
             'constituent_lord_transit': 0.8,  # static prior, legacy path only
-            'benefic_dristi': cf['c_benefic_dristi'],
-            'transit_to_transit': cf['c9_transit_to_transit'],
+            # R-4: benefic_dristi and transit_to_transit are withdrawn from the
+            # scored product, so the legacy reconstruction must not include them.
             'tara_bala': cf['c_tara_bala'],
             'eclipse_proximity': cf['c8_eclipse_proximity'],
             'nakshatra_subsystem': cf['c_nakshatra_subsystem'],
@@ -220,8 +220,7 @@ class TestR6DashaAvailability:
         nec = [orb_s]  # vedha unavailable in this fixture
         cf = w['constituent_factors']
         sup_without = {
-            'benefic_dristi': cf['c_benefic_dristi'],
-            'transit_to_transit': cf['c9_transit_to_transit'],
+            # R-4: withdrawn terms are not part of the kernel supporting product.
             'tara_bala': cf['c_tara_bala'],
             'eclipse_proximity': cf['c8_eclipse_proximity'],
             'nakshatra_subsystem': cf['c_nakshatra_subsystem'],
