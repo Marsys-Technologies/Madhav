@@ -318,6 +318,23 @@ mechanisms:
     module_path: services.gochara_v3.mechanisms.w30_nodal_drishti
 
 # ─────────────────────────────────────────────────────────────────────────
+# PLANNED INPUT-VECTOR FLAGS (recorded, not mechanisms — no mechanisms: entry,
+# so the N-16 wiring detector's three-way set is unaffected)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# kakshya_bindu_interim ∈ {off(legacy), on}, default off — N-22 / N-13
+# sign-level bindu interim (L3 §4.3; M-7 interim). Engine constant
+# engine.py::_KAKSHYA_BINDU_INTERIM_ENABLED. When on: a kakṣyā crossing whose
+# transiting graha has no resolvable bindu in the transited sign (chart_facts
+# ashtakavarga_bindu_sign, graha × sign; count 0 or row absent) contributes no
+# activity and carries completeness_state='unqualified' + failure_detail; a
+# resolvable count >= 1 qualifies the crossing at the coarser grain
+# (qualification_grain='sign'). Flipping the flag changes what the engine
+# emits, so a build under a different flag value is a new candidate (input
+# generation vector diff, WP1_CONTRACTS.md §5.3/§4.7), never an in-place
+# refill.
+
+# ─────────────────────────────────────────────────────────────────────────
 # SUMMARY
 # ─────────────────────────────────────────────────────────────────────────
 # admitted_count: 10

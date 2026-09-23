@@ -94,6 +94,7 @@ from services.gochara_intensity.permission import (
 )
 from services.gochara_intensity.beta_priors import beta_for
 from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events
+from brahmagyan.graha_vocabulary import norm_graha
 
 from .context import ClassContext, VedhaRow, MaleficScaleRow, KakshyaBoundaryRow
 from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
@@ -184,6 +185,24 @@ logger = logging.getLogger(__name__)
 # tara_modifier in (0, 2]; modifier is 1.0 when Moon nakshatra data unavailable (honest skip).
 # ---------------------------------------------------------------------------
 _W23_TARA_BALA_ENABLED: bool = True
+
+# ---------------------------------------------------------------------------
+# N-22 / N-13 (L3 §4.3): kakṣyā sign-level bindu interim. Recorded flag
+# `kakshya_bindu_interim` (input generation vector; mechanism_register.yaml
+# "PLANNED INPUT-VECTOR FLAGS"), default OFF.
+#
+# When True, a kakṣyā crossing whose transiting graha has no resolvable bindu
+# in the transited sign (chart_facts `ashtakavarga_bindu_sign`, graha × sign —
+# count 0 or row absent) contributes NO activity and carries
+# detail['completeness_state']='unqualified' with a failure_detail
+# ({primitive, error_class, message, row_identity}, per the WP2 honesty
+# pinning). A crossing with a resolvable count >= 1 is qualified by it and
+# declared at the coarser grain: detail['qualification_grain']='sign' (the
+# sign-level BAV, interim for the kakṣyā-grain qualification M-7 requires).
+# When False the kakṣyā path is byte-identical to the pre-interim engine:
+# no detail keys are added and _compute_activity_v3's skip never fires.
+# ---------------------------------------------------------------------------
+_KAKSHYA_BINDU_INTERIM_ENABLED: bool = False
 
 # ---------------------------------------------------------------------------
 # Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
@@ -919,6 +938,15 @@ def _compute_activity_v3(
             continue
         if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
             continue  # cancelled vedha pair: not an activity signal
+        if (
+            s.primitive == "kakshya_cell_crossing"
+            and s.detail.get("completeness_state") == "unqualified"
+        ):
+            # N-22/N-13 interim (flag kakshya_bindu_interim): no resolvable
+            # bindu in the transited sign -> the crossing contributes no
+            # activity. Never fires with the flag off (no sentence then
+            # carries completeness_state).
+            continue
 
         # Target weight: clamp to [0,1] (negative weights encode direction,
         # not activity magnitude; direction is handled at the signed_lambda level)
@@ -1128,6 +1156,54 @@ def _resolve_valence_v3(
         return "adverse", True, False
 
 
+def _bindu_interim_detail(
+    context: ClassContext,
+    bindu_lookup: dict[tuple[str, int], Optional[float]],
+    planet: str,
+    sign_number: int,
+) -> dict:
+    """N-22/N-13 sign-level bindu interim qualification for one kakṣyā crossing.
+
+    Resolves the transiting graha's BAV bindu count in the transited sign from
+    the pre-fetched L1 rows. A resolvable count >= 1 qualifies the crossing at
+    the coarser sign grain; a count of 0 or an absent row leaves it
+    'unqualified' with a failure_detail in the WP2-honesty pinned shape.
+    """
+    graha_code = norm_graha(planet)
+    row_key = (graha_code, sign_number)
+    bindus = bindu_lookup.get(row_key)
+
+    if bindus is not None and bindus >= 1:
+        return {
+            "completeness_state": "qualified",
+            "qualification_grain": "sign",
+            "bindu_count": int(bindus),
+            "bindu_source": "chart_facts.ashtakavarga_bindu_sign",
+        }
+
+    if bindus is not None:
+        error_class = "bindu_zero"
+        message = (
+            f"{graha_code} has 0 bindus in sign {sign_number} "
+            "(ashtakavarga_bindu_sign)"
+        )
+    else:
+        error_class = "bindu_unresolvable"
+        message = (
+            f"no ashtakavarga_bindu_sign row resolves for "
+            f"{graha_code}-SIGN_{sign_number}"
+        )
+    return {
+        "completeness_state": "unqualified",
+        "failure_detail": {
+            "primitive": "kakshya_cell_crossing",
+            "error_class": error_class,
+            "message": message,
+            "row_identity": f"{context.chart_id}:{graha_code}-SIGN_{sign_number}",
+        },
+    }
+
+
 def _kakshya_cell_crossing_from_context(
     swe,
     context: ClassContext,
@@ -1155,6 +1231,19 @@ def _kakshya_cell_crossing_from_context(
     sign_start = P._sign_index(target.target_sign) * 30.0
     sentences: list[ConfigurationSentence] = []
 
+    # N-22/N-13 interim (flag kakshya_bindu_interim, default off): pre-resolve
+    # the transited sign's absolute rāśi number (1-12, Aries=1 — the L1
+    # ashtakavarga_bindu_sign subject convention) and the bindu lookup once
+    # per call. Empty lookup when the flag is off — nothing is stamped then.
+    bindu_lookup: dict[tuple[str, int], Optional[float]] = {}
+    sign_number = 0
+    if _KAKSHYA_BINDU_INTERIM_ENABLED:
+        sign_number = P._sign_index(target.target_sign) + 1
+        bindu_lookup = {
+            (r.graha, r.sign_number): r.bindus
+            for r in context.bindu_sign_rows
+        }
+
     # Build a fast lookup: planet -> list of KakshyaBoundaryRow
     by_planet: dict[str, list[KakshyaBoundaryRow]] = {}
     for row in context.kakshya_boundaries:
@@ -1178,6 +1267,11 @@ def _kakshya_cell_crossing_from_context(
         for i, b in enumerate(boundary_degs):
             events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
             for ev in events:
+                detail = {"boundary_deg": b, "kakshya_index": i, "source": source}
+                if _KAKSHYA_BINDU_INTERIM_ENABLED:
+                    detail.update(
+                        _bindu_interim_detail(context, bindu_lookup, planet, sign_number)
+                    )
                 sentences.append(ConfigurationSentence(
                     primitive="kakshya_cell_crossing",
                     chart_id=context.chart_id,
@@ -1191,7 +1285,7 @@ def _kakshya_cell_crossing_from_context(
                     temporal_shape="point",
                     classical_citation=citation,
                     uncited_extension=uncited,
-                    detail={"boundary_deg": b, "kakshya_index": i, "source": source},
+                    detail=detail,
                 ))
     return sentences
 
