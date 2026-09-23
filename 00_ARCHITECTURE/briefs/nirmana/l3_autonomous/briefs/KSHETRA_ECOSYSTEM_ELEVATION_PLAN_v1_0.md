@@ -1,10 +1,12 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.7"
-status: PROPOSED_FOR_NATIVE_RULING
+version: "1.9"
+status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.9 (2026-09-23) — Second independent review (Kimi K3 desktop app) on the closed packet; three corrections adopted after independent re-verification at source: ruling-8's \"no chunk anywhere mentions Rahu/Ketu vedha\" narrowed to the correct mechanism (PG348:C1 has a Sarvatobhadra-chakra Rahu/Ketu vedha-direction rule); two Venus rows (35, 44) identified as transpositions of already-correct rows (179, 33), not fresh geometry errors; ruling 7's reconciliation direction corrected to store-to-declarations, since routers/ephemeris.py and panchang_engine/planets.py independently re-verify as already MEAN-compliant. Full report: KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md."
+  - "1.8 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md), corroborated at the served corpus by the author, folded in: margin corrected 0.045°→0.049°; disposition (b) also touches service_probes.py's fail-closed validator and two served node_mode declarations; dhara_sweep.py line refs corrected to :212,227,243,248; the \"structurally impossible\" docstring reattributed to polarity separation, not route-scoping; the house-vedha citation claim corrected from \"all 41 verbatim, applied on re-citation\" to 32 applied / 3 deferred (Venus geometry contradictions, ids 35,44,45) / 6 unqualified (Rahu/Ketu, no source); the sarvatobhadra \"buildable from prose\" claim narrowed to the vedha-pair partitions. Status moves to APPROVED_FOR_EXECUTION."
   - "1.7 (2026-09-23) — CORRECTION of 1.6's stated reason. Measured across every mi_*.py: no L5 writer consumes both streams (mi_bhara declares ka_kshetra at :122-130; mi_adhilepa references ka_sangam at :305; none both), so the sentence one L5 loop (mi_bhara) scores both streams in §6a and §7.10 was false and is withdrawn — Sangam caught it, I measured it. Replaced by the adjudicator reason: the native adjudicates ambiguous in both streams, so divergent semantics would count the same human judgement differently by accident of asset. The reasoning is this packet's own; Sangam's D-2 rests on bias and D-3 on the Ethical Framework, and neither mentions mi_bhara. D-2/D-3 mirror unchanged."
   - "1.6 (2026-09-23) — Sangam CLOSED (3f62f3468). Its delegated decisions D-2 (ambiguous censored not scored, per-stratum 20% censoring ceiling) and D-3 (evaluation population = consenting persons with real outcome records only; synthetic charts evaluation_eligible=false) are mirrored into §6a and §7.10, both verified at source in the sheet §CLOSE. Reason: one L5 loop scores both streams. M-2 confirmed untouched, so §6a rulings 4 and 8 need no further reconciliation. No stage, guarantee or other decision changed."
   - "1.5 (2026-09-23) — CORPUS PREMISE RETRACTED. Three sessions and the Kimi review had read 00_ARCHITECTURE/SOURCE_DATA/classical_texts/ (a source-data directory: BPHS, Jaimini, KP, KP_Reader) as the admitted corpus. The corpus is the served table classical_text_chunks (15 texts with content) — Phaladīpikā (564 chunks, 17 vedha), Tājaka Nīlakaṇṭhī (290), Sārāvalī, Jātaka Pārijāta, Sarvārtha Cintāmaṇi and others ARE in it; KP is NOT. Consequences: ruling 8 rewritten (house-vedha is mis-cited, not unsourced → applied on L0 re-citation at page grain, F-23/G-8; laṭṭā and malefic scale verifiable now; sarvatobhadra unqualified; G-9 moot); the varṣa-layer 'no Tājika text' premise fell; every corpus-ABSENCE claim made from the directory is re-opened (§6a.2). Method rule adopted: absence only by count against classical_text_chunks naming the predicate; never from a directory, never from the search tool. Verified: two independent count(*) (Gochara, Sangam), the live MCP roster, a live search hit at phaladeepika:PG323:C1."
@@ -67,7 +69,7 @@ line below the guard). Each item, with the method that would have caught it:
 | **Kshetra re-derives vedha and moorti** and reads none of `ka_vedha_gochara`, `ka_moorti_nirnaya`, `ka_kota_chakra`, `ka_sudarshana`, `ka_tithi_pravesha`, `ka_av_transit_gating` (0 hits each) | filled the synergy lens from *declared* upstream only; never asked "which of this layer's assets *should* feed it" | the offensive synergy question, asked against the layer's full asset list |
 | **`av_kaksha_gate` and `latta` are `not_in_corpus`** (`stage1_symbolization.py:346-362`) | never read the covariate module's own coverage-gap functions | read every `CoverageGap` a producer declares |
 | **"Sandhi has no term" was wrong** — `sandhi_band` is covariate x9, derived from own S3 boundaries not L1 `sandhi_flag` | a claim about the *model* made from evidence about one *stage* | never generalise a stage-level grep to a model-level claim |
-| **Caught by the independent reviewer (Kimi K3), verified here:** G3 — the stored field is built through `evaluator.terms_at` (`dhara_sweep.py:43,55` → `stage4_field.py:866-873`, no route filter), so the brief's "route-scoped suppression" described a projection (`layer1.project_layer1`), not the stored field; "BPHS Ch.29" (corpus Ch.29 = Bhāva Padas; inherited from W0 §5:207); lattā already at L0 (`bg_phaladeepika_latta`) | read the docstring and the projection, never the writer's actual evaluation path; inherited a W0 citation verbatim; trusted a stale in-code comment | evaluate the *writer's* call chain end to end; re-read every inherited citation at the corpus; treat in-code "not found" comments as dated claims |
+| **Caught by the independent reviewer (Kimi K3), verified here:** G3 — the stored field is built through `evaluator.terms_at` (`dhara_sweep.py:212,227,243,248` → `stage4_field.py:866-873`, no route filter), so the brief's "route-scoped suppression" described a projection (`layer1.project_layer1`), not the stored field; "BPHS Ch.29" (corpus Ch.29 = Bhāva Padas; inherited from W0 §5:207); lattā already at L0 (`bg_phaladeepika_latta`) | read the docstring and the projection, never the writer's actual evaluation path; inherited a W0 citation verbatim; trusted a stale in-code comment | evaluate the *writer's* call chain end to end; re-read every inherited citation at the corpus; treat in-code "not found" comments as dated claims |
 | **Consequence for W0, routed to the strategic session:** FOUNDATION_SAFETY §5:207-209 names *"the existing source-qualified ordinary reference"* as the BPHS Ch.29 Sun-third-from-Moon transit with paired ninth-house vedha — i.e. the struck citation. Its 41 tests prove geometry and interval behaviour, not source qualification; the layer's transit-qualification suite currently has **no** corpus-verifiable vedha reference | inherited the W0 record's own qualification claim without re-reading its citation | a source-qualification claim is checked at the corpus, never at the record that asserts it |
 | *Refuted:* "provenance has no detector" | — | `S4.assert_provenance_reconciles` fires before write (`writer.py:954,1065`, `1e-9`); scope is window peaks |
 
@@ -90,13 +92,17 @@ route-scoped so an unrelated vighna cannot touch a class — more disciplined th
 order of classical weight:**
 
 0. **The suppression the stored field applies is not the suppression the contract documents (G3).**
-   `dhara_build_segments` evaluates via `evaluator.terms_at` (`dhara_sweep.py:43,55`), and
+   `dhara_build_segments` evaluates via `evaluator.terms_at` (`dhara_sweep.py:212,227,243,248`), and
    `FieldEvaluator.terms_at` hands **every** active obstruction to `hazard.evaluate`
    (`stage4_field.py:866-873`); the null builds replicates the same way (`dhara_null.py:159-163`).
    The SM-R-7 route filter lives only in `layer1.project_layer1` — a projection that never writes
-   `kala_field`. So field and null are **mutually consistent and chart-wide**; the *contract*
-   (route-scoped, "structurally impossible for an unrelated vighna to touch a class") is what the
-   brief repeated and what no stored row honours. Pūrṇa's G3, exactly as stated: a native ruling on
+   `kala_field` and has **no production caller** (independent review: only its own tests call it).
+   So field and null are **mutually consistent and chart-wide**; the *contract* (route-scoped:
+   `layer1.py:15-21,29-30`, `hazard.py:347-350`, `layer0.py:57-60`, `DHARA_ENGINE_SPEC_v1_0.md`) is
+   what the brief repeated and what no stored row honours. (Correction, independent review: the
+   model's own "structurally impossible" docstring, `stage4_field.py:561-565`, guarantees polarity
+   separation — an obstruction cannot leak into the additive `M_e` term — not route-scoping; that
+   phrase was misattributed to the route-scoping contract above.) Pūrṇa's G3, exactly as stated: a native ruling on
    which semantics governs, then a byte-equality test field ≡ null ≡ projection before any
    `null_p` is served. **Rank 0 — the subject of the asset's only significance test.**
 1. **Cancellation is unsigned.** A denied/opposing L2 relation becomes a *low positive* conductance
@@ -127,13 +133,24 @@ order of classical weight:**
    (`build_vedha_primitive` from `bg_transit_rules`; `build_moorti_primitive` from own ingress) while
    `ka_vedha_gochara` and `ka_moorti_nirnaya` sit beside it. `ka_vedha_gochara`'s house-vedha source
    is L0 `bg_transit_rules` (`rule_type='favourable' AND vedha_house IS NOT NULL`,
-   `services/ka_vedha_gochara/writer.py:100-101`): 41 rows, **39 cited to "BPHS Ch.29" (corpus Ch.29 is
-   Bhāva Padas), 2 to Phaladīpikā — while their content is verbatim Phaladīpikā Adh. XXVI, PG322–323,
-   which IS in the served corpus** (`[HIGH]` provenance, Sastri 1950). **Mis-cited, not unsourced.**
-   Sarvatobhadra from `bg_sarvatobhadra_grid` (empty — but the construction is in the corpus at `phaladeepika:PG346:C1`–PG352, so the grid is populatable, not unsourced), laṭṭā from `bg_phaladeepika_latta` (PG338–339,
-   verifiable), the malefic scale from `bg_vedha_malefic_scale` (PG353, verifiable). v1.4's "Phaladīpikā
-   Ch.26 is outside the admitted corpus" is withdrawn: Kshetra's vedha covariate is source-*miscited*
-   today, and becomes source-qualified on the L0 re-citation (Gochara F-23/G-8), not on any admission.
+   `services/ka_vedha_gochara/writer.py:100-101`): 41 rows, 39 cited to "BPHS Ch.29" (corpus Ch.29 is
+   Bhāva Padas), 2 to Phaladīpikā. **Independent review, row-by-row against the served Phaladīpikā
+   PG322:C1/PG323:C1, corroborated by the author at the corpus: 32 of the 41 match exactly** (Sun 4/4,
+   Moon 6/6, Mars 3/3, Saturn 3/3, Mercury 5/5 — the text's 8th-house Mercury vedha has no row at all —
+   Jupiter 5/5, Venus 6/9) **and become source-qualified on the L0 re-citation; 3 Venus rows (ids 35, 44,
+   45) contradict the text and are deferred pending an L0 geometry fix, not applied; 6 Rāhu/Ketu rows
+   (ids 187,188,189,196,197,198) have no counterpart in ślokas 3–8 (the house-vedha mechanism these
+   rows cite) and stay unqualified** — not because Rāhu/Ketu vedha is doctrinally absent (PG348:C1 gives an explicit
+   Rāhu/Ketu vedha-direction rule for the Sarvatobhadra chakra, a different mechanism — caught by a
+   second independent review, Kimi K3 desktop, `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`) but because this specific vedha-pair set is not in the
+   served corpus under any citation. "Mis-cited, not unsourced" is true of 35 of the 41 rows; 6 are
+   genuinely unsourced. Sarvatobhadra from `bg_sarvatobhadra_grid` (empty — the vedha-pair construction is
+   in the corpus at `phaladeepika:PG346:C1`–PG352 and is populatable today; the grid's vowel/consonant
+   letter cells are separately OCR-degraded and need the PG345 diagram), laṭṭā from
+   `bg_phaladeepika_latta` (PG338–339, verifiable), the malefic scale from `bg_vedha_malefic_scale`
+   (PG353, verifiable). v1.4's "Phaladīpikā Ch.26 is outside the admitted corpus" is withdrawn: 35 of
+   Kshetra's 41 vedha rows are source-*miscited*, not unsourced, and become source-qualified on the L0
+   re-citation (Gochara F-23/G-8); 6 are unsourced and remain unqualified.
    Moorti is also split across two term families: svarṇa/rajata/tāmra as modifier dummies, loha as
    `obstructive` suppression (`stage1_symbolization.py:229-230`).
 7. **λ⁰ is constant over life.** A multiplicative field can carry age *shape* through its operands;
@@ -306,7 +323,7 @@ is distinct from genuine absence: the `.se1` files here are dated **2026-09-22 1
 the W0 benchmark ran, so W0's *"host used Moshier fallback because no configured `.se1` file
 resolved"* was true when written and is **stale now**. Two different causes, one symptom.
 Incidental but worth recording: the Moshier↔Swiss gap for Rāhu at this epoch is **0.0046°**, not
-the ~0.1° budget the withdrawal assumed — an order of magnitude below the 0.045° pāda margin, so
+the ~0.1° budget the withdrawal assumed — an order of magnitude below the 0.049° pāda margin (corrected from 0.045° on independent re-derivation), so
 even the fallback numbers were pāda-determinative. 
 
 **Precise form of the declaration gap** (verified in-session): the **node frame** is declared
@@ -374,15 +391,23 @@ hard to cite precisely is a real cost, not absence.
 7. **Node frame (§6a):** rule the hub convention, and — if **mean** — which of (a)/(b)/(c)
    applies. This plan and two peer streams lean **(b)**, landed in the L0 service. The ruling is
    reading-visible: it moves the native's Rāhu between Rohiṇī pāda 3 (mean, **L1's served fact**)
-   and pāda 4 (true — **an author computation on Swiss ephemeris, 0.045° margin; L1 serves no
-   `RAH_TRUE`, so if the ruling goes true L1 must serve it and these documents cease to be its
-   source**, §6a.1(i)).
+   and pāda 4 (true — **an author computation on Swiss ephemeris, 0.049° margin (corrected from 0.045°,
+   independent review); L1 serves no `RAH_TRUE`, so if the ruling goes true L1 must serve it and these documents
+   cease to be its source**, §6a.1(i)). Disposition (b) corrects the *store* — `ephemeris_daily`, migration 624, and `service_probes.py:339-340`'s
+   fail-closed validator — to match, not the reverse: `routers/ephemeris.py:82` and `panchang_engine/planets.py`'s
+   assertion-guarded Phase-4B MEAN_NODE mandate independently re-verify as already correct and should not be
+   touched (a second independent review, Kimi K3 desktop, sharpened this from the first review's more general "reconcile
+   the two served declarations" — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`).
 8. **Shared vedha/moorti source (§6a):** ratify `ka_vedha_gochara` and `ka_moorti_nirnaya` as the
    layer's single producers; Kshetra's internal derivations become one-generation cross-checks,
    then retire under contract §5. Ratify the uniform admission rule (F06 `applied` iff
-   `corpus_verifiable` and geometry passes) — whose outcome today is **`applied` for house-vedha on
-   the L0 re-citation at page grain (F-23/G-8) and for laṭṭā and the malefic scale; `unqualified` for
-   sarvatobhadra**. G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
+   `corpus_verifiable` and geometry passes) — whose outcome today, **corrected by independent review**,
+   is: **`applied` for 32 of 41 house-vedha rows on the L0 re-citation at page grain (F-23/G-8);
+   `deferred` for 3 Venus rows (ids 35, 44, 45 — two of which, 35 and 44, are transpositions of already-correct
+   rows 179 and 33, i.e. dedup, not fresh geometry) pending an L0 fix; `unqualified` for 6
+   Rāhu/Ketu rows (ids 187,188,189,196,197,198), genuinely unsourced for this mechanism; `applied` for laṭṭā and the
+   malefic scale; `unqualified` for sarvatobhadra** (buildable from prose for its vedha-pair cells,
+   not its letter cells). G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
 9. **G3 — which suppression semantics is the contract:** route-scoped SM-R-7 Option B (the
    documented contract; the reviewer's and this plan's recommendation) or chart-wide (the live
    stored field)? And is the field ≡ null ≡ projection byte-equality test a precondition for serving

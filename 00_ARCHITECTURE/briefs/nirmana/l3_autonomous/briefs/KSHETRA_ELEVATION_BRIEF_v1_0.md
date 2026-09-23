@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.6"
-status: PROPOSED_FOR_NATIVE_RULING
-approval_record: "<none yet>"
+version: "4.7"
+status: APPROVED_FOR_EXECUTION  # CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; PR #2722 merged 54766b5da
+approval_record: "KSHETRA_RULING_SHEET_v1_0.md v1.3 (author, under native written delegation 2026-09-23, \"Go ahead and do it.\") + KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md (rulings 7/8/9)"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 asset_or_interface_ids: ["ka_kshetra", "L3-U11 (kala_field retrieval capability)", "L3-U01 (S2 signed-structure seam)"]
@@ -17,10 +17,11 @@ accepted_upstream_contract: >
   Physical L1/L2 generation heads ABSENT in the connected environment.
 implementation_owner: "Execution — Data Plane task (codex/madhav-data-plane-execution), the sole execution destination per Strategy §8 — assigned 2026-09-23 on the native's delegation ('do the rest on my behalf'); overridable by native record"
 independent_review_owner: >
-  PARTIAL — madhav-fc (L3 strategic session) for the parts it did not shape; it declines to certify
-  rulings 7/8/9 (node; vedha admission/G-9; G3), whose evidence it co-produced. Reviewer for 7/8/9:
-  NATIVE TO NAME. Assigned 2026-09-23 on the native's delegation; overridable by native record. See
-  KSHETRA_RULING_SHEET_v1_0.md owners line.
+  madhav-fc (L3 strategic session) for the parts it did not shape; declined to certify rulings 7/8/9
+  (node; vedha admission/G-9; G3), whose evidence it co-produced. Reviewer for 7/8/9, discharged
+  2026-09-23: a fresh review agent with no prior context, opened by the author on the native's delegation,
+  re-deriving every claim at source per Gochara's condition. Report: KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md.
+  Ruling 8's finding independently corroborated by the author at the served corpus before adoption.
 release_authority: "NONE"
 may_touch: >
   services/ka_kshetra/{hazard,layer1,writer,stage2_promise,stage3_clocks,uncertainty}.py;
@@ -39,6 +40,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.7 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 discharged (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md); the house-vedha citation claim corrected (32/41 applied, 3 deferred, 6 unqualified — see plan v1.8). status -> APPROVED_FOR_EXECUTION, approval_record filled."
   - "4.6 (2026-09-23) — §4.1 ablation gains the outcome semantics mirrored from Sangam CLOSE D-2/D-3 (3f62f3468, verified at source; plan v1.6 §6a/§7.10; ruling sheet v1.1 row 10). No stage, contract or ruling otherwise changed."
   - "4.5 (2026-09-23) — corpus premise retracted (plan v1.5 §6a.2): the corpus is the served classical_text_chunks table, not the SOURCE_DATA directory; Phaladīpikā is in it. ka_vedha_gochara\u0027s house-vedha rows are mis-cited (39/41 to \"BPHS Ch.29\"), not unsourced — applied on L0 re-citation at page grain."
   - "4.4 (2026-09-23) — independent_review_owner amended: madhav-fc declared a conflict on rulings 7/8/9 (co-produced evidence) and accepts only the non-conflicted scope; the 7/8/9 reviewer is left for the native to name. Kimi files given frontmatter; interior rules in the review rendered as *** ."
@@ -167,7 +169,7 @@ SAVEPOINT** (`writer.py:1754-1770`; correct pattern at `ka_sangam.py:997,1028,10
 `kala_moorti_nirnaya`, `kala_kota_chakra`, `kala_sudarshana`, `kala_tithi_pravesha`,
 `kala_av_transit_gating`. It **re-derives** vedha (`build_vedha_primitive`, from `bg_transit_rules`)
 and moorti (`build_moorti_primitive`, from its own ingress kinematics) internally, while the
-`ka_vedha_gochara` (admitted chain: **L0 `bg_transit_rules` (`rule_type='favourable' AND vedha_house IS NOT NULL`, `services/ka_vedha_gochara/writer.py:100-101`), co-cited Phaladīpikā Ch.26 — the "BPHS Ch.29" half of that co-citation is a miscitation in the L0 data and in `logic.py:13,105` (Gochara F-23/G-8, L0 owner strikes it); sarvatobhadra from `bg_sarvatobhadra_grid`, lattā from `bg_phaladeepika_latta`, the malefic scale from `bg_vedha_malefic_scale` (Phaladīpikā PG353, ADJUDICATION-11). There is **no `bg_phaladeepika_vedha` relation** — that is a writer *filename*; earlier versions had named it as a table** — **not** "BPHS Ch.29", which in the corpus is Bhāva Padas; the phrase is inherited from FOUNDATION_SAFETY §5:207 and the L0 headers; 41 tests) and `ka_moorti_nirnaya` sit unread beside
+`ka_vedha_gochara` (admitted chain: **L0 `bg_transit_rules` (`rule_type='favourable' AND vedha_house IS NOT NULL`, `services/ka_vedha_gochara/writer.py:100-101`), co-cited Phaladīpikā Ch.26 — the "BPHS Ch.29" half of that co-citation is a miscitation in the L0 data and in `logic.py:13,105` (Gochara F-23/G-8, L0 owner strikes it); sarvatobhadra from `bg_sarvatobhadra_grid`, lattā from `bg_phaladeepika_latta`, the malefic scale from `bg_vedha_malefic_scale` (Phaladīpikā PG353, ADJUDICATION-11). There is **no `bg_phaladeepika_vedha` relation** — that is a writer *filename*; earlier versions had named it as a table** — **not** "BPHS Ch.29", which in the corpus is Bhāva Padas; the phrase is inherited from FOUNDATION_SAFETY §5:207 and the L0 headers; 41 tests — of which independent review finds 32 verified verbatim and re-cited, 3 Venus rows geometry-contradicted and deferred, and 6 Rāhu/Ketu rows genuinely unsourced; see `KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md`) and `ka_moorti_nirnaya` sit unread beside
 it; `av_kaksha_gate` and `latta` are honest `not_in_corpus` gaps (`stage1_symbolization.py:346-362`).
 **Two vedha verdicts and two moorti verdicts can exist in one layer for one instant** — a §N.5
 authority split inside L3 and a VA §10.2 duplicate-evidence hazard the moment both reach synthesis.
