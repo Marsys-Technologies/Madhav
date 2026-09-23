@@ -2,7 +2,9 @@
 artifact: GOCHARA_RULING_SHEET
 canonical_id: GOCHARA_RULING_SHEET
 version: "2.0"
-status: PROPOSED_FOR_NATIVE_AUTHORIZATION
+status: NATIVE_RATIFIED
+ratified_on: 2026-09-23
+ratified_by: "Native (Abhisek Mohanty), by the statement recorded in §0 below ('your decisions was the first point which we have already closed'), following the delegated instruction of the same day. Any item the native later names as excepted reverts to PROPOSED for that item only."
 date: 2026-09-23
 supersedes: "GOCHARA_RULING_SHEET_v1_0.md in scope only — v1.0's rulings (D-1..D-3, R1–R10, N-1..N-14, and the DIRECTION of M-1..M-8) stand unchanged and are not restated; v2.0 rules what v1.0 left evidence-gated, plus the items the WP0–WP7 campaign surfaced"
 basis: "GOCHARA_DECISION_RECOMMENDATIONS_v1_0.md (my recommendations) · KIMI_K3_REVIEW_GOCHARA_DECISIONS_v1_0.md (independent review, max effort) · KIMI_RECONCILIATION_GOCHARA_DECISIONS_v1_0.md (every finding verified and disposed) · the native's instruction of 2026-09-23: 'recommend responses for all the decisions that are pending on me … get it reviewed … reconcile, and you have the final call. Give it to me, and I'll authorize it.'"
@@ -12,7 +14,13 @@ evidence_labels: "[X] measured in this campaign · [L] count/read against the se
 
 # Gochara — ruling sheet v2.0 (proposed; awaiting the native's one-line authorization)
 
-Typography: the native's words in **block quotes**; everything else is the drafting session's proposed text.
+Typography: the native's words in **block quotes**; everything else is the drafting session's text.
+
+## §0 Ratification record
+
+> For remainder of the activities that you had given me, the complete list The five points that you had given me, out of which your decisions was the first point which we have already closed.
+
+Recorded 2026-09-23 as the native's closure of this sheet (the "one line" §how_to_authorize asked for). Status flipped PROPOSED_FOR_NATIVE_AUTHORIZATION → NATIVE_RATIFIED as written. Executed by `GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md`; production tranches (A-2, A-3) still require the explicit start authorization that brief's §0 flags carry.
 
 > With native authority… recommend responses for all the decisions that are pending on me and then take your responses with full context to Kimi K3 effort max and get it reviewed, receive the feedback, reconcile, and you have the final call. Give it to me, and I'll authorize it.
 
