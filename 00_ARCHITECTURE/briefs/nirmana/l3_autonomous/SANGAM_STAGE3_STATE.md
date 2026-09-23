@@ -153,7 +153,7 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 
 ## Last commit
 
-`a55e1b941` — "sangam stage3: Phase 2b — R-1 target provenance, R-3(b) fail-loud lagna, R-4 C4/C9 withdrawal".
+`6109ac3f3` — "sangam stage3: Phase 3 E2 — verdict-based ashtakavarga (BAV/SAV)".
 
 ## Evidence artifacts this phase
 
