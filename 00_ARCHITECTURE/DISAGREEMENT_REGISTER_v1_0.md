@@ -1849,6 +1849,33 @@ finding_entry:
     If N-14 rules to DROP it, the cost is a gochara_v3 rebuild, not a record trim, and that cost
     belongs in the ruling rather than being discovered after it. Either way the ruling should be
     made on re-checked corpus grounds, not on the grounds as currently stated.
+  amendment_2026_09_23_predicate_level_recheck:
+    logged_by: "Saṅgam stage-3 executor (sangam/stage3 session, 2026-09-23), direct table read"
+    note: >
+      The stronger check this entry demanded has now been RUN. The exact SQL staged in
+      SANGAM_RULING_SHEET_v1_0.md §Corrections item 4 (predicate-level, NO aspect term conjoined,
+      text_id IN ('phaladeepika','saravali')) was executed against classical_text_chunks via the
+      read-only amjis_app path (127.0.0.1:5434 Cloud SQL proxy; the 5433 local endpoint remains
+      down). count(*) = 100 chunks (phaladeepika 89, saravali 11). Every one of the 100 chunks was
+      read for the predicate. FINDING: NO chunk in either text grants Rāhu or Ketu graha-dṛṣṭi —
+      no 5th/9th (Jupiter-like) grant, no special-aspect grant of any kind. Rāhu/Ketu appear as
+      occupants, dāsa lords, transit agents (Phaladīpikā Adh. XXVI 12th-house transit table,
+      laṭṭā, SBC vedha-direction), and as targets of OTHER planets' aspects in generic
+      "aspected by malefics" language — never as aspect-grantors. The w30 docstring's attribution
+      of the 5/7/9 nodal aspect to Phaladīpikā and Sārāvalī is NOT supported at the page level of
+      either text on this read. This discharges the "not read by anyone" objection as far as the
+      table permits: the check was run exactly as staged, all rows read. Honest limits: (i) the
+      read is of the OCR'd translations as ingested (cleaned_translation_text/content_en,
+      first 400 chars per chunk); a grant in the Devanagari content_sanskrit column or beyond the
+      400-char window would not be caught by this query as written — the staged SQL itself
+      truncates; (ii) "not found" remains a table-level finding, not a proof of absence from the
+      tradition. GRADING of the attributed absence ground: upgraded from ATTRIBUTED to CONFIRMED
+      (predicate-level, both named texts, read-only, this session's own query), subject to limits
+      (i)-(ii). D-6's corpus ground now stands on: refuted BPHS Ch.26 citation (confirmed),
+      w30 docstring concession (confirmed), predicate-level read of both texts w30 names
+      (confirmed this amendment), Kimi K3 [U] grade (independent). N-14 remains OPEN — this
+      amendment supplies the re-checked corpus grounds the resolution_shape asked for; the ruling
+      belongs to the Gochara stream's native.
   consumed_by: [Gochara stream N-14; Saṅgam SANGAM_RULING_SHEET_v1_0.md §CLOSE D-6;
     KALA_ELEVATION_BLUEPRINT_v1_0.md §11.22; any stage-3 execution session touching gochara_v3]
 ```

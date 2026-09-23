@@ -1,0 +1,67 @@
+---
+artifact: SANGAM_STAGE3_STATE
+canonical_id: SANGAM_STAGE3_STATE
+version: "1.0"
+status: IN_PROGRESS
+layer: L3
+asset: ka_sangam
+campaign_id: sangam-stage3
+branch: sangam/stage3 (off origin/l3/kala-elevation-readiness)
+maintained_by: "Saṅgam stage-3 executor (Kimi Code session)"
+resumes_from: "Re-paste SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md into a fresh session in /Users/Dev/madhav-l3/readiness"
+---
+
+# Saṅgam stage-3 — durable state
+
+## Phase status
+
+| Phase | Status | Exit evidence |
+|---|---|---|
+| 0 — Entry gate | **PASSED 2026-09-23** | (a) packet read in order; (b) D-8 discharged — Astra third review `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` = PROCEED_WITH_AMENDMENTS, RRV-01…09 dispositioned in plan §10 + brief changelog + inline [S3-E] amendments; (c) evidence suite re-run `OUTPUT_2026-09-23T050513.txt` SUITE-PASS 13/13 + 13/13 NEG (4 scripts spot-verified by hand, exit 1 under NEG=1); reviewer independently re-ran + mutation-tested (`OUTPUT_2026-09-23T051310.txt`); (d) DB reachable via Cloud SQL proxy **127.0.0.1:5434** (5433 down; `source /Users/Dev/madhav-l3/dbenv.sh`); D-6 staged SQL executed, 100 chunks read, no nodal aspect grant — recorded in DIS.031 `amendment_2026_09_23_predicate_level_recheck` (ground upgraded ATTRIBUTED→CONFIRMED, OCR/400-char limits stated). |
+| 1 — R-5 harness | NOT STARTED | — |
+| 2 — R-1…R-4, R-6 | NOT STARTED | — |
+| 3 — E2, E5 | NOT STARTED | — |
+| 4 — E4 + annual-Tājika gate | NOT STARTED | — |
+| 5 — E6 (E3 gated on N-7) | NOT STARTED | — |
+
+## Binding pins added at the gate (D-8 dispositions — plan §10)
+
+- RRV-03: within-class ordering key per `comparability_class` = `activity DESC, contact instant ASC`; valence/applicability/availability carried as data, never pooled; SQL-level partitioning enforcement.
+- RRV-05/06: taranga unit = occupied-day union per month per (contract × valence-sign), month boundary = chart birth tz; aborted approaches = labelled children. E6 numerator inclusion of aborted approaches NOT ruled — recorded open, native to settle before E6 numerator definition; until then excluded, convention stated on output.
+- RRV-08: static daśā prior → `availability.dasha = unavailable`, zero manufactured support.
+- RRV-01: E2 receipt computed stage-3-side via L1 chart_facts join (fabricated_zero vs measured_zero); L1-producer column amendment routed as L1-owner packet (follow-up, not blocker).
+- RRV-02: step-3 scanner-dependent detector SPECs gate on N-7 like E1/E3; scanner-independent scope proceeds.
+- RRV-09: §6.3 canonical serialization with field-exclusion list; schema-faithful disposable DB; dependent map += mimamsa_convergence_adjustment, mi_adhilepa.
+- RRV-04: consumer set += mi_adhilepa, ph_nimitta (+UNRESOLVED_USE "disclose or bind" first pass at Phase 2 exit).
+- RRV-13/14/15/16: carried — RRV-13 pins at Phase 5; RRV-14 authored with the event-consumption interface; RRV-15 permanent review discipline; RRV-16 inline at §0R M-1.
+
+## Open blockers (with unblock conditions)
+
+| # | Blocker | Unblock condition | Owner |
+|---|---|---|---|
+| B-1 | N-7 unruled → E1/E3 gated; R-3/R-4 scanner-dependent SPECs gated | Native rules N-7 on the Gochara brief, or names the Path-A `transit_search` amendment owner | Native / Gochara stream |
+| B-2 | Path-A owner unnamed (K3 Q9#1) | Native names the owner | Native |
+| B-3 | Aborted-approach E6 numerator question unruled | Native answers (Kimi leans yes as `perfected: false`) | Native |
+| B-4 | E2 producer-column receipt at ga_strength_writer | L1-owner bounded packet (receipt columns only) | L1 owner |
+| B-5 | ephemeris_daily node-frame undeclared contract (§11.1) | L0 owner repair (outside this campaign's scope) | L0 owner |
+
+## Fences in force (from the prompt §3/§6 — restated so no session re-derives them)
+
+Frozen orchestrator · delete-then-insert per chart × natural key · cascade proof before first destructive rebuild (migration 363 phala_anchors CASCADE; 403 kala_* cascade) · no fabricated values · L1 authority (§N.5) · no post-apply migration edits · floors from achieved counts · E1/E3 (and scanner-dependent R-3/R-4 SPECs) gated on N-7 · D30 falsifier-first (contract pinned, MANIFEST entry with NEG control passing, BEFORE first D30 row) · no Kshetra/Gochara/transit_search edits, never remove w30_modifier · never trigger ka_gochara_v3_century_materialize.
+
+## Decisions taken (executor-scope, this campaign)
+
+- D-8 disposition mechanism: in-place [S3-E] amendments + plan §10 + brief changelog correction, matching the packet's own [AMENDED …] idiom. Rationale: review demanded disposition "in the plan/brief text"; separate artifact would not satisfy the gate condition.
+- DB path: 5434 proxy is the same amjis database the 5433 MCP config points at; recording 5433 outage noted, 5434 used read-only (PGOPTIONS read-only in dbenv.sh).
+- Ruling-vs-plan discrepancies RRV-05/06: ruling sheet resolution table is the binding document; plan text amended, discrepancy recorded (not smoothed, not re-opened — §2 hierarchy).
+
+## Last commit
+
+(pending — Phase 0 commit made immediately after this file and EVENTS.jsonl are written)
+
+## Evidence artifacts this phase
+
+- `evidence_sangam/OUTPUT_2026-09-23T050513.txt` (executor run) · `OUTPUT_2026-09-23T051310.txt` (reviewer run)
+- `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0.md` (D-8 gate output)
+- DIS.031 `amendment_2026_09_23_predicate_level_recheck` (D-6 corpus ground)
+- /tmp/d6_node_drishti_recheck.txt (raw SQL output, 100 rows; regenerable from the staged SQL)

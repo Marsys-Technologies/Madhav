@@ -497,6 +497,12 @@ so the reviewer knows the claim was checked, not assumed.
 ## Changelog
 
 - **1.5** (2026-09-23) — **CLOSED.** Native confirmed M-1…M-7 as delivered and delegated the residual open items; author decisions D-1…D-8 recorded on the ruling sheet §CLOSE with reasoning and kept typographically separate from the native's words. E6 gate numbers set (30 per stratum / 100 pooled); D30 held as labelled non-scoring secondary; mean convention governs the pāda reading (Rohiṇī pāda 3); no-node-dṛṣṭi is instrument-level with Gochara owning execution; third Astra review becomes a stage-3 entry gate. No open question remains on the packet.
+  **[CORRECTED 2026-09-23 — RRV-07, Astra v1.0 third review]** this entry's gate numbers are the
+  pre-K2-01 figures. The amended D-1 binding numbers (plan §0R M-6 / ruling sheet §CLOSE D-1) are
+  **n=35 per stratum, critical ≥12, α=0.0344, power 0.805** and **n=100 instrument-level, critical
+  ≥28, α=0.0342, power 0.833** — the 30/crit≥10 figure ran at α=0.0611, not 0.05 (K2-01), and was
+  re-derived before this brief closed. This line corrects the record in place; the failure class
+  K2-01 caught, reappearing in the changelog of the document that recorded the fix.
 
 - **1.4** (2026-09-23) — Native rulings M-1…M-7 recorded on the sheet and applied; status → APPROVED_FOR_EXECUTION_STAGE_3 with conditions (M-6 minimum n open; E1/E3 gated on the Gochara N-7 ruling; D30-for-DOSHA held; 6/8/12 inversion does not ship; legacy scan one generation; no node dṛṣṭi). No content change beyond frontmatter and this entry.
 
