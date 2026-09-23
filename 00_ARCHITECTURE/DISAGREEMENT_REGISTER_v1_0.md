@@ -1764,7 +1764,7 @@ finding_entry:
 
 ---
 
-## DIS.031 (L3 Kāla campaign ref: D-6 / N-14) — Node dṛṣṭi: Saṅgam binds it off, the Gochara family applies it live — OPEN
+## DIS.031 (L3 Kāla campaign ref: D-6 / N-14) — Node dṛṣṭi: Saṅgam binds it off, the Gochara family applies it live — RESOLVED
 
 *Referred to this session by the Saṅgam stream (madhav-d9) on a Kimi K3 adversarial-review
 condition (K2-09). That session declined to edit a shared governance artifact at the end of its own
@@ -1842,7 +1842,43 @@ finding_entry:
     module's own docstring names and which nobody has read. A term-search for "nodal aspect" that
     returns nothing is not evidence; the retrieval layer demonstrably ranked the load-bearing
     Adhyāya XXVI chunk 7th of 12 on a vedha query the same day.
-  status: OPEN — awaiting the Gochara stream's native ruling on N-14
+  status: RESOLVED
+  resolved_on: 2026-09-23
+  resolved_by_session: "L3 Kāla strategic session (madhav-fc), on the native's N-14 ruling"
+  resolution: >
+    RESOLVED 2026-09-23 — N-14 ruled by the native and verified at source by the recording session
+    before closing this entry: GOCHARA_RULING_SHEET_v1_0.md on origin/l3/gochara-elevation at
+    50b5e1822, `status: RULED`, `ruled_by: Native (Abhisek Mohanty), by explicit delegated
+    instruction to session madhav-e6, recorded verbatim in §0`. N-14 EXTENDS "no graha-dṛṣṭi for
+    Rāhu/Ketu" to the Gochara family: `drishti_contact` casts no dṛṣṭi from the nodes (not the 7th
+    either, for consistency with the instrument-wide statement); `w30_nodal_drishti` leaves the λ
+    product; the nodes REMAIN full gochara agents and targets. Three conditions adopted —
+    same-generation regeneration inside a new candidate rather than a patch over live rows (which
+    engine.py:132 already demands), the absence declared as `completeness_state`, and the removed
+    term kept one generation as a labelled non-scoring annotation so every dependent claim has an
+    authorized successor. The λ-invalidation cost this entry identified is named in the ruling and
+    "accepted knowingly". The instrument now holds ONE doctrine on node dṛṣṭi across both streams,
+    by the native's ruling on both sheets — the divergence is resolved, not merely recorded.
+  resolution_caveats_recorded_honestly:
+    - "GROUND STRENGTH AT THE TIME OF RULING. The ruling's cited grounds include F-29, 'practice
+       unfound at table level across 15 texts'. That is the same ground this entry graded
+       ATTRIBUTED, and which its own author downgraded HOURS LATER to 'not found by a conjunctive
+       regex' (see the amendment above). So the native ruled partly on a ground subsequently
+       weakened by the session that produced it. This is recorded, not hidden. It is mitigated —
+       not erased — by direction: the ruling declines to apply a rule whose support is uncertain,
+       which is the conservative side of an uncertain ground, and the other three grounds (the
+       refuted Ch.26 citation, w30's own docstring concession, the independent reviewer's [U])
+       are unaffected."
+    - "ONE CLAIM NOT ADOPTED. The referring session reported that the corpus ground had been
+       independently discharged by a stage-3 executor (100 chunks, predicate-level, no grant) and
+       that this was 'recorded in DIS.031's own amendment'. IT IS NOT. The recording session wrote
+       that amendment and it contains no such record, and `git log` confirms no edit to this file
+       between the amendment (68b0fd09d) and this resolution. The 100-chunk check may well have
+       been run; the recording session could not verify it (direct DB access still refusing at
+       127.0.0.1:5433) and does not restate it as fact. The grounds are therefore NOT all upgraded
+       to CONFIRMED, contrary to the suggested closing line. The entry closes because the
+       DIVERGENCE is resolved by a verified native ruling, not because every ground was discharged."
+  status_note: "Closed on the ruling, with ground strength recorded as it actually stood."
   resolution_shape: >
     If N-14 rules to KEEP nodal dṛṣṭi, the instrument holds a NATIVE-RULED divergence between two
     streams rather than an accidental one, and that is what this register exists to make visible.
