@@ -101,6 +101,7 @@ from .threshold import ThresholdConfig, compute_threshold_config, is_above_thres
 from services.gochara_v3.mechanisms import w23_tara_bala as _w23  # W2.3 tara bala
 from services.gochara_v3.mechanisms import w30_nodal_drishti as _w30  # W3.0 nodal drishti
 from services.gochara_kernel import ids as _kernel_ids
+from services.gochara_kernel import coverage as _kernel_coverage
 
 # WP5 H-4/H-5/H-6 identity adapter — CORRECTED during the WP0-WP7 branch
 # reconciliation (2026-09-23): the version of this wiring first written
@@ -228,6 +229,31 @@ _KAKSHYA_BINDU_INTERIM_ENABLED: bool = False
 # ---------------------------------------------------------------------------
 _ACTIVITY_SHAPE_DEFAULT: str = "legacy_box"
 _ACTIVITY_SHAPES: tuple[str, ...] = ("legacy_box", "linear_no_box")
+
+# ---------------------------------------------------------------------------
+# M-3 (L3 §4.8): Moon channel split. Recorded flag `moon_channel` (input
+# generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR FLAGS"),
+# default "blended".
+#
+# moon_channel ∈ {"blended", "separate"}:
+#   blended   — legacy: Moon-body sentences enter the century λ's activity
+#               term like every other body's.
+#   separate  — the Moon is EXCLUDED from the century λ's activity term;
+#               Moon-scale classes are served on demand by
+#               find_episodes(..., moon=True), which writes a
+#               'moon_on_demand' coverage partition for its searched
+#               interval (even a zero-answer search — L3-Q08). Tārā-bala
+#               (W2.3) and mūrti qualifiers are INSTANT qualifiers on the
+#               whole window and still enter slow-body windows — the split
+#               removes Moon CONTACTS from activity, not the Moon-based
+#               qualifier terms. Sade-Sati testimony is NOT in the Moon
+#               channel (it is a whole-chart phase system; under N-15 it
+#               becomes window testimony, never a Moon-contact signal).
+# The Moon channel's own doctrine content stays [U] — no citation is
+# invented here; the split is an engineering partition, not a textual claim.
+# ---------------------------------------------------------------------------
+_MOON_CHANNEL_DEFAULT: str = "blended"
+_MOON_CHANNELS: tuple[str, ...] = ("blended", "separate")
 
 # ---------------------------------------------------------------------------
 # Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
@@ -545,6 +571,7 @@ def evaluate_lambda_vector(
     v1_parity_mode: bool = False,
     activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
     orb_max_deg: float | None = None,
+    moon_channel: str = _MOON_CHANNEL_DEFAULT,
 ) -> list[IntensityResult]:
     """Evaluate lambda_e for ALL JDs simultaneously. ZERO per-JD DB access.
 
@@ -582,6 +609,7 @@ def evaluate_lambda_vector(
             v1_parity_mode=v1_parity_mode,
             activity_shape=activity_shape,
             orb_max_deg=orb_max_deg,
+            moon_channel=moon_channel,
         )
         results.append(result)
 
@@ -602,6 +630,7 @@ def _evaluate_single_from_context(
     v1_parity_mode: bool = False,
     activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
     orb_max_deg: float | None = None,
+    moon_channel: str = _MOON_CHANNEL_DEFAULT,
 ) -> IntensityResult:
     """Compute ONE lambda value using ONLY the pre-fetched ClassContext.
 
@@ -612,6 +641,10 @@ def _evaluate_single_from_context(
     if activity_shape not in _ACTIVITY_SHAPES:
         raise ValueError(
             f"activity_shape must be one of {_ACTIVITY_SHAPES}, got {activity_shape!r}"
+        )
+    if moon_channel not in _MOON_CHANNELS:
+        raise ValueError(
+            f"moon_channel must be one of {_MOON_CHANNELS}, got {moon_channel!r}"
         )
     # 1. PROMISE — already computed in context (time-invariant)
     promise = context.promise
@@ -713,6 +746,7 @@ def _evaluate_single_from_context(
         activity_shape=activity_shape,
         orb_max_deg=orb_max_deg,
         instantaneous_orbs=instantaneous_orbs,
+        moon_channel=moon_channel,
     )
 
     # 4b. W1.2 — Signed channels: separate supportive (weight > 0) and
@@ -997,6 +1031,7 @@ def _compute_activity_v3(
     activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
     orb_max_deg: float | None = None,
     instantaneous_orbs: dict[int, float] | None = None,
+    moon_channel: str = _MOON_CHANNEL_DEFAULT,
 ) -> tuple[float, dict, dict]:
     """Compute the W1.1 activity term in [0,1].
 
@@ -1037,6 +1072,14 @@ def _compute_activity_v3(
             continue
         if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
             continue  # cancelled vedha pair: not an activity signal
+        if (
+            moon_channel == "separate"
+            and norm_graha(s.transit_planet) == "MOON"
+        ):
+            # M-3 (flag moon_channel): Moon contacts are excluded from the
+            # century λ's activity term; they are served on demand by
+            # find_episodes(..., moon=True). Never fires with the flag off.
+            continue
         if (
             s.primitive == "kakshya_cell_crossing"
             and s.detail.get("completeness_state") == "unqualified"
@@ -1137,6 +1180,14 @@ def _compute_activity_v3(
             else _ACTIVITY_MAX_ORB_DEG
         )
         detail["orb_source"] = "wp1_contracts_s7_orb_source"
+    if moon_channel != _MOON_CHANNEL_DEFAULT:
+        # M-3 channel provenance (added only under a non-default flag).
+        detail["moon_channel"] = moon_channel
+        detail["moon_sentences_excluded"] = sum(
+            1 for s in sentences
+            if s.primitive in _ACTIVITY_PRIMITIVES
+            and norm_graha(s.transit_planet) == "MOON"
+        )
 
     return activity, detail, term_breakdown
 
@@ -1546,6 +1597,56 @@ def _gather_sentences_no_db(
     return deduped
 
 
+def find_episodes(
+    swe,
+    context: ClassContext,
+    targets: list[ResonanceTarget],
+    start_jd: float,
+    end_jd: float,
+    *,
+    moon: bool = False,
+    generation: str = "on_demand",
+) -> dict:
+    """M-3 (flag moon_channel='separate', L3 §4.8): on-demand episode search.
+
+    Gathers configuration sentences over [start_jd, end_jd] through the
+    same ephemeris-only path the century λ uses. With moon=True the result
+    is restricted to Moon-body contacts — the channel the century λ no
+    longer carries when the split is active — and the search writes a
+    'moon_on_demand' coverage partition for the interval it ACTUALLY
+    searched, including a zero-answer search (L3-Q08; kernel coverage.py:
+    Moon on demand is first-class).
+
+    The payload is contact episodes + coverage only: Sade-Sati testimony
+    is NOT in the Moon channel, and the channel's doctrine content stays
+    [U] (no citation is invented here).
+    """
+    sentences = _gather_sentences_no_db(swe, context, targets, start_jd, end_jd)
+    if moon:
+        episodes = [
+            s for s in sentences if norm_graha(s.transit_planet) == "MOON"
+        ]
+        coverage = _kernel_coverage.build_coverage(
+            chart_id=context.chart_id,
+            generation=generation,
+            partition_kind="moon_on_demand",
+            partition_key=f"moon:interval:{start_jd}/{end_jd}",
+            requested_horizon=(float(start_jd), float(end_jd)),
+            completed_horizon=(float(start_jd), float(end_jd)),
+            resolution_arcsec=1.0,
+            relations_searched=tuple(sorted({s.primitive for s in episodes})),
+            resolution_states={"resolved": len(targets)},
+            convention_id=_WP5_PROVISIONAL_CONVENTION_ID,
+            ephemeris_backend={"source": "swiss_ephemeris", "path": "on_demand"},
+        )
+        return {
+            "episodes": episodes,
+            "coverage": coverage,
+            "moon_channel": "separate",
+        }
+    return {"episodes": sentences, "coverage": None}
+
+
 def _compute_permission_from_context(
     swe,
     context: ClassContext,
@@ -1939,6 +2040,7 @@ def evaluate_lambda_vector_with_threshold(
 __all__ = [
     "evaluate_lambda_vector",
     "evaluate_lambda_vector_with_threshold",
+    "find_episodes",
     "_compute_activity_v3",
     "_compute_signed_channels_v3",
     "_resolve_valence_v3",

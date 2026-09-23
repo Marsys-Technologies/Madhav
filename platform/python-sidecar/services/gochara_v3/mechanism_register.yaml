@@ -346,6 +346,19 @@ mechanisms:
 # flag changes what the engine emits, so a build under a different flag
 # value is a new candidate (input generation vector diff,
 # WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
+#
+# moon_channel ∈ {blended(legacy), separate}, default blended — M-3
+# (L3 §4.8) Moon channel split. Engine constant
+# engine.py::_MOON_CHANNEL_DEFAULT. When separate: Moon-body sentences are
+# excluded from the century λ's activity term; Moon-scale classes are
+# served on demand by engine.find_episodes(..., moon=True), which writes a
+# 'moon_on_demand' coverage partition for its searched interval (even a
+# zero-answer search, L3-Q08). Tārā-bala (W2.3) and mūrti qualifiers are
+# instant qualifiers and still enter slow-body windows; Sade-Sati
+# testimony is NOT in the Moon channel. Channel doctrine content stays
+# [U]. Flipping the flag changes what the engine emits, so a build under a
+# different flag value is a new candidate (input generation vector diff,
+# WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
 
 # ─────────────────────────────────────────────────────────────────────────
 # SUMMARY
