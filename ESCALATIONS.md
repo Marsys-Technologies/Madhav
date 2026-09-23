@@ -73,14 +73,14 @@ what a human needs to decide.
 ## E-005 — N-14 (w30 nodal dṛṣṭi removal) is designed but NOT implemented in this run
 
 - **What:** The native's N-14 ruling removes `w30_nodal_drishti` from the λ product
-  (`engine.py:107` enabled; `:632` the executing product; `:668/:778` stored) and retires
+  (`engine.py:175` enabled; `:700` the executing product; `:725/:736/:845/:846` stored) and retires
   nodal dṛṣṭi (85 Rāhu + 87 Ketu served records), with three adopted conditions:
   same-generation regeneration inside a new candidate (never a patch over live rows),
   the absence declared as `completeness_state`, and the removed term kept one generation
   as a labelled non-scoring annotation.
 - **Why out of scope here:** every one of those conditions is a served-data action: it
   changes every stored λ and belongs to the candidate-generation build that WP10 alone is
-  authorized to run (plan §4.7, §9 step 6; the engine's own comment at `engine.py:132`
+  authorized to run (plan §4.7, §9 step 6; the engine's own comment at `engine.py:199-200`
   demands regeneration, not patching). The execution brief's WP5 list contains exactly
   H-1a/H-2..H-6 — N-14 is not in it; the brief's §5 out-of-scope list covers WP10 in
   full. Removing the factor now, on the served path, without the candidate-generation
