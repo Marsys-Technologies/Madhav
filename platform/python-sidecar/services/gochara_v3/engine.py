@@ -93,7 +93,7 @@ from services.gochara_intensity.permission import (
     _relevant_grahas, _relevant_signs, _lord_matches, YOGINI_LORD_TO_GRAHA,
 )
 from services.gochara_intensity.beta_priors import beta_for
-from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events
+from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events, _get_planet_pos
 from brahmagyan.graha_vocabulary import norm_graha
 
 from .context import ClassContext, VedhaRow, MaleficScaleRow, KakshyaBoundaryRow
@@ -205,6 +205,31 @@ _W23_TARA_BALA_ENABLED: bool = True
 _KAKSHYA_BINDU_INTERIM_ENABLED: bool = False
 
 # ---------------------------------------------------------------------------
+# M-1 (L3 §4.5): activity shape projection. Recorded flag `activity_shape`
+# (input generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR
+# FLAGS"), default "legacy_box".
+#
+# activity_shape ∈ {"legacy_box", "linear_no_box"}:
+#   legacy_box     — legacy F-08 STEP: a sentence inside the ±5-day gather
+#                    box contributes its full EVENT-TIME orb decay, constant
+#                    across the whole box (no decay by |t − event_jd|).
+#   linear_no_box  — linear-in-separation activity at the instant:
+#                    1 − |Δ| / orb_max_deg, where |Δ| is the transit body's
+#                    angular separation from the sentence's target longitude
+#                    AT t_jd. No time box: the contribution varies
+#                    continuously with t; the ±5-day gather only enumerates
+#                    candidate events and never gates the value. Orb per
+#                    WP1_CONTRACTS.md §7 orb_source; orb_max_deg is
+#                    parameterised (default = the legacy 5.0°).
+# `_ACTIVITY_MAX_ORB_DEG` and its mirrors are RETAINED for the legacy
+# default — they are retired by the M-1 value ratification step that
+# follows the WP8 orb battery (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0
+# §4.6); do not remove them before that ruling.
+# ---------------------------------------------------------------------------
+_ACTIVITY_SHAPE_DEFAULT: str = "legacy_box"
+_ACTIVITY_SHAPES: tuple[str, ...] = ("legacy_box", "linear_no_box")
+
+# ---------------------------------------------------------------------------
 # Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
 # ---------------------------------------------------------------------------
 # These two strings ARE the served, human-readable statement of which
@@ -238,6 +263,12 @@ TERM_BREAKDOWN_FORMULA: str = (
 # fractionally based on proximity; contacts at or beyond this orb score 0.
 # This is the linear-decay bound: activity_strength = 1 - orb / MAX_ORB_DEG
 # (clamped to [0, 1]).
+# M-1 (L3 §4.5): RETAINED for the legacy_box default. Retired by the M-1
+# value ratification step that follows the WP8 orb battery
+# (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.6) — superseded then by the
+# parameterised `orb_max_deg` projection option. Do not remove before that
+# ruling; the mirrors in services/gochara_kernel/legacy_semantics.py carry
+# the same note.
 _ACTIVITY_MAX_ORB_DEG: float = 5.0
 
 # Primitives that contribute to the v3 activity term (same set as X(t)).
@@ -512,6 +543,8 @@ def evaluate_lambda_vector(
     suppression_window_days: float = 3.0,
     source: str = "v3_batch",
     v1_parity_mode: bool = False,
+    activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
+    orb_max_deg: float | None = None,
 ) -> list[IntensityResult]:
     """Evaluate lambda_e for ALL JDs simultaneously. ZERO per-JD DB access.
 
@@ -547,6 +580,8 @@ def evaluate_lambda_vector(
             suppression_window_days=suppression_window_days,
             source=source,
             v1_parity_mode=v1_parity_mode,
+            activity_shape=activity_shape,
+            orb_max_deg=orb_max_deg,
         )
         results.append(result)
 
@@ -565,6 +600,8 @@ def _evaluate_single_from_context(
     suppression_window_days: float = 3.0,
     source: str = "v3_batch",
     v1_parity_mode: bool = False,
+    activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
+    orb_max_deg: float | None = None,
 ) -> IntensityResult:
     """Compute ONE lambda value using ONLY the pre-fetched ClassContext.
 
@@ -572,6 +609,10 @@ def _evaluate_single_from_context(
     Ephemeris calls (swe.calc_ut via transit_search primitives) are the
     only external calls — these are CPU-bound, not IO-bound.
     """
+    if activity_shape not in _ACTIVITY_SHAPES:
+        raise ValueError(
+            f"activity_shape must be one of {_ACTIVITY_SHAPES}, got {activity_shape!r}"
+        )
     # 1. PROMISE — already computed in context (time-invariant)
     promise = context.promise
     promise_detail = context.promise_detail
@@ -659,8 +700,19 @@ def _evaluate_single_from_context(
     #     This saturates at 1.0 (multiple strong contacts can't exceed 1.0),
     #     is monotonically non-decreasing in sentence count, and preserves the
     #     qualitative ordering: tighter-orb contacts count for more.
+    instantaneous_orbs: dict[int, float] | None = None
+    if activity_shape == "linear_no_box":
+        # M-1 (flag activity_shape): separation of each sentence's transit
+        # body from its target longitude AT t_jd — the no-box projection's
+        # |Δ|. Sentences without a resolvable body/target longitude are
+        # absent from the map and keep the engine's neutral unorbed
+        # fallback, exactly as the legacy path treats unorbed contacts.
+        instantaneous_orbs = _instantaneous_orbs_at(swe, sentences, t_jd)
     activity, activity_detail, term_breakdown = _compute_activity_v3(
         sentences, context.weight_by_target_ref,
+        activity_shape=activity_shape,
+        orb_max_deg=orb_max_deg,
+        instantaneous_orbs=instantaneous_orbs,
     )
 
     # 4b. W1.2 — Signed channels: separate supportive (weight > 0) and
@@ -905,9 +957,46 @@ def _evaluate_single_from_context(
     )
 
 
+def _instantaneous_orbs_at(
+    swe,
+    sentences: list[ConfigurationSentence],
+    t_jd: float,
+) -> dict[int, float]:
+    """M-1 (flag activity_shape='linear_no_box'): the separation |Δ| of each
+    sentence's transit body from the sentence's target longitude AT t_jd.
+
+    Target longitude is read from detail['target_longitude_deg'], falling
+    back to detail['boundary_deg'] (the two keys the WP5 identity adapter
+    already reads for the same purpose). Only sentences with both a
+    resolvable body and a target longitude appear in the map; everything
+    else keeps the engine's neutral unorbed fallback (0.5) — the same
+    honest fallback the legacy path applies when no orb information exists,
+    never a fabricated separation.
+    """
+    orbs: dict[int, float] = {}
+    for idx, s in enumerate(sentences):
+        body = s.transit_planet
+        target_deg_raw = s.detail.get(
+            "target_longitude_deg", s.detail.get("boundary_deg")
+        )
+        if not body or target_deg_raw is None:
+            continue
+        try:
+            target_deg = float(target_deg_raw)
+            lon, _speed = _get_planet_pos(swe, body, t_jd)
+        except Exception:  # noqa: BLE001
+            continue  # honest skip: unresolvable body -> neutral fallback
+        orbs[idx] = abs(((float(lon) - target_deg + 180.0) % 360.0) - 180.0)
+    return orbs
+
+
 def _compute_activity_v3(
     sentences: list[ConfigurationSentence],
     weight_by_target_ref: dict[str, float],
+    *,
+    activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
+    orb_max_deg: float | None = None,
+    instantaneous_orbs: dict[int, float] | None = None,
 ) -> tuple[float, dict, dict]:
     """Compute the W1.1 activity term in [0,1].
 
@@ -924,6 +1013,16 @@ def _compute_activity_v3(
     Then:
         activity = 1 - product_i(1 - p_i)   (noisy-OR; same math as PROMISE)
 
+    M-1 (flag activity_shape, L3 §4.5): when activity_shape ==
+    'linear_no_box', a sentence present in `instantaneous_orbs` scores by
+    its separation AT the evaluation instant,
+        orb_decay_i = 1 - min(|Δ|_i / orb_max_deg, 1.0)
+    with orb_max_deg parameterised (default the legacy 5.0°). There is no
+    time box: the instantaneous separation supersedes the event-time orb
+    values for those sentences. Sentences absent from `instantaneous_orbs`
+    keep the legacy fallback chain unchanged. Default 'legacy_box' is
+    byte-identical to the pre-flag engine.
+
     Returns:
         activity      float in [0,1]
         detail        dict with per-sentence contributions for debugging
@@ -933,7 +1032,7 @@ def _compute_activity_v3(
     contributions = []
     term_breakdown: dict[str, float] = {}
 
-    for s in sentences:
+    for idx, s in enumerate(sentences):
         if s.primitive not in _ACTIVITY_PRIMITIVES:
             continue
         if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
@@ -956,20 +1055,40 @@ def _compute_activity_v3(
         # normalized by the primitive), else compute from detail['orb_degrees']
         # with linear decay, else fall back to 0.5 (conservative neutral,
         # not flat 1.0 — stations/eclipses not near exact degree get partial credit)
-        orb_strength_raw = s.detail.get("orb_strength")
+        if (
+            activity_shape == "linear_no_box"
+            and instantaneous_orbs is not None
+            and idx in instantaneous_orbs
+        ):
+            # M-1 (flag activity_shape): linear-in-separation at the instant,
+            # 1 - |Δ|/orb_max_deg, no time box. The instantaneous separation
+            # supersedes the event-time orb values for this sentence.
+            orb_max = (
+                float(orb_max_deg) if orb_max_deg is not None
+                else _ACTIVITY_MAX_ORB_DEG
+            )
+            orb_decay = 1.0 - min(instantaneous_orbs[idx] / orb_max, 1.0)
+            orb_decay = max(0.0, orb_decay)
+            orb_strength_raw = None
+            orb_degrees_raw = None
+        else:
+            orb_strength_raw = s.detail.get("orb_strength")
+            orb_degrees_raw = s.detail.get("orb_degrees")
         if orb_strength_raw is not None:
             # Primitive already computed orb_strength in [0,1]
             orb_decay = float(max(0.0, min(1.0, orb_strength_raw)))
-        else:
-            orb_degrees_raw = s.detail.get("orb_degrees")
-            if orb_degrees_raw is not None:
-                orb_degrees = abs(float(orb_degrees_raw))
-                orb_decay = 1.0 - min(orb_degrees / _ACTIVITY_MAX_ORB_DEG, 1.0)
-            else:
-                # No orb information available (sign_ingress, nakshatra_ingress,
-                # eclipse_degree, some vedha variants): use 0.5 as the honest
-                # "present but unorbed" contribution level
-                orb_decay = 0.5
+        elif orb_degrees_raw is not None:
+            orb_degrees = abs(float(orb_degrees_raw))
+            orb_decay = 1.0 - min(orb_degrees / _ACTIVITY_MAX_ORB_DEG, 1.0)
+        elif not (
+            activity_shape == "linear_no_box"
+            and instantaneous_orbs is not None
+            and idx in instantaneous_orbs
+        ):
+            # No orb information available (sign_ingress, nakshatra_ingress,
+            # eclipse_degree, some vedha variants): use 0.5 as the honest
+            # "present but unorbed" contribution level
+            orb_decay = 0.5
 
         p_i = orb_decay * target_weight
         # p_i is in [0,1] (both factors clamped)
@@ -1009,6 +1128,15 @@ def _compute_activity_v3(
             "result saturates at 1.0 (replaces unbounded X(t) from v1)."
         ),
     }
+    if activity_shape != _ACTIVITY_SHAPE_DEFAULT:
+        # M-1 projection provenance (added only under a non-default flag so
+        # the legacy detail stays byte-identical).
+        detail["activity_shape"] = activity_shape
+        detail["orb_max_deg"] = (
+            float(orb_max_deg) if orb_max_deg is not None
+            else _ACTIVITY_MAX_ORB_DEG
+        )
+        detail["orb_source"] = "wp1_contracts_s7_orb_source"
 
     return activity, detail, term_breakdown
 

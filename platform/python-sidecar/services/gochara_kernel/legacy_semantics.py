@@ -64,6 +64,10 @@ TERM_BREAKDOWN_FORMULA: str = (
 )
 
 # engine.py:154 — linear-decay bound for activity orb decay.
+# M-1 (L3 §4.5): mirror of engine.py::_ACTIVITY_MAX_ORB_DEG — RETAINED for
+# the legacy_box default; retired by the M-1 value ratification step that
+# follows the WP8 orb battery (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.6).
+# Do not remove before that ruling.
 ACTIVITY_MAX_ORB_DEG: float = 5.0
 
 # engine.py:183-192 — primitives whose sentences feed the v3 activity term.
@@ -176,6 +180,10 @@ DAYS_PER_YEAR: float = 365.25
 
 # The legacy ±5-day activity box (WP1_CONTRACTS.md §7 orb_legacy_box;
 # engine.py:424/477 window_days_activity default 5.0).
+# M-1 (L3 §4.5): RETAINED for the legacy_box default; retired by the M-1
+# value ratification step that follows the WP8 orb battery
+# (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.6). Do not remove before that
+# ruling.
 BOX_HALF_DAYS_DEFAULT: float = 5.0
 
 

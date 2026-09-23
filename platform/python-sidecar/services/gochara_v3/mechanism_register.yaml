@@ -333,6 +333,19 @@ mechanisms:
 # emits, so a build under a different flag value is a new candidate (input
 # generation vector diff, WP1_CONTRACTS.md §5.3/§4.7), never an in-place
 # refill.
+#
+# activity_shape ∈ {legacy_box(legacy), linear_no_box}, default legacy_box —
+# M-1 (L3 §4.5) activity shape projection. Engine constant
+# engine.py::_ACTIVITY_SHAPE_DEFAULT; companion parameter orb_max_deg
+# (default 5.0°, per WP1_CONTRACTS.md §7 orb_source). When linear_no_box:
+# activity is 1 − |Δ|/orb_max_deg with |Δ| the transit body's separation
+# from the target longitude AT the evaluation instant — no time box; the
+# ±5-day gather only enumerates candidate events. _ACTIVITY_MAX_ORB_DEG and
+# its mirrors stay until the M-1 value ratification that follows the WP8
+# orb battery (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.6). Flipping the
+# flag changes what the engine emits, so a build under a different flag
+# value is a new candidate (input generation vector diff,
+# WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
 
 # ─────────────────────────────────────────────────────────────────────────
 # SUMMARY
