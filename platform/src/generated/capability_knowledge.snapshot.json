@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T01:38:00.000Z",
-  "content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
+  "generated_at": "2026-09-20T13:42:00.000Z",
+  "content_hash": "sha256:1881d008d3dc4541ee15a47aca87609f9129d0a5d9cd4511f8eb0dc46a1fcf26",
   "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
+  "semantic_review_fingerprint": "sha256:ee9a03358ca742803d31bd21215e9ce40b81e301e5286cfcb18c10067c552256",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -318,21 +318,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "producer_output_claims": [],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_career",
-          "status": "deliberately_dark",
-          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
-          "missing_binding_ids": [
-            "registry:marsys://tool/L2/query_domain_reading",
-            "registry:marsys://tool/L3/query_temporal_activation",
-            "registry:marsys://tool/L2/query_contradictions"
-          ],
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804"
+            }
           ]
         }
       ],
@@ -526,6 +526,24 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_health",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -716,21 +734,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "producer_output_claims": [],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_marriage",
-          "status": "deliberately_dark",
-          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
-          "missing_binding_ids": [
-            "registry:marsys://tool/L2/query_domain_reading",
-            "registry:marsys://tool/L3/query_temporal_activation",
-            "registry:marsys://tool/L2/query_contradictions"
-          ],
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804"
+            }
           ]
         }
       ],
@@ -2362,6 +2380,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/channel/chat_dispatch",
+          "status": "deliberately_dark",
+          "reason": "The descriptor itself reports migration_status=PENDING: the serving chat route still dispatches through the legacy retrieve layer, not the retrieval registry. Its static migration note is introspection, not evidence that the registry capability is reachable through Portal.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:264-300",
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:302-326"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -2512,6 +2541,18 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/channel/mcp_wiring",
+          "status": "deliberately_dark",
+          "reason": "The handler returns a hand-maintained five-entry wiring map rather than deriving mappings from the MCP bridge and server registration. It cannot prove the current managed MCP surface or parity, so no source receipt can promote this internal introspection route.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:174-257",
+            "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts",
+            "platform-mcp/src/server.ts"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3044,6 +3085,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/classical_attribution_lookup",
+          "status": "deliberately_dark",
+          "reason": "The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.",
+          "source_refs": [
+            "platform/src/lib/tools/classical_attribution_lookup.ts:1-61",
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:646-779"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3206,6 +3258,20 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/synthesis/compose_large_n",
+          "status": "deliberately_dark",
+          "reason": "compose_large_n directly composes query_chart_gestalt, query_domain_reading, query_cgm_paths, and query_contradictions. query_chart_gestalt has no complete handler-level availability contract because its served path also invokes tail-watch after the gestalt table read. The synthesizer remains deliberately dark until every mandatory leg is contracted in the same chart scope; its graceful thin-stage response is not proof of supported-complete availability.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L2/query_chart_gestalt"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/synthesis/surface_gateway.ts:63-175",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:57-128"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -4620,6 +4686,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_av_transit_gating",
+          "status": "deliberately_dark",
+          "reason": "The handler has two material modes: SAV/BAV chart_facts gating and Kakshya windows, which additionally fetch daily ephemeris from the sidecar. A chart_facts probe cannot establish the externally fetched branch, and no combined reviewed receipt or source-query contract covers both modes. The route must remain dark rather than promote only SAV/BAV evidence.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:264-356",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:359-459"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -10770,6 +10847,20 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/graha_portrait",
+          "status": "deliberately_dark",
+          "reason": "The portrait assembles position, dignity, strength, avasthas, yogas, dashas, and graph evidence, while returning partial_source_error when a child fails. Its required strength child has no complete exact contract because its receipt covers only canonical graha_shadbala_total but the child handler can select all 21 strength categories. A populated partial portrait is not complete synthesis evidence.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L1/get_strength"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts:214-302",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -10929,6 +11020,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://prompt/intent-classify",
+          "status": "deliberately_dark",
+          "reason": "intent_classify only substitutes query text into INTENT_CLASSIFY_TEMPLATE and returns that prompt string. It performs no model invocation, schema validation, or structured intent result production, so template rendering is not a supported executed classification path.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts:8-62"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -11371,6 +11472,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L5/lel_intake_checklist",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:lel-intake-checklist:v1",
+              "capability_uri": "marsys://tool/L5/lel_intake_checklist",
+              "contract_sha256": "sha256:c14460f1d4ca7da9d292ccac47f30ccf69adb44bb34c0c2b137ad32998d34c3d",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:242-353 | platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql | platform/migrations/457_lel_schema_v2_event_shapes.sql"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12058,6 +12174,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/list_sutravali_rules_by_text",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:list-sutravali-rules-by-text:v1",
+              "capability_uri": "marsys://tool/L0/list_sutravali_rules_by_text",
+              "contract_sha256": "sha256:c811b5f3efc239c66d54233394e17803fa0eef0d4d942ad28944495754d39db8",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:612-638 | platform/python-sidecar/routers/sutravali.py:181-212 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12219,6 +12350,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/maro/mcp_surface",
+          "status": "deliberately_dark",
+          "reason": "maro_mcp_surface returns a static profile-derived surface specification, not a registered or exercised managed MCP surface. The underlying profiles are explicitly UNMEASURED, so this cannot establish channel availability.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:175-245",
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12377,6 +12519,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/maro/orchestrate",
+          "status": "deliberately_dark",
+          "reason": "maro_orchestrate resolves static profile constants only. Those values are explicitly unmeasured hypotheses and do not demonstrate an actual managed-MCP or chat orchestration execution for the requested model family.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:26-173",
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12532,6 +12685,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://resource/maro/profiles",
+          "status": "deliberately_dark",
+          "reason": "maro_profiles itself labels its family values UNMEASURED v1 hypotheses awaiting D8 corpus evaluation. A profile dossier is not an observed provider or managed-MCP execution receipt.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:246-295"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12713,6 +12876,17 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-PACT/pact_query",
+          "status": "deliberately_dark",
+          "reason": "PACT chains judgment_query with a direct operative-varga chart_facts query, direct dasha evidence, and a sidecar transit trigger. Its direct confirmation query intentionally turns missing rows or database errors into an inconclusive stage, while the trigger has distinct service reachability semantics. No single reviewed contract covers all stages, so PROMISE or any adjacent child contract cannot promote the full chain.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:78-101",
+            "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:192-474"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -20950,6 +21124,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L4/query_muhurat",
+          "status": "deliberately_dark",
+          "reason": "The handler only forwards the request to the authenticated sidecar /api/compute/phala/muhurta_finder endpoint. Its named ka_muhurta_seva writer self-test is not an endpoint-specific probe and does not establish that this distinct PH-4-4 route, its chart-scoped dasha/transit reads, or its panchanga window source are currently reachable. No route-specific authenticated service receipt exists, so this temporal route must remain dark.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts:92-133",
+            "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+            "platform/python-sidecar/services/ka_muhurta_seva/writer.py:72-137"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -21852,6 +22038,22 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/query_planet",
+          "status": "deliberately_dark",
+          "reason": "The assembled entity response always includes shadbala from get_strength and marks any failed child as partial_source_error. get_strength has no complete exact availability contract because its reviewed receipt covers only canonical graha_shadbala_total while the handler can select all 21 strength categories, so a complete query_planet entity cannot be promoted from adjacent facet evidence.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L1/get_strength"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:133-145",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:174-185",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202",
+            "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28006,6 +28208,25 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-SPINE/query_spine_bundle",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L4/query_predictive_anchors",
+                "registry:marsys://tool/L5/query_calibration"
+              ],
+              "source_ref": "platform/src/lib/retrieval/spine/compute_spine_bundle.ts:76-141 | platform/src/lib/retrieval/spine/materialize.ts:132-168"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28363,6 +28584,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules",
+              "contract_sha256": "sha256:9062eceb3d317cb68f8825cea55a812c8ac04a4a9559b20c83218b7978cc353c",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:362-393 | platform/python-sidecar/routers/sutravali.py:87-124 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28529,6 +28765,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules_for_planet",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules-for-planet:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules_for_planet",
+              "contract_sha256": "sha256:4b1783cd6b86843c3a7de2a14aee950f4da992b513dbb80eb79143dc00616296",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:445-472 | platform/python-sidecar/routers/sutravali.py:127-163 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -31888,6 +32139,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/router/route",
+          "status": "deliberately_dark",
+          "reason": "router/route classifies and plans a tool trajectory but does not execute the planned evidence calls. Its local routing result is not an authenticated served inquiry or a complete evidence contract for the downstream chain.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/router_registration.ts:25-126"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32047,6 +32308,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/cross_layer",
+          "status": "deliberately_dark",
+          "reason": "synergy_cross_layer delegates to runWholeChartRead over direct database access and returns a cross-layer composition. No complete reviewed contract covers the full chain of graph, signal, contradiction, and temporal reads, so individual adjacent receipts cannot promote it.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:164-282"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32205,6 +32476,16 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/pipeline",
+          "status": "deliberately_dark",
+          "reason": "synergy_pipeline delegates live execution to runWholeChartRead over direct database access and a multi-surface chain. Its dry_run is explicitly only a planned route; no complete reviewed composed contract covers all handler reads and downstream surfaces.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:31-160"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32361,6 +32642,16 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/tool_search",
+          "status": "deliberately_dark",
+          "reason": "tool_search rebuilds an in-memory index from the process-local catalog at call time. Source tests prove local behavior but provide no authenticated serving receipt for the deployed registry/MCP process, so static catalog presence is not route availability.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts:22-94"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -32754,6 +33045,22 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-TIMING/yoga_activation_by_dasha",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:yoga-activation-by-dasha:v1",
+              "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+              "contract_sha256": "sha256:c49df0f4f9d47fbd11dca0a694a06f523edb5b5b3e7d48becee083b2f0fe6a5b",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

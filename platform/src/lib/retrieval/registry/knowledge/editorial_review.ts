@@ -5,12 +5,13 @@
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
 import type {
-  ProducerOutputAvailabilityRequirement,
+  AvailabilityRequirement,
   ProducerOutputClaim,
   SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
 import { JUDGMENT_READING_CHECKLIST_V2_CONTRACT } from '../layers/reading_checklist'
+import { sourceQueryAvailabilityRequirement } from './source_query_availability'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -43,7 +44,7 @@ export interface DescriptorAvailabilityReview {
  */
 export interface DescriptorAvailabilityContractReview {
   readonly producer_output_claims: readonly ProducerOutputClaim[]
-  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
+  readonly requirements: readonly AvailabilityRequirement[]
 }
 
 const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
@@ -52,25 +53,137 @@ const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
   'registry:marsys://tool/L2/query_contradictions',
 ] as const
 
+// query_spine_bundle delegates its full result to these exact four handlers.
+// The materialized row is only a cache of that composition: the serving path
+// lazily recomputes and persists it when absent or stale, so a receipt for the
+// cache alone cannot establish the whole route.  Keep every material leg
+// required in the same chart scope.
+const SPINE_BUNDLE_MANDATORY_BINDINGS = [
+  'registry:marsys://tool/L2/query_signals',
+  'registry:marsys://tool/L3/query_temporal_activation',
+  'registry:marsys://tool/L4/query_predictive_anchors',
+  'registry:marsys://tool/L5/query_calibration',
+] as const
+
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
-  assess_career: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+  route: {
+    reason: 'router/route classifies and plans a tool trajectory but does not execute the planned evidence calls. Its local routing result is not an authenticated served inquiry or a complete evidence contract for the downstream chain.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/router_registration.ts:25-126'],
+  },
+  synergy_pipeline: {
+    reason: 'synergy_pipeline delegates live execution to runWholeChartRead over direct database access and a multi-surface chain. Its dry_run is explicitly only a planned route; no complete reviewed composed contract covers all handler reads and downstream surfaces.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:31-160'],
+  },
+  synergy_cross_layer: {
+    reason: 'synergy_cross_layer delegates to runWholeChartRead over direct database access and returns a cross-layer composition. No complete reviewed contract covers the full chain of graph, signal, contradiction, and temporal reads, so individual adjacent receipts cannot promote it.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts:164-282'],
+  },
+  tool_search: {
+    reason: 'tool_search rebuilds an in-memory index from the process-local catalog at call time. Source tests prove local behavior but provide no authenticated serving receipt for the deployed registry/MCP process, so static catalog presence is not route availability.',
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts:22-94'],
+  },
+  // The MARO descriptors expose static v1 provider-profile hypotheses.  They
+  // do not observe an actual managed-MCP/session surface, and the resource
+  // labels the profiles UNMEASURED pending the D8 corpus evaluation.  Static
+  // normalization/profile output is therefore not evidence of a working
+  // channel-specific orchestration path.
+  maro_orchestrate: {
+    reason: 'maro_orchestrate resolves static profile constants only. Those values are explicitly unmeasured hypotheses and do not demonstrate an actual managed-MCP or chat orchestration execution for the requested model family.',
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:26-173',
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295',
     ],
   },
-  assess_marriage: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+  maro_mcp_surface: {
+    reason: 'maro_mcp_surface returns a static profile-derived surface specification, not a registered or exercised managed MCP surface. The underlying profiles are explicitly UNMEASURED, so this cannot establish channel availability.',
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:175-245',
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:255-295',
+    ],
+  },
+  maro_profiles: {
+    reason: 'maro_profiles itself labels its family values UNMEASURED v1 hypotheses awaiting D8 corpus evaluation. A profile dossier is not an observed provider or managed-MCP execution receipt.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts:246-295',
+    ],
+  },
+  // This descriptor returns a prompt template verbatim.  It does not invoke an
+  // LLM or validate a structured classification result, despite its declared
+  // output.  A prompt string is not an executed intent classification and
+  // cannot be offered as a supported evidence capability.
+  intent_classify: {
+    reason: 'intent_classify only substitutes query text into INTENT_CLASSIFY_TEMPLATE and returns that prompt string. It performs no model invocation, schema validation, or structured intent result production, so template rendering is not a supported executed classification path.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts:8-62',
+    ],
+  },
+  // compose_large_n is an actual composite, not an independent evidence
+  // producer.  Its gateway invokes these four registered handlers directly.
+  // Three have exact source-query contracts today, but query_chart_gestalt also
+  // invokes the tail-watch helper after its direct table query and has no
+  // complete handler-level availability contract.  Do not promote the
+  // composition from adjacent L2 receipts or from its graceful degradation:
+  // doing so would describe a partial answer as a supported complete path.
+  compose_large_n: {
+    reason: 'compose_large_n directly composes query_chart_gestalt, query_domain_reading, query_cgm_paths, and query_contradictions. query_chart_gestalt has no complete handler-level availability contract because its served path also invokes tail-watch after the gestalt table read. The synthesizer remains deliberately dark until every mandatory leg is contracted in the same chart scope; its graceful thin-stage response is not proof of supported-complete availability.',
+    missing_binding_ids: [
+      'registry:marsys://tool/L2/query_chart_gestalt',
+    ],
+    source_refs: [
+      'platform/src/lib/retrieval/synthesis/surface_gateway.ts:63-175',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:57-128',
+    ],
+  },
+  channel_chat_dispatch: {
+    reason: 'The descriptor itself reports migration_status=PENDING: the serving chat route still dispatches through the legacy retrieve layer, not the retrieval registry. Its static migration note is introspection, not evidence that the registry capability is reachable through Portal.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:264-300',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:302-326',
+    ],
+  },
+  channel_mcp_wiring: {
+    reason: 'The handler returns a hand-maintained five-entry wiring map rather than deriving mappings from the MCP bridge and server registration. It cannot prove the current managed MCP surface or parity, so no source receipt can promote this internal introspection route.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:174-257',
+      'platform/src/lib/retrieval/registry/mcp_capability_bridge.ts',
+      'platform-mcp/src/server.ts',
+    ],
+  },
+  get_av_transit_gating: {
+    reason: 'The handler has two material modes: SAV/BAV chart_facts gating and Kakshya windows, which additionally fetch daily ephemeris from the sidecar. A chart_facts probe cannot establish the externally fetched branch, and no combined reviewed receipt or source-query contract covers both modes. The route must remain dark rather than promote only SAV/BAV evidence.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:264-356',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:359-459',
+    ],
+  },
+  query_muhurat: {
+    reason: 'The handler only forwards the request to the authenticated sidecar /api/compute/phala/muhurta_finder endpoint. Its named ka_muhurta_seva writer self-test is not an endpoint-specific probe and does not establish that this distinct PH-4-4 route, its chart-scoped dasha/transit reads, or its panchanga window source are currently reachable. No route-specific authenticated service receipt exists, so this temporal route must remain dark.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts:92-133',
+      'platform/python-sidecar/brahmagyan/phala/muhurta.py',
+      'platform/python-sidecar/services/ka_muhurta_seva/writer.py:72-137',
+    ],
+  },
+  graha_portrait: {
+    reason: 'The portrait assembles position, dignity, strength, avasthas, yogas, dashas, and graph evidence, while returning partial_source_error when a child fails. Its required strength child has no complete exact contract because its receipt covers only canonical graha_shadbala_total but the child handler can select all 21 strength categories. A populated partial portrait is not complete synthesis evidence.',
+    missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts:214-302',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202',
+    ],
+  },
+  pact_query: {
+    reason: 'PACT chains judgment_query with a direct operative-varga chart_facts query, direct dasha evidence, and a sidecar transit trigger. Its direct confirmation query intentionally turns missing rows or database errors into an inconclusive stage, while the trigger has distinct service reachability semantics. No single reviewed contract covers all stages, so PROMISE or any adjacent child contract cannot promote the full chain.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:78-101',
+      'platform/src/lib/retrieval/registry/layers/register_d10_pact.ts:192-474',
+    ],
+  },
+  classical_attribution_lookup: {
+    reason: 'The registry handler delegates to a retired classical_attributions store whose replacement has not been implemented. The former stub converted every requested signal into a successful empty/silent attribution result; the handler now fails closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE, so no receipt or adjacent classical corpus proves this route available.',
+    source_refs: [
+      'platform/src/lib/tools/classical_attribution_lookup.ts:1-61',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:646-779',
     ],
   },
   get_strength: {
@@ -79,6 +192,16 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40',
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202',
+      'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
+    ],
+  },
+  query_planet: {
+    reason: 'The assembled entity response always includes shadbala from get_strength and marks any failed child as partial_source_error. get_strength has no complete exact availability contract because its reviewed receipt covers only canonical graha_shadbala_total while the handler can select all 21 strength categories, so a complete query_planet entity cannot be promoted from adjacent facet evidence.',
+    missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:133-145',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts:174-185',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-202',
       'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
     ],
   },
@@ -123,6 +246,53 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  // The MCP alias already consumes this exact handler query through editorial.ts.
+  // Bind that same reviewed probe to the raw registry descriptor explicitly,
+  // rather than renaming the alias-oriented contract and collapsing the two
+  // bindings into an ambiguous source-query owner.
+  yoga_activation_by_dasha: {
+    producer_output_claims: [],
+    requirements: [sourceQueryAvailabilityRequirement('source-query:yoga-activation-by-dasha:v1')!],
+  },
+  // assess_* composes these exact handler results; it must not be promoted by an
+  // adjacent producer receipt. The derived requirement recursively evaluates the
+  // independently reviewed source-query contracts in the same chart/build scope.
+  assess_career: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
+  assess_health: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
+  assess_marriage: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679,791,804',
+    }],
+  },
+  query_spine_bundle: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: SPINE_BUNDLE_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/spine/compute_spine_bundle.ts:76-141 | platform/src/lib/retrieval/spine/materialize.ts:132-168',
+    }],
+  },
   query_classical_texts: {
     producer_output_claims: [{
       asset_id: 'bg_texts',

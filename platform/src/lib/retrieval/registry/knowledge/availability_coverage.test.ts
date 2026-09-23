@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge } from './compiler'
 import { loadChartCapabilityOverlay, type OverlayQueryRow } from './overlay_loader'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
 import type { CapabilityKnowledgeSnapshot, ProducerOutputAvailabilityRequirement } from './types'
 
 const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-17T00:00:00.000Z') as CapabilityKnowledgeSnapshot
@@ -28,11 +29,11 @@ const FIRST_SLICE = {
     'scu.catalog.query_contradictions',
     'scu.catalog.query_domain_reading',
     'scu.catalog.judgment_query',
-  ],
-  deliberately_dark: [
     'scu.catalog.assess_career',
+    'scu.catalog.assess_health',
     'scu.catalog.assess_marriage',
   ],
+  deliberately_dark: [],
 } as const
 
 function findScu(scuId: string) {
@@ -143,9 +144,131 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
 }
 
 describe('first-slice availability coverage', () => {
+  it('accounts for the retired classical-attribution source as explicitly unavailable, never as an empty successful lookup', () => {
+    const scu = findScu('scu.catalog.classical_attribution_lookup')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L2/classical_attribution_lookup',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/tools/classical_attribution_lookup.ts:1-61',
+      ]),
+    })])
+  })
+
+  it.each([
+    ['scu.catalog.channel_chat_dispatch', 'registry:marsys://tool/channel/chat_dispatch', 'migration_status=PENDING'],
+    ['scu.catalog.channel_mcp_wiring', 'registry:marsys://tool/channel/mcp_wiring', 'hand-maintained five-entry wiring map'],
+  ])('accounts for %s as internal channel introspection, not serving proof', (scuId, bindingId, reasonFragment) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      status: 'deliberately_dark',
+      reason: expect.stringContaining(reasonFragment),
+      source_refs: expect.any(Array),
+    })])
+  })
+
+  it('keeps transit gating dark until its chart-fact and sidecar Kakshya branches share a complete contract', () => {
+    const scu = findScu('scu.catalog.get_av_transit_gating')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L1/get_av_transit_gating',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('Kakshya windows'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:359-459',
+      ]),
+    })])
+  })
+
+  it('keeps the forward-only muhurta sidecar route dark until its exact endpoint has an authenticated probe', () => {
+    const scu = findScu('scu.catalog.query_muhurat')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L4/query_muhurat',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('authenticated sidecar'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts:92-133',
+      ]),
+    })])
+  })
+
+  it('keeps the large-N composite dark until its orientation leg has a complete handler-level contract', () => {
+    const scu = findScu('scu.catalog.compose_large_n')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/synthesis/compose_large_n',
+      status: 'deliberately_dark',
+      missing_binding_ids: ['registry:marsys://tool/L2/query_chart_gestalt'],
+      reason: expect.stringContaining('tail-watch'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/synthesis/surface_gateway.ts:63-175',
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:57-128',
+      ]),
+    })])
+  })
+
+  it('keeps the intent prompt dark because rendering a template is not executed classification', () => {
+    const scu = findScu('scu.catalog.intent_classify')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://prompt/intent-classify',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('no model invocation'),
+      source_refs: ['platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts:8-62'],
+    })])
+  })
+
+  it('attaches the existing exact source-query contract to the yoga-dasha bridge', () => {
+    const scu = findScu('scu.catalog.yoga_activation_by_dasha')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-TIMING/yoga_activation_by_dasha',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:yoga-activation-by-dasha:v1',
+        capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+      })],
+    })])
+  })
+
+  it.each([
+    ['scu.catalog.maro_orchestrate', 'registry:marsys://tool/maro/orchestrate'],
+    ['scu.catalog.maro_mcp_surface', 'registry:marsys://tool/maro/mcp_surface'],
+    ['scu.catalog.maro_profiles', 'registry:marsys://resource/maro/profiles'],
+  ])('keeps %s dark while MARO profiles remain unmeasured hypotheses', (scuId, bindingId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      status: 'deliberately_dark',
+      reason: expect.stringMatching(/unmeasured/i),
+      source_refs: expect.any(Array),
+    })])
+  })
+
+  it.each([
+    ['scu.catalog.route', 'registry:marsys://tool/router/route'],
+    ['scu.catalog.synergy_pipeline', 'registry:marsys://tool/synergy/pipeline'],
+    ['scu.catalog.synergy_cross_layer', 'registry:marsys://tool/synergy/cross_layer'],
+    ['scu.catalog.tool_search', 'registry:marsys://tool/L0/tool_search'],
+  ])('keeps %s dark until its exact served or composed path has a reviewed contract', (scuId, bindingId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      status: 'deliberately_dark',
+      source_refs: expect.any(Array),
+    })])
+  })
+
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
-    expect(all).toHaveLength(14)
+    expect(all).toHaveLength(15)
     expect(new Set(all).size).toBe(all.length)
 
     for (const scuId of FIRST_SLICE.concrete) {
@@ -186,14 +309,68 @@ describe('first-slice availability coverage', () => {
 
   it.each([
     'scu.catalog.assess_career',
+    'scu.catalog.assess_health',
     'scu.catalog.assess_marriage',
-  ])('records the exact missing mandatory composite legs for %s', (scuId) => {
-    expect(findScu(scuId).availability_dispositions).toEqual([expect.objectContaining({
-      missing_binding_ids: [
-        'registry:marsys://tool/L2/query_domain_reading',
-        'registry:marsys://tool/L3/query_temporal_activation',
-        'registry:marsys://tool/L2/query_contradictions',
-      ],
+  ])('requires every exact source-backed composite leg for %s', (scuId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: `registry:${scu.primary_binding_uri}`,
+      requirements: [expect.objectContaining({
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: [
+          'registry:marsys://tool/L2/query_domain_reading',
+          'registry:marsys://tool/L3/query_temporal_activation',
+          'registry:marsys://tool/L2/query_contradictions',
+        ],
+      })],
+    })])
+  })
+
+  it('requires every source-backed spine leg because a stale or missing cache recomputes the full chain', () => {
+    const scu = findScu('scu.catalog.query_spine_bundle')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-SPINE/query_spine_bundle',
+      requirements: [expect.objectContaining({
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: [
+          'registry:marsys://tool/L2/query_signals',
+          'registry:marsys://tool/L3/query_temporal_activation',
+          'registry:marsys://tool/L4/query_predictive_anchors',
+          'registry:marsys://tool/L5/query_calibration',
+        ],
+      })],
+    })])
+  })
+
+  it('probes both the ontology and chart-scoped coverage sources for LEL intake without reading either payload', () => {
+    const scu = findScu('scu.catalog.lel_intake_checklist')
+    const requirement = scu.availability_contracts?.[0]?.requirements[0]
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: 'source-query:lel-intake-checklist:v1',
+      capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+      scope: 'chart',
+    })
+    const contract = getSourceQueryAvailabilityContract('source-query:lel-intake-checklist:v1')
+    expect(contract?.empty_semantics).toBe('query_success_is_available')
+    expect(contract?.sql).toContain('FROM brahma_event_ontology')
+    expect(contract?.sql).toContain('FROM life_events')
+    expect(contract?.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(contract?.sql).toContain('LIMIT 0')
+  })
+
+  it('accounts for query_planet as dark when its mandatory get_strength facet has no complete contract', () => {
+    const scu = findScu('scu.catalog.query_planet')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L1/query_planet',
+      status: 'deliberately_dark',
+      missing_binding_ids: ['registry:marsys://tool/L1/get_strength'],
+      reason: expect.stringContaining('partial_source_error'),
     })])
   })
 
@@ -1253,6 +1430,24 @@ describe('first-slice availability coverage', () => {
       expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
         state: 'dark',
         available_binding_ids: [],
+      })
+      return
+    }
+    if ([
+      'scu.catalog.assess_career',
+      'scu.catalog.assess_health',
+      'scu.catalog.assess_marriage',
+    ].includes(scuId)) {
+      // A composite cannot remain available when one of its declared child
+      // handlers cannot earn its own source-query evidence.
+      const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (sql.includes('FROM kala_activation')) throw new Error('temporal source unavailable')
+        return { rows: [transitProbeAnchor()] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+      expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: [expect.stringContaining('Derived availability leg registry:marsys://tool/L3/query_temporal_activation:')],
       })
       return
     }

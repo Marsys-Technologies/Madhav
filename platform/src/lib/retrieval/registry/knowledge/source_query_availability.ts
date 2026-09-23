@@ -1428,6 +1428,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
   },
   {
     contract_id: 'source-query:yoga-activation-by-dasha:v1',
+    // This contract is consumed by the explicitly authored MCP-alias binding
+    // in editorial.ts. The registry descriptor receives the same probe through
+    // its own reviewed contract below; keep this distinct key so automatic
+    // descriptor wiring does not create an ambiguous duplicate binding.
     descriptor_name: 'yoga_activation_by_dasha_source',
     capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
     scope: 'chart',
@@ -4037,6 +4041,70 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     ],
   },
   {
+    contract_id: 'source-query:query-sutravali-rules:v1',
+    descriptor_name: 'query_sutravali_rules',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE (NULL::text IS NULL OR r.antecedent_jsonb::text ILIKE '%' || NULL::text || '%')
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'planet' ILIKE NULL::text)
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'sign_canon' ILIKE NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:362-393',
+      'platform/python-sidecar/routers/sutravali.py:87-124',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-sutravali-rules-for-planet:v1',
+    descriptor_name: 'query_sutravali_rules_for_planet',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules_for_planet',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.antecedent_jsonb->>'planet' ILIKE NULL::text
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:445-472',
+      'platform/python-sidecar/routers/sutravali.py:127-163',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:list-sutravali-rules-by-text:v1',
+    descriptor_name: 'list_sutravali_rules_by_text',
+    capability_uri: 'marsys://tool/L0/list_sutravali_rules_by_text',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.text_id = NULL::text
+           ORDER BY r.verse_ref NULLS LAST, r.confidence DESC NULLS LAST
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:612-638',
+      'platform/python-sidecar/routers/sutravali.py:181-212',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
     contract_id: 'source-query:read-sutravali-rule:v1',
     descriptor_name: 'read_sutravali_rule',
     capability_uri: 'marsys://tool/L0/read_sutravali_rule',
@@ -4052,6 +4120,36 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549',
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
+    ],
+  },
+  {
+    contract_id: 'source-query:lel-intake-checklist:v1',
+    descriptor_name: 'lel_intake_checklist',
+    capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    // checklist reads the global ontology and chart-scoped coverage; validate
+    // reads the ontology alone. Probe both with zero-row handler-shaped CTEs so
+    // availability proves queryability without exposing ontology or LEL content.
+    sql: `WITH ontology AS (
+            SELECT event_class_id, name_en, domain, lel_category, temporal_shape, evidence_requirements
+              FROM brahma_event_ontology
+             ORDER BY domain, event_class_id
+             LIMIT 0
+          ), coverage AS (
+            SELECT split_part(domain, '/', 1) AS domain, COUNT(*)::text AS total
+              FROM life_events
+             WHERE chart_id = $1::uuid
+             GROUP BY split_part(domain, '/', 1)
+             LIMIT 0
+          )
+          SELECT ontology.event_class_id, coverage.domain AS coverage_domain, coverage.total
+            FROM ontology FULL OUTER JOIN coverage ON false`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:242-353',
+      'platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql',
+      'platform/migrations/457_lel_schema_v2_event_shapes.sql',
     ],
   },
 ]

@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.31.0
-status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_LIVE_SLICE_BLOCKED_BY_CROSS_DOOR_REVISION_SPLIT
+version: 0.50.0
+status: PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0109
-last_updated: 2026-09-20T02:51:56+05:30
+last_event: PA-E0143
+last_updated: 2026-09-20T19:40:12+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,173 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- **PR #2695 golden review is reproduced and its narrow correction is review-pending.** On exact head
+  `5d8252db…`, the two route-port golden failures (`branch-deep-dive` and
+  `branch-completeness-receipt`) reduce to order-derived fact IDs and receipt hashes after the
+  generated capability provenance refresh: canonicalized substantive payloads match. The two
+  mechanically regenerated fixtures and the mutable v5 source artifact now pass the focused
+  71-test check and the full suite (12,412 passed). Dependent PR #2704 is open against the L3 PR
+  branch and contains only those four Pūrṇa fixture/provenance updates. It remains review-pending:
+  neither that PR nor PR #2695 is merged or product acceptance evidence. No L3 runtime, grant,
+  migration, production dispatch, or acceptance denominator was changed.
+
+- **R0–R4 recovery is active; no new live configuration or collection is yet valid.** The old
+  worktree-local `live-config-20260920.json` and its receipts remain preserved historical evidence:
+  its revision was stale, Portal disagreed with that expected revision, managed MCP failed before
+  a usable response, and raw MCP blocked without closure. The chart UUID is associated with the
+  named operator Abhinandan Mohanty, so it is not a synthetic fixture; a fresh proof that the
+  current test principal may use that chart has not been recorded. The existing GCS Pūrṇa prefix
+  was located but no approved restricted retention/access designation was evidenced, so it is not
+  being used for a new configuration. The governed probe specifies `probe-service-account` and
+  documents its pre-existing `chart_grants` `view` grant on this chart, historically confirmed by
+  live DB read; that is provenance, not fresh run evidence. The exact missing external action is
+  an approved restricted evidence location (or a documented restricted policy for a named existing
+  prefix), followed by a current governed-principal grant verification retained there. The full
+  project-bucket inventory and the alternative attachments bucket were also checked: neither is
+  designated, restricted, or retained, and the attachments bucket retains broad legacy project
+  ACLs. An approval ID is not substituted for either boundary.
+
+- **The supported-complete wealth path is materially incomplete, not merely uncollected.** A new
+  focused regression test fails against the current hardcoded `notably_absent_yogas: not_computed`
+  branch. L0 supplies yoga rules/citations, but L1 `ga_yoga_firings` persists fired rows only and
+  never currently emits its partial fields for non-firings; L2 `bo_laksana` has no selected-build
+  near-miss band. Therefore ordinary non-fired rows cannot truthfully stand in for notable
+  near-misses. The only located L2 absence brief is explicitly `FOR_NATIVE_REVIEW`; it authorizes
+  neither a closed yoga candidate set nor an eligibility threshold. The exact upstream decision
+  required is a ratified L2 near-miss contract naming (1) the classical yoga candidates and
+  citations eligible for a significant-absence result, (2) the deterministic all-input
+  classification/threshold including incomplete L1 non-firing handling, and (3) the selected-build
+  row schema, fact IDs, source receipt, and freshness required to serve it. Its L2 owner must then
+  implement and prove the persisted band; Pūrṇa will not infer the threshold, proxy ordinary
+  non-firings, or mutate the protected producer. The fixed acceptance denominator remains unchanged.
+
+- **The ga-dasha replacement refusal remains correctly fail-closed until live build/receipt proof
+  exists.** The consumer selects only a chart-scoped completed build with a proven receipt using
+  the reviewed digest specification and fresh state, then refuses if newer dasha work is active or
+  a later terminal mutation lacks an equally fresh receipt. This environment has no configured
+  authorized production DB read path, so no completion, builder viability, or consumer recovery is
+  inferred from the metadata grant or deployment. The exact next proof is a right-owner read-only
+  statement over the relevant build, asset, receipt, freshness, and dasha tables.
+
+- **Classical-attribution lookup is now truthfully unavailable rather than silently empty.** The
+  registry handler had delegated to a retired `classical_attributions` source through a stub that
+  returned a successful empty attribution list for every requested signal. The registry now returns
+  the typed `CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE` error and related domain assessment output
+  records the unavailable status rather than advertising citations or a drill path that cannot
+  succeed. The capability remains in the 186-binding input and has a reviewed deliberate-dark
+  disposition with source references; this is neither `not_applicable` nor a successful classical
+  retrieval. A replacement queryable source and grounded receipts remain required before the route
+  can be lit.
+
+- **The three live Sutravali query routes now have exact global source-query contracts.** The
+  flexible rule lookup, planet-scoped lookup, and text-scoped paginated lookup each preserve their
+  own handler-side filter and order semantics against `sutravali_rules`; they are not promoted by
+  the adjacent single-rule contract. Their executable wire contracts cover required inputs,
+  filter forwarding, caps, output shape, and text-route offset continuation. This raises source
+  contracts to 164 and lowers uncovered bindings to 19 without altering the 186-binding or frozen
+  105+105 denominator. The contracts are source-local probes only: no live corpus receipt,
+  candidate run, or three-door acceptance is claimed.
+
+- **Planet assembly is deliberately dark until its mandatory strength facet is complete.**
+  `query_planet` assembles eight child routes and marks child failures as `partial_source_error`.
+  Its required `get_strength` child remains deliberately dark because the reviewed receipt covers
+  only canonical total strength, while its handler can select all 21 strength categories. The
+  assembly cannot be promoted through the other facets. This is an evidence-backed dark
+  disposition, not a denominator reduction: the projection is now 164 contracts, 18 uncovered,
+  and four deliberately dark bindings.
+
+- **Channel introspection is not delivery proof.** `channel_chat_dispatch` reports its registry
+  migration as pending, while `channel_mcp_wiring` uses a static five-entry map rather than the
+  live MCP bridge/server state. Both now remain explicit dark dispositions in the denominator:
+  164 contracts, 16 uncovered, and six deliberately dark bindings.
+
+- **Transit gating is dark until both material modes have one source contract.** Its SAV/BAV
+  branch reads chart facts, but its Kakshya-window branch also fetches daily ephemeris from the
+  sidecar. Neither branch may promote the other. The current projection is 164 contracts, 15
+  uncovered, and seven deliberately dark bindings.
+
+- **Graha portrait is dark until its mandatory strength facet is complete.** The response exposes
+  partial child failures, but the 21-category strength handler lacks a complete exact contract.
+  The projection is 164 contracts, 14 uncovered, and eight deliberately dark bindings.
+
+- **PACT is dark until its full chain has one evidence contract.** Promise-stage judgment,
+  direct operative-varga SQL, dasha evidence, and sidecar transit trigger are all material;
+  the projection is 164 contracts, 13 uncovered, and nine deliberately dark bindings.
+
+- **Spine bundle now has a full derived availability contract.** Its cached row cannot promote
+  the route on its own because the handler recomputes and persists the complete chain when that
+  row is stale or missing. The binding therefore requires the exact same-chart contracts for
+  signals, temporal activation, predictive anchors, and calibration. Generated evidence now
+  records 182 SCUs, 186 executable bindings, 165 explicit availability contracts, 12 uncovered
+  bindings, and nine deliberate-dark dispositions. This is source-local proof only: it neither
+  changes the frozen denominator nor attests a live cache, release, or three-door acceptance.
+
+- **LEL intake now has an exact, zero-row source-query contract.** It probes the handler's global
+  `brahma_event_ontology` taxonomy and its selected-chart `life_events` coverage query without
+  returning ontology or life-event content. This brings the current source projection to 182 SCUs,
+  186 executable bindings, 166 explicit availability contracts, 11 uncovered bindings, and nine
+  deliberate-dark dispositions. It is proof of queryability only; no private-event receipt,
+  inference, writing, candidate execution, release, or acceptance is claimed.
+
+- **Muhurta is explicitly dark, not silently unaccounted.** The serving handler only forwards to
+  `/api/compute/phala/muhurta_finder`; the named Kāla self-test is not an authenticated probe of
+  that distinct PH-4-4 endpoint, its chart reads, or panchanga source. Until route-specific proof
+  exists, its binding remains dark. Current projection: 166 contracts, 10 uncovered bindings, and
+  10 dark dispositions; the frozen 186-binding and 105+105 denominators are unchanged.
+
+- **The newest PR #2705 required CI is terminal but not green.** Run `35510491471` shows the exact
+  historic four PR #2704 golden/source-artifact failures and one separate Density Census failure:
+  its census artifact was stale relative to source. The census has now been regenerated from
+  commit `cc145d011…` with explicit provenance and its local drift check passes. The held four
+  golden failures remain PR #2704's owner-scoped packet; Pūrṇa did not rebaseline or bless them.
+  No protected release or acceptance is inferred from the local repair.
+
+- **Three required domain assessments now have source-local derived evidence contracts.**
+  `assess_career`, `assess_health`, and `assess_marriage` each require the exact same-chart
+  contracts for domain reading, temporal activation, and contradictions. A failed temporal
+  child makes every composite dark; adjacent receipts cannot promote it. Focused contract tests
+  (196), TypeScript, lint, and generated-artifact freshness checks pass. The regenerated
+  snapshot has 182 SCUs, 186 executable bindings, 164 explicit availability contracts, seven
+  deliberate-dark dispositions, and 15 still-uncovered executable bindings. This is an
+  unprotected source-local capability repair, not a live source-query result, deployment, or
+  acceptance result; the frozen 105+105 execution denominator is unchanged.
+
+- **The capability-projection assertion now agrees with the regenerated contract inventory.**
+  CI job `106063696768` on PR #2705 exposed its stale 24/158/4 expectations after the above
+  three derived contracts changed the projected states to 23 missing, 161 authored, and two
+  deliberately dark. The later fail-closed classical-attribution disposition leaves the same 161
+  authored contracts while changing the projection to 22 missing and three deliberately dark.
+  The three exact Sutravali source-query contracts then changed it to 19 missing, 164 authored,
+  and the same three deliberately dark. The focused coverage/availability/regression set passes
+  209 tests. This corrects the source
+  projection only; it does
+  not change the 186-binding input set, the frozen 105+105 acceptance denominator, or any live
+  acceptance state. The remaining PR #2705 route-golden and v5-source-artifact failures are
+  tracked separately as the exact-head PR #2704 dependency and are not rebaselined here.
+
+- **PR #2705's refreshed required CI is fail-closed only on the held PR #2704 packet.** Run
+  `35505915319` passed every non-unit required job, including TypeScript, governance, earned-signal,
+  density, registry-parity, database-integration, and planner-regression gates. Its unit job ran
+  1,140 passing and 77 skipped tests, then failed exactly four assertions: two provenance-derived
+  route golden receipts and two v5 source-artifact snapshot expectations. The four target files
+  are exactly PR #2704's scope, whose head `889ceaf9…` is open and clean against
+  `codex/madhav-l3-claude-code`; it has no protected-main target or review result yet. Pūrṇa will
+  not alter that branch, bless its goldens, rebaseline on `main`, or claim PR #2705 green before
+  the owner-integrated packet is available. The three required composite contracts remain verified
+  source-local only; live collection is still independently blocked by the restricted-store/grant
+  boundary.
+
+- Current serving revisions, re-read directly on 2026-09-20, are web
+  `94f75602f1cb3a794ed70723f67bf35e7003f11e`, MCP
+  `09d998940069e00a4f09df60a03c3d07d6536ecf`, and sidecar
+  `09d998940069e00a4f09df60a03c3d07d6536ecf`. Collector receipt-sealing repair PR #2703 merged
+  at protected main `20f4d02d…`; CI `35499473125` and deploy `35500092042` succeeded. Web now
+  serves `amjis-web-probe-20f4d02dce5e-35500092042-1` with exact
+  `NIRMANA_DEPLOYED_SHA=20f4d02d…`; MCP and sidecar remain on `09d99894…`. This is verified
+  Portal-only release evidence: 100% web traffic and exact-attributed post-deploy behavioural
+  smoke run `35500872708` passed. It is not three-door readiness, so no new three-door collection
+  is being started.
 
 - Native-authorized automated product acceptance is active. The first bounded live collection of
   `wealth_mechanism_timing_contradiction` produced **0/3 accepted doors**, recorded only by the
@@ -724,3 +891,77 @@ including unresolved historical import, authorization-mock and unrelated respons
 not a protected required check and is not represented as green. Exact counts and qualifications are
 in `SOURCE_VERIFICATION_EVIDENCE_v1.json`. Exact-head protected CI and independent review remain
 mandatory before G3 can close.
+
+## PRODUCT-M2 large-N composite boundary — 2026-09-20
+
+`compose_large_n` was reconciled against its actual `RegistrySurfaceGateway`: it invokes
+`query_chart_gestalt`, `query_domain_reading`, `query_cgm_paths`, and `query_contradictions`.
+The first three source-query legs other than orientation are individually reviewed, but the
+orientation handler also invokes `buildTailWatch`; no exact handler-level availability contract
+exists for that whole path. The synthesizer is therefore deliberately dark rather than promoted
+from adjacent L2 data or its own graceful thin-stage output. Focused availability tests passed
+211/211 and both generated-artifact drift checks passed at source packet
+`f5bcab0a5`. The inventory is 186 executable bindings, 166 contracts, 11 deliberate-dark
+dispositions, and 9 still uncovered. This is source accounting only: no live configuration,
+chart grant, deployment, candidate execution, or acceptance result has changed.
+
+## PRODUCT-M2 intent execution boundary — 2026-09-20
+
+`intent_classify` returns an interpolated prompt template only; it does not invoke a model or
+produce a validated structured classification. It is now deliberately dark rather than counted as
+executed intent evidence. Focused tests passed 212/212 and both generated-artifact checks passed.
+Inventory: 186 executable bindings, 166 contracts, 12 deliberate-dark dispositions, and 8 uncovered.
+
+## PRODUCT-M2 MARO profile boundary — 2026-09-20
+
+The MARO orchestration, MCP-surface, and profiles descriptors return static profile constants which
+the resource explicitly labels `UNMEASURED`. They do not prove a managed-MCP or chat execution, so
+all three are deliberately dark. Focused tests passed 215/215; both generated-artifact checks pass.
+Inventory: 186 executable bindings, 166 contracts, 15 deliberate-dark dispositions, and 5 uncovered.
+
+## PRODUCT-M2 yoga route contract repair — 2026-09-20
+
+The raw `yoga_activation_by_dasha` registry binding was falsely uncovered: the exact reviewed
+probe was attached only to its separate MCP alias. The alias-oriented key remains distinct to avoid
+ambiguous automatic wiring; the raw binding now explicitly uses that same reviewed probe. No L3
+handler or data-plane path changed. Focused availability/overlay tests passed 266/266 and both
+generated-artifact checks pass. Inventory: 186 executable bindings, 167 contracts, 15 dark, 4 uncovered.
+
+## PRODUCT-M2 catalogue accounting closure — 2026-09-20
+
+The remaining four routes are now explicitly fail-closed: router planning does not execute its
+trajectory; both synergy routes require an uncontracted direct-DB composite; and tool search has no
+authenticated deployed-process receipt. Focused tests passed 270/270 and both generation checks pass.
+The source catalogue is fully accounted: 186 executable bindings, 167 contracts, 19 dark dispositions,
+and zero uncovered bindings. This is not live availability, a candidate corpus, release proof, or
+product automated acceptance.
+
+## PRODUCT-M2 projection assertion reconciliation — 2026-09-20
+
+The campaign-owned capability-coverage assertion still expected the historical 13-binding contract
+deficit after the generated catalogue had reached zero uncovered bindings. It now asserts the actual
+source inventory: 186 bindings, 167 authored contracts, 19 deliberately dark dispositions, and no
+missing availability contract. The focused projection/availability checks pass 223/223; both generated
+artifact drift checks remain current. This reconciles source-local accounting only and does not alter the
+frozen 105+105 acceptance denominator, a live configuration, release state, or product acceptance.
+
+## PRODUCT-M2 corrected-candidate CI classification — 2026-09-20
+
+On source candidate `371ead2aa`, the protected unit suite passed 12,441 tests and retained only
+four failures: the two route-port golden receipts and the two Beyond-Acarya v5 artifact/hash
+assertions. The prior capability-projection assertion no longer fails. Those four failures remain
+the narrow L3-owned PR #2704 correction boundary; the PR is clean but review-pending, and no golden
+baseline is changed here. The fact-category scanner remains a separate inherited gate failure on
+unchanged zero-row availability probes. This is CI classification only, not a release or acceptance result.
+
+## PRODUCT-M2 current-head CI terminal classification — 2026-09-20
+
+The exact current Pūrṇa head `861369579415a532a93e2c5b1770b90110a96b6f` completed Ganga run
+`35514927802`: 13 of 16 jobs passed, one was intentionally skipped, and two failed. The Unit Tests
+job retained exactly the four owner-scoped PR #2704 failures (the two route-port golden receipts and
+the two Beyond-Acarya v5 artifact/hash expectations); the campaign-owned projection assertion remained
+green. The only other failure is the unchanged fact-category scanner mismatch already classified in
+PA-E0142. The concurrent PR-only deploy workflow `35514927828` built successfully but skipped every
+migration and production deployment job, so it provides no delivery claim. This records a terminal CI
+boundary only; it neither changes L3-owned goldens nor authorizes release, data-plane work, or live
+acceptance.

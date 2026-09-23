@@ -136,6 +136,9 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_domain_reading', 'source-query:query-domain-reading:v1', 'chart', 'query_domain_reading.ts:174-533'],
     ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts#receiptBoundarySql'],
     ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:156-269'],
+    ['scu.catalog.query_sutravali_rules', 'source-query:query-sutravali-rules:v1', 'global', 'python-sidecar/routers/sutravali.py:87-124'],
+    ['scu.catalog.query_sutravali_rules_for_planet', 'source-query:query-sutravali-rules-for-planet:v1', 'global', 'python-sidecar/routers/sutravali.py:127-163'],
+    ['scu.catalog.list_sutravali_rules_by_text', 'source-query:list-sutravali-rules-by-text:v1', 'global', 'python-sidecar/routers/sutravali.py:181-212'],
   ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements.find((candidate) => candidate.kind === 'source_query')!
@@ -158,6 +161,9 @@ describe('binding availability contracts', () => {
     ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
     ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
     ['source-query:read-sutravali-rule:v1', 'FROM sutravali_rules r', 'WHERE r.rule_id::text = NULL::text'],
+    ['source-query:query-sutravali-rules:v1', 'FROM sutravali_rules r', 'r.antecedent_jsonb->>\'sign_canon\' ILIKE NULL::text'],
+    ['source-query:query-sutravali-rules-for-planet:v1', 'FROM sutravali_rules r', 'r.antecedent_jsonb->>\'planet\' ILIKE NULL::text'],
+    ['source-query:list-sutravali-rules-by-text:v1', 'FROM sutravali_rules r', 'WHERE r.text_id = NULL::text'],
   ])('keeps %s as an exact, zero-row-safe handler source probe', (contractId, relationMarker, orderMarker) => {
     const contract = getSourceQueryAvailabilityContract(contractId)!
 

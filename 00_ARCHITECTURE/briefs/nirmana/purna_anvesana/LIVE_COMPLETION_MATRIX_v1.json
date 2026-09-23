@@ -2,9 +2,9 @@
   "schema_version": "madhav-purna-anvesana/live-completion-matrix/v1",
   "campaign_id": "madhav-purna-anvesana",
   "authority": "CCD-012",
-  "status": "PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_LIVE_SLICE_BLOCKED_BY_CROSS_DOOR_REVISION_SPLIT",
-  "observed_at": "2026-09-20T02:51:56+05:30",
-  "source_candidate": "dd3e189ed4b6f81aaf6d20a586290450705c7947",
+  "status": "PRODUCT_AUTOMATED_ACCEPTANCE_ACTIVE_R0_R4_RECOVERY_IN_PROGRESS",
+  "observed_at": "2026-09-20T19:13:00+05:30",
+  "source_candidate": "574fca4cbfbd213cc2842b4328f26ef2417bc6ba",
   "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
   "successor_execution": {
     "approved_by": "Native TAKEOVER_GO delegation to successor task 01a0b7d8-9a90-74f3-aab9-80014919f8b2",
@@ -22,13 +22,13 @@
   },
   "product_outcomes": [
     {"id":"fixed_5_plus_30_denominator","source_ready":"PASS_FROZEN","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
-    {"id":"real_three_door_collector","source_ready":"PASS_BOUNDED_TIMEOUT_AND_MANAGED_SCOPE_NORMALIZATION","candidate_verified":"NOT_RUN_SUCCESSOR_REVISION","live_verified":"FAIL_FIRST_SLICE_0_OF_3_REVISION_SPLIT_AND_RUNTIME_GAPS"},
-    {"id":"supported_capability_evidence_contracts","source_ready":"IN_PROGRESS_157_CONTRACTS_24_UNCOVERED_5_DARK","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
+    {"id":"real_three_door_collector","source_ready":"RECEIPT_SEAL_REPAIR_PR2703_PROTECTED_MAIN_20F4D02D_PORTAL_DEPLOYED; MCP_SIDECAR_PRIOR_REVISION","candidate_verified":"NOT_RUN_SUCCESSOR_REVISION","live_verified":"FAIL_FIRST_SLICE_0_OF_3_HISTORICAL; NEW_CONFIG_AWAITS_RESTRICTED_STORE_AND_CHART_GRANT"},
+    {"id":"supported_capability_evidence_contracts","source_ready":"PASS_ACCOUNTED_167_CONTRACTS_19_DARK_0_UNCOVERED; YOGA_DASHA_RAW_REGISTRY_BINDING_ATTACHED_TO_EXISTING_EXACT_PROBE; ORCHESTRATION_PLANS_AND_UNCONTRACTED_DIRECT_DB_COMPOSITES_FAIL_CLOSED; MARO_STATIC_UNMEASURED_PROFILE_SURFACES_FAIL_CLOSED; INTENT_CLASSIFY_PROMPT_TEMPLATE_FAIL_CLOSED_AS_NOT_EXECUTED; WEALTH_NOTABLY_ABSENT_HARDCODE_REPRODUCED; PR2705_CI_35510491471_DENSITY_ARTIFACT_STALE_LOCALLY_REGENERATED_AND_HELD_PR2704_GOLDENS","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"deep_reasoning_and_evidence_continuation","source_ready":"PASS_SOURCE_WIRING","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"complete_response_fact_accountability","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_BUILD_FENCED_JUDGMENT_ACCOUNTABILITY_VERIFIED","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"pagination_interruption_cross_instance_recovery","source_ready":"IN_PROGRESS_TEMPORAL_CONTRADICTION_AND_TYPED_JUDGMENT_CLOSURE_CONTRACTS_ONLY","candidate_verified":"NOT_RUN","live_verified":"NOT_RUN"},
     {"id":"candidate_original_5_plus_30_three_door_acceptance","source_ready":"HARNESS_READY","candidate_verified":"NOT_RUN","live_verified":"NOT_APPLICABLE"},
-    {"id":"protected_release","source_ready":"PROTECTED_MAIN_66B962F_AND_CDC701_DOCS_MERGE","candidate_verified":"PASS_WEB_MCP_SIDECAR_PIPELINE_CANDIDATES","live_verified":"HISTORICAL_PASS_66B962F_CURRENT_WEB_CDC701_MCP_SIDECAR_66B962_SPLIT"},
+    {"id":"protected_release","source_ready":"PROTECTED_MAIN_20F4D02D_COLLECTOR_REPAIR","candidate_verified":"PASS_WEB_MCP_SIDECAR_PIPELINE_CANDIDATES","live_verified":"PORTAL_POST_DEPLOY_SMOKE_PASS_20F4D02D; MCP_SIDECAR_09D99894_SPLIT"},
     {"id":"live_original_5_plus_30_three_door_automated_acceptance","source_ready":"PROTOCOL_READY","candidate_verified":"NOT_RUN","live_verified":"IN_PROGRESS_FIRST_SLICE_0_OF_3"}
   ],
   "residuals": [
@@ -57,8 +57,8 @@
     "deployed_three_door": "FAIL_FIRST_LIVE_SLICE_0_OF_3_CROSS_DOOR_REVISION_SPLIT_AND_RUNTIME_GAPS",
     "empirical_acceptance": "NOT_RUN",
     "protected_merge": "PASS_66B962F_PR_2690",
-    "production_revision": "HISTORICAL_PASS_66B962F; CURRENT_WEB_CDC701_100_PERCENT_MCP_SIDECAR_66B962_100_PERCENT_SPLIT",
-    "bounded_observation": "PASS_WEB_MCP_SIDECAR_HEALTH_200_AND_AUTHENTICATED_SIDECAR_RELEASE_SMOKE",
+    "production_revision": "CURRENT_WEB_20F4D02D_100_PERCENT_MCP_SIDECAR_09D99894_100_PERCENT_SPLIT",
+    "bounded_observation": "PASS_PORTAL_POST_DEPLOY_BEHAVIOUR_SMOKE_35500872708_AT_20F4D02D; HISTORICAL_MCP_SIDECAR_HEALTH_200_AND_AUTHENTICATED_SIDECAR_RELEASE_SMOKE",
     "governance_close": "TECHNICAL_DELIVERY_RECORDED; AUTOMATED_ACCEPTANCE_ACTIVE_AND_BLOCKED_BY_REVISION_SPLIT; EMPIRICAL_GATE_NOT_RUN"
   }
 }
