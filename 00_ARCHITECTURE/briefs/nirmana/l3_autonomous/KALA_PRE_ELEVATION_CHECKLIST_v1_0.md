@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CHECKLIST
 canonical_id: KALA_PRE_ELEVATION_CHECKLIST
-version: "1.2"
+version: "1.3"
 status: CURRENT
 date: 2026-09-24
 revision_note: "v1.2 — after the L0 repair (PR #2727): §A shrinks to three native items; §C becomes the PR close-out; §D gains the Sade-Sati query result; §E records that the Saṅgam entry gate did not gate; §B4 downgraded (production reachable via proxy on 5432)."
@@ -27,7 +27,7 @@ Grouped by what each item blocks. **[V]** verified by this session at source; **
 |---|---|---|
 | A1 | **Release the W1 hold** on the frozen L3 generation design (G1) | nothing reaches `DATA_ACCEPTED` without it [V] |
 | A2 | **Authorize Kṣetra stage 3** — prompt at `AWAITING_NATIVE_AUTHORIZATION` | [A] |
-| A3 | **Rule Gochara N-18** — WP0-7 branch deliberately unpushed pending it | [A] |
+| A3 | ~~Rule Gochara N-18~~ **CORRECTED: N-18 is already `NATIVE_RATIFIED`** on the Gochara v2.0 sheet (read from that session's worktree, read-only). N-18 is a *delivery* item — push the 13-commit WP0-7 branch and open a code-only PR, no build — not a doctrinal question. **The remaining action is the Gochara session's push, not a native ruling.** One new blocker on it: the ratified plan assigned that branch migrations **1075/1076**, which the L0 repair applied to production last night under the same numbers (my prompt said "1075 or higher" without knowing). Renumber to 1077/1078 before push — sent to that session | [V] |
 
 *Closed: the L0 scope authorization (executed), the E6 gate numbers, the node scope, the reviewer for the three conflicted rulings.*
 
@@ -77,7 +77,7 @@ Seven of eight items applied to production and **verified live by this session w
 |---|---|---|
 | E1 | **Saṅgam D-8 entry gate did not gate.** The third independent review of plan v1.0 has **no artifact** (only the v0.1 and v0.3 review requests exist) — and the stage-3 executor has already landed Phases 0–5 on `sangam/stage3`. The gate was written after the code. It must become a **merge gate** on that branch, run by a reviewer who is not the author, before anything from it reaches `main` | [V] |
 | E2 | Kṣetra stage-3 authorization | = A2 |
-| E3 | Gochara N-18 | = A3 |
+| E3 | Gochara WP0-7 push (N-18, ratified) after renumbering 1075/1076 → 1077/1078 | = A3 [V] |
 | E4 | Independent-verifier capacity per wave (G13) | structural [V] |
 
 ---
