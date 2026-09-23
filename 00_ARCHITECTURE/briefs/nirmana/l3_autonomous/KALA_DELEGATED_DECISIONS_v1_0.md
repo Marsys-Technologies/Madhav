@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.6"
+version: "1.7"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -74,9 +74,13 @@ a lane, not a person. The Gochara brief implements it independently: §8.4 appli
 repairs to a disposable database only, and §5.1 stamps `house_vedha corpus_verifiable = true` only
 once the re-citation is on the row.
 
-**For the native, the one thing only they can settle:** whether the L0 owner is a session to be
-opened, an existing stream given the authority, or the native directly. Until then this is the
-single largest unowned surface in the campaign, and it now says so in a durable place.
+**DISCHARGED 2026-09-24.** The native settled it by authorizing the L0 repair as a scoped session
+(D-E, `L0_REPAIR_EXECUTION_PROMPT_v1_0.md`). That session applied items 1/2/3/5/6/7 to production
+under that authority (verified live by this session and, independently, by the Kṣetra session via
+the served `ref_transit_rules_get`). So D-B's "staged and unapplied until an authority exists"
+clause is **superseded for those rows**: the authority existed, the rows are applied. What D-B still
+governs: the nineteen non-vedha rows that remain BPHS-cited outside the verified predicate, and any
+future L0 edit — each needs its own authorization, not this one's.
 
 ---
 
