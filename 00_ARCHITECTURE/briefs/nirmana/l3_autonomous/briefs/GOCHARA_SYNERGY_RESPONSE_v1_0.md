@@ -1,7 +1,7 @@
 ---
 artifact: GOCHARA_SYNERGY_RESPONSE
 canonical_id: GOCHARA_SYNERGY_RESPONSE
-version: "1.1"
+version: "1.2"
 status: VERIFIED_AT_SOURCE — decisions D-S1..D-S5 await the native
 date: 2026-09-24
 responds_to: "KALA_SYNERGY_AUDIT_v1_0.md / KALA_SYNERGY_BINDING_v1_0.md / KALA_SYNERGY_AMENDMENTS_v1_0.md §Gochara (strategic session madhav-fc, commit 63b5fb429 on l3/kala-elevation-readiness; corrections below accepted into audit 1.3 / binding 1.1 / amendments 1.3 at 11729a34b, then SUPERSEDED by the three-verifier second pass — audit 1.4 / binding 2.0 / amendments 2.0 at 5c05a0e2f, 2026-09-24 — each verified here by reading the files at that commit, not on report; §5 below records what 2.0 changes for this family)"
@@ -78,3 +78,11 @@ What changed for this family, and what it does to D-S1..D-S5 `[R][S][J]`:
 | Verifiers' credit carried in audit 1.4: this family emits the substantial majority of the Strategy "Temporal context" object via `kala_gochara_convention`; v1.3's "adopted by nobody" withdrawn | audit 1.4 | none — recorded |
 
 **Mapping to the binding's ten B8 decisions:** B8-1 (sha256 ids), B8-2 (`generation` in PK) and B8-5 (coverage shape) are already this family's practice (1081); B8-3 = D-S5; B8-8 (`time_basis`, `tier_basis` vocabularies) = D-S2; B8-9 = D-S4 (revised above); B8-6 (one contact producer) is Kṣetra's side of the line and needs nothing from this family; B8-4, B8-7, B8-10 are Saṅgam's and Kṣetra's. Nothing in §5 executes on this file alone; D-S1..D-S5 remain the native's.
+
+## 6. D-S6 — Kṣetra's proposed fifth `comparable_with` value `unstable_key` (raised 2026-09-24 via the strategic session; binding 2.1)
+
+**Verified against the pinned contract `[S]`:** `WP1_CONTRACTS.md` §6 defines `comparable_with` as the relation between two rows' conventions and input vectors — each value answers "may this row be compared, and against what": `self` (id equality expected), `same_convention_same_inputs` (within ε), `same_convention_newer_inputs` (diff report only), `different_convention` (comparison `NOT_RUN`, reason `different_convention`). `unstable_key` names a property of one row's **identity** (it cannot be re-found across rebuilds), not a relation between two rows.
+
+**Recommendation `[J]`: decline the fifth value; keep the enum at four.** The honest places for the interim are the two the contract already has: (i) on the **comparison record**, `self` for a surrogate-keyed row is `NOT_RUN` with reason `unstable_key` — a reason code, exactly as `different_convention` already works; (ii) on the **row**, the co-reference axis (binding B3: content-addressed ids, never a reassigned surrogate) is where Kṣetra's `_routes.path_edge_ids` gap is already recorded as MUST FIX, and until it lands the row's identity claim is F06 `unqualified`. Admitting `unstable_key` into `comparable_with` would let a row assert a comparability class while being unidentifiable — the same "routing recorded as an outcome" trap in a new column. If Kṣetra needs the interim to be machine-visible on the row itself, the additive form is a separate `id_basis ∈ {content_addressed, surrogate_unstable}` column on its own table, which touches no Gochara contract.
+
+Status: the enum stays as pinned unless the native rules otherwise; Kṣetra was told (via the strategic session) to raise it at WP1 rather than let it drift in.
