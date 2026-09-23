@@ -335,6 +335,23 @@ Two different migrations, one number, two unmerged branches — whichever merges
 Flagged to the Gochara stream 2026-09-23; resolve before either PR opens (their renumber or mine — theirs is
 unpushed, so cheaper there).
 
+**Resolution (2026-09-23T23:05:35+05:30) — verified at the runner, not assumed.** `platform/scripts/migrate.ts` reads
+`platform/migrations/*.sql` **and** `platform/supabase/migrations/*.sql` as **one** sequence, applies in
+numeric-prefix order with a lexical filename tie-break, and tracks applied migrations in
+`_migrations_applied` **by filename (UNIQUE) + sha256 + `sql_identity`** — never by number. So a
+repeated number is not a tracker collision unless the *filename* repeats; on `main` today **41 numbers
+already exist in both directories**. Gochara's wider scan: 1071/1072 are also claimed by
+`l3/kala-p1-1-b1-clear-guard` (`platform/migrations/`, the Phase-1.1 Clear guard + registry-truth
+migrations) and 1073/1074 by `l3/kala-p1-2-builder-grants-timeout`; Gochara moved its ledger to
+**1075/1076** (lowest free across every branch) and asked that mine stay. **Disposition: Saṅgam's
+1071/1072 stay** — different filenames, independent tables (`kala_convergence` vs
+`kala_gochara_windows`/registry), so the lexical tie-break cannot mis-order a dependency. **The real
+hazard is allocation practice**: numbers are being chosen by directory listing on unmerged branches,
+which is how four branches landed on the same four numbers. Gochara has proposed a claimed-number
+registry on `main`; this campaign supports it. Until it exists, the rule for any new Saṅgam migration:
+scan **every remote branch, both directories**, before choosing a number.
+
+
 
 ## Worktree collision and branch fast-forward — recorded 2026-09-23T23:04:12+05:30
 
