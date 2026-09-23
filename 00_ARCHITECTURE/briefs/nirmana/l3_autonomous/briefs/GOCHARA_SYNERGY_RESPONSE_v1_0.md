@@ -4,7 +4,7 @@ canonical_id: GOCHARA_SYNERGY_RESPONSE
 version: "1.0"
 status: VERIFIED_AT_SOURCE — decisions D-S1..D-S5 await the native
 date: 2026-09-24
-responds_to: "KALA_SYNERGY_AUDIT_v1_0.md / KALA_SYNERGY_BINDING_v1_0.md / KALA_SYNERGY_AMENDMENTS_v1_0.md §Gochara (strategic session madhav-fc, commit 63b5fb429 on l3/kala-elevation-readiness; corrections below accepted into audit 1.3 / binding 1.1 / amendments 1.3 on that branch, 2026-09-24)"
+responds_to: "KALA_SYNERGY_AUDIT_v1_0.md / KALA_SYNERGY_BINDING_v1_0.md / KALA_SYNERGY_AMENDMENTS_v1_0.md §Gochara (strategic session madhav-fc, commit 63b5fb429 on l3/kala-elevation-readiness; corrections below accepted into audit 1.3 / binding 1.1 / amendments 1.3 on that branch at 11729a34b, 2026-09-24 — verified here by reading the three files at that commit, not on report)"
 branch: "l3/gochara-autonomous-wp0-7 — verified against HEAD 9250741cc (+ the executor's three uncommitted WP8 files, untouched)"
 method: "Every file:line the audit cites was re-read at source on this branch; line numbers drifted by the executor's commits and are restated as they stand now. Labels: [S] source at HEAD · [R] repository record · [J] judgment."
 authority: "Nothing here changes a ruling, the brief, or its two production flags. The binding is PROPOSED; adopting it, and the five decisions below, are the native's. This file is the verified input for that decision."
