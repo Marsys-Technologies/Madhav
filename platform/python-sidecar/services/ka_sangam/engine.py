@@ -73,7 +73,8 @@ assert abs(_SW_SUM - 1.0) < 1e-4, f"SUPPORTING_WEIGHTS must sum to 1.0, got {_SW
 
 class EnrichmentContext:
     """
-    Pre-fetched DB data needed by U3 currents (C7, C11, C12, C13).
+    Pre-fetched DB data needed by U3 currents (C7, C11, C12, C13) and E4
+    typed natal/clock conditioning.
     Passed in by the ka_sangam writer to avoid passing db_conn into engine.py.
 
     ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
@@ -94,6 +95,15 @@ class EnrichmentContext:
     school_consensus_by_domain: {domain: schools_agreeing (0-7)}
         Sourced from convergence_scores (populated by POST /api/build/school-consensus).
         C13 score = schools_agreeing / 7.0.
+    d1_dignity_by_graha: {planet_name: dignity_string}
+        Sourced from chart_divisionals fact_category='varga_dignity',
+        fact_key='dignity', fact_subject='D1.<PLANET>' (E4). Vocabulary normalised
+        to Title-case planet keys.
+    lagna_sign: str | None
+        Natal lagna sign name (e.g. 'Aries') resolved from chart_facts
+        fact_subject='LAGNA', fact_key='sign'.
+    is_day_birth: bool | None
+        True when birth instant falls between local sunrise and sunset.
     """
 
     def __init__(
@@ -104,6 +114,9 @@ class EnrichmentContext:
         vedha_rules: Optional[list[dict]] = None,
         tajika_year_lords: Optional[list[dict]] = None,
         school_consensus_by_domain: Optional[dict[str, int]] = None,
+        d1_dignity_by_graha: Optional[dict[str, str]] = None,
+        lagna_sign: Optional[str] = None,
+        is_day_birth: Optional[bool] = None,
     ):
         self.ashtakavarga_bindu = ashtakavarga_bindu or {}
         self.ashtakavarga_computed_planets = ashtakavarga_computed_planets or set()
@@ -111,10 +124,70 @@ class EnrichmentContext:
         self.vedha_rules = vedha_rules or []
         self.tajika_year_lords = tajika_year_lords or []
         self.school_consensus_by_domain = school_consensus_by_domain or {}
+        self.d1_dignity_by_graha = d1_dignity_by_graha or {}
+        self.lagna_sign = lagna_sign
+        self.is_day_birth = is_day_birth
 
     @classmethod
     def empty(cls) -> 'EnrichmentContext':
         return cls()
+
+
+# ── E4: typed natal/clock conditioning helpers ────────────────────────────────
+
+# Dignity states that count as "strong" for the typed natal-dignity condition.
+# NB: this is a lineage/explainability flag, never a veto (M-4: no typed
+# condition ever vetoes). It records the natal D1 dignity of the transiting
+# planet so consumers can see when a contact coincides with a strong natal
+# promise/denial versus a weak one.
+_E4_STRONG_DIGNITIES = {'Exalted', 'Moolatrikona', 'Own'}
+
+
+def _e4_natal_dignity_strong_flag(dignity: Optional[str]) -> bool:
+    """E4: natal D1 dignity is one of the strong states."""
+    return dignity is not None and dignity in _E4_STRONG_DIGNITIES
+
+
+def _e4_retrograde_flag(speed_at_event_dps: Optional[float]) -> bool:
+    """E4: transit planet is retrograde at exact contact (speed < 0)."""
+    return speed_at_event_dps is not None and float(speed_at_event_dps) < 0.0
+
+
+def _e4_day_birth_flag(is_day_birth: Optional[bool]) -> bool:
+    """E4: birth instant between local sunrise and sunset."""
+    return bool(is_day_birth)
+
+
+def _e4_kendra_flag(lagna_sign_num: Optional[int], transit_sign_num: Optional[int]) -> bool:
+    """E4: transit sign is 1st/4th/7th/10th from natal lagna (kendra)."""
+    if lagna_sign_num is None or transit_sign_num is None:
+        return False
+    offset = ((transit_sign_num - lagna_sign_num) % 12)
+    return offset in (0, 3, 6, 9)
+
+
+def _e4_typed_conditions(
+    planet: str,
+    transit_sign_num: Optional[int],
+    speed_at_event_dps: Optional[float],
+    ctx: EnrichmentContext,
+) -> dict[str, bool]:
+    """
+    E4: assemble the per-window typed natal/clock condition flags.
+
+    All four are boolean lineage data inside constituent_factors; none veto
+    the score (M-4). `tajika_covering` is a separate boolean recording whether
+    a varṣa row covered the window — the consumer-facing availability state is
+    still availability['tajika'].
+    """
+    lagna_sign_num = _LAGNA_SIGN_NUM.get(ctx.lagna_sign) if ctx.lagna_sign else None
+    dignity = ctx.d1_dignity_by_graha.get(planet) if planet else None
+    return {
+        'natal_dignity_strong': _e4_natal_dignity_strong_flag(dignity),
+        'retrograde_at_peak': _e4_retrograde_flag(speed_at_event_dps),
+        'day_birth': _e4_day_birth_flag(ctx.is_day_birth),
+        'kendra_from_lagna': _e4_kendra_flag(lagna_sign_num, transit_sign_num),
+    }
 
 
 # ── U3 current derivation helpers ─────────────────────────────────────────────
@@ -415,6 +488,8 @@ _ZODIAC_SIGNS_ORDERED = (
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
 _SIGN_NAME_TO_IDX: dict[str, int] = {s: i for i, s in enumerate(_ZODIAC_SIGNS_ORDERED)}
+# E4: 1-based sign numbers for lagna-relative kendra checks (1=Aries … 12=Pisces).
+_LAGNA_SIGN_NUM: dict[str, int] = {s: i + 1 for i, s in enumerate(_ZODIAC_SIGNS_ORDERED)}
 
 
 @dataclass(frozen=True)
@@ -1454,6 +1529,12 @@ def mode_a_search(
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
+        # E4: typed natal/clock conditions (lineage data, never veto)
+        speed_at_peak = getattr(ev, 'speed_at_event_dps', None)
+        typed_conditions = _e4_typed_conditions(planet, transit_sign, speed_at_peak, ctx)
+        tajika_available = c12 is not None
+        typed_conditions['tajika_covering'] = tajika_available
+
         # ── Newly wired currents (formerly 0.0) ──────────────────────────────
         c_cross   = _c_cross_dasha_agreement(peak_dt, eligible_windows)
         c_dristi  = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
@@ -1505,12 +1586,14 @@ def mode_a_search(
                 'transit_search': 'computed',
                 'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
                 'ashtakavarga': 'computed' if c7_verdict is not None else 'unavailable',
+                'tajika': 'computed' if tajika_available else 'unavailable',
             },
             applicability={
                 **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
                 'vedha_cancellation': vedha_available,
                 'orb_presence': True,  # event found above the orb threshold
                 'ashtakavarga_verdict': c7_verdict is not None,
+                'tajika_annual_reinforcement': tajika_available,
             },
             c7_verdict=c7_verdict,
         )
@@ -1535,6 +1618,8 @@ def mode_a_search(
                 'dasha_score': dasha_score,
                 'dignity_score': dignity_score,
                 'signature_class': sig_class,
+                # E4: typed natal/clock conditions (lineage, never veto)
+                'typed_conditions': typed_conditions,
                 # R-1 (RR-03): carry target provenance as data.
                 **({'target_provenance': _target_provenance_dict(transit_trig)}
                    if _has_target_provenance(transit_trig) else {}),
@@ -1759,6 +1844,12 @@ def mode_b_sweep(
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
+        # E4: typed natal/clock conditions (lineage data, never veto)
+        speed_at_peak = getattr(ev, 'speed_at_event_dps', None)
+        typed_conditions = _e4_typed_conditions(planet, transit_sign, speed_at_peak, ctx)
+        tajika_available = c12 is not None
+        typed_conditions['tajika_covering'] = tajika_available
+
         # Newly wired currents (mode B: cross_dasha = 0.0 — no dasha prior in un-gated sweep)
         c_dristi = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
         c_pancha = _c_panchanga_quality(peak_dt, muhurta_service, native_location)
@@ -1801,12 +1892,14 @@ def mode_b_sweep(
                 'transit_search': 'computed',
                 'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
                 'ashtakavarga': 'computed' if c7_verdict is not None else 'unavailable',
+                'tajika': 'computed' if tajika_available else 'unavailable',
             },
             applicability={
                 **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
                 'vedha_cancellation': vedha_available,
                 'orb_presence': True,
                 'ashtakavarga_verdict': c7_verdict is not None,
+                'tajika_annual_reinforcement': tajika_available,
             },
             c7_verdict=c7_verdict,
         )
@@ -1831,6 +1924,8 @@ def mode_b_sweep(
                 'dignity_score': dignity_score,
                 'magnitude': round(magnitude, 4),
                 'signature_class': sig_class,
+                # E4: typed natal/clock conditions (lineage, never veto)
+                'typed_conditions': typed_conditions,
                 # R-1 (RR-03): carry target provenance as data.
                 **({'target_provenance': _target_provenance_dict(transit_trig)}
                    if _has_target_provenance(transit_trig) else {}),
@@ -2007,6 +2102,10 @@ def mode_c_subsystem_period(
                 cscore   = round(dignity_score * severity, 4)
                 # R-6: sign-level route — severity is the non-dignity activity;
                 # dignity becomes valence (legacy composite above unchanged).
+                transit_sign_num = _LAGNA_SIGN_NUM.get(sign)
+                typed_conditions = _e4_typed_conditions(
+                    trigger_planet, transit_sign_num, None, ctx
+                )
                 kernel = separate_kernel_sign_level(
                     dignity_score, severity,
                     availability={'dasha': 'unavailable'},  # not consulted on this route
@@ -2030,6 +2129,8 @@ def mode_c_subsystem_period(
                         'dignity_score': dignity_score,
                         'severity_score': severity,
                         'signature_class': sig_class,
+                        # E4: typed natal/clock conditions (lineage, never veto)
+                        'typed_conditions': typed_conditions,
                         'mode': 'C',
                     },
                     'source_citation': (
@@ -2149,6 +2250,8 @@ def mode_d_av_bindhu(
                 cscore     = round(dignity_score * sav_score, 4)
                 rarity     = _rarity_years(planet, 30.0)   # sign-ingress ≈ 30° transit
                 sav_verdict = _sav_verdict(sign_num, ctx)
+                # E4: typed natal/clock conditions for the sign-level AV-bindhu route.
+                typed_conditions = _e4_typed_conditions(planet, sign_num, None, ctx)
                 # R-6: sign-level route — SAV fraction is the non-dignity
                 # activity; dignity becomes valence (legacy composite unchanged).
                 kernel = separate_kernel_sign_level(
@@ -2187,6 +2290,8 @@ def mode_d_av_bindhu(
                         'sav_verdict': sav_verdict,
                         'dignity_score': dignity_score,
                         'signature_class': sig_class,
+                        # E4: typed natal/clock conditions (lineage, never veto)
+                        'typed_conditions': typed_conditions,
                         'mode': 'D',
                     },
                     'source_citation': (

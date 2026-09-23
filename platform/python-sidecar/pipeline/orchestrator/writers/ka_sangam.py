@@ -39,6 +39,8 @@ from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
 from brahmagyan.graha_vocabulary import norm_graha
+from pipeline.orchestrator.birth_params import fetch_birth_params
+from ga_writers.ga_sensitive_writer import _derive_is_day_birth
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
 # wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
@@ -401,8 +403,10 @@ class KaSangamWriter(WriterBase):
         self._pred_dicts = _select_top_predicates_with_class_quota(pred_dicts, _MAX_PREDICATES)
         self._lt_preds   = _select_top_predicates_with_class_quota(pred_dicts, _LIFETIME_MAX_PREDICATES)
 
-        # Build U3 enrichment context (C7/C11/C12/C13 currents)
-        self._enrichment_ctx = self._build_enrichment_context(conn, chart_id)
+        # Build U3 + E4 enrichment context (C7/C11/C12/C13 currents + typed natal/clock conditioning)
+        self._enrichment_ctx = self._build_enrichment_context(
+            conn, chart_id, ctx.config.get('birth_params')
+        )
 
         # CR-87: resolve THIS chart's janma nakshatra, Moon sign, and birth
         # location — never another chart's hardcoded values.
@@ -1028,8 +1032,9 @@ class KaSangamWriter(WriterBase):
                 rows_inserted += 1
         return rows_inserted
 
-    def _build_enrichment_context(self, conn, chart_id: str) -> 'EnrichmentContext':
-        """Pre-fetch U3 enrichment data from DB for C7/C11/C12/C13 currents.
+    def _build_enrichment_context(self, conn, chart_id: str, birth_params=None) -> 'EnrichmentContext':
+        """Pre-fetch U3 + E4 enrichment data from DB for C7/C11/C12/C13 currents
+        and typed natal/clock conditioning.
 
         All fetches are SAVEPOINT-guarded soft dependencies — partial context
         is better than empty. Returns EnrichmentContext.empty() if all fail.
@@ -1226,18 +1231,95 @@ class KaSangamWriter(WriterBase):
             except Exception:
                 pass
 
-        if ashtakavarga_bindu or vedha_rules or tajika_year_lords:
+        # E4: typed natal/clock conditioning inputs.
+        d1_dignity_by_graha: dict[str, str] = {}
+        lagna_sign: Optional[str] = None
+        is_day_birth: Optional[bool] = None
+
+        # E4(a): natal D1 dignity per graha from chart_divisionals.
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_d1_dignity")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT graha, fact_value_text
+                    FROM chart_divisionals
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND varga = 'D1' AND fact_category = 'varga_dignity' AND fact_key = 'dignity'
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    dignity = (row['fact_value_text'] or '').strip()
+                    if dignity:
+                        d1_dignity_by_graha[(row['graha'] or '').capitalize()] = dignity.capitalize()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_d1_dignity")
+        except Exception as exc:
+            logger.debug("ka_sangam: D1 dignity fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_d1_dignity")
+            except Exception:
+                pass
+
+        # E4(b): natal lagna sign from chart_facts.
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_lagna")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_text
+                    FROM chart_facts
+                    WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign'
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    lagna_sign = row['fact_value_text']
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_lagna")
+        except Exception as exc:
+            logger.debug("ka_sangam: lagna sign fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_lagna")
+            except Exception:
+                pass
+
+        # E4(c): day-birth classification (local sunrise/sunset containment).
+        # Prefer orchestrator-supplied birth_params; fall back to public.charts.
+        # Soft-fail to None so a missing birth-time never blocks convergence scoring.
+        try:
+            bp = birth_params
+            if not bp:
+                bp = fetch_birth_params(conn, chart_id)
+            is_day_birth = _derive_is_day_birth(bp)
+        except Exception as exc:
+            logger.debug("ka_sangam: is_day_birth derivation skipped: %s", exc)
+            is_day_birth = None
+
+        if ashtakavarga_bindu or vedha_rules or tajika_year_lords or d1_dignity_by_graha or lagna_sign is not None:
             logger.info(
                 "ka_sangam: EnrichmentContext built — ashtak_planets=%d "
-                "(computed=%d, school=%s), vedha_rules=%d, tajika_years=%d",
+                "(computed=%d, school=%s), vedha_rules=%d, tajika_years=%d, "
+                "d1_dignity_grahas=%d, lagna_sign=%s, is_day_birth=%s",
                 len(ashtakavarga_bindu),
                 len(ashtakavarga_computed_planets),
                 ashtakavarga_school_primary,
                 len(vedha_rules),
                 len(tajika_year_lords),
+                len(d1_dignity_by_graha),
+                lagna_sign,
+                is_day_birth,
             )
         else:
-            logger.warning("ka_sangam: EnrichmentContext is empty — C7/C11/C12 will score 0.0")
+            logger.warning("ka_sangam: EnrichmentContext is empty — C7/C11/C12/E4 will score 0.0")
 
         return EnrichmentContext(
             ashtakavarga_bindu=ashtakavarga_bindu if ashtakavarga_bindu else None,
@@ -1245,6 +1327,9 @@ class KaSangamWriter(WriterBase):
             ashtakavarga_school_primary=ashtakavarga_school_primary,
             vedha_rules=vedha_rules if vedha_rules else None,
             tajika_year_lords=tajika_year_lords if tajika_year_lords else None,
+            d1_dignity_by_graha=d1_dignity_by_graha if d1_dignity_by_graha else None,
+            lagna_sign=lagna_sign,
+            is_day_birth=is_day_birth,
         )
 
     def _build_house_lord_map(self, conn, chart_id: str) -> dict[int, str]:
