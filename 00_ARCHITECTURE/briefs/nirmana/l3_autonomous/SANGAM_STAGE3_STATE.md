@@ -134,8 +134,8 @@ E3 stays gated on N-7 (B-1); Phase 5 scope is E6 only. Entirely DB-free (5434 pr
 | B-1 | ~~N-7 unruled → E1/E3 gated~~ **CLOSED 2026-09-23: N-7 was RULED by the native (kernel path, `kala_gochara_contacts`) on `GOCHARA_RULING_SHEET_v1_0.md` at `50b5e1822`, 03:55 IST — before this campaign's Phase 0; the executor's 'UNRULED (full-text search of the campaign tree)' searched its own branch, not `l3/gochara-elevation`.** E1/E3 and the scanner-dependent R-3(b)/R-4 SPECs are released from the gate; they build when the kernel's contact ledger and `find_episodes` (S-2) exist | Gochara stream delivers S-2 | Gochara stream |
 | B-2 | ~~Path-A owner unnamed~~ **MOOT 2026-09-23: Path B (kernel) chosen under N-7** | — | — |
 | B-3 | ~~Aborted-approach E6 numerator question unruled~~ **DECIDED 2026-09-23 under the native's second delegation (ruling sheet §Residual): aborted approaches COUNT, as `perfected: false`, with `perfected` a mandatory reported covariate per stratum** — numerator/denominator consistency with E5's occupancy union; erasure is the defect R-6 repaired; the skill question is E6's to answer empirically | E6 output carries the perfected/unperfected split (implement at the next E6 touch) | Saṅgam |
-| B-4 | E2 producer-column receipt at ga_strength_writer — **genuinely open again after the 2026-09-23 revert**; an earlier unauthorized attempt was made and reverted (build-fatal), so neither RRV-01's stage-3-side join nor the producer-column route has landed | L1-owner bounded packet (receipt columns only, no numeric change), **with `CHART_FACTS_SCHEMA.json` declarations, the `:148` `ay` convention, a test that actually calls `_build_ashtakavarga_rows`, and an explicit `may_touch` amendment or L1-owner sign-off** | L1 owner |
-| B-5 | ephemeris_daily node-frame undeclared contract (§11.1) | L0 owner repair (outside this campaign's scope) | L0 owner |
+| B-4 | **[D-B 2026-09-23: holder ≠ authority — the L0 lane has a HOLDER (Gochara took G-9) but NO AUTHORITY bound to any session or person; staged work is not applied work, and no packet may record it as handled until an authority applies it.]** E2 producer-column receipt at ga_strength_writer — **genuinely open again after the 2026-09-23 revert**; an earlier unauthorized attempt was made and reverted (build-fatal), so neither RRV-01's stage-3-side join nor the producer-column route has landed | L1-owner bounded packet (receipt columns only, no numeric change), **with `CHART_FACTS_SCHEMA.json` declarations, the `:148` `ay` convention, a test that actually calls `_build_ashtakavarga_rows`, and an explicit `may_touch` amendment or L1-owner sign-off** | L1 owner |
+| B-5 | ephemeris_daily node-frame undeclared contract (§11.1) | L0 repair — **but per D-B (2026-09-23) "the L0 owner" is bound to no session, agent or person in the repository; this row names a lane, not a responsible party, until the native binds one** | UNOWNED-BY-AUTHORITY (D-B) |
 | B-6 | E6 writer-side `evaluation_eligible`/`is_synthetic` have no source field (defaulted True/False, documented) | A consent/synthetic marker lands in chart metadata | Native / L1 |
 
 ## Fences in force (from the prompt §3/§6 — restated so no session re-derives them)
@@ -376,7 +376,7 @@ touch only `DISAGREEMENT_REGISTER_v1_0.md`.
 branch before anything else). Kshetra's stage-3 prompt already does this correctly
 (`/Users/Dev/madhav-l3/kshetra-stage3`, its own path and branch).
 
-**Recommendation on the readiness ref (the native's call, not any session's):** leave it as-is. A
+**Readiness ref — DECIDED 2026-09-23: LEAVE AS-IS** (`KALA_DELEGATED_DECISIONS_v1_0.md` D-A at `8a9734a32`, the native's written delegation to the strategic session, grounds re-verified there: `c46cd9f0e` an ancestor, every commit on both refs, no open PR, L1 net-diff empty). No reset, no force-push. The recommendation this file carried is now the decision, and its own line is superseded: A
 reset to `c46cd9f0e` would be a force-push on a shared ref for no functional gain — the eventual PR
 opens from `sangam/stage3`, which contains readiness entirely.
 
@@ -392,3 +392,23 @@ opens from `sangam/stage3`, which contains readiness entirely.
    readiness before the strategic session's own fast-forward carried `f81782650` onto it — an absence
    claim against the wrong branch, inside the governance record, about text 15 lines below it.
    Referred to the strategic session to correct in place; this file does not edit the register.
+
+
+## Delegated decisions applied (2026-09-23T23:35:31+05:30)
+
+`KALA_DELEGATED_DECISIONS_v1_0.md` (`l3/kala-elevation-readiness` @ `8a9734a32`, `status: DECIDED`, the
+native's delegation to the strategic session quoted verbatim) — verified at the SHA before applying.
+- **D-A** readiness branch: LEAVE AS-IS — applied above; no action.
+- **D-B** L0 lane: holder ≠ authority. Binding on this campaign's handoff: the house-vedha rows'
+  qualification (`unqualified` as cited → `applied` on re-citation) **holds at its current grade until the
+  re-citation actually lands, not from the moment it was specified**; Kshetra's row-fix spec and the
+  re-citation are **staged, not applied**; nothing here records them as handled.
+- **D-C** century writer: NOT set inactive (it is needed for N-14's λ regeneration); instead declare
+  `kala_gochara_windows` in its `clear_tables`; **no unattended build may include it until then.** My
+  prompt's fence §3.11 ("do not trigger it") stands unchanged — an autonomous session is by definition
+  unattended.
+- **D-D** Sade-Sati demoted to `unsourced`, real question staged by predicate. **Both DB endpoints
+  (5433, 5434) refused from this session at 23:35** — the staged SQL was not run here.
+- **Not delegated, correctly:** the strategic session declined to accept this campaign's E6 gate numbers
+  (D-1: 35/crit≥12; 100/crit≥28) on the native's behalf — a second-order delegation. **That acceptance
+  remains with the native.**
