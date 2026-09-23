@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CHECKLIST
 canonical_id: KALA_PRE_ELEVATION_CHECKLIST
-version: "1.5"
+version: "1.6"
 status: CURRENT
 date: 2026-09-24
 revision_note: "v1.2 — after the L0 repair (PR #2727): §A shrinks to three native items; §C becomes the PR close-out; §D gains the Sade-Sati query result; §E records that the Saṅgam entry gate did not gate; §B4 downgraded (production reachable via proxy on 5432)."
@@ -20,6 +20,17 @@ provenance_rule: >
 Grouped by what each item blocks. **[V]** verified by this session at source; **[A]** attributed.
 
 ---
+
+## A0 — Close-out ruling 2026-09-24 (read this first)
+
+The native declined the restore drill (B2) and delegated the other residual items. Decisions
+D-G…D-N in `KALA_DELEGATED_DECISIONS_v1_0.md` v1.8 dispose of all of them. **What is now the
+native's, and only the native's:** the cutover's operator actions (D-G) — provision the builder
+secret version and the three `data_plane_*` logins via the approved channel, rebind
+`brahma-build-pipeline-job`, take the maintenance window, run the canary — and the launch of the
+Kṣetra stage-3 executor. **Authorized and staged:** the baseline freeze
+(`KALA_BASELINE_FREEZE_EXECUTION_PROMPT_v1_0.md`). **Written:** the acceptance-record contract that
+replaces the non-existent "receipts enum".
 
 ## A — The native's, three items
 

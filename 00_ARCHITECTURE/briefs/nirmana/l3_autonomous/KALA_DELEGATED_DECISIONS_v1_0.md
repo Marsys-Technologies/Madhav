@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.7"
+version: "1.8"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -317,6 +317,91 @@ the common result for a long time, and it will mean *"not large enough to see at
 `PROVISIONAL_INSUFFICIENT_N` discipline doing real work rather than decorating a null.
 
 ---
+
+## Pre-elevation close-out — the residual nine, ruled or decided 2026-09-24
+
+The native's instruction, verbatim: *"I don't want point number two PITR, it's something that I
+don't need, at least at this point in time. For the residual other than point two, I will go with
+your recommendation, whatever you suggest."* Item 2 is therefore the native's ruling; items 1 and
+3–9 are the author's decisions under that delegation, each with reasoning, each reversible in one
+line.
+
+### N-PITR — restore drill: **DECLINED by the native.** *(ruling, not a decision)*
+Recorded verbatim above. Consequence stated so it is not discovered later: no rehearsed rollback
+exists for a `kala_*` table outside the cutover's own gate. Mitigation that survives the decline:
+the DP-SD-020 cutover carries its own automated **fresh backup and exact isolated restore** gate,
+proven once on `amjis-ri02-validation`, so the cutover itself is not weakened. Re-raise if an
+unattended mutating campaign is ever scheduled outside that gate.
+
+### D-G — production cutover: **not delegable; returned to the native in narrower form.**
+Grounds (read at source, `MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION_v1_0.md` §11 and
+`…RI02_SECURITY_CUTOVER_v1_0.md` §Residual release gates): DP-SD-020 is an **automated** cutover the
+native already authorized, owned by the permanent Execution — Data Plane task. Its preflight has
+cleared a sequence of gates (IAM owner rule, inventory buffer, N+1 API pattern, impersonation
+grants, env-var comment parsing, the Firebase public key, 1,334 legacy-revision literals) and now
+stands at **the final pre-credential barrier**: `brahma-build-pipeline-job` still binds
+`amjis-web-runtime` + `amjis-pipeline-db-url`, and the new builder secret has no version. What
+remains is exactly what the plan names as **operator actions**: provision the builder secret
+version and the `data_plane_builder` / `_verifier` / `_migrator` logins through the approved secret
+channel; rebind the build job; take the maintenance window; execute the governed canary. Those are
+credential-provisioning acts on production IAM by the project's sole human Owner. **Decision: I do
+not execute or route them; the native does, or names who holds the secret channel.** The
+automated plan then runs to completion under its unchanged non-human gates.
+
+### D-H — receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED`: **a record contract, not an enum member.**
+**Correction of my own four-version claim.** I called this "one enum member, no migration." There
+is no enum. The lifecycle ladder is a chain of **acceptance records** — markdown artifacts with
+`status: <STATE>_ACCEPTED`, `authority`, `execution_base`, strategy pins, `implementation_commits`
+and `next_stage_hold` (shape: `MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md`). The only
+code that knows the states is a test fixture. **Decision: adopt the record contract in
+`KALA_ACCEPTANCE_RECORD_CONTRACT_v1_0.md`** (written with this decision) — same frontmatter shape,
+plus the evidence each state specifically requires: `CONSUMER_INTEGRATED` needs a named receiving
+operator with a live call path (`file:line`) and an L3-owned sentinel test; `VALUE_EVALUATED` needs
+the frozen-baseline delta with the ablation and the added-error count. No migration, no code.
+Blueprint §9.3 and review M5 corrected in place.
+
+### D-I — the three protected classes: **CONFIRMED, and enforced through the cutover's own map.**
+The retired sweep snapshot (`ka_gochara_sweep`, `generation='v1'`), issued claims and observations,
+and retained outcomes are never touched by any rebuild. **Enforcement decision:** not a separate
+mechanism — `build_protected_assets` had 0 rows and no `kala_*` table had a trigger as of
+2026-09-23 (blueprint B1). The RI-02 cutover already installs a BEFORE INSERT/UPDATE/DELETE guard
+on every table in its **protected object map** and pins protected ownership. The three classes are
+to be **added to that map** so they inherit the same guard, protected owner and attestation.
+Routed to the Data Plane task as a map amendment, not a new writer.
+
+### D-J — baseline authority: **RULED under delegation, and the freeze is the next authorized packet.**
+The instrument is L3-Q01–Q13 (`MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md`), the Product §14 proving set, and one
+ordinary period. It does not exist. **Decision: authorize one scoped, read-only session to freeze
+`KALA_BASELINE_v1_0.md`** — prompt in `KALA_BASELINE_FREEZE_EXECUTION_PROMPT_v1_0.md`, written with
+this decision, same shape as the L0 prompt. Until it exists every wave closes on *changed*, not
+*elevated*; it is the single highest-leverage item on the review and it is now staged.
+
+### D-K — the Saṅgam merge gate: **a fresh-context session plus an isolated second tool, as Kṣetra did.**
+The third independent review of plan v1.0 never ran and Phases 0–5 have landed on `sangam/stage3`.
+**Decision:** the review runs as a **merge gate** on that branch's tip before anything from it
+reaches `main`, performed by a fresh-context session with no stake in the plan, with an isolated
+Kimi K3 pass in a detached worktree as the second instrument — the exact pattern that produced
+re-verified corrections for Kṣetra rulings 7/8/9. The author does not discharge it. Routed to the
+Saṅgam session.
+
+### D-L — owners for the five synergy contracts: **one scoped packet session — jobs, not a role.**
+Same reframe that unstuck L0. The five contracts (temporal, typed qualification, co-reference,
+inherited independence, coverage-on-every-result) are five bounded jobs with located seams. **Decision:**
+one session, one prompt, five packets, an independent reviewer from outside the three streams. It
+is the first W1 artifact and is written **after** the baseline freeze, because the baseline is what
+will show whether the contracts changed a reading.
+
+### D-M — the two assignments.
+**Tithi-praveśa source steward:** fold into a **second L0 lane pass** under the L0 prompt's shape,
+together with the 19 residual `bg_transit_rules` rows still carrying the refuted citation — both are
+row-verified re-citation work, same reviewer rule. **Sade-Sati demotion owner:** it is serve-side
+(`routers/sade_sati.py`, `routers/permission_curve.py`), which is Pūrṇa's surface under G12.
+**Decision:** routed as an **interface packet** carrying the decided disposition — composite
+`unsourced`, served flagged, substrate untouched (D-D) — never as an edit from this side.
+
+### D-N — the Sarvatobhadra grid: **leave it empty.**
+Do not build a partial grid on an invented traversal direction. The docstring records exactly why,
+with chunk ids. Re-open only if source images or another edition arrive. Nothing to decide.
 
 ## What this record does not decide
 

@@ -1,7 +1,7 @@
 ---
 artifact: KALA_BLUEPRINT_REVIEW
 canonical_id: KALA_BLUEPRINT_REVIEW
-version: "1.1"
+version: "1.2"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -68,9 +68,11 @@ today. G16 named this as a tracker gap; the blueprint itself should be the track
 *Consequence:* `Delivered N/22` and `Data-accepted N/22` are not computable from the document that
 defines them. *Falsifier:* a table with 22 rows and two state columns.
 
-**M5 — The receipts enum.** D2 has been "cheap and unblocking" for three versions. It is still
-unruled and the enum member exists in no file. *Consequence:* the headline's first number is zero by
-construction, forever.
+**M5 — The receipts.** D2 has been "cheap and unblocking" for three versions. **Corrected 2026-09-24:**
+there is no enum to add to — the lifecycle ladder is a chain of acceptance records, and the only
+code that names the states is a test fixture. The fix is a record contract, now written
+(`KALA_ACCEPTANCE_RECORD_CONTRACT_v1_0.md`). *Consequence unchanged:* until the first record exists
+the headline's first number is zero by construction.
 
 **M6 — The serving contract.** G12 says serving is Pūrṇa's and L3 supplies "interface packets
 only." The blueprint never states what L3 *guarantees* to any reader — field-level, per object.

@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "4.3"
+version: "4.4"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "4.4 (2026-09-24): pre-elevation close-out — PITR declined by the native; D-G…D-N decided under delegation; D2 corrected (no enum exists — acceptance-record contract instead); baseline freeze authorized and its prompt written."
   - "4.3 (2026-09-24): E2 RULED — Kṣetra stage 3 AUTHORIZED (native, verbatim); stage 4 explicitly not opened."
   - "4.2 (2026-09-24): D1 RULED — the W1 hold on the generation design is released (native, verbatim). E3 struck (N-18 was already ratified). Kṣetra stage-3 authorization raised but held pending one-word confirmation."
   - "4.1 (2026-09-24): G10 corrected a third time, against me: the SBC grid is partially recoverable and NOT buildable in full — the L0 repair session read every chunk; I had read 260-char previews. A preview is not a page. Rule ledger gains that line."
@@ -475,7 +476,7 @@ queue that stood here is preserved in the chronicle.
 
 | # | decision | verified state at v4.0 |
 |---|---|---|
-| **D2** | Receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | **No such enum member exists anywhere in `platform/src` or the sidecar.** Until it does the headline's first number is 0 by construction |
+| **D2** | Receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | **DECIDED (D-H) — and my "one enum member" framing was wrong for four versions.** There is no enum; the ladder is a chain of acceptance records. Contract written: `KALA_ACCEPTANCE_RECORD_CONTRACT_v1_0.md`. No code, no migration. The headline moves when the first record exists |
 | **D3** | The three protected classes (sweep snapshot, issued claims/observations, retained outcomes) | no ruling recorded |
 | **D4** | Tithi-praveśa source qualification | open; **the earlier claim that this is "the layer's FIRST source-qualified reference" is withdrawn** — laṭṭā and the malefic scale are corpus-verifiable today |
 | **D5** | Baseline authority — L3-Q01–Q13 + the §14 proving set + one ordinary period | no ruling, **and no baseline artifact exists to rule on** (§8) |
