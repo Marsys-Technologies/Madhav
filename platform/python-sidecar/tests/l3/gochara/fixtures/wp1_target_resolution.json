@@ -272,7 +272,7 @@
       "inputs": {
         "resonance_target": {"event_class": "illness_acute", "target_type": "sensitive_degree", "target_ref": "wp1synth.sat.notgandanta.check", "weight": 0.5},
         "chart_facts": [
-          {"fact_category": "sensitive_degree_check", "fact_subject": "SAT", "fact_key": "papa_kartari", "fact_value_text": "papa_kartari", "fact_id": "wp1synth.sat.papakartari.check"},
+          {"fact_category": "sensitive_degree_check", "fact_subject": "SAT", "fact_key": "kartari", "fact_value_text": "papa_kartari", "fact_id": "wp1synth.sat.papakartari.check"},
           {"fact_category": "graha_position", "fact_subject": "SAT", "fact_key": "longitude_sidereal", "fact_value_num": 200.125, "fact_id": "wp1synth.sat.lon"}
         ]
       },
