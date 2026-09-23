@@ -403,11 +403,8 @@ native's delegation to the strategic session quoted verbatim) — verified at th
   qualification (`unqualified` as cited → `applied` on re-citation) **holds at its current grade until the
   re-citation actually lands, not from the moment it was specified**; Kshetra's row-fix spec and the
   re-citation are **staged, not applied**; nothing here records them as handled.
-- **D-C** century writer: NOT set inactive (it is needed for N-14's λ regeneration); instead declare
-  `kala_gochara_windows` in its `clear_tables`; **no unattended build may include it until then.** My
-  prompt's fence §3.11 ("do not trigger it") stands unchanged — an autonomous session is by definition
-  unattended.
-- **D-D** Sade-Sati demoted to `unsourced`, real question staged by predicate. **Both DB endpoints
+- ~~**D-C** century writer: NOT set inactive (it is needed for N-14's λ regeneration); instead declare `kala_gochara_windows` in its `clear_tables`; no unattended build may include it until then.~~ **[WITHDRAWN by its author at `dfcb2b25b`, 2026-09-23, verified at the SHA — the premise was wrong.** The native's ruling set already governs: **N-5** the century writer "donates its engine and stays held"; **N-6a** `is_active=false` at runbook step 3, reversible at WP10, nothing deleted, its production write declared at step 5; **N-10** `'4.0'` is the publication generation and `'3.0'` the rollback surface. So N-14's λ regeneration is `ka_gochara` writing `'4.0'` and **never needs the century writer**; "never a patch over live rows" prohibits touching `'3.0'`. One ruling was read without the ruling set beside it — a proxy checked instead of the object.] **My prompt's fence §3.11 ("do not trigger `ka_gochara_v3_century_materialize`") stands unchanged** — now belt-and-braces over the structural guard N-6a provides, not the guard itself.
+- **D-D** Sade-Sati demoted to `unsourced`, real question staged by predicate. **Target sharpened (Gochara N-15 reconciliation, via strategic): the substrate — Saturn's houses from the Moon — is already served by doctrine-predicate; what is uncited is the composite's special gravity. Any query run here is aimed at that, not at the substrate.** **Both DB endpoints
   (5433, 5434) refused from this session at 23:35** — the staged SQL was not run here.
 - **Not delegated, correctly:** the strategic session declined to accept this campaign's E6 gate numbers
   (D-1: 35/crit≥12; 100/crit≥28) on the native's behalf — a second-order delegation. **That acceptance
