@@ -284,3 +284,53 @@ campaign: **B-1 closed** (N-7 ruled kernel path — E1/E3 released, unbuilt only
 (extend — Gochara's λ regeneration, DIS.031 resolvable). Follow-up engineering created by B-3: E6's
 outputs must publish the perfected/unperfected split per stratum (not yet implemented; RRV-13's
 "all issued windows" now explicitly includes unperfected).
+
+
+## S-2 interface and timing — as stated by the Gochara stream (2026-09-23T22:59:16+05:30) — ATTRIBUTED, not verified
+
+The Gochara session (madhav-e6) supplied the shape and timing E1/E3 build against. **Grade: ATTRIBUTED.**
+Its branch `l3/gochara-autonomous-wp0-7` (13 commits) is **unpushed**; nothing below has been read at
+source by this session. Re-verify against the branch once N-18 (push + PR) lands, before coding to it.
+
+**Call:** `find_episodes(chart_id, targets: list[TargetRef], horizon: Horizon, *, bodies=None,
+relations=None, moon=False) -> EpisodeBatch` — `TargetRef = (target_type, target_ref, target_fact_id?)`,
+`Horizon = (start_jd, end_jd)`; solved from the arc index + contact ledger, never a per-call ephemeris
+scan; an interval with no persisted contacts returns an empty episode list **with a full coverage
+object**, never a bare `[]`; `moon=True` is the on-demand Moon path (`moon_on_demand` coverage
+partition). `find_aspects` keeps its exact current shape (our `engine.py:464` call and `kala_trigger`);
+`find_episodes` is the new method Saṅgam opts into.
+
+**Event (`DirectedContactEvent`, S-2 §2):** `window {start,end}` = t_in/t_out; `target {target_type,
+target_ref, longitude_deg|null}`; `planets` a **list** of grahas that fired; `aspects: [{planet,
+aspect_deg, strength}]` graduated by separation under the declared orb (numeric decay WP8-gated —
+until then the span-aware legacy box); `direction 'to_target'`, reverse relation as separate events;
+`completeness_state`; `coverage`; `contact_id` (null only for live-computed non-persisted episodes such
+as Moon). **Normative:** per-graha Parāśari angles only (Mars 90/180/210, Jupiter 120/180/240, Saturn
+60/180/270, others 180 — never the symmetric generic set: this is RRV-14's assertion, matched); **no
+node dṛṣṭi (N-14)**, nodes remain agents/targets for conjunction, ingress, kakṣyā, return; **absent when
+nothing fires** — silence lives in coverage; `_resolve_transit_planet` replaced by consumption;
+`search_long_horizon` bypass retires when S-1 lands.
+
+**Row (`kala_gochara_contacts`, PK `(chart_id, generation, contact_id)`):** identity `contact_id
+"sha256:…"` + `independence_group`; geometry `body, relation ∈ {conjunction, drishti_contact,
+sign_ingress, nakshatra_ingress, kakshya_cell_crossing, return}, aspect_deg, target_*,
+target_resolution_state ∈ {resolved, unavailable, unqualified}`; time `t_in/t_exact/t_out`
+timestamptz, `bracket_seconds, tolerance_arcsec, truncated_at_horizon`; motion `branch ∈ {direct,
+retrograde, station}, station_flag, exact_crossing, orb_max_deg, orb_source, dwell_days`;
+qualification `epistemic_class, completeness_state, operator_role, claim_grain, time_basis,
+comparable_with`; provenance `convention_id, ephemeris_backend jsonb {backend, retflag,
+se1_checksums}, evidence_fact_ids, classical_citation, uncited_extension, corpus_verifiable,
+input_generation_vector_id, build_id, computed_at`. Generation `'4.0'` onward.
+
+**Timing (three stages, their words):** (1) **now** — kernel, ledger writer and schema exist on the
+branch, 96 tests on a disposable DB → **E1/E3 can be coded against the interface today** and tested
+against the disposable-DB ledger; (2) `find_episodes` as a live service method = S-1, after WP9,
+needs the native's A-1; (3) real contact rows for a real chart only at WP10 step 6 (first `'4.0'`
+candidate on the canonical chart), P-class, needs A-3. **Consequence for this campaign:** E1/E3 move
+from *blocked* to *buildable-now / live-later*; build against the protocol, not the production rows.
+
+**⚠ Migration-number collision, verified on this side:** the Gochara ledger is described as
+**migration 1072**; this campaign already shipped `1072_kala_convergence_episodes.sql` (and 1071).
+Two different migrations, one number, two unmerged branches — whichever merges second collides.
+Flagged to the Gochara stream 2026-09-23; resolve before either PR opens (their renumber or mine — theirs is
+unpushed, so cheaper there).
