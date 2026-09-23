@@ -50,6 +50,14 @@ requires_swieph = pytest.mark.skipif(
     + "; ".join(_PROBLEMS),
 )
 
+# Set the pinned ephemeris path for direct Swiss calls in this test directory
+# (the kernel re-asserts it per-call; tests comparing raw swe.calc_ut need it
+# set once at import time).
+if not _PROBLEMS:
+    import swisseph as swe
+
+    swe.set_ephe_path(EPHE_PATH)
+
 
 # ── WP6 disposable-database fixtures ─────────────────────────────────────────
 # (WP6, ledger/coverage/publication — see test_wp6_ledger.py. Merged into this
