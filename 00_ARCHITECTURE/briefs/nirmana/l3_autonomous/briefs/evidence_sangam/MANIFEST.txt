@@ -13,3 +13,4 @@ S11_dignity_zero_erases_activity.py|0|1
 S12_lagna_default_aries.py|0|1
 S13_trigger_composition_post_engine.py|0|1
 r5_harness/S14_r5_preservation_harness.py|0|1
+S15_r6_kernel_adverse_visible.py|0|1

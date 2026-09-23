@@ -756,6 +756,106 @@ def _current_stance(value: Optional[float], empty_reason: Optional[str] = None) 
     return {'state': 'honest_empty', 'empty_reason': empty_reason}
 
 
+# ── R-6: score-kernel separation (RR-05, decision M-7; RRV-03, RRV-08) ───────
+
+KERNEL_VERSION_SEPARATED = 'separated_v2'
+KERNEL_VERSION_LEGACY = 'legacy_i16'
+
+
+def separate_kernel(
+    dignity_score: float,
+    necessary_without_dignity: list[float],
+    supporting: dict[str, float],
+    availability: Optional[dict[str, str]] = None,
+    applicability: Optional[dict[str, bool]] = None,
+) -> dict:
+    """
+    R-6 (RR-05, decision M-7; ASTRA amendments RRV-03/RRV-08 dispositioned
+    2026-09-23 in ASTRA_REVIEW_SANGAM_ALGO_PLAN_v1_0 §B/R-6): the single I-16
+    composite splits into four carried-as-data fields —
+
+      activity      geometric/clock intensity in [0,1]. The I-16 form MINUS
+                    DIGNITY: Π(genuine necessity — orb presence, route
+                    satisfied, vedha modulator) × saturating_sum(supporting).
+                    Dignity left the necessary product (it becomes valence),
+                    so a dignity-0 yet intensely active configuration keeps
+                    activity > 0 — S11's erased-adverse-activity defect cannot
+                    recur in this kernel.
+      valence       signed, in [-1,1], from dignity: 2·dignity − 1. Dignity 0
+                    → −1 (adverse, STILL APPLICABLE — BPHS 47.3-4: a weak
+                    lord delivers trouble, not silence; ASTRA verified the
+                    verse verbatim); dignity 1 → +1.
+      applicability F06-per-method record: which terms were actually
+                    evaluated for this window (True) vs unavailable/not
+                    applicable (False). Carried as data, never pooled into the
+                    ordering key (RRV-03).
+      availability  per-input stance vocabulary ('computed' | 'unavailable').
+                    RRV-08: a term whose input could not be established (e.g.
+                    daśā eligibility with no service or no covering window) is
+                    recorded ABSENT here and OMITTED from `supporting` — never
+                    manufactured as neutral 0.5/1.0 support. C11 vedha
+                    unavailability is likewise recorded, not silently folded
+                    into a neutral 1.0 factor.
+
+    The legacy composite `convergence_score` (dignity still inside the
+    necessary product) is computed and carried UNCHANGED on the same window
+    for backward compatibility — the legacy_i16 reading, labelled
+    kernel_version, never re-derived from these four fields.
+    """
+    return {
+        'activity': round(convergence_score(necessary_without_dignity, supporting), 4),
+        'valence': round(2.0 * max(0.0, min(1.0, float(dignity_score))) - 1.0, 4),
+        'applicability': dict(applicability or {}),
+        'availability': dict(availability or {}),
+    }
+
+
+def separate_kernel_sign_level(
+    dignity_score: float,
+    intensity: float,
+    availability: Optional[dict[str, str]] = None,
+    applicability: Optional[dict[str, bool]] = None,
+) -> dict:
+    """
+    R-6 for sign-level routes with no orb and no supporting combinator
+    (mode C subsystem periods, mode D AV-bindhu): the non-dignity intensity
+    (severity / SAV fraction) IS the activity; valence still from dignity.
+    These routes never assemble a supporting dict, so the saturating
+    combinator of separate_kernel has nothing honest to combine — running an
+    empty-support activity would multiply real sign-level intensity to 0 and
+    re-create the erased-activity defect on another route.
+    """
+    activity = max(0.0, min(1.0, float(intensity)))
+    return {
+        'activity': round(activity, 4),
+        'valence': round(2.0 * max(0.0, min(1.0, float(dignity_score))) - 1.0, 4),
+        'applicability': dict(applicability or {}),
+        'availability': dict(availability or {}),
+    }
+
+
+def ordering_key(window: dict) -> tuple:
+    """
+    RRV-03 (binding design pin, HIGH): R-6 removes the only rankable scalar
+    (convergence_score), so one within-class ordering key is declared per
+    comparability_class — `activity DESC, contact instant ASC` (deterministic
+    tiebreak). valence/applicability/availability are carried as DATA, never
+    pooled into the key: two equal-activity windows of opposite valence stay
+    adjacent in serving order and BOTH survive a page cut (SPEC R-6 asserts
+    exactly this). Legacy/new partitioning enforcement is SQL-level
+    (comparability_class/kernel_version in every consumer query — companion
+    §4.4 partition rule), not policy.
+    """
+    klass = str(window.get('comparability_class') or 'default')
+    activity_desc = -float(window.get('activity', 0.0) or 0.0)
+    contact = window.get('peak_date') or window.get('window_start')
+    if hasattr(contact, 'toordinal'):
+        contact_key: tuple = (0, contact.toordinal())
+    else:
+        contact_key = (1, str(contact))
+    return (klass, activity_desc, contact_key)
+
+
 # ── I-17: orb_strength_score ─────────────────────────────────────────────────
 
 def orb_strength_score(
@@ -1131,15 +1231,21 @@ def mode_a_search(
             except Exception as exc:
                 logger.warning("mode_a_search: dasha_kala_service.query failed: %s", exc)
 
-    def _dasha_score_for_date(peak_date: Any) -> float:
-        """Return max eligibility_score of any dasha window overlapping peak_date."""
+    def _dasha_score_for_date(peak_date: Any) -> tuple[float, str]:
+        """Return (score, source). source == 'service' ONLY when a real
+        eligible-window overlap supplied the score; every static-fallback
+        branch (no service, query failed, no covering window) is an
+        availability state under R-6/RRV-08, not support — the caller must
+        not let it manufacture a neutral supporting contribution."""
         if not eligible_windows:
-            return static_dasha_score
+            return static_dasha_score, 'static_fallback'
         best = 0.0
         for ew in eligible_windows:
             if ew.start_date <= peak_date <= ew.end_date:
                 best = max(best, ew.eligibility_score)
-        return best if best > 0.0 else static_dasha_score
+        if best > 0.0:
+            return best, 'service'
+        return static_dasha_score, 'static_fallback'
 
     # Transit trigger params — per-signature resolver (§4.6); no hardcoded fallback
     planet = _resolve_transit_planet(predicate)
@@ -1173,7 +1279,7 @@ def mode_a_search(
         peak_dt = _jd_to_date(ev.event_jd)
 
         # CF.L3.6: real per-event dasha score
-        dasha_score = _dasha_score_for_date(peak_dt)
+        dasha_score, dasha_source = _dasha_score_for_date(peak_dt)
 
         # CF.L3.4: real rarity from planet period + aspect
         aspect_used = float(ev.extra.get('aspect_deg', 0))
@@ -1239,12 +1345,43 @@ def mode_a_search(
         }
         cscore = convergence_score(necessary, supporting)
 
+        # ── R-6 kernel (RR-05/M-7; RRV-03/RRV-08) ────────────────────────────
+        # The legacy composite above is UNCHANGED (dignity still inside the
+        # necessary product). The new kernel: dignity leaves necessity (it
+        # becomes valence), and any term whose input was unavailable is
+        # OMITTED, not scored — RRV-08: the static daśā fallback is an
+        # availability state, never manufactured neutral support; an
+        # unevaluated C11 vedha is recorded unavailable, not folded into a
+        # silent 1.0.
+        vedha_available = bool(ctx.vedha_rules) and peak_dt is not None
+        kernel_supporting = dict(supporting)
+        if dasha_source != 'service':
+            kernel_supporting.pop('constituent_lord_transit', None)
+        kernel = separate_kernel(
+            dignity_score,
+            [orb_s] + ([vedha_factor] if vedha_available else []),
+            kernel_supporting,
+            availability={
+                'dasha': 'computed' if dasha_source == 'service' else 'unavailable',
+                'vedha': 'computed' if vedha_available else 'unavailable',
+                'transit_search': 'computed',
+            },
+            applicability={
+                **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
+                'vedha_cancellation': vedha_available,
+                'orb_presence': True,  # event found above the orb threshold
+            },
+        )
+
         windows.append({
             'mode': 'A',
             'window_start': ws,
             'window_end': we,
             'peak_date': peak_dt,
             'convergence_score': round(cscore, 4),
+            **kernel,
+            'comparability_class': f'ka_sangam/{sig_class}',
+            'kernel_version': KERNEL_VERSION_SEPARATED,
             'orb_strength': round(orb_s, 4),
             'rarity_years': rarity,
             'constituent_factors': {
@@ -1322,8 +1459,9 @@ def mode_a_search(
             'signal_id': signal_id,
         })
 
-    # Sort by convergence_score desc
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
@@ -1460,12 +1598,40 @@ def mode_b_sweep(
         }
         cscore = convergence_score(necessary, supporting)
 
+        # ── R-6 kernel (RR-05/M-7; RRV-03/RRV-08) ────────────────────────────
+        # Mode B is un-gated BY DESIGN: the structural 0.0 entries for
+        # constituent_lord_transit / cross_dasha_agreement are availability
+        # states (absent from the kernel supporting dict), never manufactured
+        # support. Same vedha-availability rule as mode A.
+        vedha_available = bool(ctx.vedha_rules) and peak_dt is not None
+        kernel_supporting = dict(supporting)
+        kernel_supporting.pop('constituent_lord_transit', None)
+        kernel_supporting.pop('cross_dasha_agreement', None)
+        kernel = separate_kernel(
+            dignity_score,
+            [orb_s] + ([vedha_factor] if vedha_available else []),
+            kernel_supporting,
+            availability={
+                'dasha': 'unavailable',  # structural: un-gated sweep, no daśā prior
+                'vedha': 'computed' if vedha_available else 'unavailable',
+                'transit_search': 'computed',
+            },
+            applicability={
+                **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
+                'vedha_cancellation': vedha_available,
+                'orb_presence': True,
+            },
+        )
+
         windows.append({
             'mode': 'B',
             'window_start': ws,
             'window_end': we,
             'peak_date': peak_dt,
             'convergence_score': round(cscore, 4),
+            **kernel,
+            'comparability_class': f'ka_sangam/{sig_class}',
+            'kernel_version': KERNEL_VERSION_SEPARATED,
             'orb_strength': round(orb_s, 4),
             'rarity_years': rarity,
             'constituent_factors': {
@@ -1542,7 +1708,9 @@ def mode_b_sweep(
             'signal_id': signal_id,
         })
 
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
@@ -1635,12 +1803,22 @@ def mode_c_subsystem_period(
                 we = _jd_to_date(ingress_ev.event_jd + period_days)
                 severity = severity_map.get(sign, 0.70)
                 cscore   = round(dignity_score * severity, 4)
+                # R-6: sign-level route — severity is the non-dignity activity;
+                # dignity becomes valence (legacy composite above unchanged).
+                kernel = separate_kernel_sign_level(
+                    dignity_score, severity,
+                    availability={'dasha': 'unavailable'},  # not consulted on this route
+                    applicability={'subsystem_period': True, 'sign_level_route': True},
+                )
                 windows.append({
                     'mode': 'C',
                     'window_start': ws,
                     'window_end':   we,
                     'peak_date':    ws,
                     'convergence_score': cscore,
+                    **kernel,
+                    'comparability_class': f'ka_sangam/{sig_class}',
+                    'kernel_version': KERNEL_VERSION_SEPARATED,
                     'orb_strength': 1.0,
                     'rarity_years': _rarity_years(trigger_planet, 30.0),
                     'constituent_factors': {
@@ -1661,7 +1839,9 @@ def mode_c_subsystem_period(
         except Exception as exc:
             logger.debug("mode_c_subsystem: %s/%s/%s failed: %s", subsystem, trigger_planet, sign, exc)
 
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
@@ -1758,6 +1938,13 @@ def mode_d_av_bindhu(
                 sav_score  = min(1.0, sav / 56.0)
                 cscore     = round(dignity_score * sav_score, 4)
                 rarity     = _rarity_years(planet, 30.0)   # sign-ingress ≈ 30° transit
+                # R-6: sign-level route — SAV fraction is the non-dignity
+                # activity; dignity becomes valence (legacy composite unchanged).
+                kernel = separate_kernel_sign_level(
+                    dignity_score, sav_score,
+                    availability={'dasha': 'unavailable', 'sav_bindhu': 'computed'},
+                    applicability={'av_bindhu_route': bool(sav >= sav_threshold)},
+                )
 
                 windows.append({
                     'mode': 'D',
@@ -1765,6 +1952,9 @@ def mode_d_av_bindhu(
                     'window_end':   we,
                     'peak_date':    ws,
                     'convergence_score': cscore,
+                    **kernel,
+                    'comparability_class': f'ka_sangam/{sig_class}',
+                    'kernel_version': KERNEL_VERSION_SEPARATED,
                     'orb_strength': 1.0,   # sign-level: no angular orb
                     'rarity_years': rarity,
                     'constituent_factors': {
@@ -1785,15 +1975,22 @@ def mode_d_av_bindhu(
                     'signal_id': signal_id,
                 })
 
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
 __all__ = [
     'SUPPORTING_WEIGHTS',
     'HIGH_CONFIDENCE_ORB_THRESHOLD',
+    'KERNEL_VERSION_SEPARATED',
+    'KERNEL_VERSION_LEGACY',
     'EnrichmentContext',
     'convergence_score',
+    'separate_kernel',
+    'separate_kernel_sign_level',
+    'ordering_key',
     'orb_strength_score',
     'confidence_label',
     'independent_current_count',
