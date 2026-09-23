@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.5"
+version: "1.6"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -170,6 +170,21 @@ SELECT text_id, verse_ref, left(content_en, 400)
 
 If that returns a grant, Sade-Sati upgrades to `verse_cited` at page grain and the demotion in (1)
 lifts. If it returns nothing, the demotion stands on a real check rather than on a term search.
+
+**RUN 2026-09-24 (production, read-only, via Cloud SQL proxy).** A loose predicate — Saturn ∧
+transit ∧ (from-the-Moon | 12th | 2nd) over the eight primaries — returns 43 rows: Phaladīpikā 26,
+BPHS 7, Horā Sāra 4, Sārāvalī 3, others 1 each. The Phaladīpikā hits sit in Adhyāya XXVI, the same
+gochara chapter as the vedha rules, where Saturn's house-by-house transit results from the
+janma-rāśi are given as ordinary doctrine. **So the substrate is verse-cited.** What the query does
+not find is the **composite** — the 12th/1st/2nd span named as one seven-and-a-half-year event with
+its own gravity — which matches the Gochara stream's N-15 reading exactly: the substrate is served
+already by doctrine-predicate; the composite's special weight is what is uncited. **The demotion in
+(1) therefore targets the composite, not Saturn-from-Moon doctrine.** Honest limit: this is a
+count-level finding on a loose predicate with visible noise (ashtakavarga and argala rows match
+it); the 26 Phaladīpikā rows were not read in full. A preview is not a page. The upgrade to
+`verse_cited` for the substrate waits on that read; the demotion of the composite stands now.
+**Execution status: the demotion itself is NOT yet in code** — `routers/sade_sati.py` and
+`routers/permission_curve.py` are the surfaces, and it needs a serve-side owner.
 
 ---
 
