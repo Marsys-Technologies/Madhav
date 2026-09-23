@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.8"
+version: "4.9"
 status: APPROVED_FOR_EXECUTION  # CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; PR #2722 merged 54766b5da
-execution_prompt: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md   # AWAITING_NATIVE_AUTHORIZATION
+execution_prompt: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md   # v1.2 AUTHORIZED_STAGE_3_ONLY (native record 2026-09-24); executor not started
 ablation_preregistration: KSHETRA_ABLATION_PREREGISTRATION_v1_0.md   # judge named; rubric sealed before any arm
 l0_row_fixes_routed: KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md   # bg_transit_rules UPDATE/INSERT spec, L0 owner via Gochara
 approval_record: "KSHETRA_RULING_SHEET_v1_0.md v1.3 (author, under native written delegation 2026-09-23, \"Go ahead and do it.\") + KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md (rulings 7/8/9)"
@@ -18,7 +18,7 @@ accepted_upstream_contract: >
   CURRENT_STATE §3 table. W0 accepted content on main BY CONTENT (REDIRECT_002 §1): Kshetra P0
   3f109869d; DHARA midpoint fix 87cc8c9baf; DHARA_SWEEP_SEMANTIC_VERSION='1.2' (dhara_sweep.py:52).
   Physical L1/L2 generation heads ABSENT in the connected environment.
-implementation_owner: "Stage-3 executor: a Kimi Code session under KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md in worktree /Users/Dev/madhav-l3/kshetra-stage3 (branch l3/kshetra-stage3), the same shape Saṅgam and Gochara use; the Data Plane execution ledger (codex/madhav-data-plane-execution, Strategy §8) records the goal when the executor opens it. Assigned 2026-09-23 on the native's delegation; AWAITING_NATIVE_AUTHORIZATION to start; overridable by native record"
+implementation_owner: "Stage-3 executor: a Kimi Code session under KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md in worktree /Users/Dev/madhav-l3/kshetra-stage3 (branch l3/kshetra-stage3), the same shape Saṅgam and Gochara use; the Data Plane execution ledger (codex/madhav-data-plane-execution, Strategy §8) records the goal when the executor opens it. Assigned 2026-09-23 on the native's delegation; STAGE 3 AUTHORIZED by native record 2026-09-24 (blueprint v4.3 / checklist v1.5, verbatim in the prompt's authorized_by), stage 4 explicitly not opened; executor NOT yet started — the start is the native's act or the author's on the native's direct word; overridable by native record"
 independent_review_owner: >
   madhav-fc (L3 strategic session) for the parts it did not shape; declined to certify rulings 7/8/9
   (node; vedha admission/G-9; G3), whose evidence it co-produced. Reviewer for 7/8/9, discharged
@@ -43,6 +43,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.9 (2026-09-24) — stage 3 authorized by native record (verified at source); stage 4 not opened; executor not started. implementation_owner and execution_prompt pointers updated. Nothing else changed."
   - "4.8 (2026-09-23) — three delegated items discharged: judge named and rubric sealed (§4.1 → KSHETRA_ABLATION_PREREGISTRATION_v1_0.md); stage-3 executor named with its prompt and isolated worktree (implementation_owner amended; AWAITING_NATIVE_AUTHORIZATION); L0 row fixes routed (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md). Three new frontmatter pointers. No stage, contract or ruling changed."
   - "4.7 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 discharged (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md); the house-vedha citation claim corrected (32/41 applied, 3 deferred, 6 unqualified — see plan v1.8). status -> APPROVED_FOR_EXECUTION, approval_record filled."
   - "4.6 (2026-09-23) — §4.1 ablation gains the outcome semantics mirrored from Sangam CLOSE D-2/D-3 (3f62f3468, verified at source; plan v1.6 §6a/§7.10; ruling sheet v1.1 row 10). No stage, contract or ruling otherwise changed."

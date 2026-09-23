@@ -1,16 +1,24 @@
 ---
 artifact: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
 canonical_id: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
-version: "1.1"
-status: AWAITING_NATIVE_AUTHORIZATION
+version: "1.2"
+status: AUTHORIZED_STAGE_3_ONLY  # native record 2026-09-24 (see authorized_by); stage 4 explicitly NOT opened; executor not yet started
 layer: L3
 asset: ka_kshetra
 campaign_id: kshetra-stage3
 changelog:
+  - "1.2 (2026-09-24) — status AUTHORIZED_STAGE_3_ONLY on the native's verbatim record (blueprint v4.3 / checklist v1.5, verified at source); stage 4 explicitly not opened; W1 release and the live L0 repair carried into §2; migration facts refreshed (next free 1082, verify). Executor NOT started by this change."
   - "1.1 (2026-09-23) — migration-number allocation rule: list both directories across every origin head; 1071–1074 claimed on origin by four unmerged branches, 1075/1076 by Gochara locally (Gochara madhav-e6's finding, verified here). Nothing else changed."
 produced_on: 2026-09-23
 produced_by: "L3 Kshetra design session (madhav-d2) — the AUTHOR of the packet this prompt executes; it certifies nothing built under it"
-authorized_by: "<NOT YET AUTHORIZED — the native fills this line. Pasting this file into a Kimi Code session in the worktree below is the act of authorization; until the native does so, this document opens nothing.>"
+authorized_by: >
+  NATIVE RECORD, verified at source 2026-09-24: KALA_ELEVATION_BLUEPRINT_v1_0.md v4.3 line 471 and
+  KALA_PRE_ELEVATION_CHECKLIST_v1_0.md v1.5 line 29 on origin/l3/kala-elevation-readiness, verbatim —
+  "I want to authorize Kshetra … I have just authorized stage three now." — and, in the same session,
+  "I don't want to start the stage four." STAGE 3 (source elevation) ONLY. Stage 4 (the W7 populated
+  build) is NOT opened: fence 2 stands in full. Recorded here by the author (madhav-d2) from that record;
+  the act of starting the executor remains the native's (paste this file into a Kimi Code session in the
+  worktree below) or the author's on the native's direct word — never on a relay.
 opens_goal: >
   The bounded goal in KSHETRA_ELEVATION_BRIEF_v1_0.md `goal_objective` (stage 3 of the brief's own
   `scope_stages`: "Stage 3 is a separate execution session"). Per the brief contract, the execution
@@ -53,7 +61,7 @@ blocker beat six phases with a flag nothing checks.
 You may, without asking: read anything; write code, tests, evidence scripts and **at most one
 migration** for `ka_kshetra` (brief `may_touch`: `services/ka_kshetra/{hazard,layer1,writer,
 stage2_promise,stage3_clocks,uncertainty}.py`; `dhara_null.py` docstring only;
-`platform/python-sidecar/tests/l3/**`; ONE migration — **allocate its number by listing BOTH migration directories across EVERY `origin/*` head** (`git ls-tree -r --name-only origin/<branch> -- platform/migrations platform/supabase/migrations`), never from the working tree alone: as of 2026-09-23 unmerged branches already claim 1071–1074 on origin (kala-elevation-readiness, sangam/stage3, kala-p1-1, kala-p1-2) and Gochara holds 1075/1076 locally — allocated by directory listing, the collision this rule exists to prevent; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
+`platform/python-sidecar/tests/l3/**`; ONE migration — **allocate its number by listing BOTH migration directories across EVERY `origin/*` head** (`git ls-tree -r --name-only origin/<branch> -- platform/migrations platform/supabase/migrations`), never from the working tree alone: as of 2026-09-24 03:50 IST (Gochara's sweep of every remote and local head, relayed by the strategic session): 1071–1074 claimed by unmerged branches, 1075–1079 APPLIED to production by the L0 repair (PR #2727), 1080/1081 taken by Gochara — **next free 1082; verify before claiming**, the collision this rule exists to prevent; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
 commit and push to **`l3/kshetra-stage3`** (the packet is on `main`; this branch was cut from it);
 open PRs to `main` through CI and the merge queue. You may decide implementation detail the plan
 leaves open, and record the choice.
@@ -83,6 +91,7 @@ leaves open, and record the choice.
   `null_p = (1 + exceed) / 1024`, `_EXCEEDANCE_REL_TOL = 1e-12`; `_RESUME_VERSION = 10`; DHARA 1.2
   left-limit rule; the DP-SD-019 midpoint fix `87cc8c9baf`. These are pins, not knobs.
 - The FROZEN orchestrator contract. See §3.
+- **Two facts from the authorizing session (2026-09-24):** the W1 hold on the generation infrastructure is released — FOUNDATION_SAFETY §6's design may now be built physically by whoever takes that packet, so your source work may assume it will exist rather than design around its absence; and **stage 4 is explicitly NOT opened** — W1's release changes nothing about fence 2. Also: the L0 vedha row repair is **applied in production** (verified live 2026-09-24: Venus 35/44/45 → 1/5/11 page-cited; Mercury 8→1 as id 569; six node rows stamped UNSOURCED), so under the uniform rule the 35 house-vedha rows become `applied` the moment the producer's stamp columns (Gochara WP9) exist — check that they do; do not assume.
 
 **If the plan and this prompt disagree, the plan wins and you record the discrepancy.** If a ruling
 and the plan disagree, **stop and raise it** — that is a defect in the packet, not a choice for you.

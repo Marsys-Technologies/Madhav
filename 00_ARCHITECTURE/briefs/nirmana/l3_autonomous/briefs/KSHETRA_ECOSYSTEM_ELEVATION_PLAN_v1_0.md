@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.12"
+version: "1.13"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.13 (2026-09-24) — §7.8: the L0 repair is live in production (verified via the served rules); stamp columns are the sole remaining gate to applied. Stage 3 authorized by native record; stage 4 not opened."
   - "1.12 (2026-09-23) — §7.8 tightened per madhav-fc D-B: today every vedha row is unqualified by construction; the 32/3/6 split is the outcome when the re-citation and producer stamp columns land. No stage, guarantee or ruling changed."
   - "1.11 (2026-09-23) — §7.7 gains the sign-anchor finding (a detector that cannot fail; degree-level anchor required for disposition (b)). No stage, guarantee or ruling changed."
   - "1.10 (2026-09-23) — delegated items discharged: §7.10 points at the sealed ablation pre-registration (judge named); §7.8 repair instruction corrected to UPDATE-not-delete with the L0 spec routed; stage-3 execution prompt prepared (AWAITING_NATIVE_AUTHORIZATION). No stage, guarantee or ruling changed."
@@ -405,8 +406,9 @@ hard to cite precisely is a real cost, not absence.
    layer's single producers; Kshetra's internal derivations become one-generation cross-checks,
    then retire under contract §5. Ratify the uniform admission rule (F06 `applied` iff
    `corpus_verifiable` and geometry passes) — whose outcome **today is `unqualified` for every row, by construction** (producer stamp columns unbuilt —
-   Gochara WP9; re-citation and row repairs routed to Gochara's G-9 lane but STAGED and unapplied, with no L0
-   authority bound anywhere — madhav-fc D-B @ 8a9734a32; a routing is not an outcome) and whose outcome
+   Gochara WP9 — now the only reason: the re-citation and row repairs, routed as staged under madhav-fc D-B @
+   8a9734a32, are APPLIED in production, verified live 2026-09-24 — Venus 35/44/45 → 1/5/11, Mercury 8→1 as
+   id 569, six node rows stamped UNSOURCED; L0 repair PR #2727) and whose outcome
    **once those land**, corrected by independent review, is: **`applied` for 32 of 41 house-vedha rows on the L0 re-citation at page grain (F-23/G-8);
    `deferred` for 3 Venus rows (ids 35, 44, 45 — `vedha_house` UPDATE to 1/5/11, never a delete: 35 and 44 are column-swap
    transpositions of rows 179/33 by origin, but their `primary_house` is the text's; the 1.9 "dedup" wording
