@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS kala_gochara_contacts (
   evidence_fact_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
   classical_citation TEXT,
   uncited_extension BOOLEAN NOT NULL DEFAULT FALSE,
-  corpus_verifiable BOOLEAN,                    -- §5.4: cited text resolves in served corpus
+  corpus_verifiable BOOLEAN,                    -- §5.4: cited text resolves in served corpus; §6.1 (N-21): nāḍī-only attestation ⇒ false
   input_generation_vector_id TEXT NOT NULL,     -- -> kala_gochara_publication.manifest_id
   build_id          TEXT NOT NULL,
   computed_at       TIMESTAMPTZ NOT NULL,
@@ -576,6 +576,18 @@ semantics:
 
 Anything not in this table (free text, NULL, "mostly comparable") is a schema
 violation, not a value.
+
+### 6.1 Vocabulary note — N-21 standing rule (nāḍī attestation)
+
+**Nāḍī attestation ⇒ `testimony`, never weight, without primary corroboration.**
+A configuration whose only attestation is a nāḍī-source row (e.g.
+`nadi_navamsa_patel`) is recorded as typed testimony — the non-scoring epistemic
+class ruled at N-15 — and is excluded from every scoring weight set. On the stamp
+columns this means: `corpus_verifiable=false` until a primary (non-nāḍī) text
+carrying the composite is cited on the row, and `source_qualification` can never
+be `verse_cited` from a nāḍī row alone. The N-15 Sade-Sati testimony block
+(citations PG1334/PG786/PG1333, MEDIUM provenance) is the worked example of this
+rule; which primary text carries the composite remains `[U]`.
 
 ---
 
