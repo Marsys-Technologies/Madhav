@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "4.2"
+version: "4.3"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "4.3 (2026-09-24): E2 RULED — Kṣetra stage 3 AUTHORIZED (native, verbatim); stage 4 explicitly not opened."
   - "4.2 (2026-09-24): D1 RULED — the W1 hold on the generation design is released (native, verbatim). E3 struck (N-18 was already ratified). Kṣetra stage-3 authorization raised but held pending one-word confirmation."
   - "4.1 (2026-09-24): G10 corrected a third time, against me: the SBC grid is partially recoverable and NOT buildable in full — the L0 repair session read every chunk; I had read 260-char previews. A preview is not a page. Rule ledger gains that line."
   - "4.0 (2026-09-24): RESTRUCTURE. The 920-line §11 addendum log moved verbatim to KALA_ELEVATION_CHRONICLE_v1_0.md; the body rewritten from it. §9 decision queue rebuilt (D6/D7/D8 RULED, D1 still open, D2/D3/D5 confirmed UNRULED with the receipts enum verified absent from code). §4 stream rows carry their rulings. §6 W0 exit corrected (G4 retracted; three cited close artifacts do not exist). §8 corrected: KALA_BASELINE_v1_0.md was NEVER CREATED and the W0 benchmark is not it. §7 migration floor 1075. Denominator derivation stated: 27 registered, 3 deleted, 1 tombstone, 1 proxy unknown → 22 ±1. Companion review: KALA_BLUEPRINT_REVIEW_v1_0.md."
@@ -467,7 +468,7 @@ queue that stood here is preserved in the chronicle.
 | # | decision | unblocks |
 |---|---|---|
 | **D1** | ~~Release the W1 hold~~ **RULED 2026-09-24 — RELEASED.** Native, verbatim: *"Yes, release the hold. On the generation infrastructure."* The frozen FOUNDATION_SAFETY §6 design may now be built physically, reusing the accepted L1/L2 generation machinery and without modifying frozen `WriterBase`/orchestrator transaction ownership (its own closing constraint). Stage 4 opens for every asset once it exists | **the W1 hold is lifted; the cutover (G2) still gates W1's lease** |
-| **E2** | Authorize Kṣetra stage 3 — **raised by the native 2026-09-24 in the same message ("You say authorized stage three for shit", read as Kṣetra) but immediately followed by a request to explain stages 4–5 first; NOT recorded as authorized until confirmed in one word** | Kṣetra's execution |
+| **E2** | ~~Authorize Kṣetra stage 3~~ **RULED 2026-09-24 — AUTHORIZED.** Native, verbatim: *"I want to authorize Kshetra … I have just authorized stage three now."* Stage 3 (source elevation) only; the native explicitly does **not** open stage 4: *"I don't want to start the stage four."* | Kṣetra's stage-3 execution may begin; stage 4 stays closed |
 | ~~E3~~ | ~~rule Gochara N-18~~ — already `NATIVE_RATIFIED`; it is a push, not a ruling; renumbered to 1080/1081 by that session | — |
 
 ### 9.3 Unruled and cheap — carried three versions without a ruling
