@@ -189,7 +189,7 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 
 ## Last commit
 
-`4a383846c` — "sangam stage3: Phase 3 E5 — station-loop episodes by contact interval".
+`31d5a3b14` — "sangam stage3: Phase 4 E4 — typed natal/clock conditioning + annual-Tājika gate".
 
 ## Evidence artifacts this phase
 
