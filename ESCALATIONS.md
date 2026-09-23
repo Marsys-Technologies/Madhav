@@ -204,3 +204,25 @@ what a human needs to decide.
   kernel geometry; any WP5-related λ deltas are classified as
   "honesty-fix pending" in the WP4 report rather than treated as passing
   behavior.
+
+## E-007 — Migration number reservation and WP10 frontmatter flags at run start
+
+- **What:** At the start of the remainder execution run (`GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md`),
+  every `origin/*` head was scanned across both `platform/migrations/` and
+  `platform/supabase/migrations/`. The highest numeric migration prefix found on
+  any remote head is **1074**. This branch already holds the renumbered
+  `1075_*` and `1076_*` migrations (WP6 ledger + resonance target state). The
+  **next free migration number is therefore 1077** and is reserved here before
+  any new migration is written.
+- **Frontmatter flags:** `PRODUCTION_TRANCHE_1_AUTHORIZED: false`,
+  `PRODUCTION_TRANCHE_2_AUTHORIZED: false`. Every WP10 step that touches a
+  shared/production database, the live registry, the authority table, a
+  deployment, or a real chart's served rows is therefore **stopped** at the flag
+  boundary; only preparation and rehearsal on a disposable database are
+  performed.
+- **Decision needed:** None for the migration number. WP10 tranches require the
+  native to edit the brief's frontmatter flags and re-run this agent.
+- **Evidence:** `git fetch --all` completed; remote scan command returned
+  `1074` as the maximum prefix; local branch files
+  `platform/migrations/1075_*` and `platform/migrations/1076_*` exist and are
+  already committed.
