@@ -33,6 +33,15 @@
   .live{display:inline-flex;align-items:center;gap:6px}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:p 2s ease-in-out infinite}
   @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
+  #nowbar{max-width:1280px;margin:10px auto 0}
+  .now{background:var(--bluebg);border:1px solid var(--blue);border-left-width:4px;border-radius:8px;
+    padding:11px 15px;display:flex;flex-wrap:wrap;gap:10px;align-items:baseline}
+  .now .lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);font-weight:700}
+  .now .aid{font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:13px}
+  .now .stg{font-size:12.5px;color:var(--muted)}
+  .now.idle{background:transparent;border-style:dashed;border-left-width:1px;opacity:.7}
+  .assume{max-width:1280px;margin:8px auto 0;background:var(--warnbg);border:1px solid var(--warn);
+    border-radius:8px;padding:9px 13px;font-size:12px}
   .alert{max-width:1280px;margin:8px auto 0;background:var(--warnbg);border:1px solid var(--warn);
     border-radius:8px;padding:9px 13px;font-size:12.5px}
   .wrap{max-width:100%;overflow:auto;border:1px solid var(--line);border-radius:10px;
@@ -93,6 +102,7 @@
     <button id="theme">Theme</button>
   </div>
 </header>
+<div id="nowbar"></div>
 <div id="alerts"></div>
 
 <div class="wrap"><table>
@@ -167,7 +177,14 @@ function render(){
   const met=A0.reduce((s,a)=>s+a.score,0),tot=A0.reduce((s,a)=>s+a.total,0);
   document.getElementById("nmet").textContent=met+"/"+tot+" ("+Math.round(met/tot*100)+"%)";
 
+  const np=DATA.now_processing||[];
+  document.getElementById("nowbar").innerHTML = np.length
+    ? np.map(x=>`<div class="now"><span class="lbl">Now processing</span>`
+        +`<span class="aid">${x.id}</span><span class="stg">${x.stage||""} · DAG #${x.dag}`
+        +`${x.since?" · since "+new Date(x.since).toLocaleString():""}</span></div>`).join("")
+    : `<div class="now idle"><span class="lbl">Now processing</span><span class="stg">nothing in flight</span></div>`;
   const al=[];
+  if(DATA.upstream_assumption)al.push("<b>Gating assumption.</b> "+DATA.upstream_assumption);
   if(DATA.cycle&&DATA.cycle.length)al.push("<b>DAG cycle detected:</b> "+DATA.cycle.join(", ")+" — ordering is not trustworthy until this is resolved.");
   if(DATA.untracked_ka_assets&&DATA.untracked_ka_assets.length)al.push("<b>Untracked ka_* asset(s) in the registry seed:</b> <code>"+DATA.untracked_ka_assets.join(", ")+"</code> — present in asset_registry.depends_on but on no brief and in no tracker row.");
   if(DATA.ledger_bad_lines)al.push("<b>"+DATA.ledger_bad_lines+" malformed line(s)</b> in "+DATA.ledger_path+" — ignored, not repaired.");

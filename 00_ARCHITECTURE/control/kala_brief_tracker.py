@@ -66,8 +66,9 @@ STREAM = {
    ["00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/SANGAM_ELEVATION_BRIEF_v1_0.md",
     "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/SANGAM_ALGORITHM_ELEVATION_PLAN_v1_0.md"]),
  "ka_gochara": ("origin/l3/gochara-autonomous-wp0-7",
-   ["00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/GOCHARA_FAMILY_ELEVATION_BRIEF_v1_2.md",
-    "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md"]),
+   # the BRIEF v1.2 is SUPERSEDED; the live artifact is the PLAN, whose file is named
+   # v2_1 while its frontmatter reads 2.2 (NATIVE_RATIFIED_PLAN). Read the plan only.
+   ["00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md"]),
 }
 ASSETS = [  # registry_n, id, group, source-kind, note
  (1,"ka_kshetra","stream","stream","own packet + ruling sheet"),
@@ -166,6 +167,13 @@ def _vt(v):
     try: return tuple(int(x) for x in str(v).split("."))
     except Exception: return (0,)
 
+OPENING={"brief_started","review_requested","handoff","started"}
+SOP_STAGE={"brief_started":"authoring the brief","review_requested":"out for Fable 5.1 review",
+ "review_accept":"review ACCEPTED","review_reject":"review REJECTED — back to Opus",
+ "brief_authored":"brief drafted, review not yet requested","brief_final":"brief FINAL",
+ "handoff":"handed to execution","started":"execution running","completed":"execution reported done",
+ "blocked":"execution blocked","verified":"verified","reverted":"reverted"}
+
 def lifecycle(brief_status, nrev, verdict, events, has_brief, brief_ver=None, reviewed_ver=None):
     last = events[-1]["event"] if events else None
     if last=="verified":  return "ELEVATED","the strategy session verified the execution"
@@ -174,6 +182,11 @@ def lifecycle(brief_status, nrev, verdict, events, has_brief, brief_ver=None, re
     if last in ("started",): return "EXECUTING","execution session is working"
     if last=="handoff":   return "HANDED_OFF","dispatched to execution; not started"
     if last=="reverted":  return "BRIEF_DRAFT","execution reverted"
+    if last=="review_reject": return "BRIEF_REJECTED","independent review REJECTED — back to Opus"
+    if last=="review_accept": return "BRIEF_FINAL","independent review ACCEPTED"
+    if last=="review_requested": return "IN_REVIEW","out for independent Fable 5.1 review"
+    if last in ("brief_started","brief_authored"): return "BRIEF_IN_PROGRESS","being authored now"
+    if last=="brief_final": return "BRIEF_FINAL","sealed final"
     if not has_brief:     return "BRIEF_ABSENT","no brief artifact found"
     up=(brief_status or "").upper()
     if "APPROVED_FOR_EXECUTION" in up or up.startswith("CLOSED") or "RATIFIED" in up:
@@ -185,6 +198,19 @@ def lifecycle(brief_status, nrev, verdict, events, has_brief, brief_ver=None, re
     if nrev==0:           return "BRIEF_UNREVIEWED","no independent review on record here"
     if "PROPOSED_FOR_NATIVE_RULING" in (brief_status or ""): return "BRIEF_FINAL","author-final; awaiting ruling"
     return "BRIEF_DRAFT","drafted"
+
+# ── Native ruling, 2026-09-24 ────────────────────────────────────────────────
+# "Let's consider L0, L1, and L2 all assets to be elevated as per the current revision,
+#  let's make that assumption and proceed."
+# This is an ASSUMPTION the native authorised to unblock the campaign, NOT a measured fact.
+# Measured, under the current frozen definition t3-2026-09-11-8b884eac, bg_*=0/40 frozen,
+# ga_*=0/19, bo_*=8/22 (prior freezes are scoped to superseded revisions and do not carry).
+# The tracker therefore gates only on intra-L3 ancestors and states the assumption on its face.
+ASSUME_UPSTREAM_LAYERS_ELEVATED = True
+UPSTREAM_ASSUMPTION = ("Native ruling 2026-09-24: L0/L1/L2 assets are ASSUMED elevated under the "
+  "current revision so L3 can proceed. Measured state under the frozen definition "
+  "t3-2026-09-11-8b884eac is bg_ 0/40, ga_ 0/19, bo_ 8/22 frozen — the assumption is a "
+  "decision to proceed, not a verification, and any L3 result inherits it.")
 
 READY_FOR_HANDOFF={"BRIEF_FINAL"}
 DONE={"ELEVATED"}
@@ -221,7 +247,10 @@ def scan():
             "score":sum(cells.values()),"total":len(cells),
             "dag":dag_rank.get(aid,999),"depth":depth.get(aid,0),
             "deps":intra.get(aid,[]),"ext_deps":ext.get(aid,[]),
-            "state":state,"why":why,"events":ev.get(aid,[])})
+            "state":state,"why":why,"events":ev.get(aid,[]),
+            "active": bool(ev.get(aid)) and ev[aid][-1]["event"] in OPENING,
+            "sop_stage": SOP_STAGE.get(ev[aid][-1]["event"]) if ev.get(aid) else None,
+            "last_event_ts": ev[aid][-1]["ts"] if ev.get(aid) else None})
     by={a["id"]:a for a in assets}
     for a in assets:
         blockers=[d for d in a["deps"] if d in by and by[d]["state"] not in DONE]
@@ -233,7 +262,10 @@ def scan():
                     "wait on "+", ".join(blockers) if blockers else "—")
     assets.sort(key=lambda a:(a["dag"],a["n"]))
     cov={c["key"]:sum(1 for a in assets if a["cells"][c["key"]]) for c in crit}
+    now=[{"id":a["id"],"stage":a["sop_stage"],"since":a["last_event_ts"],"dag":a["dag"]}
+         for a in assets if a["active"]]
     return {"generated":datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "now_processing":now,"upstream_assumption":UPSTREAM_ASSUMPTION,
         "criteria":crit,"assets":assets,"coverage":cov,"n_assets":len(assets),
         "cycle":cycle,"untracked_ka_assets":extra,"ledger_bad_lines":bad,
         "ledger_path":os.path.relpath(LEDGER,ROOT),
@@ -246,6 +278,8 @@ def main():
         d=scan(); js=json.dumps(d,indent=1,default=str)
         io.open(OUT,"w").write(js)
         io.open(OUT[:-5]+".js","w").write("window.KALA_DATA="+js+";\nwindow.dispatchEvent(new Event('kala-data'));\n")
+        np_=d.get("now_processing") or []
+        print("  NOW PROCESSING: "+(", ".join(f'{x["id"]} ({x["stage"]})' for x in np_) if np_ else "nothing in flight"))
         rdy=[x["id"] for x in d["assets"] if x["ready"]]
         print(f'[{d["generated"]}] {d["n_assets"]} assets | states: '
               +", ".join(f"{k}={v}" for k,v in sorted(d["states"].items())))

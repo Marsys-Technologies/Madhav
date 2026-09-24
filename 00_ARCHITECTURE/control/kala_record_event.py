@@ -14,7 +14,14 @@ import argparse, datetime, io, json, os, subprocess, sys
 
 ROOT   = subprocess.run(["git","rev-parse","--show-toplevel"],capture_output=True,text=True).stdout.strip() or "."
 LEDGER = os.path.join(ROOT,"00_ARCHITECTURE/control/kala_elevation_ledger.jsonl")
-EVENTS = {"handoff","started","completed","blocked","verified","reverted"}
+# Strategy-side SOP stages + execution-side events. One vocabulary, one ledger.
+SOP_EVENTS  = {"brief_started","brief_authored","review_requested","review_accept",
+               "review_reject","brief_final"}
+EXEC_EVENTS = {"handoff","started","completed","blocked","verified","reverted"}
+EVENTS = SOP_EVENTS | EXEC_EVENTS
+# events that OPEN work on an asset (it becomes "now processing" until a closing event)
+OPENING = {"brief_started","review_requested","handoff","started"}
+CLOSING = {"brief_final","review_accept","review_reject","completed","blocked","verified","reverted"}
 ASSETS = {"ka_kshetra","ka_sangam","ka_gochara","ka_gochara_v3_century_materialize",
  "ka_gochara_resonance","ka_vedha_gochara","ka_moorti_nirnaya","ka_kota_chakra",
  "ka_tithi_pravesha","ka_yojaka","ka_kalasutra","ka_vighnakara","ka_kala_darshana",
@@ -41,6 +48,11 @@ def main():
     if a.asset not in ASSETS: sys.exit(f"refused: unknown asset {a.asset!r}")
     if a.event not in EVENTS: sys.exit(f"refused: unknown event {a.event!r} (allowed: {sorted(EVENTS)})")
     prior=[r.get("event") for r in existing(a.asset)]
+    if a.event in ("review_accept","review_reject") and "review_requested" not in prior:
+        sys.exit("refused: a verdict with no review requested — the reviewer is a separate "
+                 "Fable 5.1 pass, not the author's own read")
+    if a.event=="brief_final" and "review_accept" not in prior:
+        sys.exit("refused: a brief is final only after an independent ACCEPT")
     if a.event=="verified" and "completed" not in prior:
         sys.exit("refused: cannot verify an asset with no 'completed' event — "
                  "the execution session reports completion, the strategy session verifies it")
