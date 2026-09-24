@@ -2223,7 +2223,13 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
       'ka_tithi_pravesha',
       'bg_sky_calendar',
     ],
-    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    // N-6a (Gochara native ruling, 2026-09-24) + D-O (strategic session, delegated): the century
+    // writer stays OUT of build selection. plan.ts treats state='error' as needs-build, and this
+    // writer's first act on dispatch deletes every served '3.0' row (914 on the canonical chart)
+    // before writing 'g3_%'. Production is_active=false was applied 2026-09-24; this line keeps a
+    // re-seed from re-arming it (ON CONFLICT only preserves is_active for RETIRED entries, and
+    // this one is CURRENT). Reverse only via a Gochara ruling that reopens the century build.
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
     asset_kind: 'data',
   },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──

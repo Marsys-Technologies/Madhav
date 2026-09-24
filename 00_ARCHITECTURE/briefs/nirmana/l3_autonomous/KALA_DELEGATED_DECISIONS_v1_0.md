@@ -1,7 +1,7 @@
 ---
 artifact: KALA_DELEGATED_DECISIONS
 canonical_id: KALA_DELEGATED_DECISIONS
-version: "1.9"
+version: "2.0"
 status: DECIDED  # D-C WITHDRAWN and replaced at v1.1 — it contradicted N-6a
 date: 2026-09-23
 decided_by: "L3 Kāla strategic session (madhav-fc), under the native's explicit delegation"
@@ -419,6 +419,37 @@ row-verified re-citation work, same reviewer rule. **Sade-Sati demotion owner:**
 ### D-N — the Sarvatobhadra grid: **leave it empty.**
 Do not build a partial grid on an invented traversal direction. The docstring records exactly why,
 with chunk ids. Re-open only if source images or another edition arrive. Nothing to decide.
+
+### D-O — E4 durability: **the seed-file line, not the trigger.** (2026-09-24, delegated verbatim: "let Fable 5 take the decision on my behalf on the question that you asked me")
+
+The question put to the native was which of three things to do about the fact that the applied
+`is_active = false` on `ka_gochara_v3_century_materialize` is one hand-run seed from undone
+(readiness E4): (a) leave it and carry the caveat; (b) install the `(table, generation)` trigger
+half of Gochara step 3; (c) set `is_active: false` on the century entry in
+`platform/scripts/seed/asset_registry_seed.ts`.
+
+**Decided: (c), applied in this commit, alongside the production flag already set.** Reasoning:
+
+- (c) removes the *cause* of the fragility. The seed's `ON CONFLICT` overwrites `is_active` for
+  every non-RETIRED entry; the only way a re-seed stops re-arming the writer is for the seed to
+  carry the same value production does. After this line, re-seed, rebuild and fresh bootstrap all
+  agree.
+- (c) refuses nobody. The trigger half (b) would reject every legitimate `'3.0'` and `'v1'` write
+  until a release-authority session sets `app.allow_protected_sweep_rewrite = on`, with three
+  streams in flight and PR #2731 (Gochara) still to merge into that table. That is a deliberate
+  reversal of the native's 2026-08-23 migration-588 instruction and stays the native's call inside
+  the Gochara runbook, where the cost is visible. Not taken here.
+- (a) is what we had; it is honest but leaves the re-arm mechanism live.
+- The file is the seed owner's, so this is routed as a one-line change with the reason in a
+  comment at the line, not a silent flip. No test pins the century flag (checked:
+  `asset_registry_seed_dag_parity.test.ts` asserts only `bg_gochara_citation_resolution`;
+  `catalog_reconciliation.test.ts` ties nothing to `is_active`). There is no precedent for a
+  `CURRENT` entry carrying `is_active: false`; the comment says why this one does.
+
+**What this does not do.** It does not retire the asset (`catalog_status` stays `CURRENT`; the
+served `'3.0'` rows and their `count_sql` are untouched), does not touch `kala_gochara_windows`,
+and does not install any guard. Reversal is the same line back to `true` plus the recorded
+production statement in readiness E4, under a Gochara ruling that reopens the century build.
 
 ## What this record does not decide
 

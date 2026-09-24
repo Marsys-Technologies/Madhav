@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS
 canonical_id: KALA_ENVIRONMENT_READINESS
-version: "1.5"
+version: "1.6"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-a6), at the native's request"
@@ -300,6 +300,13 @@ owner's file.
 **This session did hold a write path for both halves** — `amjis_app` has `UPDATE` on
 `asset_registry`, `DELETE` on `kala_gochara_windows`, `TRIGGER` privilege, and **owns** that table.
 Only one half was run, by choice, not by limitation.
+
+**Decided 2026-09-24 under delegation — D-O in `KALA_DELEGATED_DECISIONS_v1_0.md` v2.0.** The
+third option is taken: `is_active: false` is now on the century entry in
+`asset_registry_seed.ts`, with the reason at the line. The re-arm mechanism above is closed at its
+source; a re-seed now writes the same value production holds. The trigger half stays unapplied and
+stays the native's, inside the Gochara runbook. E4 status: **MITIGATED, durable against re-seed**;
+still open only for the trigger half, which is a runbook item, not an environment defect.
 
 **Two corrections to the Gochara lane's E-014, both verified.** The recovery dump is **not** "one
 untracked file on this machine": it is committed and pushed at
