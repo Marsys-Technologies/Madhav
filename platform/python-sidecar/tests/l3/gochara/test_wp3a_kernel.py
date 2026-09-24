@@ -34,7 +34,7 @@ from services.gochara_kernel import (
 from services.gochara_kernel import arcs, contacts, episodes, ids, peaks
 from services.gochara_kernel.knots import EphemerisBackendError, calc_sidereal_lon
 
-from .conftest import EPHE_PATH, requires_swieph
+from .conftest import EPHE_PATH, assert_real_ephemeris, requires_swieph
 
 FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures" / "wp2_geometry.json").read_text()
@@ -513,3 +513,27 @@ def test_arc_index_registry_builds_once():
     assert a1 is a2 and reg.build_count == 1
     reg.get_from_series("Saturn", "substrate-v2", date(2026, 1, 1), date(2026, 3, 1), series)
     assert reg.build_count == 2  # a new substrate_version rebuilds
+
+
+@pytest.fixture(autouse=True)
+def _real_ephemeris_or_named_failure():
+    """§12.5: fail with the cause named if the ephemeris global is stubbed."""
+    assert_real_ephemeris()
+    yield
+
+
+def test_guard_fires_when_the_ephemeris_is_stubbed(monkeypatch):
+    """Negative fixture: the detector above must be able to go red."""
+    import swisseph as swe_mod
+
+    monkeypatch.setattr(swe_mod, "julday", lambda *a, **k: -0.00101)
+    with pytest.raises(AssertionError, match="stubbed or replaced"):
+        assert_real_ephemeris()
+
+
+def test_guard_fires_when_the_module_is_not_a_module(monkeypatch):
+    from unittest.mock import MagicMock
+
+    monkeypatch.setitem(__import__("sys").modules, "swisseph", MagicMock())
+    with pytest.raises(AssertionError, match="not a real module"):
+        assert_real_ephemeris()

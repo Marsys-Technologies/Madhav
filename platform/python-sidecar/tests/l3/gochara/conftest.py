@@ -59,6 +59,38 @@ if not _PROBLEMS:
     swe.set_ephe_path(EPHE_PATH)
 
 
+# ── §12.5 earned-signal guard: the real ephemeris, or a NAMED failure ────────
+# The mean-node convention test (test_wp3a_kernel::test_case_02_mean_node_convention)
+# once failed in a full-suite run with "jd -0.001010 outside Moshier planet range"
+# — an error that names neither the cause nor the culprit. It has not reproduced
+# since (every pairwise ordering and the full suite pass with and without a
+# reachable database), so the cause is UNKNOWN and is recorded as such. What can
+# be made true is that a recurrence identifies itself: real-ephemeris tests call
+# this first, and it fails LOUDLY if the module is a stub or the calendar
+# conversion is wrong, rather than letting a stubbed global decide a ruled
+# convention's test. F-31 records the Swiss ephemeris path as process-global.
+J2000_JD = 2451545.0  # 2000-01-01 12:00 UT
+
+
+def assert_real_ephemeris() -> None:
+    import types
+
+    import swisseph as swe
+
+    if not isinstance(swe, types.ModuleType):
+        raise AssertionError(
+            f"the swisseph module is {type(swe).__name__}, not a real module — a "
+            "test left the process-global ephemeris stubbed (finding F-31)"
+        )
+    jd = swe.julday(2000, 1, 1, 12.0)
+    if jd != J2000_JD:
+        raise AssertionError(
+            f"swe.julday(2000,1,1,12.0) returned {jd!r}, expected {J2000_JD} — the "
+            "ephemeris calendar function is stubbed or replaced (finding F-31); a "
+            "real-ephemeris result computed now would be meaningless"
+        )
+
+
 # ── WP6 disposable-database fixtures ─────────────────────────────────────────
 # (WP6, ledger/coverage/publication — see test_wp6_ledger.py. Merged into this
 # shared conftest; the WP3a section above is untouched.)

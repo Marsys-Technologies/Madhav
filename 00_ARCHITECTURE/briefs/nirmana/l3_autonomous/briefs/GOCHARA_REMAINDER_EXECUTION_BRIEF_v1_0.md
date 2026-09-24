@@ -229,7 +229,7 @@ down, the PR URL, and the artifact list.
 
 ## 12. DELTA of 2026-09-24 — read this before you do anything else
 
-> **STATUS 2026-09-24 13:00 — THIS ENTIRE §12 IS UNEXECUTED.** The first run of this brief closed at
+> **STATUS 2026-09-24 13:00 (annotated 13:50 — see the end of this banner) — THIS ENTIRE §12 IS UNEXECUTED.** The first run of this brief closed at
 > `ce7fc29da`, 12:50:13 IST, reporting `PRODUCTION_TRANCHE_1/2_AUTHORIZED: false`. Both flags were set
 > **true** at `e93112eb0`, 12:37:04 IST — **thirteen minutes before that close.** The run reported a flag
 > value it had cached at session open instead of re-reading the file it was told to treat as authoritative,
@@ -240,6 +240,11 @@ down, the PR URL, and the artifact list.
 > basename. **Nothing in §12 was done.** That is not a failure of the work that *was* delivered — §§1–11
 > are genuinely complete — it is the reason this section exists and must be executed by the next run,
 > which must **re-read this file from disk before acting on any flag or number in it.**
+>
+> **13:50 UPDATE:** the native asked the L3 session to execute this delta directly. Done so far, each in
+> its own commit: **12.10b** (writer honesty — `4d8f83050`) and **12.5** (detector, cause unknown).
+> Everything not named here is still open. The 13:00 audit sentence "the polluting test is among the 52
+> skips" was wrong and is retracted (see §12.5).
 
 
 Everything in §§1–11 stands. This section is **added** work and **two changed answers**, ruled by the
@@ -296,20 +301,22 @@ the full suite**, deterministically. In the suite the module-global `swe` is lef
 test, so `swe.julday(2026,1,1,0)` returns ≈ 0 and the call dies with "jd -0.001010 outside Moshier
 planet range". This is finding F-31's process-global trap, and it means the one test that guards the
 **mean-node convention three rulings pin** cannot actually run under the suite, while reporting as a
-single ordinary failure. **Reproduction depends on a disposable database being up, and this is the trap.** The failure was
-observed at 04:57 IST while `gochara-wp6-disposable` was running. After the session-close teardown the
-suite reports **214 passed, 52 skipped, 0 failed** — but the 52 skips are all `NOT_RUN: disposable WP6
-database unreachable`, and the polluting test is among them. So the defect is **masked by the teardown,
-not fixed**, and it will return the moment §7.A or a tranche provisions a database, which is exactly when
-it matters. Do not read the current green as evidence.
+single ordinary failure. **CORRECTED 2026-09-24 13:50 — the earlier text of this section was wrong about the cause.** It said
+the defect was "masked by the teardown, not fixed". That was inferred from a correlation (a disposable
+database happened to be running when the failure was seen) and it is **falsified**: with the disposable
+database up, the full suite passes (247 passed, 19 skipped); every pairwise ordering of the guarded test
+after each other test file passes; nothing in `tests/` or `services/` rebinds the swisseph module or its
+`julday`. **The failure has not reproduced, and its cause is unknown.** It is recorded as unknown, not as
+masked.
 
-To work it: bring a disposable DB up, reproduce the failure, then fix the leak at its source (restore the
-global in the offending test, or make the fixture that sets it function-scoped and self-restoring), **not
-by skipping the test**. Note the local `swe = MagicMock()` bindings at `tests/l3/gochara/test_wp5_honesty.py:173,
-:198, :238, :272` and finding F-31, which records the Swiss ephemeris path as **process-global** — a local
-mock can still poison a global path. Add a guard that fails loudly if the ephemeris module or its path is
-not the real one when a real-ephemeris test runs. This is
-exactly §N.8's earned-signal rule: the assertion existed, the detector could not run.
+What was done instead, because a recurrence must not be mysterious: `conftest.py` now carries
+`assert_real_ephemeris()`, applied as an autouse guard to `test_wp3a_kernel.py`. It fails loudly, naming
+finding F-31, if the swisseph object is not a real module or `swe.julday(2000,1,1,12.0)` is not
+`2451545.0`. Two negative fixtures prove it can go red (a stubbed `julday`; a `MagicMock` module).
+Separate weakness noted, not fixed: `EPHE_PATH` in `conftest.py` is an absolute path to this worktree.
+
+**Do not re-open this item as a fix task.** If the original failure recurs, the guard will now say what
+was stubbed, which is the missing evidence.
 
 ### 12.6 Owners are named — §9 is unchanged for you
 
