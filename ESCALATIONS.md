@@ -355,3 +355,10 @@ what a human needs to decide.
   canonical chart so the new gate does not block the next resonance build.
 - **Also recorded from the same run (not ours):** `ka_bhavishya_lekha` reads `phala_anchors`, produced by `ph_nimitta` —
   L3 reading L4, a layer inversion and an architectural question for the native, not an edge to add.
+
+**E-013 addendum — the measurement the recommendation was waiting on (from the strategic session, read-only against production,
+canonical chart; ATTRIBUTED, not run by the L3 session):** `ga_dashas` is `lit` (483,870 rows) and `ga_yoga` is `lit` (53 rows). So
+declaring both on `ka_gochara_resonance` would **not** block the next resonance build. That settles the recommendation: add
+the two edges as their own reviewed change. The same read found `ph_nimitta` `stale` (139 rows) on the canonical and test charts,
+which sharpens rather than settles the separate layer-inversion question: `ka_bhavishya_lekha` consumes a table whose L4 producer
+is stale everywhere.
