@@ -52,10 +52,23 @@ CHART_B = "00000000-0000-4000-8000-0000000000b2"  # born 1985-03-02 (step 9)
 
 DDL = """
 -- Ledger tables are created by step 4's migration apply (1081) and are NOT
--- re-created by this fixture; drop them so every test starts from a clean
--- ledger (a rolled-back manifest from a prior test must not leak in).
-DROP TABLE IF EXISTS kala_gochara_convention, kala_gochara_publication,
-  kala_gochara_contacts, kala_gochara_coverage CASCADE;
+-- re-created by this fixture; reset them row-wise so every test starts from
+-- a clean ledger (a rolled-back manifest from a prior test must not leak
+-- in). Never DROP them: this fixture can share a database with the WP6
+-- tests (conftest's session-scoped wp6_schema), and dropping the ledger
+-- tables out from under that schema fails downstream WP6 tests with
+-- UndefinedTable (§12.5 / F-31 test-isolation).
+DO $$
+BEGIN
+  IF to_regclass('kala_gochara_convention') IS NOT NULL
+     AND to_regclass('kala_gochara_publication') IS NOT NULL
+     AND to_regclass('kala_gochara_contacts') IS NOT NULL
+     AND to_regclass('kala_gochara_coverage') IS NOT NULL THEN
+    TRUNCATE kala_gochara_contacts, kala_gochara_coverage,
+      kala_gochara_publication, kala_gochara_convention
+      RESTART IDENTITY CASCADE;
+  END IF;
+END $$;
 DROP TABLE IF EXISTS kala_gochara_windows CASCADE;
 CREATE TABLE kala_gochara_windows (
   id BIGSERIAL PRIMARY KEY,
