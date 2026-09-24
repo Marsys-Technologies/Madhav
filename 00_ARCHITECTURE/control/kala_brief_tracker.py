@@ -357,8 +357,19 @@ def scan(env_file=None, do_probe=True):
     unapplied=[]
     if db.get("ran"):
         ap=set(db.get("applied") or [])
+        # Only BRANCH-ONLY migrations count as pending work. Comparing main's filenames
+        # against _migrations_applied invents phantoms: the early schema was applied under
+        # a consolidated legacy naming (0000_seed_legacy_applied.sql, 0001_brahma_baseline.sql,
+        # 001_baseline.sql) that does not match main's 001_initial_schema.sql etc. A filename
+        # set-difference read 147 long-applied migrations as pending. A detector that cannot
+        # tell "not applied" from "applied under another name" is not measuring what it claims.
+        mainq=subprocess.run(["git","-C",ROOT,"ls-tree","-r","--name-only","origin/main",
+                              "platform/migrations","platform/supabase/migrations"],
+                             capture_output=True,text=True)
+        on_main={os.path.basename(x) for x in mainq.stdout.split()}
         for fn,head in sorted(intree_migrations().items()):
-            if fn not in ap: unapplied.append({"file":fn,"head":head.replace("origin/","")})
+            if fn in ap or fn in on_main: continue
+            unapplied.append({"file":fn,"head":head.replace("origin/","")})
     now=[{"id":a["id"],"stage":a["sop_stage"],"since":a["last_event_ts"],"dag":a["dag"]}
          for a in assets if a["active"]]
     return {"generated":datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
