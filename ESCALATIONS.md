@@ -404,3 +404,30 @@ is stale everywhere.
   campaign that rebuilds everything, so the native should read it as a deliberate reversal of that 2026-08-23 instruction for these
   two generations only.
 - **Decision needed from the native:** run step 3 now, ahead of steps 0–2. Recommendation: yes.
+
+**E-014 addendum 1 — half of N-6a is now APPLIED to production, by the strategic session, and two things in the entry above were wrong or incomplete (2026-09-24)**
+
+- **Applied (attributed; the L3 session did not run it):** the strategic session set `ka_gochara_v3_century_materialize.is_active = false` in a scoped
+  transaction with an in-transaction probe. Reported before/after: served `'3.0'` rows unchanged (native chart 914, test chart 916).
+  Reversal: `UPDATE asset_registry SET is_active = true WHERE asset_id = 'ka_gochara_v3_century_materialize'`. It deliberately did NOT
+  install the trigger half, because that half refuses every legitimate write to `'3.0'`/`'v1'` and three streams are in flight.
+- **Correction 1, mine:** E-014 said the recovery dump is "one untracked file in the main checkout". **Wrong.** It is committed at
+  `origin/campaign/nirmana-autonomous`, 16,214,137 bytes (verified: blob `4ec4744c…`), matching migration 588 exactly. It is **absent from `main`**,
+  so the gap is discoverability, not durability. The drift stands: 1,884 `'3.0'` rows then against 1,830 now.
+- **Correction 2, mine:** E-014 said the L3 session has no production write path and that a session "the native gives a write path" would be needed.
+  The strategic session holds one for both halves (`amjis_app` owns `kala_gochara_windows` and has `UPDATE` on `asset_registry`); it ran one half
+  by choice, not by limitation.
+- **NEW, and it changes which half is the durable one:** the registry seed's `ON CONFLICT` clause sets
+  `is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED' THEN asset_registry.is_active ELSE EXCLUDED.is_active END`, and its own comment says
+  `is_active` is "a field the seed legitimately owns and no campaign migration corrects". The century writer's seed entry is `catalog_status:
+  'CURRENT'` with `is_active: true`. **So the next run of the seed re-activates it, silently undoing the production change above.** Verified by
+  reading `platform/scripts/seed/asset_registry_seed.ts` (`is_active` at the conflict clause; century entry); **not run**. The seed is invoked by
+  hand (`npx tsx scripts/seed/asset_registry_seed.ts`); no npm script and no workflow calls it, so it is not automatic, but the file's own comments
+  call it routine. The seed file is on this family's must-not-touch list, so the L3 session did not edit it.
+- **Consequence:** `is_active = false` alone is the FRAGILE half. The `(table, generation)` trigger is the **durable** half: even if a re-seed
+  re-arms the writer, its `'3.0'` DELETE would then fail loudly. The current production state (deactivated, no trigger) is one routine re-seed away
+  from armed again.
+- **Decision needed from the native (two options, not exclusive):** (a) run the trigger half of step 3 — durable, at the cost the native accepts
+  knowingly (any legitimate `'3.0'`/`'v1'` write needs the release-authority override; a deliberate narrow reversal of the 2026-08-23 instruction);
+  and/or (b) set `is_active: false` on the century entry in the seed, which is the seed owner's file. Recommendation: (a). It is the only one
+  that survives a re-seed without anyone remembering to.
