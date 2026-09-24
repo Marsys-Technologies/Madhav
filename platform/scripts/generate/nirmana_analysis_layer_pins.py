@@ -195,10 +195,19 @@ AUTHORIZED_SOURCE_COMMITS = {
     },
     # L0 repair (PR #2727): exactly one source commit, for exactly the three layers
     # whose writer digests moved. L1, L4 and L5 are deliberately absent.
+    #
+    # The source commit (7d40f8c70...) is NOT the approved-state identity in
+    # AUTHORITY_BINDINGS (101171f76...), and that is deliberate and disclosed:
+    # the inventory committed at 101171f76 was stale (a comment-only edit after its
+    # regeneration moved 25 writer digests), so no commit at or before it can be a
+    # source whose inventory is true. 7d40f8c70 regenerates it and changes nothing
+    # else under platform/python-sidecar - `git diff 101171f76 7d40f8c70 --
+    # platform/python-sidecar` is empty - so the writer SOURCES are exactly the ones
+    # approved. See L0_REPAIR_ANALYSIS_REPIN_DECISION_ADDENDUM_v1_0.md.
     "NATIVE-2026-09-24-L0-REPAIR-REPIN": {
-        "L0": frozenset({"101171f76517fa3c6b0b44fa9d1cc46358612eee"}),
-        "L2": frozenset({"101171f76517fa3c6b0b44fa9d1cc46358612eee"}),
-        "L3": frozenset({"101171f76517fa3c6b0b44fa9d1cc46358612eee"}),
+        "L0": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
+        "L2": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
+        "L3": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
     },
 }
 
