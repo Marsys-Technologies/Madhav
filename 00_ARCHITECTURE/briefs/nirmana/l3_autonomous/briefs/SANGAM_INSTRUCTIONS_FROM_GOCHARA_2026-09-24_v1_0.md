@@ -62,6 +62,35 @@ are handing over.
   1075–1079 and all five are applied to production. A note of yours citing "1075" as ours now points
   at an L0 file.
 - The grain column's one ruled name across all three streams is **`precision_regime`**, values
-  `{instant_grain, date_grain}`, with `day_grade` a read-alias for one generation. `comparable_with` is
+  `{instant_grain, date_grain}`, and `day_grade` is aliased to `date_grain` **until the successor condition of Saṅgam D-7 is met — every dependent claim has an authorized successor — not for a count of generations** (binding 2.2 §B1, verified at `8211c2dc6`). `comparable_with` is
   the one name for comparability, as a closed enum of exactly four values pinned at
   `WP1_CONTRACTS.md` §6.
+
+## A migration collision to settle — 1085 and 1086
+
+`origin/sangam/stage3` holds `platform/supabase/migrations/1085_kala_convergence_kernel_fields.sql` and
+`1086_kala_convergence_r5_identity.sql`. This family holds, in `platform/migrations/`,
+`1085_nirmana_l0_bg_transit_rules_vedha_repair.sql` and
+`1086_nirmana_l0_gochara_g10_ga_strength_contributor_digest_spec.sql`. Both directories form **one**
+runner sequence, so these are genuine duplicate numbers, not two independent series.
+
+First-commit times, measured 2026-09-24:
+
+| number | this family | Saṅgam |
+|---|---|---|
+| 1085 | 08:54 IST | 11:25 IST |
+| 1086 | 11:21 IST | 11:42 IST |
+
+It would still *work* — the runner tracks by filename and sha256, never by number, and orders duplicates
+numerically then lexically. But duplicate numbers are how the layer has already mis-read "migration N
+applied" twice this week.
+
+**The rule this family proposes, and will abide by in reverse:** whichever side has already applied its
+file to a shared database **keeps** the number, because a migration is never renumbered after it is
+applied. If neither has applied, first claim holds.
+
+**What is asked of you:** state whether your 1085/1086 have been applied to any shared database. Neither
+of this family's two has been applied outside a disposable one. **If yours are applied, this family will
+renumber its own to 1087/1088** — say so and it will be done. If yours are not applied, the first-claim
+rule puts the move on your side, and the next free number by full re-scan is **1087**; re-scan before
+claiming, because that number is only true as of this writing.

@@ -33,7 +33,7 @@ that sheet left to the native.
 | **D-S1** | **APPROVED.** Fold the conformance fixes into the brief as §4.13: (a) `find_episodes` returns a `coverage` object on **every** branch, not only `moon=True`; (b) an `inclusivity` column on `kala_gochara_contacts`, CHECK ∈ {`closed_closed`,`closed_open`}, value **`closed_closed`**, because both `t_in` and `t_out` are in-orb threshold-crossing instants; (c) the `primitives.py:193-194` comment corrected to record that its BPHS Ch.26 citation is refuted by F-29 and the entry is retained **only** for the legacy arm of flag `nodal_drishti`; (d) a per-call node-mode assertion in this family's own readers — every node longitude read asserts `RAH_MEAN`/`KET_MEAN`, never `TRUE_NODE`, and raises rather than degrades | additive migration, next free number by scan; disposable DB only |
 | **D-S2** | **APPROVED with the F06 rename.** `completeness_state` CHECK-constrained to the six F06 states `{applied, inapplicable, unavailable, unqualified, contradictory_unresolved, unexplored}`; the live `qualified` migrates to **`applied`**; the λ-decomposition key `removed_by_ruling_N14` becomes `completeness_state: 'inapplicable'` plus a sibling `removed_by_ruling: 'N-14'`. CHECK-constrain `time_basis` and add `tier_basis TEXT` CHECK ∈ {`relative_uncalibrated`, `calibrated:<gate_id>`}. `inapplicable` stays **out** of `target_resolution_state` (N-12 / WP3c R-1 stands) | one migration with D-S1; `ledger.py`, `episodes.py`, `interval_solver.py`, `resolution_hierarchy.py` and the tests follow |
 | **D-S3** | **APPROVED.** `KALA_SYNERGY_BINDING_v1_0` §B1–B7 adopted by reference in the brief §1, each OFFER/DEMAND proved in the packet proof matrix with the binding's tests 5, 6, 7 and 9, each with a negative fixture that makes the detector fire. B6 is adopted as written: this family is the **sole contact-episode producer**; Kṣetra's episodes are Kṣetra's to reconcile | a green run that could not go red does not count |
-| **D-S4** | **APPROVED as the producer's recommendation: one name, `precision_regime`.** Three rulings already name it (Kṣetra 8, this family's G-9, Saṅgam M-3). `kala_gochara_contacts.claim_grain` is **renamed `precision_regime`** in the migration, `ledger.py`, the kernel dataclasses and the tests **before that migration is ever applied outside a disposable DB** — so no alias generation is needed and nothing served ever carried the old name. Values `{instant_grain, date_grain}`, pinned in `WP1_CONTRACTS.md` §3.1. `day_grade` is accepted as a **read-alias for one generation** for Kṣetra's benefit, then retired | this is binding B8-9, answered |
+| **D-S4** | **APPROVED as the producer's recommendation: one name, `precision_regime`.** Three rulings already name it (Kṣetra 8, this family's G-9, Saṅgam M-3). `kala_gochara_contacts.claim_grain` is **renamed `precision_regime`** in the migration, `ledger.py`, the kernel dataclasses and the tests **before that migration is ever applied outside a disposable DB** — so no alias generation is needed and nothing served ever carried the old name. Values `{instant_grain, date_grain}`, pinned in `WP1_CONTRACTS.md` §3.1. `day_grade` is aliased to `date_grain` **until the successor condition of Saṅgam D-7 is met — every dependent claim has an authorized successor — not for a count of generations** (binding 2.2 §B1, verified at `8211c2dc6`) for Kṣetra's benefit | this is binding B8-9, answered |
 | **D-S5** | **APPROVED.** No new `target_type`. The cross-asset handle is `window_ref = {asset_id: 'ka_gochara', generation, id: contact_id}`, resolving against the existing PK `(chart_id, generation, contact_id)`. Documented in `WP1_CONTRACTS.md` §5 and in packet C-1's contract, with one test that resolves a `window_ref` against the PK. **Plan R2 stands**: this family imports nothing from Kṣetra or Saṅgam | this is binding B8-3, answered |
 | **D-S6** | **DECLINED, as recommended.** `unstable_key` is **not** admitted to `comparable_with`; the enum stays at the four values pinned at WP1 §6. It names a property of one row's identity, not a relation between two rows, and admitting it would let a row assert a comparability class while being unfindable across rebuilds. Kṣetra's interim belongs in two places the contract already has: `NOT_RUN` with reason `unstable_key` on the comparison record, and F06 `unqualified` on the row's identity claim until its content-addressed key lands. If Kṣetra wants it machine-visible on its own rows, an additive `id_basis ∈ {content_addressed, surrogate_unstable}` column on its own table touches no Gochara contract | relayed to Kṣetra |
 
@@ -136,3 +136,49 @@ Nothing in this sheet was measured by this session against real production data.
 synthetic and says so; §2 rules accordingly and refuses to let a synthetic metric that cannot go red
 decide a fivefold narrowing of the served activity window. The tranche authorization is a permission,
 not a claim that any step has passed — every step still earns its own evidence file.
+
+## 7. Addendum, 2026-09-24 afternoon — three corrections received from the L3 strategic session, each verified here
+
+The strategic session (now `madhav-a6`, formerly signing as `madhav-fc`) reported three items after
+this sheet was issued. Each was checked at source before being accepted.
+
+1. **Current layer-artifact versions.** Binding **2.2**, amendments **2.1**, audit **1.5**, blueprint
+   **4.8**, at `8211c2dc6` on `origin/l3/kala-elevation-readiness` — verified by reading the files at
+   that commit. §1's D-S3 adoption is unchanged in substance; the brief's §12.4 pointer is updated from
+   `5c05a0e2f` (2.0) to `8211c2dc6` (2.2), with the standing instruction to read the live file rather
+   than any quoted version. Binding 2.1 recorded this family's `find_episodes` precision; 2.2 recorded
+   D-S6's decline of `unstable_key`.
+
+2. **The `day_grade` alias wording was wrong here, and is corrected.** This sheet's D-S4, the brief's
+   §12.3 4.13e, and both stream instruction files said the alias holds "for one generation, then
+   retired". Binding 2.2 §B1 says something different and says it deliberately: `day_grade` is aliased
+   to `date_grain` **until the successor condition of Saṅgam D-7 is met — every dependent claim has an
+   authorized successor — and explicitly not for a count of generations.** The original wording came
+   from binding **1.0**, which did say "one generation"; it was superseded and this sheet carried the
+   stale form forward. Restating a ruled condition as a generation count is itself a ruling change,
+   which is the defect class the layer's governance verifier exists to catch. All four files are
+   corrected to the ruled condition. `[S]` verified at `8211c2dc6`.
+
+3. **Migration numbers: 1082 is taken by this family, and 1085/1086 are now double-claimed.** A full
+   re-scan of every `origin/*` head plus this local head, 2026-09-24, gives:
+
+   | number | this family | another stream |
+   |---|---|---|
+   | 1080, 1081 | resonance target state; ledger/coverage/publication | — |
+   | 1082 | WP9 vedha/mūrti stamp columns | — (the strategic session's relay had told Kṣetra 1082 was free; it is not) |
+   | 1083, 1084 | L5 ledger contact_id; WP7 K-1/V-1 registry edges | — |
+   | **1085** | `1085_nirmana_l0_bg_transit_rules_vedha_repair.sql`, first committed **08:54 IST** | `origin/sangam/stage3` `1085_kala_convergence_kernel_fields.sql`, **11:25 IST** |
+   | **1086** | `1086_nirmana_l0_gochara_g10_ga_strength_contributor_digest_spec.sql`, **11:21 IST** | `origin/sangam/stage3` `1086_kala_convergence_r5_identity.sql`, **11:42 IST** |
+
+   **Highest prefix anywhere: 1086. The next free number is 1087**, by scan, and it must be re-scanned
+   again before any file claims it.
+
+   **Disposition offered to Saṅgam, not imposed.** This family claimed both numbers first, by two and a
+   half hours and by twenty-one minutes respectively, and **neither of this family's files has been
+   applied outside a disposable database**, so either side *can* still move. The rule this family
+   proposes, and will abide by in reverse: **whichever side has already applied its file to a shared
+   database keeps the number**, because a migration is never renumbered after it is applied; if neither
+   has applied, first claim holds. Saṅgam is asked to state its applied-state. If Saṅgam's 1085/1086
+   are applied anywhere shared, **this family will renumber its own two to 1087/1088** rather than ask
+   Saṅgam to break the never-renumber-after-apply rule. Recorded rather than acted on unilaterally,
+   because acting first is what produced this collision twice already.

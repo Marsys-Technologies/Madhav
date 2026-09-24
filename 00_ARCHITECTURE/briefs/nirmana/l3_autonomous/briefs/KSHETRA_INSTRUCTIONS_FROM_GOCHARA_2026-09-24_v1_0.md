@@ -92,5 +92,19 @@ on top of a wrong time axis is polish on a broken instrument.
 Our two migrations renumbered **1075/1076 → 1080/1081** on 2026-09-24, because the L0 vedha-and-frame
 repair (PR #2727) claimed 1075–1079 and all five are applied to production. If any Kṣetra file or note
 cites "migration 1075" or "1076" meaning ours, it now means the L0 files. Also: `precision_regime` is
-the one ruled name for the grain across all three streams, with `day_grade` accepted as a read-alias
-for one generation and then retired.
+the one ruled name for the grain across all three streams, and `day_grade` is aliased to `date_grain` **until the successor condition of Saṅgam D-7 is met — every dependent claim has an authorized successor — not for a count of generations** (binding 2.2 §B1, verified at `8211c2dc6`).
+
+## 6. Correction on migration numbers — **1082 is taken**
+
+You were told on relay that 1082 was the next free number after this family's 1080/1081. **It is not.**
+This family's WP9 stamp-column migration is
+`platform/migrations/1082_nirmana_l3_vedha_moorti_stamp_columns.sql`, and 1083, 1084, 1085 and 1086 are
+claimed too. A full re-scan of every `origin/*` head on 2026-09-24 puts the highest prefix at **1086**,
+so the next free is **1087** — and **re-scan again before you claim it**, across both
+`platform/migrations/` and `platform/supabase/migrations/`, which form one runner sequence.
+
+Note also that `origin/sangam/stage3` has independently claimed 1085 and 1086, which collide with this
+family's files of the same numbers. That is being resolved between this family and Saṅgam on the rule
+"whoever has applied theirs keeps the number; if neither has applied, first claim holds". It does not
+affect you except as a reason to scan rather than trust any number quoted in a message, including the
+one in this paragraph.
