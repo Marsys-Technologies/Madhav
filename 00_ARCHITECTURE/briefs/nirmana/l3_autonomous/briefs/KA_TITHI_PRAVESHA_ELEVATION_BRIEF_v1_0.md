@@ -1,32 +1,35 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
 canonical_id: KA_TITHI_PRAVESHA_ELEVATION_BRIEF
-version: "1.0"
-status: DRAFT_FOR_INDEPENDENT_REVIEW      # → PROPOSED_FOR_NATIVE_RULING after the Fable 5.1 review
+version: "1.1"
+status: DRAFT_FOR_INDEPENDENT_RE_REVIEW      # v1.0 → REWORK (REVIEW_KA_TITHI_PRAVESHA_v1_0.md, 25 findings); v1.1 disposes each
 approval_record: "<none yet>"
-parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / blob 793972c754b106688097dbc54536c1a9c270a793"
+parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
-synergy_binding: KALA_SYNERGY_BINDING_v1_0.md   # adopted by reference; B-rows in §7
-asset_or_interface_ids: ["ka_tithi_pravesha", "SC-1 (temporal contract: tz-aware instants)", "D-M second L0 lane (source adjudication)", "SC-6 voice (annual frame)"]
-goal_objective: "Make ka_tithi_pravesha's return instants true instants (tz-aware, UTC, not 5.5 h late), its method honestly stamped unsourced-with-receipt until the L0 lane adjudicates it, its rows typed as one root's annual testimony, and its integrator use decided as a concurrence voice rather than a dependency label — preserving a numerically careful lunar-return kernel that already verifies itself two ways."
-source_revision: "9feac52d7 (l3/kala-layer-briefs; = origin/l3/kala-elevation-readiness tip 2026-09-24)"
-accepted_upstream_contract: "L1 chart_facts MOON longitude_sidereal by fact_id (§N.5); birth_params via ctx.config (§N.2); W2 first-frontier source 47131772b (writer prepares its candidate before the chart-partition DELETE)"
+synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+asset_or_interface_ids: ["ka_tithi_pravesha", "SC-1 (tz-aware instants — on the row AND on the serving path, which strips the offset)", "D-M second L0 lane (source adjudication — which must adjudicate the w27b registry's contrary citation string too)", "SC-6 voice (annual frame)", "Gochara w27b: a registered candidate whose modifier schedule is the operand class Q2 bars before M-4"]
+goal_objective: "Make ka_tithi_pravesha's stored return instants say what they are: the cast is computed at the CORRECT absolute instant (local jd + Place(tz), the FORENSIC-verified L1 pattern), so the lagna, graha positions and audit are right — it is only window_start/window_end that are handed naive to a timestamptz column and therefore ASSERT an instant 5.5 h late. Fix the assertion without disturbing the cast; stamp the method unsourced-with-receipt until the L0 lane adjudicates it; type the rows as one root's annual testimony; and decide the integrator use as a concurrence voice rather than a λ-product modifier."
+source_revision: "9feac52d7 (l3/kala-layer-briefs); `git diff --stat 9feac52d7 e82dd34a3` on services/ka_tithi_pravesha/, query_tithi_pravesha.ts and kala_views/now.ts is empty"
+accepted_upstream_contract: "L1 chart_facts MOON longitude_sidereal by fact_id (§N.5); birth_params via ctx.config (§N.2) — VERIFIED naive local wall-clock (pipeline/orchestrator/birth_params.py:96-106) with the offset travelling separately as tz_offset_hours (:97-101,:109, required by _REQUIRED :33), so raw[:19] discards nothing on any orchestrator-built input; the writer's prepare-before-DELETE block landed in fa9857f00 (#2607), not 47131772b"
 implementation_owner: "<one writer, named at stage 3 — not the author>"
-independent_review_owner: "Fable 5.1 review agent, fresh context; report at briefs/reviews/REVIEW_KA_TITHI_PRAVESHA_v1_0.md"
+independent_review_owner: "Fable 5.1 review agent, fresh context; report at briefs/reviews/REVIEW_KA_TITHI_PRAVESHA_v1_0.md (REWORK); re-verification of v1.1 pending"
 release_authority: "NONE"
-may_touch: ["platform/python-sidecar/services/ka_tithi_pravesha/{writer,logic}.py", "platform/python-sidecar/pipeline/orchestrator/writers/ka_tithi_pravesha.py", "platform/python-sidecar/tests/l3/test_ka_tithi_pravesha*.py", "one additive migration on kala_tithi_pravesha (qualification columns)", "interface packet only: platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts, platform-mcp/src/tools/kala_views/now.ts"]
-must_not_touch: ["chart_facts / ga_* (L1)", "pyjhora_adapter / panchang_engine (shared engines)", "classical_text_chunks (L0 corpus — the source adjudication is the L0 lane's, D-M)", "ka_gochara_v3_century_materialize (its declared Tithi edge was retired as an edge, N-8 — not this brief's to reinstate)", "platform-mcp/src/tools/kala_views/** except as an interface packet", "applied migrations", "WriterBase / orchestrator contract"]
-target_state_data_plane: "PRODUCER_READY (stage 3); DATA_ACCEPTED requires a rebuild of the 120 rows under the corrected instants (a P-class step, W2 data); CONSUMER_INTEGRATED when the annual voice reaches a composite surface"
+may_touch: ["platform/python-sidecar/services/ka_tithi_pravesha/{writer,logic}.py", "platform/python-sidecar/pipeline/orchestrator/writers/ka_tithi_pravesha.py", "platform/python-sidecar/tests/l3/test_ka_tithi_pravesha_writer.py, tests/l3/test_w2_first_frontier_writer_preservation.py (the assertions that must flip — §5)", "one additive migration on kala_tithi_pravesha (qualification columns)", "platform/src/generated/nirmana-writer-digests.json (REGENERATED, not hand-edited — consumed by dispatch_frozen_rebuild.py:29,58,113; the writer's code digest changes)"]
+interface_packet_targets_not_may_touch: ["platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:70 (`as_of` default), :83-90 (to_char STRIPS the offset — the serving half of the defect) and :90 (a bare date cast at session tz) — Pūrṇa-owned", "platform-mcp/src/tools/kala_views/now.ts:613-660 — Pūrṇa-owned; L3 owns only the sentinel test"]
+must_not_touch: ["chart_facts / ga_* (L1)", "pyjhora_adapter / panchang_engine (shared engines)", "classical_text_chunks (L0 corpus — the source adjudication is the L0 lane's, D-M)", "services/gochara_v3/** (w27b is Gochara-owned)", "platform-mcp/src/tools/kala_views/**", "platform/supabase/migrations/531_kala_tithi_pravesha.sql, platform/migrations/670_* (applied)", "applied migrations 1033–1070", ".github/workflows/deploy.yml", "kala_gochara_windows WHERE generation='v1'", "WriterBase / orchestrator contract"]
+target_state_data_plane: "PRODUCER_READY"
 target_state_campaign: "ANALYZED → ENRICHED at stage 3; a t0 freeze exists and is inadmissible under t3"
 wave: "W2"
 shape: single asset, rows (chart × ayanāṃśa × praveśa year)
 evidence_base: >
-  Source read directly on 9feac52d7 [V]; KALA_ASSET_BRIEF_CONTEXT §4 (5.5 h measured in
-  production), Lane D §13, T1 Frontier row, elevation plan Q2, Gochara N-8, KALA_DELEGATED_DECISIONS
-  D-M [A]; no database query.
+  Source read directly on 9feac52d7 [V]; reviewer-verified claims adopted are marked [R] (including
+  a trace of the timezone convention down to PyJHora's own `jd_utc = jd - place.timezone/24`);
+  context §4 (5.5 h measured in production), Lane D §13, T1, elevation plan Q2, D-M [A]; no database
+  query.
 does_not_authorize: any code, migration, grant, build or serving change.
 changelog:
-  - "1.0 (2026-09-24): first issue; awaiting independent review."
+  - "1.1 (2026-09-24): REWORK dispositions (25 findings) — F-01 the impact was mis-stated: the cast IS computed at the correct absolute instant (the writer passes the naive wall clock together with tz_offset_hours, the same local-jd + Place(tz) pattern the FORENSIC-verified L1 path uses; PyJHora then does jd_utc = jd − tz/24), so pravesha_lagna, graha_positions_jsonb, ephemeris_audit_jsonb and natal_moon_longitude_deg are CORRECT — only window_start/window_end assert an instant 5.5 h late; the rebuild's equivalence contract is now the exact inverse of what v1.0 claimed; F-02 and F-03 two proof rows would fail a CORRECT implementation (a tz relabel does not move the nearest return; 23:55 IST is the same UTC day) — both replaced; F-04 the Delivery sentinel was a constant default; F-05 a registered candidate consumer (w27b_tithi_pravesha) was omitted, and its yaml asserts a classical citation the writer's own constant denies; F-06 Q09 overclaimed (one hardcoded convention); F-07 coverage not in the B5 shape; F-08 the Positive fixture was not the production input shape; F-09–F-25 the ~3° figure, the commit, the duplication detector, the missing baseline, the JSONB-order control, the eleventh row and two columns, B4's shape, the template's §2.1/§2.5/§2.6, the SERVING half of the tz defect, the migration number, the in-scope 'lahiri' literal, 'can' vs 'does', the unreceipted absence claim, the unresolvable Gochara citation, migration 670's existing conjuncts and its blind spot, the tests that must flip, and the writer-digest regeneration."
+  - "1.0 (2026-09-24): first issue."
 ---
 
 # `ka_tithi_pravesha` elevation brief — an annual clock whose instants must be instants
@@ -34,24 +37,33 @@ changelog:
 ## §0 — The recommendation, in one paragraph
 
 `ka_tithi_pravesha` casts the lunar-return annual chart: it roots the transiting Moon's return to
-the natal sidereal longitude (read by `fact_id` from L1, never restated) nearest each solar
-anniversary and verifies the result two ways (`writer.py:181-230` [V]) — numerically the most
-careful row-producer in the frontier. Two things undo it. **Its instants are not instants**: the
-birth wall-clock is parsed naive (`datetime.fromisoformat(raw[:19])`, `:125` [V]), the return
-instant is computed and stored as a naive local datetime into a `timestamptz` column — measured
-in production as **5.5 hours late** on every row (context §4 [A]); a served "praveśa moment" that
-is wrong by 5.5 h puts the Moon ~2.7° from where the row says it is. And **its method is
-unqualified with an unreceipted absence claim**: `CLASSICAL_SOURCE_CITATION = "not_in_corpus: …"`
-(`:64-70` [V]) is a string constant asserting the corpus lacks the technique — the exact defect
-class (a directory read as a corpus) that cost this campaign a day; no `count(*)` was ever run
-against `classical_text_chunks` for lunar-return / varṣa-praveśa doctrine. Recommendation:
-**`ENRICH_CORRECT` + `QUALIFY_LIMIT`** — tz-aware instants under binding B1 (with a falsifier
-that fails on today's rows: the Moon at the stored instant must be within tolerance of natal);
-`source_qualification='unsourced'` **with a count(*) receipt**, upgradeable only by the D-M
-second L0 lane; per-row `completeness_state` from the two-pass verification; the annual frame
-declared one root (the natal Moon — shared with every nakṣatra daśā) and admitted as a
-**concurrence voice**, not an integrator input, which settles Q2 for this asset without
-retirement. Decisions: the L0 lane, the voice, and the rebuild (§10).
+the natal sidereal longitude (read by `fact_id` from L1, never restated, `:72-77`) nearest each
+solar anniversary and verifies the result two ways (`writer.py:201-211` [V]) — numerically the most
+careful row-producer in the frontier. The reviewer corrected my account of what is broken, and the
+correction inverts the repair's equivalence contract. **The cast is right.** `_moon_longitude`
+builds `jd` from the naive wall clock and passes `tz=float(bp["tz_offset_hours"])` (`:130-146`), and
+`_annual_chart` passes `birth_params` with the naive `instant.isoformat()` (`:149-156`) — the
+identical local-jd + `Place(tz)` pattern the FORENSIC-verified L1 path uses
+(`pyjhora_adapter/compute.py:30-33,:58-66`), which PyJHora resolves as
+`jd_utc = jd − place.timezone/24` (`drik.py:1773`) [R]. So `pravesha_lagna_*`,
+`graha_positions_jsonb`, `ephemeris_audit_jsonb` and `natal_moon_longitude_deg` are **computed at
+the correct absolute instant**, and the writer's own test confirms the year-1 return lands within
+600 s of the birth instant (`test_ka_tithi_pravesha_writer.py:189-196` [R]). What is wrong is
+narrower and still real: the naive `instant` is handed to a **`timestamptz`** column (`:81-98`; DDL
+`531:49-50`), so **`window_start`/`window_end` assert a moment 5.5 h late** (context §4 [A]) while
+everything computed from it is right. A downstream that **re-casts** from the served instant would
+be wrong — that is the live hazard, and it is compounded on the serving path, where
+`query_tithi_pravesha.ts:83-90` renders the timestamp with `to_char(… 'YYYY-MM-DD"T"HH24:MI:SS')`,
+**stripping the offset** [R]. Second: the method is stamped with an **unreceipted absence claim** —
+`CLASSICAL_SOURCE_CITATION = "not_in_corpus: …"` (`:60-70`) asserts the corpus lacks the technique,
+and no `count(*)` receipt exists for that claim (nor for my own v1.0 assertion that none was ever
+run). Recommendation: **`ENRICH_CORRECT` + `QUALIFY_LIMIT`** — attach `tz_offset_hours` to the wall
+clock and store UTC, with an equivalence contract that **pins the cast byte-identical** and moves
+only the two bounds; fix the serving render too; `source_qualification='unsourced'` with a real
+receipt, upgradeable only by the D-M lane — which must also adjudicate the contrary citation string
+a Gochara registry already asserts; per-row `completeness_state`; one declared root; and the
+integrator use decided as a **concurrence voice**, not the λ-product modifier a registered candidate
+currently proposes. Decisions: §10.
 
 ---
 
@@ -59,83 +71,74 @@ retirement. Decisions: the L0 lane, the voice, and the rebuild (§10).
 
 | record | says | delta on this base |
 |---|---|---|
-| Register §5 (REGISTER:146) | *"Return bracketing, annual-chart and numerical search kernels. P/Q/E: named method/equation needs source adjudication; current Moon-longitude return is not accepted merely from name. DP02/07."* | unchanged; the adjudication is D-M's lane |
-| Strategy §6.1 **L3-A09** | *"Qualify the implemented Moon-return method against the admitted method before promotion. Preserve return identity and source; add an explicit use decision. Current v3 does not read it."* W2 | unchanged; Gochara N-8 retired the century edge *as an edge*, asset untouched |
-| Strategy §3 *Clock interval* | method, hierarchy/parent, lord role, actual start/end, inclusivity, applicability/prerequisites, failure reason, exact vs approximated subdivision | the row has start/end and a verification status; no inclusivity, no applicability, no F06 state (§3) |
-| KALA_ASSET_BRIEF_CONTEXT §4 | *"`kala_tithi_pravesha`'s window instants are stored **5.5 hours late** in production"* — naive datetime into `timestamptz` | mechanism confirmed at source [V] (§2.2); the production figure is [A] |
-| W2 source `47131772b` | candidate prepared before the chart-partition DELETE | `_DELETE_SQL` + `ON CONFLICT DO NOTHING` (`:79,:97`) [V] |
-| Lane D §13 / T1 | 120 rows `lit`; the sharpest consumer tension: served (`now.ts`, `query_tithi_pravesha.ts`) vs elevation-plan Q2 "consumed by nothing" | both true: **served, not integrated** — `now.ts`/`query_tithi_pravesha.ts` read the table [V]; no `ka_*` integrator reads it |
-| Elevation plan Q2 | wire into a qualified operator or retire with evidenced disposition | §10: a concurrence voice (SC-6), no retirement |
-| KALA_DELEGATED_DECISIONS D-M | tithi-praveśa source steward folded into a **second L0 lane pass** with the 19 residual `bg_transit_rules` rows | binds §4 item 3 and §10 |
-| Blueprint v5.0 §3.5 row 7, §15 G-1, §16.2 | tz-aware instants; `source_qualification` stamp; `return_bracket`/`cross_check_diff` persisted as qualification; the corpus-absence lint | binds §4 |
-| Guard G-1 (blueprint §15) | *absence by `count(*)` against the object* — any `not_in_corpus` literal without a receipt fails | `writer.py:64-70` is the canonical target |
+| Register §5 (`REGISTER:146`) | annual praveśa frame | — |
+| Strategy §6.1 **L3-A09** (`:279`) | the asset's row | unchanged |
+| Strategy §3 *Clock interval* (`:91`); **L3-Q09 (`:70`)** | annual/return adapters; Q09's proof is *"Recompute declared variants; match the same propositions and boundary changes"* | **Q09 cannot be served** — one hardcoded convention (F-06) |
+| **`birth_params.py:33,:96-106,:109`** [R] | `datetime_iso` = `datetime.combine(birth_date, birth_time).isoformat()` — **naive, never carries an offset**; the offset is `tz_offset_hours`, required by `_REQUIRED` | `raw[:19]` **discards nothing** on any orchestrator input; the primary repair is "attach the offset", not "stop discarding it" (F-08) |
+| **`pyjhora_adapter/compute.py:30-33,:58-66`; PyJHora `drik.py:1773`** [R] | strips tzinfo, uses `tz_offset_hours`, `jd_utc = jd − place.timezone/24` | the cast is at the **correct** absolute instant (F-01) |
+| **Migration 670 (`:1413-1515`)** [R] | already enforces: (a) tiling + root-find consistency, (b) the verification status re-derived, (c) the two convergence booleans as restatements, (d) the L1 root-find target, (e) one natal anchor, (f) a real cast (≥ N grahas), (g) the lagna label restates `reference_signs` and its degree lies in the sign, (h) contiguity, (i) a 338–393 d band | a strong contract — **and (b) re-derives from the same naive-computed audit, so it cannot detect the tz assertion error**: it is the only live detector and it is blind here |
+| **`w27b_tithi_pravesha`** (`gochara_v3/mechanisms/w27_annual_stack.py:74,:306-372`; `mechanisms/registry/w27b_tithi_pravesha.yaml`; `mechanism_register.yaml:215-223`; `grammar_v3_registry.yaml:212-214`) [R] | a **registered candidate** (`admission_state: candidate`) whose `data_source` names `ClassContext.tithi_pravesha_rows (from kala_tithi_pravesha…)`, whose `modifier_schedule` is `favourable 1.25 / adverse 0.80`, and whose **`citation_status: cited`** names *"Kṛṣṇa Miśra / Tājaka tradition … Sudarśana Cakra Paddhati"* | three things at once (F-05): nothing populates `tithi_pravesha_rows` (`context.py:114` has no such field) so it is **not live**; its modifier schedule is exactly the λ-product operand class blueprint **Q2 bars before an M-4 audit**; and its citation string **contradicts** this writer's `not_in_corpus` constant — a repository disagreement the D-M lane must adjudicate, not only the writer's absence claim |
+| `KALA_DELEGATED_DECISIONS` D-M (`:411-417`) | a second L0 lane pass | the upgrade path for the stamp |
+| Elevation plan Q2 (`:188`); Gochara N-8 (blueprint `:323,:325,:975`) | three assets consumed by nothing; the retired edge | the Q2 decision this brief settles as a voice (§10.3) |
+| Lane D §13 (`LANE_D_ASSET_REGISTER.md:655-676`); T1 (`:305`) [A] | 120 rows, `lit`, single build 2026-09-07 | [A] |
+| Migration 531 (`:44-72`) | DDL: `window_start/window_end TIMESTAMPTZ`, the natural key, CHECK on `verification_pass_status`, `computed_at` (`:63`) | `computed_at` is the only knowledge-time field |
 
 ---
 
 ## §2 — Current-state evidence (contract §2)
 
-### 2.1 Registration [V seed]
-`asset_registry_seed.ts:2536-2544`: `postgres_table`, `target_table: 'kala_tithi_pravesha'`,
-chart-scoped `count_sql`, `depends_on: ['ga_positions']`. Live: 120 rows canonical chart, single
-build 2026-09-07, `asset_throughput` `lit` matching [A: Lane D].
+### 2.1 Registration and latent value [V]
+`asset_registry_seed.ts:2530-2544`: `target_table` `:2537`, `depends_on` `:2544`, `scope:
+'per_chart'`. **Latent-value classes (template §2.1):** (a) *served and correct* — the cast
+(`pravesha_lagna_*`, `graha_positions_jsonb`, `ephemeris_audit_jsonb`), the two-pass verification;
+(b) *served and mis-asserted* — `window_start`/`window_end` (right value, wrong declared zone) and
+their offset-stripped render; (c) *computed, unserved* — the verification status is available per row
+but not typed as an F06 state; (d) *absent* — a source adjudication.
+**Knowledge time (template §2.6):** the windows are event-time instants; `computed_at` (`531:63`)
+is knowledge time.
 
-### 2.2 The code [V]
-- **Constants** `services/ka_tithi_pravesha/writer.py:60-70`: `FORMULA_VERSION =
-  "ka_tithi_pravesha_v1.0"`; `CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"`; `ENGINE_AYANAMSHA =
-  "lahiri"` (*"pyjhora_adapter's own id for the same ayanamsha"* — a second alias map, SC-10);
-  `CLASSICAL_SOURCE_CITATION = "not_in_corpus: Tithi-Praveśa … no primary-source chapter/verse
-  citation for the technique specifically is ingested in this corpus — an ingestion work item is
-  filed, not fabricated here"` — a constant, no query behind it; the module docstring (`:35`)
-  repeats it: *"honestly `not_in_corpus` on every row"*.
-- **Natal Moon** `_FETCH_NATAL_MOON_SQL` (`:72-77`): `fact_id, fact_value_num FROM chart_facts …
-  fact_subject='MOON' AND fact_key='longitude_sidereal'` — by `fact_id`, canonical ayanāṃśa
-  (§N.5 done right); `moon_fact_id` persisted.
-- **Birth instant** `_birth_dt_and_params_from_config` (`:116-127`): `datetime.fromisoformat(raw[:19])`
-  — **truncates the ISO string at 19 characters, discarding any offset**, returning a naive
-  wall-clock datetime; *"never guesses a birth instant"* (B.10 honoured) but the timezone is
-  dropped silently.
-- **Per year** `_compute_one_year` (`:181-230`): `pravesha_anniversary(birth_dt, N)` = `birth_dt +
-  relativedelta(years=N-1)` (`logic.py:102-109`); `lunar_return(anniversary, natal_moon_long,
-  _longitude_fn)` roots the return (`logic.py:121-139`, *"always returns a (datetime, audit) pair
-  — never raises"*); the annual chart is cast at `instant`; **two-pass verification**: the annual
-  chart's own Moon longitude vs natal within `LUNAR_RETURN_TOL_DEG = 0.01` (`logic.py:73`) →
-  `verification_pass_status ∈ {two_pass_verified, divergent_flagged}` (`:203-211`);
-  `window_start = instant`, `window_end = next_instant` (naive), `start_converged/end_converged`,
-  `ephemeris_audit_jsonb` with both audits and the cross-check diff.
-- **Write** (`:79-98`): `DELETE … WHERE chart_id`; `INSERT INTO kala_tithi_pravesha (chart_id,
-  ayanamsha_id, pravesha_year, window_start, window_end, start_converged, end_converged,
-  pravesha_lagna_sign_idx/name/degree, graha_positions_jsonb, natal_moon_longitude_deg,
-  moon_fact_id, ephemeris_audit_jsonb, verification_pass_status, classical_source_citation,
-  formula_version) … ON CONFLICT (chart_id, ayanamsha_id, pravesha_year) DO NOTHING`.
-  `window_start`/`window_end` receive a **naive** `datetime`.
-- `run` (`:240-275`): missing/unparsable `birth_params.datetime_iso` → honest no-op with notes
-  (`:252`); one row per praveśa year (120 = a 120-year span).
+### 2.2 The code [V]/[R]
+- Constants `:60-70`: `FORMULA_VERSION`, `CANONICAL_AYANAMSHA`, **`ENGINE_AYANAMSHA = "lahiri"`**
+  (`:62` — an SC-10-class bare literal that is **inside `may_touch`**, F-19),
+  `CLASSICAL_SOURCE_CITATION = "not_in_corpus: …"`.
+- `_FETCH_NATAL_MOON_SQL` (`:72-77`): by `fact_id` at the canonical ayanāṃśa — §N.5 correct.
+- `_birth_dt_and_params_from_config` (`:116-127`): `datetime.fromisoformat(raw[:19])` (`:125`) —
+  **naive by construction on orchestrator input** (F-08).
+- `_moon_longitude` (`:130-146`): `jd` from the naive wall clock **plus** `tz=float(bp[
+  "tz_offset_hours"])` (`:141`); `_annual_chart` (`:149-156`) passes `birth_params` with
+  `instant.isoformat()` — the correct-instant pattern (F-01).
+- `_compute_one_year` (`:181-231`): `lunar_return` (`logic.py:121-142`, never raises `:139`);
+  two-pass verification (`:201-211`, `LUNAR_RETURN_TOL_DEG = 0.01`, `logic.py:73`); **naive
+  `window_start`/`window_end` at `:215-216`**.
+- Write: `_DELETE_SQL` `:79`; INSERT `:81-98` with `ON CONFLICT … DO NOTHING` `:97`; honest no-op
+  `:249-253`; `run` `:240-303`.
+- `DEFAULT_MAX_PRAVESHA_YEAR = 120` (`logic.py:81`); `pravesha_anniversary` (`:102-109`).
+- **Verification status**: the writer **can** emit `divergent_flagged` (`:206-211`; DDL CHECK
+  `531:60`); whether any production row **does** is unverified (F-20).
 
-### 2.3 Consumers (grep on this base, tests excluded) [V]
+### 2.3 Consumers [V]/[R]
 | consumer | reads | role |
 |---|---|---|
-| `platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts` | the table | `relevance_navigation` (served) |
-| `platform-mcp/src/tools/kala_views/now.ts` | the table (reports `"computed"` for the canonical chart, STATE.md C2 [A]) | `relevance_navigation` |
-| any `ka_*` writer | **none** | — |
-| century materializer | declared edge **retired** (N-8); `ClassContext.fetch` never read it [A: Gochara plan §5.4] | — |
+| `query_tithi_pravesha.ts:83-94` | the table; **`to_char(window_start,'YYYY-MM-DD"T"HH24:MI:SS')` — the offset is stripped** (`:84-85`); `as_of` default `new Date()` (`:70`); a bare date cast `$4::timestamptz` at session tz (`:90`) | served — **the serving half of the defect** (F-17) |
+| `now.ts:613-660`; coverage `:2040-2049` | named fields | served |
+| **`gochara_v3/mechanisms/w27_annual_stack.py:306-372`** | `ClassContext.tithi_pravesha_rows` — **nothing populates it** (`context.py:114`), `engine.py` has no w27 reference; expected keys (`event_class`, `tone`, `varsha_start_iso`) match **no** `kala_tithi_pravesha` column | **registered candidate, unwired** (F-05) |
+| no `ph_*` / `mi_*` / `ka_*` writer reads the table | — | — |
 
-**Live-path statement.** The 5.5 h defect is live on every served row (both surfaces read
-`window_start/window_end`). No integrator consumes the asset.
+**Live-path statement.** Served on two surfaces; no integrator; one registered-but-unwired
+candidate whose proposed use is a λ-product modifier.
 
-### 2.4 Epistemic class of the important fields
+### 2.4 Epistemic class
 | field | class | authority | note |
 |---|---|---|---|
-| `natal_moon_longitude_deg`, `moon_fact_id` | `COMPUTED_FACT_CONFIGURATION` (reference) | L1 | correct |
-| `window_start/end` (return instants) | computed fact — **astronomical** | this writer's root-find + the engine | true as a wall-clock, false as a `timestamptz` |
-| `verification_pass_status` | detector output | this writer | two-pass; a real detector (it can and does read `divergent_flagged`) |
-| `pravesha_lagna_*`, `graha_positions_jsonb` | computed fact | full chart cast at the instant | inherit the instant's error |
-| the *technique* (lunar-return praveśa as an annual clock) | `QUALIFIED_RULE` only if adjudicated; today **`unsourced`** | L0 (DP02) | the absence claim has no receipt |
-| `classical_source_citation` | a string constant | this writer | G-1 target |
+| `natal_moon_longitude_deg` | `COMPUTED_FACT_CONFIGURATION` (referenced) | L1 by `fact_id` | correct |
+| the return instant (value) | computed fact **at the correct absolute instant** | this writer + PyJHora | the *value* is right; the *declared zone* is not |
+| `window_start/window_end` (assertion) | the same instant **asserted 5.5 h late** | this writer → `timestamptz` | the defect, and the only thing the repair moves |
+| `pravesha_lagna_*`, `graha_positions_jsonb`, `ephemeris_audit_jsonb` | computed facts | the cast | **unchanged by the repair** — the equivalence contract |
+| `verification_pass_status` | earned status (two-pass) | this writer | **can** read `divergent_flagged`; typed as F06 by §4.4 |
+| method | **unsourced with an unreceipted absence claim** | this writer's constant — contradicted by `w27b_tithi_pravesha.yaml`'s `citation_status: cited` | D-M adjudicates both |
 
-### 2.5 Ladders and cost
-`PLAN_REVIEWED`; W2 source accepted; 120 rows present under the wrong instants. t3: t0 freeze
-inadmissible. Cost: *"~3.4 ms/row"* root-find (writer docstring `:13`) × 120 — cheap; unmeasured
-end-to-end.
+### 2.5 Ladders
+`PLAN_REVIEWED`; 120 rows, `lit` [A]. t3: a t0 freeze, inadmissible.
 
 ---
 
@@ -143,143 +146,166 @@ end-to-end.
 
 | field | content |
 |---|---|
-| Observed behavior | For the canonical chart the served `window_start` of each praveśa year is a `timestamptz` that is 5.5 h later than the true lunar-return instant [A: context §4, production]. Mechanism [V]: the birth instant is parsed naive (`:125`), the return instant is a naive local datetime, and the INSERT (`:81-98`) hands it to a `timestamptz` column, which interprets it in the session's timezone (UTC on the builder) — IST wall-clock stored as if UTC. **Falsifier that fails today:** evaluate the Moon's sidereal longitude at the stored `window_start` *read as UTC*; it is ~2.7° from `natal_moon_longitude_deg` (5.5 h × ~0.5°/h), while the row's own `verification_pass_status` says `two_pass_verified` — because the verification was run on the naive value, not on what was stored. A verified row that is wrong: §N.7 item 5 (*verified fact ≠ verified prose*) applied to a timestamp |
-| Evidence | `writer.py:125` (`raw[:19]`), `:181-230` (naive `instant`), `:81-98` (INSERT into `window_start/window_end`) [V]; the 5.5 h figure [A: KALA_ASSET_BRIEF_CONTEXT §4] |
-| Expected contract | Binding B1 (`t_start/t_end` timestamptz UTC, never naive; tz from the birth instant); DP07 (*start/end/instant precision, timezone*); Strategy §3 *Clock interval*; SC-1; F28 (a `two_pass_verified` that cannot detect the stored error is not a detector for it) |
-| Defect class | **wrong context** (timezone dropped) + **detector mismatch** (verification precedes the corrupting write) |
-| Impact | Q06/Q-K06: the annual frame's boundary is wrong by 5.5 h — harmless for a *year* label, fatal for the praveśa **lagna** (the ascendant moves ~1 sign per 2 h: the served `pravesha_lagna_sign` can be off by two or three signs) and for every `graha_positions_jsonb` value; anything that later reads this as an instant (a concurrence voice, a comparison) inherits it |
-| Non-claim | The 5.5 h figure is the context document's production measurement, not re-measured here; whether the *lagna* is actually wrong on the stored rows depends on when in the day each return fell — asserted as a mechanism, not counted |
-
-**Secondary (G-1):** `CLASSICAL_SOURCE_CITATION` asserts corpus absence with no query. The served
-corpus holds 15 texts / 10,651 chunks (Gochara G-9 count [A]); whether any carries lunar-return
-or varṣa-praveśa doctrine (Tājika Nīlakaṇṭhī, if admitted; Phaladīpikā's annual chapters) has
-**never been asked by predicate**. This brief does not assert presence or absence — it routes the
-question to the D-M lane and makes the row honest either way.
+| Observed behavior | Read any row's `window_start`: the column is `timestamptz`, the value was inserted naive, and production measures it **5.5 h late** (context §4). The **cast at that row is nevertheless correct** — lagna, grahas and audit were computed at the true instant. So the row is internally inconsistent in one direction only: a consumer that *displays* the moment is 5.5 h off, and a consumer that *re-casts* from it gets a chart ~3° of lunar motion away from the one stored beside it. The served path compounds it: `to_char` renders the timestamp **without its offset**, so in a UTC session today's mislabeled rows print the *correct-looking* IST digits — and after the fix they will print UTC digits 5.5 h earlier, which a consumer comparing to local wall-clock will read as the regression |
+| Evidence | `writer.py:125,:130-146,:149-156,:215-216,:81-98`; `531:49-50`; `compute.py:30-33,:58-66`; `drik.py:1773`; `test_ka_tithi_pravesha_writer.py:189-196`; `query_tithi_pravesha.ts:83-90`; context §4 [A] — [V]/[R] |
+| Expected contract | Binding B1 (`t_start/t_end` as tz-aware instants, `time_basis='event_instant'`, `claim_grain='instant_grain'`) **and its tz-source rule on the serving path**; §N.7 item 1 (a stored value restates what was computed); DP03 |
+| Defect class | **mis-asserted context** (a correct instant declared in the wrong zone) + **serving-render loss** (the offset stripped) + **unqualified method with an unreceipted absence claim** + **an unwired registered candidate proposing a barred operand class** |
+| Impact | a served praveśa moment is 5.5 h wrong; any re-cast from it is ~3° of lunar motion out; migration 670's (b) re-derives from the same naive audit and is structurally blind to it, so nothing detects the error today |
+| Non-claim | **no claim that the cast is wrong** — it is not; no claim that any consumer re-casts today (none does); the 5.5 h is context §4's production measurement, not re-measured here; the builder session's `TimeZone` setting is unverified (no `SET TIME ZONE` appears in the orchestrator) |
 
 ---
 
 ## §4 — The semantic delta (contract §4)
 
-1. **L3-Q served.** Q06 (*how does this chapter differ* — an annual frame boundary), Q05/Q-K06 (an
-   annual method as a distinct voice with its own root), Q09 (*what changes with convention* — it
-   carries `ayanamsha_id`). Cannot serve Q01/Q02/Q08 (no mechanism, no search).
-2. **Instants (B1, SC-1).** Parse `birth_params.datetime_iso` **with its offset** (or the chart's
-   declared tz — never `raw[:19]`); compute the return in UTC; persist `t_start`/`t_end` as
-   `timestamptz` UTC (aliasing `window_start/end` one generation), `inclusivity='closed_open'`
-   (year N ends where year N+1 begins), `time_basis='event_instant'`, `claim_grain=
-   'instant_grain'`; the verification runs on the value **as it will be stored** (round-trip
-   through the column's semantics), so `two_pass_verified` can go false on a tz error.
-3. **Source qualification with a receipt (B2, G-1).** `source_qualification='unsourced'`,
-   `corpus_verifiable=false`, and the citation string replaced by a **receipt**: the predicate
-   query and its `count(*)` against `classical_text_chunks` (run by the D-M L0 lane), recorded in
-   the migration/docstring with the date. Upgrade to `verse_cited` only by that lane, at page grain.
-4. **Per-row F06 state.** `completeness_state='applied'` iff `two_pass_verified` (both roots
-   converged, cross-check ≤ tol) — else `'unavailable'` with the audit as reason; the technique's
-   applicability stays `unqualified` on every row until item 3 upgrades it (both fields coexist:
-   the *computation* applied, the *doctrine* unqualified — F04 keeps them distinct).
-   `epistemic_class='COMPUTED_FACT_CONFIGURATION'` on the instant and the cast; `operator_role=
-   'computation'`; `tier_basis` n/a (no score).
-5. **One root, declared (B4).** `independence_group = [{family:'lunar_return_annual',
-   roots:[moon_fact_id], basis:'declared_lineage'}]` — the same natal Moon that seeds every
-   nakṣatra daśā and Sudarśana's Chandra frame; a consumer must not count this and Vimśottarī as
-   two witnesses.
-6. **Comparability.** `comparable_with='different_convention'` against every daśā/Sudarśana
-   window — an annual frame is not a daśā scale.
-7. **The use decision (Q2 → a voice, SC-6).** The asset becomes a **concurrence voice**: for an
-   interval, `verdict ∈ {silent, not_applicable}` until the doctrine is qualified (a praveśa lagna
-   or year-lord "supports/opposes" requires an interpretive rule the corpus must supply), then
-   `supports/opposes` under that rule. No integrator dependency is created; the century edge stays
-   retired (N-8).
-8. **Coverage (B5).** `coverage = {years_requested, years_computed, unavailable_years[]}` on the
-   partition; an unconvergeable year is a row with `unavailable`, never a missing year.
-9. **Old vs new.** Positive: year N → `t_start` = true UTC instant; `Moon(t_start) − natal ≤ tol`
-   when re-evaluated on the stored value. Negative: unparsable birth instant → no-op with notes
-   (unchanged). Boundary: a return within minutes of midnight IST → the date changes correctly.
-   Missing: non-convergent root → `unavailable`. Duplicated: n/a.
-10. **Simpler baseline.** Today's rows.
-11. **Ablation.** Re-evaluate the Moon at each stored instant before and after: before, ~2.7° off
-    on every row with `two_pass_verified`; after, ≤ 0.01°. That delta *is* the elevation; if it is
-    absent on this base's rows, the 5.5 h premise is wrong and the brief says so.
+1. **L3-Q served.** Q06; Q05 **partial and conditional** on §10.3 (today nothing consumes the
+   voice). **Q09 cannot be served** — the writer pins one convention (`CANONICAL_AYANAMSHA` `:61`;
+   `ENGINE_AYANAMSHA='lahiri'` `:62`) and computes no variant, while Q09's proof requires recomputing
+   declared variants (F-06). A second-ayanāṃśa partition would be a separate delta.
+2. **Instants (B1) — attach, don't un-discard (F-08).** The production input is naive
+   (`datetime_iso`) with the offset alongside (`tz_offset_hours`); the repair **attaches** that fixed
+   offset to the wall clock and converts to UTC before the INSERT. An ISO string that *does* carry an
+   offset is a second, secondary fixture. `t_start/t_end` (aliasing `window_start/window_end` for one
+   generation), `inclusivity='closed_open'`, `time_basis='event_instant'`,
+   `claim_grain='instant_grain'`.
+3. **The equivalence contract — the inverse of v1.0's (F-01).** After the repair:
+   `pravesha_lagna_*`, `graha_positions_jsonb`, `ephemeris_audit_jsonb` and
+   `natal_moon_longitude_deg` are **byte-identical**; `window_start`/`window_end` move by exactly
+   `−tz_offset_hours`; **nothing else changes**. That is the rebuild's acceptance test, and it is
+   also why the rebuild is safe: no chart's reading changes, only its stated moment.
+4. **The serving render (F-17).** The interface packet must serve the offset —
+   `to_char(… 'YYYY-MM-DD"T"HH24:MI:SSOF')` or `AT TIME ZONE` with the declared zone — name the
+   `as_of` default (`:70`) and the bare-date cast (`:90`), and the Delivery detector must compare
+   **instants**, not rendered strings.
+5. **Verification as an F06 state (B2).** `verification_pass_status` → `completeness_state`:
+   `applied` on a clean two-pass, `contradictory_unresolved` on `divergent_flagged`, `unavailable`
+   where the root-find did not converge; `reason`, `owner`, `evidence_ref`, `next_eligible_action`
+   beside it.
+6. **Source qualification with a receipt (F-21).** `source_qualification='unsourced'` **with the
+   `count(*)` result that establishes it** — the constant asserts an absence and no receipt exists
+   for it (nor for my own v1.0 claim that no predicate was ever run; that claim is withdrawn as
+   unreceipted). The D-M lane adjudicates, **and must also adjudicate
+   `w27b_tithi_pravesha.yaml`'s contrary `citation_status: cited` / "Kṛṣṇa Miśra / Tājaka … Sudarśana
+   Cakra Paddhati"** — two repository records disagree about the same technique's sources (F-05).
+7. **One declared root (B4, F-15).** `independence_group = [{group_id, family:'tithi_pravesha',
+   roots:[natal_moon_fact_id], members:['pravesha_year'], basis:'declared_lineage'}]`,
+   `declared_current_count=1` — the natal Moon is shared with every nakṣatra daśā **and with
+   `ka_sudarshana_varsha`'s own `roots[]`**, so a consumer of both must not count two.
+8. **Coverage (B5 shape, F-07).** `{requested_horizon: [year 1, year 120], completed_horizon,
+   resolution: 'pravesha_year', partitions_searched: [ayanāṃśa], exclusions: [{year, reason}] for
+   non-converged years, unsearched_regions: [], completion_detector: 'contiguous_year_run'}`;
+   blueprint §12.1's Clock-interval names `clocks_consulted`/`clocks_unavailable` for the served
+   projection.
+9. **B3 (not offered, stated).** Rows are addressed by the natural key; no cross-asset citation
+   exists until the voice does — `window_ref` is declined with that reason rather than faked.
+10. **`ENGINE_AYANAMSHA` (F-19).** The bare `'lahiri'` at `:62` is **in scope**; either it resolves
+    through the one alias map or the brief states why the literal stays. Recommended: resolve it, and
+    record that the engine's own vocabulary is the constraint.
+11. **Old vs new.** Positive (**production shape**): naive `datetime_iso` + `tz_offset_hours` → rows
+    whose windows are UTC and whose cast is byte-identical to today's. Positive (secondary): an ISO
+    string carrying an offset. Negative: `tz_offset_hours` absent → the orchestrator cannot produce
+    it (`_REQUIRED:33`), so this stays a **unit-level** guard, not a production path. Boundary: a
+    return at **03:00 IST** (= 21:30 UTC the previous day) → the UTC date and the served local date
+    differ and both are correct under their declared zones (v1.0's 23:55 IST example was wrong —
+    23:55 IST is 18:25 UTC the *same* day, F-03). Missing: a non-converged year → `unavailable` with
+    a reason, not a silent gap.
+12. **Simpler baseline.** Today's rows.
+13. **Ablation.** Re-evaluate the Moon at each stored instant **read as UTC**: today it is ~3° from
+    natal (5.5 h × ≈0.549°/h — the mean rate from `logic.py:67`'s 13.176°/day; the true-rate range is
+    2.7–3.5°, F-09); after, within `LUNAR_RETURN_TOL_DEG`. That single check distinguishes the fix
+    from plumbing, and **migration 670's (b) cannot perform it** because it re-derives from the same
+    naive-computed audit.
 
 ---
 
 ## §5 — Preservation, fences, migration, rollback
 
-- `PRESERVE`: the root-find (`lunar_return`), the two-pass verification, `fact_id` provenance,
-  `ephemeris_audit_jsonb`, the honest no-op on missing birth params, `ON CONFLICT` + DELETE.
-- `ENRICH_CORRECT`: tz-aware instants; the verification round-trip; coverage.
-- `QUALIFY_LIMIT`: `source_qualification` with receipt; `independence_group`; `comparable_with`.
-- **Rebuild**: the corrected instants change every stored row — a rebuild of the 120-row partition
-  is a P-class step (W2 data, under an accepted vector); the old rows are a rebuildable projection
-  (no issued claim references them [A: no `phala_*` reader found by grep — §11]); `formula_version`
-  bumps to `v1.1`.
-- **Migration**: additive qualification columns (`source_qualification`, `corpus_verifiable`,
-  `completeness_state`, `independence_group`, `comparable_with`, `time_basis`, `claim_grain`,
-  `inclusivity`) ≥ 1082; `window_start/end` semantics corrected by the writer, column type
-  unchanged.
-- **Fences**: `classical_text_chunks` untouched (L0 lane); `pyjhora_adapter` untouched (its
-  `'lahiri'` alias is SC-10's); `now.ts`/`query_tithi_pravesha.ts` by interface packet (serve
-  `t_start` with `claim_grain`).
-- **Rollback**: `formula_version` distinguishes generations; the prior partition is re-creatable
-  from the old code path.
+- `PRESERVE`: the root-find kernel and its two-pass verification; the L1 `fact_id` read; the
+  prepare-before-DELETE block (`fa9857f00`, **not** `47131772b` — F-10); `logic.py`'s
+  never-raises contract; **and, above all, the cast itself** (§4.3).
+- `ENRICH_CORRECT`: UTC instants on the row and the offset on the served render.
+- `QUALIFY_LIMIT`: `source_qualification='unsourced'` with a receipt; F06 states; one root.
+- **Tests that must flip (F-23):** `test_ka_tithi_pravesha_writer.py:117` (the naive-equality pin),
+  `:196` and `:205` (aware − naive raises `TypeError`), and
+  `test_w2_first_frontier_writer_preservation.py:289`.
+- **Migration**: one additive migration (qualification columns). Number: the next free slot verified
+  at execution against `origin/main` (in-tree max is 1072) — not asserted (F-18).
+- **Writer-digest regeneration (F-23):** the code digest at
+  `platform/src/generated/nirmana-writer-digests.json:100` is consumed by
+  `dispatch_frozen_rebuild.py:29,58,113`; changing the writer changes it, so the file is
+  **regenerated** as part of the packet (it is in `may_touch` for that purpose only).
+- Fences: L1, the shared engines, the L0 corpus and Gochara untouched; the two served files are
+  interface-packet targets.
+- Rollback: the additive columns are nullable; the instant fix is the rebuild's own contract (§4.3).
 
 ---
 
-## §6 — Lenses A–J
+## §6 — Lenses A–J *(appendix)*
 
 | lens | answer |
 |---|---|
-| A | `ka_tithi_pravesha`, L3 rows; epistemic: astronomical computation (return instant, cast) + an unqualified classical technique; placement correct (annual Clock interval); `ENRICH_CORRECT + QUALIFY_LIMIT` |
-| B | `ga_positions` declared and read (natal Moon by `fact_id`); `birth_params` from ctx (§N.2); the engine via the adapter; no hidden table; leaf (no L3 consumer) |
-| C | invariants: `Moon(t_start) ≈ natal ± tol` **on the stored value**; `t_end(N) = t_start(N+1)`; roots converge; golden: the forensic chart's year-1 return; boundary: midnight-IST returns; detectors: the round-trip verification, the coverage count |
-| D | 120 years is the full horizon; no rows sought; the *doctrine* is the gap (L0) |
-| E | two served readers, zero integrators; the retired century edge; no duplication |
-| F | `completeness_state`, `source_qualification`, `independence_group` machine-readable; the absence claim becomes a receipt |
-| G | 3.4 ms/row — **justified no-change** |
-| H | idempotent; single-run; `count_sql` chart-scoped; no credentials |
-| I | files in `may_touch`; one migration ≥ 1082; rebuild as a P-class step; W2 |
-| J | this brief; §7; review; the round-trip ablation output |
+| A | L3 rows; a numerical root-find over an L1-referenced target; `ENRICH_CORRECT + QUALIFY_LIMIT` |
+| B | L1 `chart_facts` + `birth_params`; shared engines; fan-out: two served surfaces, one unwired candidate |
+| C | invariants: 670 (a)–(i); **the cast is byte-identical across the repair**; the Moon at each stored UTC instant is within tolerance of natal; `t_end(N) = t_start(N+1)`; one root |
+| D | the source adjudication (D-M), including the contrary w27b citation |
+| E | served ×2; integrator ×0; one registered candidate proposing a barred operand class |
+| F | `completeness_state`, `independence_group`, coverage, and an offset-bearing instant |
+| G | 120 root-finds per chart; the writer's own docstring says ~3.4 ms/row; unmeasured end-to-end |
+| H | idempotent; prepare-before-DELETE |
+| I | files in `may_touch`; one additive migration; the digest regenerated |
+| J | this brief; §7; the review; the ablation's output |
 
 ---
 
 ## §7 — Proof matrix
 
-| proof | fixture | expected | invariant | detector fails when… |
-|---|---|---|---|---|
-| Positive | canonical birth params **with** offset; year 1 | `t_start` UTC; Moon at `t_start` within 0.01° of natal, evaluated on the stored value | round-trip verified | > tol |
-| Negative | `datetime_iso` without offset and no chart tz | no-op with `unavailable` notes — **never** a naive guess | B.10 | a row is written |
-| Relevant influence | shift the birth offset by +05:30 → +00:00 | `t_start` shifts by exactly 5.5 h; the cast changes | offset-sensitive | unchanged |
-| Irrelevant control | reorder `graha_positions_jsonb` keys | identical row | order-invariant | differs |
-| Duplication | this asset + Vimśottarī on one interval | one `independence_group` root | root shared | counted twice |
-| Context/missingness | a year whose root does not converge | `unavailable` row with audit | never dropped | year missing |
-| Boundary | a return at 23:55 IST | UTC date is the previous day; `pravesha_lagna` from the true instant | correct date | off by a day |
-| Delivery | sentinel `source_qualification='unsourced'` | reaches `query_tithi_pravesha.ts` and `kala_now_get` | survives | absent |
-| Revision | `formula_version` bump | prior partition replaced; no accretion | §N.3 | accretion |
-| Value | frozen Q06 / ordinary-period | the annual boundary now correct to the minute; the baseline's is 5.5 h off | — | no delta (premise wrong) |
+Columns: **verdict tier** F24; **scope** `[U]` unit, `[I]` DB fixture, `[S]` served.
+
+| proof | verdict tier | scope | command / fixture | expected | invariant | detector fails when… | evidence path |
+|---|---|---|---|---|---|---|---|
+| Positive (production shape) | COMPUTATIONAL_CORRECTNESS | I | naive `datetime_iso` + `tz_offset_hours` (the only shape the orchestrator builds) | windows in UTC; **cast columns byte-identical to today's** | §4.3 equivalence | any cast column changes | writer test |
+| Positive (secondary) | COMPUTATIONAL_CORRECTNESS | U | an ISO string carrying an offset | same result | offset honoured | the offset is dropped | unit test |
+| Negative | COMPUTATIONAL_CORRECTNESS | U | `tz_offset_hours` absent | a typed refusal — **a unit-level guard; `_REQUIRED:33` means the orchestrator cannot produce this** | honest absence | a naive instant is stored | unit test |
+| Relevant influence | COMPUTATIONAL_CORRECTNESS | I | perturb the **natal Moon longitude** by +13.176° in the fixture | `t_start` moves ≈1 day; the cast follows | the root-find depends on its target | unchanged | writer test |
+| Irrelevant control | COMPUTATIONAL_CORRECTNESS | I | relabel the birth offset (+05:30 → +00:00) **under a correct implementation**; and permute cosmetic `birth_params` fields (`place_name`, `subject_label`) | the **nearest return and the cast are unchanged** (the anniversary moves, the return does not, barring a measure-zero knife-edge); every computed column identical | zone-relabel invariance | the return moves (which is today's naive behaviour) | writer test |
+| Duplication | COMPUTATIONAL_CORRECTNESS | I | persisted row | `independence_group[0].roots == [natal_moon_fact_id]`, equal to the `chart_facts` id — **the served double-count test exists only once SC-6/IP-5 lands** | B4 shape | a per-fact count > 1 | integrity conjunct |
+| Boundary | COMPUTATIONAL_CORRECTNESS | I | a return at **03:00 IST** (= 21:30 UTC the previous day) | the UTC date and the served local date differ; both correct under their declared zones | tz-aware | one date is asserted as both | writer + route test |
+| Delivery | COMPUTATIONAL_CORRECTNESS | S | sentinel: a per-row value the wrapper cannot synthesise — `completeness_state='unavailable'` seeded on one non-converging year, **or** `independence_group[0].roots[0]` = the real `moon_fact_id` | reaches `kala_now_get`'s `tithi_pravesha` object and the saved reading; **instants compared as instants, not rendered strings** | per-row propagation | absent; or a string comparison passes a wrong instant | MCP test |
+| Revision | COMPUTATIONAL_CORRECTNESS | I | bump `formula_version` | rows replaced; no accretion | §N.3 | accretion | writer test |
+| Value | EXPLANATORY_DISCRIMINATIVE_VALUE | I | **the ablation**: re-evaluate the Moon at each stored instant read as UTC | today ~3° from natal; after, within `LUNAR_RETURN_TOL_DEG` | the fix, not plumbing | no change | ablation record |
+| Evaluation | — | — | `not_applicable` — no governed outcome set exists for an annual frame | — | — | — | — |
 
 Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `claim_grain`), B2
-(`completeness_state`, `source_qualification`, `corpus_verifiable`, `comparable_with`), B4
-(`independence_group`), B5 (`coverage`). **DEMANDS** L1 natal Moon by `fact_id` (present).
+(`completeness_state` + F06 companions, `epistemic_class`, `source_qualification`,
+`corpus_verifiable`, `comparable_with='different_convention'`, `operator_role='computation'`), B4
+(`independence_group` in the array shape, `declared_current_count`), B5 (`coverage`, seven keys).
+**B3: not offered** — rows are addressed by the natural key and no cross-asset citation exists until
+the voice does (stated, not faked). **DEMANDS** the D-M adjudication.
 
 ---
 
 ## §8 — Prioritization
 
-(1) the instant defect (correctness; live on every row; SC-1) → (2) the absence receipt (G-1; a
-day of this campaign was lost to this defect class) → (3) F06/independence/comparability stamps →
-(4) the voice (Q2). T0, W2; no P-candidate; no downstream unlock (leaf) — but the same naive-
-datetime mechanism must be checked in every writer that persists an instant (blueprint SC-1).
+(1) the instant fix **with its equivalence contract** (the assertion, not the cast) → (2) the
+serving render's offset → (3) the F06 states → (4) the receipted `unsourced` stamp and the D-M
+adjudication (including the contrary w27b citation) → (5) one declared root + coverage →
+(6) `ENGINE_AYANAMSHA` through the alias map → (7) the Q2 voice decision. W2.
 
 ---
 
 ## §9 — Disposition and target state
 
-`ENRICH_CORRECT` + `QUALIFY_LIMIT`. Data-plane: `PRODUCER_READY` after §7; `DATA_ACCEPTED` after
-the corrected rebuild on an accepted vector; `CONSUMER_INTEGRATED` when the voice reaches a
-composite surface (D-H record). Campaign: `ANALYZED` → `ENRICHED`. Non-claims: the technique
-stays `unqualified` until the L0 lane rules — *"it cannot earn full completion solely by returning
-unavailable states"* (Strategy §7), so the lane is on this asset's critical path; no claim of
-doctrinal correctness of the Moon-return definition itself.
+`ENRICH_CORRECT` + `QUALIFY_LIMIT`. Data-plane: `PRODUCER_READY`; `DATA_ACCEPTED` requires the
+120-row rebuild under the corrected instants (the §4.3 equivalence contract is its acceptance test);
+`CONSUMER_INTEGRATED` when the annual voice reaches a composite surface. Campaign: `ANALYZED →
+ENRICHED`. Non-claims: the cast is not wrong; nothing re-casts today; the 5.5 h is context §4's
+measurement; the frozen-question fixture is pending the baseline freeze (`KALA_BASELINE_v1_0.md`
+does not exist, F-12).
+
+**Walkthrough (experience 4, ordinary year).** "What is this year's praveśa chart?" → one row: the
+return instant **with its offset**, the same lagna and grahas as today (unchanged),
+`completeness_state='applied'`, `source_qualification='unsourced'` with its receipt,
+`independence_group` naming the natal Moon. For the reader nothing about the chart changes — only
+the moment stops being 5.5 h wrong, and the source claim stops being unreceipted.
 
 ---
 
@@ -287,18 +313,47 @@ doctrinal correctness of the Moon-return definition itself.
 
 | # | decision | recommendation |
 |---|---|---|
-| 1 | **Run the D-M second L0 lane's predicate search for lunar-return / varṣa-praveśa doctrine before any `verse_cited` stamp; until then `unsourced` with a receipt** | yes |
-| 2 | **Q2 for this asset: a concurrence voice (SC-6), no integrator edge, no retirement** | yes |
-| 3 | Authorize the 120-row rebuild under the corrected instants once stage 3 lands (P-class, W2 data) | yes, on an accepted vector — the current rows are wrong by construction |
-| 4 | Does the praveśa *lagna* become an admitted annual-frame object (a Tājika-style year chart) or stay a computed cast without interpretive weight? | stay computed-only until the lane qualifies it |
+| 1 | **The instant fix and its equivalence contract** (cast byte-identical; windows move by −`tz_offset_hours`), plus the serving render's offset | yes — and the rebuild is gated on the equivalence test |
+| 2 | **The D-M lane adjudicates BOTH the writer's `not_in_corpus` constant AND `w27b_tithi_pravesha.yaml`'s contrary `citation_status: cited`** | yes — two repository records disagree |
+| 3 | **Q2 for this asset: admit the annual frame as a concurrence VOICE (SC-6), not as a λ-product modifier** — noting w27b's registered `1.25/0.80` schedule is exactly the operand class Q2 bars before M-4 | voice; w27b's schedule is superseded by the voice or held under M-4 (Gochara's call) |
+| 4 | `ENGINE_AYANAMSHA`'s bare `'lahiri'`: resolve through the alias map, or state why it stays | resolve |
+| 5 | The rebuild: 120 rows, one chart at a time, gated on the equivalence test | yes |
 
 ---
 
 ## §11 — Not verified here
 
-1. The 5.5 h production figure — context document [A]; the mechanism is [V].
-2. Whether any served or L4 row references `kala_tithi_pravesha` rows by id (grep found no
-   `ph_*`/`mi_*` reader; scope: writers directory).
-3. Whether the corpus carries lunar-return doctrine — deliberately **not asserted**; the lane asks.
-4. The praveśa-lagna error on the stored rows — mechanism stated, not counted.
-5. No database query.
+1. The 5.5 h production figure, the 120-row count, `asset_throughput = lit`, whether any row is
+   `divergent_flagged`, and the builder connection's session `TimeZone` (no `SET TIME ZONE` appears
+   in `pipeline/orchestrator/*.py`) — no DB.
+2. Whether `classical_text_chunks` carries lunar-return / varṣa-praveśa doctrine — and **my v1.0
+   claim that no predicate was ever run is itself withdrawn as unreceipted** (F-21).
+3. Whether the "ingestion work item" the writer's docstring says is filed (`:31-35`) exists — no
+   tracker record found.
+4. End-to-end timing (`KALA_COST_PROFILE_v1_0.md` does not exist).
+5. The measure-zero knife-edge in the Irrelevant-control row (a return equidistant between two
+   anniversaries under a relabel) — not computed.
+6. The corpus figure: `MADHAV_PRODUCT_DEFINITION_v2_0_PROPOSAL.md:277,368` says **16** texts /
+   10,651 chunks; v1.0 said 15 — the discrepancy is recorded, not resolved (F-25).
+7. No database query; no test run.
+
+## §12 — Review dispositions (v1.0 → v1.1)
+
+F-01 accepted — the impact restated and the equivalence contract inverted (§0, §2.4, §3, §4.3, §7
+Positive); F-02 accepted (§7 Relevant-influence now perturbs the natal Moon; the tz relabel is the
+irrelevant control); F-03 accepted (§4.11, §7 Boundary — 03:00 IST); F-04 accepted (§7 Delivery —
+a per-row sentinel); F-05 accepted (§1 new row, §2.3, §4.6, §10.2–3 — w27b as a registered candidate
+with a contrary citation and a barred operand class); F-06 accepted (§4.1 — Q09 cannot be served);
+F-07 accepted (§4.8 — B5 shape); F-08 accepted (§1, §2.2, §4.2, §7 Positive/Negative — the
+production input shape); F-09 accepted (≈3°, range 2.7–3.5°); F-10 accepted (`fa9857f00`); F-11
+accepted (§7 Duplication — the row-level invariant, with the served test gated); F-12 accepted (§9);
+F-13 accepted (§7 Irrelevant control — cosmetic fields, not JSONB key order); F-14 accepted (§7 —
+eleven rows incl. Evaluation, plus command and evidence-path columns); F-15 accepted (§4.7 — B4
+shape); F-16 accepted (§2.1 latent-value classes and knowledge-time pin; §9 walkthrough); F-17
+accepted (§0, §2.3, §3, §4.4, §7 Delivery — the serving half); F-18 accepted (§5 — number verified
+at execution); F-19 accepted (§2.2, §4.10, §10.4 — the literal is in scope); F-20 accepted (§2.2 —
+"can"); F-21 accepted (§4.6, §11.2 — the absence claim and my own claim about it are both
+unreceipted); F-22 accepted (§2.3 cites `context.py:114` and the grep, not the Gochara plan); F-23
+accepted (§1 — 670's conjuncts and its blind spot; §5 — the tests that must flip and the digest
+regeneration); F-24 accepted ("commit"); F-25 accepted (ranges re-pinned; the 15-vs-16 corpus
+discrepancy recorded in §11.6).
