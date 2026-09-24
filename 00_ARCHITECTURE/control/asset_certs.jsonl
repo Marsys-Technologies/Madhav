@@ -1,0 +1,1 @@
+{"asset":"_schema","_doc":"Certification ledger (tier-4 §7). Append-only. Fields: asset, criterion, criterion_version, detector, evidence (path/query/run id), verdict (PASS|FAIL|PARTIAL|NO_DETECTOR|N/A), verified_by, verified_on. ELEVATED requires a current PASS or N/A on every required criterion AND zero open gaps. verified_by is never the party that made the change."}

@@ -145,3 +145,7 @@ platform/scripts/probe/fixtures/p4k/*/report.json
 # Kala brief tracker generated data (regenerate with 00_ARCHITECTURE/control/kala_brief_tracker.py)
 00_ARCHITECTURE/control/kala_brief_tracker.json
 00_ARCHITECTURE/control/kala_brief_tracker.js
+
+# Asset elevation tracker generated data (regenerate with asset_elevation_tracker.py)
+00_ARCHITECTURE/control/asset_elevation_tracker.json
+00_ARCHITECTURE/control/asset_elevation_tracker.js

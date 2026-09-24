@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""Asset elevation tracker — any layer, driven by the registry and the gap/certification ledgers.
+
+Generalises kala_brief_tracker.py (L3-only, hardcoded asset list) to every layer. An asset's row is
+assembled from four sources, each named per column so a figure can be re-run:
+
+  registry      live asset_registry (read-only)      — identity, target_table, depends_on, status
+  production    information_schema + exact count(*)  — does it exist, how big, which contract columns
+  brief         the tier-4 instance, if one exists   — the 32-criterion completeness scan (§2)
+  ledgers       asset_gaps.jsonl / asset_certs.jsonl — open gaps and per-criterion certification (§5, §7)
+
+CERTIFICATION IS THE ONLY THING THAT MAKES AN ASSET ELEVATED, and it is read from the certification
+ledger alone. The brief scan is completeness, never conformance: a brief that mentions idempotency is
+not an asset that is idempotent. The two are reported in separate columns and never summed.
+
+    python3 00_ARCHITECTURE/control/asset_elevation_tracker.py --layer L0 [--env-file <path>]
+    python3 00_ARCHITECTURE/control/asset_elevation_tracker.py --layer all --watch
+"""
+import argparse, collections, datetime, glob, io, json, os, re, subprocess, sys, time
+
+ROOT  = subprocess.run(["git","rev-parse","--show-toplevel"],capture_output=True,text=True).stdout.strip() or "."
+CTRL  = os.path.join(ROOT,"00_ARCHITECTURE/control")
+OUT   = os.path.join(CTRL,"asset_elevation_tracker.json")
+GAPS  = os.path.join(CTRL,"asset_gaps.jsonl")
+CERTS = os.path.join(CTRL,"asset_certs.jsonl")
+
+LAYERS = {
+ "L0":{"prefix":"bg_","name":"Brahmagyan","registry_layer":"brahmagyan","scoring":"fidelity",
+       "instance":"00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md",
+       "briefs":"00_ARCHITECTURE/briefs/nirmana/l0_assets"},
+ "L1":{"prefix":"ga_","name":"Gaṇita","registry_layer":"ganita","scoring":"contribution",
+       "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l1_assets"},
+ "L2":{"prefix":"bo_","name":"Bodha","registry_layer":"bodha","scoring":"contribution",
+       "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l2_assets"},
+ "L3":{"prefix":"ka_","name":"Kāla","registry_layer":"kala","scoring":"contribution",
+       "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs"},
+ "L4":{"prefix":"ph_","name":"Phala","registry_layer":"phala","scoring":"contribution",
+       "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l4_assets"},
+ "L5":{"prefix":"mi_","name":"Mīmāṃsā","registry_layer":"mimamsa","scoring":"contribution",
+       "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l5_assets"},
+}
+
+# The 32 criteria. Marker patterns scan a BRIEF for completeness only — never the asset.
+TIERS = {
+ "T1":("Ten analysis lenses",[
+   ("A","identity",r"\bidentity\b|asset[- ]id|epistemic"),("B","inputs / DAG",r"\bDAG\b|upstream|declared input"),
+   ("C","correctness",r"invariant|correctness"),("D","data sufficiency",r"data sufficien|coverage|row count"),
+   ("E","consumers",r"consumer|downstream|reader"),("F","AI / product",r"product|AI|serving question"),
+   ("G","efficiency",r"efficienc|cost|latency|hotspot"),("H","reliability",r"reliab|idempoten|timeout|failure"),
+   ("I","change packet",r"may_touch|change packet|files"),("J","final evidence",r"evidence|proof|detector")]),
+ "T2":("Six elevation lenses",[
+   ("Val","value extraction",r"latent[- ]value|value extraction"),("Tgt","target-state design",r"target[- ]state|disposition and target"),
+   ("Eff","efficiency w/ quality",r"equivalen|justified no-change|no measured hotspot|cost"),
+   ("Syn","synergy obligations",r"OFFERS|DEMANDS|synergy oblig"),
+   ("Walk","consumer walkthrough",r"walkthrough|Product §9|end[- ]to[- ]end"),
+   ("KTime","knowledge-time",r"knowledge[- ]time|F15|F17|DP15a|as_of")]),
+ "T3":("Strategy alignment",[
+   ("PD","Product Definition",r"Product Definition|PD v[0-9]|Product §9|P0[0-9]|P1[0-9]|P2[0-4]"),
+   ("VA","data-plane VA",r"data[- ]plane|DP-SD-|VA §|DP0[0-9]|DP1[0-7]"),
+   ("Lyr","layer strategy",r"Strategy §|layer instance|layer contract|layer §"),
+   ("Bind","synergy binding",r"synergy_binding|SYNERGY_BINDING|binding v[0-9]"),
+   ("U/D","upstream / downstream",r"upstream|downstream|L1 authority|§N\.5"),
+   ("Srv","serving contract",r"serv(ing|ed) (contract|surface|route)|serve-time|serving path|capability")]),
+ "T4":("Discipline gates",[
+   ("Fct","facts / interpretation",r"B\.1\b|facts/interpretation|epistemic_class"),
+   ("Ldgr","derivation ledger",r"DERIVATION_LEDGER|derivation ledger|constituent_facts|fact_id"),
+   ("Idem","idempotency",r"idempoten"),("Earn","earned signal",r"§N\.8|earned[- ]signal|real detector|detector that (can |could )?(return|report)"),
+   ("Narr","narration fidelity",r"§N\.7|narration"),("Dens","serving density",r"§N\.6|densit|catalog_only|hardFloor"),
+   ("Null","honest null",r"honest null|honest absence|honest(ly)? (empty|zero|tier)|null rather than|NO DETECTOR"),
+   ("Vocab","vocabulary conformance",r"controlled vocabulary|vocabulary conformance|closed alias|synonyms|semantic_release|resolve_entity|norm_graha|independent[- ]map")]),
+ "T5":("Two ladders",[
+   ("DPL","data-plane ladder",r"PLAN_REVIEWED|PRODUCER_READY|DATA_ACCEPTED"),
+   ("CmL","campaign ladder",r"ANALYZED|ENRICHED|QUALIFIED|FROZEN")]),
+}
+ALL_CRIT=[(t,k,l) for t,(tn,items) in TIERS.items() for k,l,_ in items]
+
+def jsonl(path):
+    out=[]; bad=0
+    if os.path.exists(path):
+        for ln,line in enumerate(io.open(path,encoding="utf-8"),1):
+            line=line.strip()
+            if not line: continue
+            try:
+                r=json.loads(line)
+                if not str(r.get("asset","")).startswith("_"): r["_line"]=ln; out.append(r)
+            except Exception: bad+=1
+    return out,bad
+
+def registry(env_file, layer_key):
+    """Live asset_registry rows for the layer. Returns (rows, reason_if_unavailable)."""
+    dsn=None
+    if env_file and os.path.exists(env_file):
+        for line in io.open(env_file,encoding="utf-8",errors="replace"):
+            if line.strip().startswith("DATABASE_URL="):
+                dsn=line.strip().split("=",1)[1].strip().strip('"').strip("'"); break
+    dsn = dsn or os.environ.get("DATABASE_URL")
+    if not dsn: return {}, "no DATABASE_URL — registry and production columns not read"
+    try: import psycopg2
+    except ImportError: return {}, "psycopg2 not installed"
+    cfg=LAYERS[layer_key]
+    try:
+        conn=psycopg2.connect(dsn); conn.set_session(readonly=True, autocommit=False); cur=conn.cursor()
+        cur.execute("""SELECT asset_id, target_table, storage_type, scope, is_active, catalog_status,
+                              has_writer, COALESCE(depends_on,'{}'), count_sql,
+                              (integrity_check_sql IS NOT NULL AND length(integrity_check_sql)>0)
+                       FROM asset_registry WHERE layer=%s OR asset_id LIKE %s
+                       ORDER BY sort_order, asset_id""",(cfg["registry_layer"], cfg["prefix"].replace("_","\\_")+"%"))
+        rows={}
+        for r in cur.fetchall():
+            rows[r[0]]=dict(target_table=r[1],storage_type=r[2],scope=r[3],is_active=r[4],
+                            catalog_status=r[5],has_writer=r[6],depends_on=list(r[7]),
+                            count_sql=r[8],integrity_check=r[9])
+        # consumers, in-layer and cross-layer, and production presence
+        cur.execute("SELECT asset_id, COALESCE(depends_on,'{}') FROM asset_registry")
+        allrows=cur.fetchall()
+        for aid,row in rows.items():
+            row["consumers_in_layer"]=sorted(a for a,d in allrows if aid in d and a.startswith(cfg["prefix"]))
+            row["consumers_cross_layer"]=sorted(a for a,d in allrows if aid in d and not a.startswith(cfg["prefix"]))
+        tables=[r["target_table"] for r in rows.values() if r["target_table"]]
+        if tables:
+            cur.execute("""SELECT table_name, count(*) FROM information_schema.columns
+                           WHERE table_schema='public' AND table_name = ANY(%s) GROUP BY 1""",(tables,))
+            cols=dict(cur.fetchall())
+            for row in rows.values():
+                t=row["target_table"]
+                row["table_exists"]= bool(t) and t in cols
+                row["columns"]=cols.get(t)
+                row["rows"]=None
+                if row["table_exists"]:
+                    try:
+                        cur.execute('SELECT count(*) FROM public."%s"'%t.replace('"',''))
+                        row["rows"]=cur.fetchone()[0]
+                    except Exception: pass
+        conn.rollback(); cur.close(); conn.close()
+        return rows, None
+    except Exception as e:
+        return {}, "registry read failed: %s"%type(e).__name__
+
+def find_brief(layer_key, asset_id):
+    cfg=LAYERS[layer_key]; d=os.path.join(ROOT,cfg["briefs"])
+    if not os.path.isdir(d): return None
+    stem=asset_id[len(cfg["prefix"]):].upper()
+    for pat in (f"*{asset_id.upper()}*.md", f"*{stem}*.md", f"*{asset_id}*.md"):
+        hits=[h for h in glob.glob(os.path.join(d,pat)) if "REVIEW" not in os.path.basename(h).upper()]
+        if hits: return sorted(hits)[0]
+    return None
+
+def scan_brief(path):
+    if not path or not os.path.exists(path): return None
+    s=io.open(path,encoding="utf-8",errors="replace").read()
+    cells={}
+    for t,(tn,items) in TIERS.items():
+        for k,l,pat in items: cells[k]=bool(re.search(pat,s,re.I))
+    ver=(re.search(r'^version:\s*"?([^"\n]+)',s,re.M) or [None,"—"])[1].strip().strip('"')
+    st =(re.search(r'^status:\s*([^\n#]+)',s,re.M) or [None,"—"])[1].strip()
+    return dict(path=os.path.relpath(path,ROOT),version=ver,status=st,cells=cells,
+                addressed=sum(cells.values()),total=len(cells))
+
+def lifecycle(reg, brief, gaps, certs, required):
+    """ELEVATED requires certification, never a brief. Nothing else may claim it."""
+    open_gaps=[g for g in gaps if g.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]
+    passing={c["criterion"] for c in certs if str(c.get("verdict","")).upper() in ("PASS","N/A")}
+    missing=[c for c in required if c not in passing]
+    if certs and not missing and not open_gaps: return "ELEVATED", "every required criterion certified; no open gap"
+    if certs and not missing and open_gaps:    return "CERTIFIED_GAPS_OPEN", f"{len(open_gaps)} gap(s) open"
+    if certs:                                  return "CERTIFYING", f"{len(required)-len(missing)}/{len(required)} criteria certified"
+    if open_gaps:                              return "GAPS_REGISTERED", f"{len(open_gaps)} gap(s), no certification yet"
+    if brief and "ACCEPT" in (brief["status"] or "").upper(): return "BRIEF_ACCEPTED", "brief accepted; execution not started"
+    if brief:                                  return "BRIEF_DRAFT", brief["status"]
+    if reg is None:                            return "NOT_IN_REGISTRY", "asset not found in asset_registry"
+    return "NO_BRIEF", "registered, no tier-4 brief"
+
+def scan(layer_keys, env_file):
+    gaps_all,gbad=jsonl(GAPS); certs_all,cbad=jsonl(CERTS)
+    gap_by=collections.defaultdict(list); cert_by=collections.defaultdict(list)
+    for g in gaps_all: gap_by[g.get("asset")].append(g)
+    for c in certs_all: cert_by[c.get("asset")].append(c)
+    crit=[{"tier":t,"key":k,"label":l} for t,k,l in ALL_CRIT]
+    required=[k for _,k,_ in ALL_CRIT]
+    out={"generated":datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+         "criteria":crit,"layers":{},"ledger_bad_lines":gbad+cbad,
+         "gaps_path":os.path.relpath(GAPS,ROOT),"certs_path":os.path.relpath(CERTS,ROOT)}
+    for lk in layer_keys:
+        cfg=LAYERS[lk]; rows,reason=registry(env_file,lk)
+        assets=[]
+        for aid in sorted(rows) if rows else []:
+            r=rows[aid]; bp=find_brief(lk,aid); b=scan_brief(bp)
+            g=gap_by.get(aid,[]); c=cert_by.get(aid,[])
+            state,why=lifecycle(r,b,g,c,required)
+            assets.append(dict(id=aid,layer=lk,scoring=cfg["scoring"],registry=r,brief=b,
+                gaps_open=len([x for x in g if x.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]),
+                gaps_total=len(g),
+                certified=len({x["criterion"] for x in c if str(x.get("verdict","")).upper() in ("PASS","N/A")}),
+                certs_total=len(c),required=len(required),state=state,why=why))
+        out["layers"][lk]=dict(name=cfg["name"],prefix=cfg["prefix"],scoring=cfg["scoring"],
+            instance=cfg["instance"],registry_reason=reason,n_assets=len(assets),assets=assets)
+    return out
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument("--layer",default="L0",help="L0..L5 or 'all'")
+    ap.add_argument("--env-file",help="file containing DATABASE_URL for the read-only registry/production read")
+    ap.add_argument("--watch",action="store_true"); ap.add_argument("--interval",type=int,default=10)
+    a=ap.parse_args()
+    keys=list(LAYERS) if a.layer.lower()=="all" else [k.strip().upper() for k in a.layer.split(",")]
+    for k in keys:
+        if k not in LAYERS: sys.exit(f"unknown layer {k}; expected one of {list(LAYERS)} or 'all'")
+    while True:
+        d=scan(keys,a.env_file); js=json.dumps(d,indent=1,default=str)
+        io.open(OUT,"w").write(js)
+        io.open(OUT[:-5]+".js","w").write("window.ASSET_DATA="+js+";\nwindow.dispatchEvent(new Event('asset-data'));\n")
+        print(f'[{d["generated"]}]')
+        for k in keys:
+            L=d["layers"][k]
+            if L["registry_reason"]: print(f'  {k} {L["name"]}: NOT READ — {L["registry_reason"]}'); continue
+            st=collections.Counter(x["state"] for x in L["assets"])
+            print(f'  {k} {L["name"]} ({L["scoring"]}): {L["n_assets"]} assets | '
+                  +", ".join(f"{s}={n}" for s,n in sorted(st.items())))
+            elev=sum(1 for x in L["assets"] if x["state"]=="ELEVATED")
+            print(f'      ELEVATED {elev}/{L["n_assets"]} | open gaps {sum(x["gaps_open"] for x in L["assets"])}'
+                  f' | criteria certified {sum(x["certified"] for x in L["assets"])}/{L["n_assets"]*len(d["criteria"])}')
+        if d["ledger_bad_lines"]: print(f'  !! {d["ledger_bad_lines"]} malformed ledger line(s)')
+        if not a.watch: break
+        time.sleep(a.interval)
+
+if __name__=="__main__": main()
