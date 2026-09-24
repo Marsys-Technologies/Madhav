@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS
 canonical_id: KALA_ENVIRONMENT_READINESS
-version: "1.4"
+version: "1.5"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-a6), at the native's request"
@@ -269,6 +269,33 @@ until a release-authority session sets `app.allow_protected_sweep_rewrite = on` 
 are working in flight. The `is_active` half alone removes the asset from build selection, which is
 what closes the dispatch path, and it touches nobody else. The trigger half remains the native's or
 a credentialed session's, inside the Gochara runbook.
+
+**The applied half does not survive a re-seed — so the ranking inverts.** The Gochara lane caught
+this and it is right. `asset_registry_seed.ts`'s `ON CONFLICT` sets
+`is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED' THEN asset_registry.is_active ELSE
+EXCLUDED.is_active END`. Live `catalog_status` for the century writer is **`CURRENT`** — only
+`ka_gochara_sweep` is `RETIRED` and thus protected — and its seed entry carries `is_active: true`.
+**A re-seed silently re-arms it.** It is not automatic: no workflow and no npm script invokes the
+seed, it is hand-run.
+
+**Measured: no re-seed has touched this registry since 2026-09-23 21:07.** `health_probe` *is* in
+the `ON CONFLICT` set list, the seed file does **not** contain
+`expected_mean_node_rahu_longitude_deg`, and live carries it at `49.033044` — the key migration
+1075 added at 21:07 yesterday. A re-seed would have wiped it. Corroborated by `asset_kind`, also
+overwritten by the seed, omitted from the `ka_avadhi` and `ka_taranga` entries, and present live as
+`data`. So re-arming is a real mechanism that has not yet fired.
+
+*A false proof caught before it left this session:* I first offered live `target_floor` 914 against
+seed 0 as evidence the seed had not run. **`target_floor` is not in the `ON CONFLICT` set list**, so
+that divergence proves nothing — the same shape as every other error this week, a test that looks
+decisive and is out of scope.
+
+**So, for the native, plainly:** the half applied here closes the dispatch path today but is one
+hand-run seed from undone; **the half left unapplied is the durable one**, and makes the `'3.0'`
+DELETE fail loudly instead of silently succeeding. Its cost is refusing every legitimate `'3.0'`
+and `'v1'` write until a release-authority session lifts it. A third option neither lane will take
+unilaterally: set `is_active: false` on the century entry **in the seed file**, which is the seed
+owner's file.
 
 **This session did hold a write path for both halves** — `amjis_app` has `UPDATE` on
 `asset_registry`, `DELETE` on `kala_gochara_windows`, `TRIGGER` privilege, and **owns** that table.
