@@ -1,7 +1,7 @@
 ---
 artifact: KSHETRA_INBOUND_RECONCILIATION
 canonical_id: KSHETRA_INBOUND_RECONCILIATION
-version: "1.1"
+version: "1.2"
 status: RECONCILED_FOR_STAGE_3
 date: 2026-09-24
 purpose: >
@@ -18,6 +18,7 @@ method: >
   reading the L0 repair's diff and PR record, and by SELECT-only queries against production through
   the project's read-only proxy — before folding it. Presence alone was never treated as capture.
 changelog:
+  - "1.2 (2026-09-24) — K-1 row corrected: the guard finding is real today; recorded as a three-way choice (prompt 1.7 b′)."
   - "1.1 (2026-09-24) — ruling 8 post-repair arithmetic corrected on O-3's independent re-count (42/36/0/6; Mercury 2→5 page-grain); recorded in §3 and §5."
 sweeps: 2026-09-24, main @ 0dcf28d6d; readiness @ 5c05a0e2f+; gochara wp0-7 @ e93112eb0; sangam/stage3 @ 8ad8e0b52
 ---
@@ -87,7 +88,7 @@ Legend: **C** captured before this pass · **F** folded now (this PR) · **N** n
 | Mūrti graded at the true sign-ingress instant, `precision_regime='instant_grain'` on mūrti rows (Gochara WP9) | S4 | F | prompt Phase 4 S1 |
 | D-S5 `window_ref = {asset_id:'ka_gochara', generation, id: contact_id}` against PK `(chart_id, generation, contact_id)` — the consume option's exact handle | S4 native rulings | F | prompt Phase 2/4 |
 | M-8: exceptions emit **no vedha row**, coverage records `searched, exception_applied`; vipareeta kept with `cancelled=true`; retrograde malefic → `intensity_qualifier` — Kshetra as consumer must read the coverage token, never infer absence | S4 M-8 | F | prompt Phase 4 S1 |
-| K-1: pin provenance edges by `(generation, id)` at `writer.py:948-953` / `:1059-1064` (`source_pk=str(row['id'])` is bare); declare the `→ka_gochara` edge (the CURRENT producer — not the retired sweep) as an F12 `evaluation` edge; keep the `'v1'` removal | S4 PACKET_K1; verified at source | F | prompt Phase 2 |
+| K-1: pin provenance edges by `(generation, id)` at `writer.py:948-953` / `:1059-1064` (`source_pk=str(row['id'])` is bare); the `→ka_gochara` edge — **corrected 2026-09-24:** the DAG edge guard (verified statically) would report `writer.py:2344`'s read as a HARD violation today; "evaluation edge" is not a state the guard can hold; three options with their trade in prompt 1.7 (b′); Gochara held the edge out of migration 1084 at Kshetra's request (64bdc10da) | S4 PACKET_K1; guard source; verified | F | prompt Phase 2 (b), (b′) |
 | B8-7 (R-6 four-way separation for Kshetra), B8-4 (`independence_group` jsonb shape), B-2 (staged acceptance), B-4 (shared vs per-class knot grid) | S1, S3 | N | §4 |
 
 ### Binding rows (KALA_SYNERGY_BINDING v2.2) not yet named as columns
