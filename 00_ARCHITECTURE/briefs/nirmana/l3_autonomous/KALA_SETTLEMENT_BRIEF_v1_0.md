@@ -1,8 +1,8 @@
 ---
 artifact: KALA_SETTLEMENT_BRIEF
 canonical_id: KALA_SETTLEMENT_BRIEF
-version: "1.0"
-status: PROPOSED_FOR_NATIVE_RULING
+version: "1.2"
+status: RULED
 date: 2026-09-24
 audience: "the native — this is a decision document, not a plan to execute"
 author: "L3 strategy session (madhav-e3), Opus 5"
@@ -47,7 +47,8 @@ schema. (b) Leave them unmerged, write briefs against branch state, accept that 
 **Recommendation: (c), then (a).** Saṅgam gates five downstream assets; Gochara gates three and has
 two open native decisions of its own (E-012, E-015) that should be ruled before its branch lands.
 
-> **Decision S-1:** ______________________
+> **Decision S-1 — RULED 2026-09-24 (native):** recommendation adopted. Saṅgam merges first (DAG
+> chokepoint, 5 downstream assets); Gochara follows once its own E-012 and E-015 are ruled.
 
 ---
 
@@ -71,7 +72,10 @@ briefs do not need the binding ratified to be correct, and (b) unblocks today. P
 this: `kala_field_windows` already carries `precision_regime` in prod, so the ruled name is the one
 the system already speaks.
 
-> **Decision S-2:** ______________________
+> **Decision S-2 — RULED 2026-09-24 (native):** recommendation adopted. Proceed WITHOUT waiting for
+> binding adoption. Briefs cite the underlying rulings — Kṣetra ruling 8, Gochara G-9, Saṅgam M-3 for
+> the name; D-S4 for the native ruling; Saṅgam D-7 for the alias condition — none of which depends on
+> the binding being adopted. The binding version is recorded as context, flagged UNADOPTED.
 
 ---
 
@@ -89,7 +93,11 @@ their governance and risks conflicting instruction — which already cost a full
 morning over `precision_regime`. `ka_gochara_sweep` needs its own disposition: brief it as a 20th, or
 exclude it with a stated reason. It should not remain untracked by default.
 
-> **Decision S-3:** scope ____________  ·  `ka_gochara_sweep` ____________
+> **Decision S-3 — RULED 2026-09-24 (native):** scope is **19 assets**. The three streams stay with
+> their streams and report into the ledger. `ka_gochara_sweep` is dispositioned to the **Gochara
+> stream**, not to this loop: it is a Gochara-family asset (`depends_on: [ka_gochara_resonance]`) and
+> the family is already excluded, so briefing it here would split one family across two pipelines.
+> It is no longer untracked — it is assigned, and the tracker will say so rather than alerting.
 
 ---
 
@@ -108,7 +116,9 @@ later finds a real defect in an L0/L1/L2 asset an L3 brief depended on, that bri
 assumption is cheap now and the exposure is bounded, but it is an exposure and should not become
 invisible.
 
-> **Decision S-4:** assumption stands / is withdrawn: ______________________
+> **Decision S-4 — RULED 2026-09-24 (native):** the assumption **stands**. L0/L1/L2 are treated as
+> elevated under the current revision. The measured state remains recorded beside it and every L3
+> result inherits the exposure.
 
 ---
 
@@ -124,7 +134,8 @@ brief. A per-asset review cannot see a column.
 **Recommendation: one sweep across all briefs before asset 1**, not 19 inline repairs. `Ldgr` is a
 non-negotiable architectural principle (B.3) and `PD` is the top of the alignment stack.
 
-> **Decision S-5:** sweep first / inline per asset: ______________________
+> **Decision S-5 — RULED 2026-09-24 (native):** **sweep first.** One pass across all briefs closing
+> `PD`, `Val`, `Ldgr`, `Dens` before asset 1.
 
 ---
 
@@ -138,7 +149,8 @@ has produced.
 This is a known limitation, not a finding. It needs a per-asset table *set* before these numbers are
 used as an elevation baseline.
 
-> **Decision S-6:** fix now / fix at Kṣetra (DAG #15): ______________________
+> **Decision S-6 — RULED 2026-09-24 (native):** **fix now**, before these numbers become the
+> elevation baseline.
 
 ---
 
@@ -154,7 +166,9 @@ where the process leaks. Then `ka_tithi_pravesha` (240 rows), then `ka_kota_chak
 anything with six-figure row counts (`ka_yojaka` 150,724; `ka_taranga` 277,236; `ka_kalasutra`
 337,148; `ka_kshetra` 10,982,957).
 
-> **Decision S-7:** first asset ______________________
+> **Decision S-7 — RULED 2026-09-24 (native):** first asset is **`ka_sudarshana_varsha`**, then
+> `ka_tithi_pravesha`, then `ka_kota_chakra`. The native confirms the depth-0 tiebreak is understood
+> and the ordering stands.
 
 ---
 
@@ -180,10 +194,27 @@ layer briefs at 1.0–1.2, and a synthetic shared "v5.0" would assert a lineage 
 
 ## The one measurement that should shape expectations
 
-Across 18 live tables carrying ~11.8M rows, the shared contract vocabulary appears **three times**:
-`t_start`/`t_end` on Kṣetra's `kala_field`, `tier_basis` on Saṅgam's `kala_convergence`. No
-`precision_regime`, no `comparable_with`, no `source_qualification`, no `corpus_verifiable`, no
-`completeness_state`, no `coverage` anywhere else.
+**Corrected after S-6 was executed.** An earlier version of this section said the shared contract
+vocabulary "appears **three times**" across the layer. That figure was produced by the very defect
+S-6 names, and it understated the truth by 4×. With per-asset table *sets* in place the measurement is:
 
-The layer is built and populated. It does not yet speak the language the elevation exists to
-establish. That — not missing data, and not a deployment backlog — is the delta the 19 briefs close.
+| asset | tables | rows | contract fields live in production |
+|---|---|---|---|
+| `ka_gochara` | 9 | 42,708 | **8** — `time_basis`, `precision_regime`, `comparable_with`, `corpus_verifiable`, `independence_group`, `completeness_state`, `epistemic_class`, `operator_role` |
+| `ka_kshetra` | 17 | 13,433,597 | **3** — `t_start`, `t_end`, `precision_regime` |
+| `ka_sangam` | 1 | 20,497 | **1** — `tier_basis` |
+| the other 15 | 1–2 each | ~795k total | **0** |
+
+**12 contract-field instances live, not 3.** The correction lands almost entirely on `ka_gochara`,
+which I had reported as carrying none: its `kala_gochara_contacts` / `_convention` / `_coverage` /
+`_publication` tables are in production and already stamp the ruled vocabulary. Gochara is materially
+further along in production than this session previously stated — twice.
+
+**What still holds, and is the real shape of the work.** The vocabulary is concentrated in the two
+stream assets that have been elevated under their own campaigns. **All fifteen non-stream assets
+carry zero contract fields** across ~795k rows. The three streams are excluded from this loop (S-3),
+so every asset this campaign touches starts at zero.
+
+The layer is built and populated. The nineteen assets in scope do not yet speak the language the
+elevation exists to establish. That — not missing data, and not a deployment backlog — is the delta
+the briefs close.

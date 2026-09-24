@@ -168,6 +168,19 @@ def reviews(aid):
 # Never embeds or prints a credential. Every statement is a SELECT; the connection
 # is opened read-only and rolled back. If no DSN is available the probe does not
 # run and the tracker says so rather than implying a clean result.
+# S-6 (native-ruled 2026-09-24): several assets own a SET of tables, not one. Reading only the
+# registry's single target_table understated their contract coverage — Kṣetra's precision_regime
+# lives on kala_field_windows while its registered target is kala_field. SQL LIKE patterns per
+# asset; the registered target_table is always included.
+ASSET_TABLE_PATTERNS = {
+  "ka_kshetra":                       ["kala_field", "kala_field\\_%"],
+  "ka_gochara":                       ["kala_gochara\\_%", "kala_gochara_windows"],
+  "ka_gochara_resonance":             ["gochara_resonance_map"],
+  "ka_gochara_v3_century_materialize":["kala_gochara_windows_v2", "kala_gochara_v2_build_state"],
+}
+# never count archived / shadow copies as live surface
+TABLE_EXCLUDE = ("%archive%", "%\\_\\_ssv%", "%_staging")
+
 CONTRACT_FIELDS = ["t_start","t_end","inclusivity","time_basis","precision_regime","claim_grain",
  "comparable_with","comparability_class","source_qualification","corpus_verifiable",
  "independence_group","declared_current_count","coverage","completeness_state",
@@ -200,6 +213,20 @@ def probe_db(asset_ids, env_file=None):
         # simply named gochara_resonance_map (12 cols, 1595 rows, live) — a naming
         # assumption producing a false negative on a real table.
         wanted=[t for t in tmap.values() if t]
+        # expand multi-table assets
+        asset_tables={}
+        for aid in asset_ids:
+            tabs=set()
+            if tmap.get(aid): tabs.add(tmap[aid])
+            for pat in ASSET_TABLE_PATTERNS.get(aid,[]):
+                cur.execute("""SELECT table_name FROM information_schema.tables
+                               WHERE table_schema='public' AND table_name LIKE %s
+                                 AND table_name NOT LIKE %s AND table_name NOT LIKE %s
+                                 AND table_name NOT LIKE %s""",(pat,)+TABLE_EXCLUDE)
+                tabs.update(r[0] for r in cur.fetchall())
+            asset_tables[aid]=sorted(tabs)
+            wanted.extend(tabs)
+        wanted=sorted(set(wanted))
         cur.execute("""SELECT table_name, count(*) FROM information_schema.columns
                        WHERE table_schema='public' AND table_name = ANY(%s) GROUP BY 1""",(wanted,))
         colcount=dict(cur.fetchall())
@@ -212,20 +239,28 @@ def probe_db(asset_ids, env_file=None):
         nums=[int(f.split("_",1)[0]) for f in applied]
         out["applied"]=applied; out["applied_max"]=max(nums) if nums else None
         for aid in asset_ids:
-            t=tmap.get(aid)
-            ent={"target_table":t,"exists":False,"columns":None,"rows":None,
-                 "no_table_by_design": t is None,   # service assets store nothing
-                 "contract_present":[],"contract_absent":[]}
-            if t and t in cols:
-                ent["exists"]=True; ent["columns"]=colcount.get(t)
-                have=cols[t]
+            t=tmap.get(aid); tabs=asset_tables.get(aid) or ([t] if t else [])
+            ent={"target_table":t,"table_set":tabs,"n_tables":len(tabs),"exists":False,
+                 "columns":None,"rows":None,"no_table_by_design": not tabs,
+                 "contract_present":[],"contract_absent":[],"contract_by_table":{}}
+            live=[x for x in tabs if x in cols]
+            if live:
+                ent["exists"]=True
+                ent["columns"]=sum(colcount.get(x,0) for x in live)
+                have=set()
+                for x in live:
+                    fs=[f for f in CONTRACT_FIELDS if f in cols[x]]
+                    if fs: ent["contract_by_table"][x]=fs
+                    have|=cols[x]
                 ent["contract_present"]=[f for f in CONTRACT_FIELDS if f in have]
                 ent["contract_absent"] =[f for f in CONTRACT_FIELDS if f not in have]
-                try:
-                    cur.execute('SELECT count(*) FROM public."%s"'%t.replace('"',''))
-                    ent["rows"]=cur.fetchone()[0]
-                except Exception:
-                    ent["rows"]=None
+                tot=0
+                for x in live:
+                    try:
+                        cur.execute('SELECT count(*) FROM public."%s"'%x.replace('"',''))
+                        tot+=cur.fetchone()[0]
+                    except Exception: pass
+                ent["rows"]=tot
             out["tables"][aid]=ent
         conn.rollback(); cur.close(); conn.close()
     except Exception as e:
