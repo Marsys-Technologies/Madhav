@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AUDIT
 canonical_id: KALA_SYNERGY_AUDIT
-version: "1.5"
+version: "1.6"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -89,6 +89,11 @@ construct is a **shared-consumer contract for three stamp columns on `kala_vedha
 So v1.3's "exists in none of the three code bases" was **false for two of three**. What holds, and
 is the actual defect: **`kala_vedha_gochara` — the one row the contract binds — carries none of the
 three.** Two packets adopted a contract on a producer row that has no such columns.
+
+**Update 2026-09-24 (v1.6):** migration `1082_nirmana_l3_vedha_moorti_stamp_columns.sql` on
+`origin/l3/gochara-autonomous-wp0-7` adds all three stamps to the vedha and mūrti rows with writers
+populating them. The finding is **code-complete pending merge of PR #2731**; it closes on merge, not
+before.
 
 ## 7. Disposition
 
