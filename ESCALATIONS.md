@@ -335,3 +335,23 @@ what a human needs to decide.
   the factor-level delta report against `'3.0'`. That is a work package of its own (plan §4.5), not a runbook step.
 - **Decision needed from the native:** who builds the projection writer, and whether tranche 2 stays authorised in the
   meantime. Recommendation: leave the flags as they are — the new gates make a premature run harmless — and name the owner.
+
+## E-013 — Two hard DAG-guard violations are in OUR asset, `ka_gochara_resonance`, and pre-date this work (L3 session, 2026-09-24)
+
+- **What:** the strategic session ran `pipeline.orchestrator.dag_edge_guard` live, read-only, against the production registry
+  (130 writer assets). Six hard violations; two are ours: `ka_gochara_resonance` reads `chart_dashas` (produced by
+  `ga_dashas`) and `ga_yoga_firings` (produced by `ga_yoga`), and neither producer is in its `depends_on` closure. A soft
+  finding also notes it reads `chart_facts` with no producer in the closure. The other four are not ours
+  (`bo_laksana`, `ka_bhavishya_lekha`, `ka_kshetra`, `ka_sangam`).
+- **Why it is real, not a false positive:** WP3c's target resolution genuinely reads the dasha portfolio and yoga firings, so
+  those are true build-order dependencies — a resonance build run before `ga_dashas` or `ga_yoga` is lit would resolve
+  against nothing. Nothing in CI catches it: the guard runs `--self-test` only, and the live test skips without
+  `DATABASE_URL`.
+- **Not done, deliberately:** adding the two edges. `depends_on` is a hard build gate (a dependency must be `lit` for the
+  chart), so adding an edge changes what can build, in production, and needs the same check Kṣetra's edge got. It also
+  extends WP10 step 5 beyond sheet A-2's literal "registry re-pin + `EXPLICIT_CLEAR_OPS`".
+- **Decision needed from the native:** whether step 5's re-pin should also declare `ga_dashas` and `ga_yoga` on
+  `ka_gochara_resonance`. Recommendation: yes, as its own reviewed change, after confirming both producers are `lit` on the
+  canonical chart so the new gate does not block the next resonance build.
+- **Also recorded from the same run (not ours):** `ka_bhavishya_lekha` reads `phala_anchors`, produced by `ph_nimitta` —
+  L3 reading L4, a layer inversion and an architectural question for the native, not an edge to add.
