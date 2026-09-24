@@ -38,7 +38,7 @@ C-1 `7bd66b450` (+note `d153aa7c0`), P-1 `d668e3e87`, P-2 `6d7c40df3`, P-3 `2737
 
 ### §7 — WP10
 
-- **§7.A:** handled by a separate delegation (not this executor).
+- **§7.A:** done (follow-up delegation, 2026-09-24) — WP10 runbook prepared as runnable artifacts under `platform/python-sidecar/scripts/kala_gochara_cutover/` (steps 0–10 + evidence templates + production guard per tranche flag) and rehearsed on a disposable DB (55434); gate `tests/l3/gochara/test_wp10_cutover.py` 14/14 green. Outcomes + carried NOT_RUNs in `WP10_REHEARSAL_v1_0.md`; review note `wp7_packets/REVIEW_REQUEST_S7A.md`. Step 0 (clear-guard cherry-pick of `eb00da67d`), step 2 (restore drill — no dump locally), and step 7 gate 3 (TS-only) remain NOT_RUN by design.
 - **§7.B/§7.C:** NOT REACHED — frontmatter flags `PRODUCTION_TRANCHE_1_AUTHORIZED: false`, `PRODUCTION_TRANCHE_2_AUTHORIZED: false`. Every step touching a shared/production DB, the live registry, the authority table, a deployment, or a real chart's served rows stopped at the flag boundary. R-1..R-6 take effect only at a resonance rebuild sequenced at WP10 step 6.
 
 ### §8 — loose ends: COMPLETE
@@ -86,14 +86,14 @@ Untouched. No OCR/source-data files were modified (read-only consultation of alr
 
 ## 6. Verification battery (final state)
 
-- Gochara suite: **252 passed** (`tests/l3/gochara`, incl. G-9 4/4, G-10 8/8, N-19 1/1).
+- Gochara suite: **266 passed** (`tests/l3/gochara`, incl. G-9 4/4, G-10 8/8, N-19 1/1, and the §7.A WP10 cutover gate 14/14).
 - L1 ga_strength suite (caution gate for §8.5): 378 passed, 2 skipped, 1 pre-existing failure (see §2).
 - Campaign batteries earlier in the run: ka_kshetra 720, ecosystem 126, platform vitest 1458 passed, tsc clean both repos, platform-mcp 2167 passed / 78 pre-existing failed.
 - One cross-test interaction found and fixed during §8.5: jhora redirects the global Swiss ephemeris path; the G-10 test re-asserts the pinned `.run/se1` path after each computation (`test_wp3a_kernel.py::test_case_02_mean_node_convention` is green again).
 
 ## 7. Disposable DB
 
-`gochara-remainder-disposable` (localhost:55434) used for 1085/1086 verification; torn down at closure (§11). WP6's older `gochara-wp6-disposable` (55433) left as found.
+`gochara-remainder-disposable` (localhost:55434) used for 1085/1086 verification; torn down at closure (§11). §7.A's rehearsal used a fresh `gochara-wp10-disposable` on the same port, torn down after the battery. WP6's older `gochara-wp6-disposable` (55433) left as found.
 
 ## 8. Artifact list (this branch vs `origin/main`: 172 files, +33277/−3204)
 
