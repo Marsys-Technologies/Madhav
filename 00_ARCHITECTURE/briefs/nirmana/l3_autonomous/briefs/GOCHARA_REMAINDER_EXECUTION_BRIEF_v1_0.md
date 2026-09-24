@@ -358,3 +358,33 @@ path could ever report it stale.
 
 **Do not** apply migration 1085 (the G-9 L0 data repair) to any shared database. It is file-only by
 brief §8.4, and applying it belongs to an L0 owner the native has not named.
+
+
+### 12.10 Migration 1085 must be rewritten as a delta, and a writer honesty bug blocks the rebuild
+
+From the L0 repair session (PR #2727, `l0/vedha-and-frame-repair`), sent on the native's instruction.
+Its production-state figures are **attributed, not verified here** (this session has no write access and
+did not re-query); every claim about **files on this branch was verified at source** and all of them hold.
+
+**A. `1085` as written would abort in production — verified in the file.** Its §5 G-8 sweep
+(`1085:131-144`) does `RAISE EXCEPTION` if **any** `bg_transit_rules` row still cites `BPHS Ch.29`. The
+L0 session reports **19 rows still cite it** (18 unfavourable + 1 favourable with no vedha pair),
+deliberately left because they sit outside the spec's verified predicate. The whole migration, including
+its `ADD COLUMN`, would roll back. The file's own §5 comment (`:133`) asserts "the spec's scope counts
+exactly **39** in the live database"; production held **58** before the repair. That premise is wrong and
+would have aborted on a freshly writer-seeded database too.
+
+**B. Loosening the sweep is NOT the fix.** Verified in the file: the Mercury `ON CONFLICT ... DO UPDATE`
+(`:102`) would overwrite the L0 session's Mercury row phala, citation and notes; the node-row `CASE`
+(`:121`) would rewrite the six Rāhu/Ketu citations and notes. Both fields sit inside the **1078 content
+hash** (frozen contracts 611/613, resealed by 1077/1078), so the integrity check would go red in
+production. Anyone changing hashed content must ship a reseal computed against **production** state.
+
+| # | task | exit gate |
+|---|---|---|
+| 12.10a | **Rewrite 1085 as a delta against the applied state.** Keep only: (1) `ADD COLUMN IF NOT EXISTS uncited_extension` and setting it TRUE on the six node rows, **guarded by their current `'UNSOURCED%'` citation**; (2) the śloka-17-sourced Mercury phala "Gain of wealth and birth of children", which the L0 session asked for by name over its own synthesized text after an independent reviewer flagged it. **Drop** the Venus section, the re-citation section, the Mercury INSERT and the BPHS sweep — all already applied upstream | the migration is idempotent against production as it stands, touches no hash-pinned content, and needs no reseal; if it must touch hashed content, it ships its own reseal computed against production |
+| 12.10b | **Writer honesty bug — precondition of ANY L3 rebuild, including the `'4.0'` candidate.** `services/ka_vedha_gochara/writer.py:568` hardcodes `"uncited_extension": False` on every `house_vedha` row, and `_FETCH_VEDHA_RULES_SQL` (`:104-107`) selects `rule_type = 'favourable' AND vedha_house IS NOT NULL`, which **now includes the six node rows whose citation literally begins `UNSOURCED`**. A rebuild would therefore stamp uncited rows as machine-readably cited. That is §N.7 item 6 exactly: a favourable-sounding default standing in for a known negative. Make the field **read the row's actual citation state** (the new column, or derive it from an `'UNSOURCED%'` citation), never a literal | a test builds against a fixture containing an `UNSOURCED` rule row and asserts the output row carries `uncited_extension = true`; **§7.C step 6 does not run until this passes** |
+| 12.10c | **Merge-order hygiene for PR #2731.** Both branches edit `ka_vedha_gochara/logic.py` in different hunks and `git merge-tree` shows a clean merge, per the L0 session. **Whoever merges second** must regenerate `nirmana-writer-digests.json`, re-admit the L3 pin (`nirmana_analysis_layer_pins.py --admit-successor`, baseline = `main` tip) and regenerate `capability_estate_census.json`, because those three fingerprint each other. New generations under decision `NATIVE-2026-09-24-L0-REPAIR-REPIN`: `l0:7d40f8c70640:64b8859fe692`, `l2:7d40f8c70640:dbbbb24c09cb`, `l3:7d40f8c70640:dfcf30d8b3d2`. Expect a re-admission after the L0 PR merges | CI green on the second merge without a manual pin fix |
+
+**Unchanged and reinforced: do not apply 1085 to any shared database.** It is file-only by §8.4, and it
+is now known to be wrong against the applied state rather than merely unverified.
