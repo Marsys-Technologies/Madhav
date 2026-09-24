@@ -43,3 +43,12 @@ DSN target: production via Cloud SQL proxy 127.0.0.1:5433, database amjis.
 Operator / principal: subagent (l3/gochara-autonomous-wp0-7, §7.B tranche 1) as
 `amjis_app` (CREATE on public temporarily granted for tranche 1 — see step 3
 evidence; revocation at tranche end).
+
+## 2026-09-24T11:39:01Z — NATIVE RULING recorded; E-016 scope approved
+
+Verbatim: **"Approved on point number two. Go ahead to everything."** (native,
+2026-09-24 17:09 IST, via the main agent). Scope (b): apply 1082/1083/1084/1087
+to production via this step's machinery with the full committed APPLY_SET;
+1084 as committed (ka_kshetra→ka_gochara edge HELD OUT, `64bdc10da`); 1085
+stays retired; 1085/1086 never re-added. Full text in ESCALATIONS.md. Outcome
+appended below when executed.

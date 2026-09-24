@@ -586,3 +586,44 @@ evidence §12.14 sweep.
 **Tranche state at halt:** steps 0, 1, 3, 4 GREEN; step 2 NOT_RUN (no
 2026-08-23 dump available locally; recorded, not waived); step 5 FAILED.
 Tranche 1 is **not green**; 7.C must not proceed; steps 6–10 not started.
+
+## NATIVE RULING 2026-09-24T11:39:01Z (17:09 IST) — E-016 / E-017 / §7.C RESOLVED, full resume authorized
+
+Verbatim, delivered to the main agent and passed verbatim to this run:
+
+> "Approved on point number two. Go ahead to everything."
+
+Recorded scope of the ruling (as transmitted by the main agent):
+
+- **(a) E-017 resume path approved:** re-grant `CREATE ON SCHEMA public` TO
+  `amjis_app` (temporary) → apply the corrected
+  `platform/migrations/1091_wp10_ka_gochara_registry_repin.sql` as `amjis_app`
+  → run the step-5 gates → revoke the grant on GREEN.
+- **(b) E-016 approved:** apply 1082, 1083, 1084, 1087 to production via the
+  step04 machinery with the full committed APPLY_SET. 1084 applies AS COMMITTED
+  (the `ka_kshetra → ka_gochara` edge stays HELD OUT per `64bdc10da`). 1085
+  stays retired; 1085/1086 are never re-added to APPLY_SET.
+- **(c) §7.C steps 6–10 authorized notwithstanding the merge-state
+  preconditions:** the native rules the P-1-merged / WP9 §5.2-merged /
+  N-19-on-main preconditions satisfied by this authorization (those artifacts
+  live on this branch, PR #2731). Tranche-1-green is to be achieved by (a)
+  first; M-1 was ratified 2026-09-24 (ruling §2).
+
+Execution discipline unchanged: evidence before each next step; failed gate =
+stop + evidence + escalate; guards never weakened; a failed flip gate yields a
+NEW candidate, never a patch.
+
+### E-016 RESOLUTION addendum
+
+Resolved by the native ruling quoted above: 1082/1083/1084/1087 are to be
+applied to production in this run (step 4 machinery, full committed APPLY_SET).
+Outcome recorded in `evidence/step04_evidence.md` (2026-09-24 tranche-2-scope
+append) and the final report.
+
+### E-017 RESOLUTION addendum
+
+Resolved by the native ruling quoted above: the corrected 1091 is to be
+applied as `amjis_app` after re-granting CREATE. The rehearsal-harness
+`clear_tables` TEXT-vs-`text[]` fidelity gap remains an open fix for the
+harness itself (not blocking; recorded in step05 evidence). Outcome recorded
+in `evidence/step05_evidence.md` (2026-09-24 RESUMED section).

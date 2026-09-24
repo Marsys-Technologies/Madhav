@@ -106,3 +106,11 @@ SET ROLE data_plane_schema_owner; REVOKE CREATE ON SCHEMA public FROM amjis_app;
 
 Re-grant on resume is one command (recorded in ESCALATIONS.md E-015/E-017).
 1081 needs CREATE, so resuming step 5 requires re-granting first.
+
+## 2026-09-24T11:39:01Z — NATIVE RULING recorded; RESUME authorized
+
+Verbatim: **"Approved on point number two. Go ahead to everything."** (native,
+2026-09-24 17:09 IST, via the main agent). Scope (a): this step's resume path —
+re-grant CREATE, apply corrected 1091 as `amjis_app`, run the step-5 gates,
+revoke on GREEN. Full text in ESCALATIONS.md (NATIVE RULING 2026-09-24T11:39:01Z).
+Run outcome is appended below this section when the resume executes.
