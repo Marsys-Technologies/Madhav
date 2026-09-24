@@ -305,8 +305,12 @@ Only one half was run, by choice, not by limitation.
 third option is taken: `is_active: false` is now on the century entry in
 `asset_registry_seed.ts`, with the reason at the line. The re-arm mechanism above is closed at its
 source; a re-seed now writes the same value production holds. The trigger half stays unapplied and
-stays the native's, inside the Gochara runbook. E4 status: **MITIGATED, durable against re-seed**;
-still open only for the trigger half, which is a runbook item, not an environment defect.
+stays the native's, inside the Gochara runbook. E4 status: **MITIGATED; durable against re-seed once PR #2734 merges.** The seed line is on
+`fix/century-seed-is-active-false` (one commit off `main`, `68eaa04c6`), auto-merge armed through the
+queue. Until it lands, a re-seed run from `main` would still re-arm the writer; the Gochara lane
+records E-014 as "seed fix pending merge" for the same reason. Their `step03_reversal.sql` will
+note that its `is_active = true` restore is no longer lasting once this line is on `main`.
+Still open only for the trigger half, which is a runbook item, not an environment defect.
 
 **Two corrections to the Gochara lane's E-014, both verified.** The recovery dump is **not** "one
 untracked file on this machine": it is committed and pushed at
