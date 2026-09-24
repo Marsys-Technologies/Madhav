@@ -162,6 +162,96 @@ def reviews(aid):
         if mv: vs.append(f"{mv.group(1)}.{mv.group(2)}")
     return len(fs),(m.group(1) if m else "?"),(max(vs,key=lambda x:tuple(map(int,x.split(".")))) if vs else None)
 
+
+# ── Read-only production probe (native-authorised 2026-09-24) ────────────────
+# Connects ONLY via DATABASE_URL from the environment, or --env-file <path>.
+# Never embeds or prints a credential. Every statement is a SELECT; the connection
+# is opened read-only and rolled back. If no DSN is available the probe does not
+# run and the tracker says so rather than implying a clean result.
+CONTRACT_FIELDS = ["t_start","t_end","inclusivity","time_basis","precision_regime","claim_grain",
+ "comparable_with","comparability_class","source_qualification","corpus_verifiable",
+ "independence_group","declared_current_count","coverage","completeness_state",
+ "epistemic_class","operator_role","tier_basis","window_ref"]
+
+def _dsn(env_file=None):
+    if env_file and os.path.exists(env_file):
+        for line in io.open(env_file,encoding="utf-8",errors="replace"):
+            line=line.strip()
+            if line.startswith("DATABASE_URL="):
+                return line.split("=",1)[1].strip().strip('"').strip("'")
+    return os.environ.get("DATABASE_URL")
+
+def probe_db(asset_ids, env_file=None):
+    dsn=_dsn(env_file)
+    if not dsn:
+        return {"ran":False,"reason":"no DATABASE_URL in environment or --env-file; probe not run"}
+    try:
+        import psycopg2, psycopg2.extras
+    except ImportError:
+        return {"ran":False,"reason":"psycopg2 not installed; probe not run"}
+    out={"ran":True,"tables":{},"applied_max":None,"applied":set()}
+    try:
+        conn=psycopg2.connect(dsn); conn.set_session(readonly=True, autocommit=False)
+        cur=conn.cursor()
+        cur.execute("SELECT asset_id, target_table FROM asset_registry WHERE asset_id = ANY(%s)",(list(asset_ids),))
+        tmap={a:t for a,t in cur.fetchall()}
+        # Query by the registry's own target_table list. An earlier version filtered on
+        # LIKE 'kala\_%' and reported ka_gochara_resonance as MISSING when its table is
+        # simply named gochara_resonance_map (12 cols, 1595 rows, live) — a naming
+        # assumption producing a false negative on a real table.
+        wanted=[t for t in tmap.values() if t]
+        cur.execute("""SELECT table_name, count(*) FROM information_schema.columns
+                       WHERE table_schema='public' AND table_name = ANY(%s) GROUP BY 1""",(wanted,))
+        colcount=dict(cur.fetchall())
+        cur.execute("""SELECT table_name, column_name FROM information_schema.columns
+                       WHERE table_schema='public' AND table_name = ANY(%s)""",(wanted,))
+        cols={}
+        for t,c in cur.fetchall(): cols.setdefault(t,set()).add(c)
+        cur.execute("SELECT filename FROM _migrations_applied WHERE filename ~ '^[0-9]+_'")
+        applied={r[0] for r in cur.fetchall()}
+        nums=[int(f.split("_",1)[0]) for f in applied]
+        out["applied"]=applied; out["applied_max"]=max(nums) if nums else None
+        for aid in asset_ids:
+            t=tmap.get(aid)
+            ent={"target_table":t,"exists":False,"columns":None,"rows":None,
+                 "no_table_by_design": t is None,   # service assets store nothing
+                 "contract_present":[],"contract_absent":[]}
+            if t and t in cols:
+                ent["exists"]=True; ent["columns"]=colcount.get(t)
+                have=cols[t]
+                ent["contract_present"]=[f for f in CONTRACT_FIELDS if f in have]
+                ent["contract_absent"] =[f for f in CONTRACT_FIELDS if f not in have]
+                try:
+                    cur.execute('SELECT count(*) FROM public."%s"'%t.replace('"',''))
+                    ent["rows"]=cur.fetchone()[0]
+                except Exception:
+                    ent["rows"]=None
+            out["tables"][aid]=ent
+        conn.rollback(); cur.close(); conn.close()
+    except Exception as e:
+        return {"ran":False,"reason":"probe failed: %s"%type(e).__name__}
+    out["applied"]=sorted(out["applied"])
+    return out
+
+# Heads whose migrations are LIVE candidates. Scanning all history instead counts
+# renumbered predecessors (Saṅgam's 1085-1087 became 1088-1090) as unapplied, which
+# inflates the gap with files nobody intends to apply.
+LIVE_HEADS=["origin/main","origin/l3/kshetra-stage3-authorized","origin/sangam/stage3",
+            "origin/l3/gochara-autonomous-wp0-7","HEAD"]
+
+def intree_migrations():
+    """Migration filenames on the current live heads, both directories -> {file: head}."""
+    seen={}
+    for ref in LIVE_HEADS:
+        q=subprocess.run(["git","-C",ROOT,"ls-tree","-r","--name-only",ref,
+                          "platform/migrations","platform/supabase/migrations"],
+                         capture_output=True,text=True)
+        if q.returncode: continue
+        for line in q.stdout.splitlines():
+            b=os.path.basename(line.strip())
+            if b.endswith(".sql") and re.match(r"^\d+_",b): seen.setdefault(b,ref)
+    return seen
+
 # lifecycle: what the strategy session may assert from evidence alone
 def _vt(v):
     try: return tuple(int(x) for x in str(v).split("."))
@@ -215,8 +305,9 @@ UPSTREAM_ASSUMPTION = ("Native ruling 2026-09-24: L0/L1/L2 assets are ASSUMED el
 READY_FOR_HANDOFF={"BRIEF_FINAL"}
 DONE={"ELEVATED"}
 
-def scan():
+def scan(env_file=None, do_probe=True):
     intra,ext,extra = seed_edges()
+    db = probe_db([a[1] for a in ASSETS], env_file) if do_probe else {"ran":False,"reason":"disabled"}
     order,depth,cycle = topo(intra) if intra else ([],{},[])
     dag_rank={a:i for i,a in enumerate([x for x in order if x in IDS],1)}
     ev,bad = ledger()
@@ -247,6 +338,7 @@ def scan():
             "score":sum(cells.values()),"total":len(cells),
             "dag":dag_rank.get(aid,999),"depth":depth.get(aid,0),
             "deps":intra.get(aid,[]),"ext_deps":ext.get(aid,[]),
+            "db": db.get("tables",{}).get(aid),
             "state":state,"why":why,"events":ev.get(aid,[]),
             "active": bool(ev.get(aid)) and ev[aid][-1]["event"] in OPENING,
             "sop_stage": SOP_STAGE.get(ev[aid][-1]["event"]) if ev.get(aid) else None,
@@ -262,20 +354,30 @@ def scan():
                     "wait on "+", ".join(blockers) if blockers else "—")
     assets.sort(key=lambda a:(a["dag"],a["n"]))
     cov={c["key"]:sum(1 for a in assets if a["cells"][c["key"]]) for c in crit}
+    unapplied=[]
+    if db.get("ran"):
+        ap=set(db.get("applied") or [])
+        for fn,head in sorted(intree_migrations().items()):
+            if fn not in ap: unapplied.append({"file":fn,"head":head.replace("origin/","")})
     now=[{"id":a["id"],"stage":a["sop_stage"],"since":a["last_event_ts"],"dag":a["dag"]}
          for a in assets if a["active"]]
     return {"generated":datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
         "now_processing":now,"upstream_assumption":UPSTREAM_ASSUMPTION,
         "criteria":crit,"assets":assets,"coverage":cov,"n_assets":len(assets),
+        "db":{k:v for k,v in db.items() if k!="tables"},
+        "unapplied_migrations":unapplied,"unapplied_count":len(unapplied),
         "cycle":cycle,"untracked_ka_assets":extra,"ledger_bad_lines":bad,
         "ledger_path":os.path.relpath(LEDGER,ROOT),
         "states":collections.Counter(a["state"] for a in assets)}
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--watch",action="store_true")
-    ap.add_argument("--interval",type=int,default=10); a=ap.parse_args()
+    ap.add_argument("--interval",type=int,default=10)
+    ap.add_argument("--env-file",help="file containing DATABASE_URL=... for the read-only probe")
+    ap.add_argument("--no-db",action="store_true",help="skip the production probe")
+    a=ap.parse_args()
     while True:
-        d=scan(); js=json.dumps(d,indent=1,default=str)
+        d=scan(a.env_file, not a.no_db); js=json.dumps(d,indent=1,default=str)
         io.open(OUT,"w").write(js)
         io.open(OUT[:-5]+".js","w").write("window.KALA_DATA="+js+";\nwindow.dispatchEvent(new Event('kala-data'));\n")
         np_=d.get("now_processing") or []
@@ -286,6 +388,18 @@ def main():
         print(f'  ready for handoff (DAG-unblocked): {", ".join(rdy) if rdy else "none"}')
         if d["cycle"]: print("  !! DAG CYCLE:",d["cycle"])
         if d["untracked_ka_assets"]: print("  !! ka_* in seed but untracked:",d["untracked_ka_assets"])
+        if d["db"].get("ran"):
+            dbs=[x.get("db") or {} for x in d["assets"]]
+            svc=sum(1 for x in dbs if x.get("no_table_by_design"))
+            dep=sum(1 for x in dbs if x.get("exists"))
+            miss=[x["id"] for x in d["assets"] if (x.get("db") or {}) and not (x["db"] or {}).get("exists")
+                  and not (x["db"] or {}).get("no_table_by_design")]
+            print(f'  prod probe: {dep} tables live, {svc} service assets (no table by design)'
+                  +(f', MISSING: {", ".join(miss)}' if miss else ', none missing'))
+            print(f'  migrations: applied max {d["db"].get("applied_max")}, '
+                  f'{d["unapplied_count"]} on live heads not applied')
+        else:
+            print(f'  prod probe: NOT RUN — {d["db"].get("reason")}')
         if d["ledger_bad_lines"]: print(f'  !! {d["ledger_bad_lines"]} malformed ledger line(s)')
         if not a.watch: break
         time.sleep(a.interval)
