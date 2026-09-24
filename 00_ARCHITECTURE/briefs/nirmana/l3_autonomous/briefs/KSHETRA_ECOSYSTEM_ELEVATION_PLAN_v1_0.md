@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.14"
+version: "1.15"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.15 (2026-09-24) — inbound reconciliation: ruling 7's L0 side recorded DONE as implemented (no mean derivation; S0 frame decision); sarvatobhadra \"populatable today\" withdrawn on the L0 attempt; PG349/PG353 scale question; §8 gains the native questions and W7-scope notes; refuted claims pointed to KSHETRA_INBOUND_RECONCILIATION_v1_0.md §5."
   - "1.14 (2026-09-24) — NEW RANK 0 above G3, §2 item 00: the field's time axis mixes J2000 knots with birth-relative clip/horizon/decade constants; measured live on the canonical chart (field spans 2000-01-01 … 2100-01-01, not birth … birth+100y; first sixteen years absent). Found by the strategic session's synergy audit (63b5fb429), scoped up and measured here. Fix and detector routed to stage-3 Phase 1 item zero. No ruling changed."
   - "1.13 (2026-09-24) — §7.8: the L0 repair is live in production (verified via the served rules); stamp columns are the sole remaining gate to applied. Stage 3 authorized by native record; stage 4 not opened."
   - "1.12 (2026-09-23) — §7.8 tightened per madhav-fc D-B: today every vedha row is unqualified by construction; the 32/3/6 split is the outcome when the re-citation and producer stamp columns land. No stage, guarantee or ruling changed."
@@ -173,9 +174,9 @@ order of classical weight:**
    Rāhu/Ketu vedha-direction rule for the Sarvatobhadra chakra, a different mechanism — caught by a
    second independent review, Kimi K3 desktop, `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`) but because this specific vedha-pair set is not in the
    served corpus under any citation. "Mis-cited, not unsourced" is true of 35 of the 41 rows; 6 are
-   genuinely unsourced. Sarvatobhadra from `bg_sarvatobhadra_grid` (empty — the vedha-pair construction is
-   in the corpus at `phaladeepika:PG346:C1`–PG352 and is populatable today; the grid's vowel/consonant
-   letter cells are separately OCR-degraded and need the PG345 diagram), laṭṭā from
+   genuinely unsourced. Sarvatobhadra from `bg_sarvatobhadra_grid` (empty — and **not populatable from the prose**: the L0 repair
+   attempted it from PG345–354 verbatim and was blocked, 3/28 asterisms worked, direction unstated, glyphs garbled,
+   schema unable to hold the 9-point set — PR #2727 item 4; this plan's earlier "populatable today" is withdrawn), laṭṭā from
    `bg_phaladeepika_latta` (PG338–339, verifiable), the malefic scale from `bg_vedha_malefic_scale`
    (PG353, verifiable). v1.4's "Phaladīpikā Ch.26 is outside the admitted corpus" is withdrawn: 35 of
    Kshetra's 41 vedha rows are source-*miscited*, not unsourced, and become source-qualified on the L0
@@ -423,7 +424,10 @@ hard to cite precisely is a real cost, not absence.
    and pāda 4 (true — **an author computation on Swiss ephemeris, 0.049° margin (corrected from 0.045°,
    independent review); L1 serves no `RAH_TRUE`, so if the ruling goes true L1 must serve it and these documents
    cease to be its source**, §6a.1(i)). Disposition (b) corrects the *store* — `ephemeris_daily`, migration 624, and `service_probes.py:339-340`'s
-   fail-closed validator — to match, not the reverse: `routers/ephemeris.py:82` and `panchang_engine/planets.py`'s
+   fail-closed validator — to match, not the reverse — **and this is DONE as of 2026-09-24 (L0 repair PR #2727,
+   applied to production, verified live): migration 1076 declares `node_mode='true'`/`epoch_convention='noon_ut'`
+   on all 825,084 rows, migration 1075 adds the enforced degree anchor; no mean column was derived, so Kshetra's
+   S0 owns the TRUE-transit/MEAN-natal frame decision (prompt v1.5 §2)**: `routers/ephemeris.py:82` and `panchang_engine/planets.py`'s
    assertion-guarded Phase-4B MEAN_NODE mandate independently re-verify as already correct and should not be
    touched (a second independent review, Kimi K3 desktop, sharpened this from the first review's more general "reconcile
    the two served declarations" — see `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`). **Anchor (§N.8, verified by arithmetic — Kimi C-1, sharpened by madhav-fc, reproduced here):** migration 624's forensic anchor is sign-level (`expected_mean_node_rahu_sign: 2`), and at the forensic instant the MEAN node (49.033044°) and the TRUE node (50.049248°) share sign 2 (Vṛṣabha) *and* nakṣatra 4 (Rohiṇī), differing only in pāda — so the anchor **cannot** detect the very mean/true slip it guards: a detector that provably cannot fail. Disposition (b)'s L0 work therefore includes a **degree-level anchor** (expected mean-node longitude 49.033° ± an arcsecond-scale tolerance at JD 2445735.717361) before the declaration can be called verified.
@@ -439,8 +443,7 @@ hard to cite precisely is a real cost, not absence.
    transpositions of rows 179/33 by origin, but their `primary_house` is the text's; the 1.9 "dedup" wording
    is withdrawn — spec `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md`) pending the L0 owner; `unqualified` for 6
    Rāhu/Ketu rows (ids 187,188,189,196,197,198), genuinely unsourced for this mechanism; `applied` for laṭṭā and the
-   malefic scale; `unqualified` for sarvatobhadra** (buildable from prose for its vedha-pair cells,
-   not its letter cells). G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
+   malefic scale; `unqualified` for sarvatobhadra** (NOT buildable from prose — the L0 attempt was blocked on primary-source grounds; no prose-only remedy; the malefic scale served is PG353's battle-context scale, distinct from PG349's transit scale — which one a transit covariate reads is put to the native in the S1 packet). G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
 9. **G3 — which suppression semantics is the contract:** route-scoped SM-R-7 Option B (the
    documented contract; the reviewer's and this plan's recommendation) or chart-wide (the live
    stored field)? And is the field ≡ null ≡ projection byte-equality test a precondition for serving
@@ -453,6 +456,16 @@ hard to cite precisely is a real cost, not absence.
     **Outcome semantics for the judge and for L5** (mirrored from Sangam's close, `SANGAM_RULING_SHEET_v1_0.md §CLOSE` D-2/D-3 @ 3f62f3468 — the author's decisions under native delegation, verified at source; §6a): an outcome the native adjudicates `ambiguous` is **censored, not scored** — excluded from n, with the censoring rate published per stratum and a **20% ceiling** above which that stratum's claim is blocked regardless of n; the evaluation population is **consenting persons with real outcome records only** (today the two production charts) — synthetic and test charts may exercise the machinery but carry `evaluation_eligible = false` and never enter n. The reason is the adjudicator, not a shared writer: an outcome adjudicated `ambiguous` means the same thing to the native whichever asset produced the window, and the native adjudicates in both streams, so divergent semantics would make the *same* human judgement count differently by accident of asset. (Measured 2026-09-23 across every `mi_*.py`: **no L5 writer consumes both streams** — `mi_bhara` declares `ka_kshetra` (:122-130), `mi_adhilepa` references `ka_sangam` (:305), none both; my earlier "one L5 loop (`mi_bhara`) scores both streams" sentence was false and is withdrawn. The reasoning is this packet's own, not on Sangam's sheet.) Ruling 10 carries this.
 
 ## §8 — Not settled, and non-claims
+
+**Added 2026-09-24 by the inbound reconciliation (`KSHETRA_INBOUND_RECONCILIATION_v1_0.md` §4) — questions only the native can answer, none
+blocking stage 3's first four phases:** B8-7 (adopt R-6's four-way separation as columns, or map Kshetra's four
+λ terms to it); B-2 (does "Accepted N/22" count a partially-elevated Kshetra); B-4 (shared knot grid vs
+per-class grids — cost against cross-class comparability, before P1 is funded); B8-4 (`independence_group`
+jsonb shape); B8-6 (one contact producer); PG349 vs PG353 for the transit malefic scale. **Recorded for the W7
+packet, not stage 3:** stage 8's per-view substep (1,210 s) exceeds `_WRITER_TIMEOUT_SECONDS` (F-KSHETRA-6); the
+six-view stage-8 grain is orphaned by the product definition (T1 orphan item 2). **Refuted upstream claims** are
+listed in that artifact's §5 — notably "the hazard field is flat" (8,417,290 canonical rows with γ ≠ 0).
+
 
 Q1 itself (the ablation); `weakest_link` and A1 (never run — DB unreachable); `refinement_depth`
 dormant-vs-disabled; late-worker publication protection; 25 vs 27 classes; the crash cause;

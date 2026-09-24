@@ -1,7 +1,7 @@
 ---
 artifact: KSHETRA_L0_VEDHA_ROW_FIXES
 canonical_id: KSHETRA_L0_VEDHA_ROW_FIXES
-version: "1.3"
+version: "1.4"
 status: APPLIED_IN_PRODUCTION  # verified live 2026-09-24 via ref_transit_rules_get: §2 Venus 35/44/45 → 1/5/11 (page-cited PG323:C1); §3 Mercury 8→1 as id 569; §4 exceptions declared in rule_notes as a precision limit; §5 node rows stamped UNSOURCED and retained (B.10, N-14). Applied by the L0 repair (PR #2727, open at the time of writing). Nineteen non-vedha rows outside this spec's predicate still carry the refuted citation — correctly untouched. §6 (producer stamp columns) remains Gochara WP9
 date: 2026-09-23
 routed_to: >
@@ -96,5 +96,4 @@ Kshetra's S1-ingestion packet can admit any vedha row as `applied`; until it lan
   detect the slip (MEAN 49.033° and TRUE 50.049° share sign 2 and nakṣatra 4; only the pāda differs), so it
   is a detector that provably cannot fail (§N.8); the L0 work adds expected mean-node longitude 49.033° ±
   arcseconds at JD 2445735.717361.
-- The sarvatobhadra grid population from PG346–352 prose — migration 526's partition invariant,
-  L0 owner; vedha-pair partitions transcribable today, letter cells need the PG345 diagram.
+- The sarvatobhadra grid — **attempted by the L0 repair (PR #2727 item 4) and conclusively BLOCKED**: PG345–354 read verbatim; 3/28 asterisms worked; traversal direction never stated; letter glyphs garbled; PG353's 112-letter table mangled; the schema cannot hold the 9-point vedha set. This spec's earlier "vedha-pair partitions transcribable today" is withdrawn; the grid stays empty and the kind stays `unqualified` (ADJUDICATION-11).
