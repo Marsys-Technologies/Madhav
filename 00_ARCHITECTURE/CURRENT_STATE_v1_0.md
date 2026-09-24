@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.79
+version: 6.80
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.80 (2026-09-24, L3-GOCHARA-WP0-7-REMAINDER-20260924): §2 banner added for the L3
+    gochara WP0-7 remainder campaign close — remainder brief §4–§8 complete and §7.A (WP10
+    cutover runbook as runnable artifacts + disposable-DB rehearsal) landed on branch
+    l3/gochara-autonomous-wp0-7 (PR #2731, open); WP10 production tranches remain blocked on
+    the brief's false tranche flags; the Kṣetra rulings 7/8/9 reviewer is still the native's
+    to name; root CLAUDECODE_BRIEF.md stays ACTIVE (L3 data-plane elevation close condition
+    not met).
   - v6.79 (2026-09-20, L3 KĀLA AUTONOMOUS CONDUCTOR, Packet B3, DP-SD-021): New top banner records
     the native-authorized platform split — L3 Kāla data-plane elevation moves to Claude Code
     (integration branch codex/madhav-l3-claude-code) while Pūrṇa Anveṣaṇa remains in Codex — with a
@@ -5939,6 +5946,25 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟣 **L3 GOCHARA WP0–7 REMAINDER CAMPAIGN — CLOSE (2026-09-24, session
+> L3-GOCHARA-WP0-7-REMAINDER-20260924).** The gochara remainder brief
+> (`GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md`) is fully drained on branch
+> `l3/gochara-autonomous-wp0-7` (worktree `/Users/Dev/madhav-l3/gochara-wp0-7`, **PR #2731
+> open against `main`, unmerged**): §4 point-1 residuals (N-17, N-22/N-13, M-6, M-1 battery),
+> §5 WP9 overlays, §6 review-request notes, §7.A WP10 cutover runbook prepared as runnable
+> artifacts (`platform/python-sidecar/scripts/kala_gochara_cutover/`, steps 0–10 + evidence
+> templates + per-tranche production guard) and rehearsed on a disposable DB
+> (`test_wp10_cutover.py` 14/14; full `tests/l3/gochara/` battery **266 passed**), §8 loose
+> ends (G-9/G-10 migrations 1085/1086 disposable-DB-only). Authoritative account:
+> `briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md` +
+> `WP10_REHEARSAL_v1_0.md`. **Boundary:** WP10 production tranches 1/2 NOT RUN —
+> `PRODUCTION_TRANCHE_1_AUTHORIZED` / `_2_` remain `false` in the brief frontmatter; every
+> migration landed is disposable-DB-only; no shared or production database was written. The
+> **Kṣetra rulings 7/8/9 reviewer remains the native's to name** (§8.6 note-only). Root
+> `CLAUDECODE_BRIEF.md` stays `status: ACTIVE` — the L3 data-plane elevation close condition
+> (22/22 accepted or native-ruled partial close) is not met while the WP10 tranches are
+> flag-blocked.
+
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
 > three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
@@ -9394,9 +9420,9 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
+  last_session_id: L3-GOCHARA-WP0-7-REMAINDER-20260924
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 is at a metadata-only final source candidate. CI and review refutations for stale census, post-release sequencing, weighted starvation, nested pagination and log schema are repaired. Exact pre-release head b32974cbe is approved with no HIGH/MEDIUM findings; corrective lease released at 80d47c44d. Fresh exact-head CI and independent final reviews remain, with no later source mutation. No merge, deployment, shared migration, production, user or empirical acceptance claim."
+  last_session_drift_verdict: "L3 gochara WP0-7 remainder campaign closed: remainder brief §4–§8 complete and §7.A (WP10 cutover runbook as runnable artifacts + disposable-DB rehearsal, tests/l3/gochara 266 passed) landed on l3/gochara-autonomous-wp0-7 (PR #2731 open). WP10 production tranches remain blocked on the brief's false tranche flags; Kṣetra rulings 7/8/9 reviewer remains the native's to name; CLAUDECODE_BRIEF.md stays ACTIVE. No merge, deployment, shared/production DB write, or acceptance claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md

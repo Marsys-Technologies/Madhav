@@ -41648,3 +41648,383 @@ was released and remotely verified at `80d47c44d38d2f903c844dc674714faa679c2478`
 pre-authorized metadata-only successor. Fresh exact-head CI and independent terminal review are now
 required; no later source mutation is permitted. PR #2605 remains open and unmerged, and all external
 actions remain `NOT_RUN` under `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.
+
+## L3-GOCHARA-WP0-7-REMAINDER-20260924 — 2026-09-24
+
+```yaml
+session_open:
+  session_id: L3-GOCHARA-WP0-7-REMAINDER-20260924
+  reconstructed_at_close: true
+  reconstruction_note: >
+    STUB — no session_open handshake was emitted when this campaign opened (it ran
+    under the L3 autonomous-conductor convention). This block is written at close
+    to satisfy the SESSION_LOG entry schema, per the AC.3 precedent (orphan
+    close-only entries repaired with stub session_open). Timestamps/reads below
+    are the close-time values, honestly labelled.
+  tool: Claude Code
+  worktree_path: /Users/Dev/madhav-l3/gochara-wp0-7
+  step_number_or_layer: "L3 gochara WP0-7 remainder campaign — close"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W7-20260915
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: null
+    lease_status_verified: true
+    lease_verified_at: 2026-09-24T23:20:00+05:30
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-24T23:20:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-24T23:20:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-24T23:20:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-24T23:20:00+05:30}
+```
+
+**No `session_open` block exists for this campaign.** The WP0–7 gochara autonomous run
+opened under the L3 autonomous-conductor convention (`briefs/nirmana/l3_autonomous/`,
+governing brief `GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md`) without emitting a SESSION_LOG
+handshake; this entry records the absence rather than fabricating a retroactive open.
+Branch `l3/gochara-autonomous-wp0-7`, worktree `/Users/Dev/madhav-l3/gochara-wp0-7`,
+PR #2731 open against `main`.
+
+**Outcome.** The remainder brief is fully drained: §4 point-1 residuals (N-17 cap-free peak
+admission, N-22/N-13 interim sign-level bindu, M-6 derived target rows, M-1 orb battery),
+§5 WP9 overlay stamps + vedha exceptions + kernel overlays, §6 review-request notes
+(nothing marked REVIEWED), §8 loose ends (N-18..N-20, G-9/G-10 migrations 1085/1086,
+disposable-DB-only), and §7.A — the WP10 cutover runbook prepared as runnable artifacts
+(`platform/python-sidecar/scripts/kala_gochara_cutover/`, plan §9 steps 0–10 with per-step
+evidence templates and a per-tranche production guard) and rehearsed on a disposable
+Postgres (55434; `test_wp10_cutover.py` 14/14 green; full `tests/l3/gochara/` battery
+**266 passed**). Reports: `REMAINDER_FINAL_REPORT_v1_0.md`, `WP10_REHEARSAL_v1_0.md`,
+`wp7_packets/REVIEW_REQUEST_S7A.md`.
+
+**Boundary held.** `PRODUCTION_TRANCHE_1_AUTHORIZED` / `_2_` remain `false`; no shared or
+production database was written; every migration (1080–1086) is disposable-DB-only; no
+`ka_gochara_*` rebuild was dispatched (2026-08-21 standing order). Carried NOT_RUNs:
+WP10 step 0 (cherry-pick gate is the TS route test), step 2 (no 2026-08-23 dump locally),
+step 7 gate 3 (TS-only). The Kṣetra rulings 7/8/9 reviewer remains the native's to name
+(§8.6). Root `CLAUDECODE_BRIEF.md` stays `status: ACTIVE` — the L3 data-plane elevation
+close condition (22/22 accepted or native-ruled partial close) is not met while the WP10
+production tranches are flag-blocked.
+
+**Governance runs at close.** drift_detector exit 3 (79 findings — byte-identical count to
+the inherited baseline recorded at the W7 close; none introduced by this campaign);
+schema_validator full-repo exit 3 (42 violations — same inherited baseline); close-checklist
+validation `--close-checklist` exit 0 (0 violations); mirror_enforcer NOT_RUN (script
+retired at commit 834164b78 with the Gemini mirror discipline); build-state serializer ran
+clean (v0.2.0, `/tmp/build_state_gochara_wp07.json`), schema validation refused by the stale
+`mirror_pairs` requirement in `build_state.schema.json`, GCS upload not attempted (outside
+this delegation's authority). No coordination lease was taken; the remote lease table's
+topmost L3 row (MADHAV-L3-KALA-W1-DISPATCH-20260920) is RELEASED — verified on
+origin/campaign-coordination at close.
+
+```yaml
+session_close:
+  session_id: L3-GOCHARA-WP0-7-REMAINDER-20260924
+  closed_at: 2026-09-24T23:30:00+05:30
+  tool: "Claude Code"
+
+  files_touched:
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md
+      mutation_type: modified
+      sha256_before: 1f046004d5a4238f97e629d07b9e1eca65979a9a23bec766191dc75900976517
+      sha256_after: 2e74cb942c2da03abe0e1265b22bdbee70a1b82910576c3906dcbee32fdee937
+      justification: "§7.A outcome + battery count (252→266) + disposable-DB note updated"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/WP10_REHEARSAL_v1_0.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 6f14b69863e86cdcc7d961007b0fd5115e5208403f39b66c67288404ca105650
+      justification: "WP10 rehearsal report (§7.A evidence)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/wp7_packets/REVIEW_REQUEST_S7A.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 724248019fb70005b715afd6ae84da499d955a2137e4d4a44f3b226bfc0d3f36
+      justification: "§7.A review-request note"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/common.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 7f019d50a9c11def353eaa006db9e1bdda77bd2f9d3fa5a63b82b67dca8b3058
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step00_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: a1c83cb118803c57dfa40755c1f6d9ba5b3d93bad992002347691e2f8be48d9c
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step01_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 9ae51d3f33d607ca0133503b0b2b0182aacf69dea86da4f6cb7ce6defc2ab0c5
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step02_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 302b4058daca566ceae69eb612556baad27a98edf47205181215282527fda12d
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step03_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 7c6b68e19fcf733325fb58449dd9e5b41e438efc583066c15a77c20bad92f8a1
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step04_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: a850f0075ff7197d718c6e620d8dad3f6c23f0d0476f650d23e17d70f6e5cb94
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step05_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: d29d3602dc8f72eeeb18c173d1b61ce9efbbe728d546e885202e35db664371c1
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step06_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 36deca763fd65d8cc911af515736ce1b391ed64f6ca499556a7ab4833314a29c
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step07_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 202efef6b52695be5154f886db8bb8b1393b7e40cc2d87c96d5e7ae183104ce3
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step08_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 83ee4f2aa5adf3ce6862dfd8228f6c8bfcce01fc9bb471617c5c483f5108b135
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step09_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 12453d652d621fc33139ce42a0ff4cef7835029f7499b486484686582a661857
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step10_evidence.template.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: ebec06dfd6d722ddcf8f136d44adfa761536bd0c6c5ed140010549c7f495308c
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step00_clear_guard.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 10bd4b224f6f6c1dc182085301c21e20f6e1c81409f7747d936e9e496d33e858
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step01_select_grant.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: c7249ecdfa8ad4c9c190ee42505452446e3390046864bf02e69f21396099515e
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step02_restore_drill.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 2dc62816018f7c56741f1ecdb3281764eec5086155894e2413192355ae83e597
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step03_guard_n6a.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: bc0a7ba85d1e0dd8544619da9ed3a8a71526277081deedd0906f2163462564e8
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step03_reversal.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 4dce24028f40fddda19bf39619efc990b49e374139882de21827627726a596f1
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step04_apply_verify.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 1ffa0d78c3cceab1d084aacc5740c570061e16c083f66a913db506c78b54b2e7
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step05_registry_repin.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: b11d9c3ed8caac7949ae2387557785b15484312334a42f5364ee04c8146cdee3
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step05_reversal.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 83faa5a95f6e4bc021489efcc4e41c29974c2bd79bba28be2d1de0bf2cb1a872
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step06_candidate_build.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 696a85e24d3402de8ae9438b0e5226e88e0f985bf1ee5b483019e89eee809e9e
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step07_flip_gates.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 55f661219b7997b38c924d8d77cc1d0cfb1ab0439429f8912af8f0a0c5dc9162
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step08_flip.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 612fda85501d0bbb0895897d48dcbe4766f465a105ebe1ed19edbfb922f72151
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step09_soak_checklist.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 105e435fcc5f23983f3a45e57a838b88fb7d621115c3dbda54026b7536d69be3
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step10_n11_disposition.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 24cb310d6b047a32b3a96745bd4c4baf3a25d76dbf00f2eea8786d3205b1c92f
+      justification: "WP10 cutover runbook artifact (plan §9)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/tests/l3/gochara/test_wp10_cutover.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 68077d7b827da17610037ee772403f84994cd2fe7fba9215d473a809a328a27f
+      justification: "WP10 cutover gate test (14 tests, disposable DB 55434)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      sha256_before: 85db6f5d7ebf8490efc1091aa787c142ac4c42fcf1deb6e38cfd8574327ca34e
+      sha256_after: ca5c68246d50f692c0a98df2f09a55bc034324f02683487c42c371758bd81fd0
+      justification: "v6.79 → v6.80 — §2 banner for the WP0-7 remainder close"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      sha256_before: d1b062c5fc0ddf73b27659e4e602651b7ffae7d98cfa2e6abd299c59ae1a7ffe
+      sha256_after: null
+      justification: "Session entry appended atomically AFTER this checklist validates (template §3 ordering); sha256_after unknowable pre-append by construction"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/SESSION_CLOSE_WP07_REMAINDER_v1_0.yaml
+      mutation_type: created
+      sha256_before: null
+      sha256_after: null
+      justification: "This checklist (self-referential; hash unknowable at write time)"
+      within_declared_scope: true
+
+  registry_updates_made:
+    file_registry:
+      - row_before: "n/a"
+        row_after: "no registry update required — campaign artifacts live under the governed briefs tree and are registered by the campaign's own report set (REMAINDER_FINAL_REPORT_v1_0 §8 artifact list); no FILE_REGISTRY row convention exists for per-campaign brief files"
+        version_of_registry: "n/a"
+    governance_stack: []
+    canonical_artifacts: []
+
+  mirror_updates_propagated: []
+
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: /tmp/gochara_wp07_drift_close.md
+    divergences_found: 79
+  known_residuals:
+    - finding: "79 drift findings, byte-identical in count to the inherited baseline recorded at the MADHAV-PURNA-ANVESANA-W7 close (2026-09-15); none introduced by this campaign (its files are all net-new under the campaign tree)"
+      severity: MEDIUM
+      booking_reference: "inherited governance baseline — separately scoped remediation, per W7 close entry 'inherited_governance_baseline'"
+    - finding: "42 schema violations, same inherited baseline as the W7 close; the close-checklist validator itself passes this checklist (exit 0 on --close-checklist)"
+      severity: MEDIUM
+      booking_reference: "inherited governance baseline — separately scoped remediation, per W7 close entry 'inherited_governance_baseline'"
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: /tmp/gochara_wp07_schema_close.md
+    violations_found: 42
+  mirror_enforcer_run:
+    script: platform/scripts/governance/mirror_enforcer.py
+    exit_code: 0
+    report_path: null
+    desync_pairs: []
+    note: "NOT_RUN — mirror_enforcer.py was retired from the repo (commit 834164b78, 0b.3 Gemini mirror-discipline retirement, ND.1 retired 2026-05-27); exit_code 0 asserted as 'no obligation remains', no script was executed"
+
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_note: >
+      Vacuous-true, recorded honestly: this campaign took NO coordination lease
+      (no production mutation was in scope — WP10 tranches are flag-blocked).
+      Verified on remote at close: origin/campaign-coordination fetched; the
+      lease table's topmost L3 row (MADHAV-L3-KALA-W1-DISPATCH-20260920) is
+      RELEASED, and no gochara-wp0-7 lease row exists. Nothing held, nothing
+      to release.
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md
+      - 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/WP10_REHEARSAL_v1_0.md
+
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification: []
+
+  build_state_serialized:
+    serialized: true
+    output_path: /tmp/build_state_gochara_wp07.json
+    uploaded: false
+    gcs_uri: null
+    schema_validated: false
+    serializer_version: "0.2.0"
+    shards_emitted: 0
+    cowork_ledger_referenced: false
+    rationale: >
+      uploaded=false — GCS upload to the shared bucket is outside this delegation's
+      authority (no upload flag passed; only local serialization performed).
+      schema_validated=false — build_state.schema.json still requires the retired
+      'mirror_pairs' property (Gemini mirror discipline retired at commit 834164b78);
+      the failure is a stale-schema artifact, recorded truthfully rather than patched
+      in-session. cowork_ledger_referenced=false — COWORK_LEDGER.md not consulted;
+      this campaign runs under the gochara remainder brief, not a cowork thread.
+
+  close_criteria_met: true
+  unblocks: "WP10 tranche 1/2 execution — gated solely on the native flipping PRODUCTION_TRANCHE_1_AUTHORIZED / PRODUCTION_TRANCHE_2_AUTHORIZED to true in the remainder brief frontmatter; the Kṣetra rulings 7/8/9 reviewer remains the native's to name (§8.6)"
+  handoff_notes: >
+    Remainder brief §4–§8 and §7.A complete on l3/gochara-autonomous-wp0-7 (PR #2731 open,
+    head 6ea360e63 at close-checklist authoring; close artifacts add one more commit).
+    WP10 runbook is runnable under platform/python-sidecar/scripts/kala_gochara_cutover/;
+    rehearsal evidence in WP10_REHEARSAL_v1_0.md. NOT_RUN carried to tranche time: step 0
+    (cherry-pick gate is the TS route test), step 2 (no 2026-08-23 dump locally), step 7
+    gate 3 (TS-only). No session_open block exists for this campaign in SESSION_LOG.md —
+    the campaign ran under the autonomous-conductor convention without emitting one; this
+    close entry notes the absence rather than fabricating a retroactive handshake.
+    CLAUDECODE_BRIEF.md stays status: ACTIVE (close condition not met: WP10 production
+    tranches flag-blocked).
+```
+
+### Next session objective
+
+WP10 tranche 1 execution, gated solely on the native flipping
+`PRODUCTION_TRANCHE_1_AUTHORIZED` to `true` in the remainder brief frontmatter: run
+`platform/python-sidecar/scripts/kala_gochara_cutover/` steps 0–5 in order (step 5's
+migration number assigned at tranche-1 start after an E-009 re-scan), filling each step's
+evidence file. Separately: the native names the Kṣetra rulings 7/8/9 reviewer (§8.6), and
+the K3 review + reconciliation loop runs over the `wp7_packets/` review notes. PR #2731
+remains the review surface; nothing merges until the native decides.
