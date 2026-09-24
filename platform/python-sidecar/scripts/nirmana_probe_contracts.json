@@ -18,6 +18,8 @@
     "forensic_jd": 2445735.717361111,
     "expected_sun_sign": 10,
     "expected_mean_node_rahu_sign": 2,
+    "expected_mean_node_rahu_longitude_deg": 49.033044,
+    "mean_node_longitude_tolerance_arcsec": 10,
     "ayanamsha": "lahiri",
     "node_mode": "mean",
     "allowed_ephemeris_backends": ["swiss_ephemeris_file"],

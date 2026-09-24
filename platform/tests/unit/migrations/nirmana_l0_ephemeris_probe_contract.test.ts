@@ -49,6 +49,30 @@ if (url) {
   }
 }
 
+describe('bg_ephemeris_engine probe contract — one contract, no drifting copies', () => {
+  // Migration 1075 added the degree-level anchor to the registry row and made the two
+  // fields REQUIRED by the probe, but the sidecar release smoke reads a separate static
+  // copy (nirmana_probe_contracts.json) and the seed carried a third. Both stayed on the
+  // old contract, so the candidate probe came back not-GREEN and blocked every deploy.
+  // toMatchObject above is a subset check and cannot see a missing field; this is exact.
+  const releaseSmoke = JSON.parse(fs.readFileSync(
+    path.resolve(process.cwd(), 'python-sidecar/scripts/nirmana_probe_contracts.json'),
+    'utf8',
+  )) as Record<string, unknown>
+
+  it('seed health_probe is exactly the release-smoke contract', () => {
+    const seed = ASSETS.find(asset => asset.asset_id === 'bg_ephemeris_engine')?.health_probe
+    expect(seed).toEqual(releaseSmoke.bg_ephemeris_engine)
+  })
+
+  it('carries the migration-1075 degree-level anchor', () => {
+    expect(releaseSmoke.bg_ephemeris_engine).toMatchObject({
+      expected_mean_node_rahu_longitude_deg: 49.033044,
+      mean_node_longitude_tolerance_arcsec: 10,
+    })
+  })
+})
+
 describe.skipIf(!url)('migration 624 — real PostgreSQL', () => {
   const legacyDescription = 'Swiss Ephemeris (pyswisseph) with DE441 JPL file providing sidereal planetary positions from 9999 BCE to 9999 CE. Foundation for all computational Jyotish in MARSYS-JIS. Lahiri ayanamsha canonical. MEAN_NODE convention: Rahu (ascending node).'
   const legacyProbe = {

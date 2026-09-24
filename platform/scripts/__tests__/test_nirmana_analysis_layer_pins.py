@@ -16,8 +16,8 @@ assert SPEC and SPEC.loader
 pins_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pins_module)
 
-CURRENT_PINS = json.loads(pins_module.PINS_PATH.read_text(encoding="utf-8"))
-CURRENT_INVENTORY = json.loads(
+LIVE_PINS = json.loads(pins_module.PINS_PATH.read_text(encoding="utf-8"))
+LIVE_INVENTORY = json.loads(
     pins_module.WRITER_DIGESTS_PATH.read_text(encoding="utf-8")
 )["writers"]
 
@@ -40,6 +40,34 @@ def replace_layer_writers(
     }
     result.update(writers)
     return result
+
+
+# LIVE_* is the committed document, which now carries the L0-repair successors
+# (PR #2727, decision NATIVE-2026-09-24-L0-REPAIR-REPIN) on top of the chain that
+# was delivered to protected main. Most tests below assert facts about THAT
+# delivered chain, so CURRENT_* is the delivered chain: the live document with the
+# three L0-repair successors rewound, and the inventory replaced by the archived
+# predecessor slices. The tests at the end of the file assert the repair
+# successors themselves against LIVE_*. This follows the file's own convention
+# (see PRE_KSHETRA_PINS): rewind, do not weaken.
+#
+# CAUTION - a rewound document is only a valid `check()` input against a protected
+# baseline that PREDATES the repair. Once the repair is on main, every baseline
+# carries the repair successors, and checking the rewound document against it
+# correctly reports "protected baseline generation ... is absent". So anything that
+# asks "does the committed document verify?" must use LIVE_*, never CURRENT_*; the
+# rewound CURRENT_* is for assertions ABOUT the earlier chain (indexes, prior bytes,
+# and mutation tests that assert on failure text). This bit once: after PR #2727
+# merged, two tests below called check_current() with the rewound default and failed
+# every PR entering the merge queue while the tool's own --check stayed green.
+REPAIR_LAYERS = ("L0", "L2", "L3")
+CURRENT_PINS = LIVE_PINS
+CURRENT_INVENTORY = LIVE_INVENTORY
+for _layer in REPAIR_LAYERS:
+    CURRENT_INVENTORY = replace_layer_writers(
+        CURRENT_INVENTORY, _layer, CURRENT_PINS["history"][_layer][-1]["writer_digests"]
+    )
+    CURRENT_PINS = rewind_layer(CURRENT_PINS, _layer)
 
 
 # Unit fixtures must survive GitHub's squash topology and branch deletion.  The
@@ -88,6 +116,44 @@ def check_current(
         inventory or CURRENT_INVENTORY,
         protected_baseline_commit=baseline,
         delivery_topology=delivery,
+    )
+
+
+def _baseline_carries_live_generations() -> bool:
+    """True when the protected baseline (if any) already carries the live successors."""
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    if not baseline:
+        return True
+    try:
+        baseline_pins = pins_module._pins_at_commit(baseline)
+    except SystemExit:
+        return False
+    return all(
+        baseline_pins.get("layers", {}).get(layer, {}).get("generation_id")
+        == LIVE_PINS["layers"][layer].get("generation_id")
+        for layer in ("L0", "L2", "L3")
+    )
+
+
+def _require_live_document_verifiable() -> None:
+    """Skip, loudly, when the live document cannot be verified from this checkout.
+
+    The one such case: a PR whose base predates the L0-repair successors while its
+    tree already contains them. The successors are then NEW relative to the baseline,
+    so their evidence commits must be dereferenced, and after a squash merge those
+    commits are not ancestors of HEAD. That is not a defect in the pins: the tool's
+    own --check fails for the same reason at that step, and the remedy is to update
+    the branch from main so the protected baseline carries the successors.
+    """
+    if _baseline_carries_live_generations():
+        return
+    source = "7d40f8c706406ee8187eadb5c3930553800a1a4a"
+    if pins_module._commit_is_ancestor_of_head(source):
+        return
+    pytest.skip(
+        "PR base predates the L0-repair successors and their source commit is not an "
+        "ancestor of HEAD (squash delivery): update the branch from main so the "
+        "protected baseline carries them"
     )
 
 
@@ -566,7 +632,8 @@ DP019_SOURCE = "64facb9763d13eece7098b5b24cc03dfb8e3ba81"
 
 
 def test_current_successors_are_exact_and_preserve_prior_bytes() -> None:
-    assert check_current() == []
+    _require_live_document_verifiable()
+    assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
     for layer, expected_delta in (
         ("L1", EXPECTED_L1_SECURITY_DELTA),
         ("L2", EXPECTED_L2_SECURITY_DELTA),
@@ -1034,9 +1101,291 @@ def test_every_commit_dereferenced_by_check_is_an_ancestor_of_head(monkeypatch) 
         real_require(commit, label)
 
     monkeypatch.setattr(pins_module, "_require_reachable_commit", record)
-    assert check_current() == []
+    _require_live_document_verifiable()
+    assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
     assert dereferenced
     assert all(pins_module._commit_is_ancestor_of_head(commit) for commit in dereferenced)
     assert "da498ebd980cac87796eceb889c7f1c42cfb952b" not in dereferenced
     assert "7f21f27b14a7909424591a530096dc2f5d6e2b13" not in dereferenced
     assert "d2369b888e760e5b8d693328f00683877cbd5f28" not in dereferenced
+
+
+# ── Squash-delivery admission (L0 repair, 2026-09) ────────────────────────────
+#
+# check() could always *verify* successors whose evidence commits were severed
+# from ancestry by GitHub's squash delivery, but admit_successor() and
+# validate_review_artifacts() could not *admit* one: every artifact commit had to
+# be an ancestor of HEAD, and 5142109f7f2... never is for a branch cut from the
+# squashed main. These tests pin the narrow fallback added for that and, just as
+# importantly, everything it must NOT relax.
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.strict: list[str] = []
+        self.squash: list[tuple[str, str]] = []
+
+
+def _record_validators(monkeypatch, recorder: _Recorder, *, reachable: bool) -> None:
+    monkeypatch.setattr(pins_module, "_commit_is_ancestor_of_head", lambda commit: reachable)
+    monkeypatch.setattr(
+        pins_module,
+        "validate_artifact_binding",
+        lambda artifact, label: recorder.strict.append(label),
+    )
+    monkeypatch.setattr(
+        pins_module,
+        "validate_protected_squash_artifact_binding",
+        lambda artifact, label, baseline, **_: recorder.squash.append((label, baseline)),
+    )
+
+
+@pytest.mark.parametrize("layer", ["L0", "L2", "L3"])
+def test_unreachable_review_artifacts_use_squash_path_only_with_a_baseline(
+    monkeypatch, layer: str
+) -> None:
+    artifacts = copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS[layer])
+    baseline = "a" * 40
+
+    with_baseline = _Recorder()
+    _record_validators(monkeypatch, with_baseline, reachable=False)
+    pins_module.validate_review_artifacts(layer, artifacts, "b" * 40, baseline)
+    assert len(with_baseline.squash) == len(artifacts)
+    assert all(b == baseline for _, b in with_baseline.squash)
+    assert with_baseline.strict == []
+
+    # No baseline: behaviour is exactly the old strict one, never the fallback.
+    without = _Recorder()
+    _record_validators(monkeypatch, without, reachable=False)
+    pins_module.validate_review_artifacts(layer, artifacts, "b" * 40)
+    assert without.squash == []
+    assert len(without.strict) == len(artifacts)
+
+    # A baseline does not divert an artifact that IS reachable.
+    reachable = _Recorder()
+    _record_validators(monkeypatch, reachable, reachable=True)
+    pins_module.validate_review_artifacts(layer, artifacts, "b" * 40, baseline)
+    assert reachable.squash == []
+    assert len(reachable.strict) == len(artifacts)
+
+
+def test_squash_fallback_does_not_relax_the_required_artifact_set(monkeypatch) -> None:
+    baseline = "a" * 40
+    _record_validators(monkeypatch, _Recorder(), reachable=False)
+    tampered = copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L2"])
+    tampered[0]["sha256"] = "0" * 64
+    with pytest.raises(SystemExit, match="do not match the required acceptance artifacts"):
+        pins_module.validate_review_artifacts("L2", tampered, "b" * 40, baseline)
+    with pytest.raises(SystemExit, match="do not match the required acceptance artifacts"):
+        pins_module.validate_review_artifacts("L2", tampered[:1], "b" * 40, baseline)
+
+
+def test_squash_fallback_rejects_an_artifact_the_baseline_does_not_carry(monkeypatch) -> None:
+    def refuse(artifact, label, baseline, **_):
+        raise SystemExit(f"{label} is not an exact protected one-parent delivery")
+
+    monkeypatch.setattr(pins_module, "_commit_is_ancestor_of_head", lambda commit: False)
+    monkeypatch.setattr(pins_module, "validate_protected_squash_artifact_binding", refuse)
+    with pytest.raises(SystemExit, match="not an exact protected one-parent delivery"):
+        pins_module.validate_review_artifacts(
+            "L0",
+            copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L0"]),
+            "b" * 40,
+            "a" * 40,
+        )
+
+
+def _definition_fixture(monkeypatch, *, baseline_bindings):
+    built: list[str] = []
+
+    def fake_build(snapshot: str):
+        built.append(snapshot)
+        raise SystemExit("re-derived from snapshot")
+
+    monkeypatch.setattr(pins_module, "_require_reachable_commit", lambda commit, label: None)
+    monkeypatch.setattr(
+        pins_module, "_pins_at_commit", lambda commit: {"definition_bindings": baseline_bindings}
+    )
+    monkeypatch.setattr(pins_module, "build_definition_bindings", fake_build)
+    return built
+
+
+def test_definition_bindings_are_carried_only_when_the_baseline_carries_them(monkeypatch) -> None:
+    existing = copy.deepcopy(CURRENT_PINS["definition_bindings"])
+    label = existing["L0"]["snapshot_commit"]
+    baseline = "a" * 40
+
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    assert pins_module._resolve_definition_bindings(existing, label, baseline) == existing
+    assert built == []  # carried verbatim, never re-derived from the severed commit
+
+    # No baseline -> the old strict re-derivation, which refuses an unreachable commit.
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(existing, label, None)
+    assert built == [label]
+
+    # Bindings the baseline does NOT carry (a rewritten membership) are re-derived.
+    rewritten = copy.deepcopy(existing)
+    rewritten["L2"]["membership_sha256"] = "0" * 64
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(rewritten, label, baseline)
+    assert built == [label]
+
+    # A snapshot label that does not match what is recorded is re-derived, not carried.
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(existing, "c" * 40, baseline)
+    assert built == ["c" * 40]
+
+    # A record covering fewer layers than L0-L5 is never carried.
+    partial = {k: v for k, v in existing.items() if k != "L5"}
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(partial))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(partial, label, baseline)
+
+
+def test_admission_refuses_a_candidate_whose_membership_disagrees_with_carried_bindings(
+    monkeypatch,
+) -> None:
+    """The carried bindings are trusted only as evidence, never as an override:
+    admit_successor still re-derives membership and compares it to them."""
+    tampered_definitions = copy.deepcopy(CURRENT_PINS["definition_bindings"])
+    tampered_definitions["L2"]["membership_sha256"] = "0" * 64
+    document = copy.deepcopy(LEGACY_PINS)
+    document["definition_bindings"] = copy.deepcopy(tampered_definitions)
+    baseline = "a" * 40
+    fixture_pins_at_commit = pins_module._pins_at_commit
+
+    def pins_at_commit(commit: str) -> dict:
+        if commit == baseline:
+            return {"definition_bindings": copy.deepcopy(tampered_definitions)}
+        return fixture_pins_at_commit(commit)
+
+    monkeypatch.setattr(pins_module, "_pins_at_commit", pins_at_commit)
+    monkeypatch.setattr(pins_module, "_require_reachable_commit", lambda commit, label: None)
+    with pytest.raises(SystemExit, match="candidate membership does not match"):
+        pins_module.admit_successor(
+            document,
+            layer="L2",
+            previous_writer_digests=BASELINE,
+            candidate_writer_digests=CANDIDATE,
+            source_commit="d2369b888e760e5b8d693328f00683877cbd5f28",
+            review_artifacts=copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L2"]),
+            authority_decision="DP-SD-018",
+            authority_commit="7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            reason="fixture",
+            classifications=L2_CLASSIFICATIONS,
+            historical_snapshot_commit="c558e60d3267ded79d65fd25f50ee926ce27b75a",
+            definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
+            protected_baseline_commit=baseline,
+        )
+
+
+# ── The L0-repair successors themselves (PR #2727) ────────────────────────────
+
+REPAIR_DECISION = "NATIVE-2026-09-24-L0-REPAIR-REPIN"
+# The approval identity and the pinned source commit are DIFFERENT commits, on purpose
+# (see L0_REPAIR_ANALYSIS_REPIN_DECISION_ADDENDUM_v1_0.md): the inventory at the approved
+# state was stale, so the source is the commit that regenerates it, with writer sources
+# byte-identical to the approved state.
+REPAIR_APPROVED_STATE = "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+REPAIR_SOURCE = "7d40f8c706406ee8187eadb5c3930553800a1a4a"
+REPAIR_INTENTIONAL = {
+    "bg_transit_rules", "bg_transit_engine", "bg_vedha_malefic_scale",
+    "bg_phaladeepika_latta", "bg_ephemeris",
+}
+REPAIR_BOTH = {"ka_vedha_gochara"}
+
+
+def test_live_document_with_repair_successors_verifies() -> None:
+    _require_live_document_verifiable()
+    assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
+
+
+@pytest.mark.parametrize("layer", REPAIR_LAYERS)
+def test_repair_successor_is_append_only_and_names_its_exact_predecessor(layer: str) -> None:
+    delivered_active = CURRENT_PINS["layers"][layer]
+    live_active = LIVE_PINS["layers"][layer]
+    delivered_history = CURRENT_PINS["history"][layer]
+    live_history = LIVE_PINS["history"][layer]
+
+    # every previously packaged history entry survives byte-for-byte, in order
+    assert live_history[: len(delivered_history)] == delivered_history
+    assert len(live_history) == len(delivered_history) + 1
+    # the delivered active pin is archived whole as the new predecessor
+    archived = live_history[-1]
+    assert archived["pin"] == delivered_active
+    assert archived["generation_id"] == (
+        delivered_active.get("generation_id") or pins_module.generation_id(layer, delivered_active)
+    )
+    assert live_active["supersedes_generation_id"] == archived["generation_id"]
+    assert archived["superseded_by_generation_id"] == live_active["generation_id"]
+    # and the predecessor's writer slice is exactly what the delivered inventory said
+    assert archived["writer_digests"] == pins_module.layer_writer_slice(
+        CURRENT_INVENTORY, pins_module.LAYER_PREFIX[layer]
+    )
+
+
+@pytest.mark.parametrize("layer", REPAIR_LAYERS)
+def test_repair_successor_records_the_approved_decision_and_source(layer: str) -> None:
+    admission = LIVE_PINS["layers"][layer]["admission"]
+    assert admission["authority_decision"] == REPAIR_DECISION
+    # the approval is anchored to the approved state; the pinned source is the commit
+    # that carries a true inventory for it
+    assert admission["authority_commit"] == REPAIR_APPROVED_STATE
+    assert admission["source_commit"] == REPAIR_SOURCE
+    assert REPAIR_APPROVED_STATE != REPAIR_SOURCE
+    assert LIVE_PINS["layers"][layer]["convergence_commit"] == REPAIR_SOURCE
+    assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS[layer]
+    assert "source_acceptance" not in admission
+    assert pins_module.AUTHORIZED_SOURCE_COMMITS[REPAIR_DECISION][layer] == frozenset({REPAIR_SOURCE})
+
+
+@pytest.mark.parametrize("layer", REPAIR_LAYERS)
+def test_repair_classifications_equal_the_actual_digest_delta(layer: str) -> None:
+    prefix = pins_module.LAYER_PREFIX[layer]
+    before = pins_module.layer_writer_slice(CURRENT_INVENTORY, prefix)
+    after = pins_module.layer_writer_slice(LIVE_INVENTORY, prefix)
+    exact_delta = sorted(a for a in set(before) | set(after) if before.get(a) != after.get(a))
+    admission = LIVE_PINS["layers"][layer]["admission"]
+    assert admission["changed_assets"] == exact_delta
+    assert exact_delta, "a successor with no delta must not have been admitted"
+    for asset_id, classification in admission["delta_classifications"].items():
+        if asset_id in REPAIR_BOTH:
+            expected = "approved_intentional_and_derived_import_change"
+        elif asset_id in REPAIR_INTENTIONAL:
+            expected = "approved_intentional_change"
+        else:
+            expected = "derived_import_change"
+        assert classification == expected, asset_id
+    assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
+
+
+def test_repair_leaves_every_other_layer_and_the_definitions_untouched() -> None:
+    for layer in pins_module.LAYER_PREFIX:
+        if layer in REPAIR_LAYERS:
+            continue
+        assert LIVE_PINS["layers"][layer] == CURRENT_PINS["layers"][layer]
+        assert LIVE_PINS["history"][layer] == CURRENT_PINS["history"][layer]
+    assert LIVE_PINS["definition_bindings"] == CURRENT_PINS["definition_bindings"]
+    assert LIVE_PINS["version"] == CURRENT_PINS["version"]
+
+
+def test_repair_only_l0_l2_l3_are_authorised_for_the_decision() -> None:
+    authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[REPAIR_DECISION]
+    assert set(authorised) == set(REPAIR_LAYERS)
+    for layer in ("L1", "L4", "L5"):
+        with pytest.raises(SystemExit, match="is not authorized by"):
+            pins_module.validate_authorized_source(REPAIR_DECISION, layer, REPAIR_SOURCE)
+
+
+def test_repair_authority_chain_binds_the_recorded_decision_document() -> None:
+    binding = pins_module.AUTHORITY_BINDINGS[REPAIR_DECISION]
+    assert binding["authority_commit"] == REPAIR_APPROVED_STATE
+    assert binding["authority_identity_binding"] == f"`{REPAIR_APPROVED_STATE}`"
+    assert binding["decision_binding"] == "status: L0_REPAIR_REPIN_APPROVED"
+    pins_module.validate_authority_binding(REPAIR_DECISION, REPAIR_APPROVED_STATE)
+    with pytest.raises(SystemExit, match="is not bound to"):
+        pins_module.validate_authority_binding(REPAIR_DECISION, "0" * 40)
