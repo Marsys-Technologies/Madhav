@@ -449,3 +449,29 @@ number and name the original in place. Guard re-run: PASS.
 
 **Standing instruction for this family's numbering, replacing "scan every head":** scan every head **and
 then run MIG-1**. The scan tells you what is claimed; only the guard tells you what will merge.
+
+### 7.12 The sharpest statement of the day's recurring defect, contributed by the L3 layer-briefs session
+
+That session claimed the binding version this sheet cites "exists on no `origin/*` head". It was wrong —
+`8211c2dc6` is reachable from `origin/l3/kala-elevation-readiness`, which now carries **v2.3** — and it
+retracted with a root cause worth keeping, because it is the mechanism behind four of this sheet's own
+corrections:
+
+> Its per-ref listing was piped through `sort -u -t'|' -k3`, de-duplicating on the **blob-hash** field.
+> Two refs holding byte-identical copies collapsed into one printed row, and the local ref is the one that
+> survived. The scan answered *"one ref per distinct content"* and was read as *"one ref per copy"*.
+
+**The generalized rule: a negative existence claim cannot be supported by a pipeline that de-duplicates.**
+This sheet's §7.7 count was inflated by unfiltered `_archive/` paths; its §7.8 count conflated an `ILIKE`
+match with a citation; §7.10 left a literal pair of numbers inside a lapsed conditional; §7.11 found a
+stale number surviving inside a file whose surface had been corrected twice. Every one is the same shape:
+**a figure quoted without the predicate that produced it, where the predicate could not have expressed the
+answer the figure was used to support.** "Publish the predicate, not the number" is the short form;
+"and check the predicate can express a negative" is the part this session kept omitting.
+
+Also confirmed from a third independent direction (Saṅgam, the strategic session, and now the layer-briefs
+session): binding **v2.3 §B5 strikes** the earlier instruction that `comparability_class` be renamed into
+`comparable_with`. They coexist and differ in kind — a relation between two rows, versus a partition key
+naming what a projection may rank within, with cross-class pairs excluded as `incomparable` rather than
+ranked. This family emits no score-carrying projection that partitions by `comparability_class`, so
+nothing here changes; recorded because v2.3's downstream rule now requires it of anything that does.
