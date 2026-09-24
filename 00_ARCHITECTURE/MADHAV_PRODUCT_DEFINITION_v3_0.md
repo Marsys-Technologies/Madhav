@@ -7,7 +7,7 @@ produced_on: 2026-09-12
 decision_owner: Native
 adopted_by_session: MADHAV-PRODUCT-V3-20260912
 authority_record: CROSS_CUTTING_DECISION_REGISTER_v1_0.md#ccd-010--madhav-product-definition-v30-adoption
-superseded_by: MADHAV_PRODUCT_DEFINITION_v3_1.md  # 2026-09-24, native-directed cleanse
+superseded_by: MADHAV_PRODUCT_DEFINITION_FINAL.md  # 2026-09-24, native-directed cleanse
 role: "SUPERSEDED historical master; governing reference for subsequent product and data-plane planning. Not a certification of implemented or deployed capability."
 source_baseline: "0955849d1864a0f94cd746ab9706194831856a04 source review; publication based on protected origin/main 731e311f0b8f5f84db2f152b93951e1d3d50d89a. No live-service or private-data certification."
 supersedes: "Product-level recommendations in v1.1, v2.0 proposal, v2.1, v2.2 and conversation-issued v2.3; retained as historical proposals, not retroactively ratified masters."
