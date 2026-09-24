@@ -141,3 +141,7 @@ platform/scripts/probe/fixtures/p4k/*/report.json
 # Cowork context-upload bundles — re-tars of files already committed in this repo;
 # reproducible, never a source of truth
 /_cowork_tmp/
+
+# Kala brief tracker generated data (regenerate with 00_ARCHITECTURE/control/kala_brief_tracker.py)
+00_ARCHITECTURE/control/kala_brief_tracker.json
+00_ARCHITECTURE/control/kala_brief_tracker.js
