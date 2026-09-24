@@ -66,6 +66,7 @@ from services.ka_vedha_gochara.logic import (
     corpus_verifiable_for,
     detect_sign_runs,
     house_from_moon,
+    house_vedha_uncited_extension,
     is_mutual_exclusion,
     latta_nakshatra_idx,
     malefic_count_grade,
@@ -565,21 +566,29 @@ class KaVedhaGocharaWriter(WriterBase):
                     "end_truncated": run["end_truncated"],
                     "janma_reference_fact_id": janma_fact_id,
                     "classical_citation": rule.get("classical_citation") or C.PHALADEEPIKA_VEDHA_26,
-                    "uncited_extension": False,
+                    # §12.10b / §N.7 item 6: derived from the rule's OWN citation.
+                    # bg_transit_rules now carries rows declared UNSOURCED (the
+                    # Rāhu/Ketu house-transit rules); a literal False here stamped
+                    # them as cited. A missing citation also counts as uncited —
+                    # the column fallback above satisfies the schema, it does not
+                    # make the row cited.
+                    "uncited_extension": house_vedha_uncited_extension(rule.get("classical_citation")),
                     # Constraint kala_vedha_gochara_grid_fields_scope: grid_basis/
                     # grid_school_tag must be NULL for non-sarvatobhadra rows.
                     "grid_basis": None,
                     "grid_school_tag": None,
                     # WP9 overlay stamps (migration 1082). house_vedha restates a
-                    # verse-cited bg_transit_rules row; corpus_verifiable=False
-                    # while the citation carries the struck 'BPHS Ch.29' marker
-                    # (39 of 41 rules — G-9 re-citation pending). Date-grain
-                    # until kernel ingress instants land.
-                    "source_qualification": source_qualification_for(HOUSE_VEDHA, None),
+                    # bg_transit_rules row; every stamp below derives from THAT
+                    # row's own classical_citation (logic.py), not from a constant.
+                    # Date-grain until kernel ingress instants land.
+                    "source_qualification": source_qualification_for(
+                        HOUSE_VEDHA, None,
+                        classical_citation=rule.get("classical_citation"),
+                    ),
                     "precision_regime": "date_grain",
                     "corpus_verifiable": corpus_verifiable_for(
                         HOUSE_VEDHA,
-                        classical_citation=rule.get("classical_citation") or C.PHALADEEPIKA_VEDHA_26,
+                        classical_citation=rule.get("classical_citation"),
                     ),
                     "detail": {
                         "primary_house": house,

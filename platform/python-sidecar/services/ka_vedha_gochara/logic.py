@@ -163,13 +163,44 @@ NATURAL_MALEFICS: frozenset[str] = frozenset({"Sun", "Mars", "Saturn", "Rahu", "
 # `source_qualification` names HOW the row's served value was sourced;
 # `precision_regime` names the time grain the window was computed at;
 # `corpus_verifiable` records whether the row's citation chain is verifiable
-# against the ingested corpus today (39 of 41 favourable+vedha bg_transit_rules
-# cite the struck "BPHS Ch.29" string — only the Rāhu/Ketu 11th-house rules
-# cite Phaladīpikā XXVI — so house_vedha rows are corpus_verifiable=False
-# until the G-9 re-citation lands).
+# against the ingested corpus today. house_vedha rows restate a
+# `bg_transit_rules` row, so all three stamps derive from THAT ROW'S OWN
+# `classical_citation`, never from a constant. After the 2026-09 L0 repair
+# (PR #2727, migration 1079's falsifier predicates — re-run them, do not trust
+# a count copied into a comment):
+#   classical_citation LIKE 'Phaladipika Adh. XXVI, Sloka%'  -> verse-cited
+#   classical_citation LIKE 'UNSOURCED%'                     -> declared unsourced
+# The UNSOURCED rows are the Rāhu/Ketu house-transit rules: the served corpus
+# carries no house-transit vedha doctrine for the nodes (ruling N-14 / F-29).
+# They MUST NOT be stamped verse_cited or uncited_extension=False — that is a
+# favourable-sounding default standing in for a known negative (§N.7 item 6).
 SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximation", "unsourced")
 PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
 STRUCK_BPHS_CH29_MARKER = "BPHS Ch.29"
+# The L0 repair's own discriminator (migration 1079 falsifier: `LIKE 'UNSOURCED%'`,
+# which is case-sensitive — so is this).
+UNSOURCED_CITATION_PREFIX = "UNSOURCED"
+
+
+def is_unsourced_citation(classical_citation: Optional[str]) -> bool:
+    """True when a rule's citation declares it UNSOURCED — or is missing.
+
+    A NULL/empty citation is treated as unsourced: an absent source must never be
+    promoted to a cited one (§N.7 item 6). Matches the L0 predicate
+    `classical_citation LIKE 'UNSOURCED%'`.
+    """
+    c = (classical_citation or "").strip()
+    # Case-insensitive on purpose: L0's own predicate (`LIKE 'UNSOURCED%'`) is
+    # case-sensitive, but an unrecognised spelling such as 'Unsourced …' read as
+    # CITED would err in the favourable direction. Any doubt resolves to "uncited".
+    return c == "" or c.upper().startswith(UNSOURCED_CITATION_PREFIX)
+
+
+def house_vedha_uncited_extension(classical_citation: Optional[str]) -> bool:
+    """Row-level `uncited_extension` for a house_vedha row: True exactly when the
+    rule it restates carries no source (declared UNSOURCED, or no citation)."""
+    return is_unsourced_citation(classical_citation)
+
 
 # ── M-8: vedha exceptions + vipareeta vedha (F-26; verse-cited against
 # Phaladīpikā Adh. XXVI — PG322:C1 the Sun's vedha pairs "provided the
@@ -213,29 +244,41 @@ def vipareeta_cancellation(
     return best
 
 
-def source_qualification_for(vedha_kind: str, grid_basis: Optional[str]) -> str:
+def source_qualification_for(vedha_kind: str, grid_basis: Optional[str], *,
+                             classical_citation: Optional[str] = None) -> str:
     """The WP9 `source_qualification` stamp. Sarvatobhadra is
     'algorithmic_approximation' exactly when the served pairing came from the
     disclosed algorithmic opposition approximation (grid_basis=
     'algorithmic_approximation'); a DB-sourced grid (school-tagged or
-    l1_sarvatobhadra_vedha) is 'verse_cited'. house_vedha (bg_transit_rules)
-    and latta (bg_phaladeepika_latta) are always verse-cited rules."""
+    l1_sarvatobhadra_vedha) is 'verse_cited'. latta (bg_phaladeepika_latta) is a
+    verse-cited rule. house_vedha (bg_transit_rules) is 'verse_cited' EXCEPT when
+    its own rule is declared UNSOURCED (or has no citation), which is 'unsourced' —
+    derived from the row's citation, never assumed."""
     if vedha_kind == SARVATOBHADRA:
         return "algorithmic_approximation" if grid_basis == "algorithmic_approximation" else "verse_cited"
-    if vedha_kind in (HOUSE_VEDHA, LATTA):
+    if vedha_kind == HOUSE_VEDHA:
+        return "unsourced" if is_unsourced_citation(classical_citation) else "verse_cited"
+    if vedha_kind == LATTA:
         return "verse_cited"
     raise ValueError(f"unknown vedha_kind {vedha_kind!r}")
 
 
 def corpus_verifiable_for(vedha_kind: str, *, grid_basis: Optional[str] = None,
                           classical_citation: Optional[str] = None) -> bool:
-    """The WP9 `corpus_verifiable` stamp. house_vedha: False while the rule's
-    citation carries the struck 'BPHS Ch.29' marker (39 of 41 rules; G-9
-    re-citation pending), True for the Phaladīpikā-XXVI-cited rules.
+    """The WP9 `corpus_verifiable` stamp. house_vedha: False when the rule is
+    declared UNSOURCED (or has no citation) — decided FIRST, so it does not depend
+    on the incidental wording of the UNSOURCED reason text — and False while the
+    citation carries the struck 'BPHS Ch.29' marker; True otherwise.
+    KNOWN OVERSTATEMENT: this is a marker test, not a page-level read. A rule whose
+    śloka anchor is page-grain only (one Mercury row, the OCR token "Bill") still
+    reads True here; the strict cover is one lower. Closing that needs the rule's
+    identity, which this writer does not select — see the O-3 recount.
     sarvatobhadra: False while grid_basis is the algorithmic approximation.
     latta: True (Phaladīpikā PG338-339, REAL cited; Ketu rows are never
     emitted, so the Ketu gap never surfaces as a False stamp)."""
     if vedha_kind == HOUSE_VEDHA:
+        if is_unsourced_citation(classical_citation):
+            return False
         return STRUCK_BPHS_CH29_MARKER not in (classical_citation or "")
     if vedha_kind == SARVATOBHADRA:
         return grid_basis != "algorithmic_approximation"
@@ -370,6 +413,9 @@ __all__ = [
     "SOURCE_QUALIFICATIONS",
     "PRECISION_REGIMES",
     "STRUCK_BPHS_CH29_MARKER",
+    "UNSOURCED_CITATION_PREFIX",
+    "is_unsourced_citation",
+    "house_vedha_uncited_extension",
     "MUTUAL_EXCLUSION_PAIRS",
     "is_mutual_exclusion",
     "vipareeta_cancellation",
