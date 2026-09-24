@@ -981,7 +981,25 @@ export interface GocharaSweepWindow {
   valence: string | null
   is_adverse: boolean | null
   is_past_peak: boolean | null   // null when peak_date is null (honest "can't tell")
+  // P-2 (WP7): '4.x' provenance/qualification columns carried through the
+  // 200-row SQL cap and the 5-window display trim. All null on v1 rows
+  // (honest-null convention, same as the pre-existing nullable fields).
+  peak_basis: string | null
+  generation: string | null
+  completeness_state: string | null   // F06 states; null = pre-'4.x' row
+  contact_ids: string[]               // parsed from active_sentences jsonb; [] when none
+  is_confirmed: boolean               // completeness_state in the confirmed set
+                                      // AND peak_basis passes the argmax check
 }
+
+// P-2: mirrors services/gochara_v3/peak_basis_vocab.py GENUINE_PEAK_BASES (and
+// platform-mcp register_gochara_windows.ts:372) — a LOCATED-extremum basis.
+const GENUINE_PEAK_BASES: ReadonlySet<string> = new Set(['gochara_lambda_v3_argmax'])
+
+// P-2: F06 confirmed set. The WP6 writer vocab (gochara_kernel/episodes.py,
+// gochara_v3/interval_solver.py) uses 'qualified'; the P-2 packet fixture uses
+// 'confirmed'. Both count as confirmed; 'unqualified'/'unavailable'/null never do.
+const CONFIRMED_COMPLETENESS_STATES: ReadonlySet<string> = new Set(['confirmed', 'qualified'])
 
 export interface GocharaSweepResult {
   domain_covered: boolean
@@ -997,6 +1015,14 @@ export interface GocharaSweepResult {
   window_range: { start: string; end: string }
   note: string
   available: boolean
+  // P-2 (WP7): §N.6 density layering — never let the raw page count read as
+  // N confirmed timing windows. Counts are over the SERVED page (windows[]),
+  // same "in_page" discipline as summarizeResolutionDisclosure in
+  // platform-mcp register_gochara_windows.ts.
+  confirmed_rows_in_page: number
+  context_only_rows_in_page: number
+  catalog_only_note: string | null
+  provenance: { generation: string | null; manifest_id: string | null }
 }
 
 /**
@@ -1026,6 +1052,10 @@ export async function fetchGocharaSweep(
     valence_breakdown: {},
     window_range: { start, end },
     available: false,
+    confirmed_rows_in_page: 0,
+    context_only_rows_in_page: 0,
+    catalog_only_note: null,
+    provenance: { generation: null, manifest_id: null },
     note: 'Forward gochara (transit) sweep over the kala_gochara_windows signed-intensity ' +
       'field, domain-scoped (MC-033). Compact top-by-magnitude summary + valence tally; ' +
       'drill gochara_forecast_get for the full window set with signed intensities. ' +
@@ -1059,9 +1089,15 @@ export async function fetchGocharaSweep(
       event_class: string; temporal_shape: string | null
       window_start: string | null; window_end: string | null; peak_date: string | null
       valence: string | null; is_adverse: boolean | null
+      peak_basis: string | null; generation: string | null
+      active_sentences: unknown; completeness_state: string | null
     }>(
       `SELECT w.event_class, w.temporal_shape, w.window_start, w.window_end, w.peak_date,
-              w.valence, w.is_adverse
+              w.valence, w.is_adverse,
+              w.peak_basis,
+              w.generation,
+              w.active_sentences,
+              w.completeness_state
          FROM kala_gochara_windows w
          JOIN brahma_event_ontology eo ON eo.event_class_id = w.event_class
         WHERE w.chart_id = $1 AND eo.domain = $2
@@ -1081,16 +1117,60 @@ export async function fetchGocharaSweep(
       const v = r.valence ?? 'unknown'
       out.valence_breakdown[v] = (out.valence_breakdown[v] ?? 0) + 1
     }
-    out.windows = res.rows.slice(0, 5).map(r => ({
-      event_class: r.event_class,
-      temporal_shape: r.temporal_shape,
-      window_start: r.window_start,
-      window_end: r.window_end,
-      peak_date: r.peak_date,
-      valence: r.valence,
-      is_adverse: r.is_adverse,
-      is_past_peak: isPastPeak(r.peak_date),
-    }))
+    out.windows = res.rows.slice(0, 5).map(r => {
+      // P-2: parse the '4.x' window↔contact id list (active_sentences jsonb,
+      // [] / NULL / unexpected shapes all degrade to [] — Q01 is answered by
+      // id when present, never fabricated when absent).
+      const contactIds = Array.isArray(r.active_sentences)
+        ? r.active_sentences.filter((x): x is string => typeof x === 'string')
+        : []
+      const isConfirmed =
+        r.completeness_state !== null &&
+        CONFIRMED_COMPLETENESS_STATES.has(r.completeness_state) &&
+        r.peak_basis !== null &&
+        GENUINE_PEAK_BASES.has(r.peak_basis)
+      return {
+        event_class: r.event_class,
+        temporal_shape: r.temporal_shape,
+        window_start: r.window_start,
+        window_end: r.window_end,
+        peak_date: r.peak_date,
+        valence: r.valence,
+        is_adverse: r.is_adverse,
+        is_past_peak: isPastPeak(r.peak_date),
+        peak_basis: r.peak_basis,
+        generation: r.generation,
+        completeness_state: r.completeness_state,
+        contact_ids: contactIds,
+        is_confirmed: isConfirmed,
+      }
+    })
+    // P-2 (§N.6): confirmed-vs-context counts over the served page. The trim
+    // above takes the first N rows in stored rank order — never re-rank or
+    // re-admit (H-5: admission upstream is cap-free, so serve-time trim is
+    // legal display layering, not truncation-as-absence).
+    out.confirmed_rows_in_page = out.windows.filter(w => w.is_confirmed).length
+    out.context_only_rows_in_page = out.windows.length - out.confirmed_rows_in_page
+    out.catalog_only_note =
+      out.context_only_rows_in_page === 0
+        ? null
+        : `${out.context_only_rows_in_page} of ${out.windows.length} served row(s) are context-only ` +
+          '(unqualified/unavailable completeness, or a non-argmax peak_basis) -- not confirmed ' +
+          'timing windows; do not read window_start/window_end/peak_date on these rows as a ' +
+          'confirmed timing claim. See each row\'s is_confirmed / completeness_state / peak_basis.'
+    if (out.context_only_rows_in_page > 0) {
+      out.note += ` ${out.context_only_rows_in_page} of the served rows are context-only, ` +
+        'not confirmed timing windows -- see catalog_only_note and each row\'s is_confirmed.'
+    }
+    // P-2: provenance of the served page. generation is read off the rows
+    // themselves (mixed-generation pages are impossible under the
+    // authority-scoped predicate); manifest_id is a '4.x' publication-ledger
+    // field not joined here — P-4 owns the manifest read capability, so this
+    // stays null rather than guessing.
+    out.provenance = {
+      generation: res.rows.find(r => r.generation !== null)?.generation ?? null,
+      manifest_id: null,
+    }
   } catch {
     // non-fatal: leg degrades to honest not-computed upstream.
   }
