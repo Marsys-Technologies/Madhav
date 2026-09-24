@@ -186,3 +186,28 @@ worktrees). Disposition: the two drafts on `main` are NOT reverted here (that is
 work to supersede via their own PR); this session stops using `git add -A` in any tree another
 session can reach, and the native is asked to move the three brief sessions into their own
 worktrees.
+
+## Correction 9 — 2026-09-23 — 'a naive parser is not the gate'
+
+**What I published:** that PR #2722's `KIMI_K3_REVIEW_KSHETRA_v1_0.md` failed YAML parsing with a
+ScannerError at frontmatter line 5, col 4, on a `**Review basis.**` prose line inside the fences.
+
+**What is true:** the file at `c83309a00` had no frontmatter block at all. It opened with `#`. My
+checker split on the first `---` anywhere in the file and mistook an interior horizontal rule for a
+block opener. The gate's own `_FRONTMATTER_RE` is byte-0 anchored via `.match()`, so it would have
+reported `frontmatter_missing`, a different class entirely.
+
+**Caught by:** the Kshetra session (madhav-d2), which fixed the real issue at `29bddaa2b` and
+corrected my diagnosis in the same message.
+
+**Same family as corrections 1–4** — asserting from an incomplete or non-equivalent read, then
+publishing it with precision that the method did not earn. A specific line number and column made it
+more credible, not more correct.
+
+**Rule:** when reporting what a gate will do, run the gate's own matcher. A reimplementation that
+differs in one anchor produces confident, wrong, specific answers.
+
+**What survived:** the scope finding (no governed glob reaches the briefs tree) — independently
+measured, and independently corroborated by the same session. And the in-scope parse-blindness
+finding, which is real but constructed, and was never this PR's situation.
+

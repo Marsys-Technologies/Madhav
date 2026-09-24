@@ -1,0 +1,107 @@
+==============================================================================
+S1 — unbound transit target defaults to 0.0
+==============================================================================
+  PASS  binder emits no target_longitude  — occurrences=0
+  PASS  engine defaults target to 0.0  — lines=[1148, 1377]
+  PASS  writer defaults target to 0.0  — lines=[662]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S1_target_default_zero.py] positive exit=0  negative-control exit=1
+==============================================================================
+S2 — directed special aspects vs 'target + angle'
+==============================================================================
+  PASS  Mars pair search sets differ  — naive=[90, 210] directed=[150, 270]
+  PASS  Saturn pair search sets differ  — naive=[60, 270] directed=[90, 300]
+  PASS  Jupiter pair search sets coincide  — naive=[120, 240] directed=[120, 240]
+  PASS  scanner documents target+angle search  — transit_search.py:312
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S2_directed_aspect_arithmetic.py] positive exit=0  negative-control exit=1
+==============================================================================
+S3 — ashtakavarga: what the producer really writes vs what Sangam reads
+==============================================================================
+  PASS  (a) HOUSE_N and SIGN_N written from the same float(bindus)  — HOUSE lines [1032], SIGN lines [1035]
+  PASS  (c) missing planet → twelve zeros at producer  — lines=[1026, 1295, 1298, 1365]
+  PASS  (b) Sangam reads legacy category only  — line=[1004]
+  PASS  (b) reader hardcodes Lahiri near the AV read  — lahiri lines=[764, 787, 794, 993, 994, 1005]
+  PASS  reader gets identical value from either key (rotation hypothesis false)
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S3_ashtakavarga_producer_vs_reader.py] positive exit=0  negative-control exit=1
+==============================================================================
+S4 — Moon contact count vs the withdrawn bound
+==============================================================================
+  PASS  60-day window: contacts == 5 and > bound 4  — n=5
+  PASS  90-day window: contacts == 7 and > bound 5  — n=7
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S4_moon_contact_count.py] positive exit=0  negative-control exit=1
+==============================================================================
+S5 — rarity_years opposition = period/2 (defect)
+==============================================================================
+  PASS  opposition reported at half the conjunction recurrence  — conj=29.46 opp=14.73
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S5_rarity_angle_fraction.py] positive exit=0  negative-control exit=1
+==============================================================================
+S6 — overlap key is exact-endpoint
+==============================================================================
+  PASS  intervals overlap  — elapsed overlap=305 d (inclusive 306)
+  PASS  keys differ despite overlap (no agreement possible)  — A=(datetime.date(2027, 1, 1), datetime.date(2027, 12, 31)) B=(datetime.date(2027, 3, 1), datetime.date(2028, 2, 28))
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S6_overlap_key_exact_pair.py] positive exit=0  negative-control exit=1
+==============================================================================
+S7 — orb gate runs after full accumulation (AST)
+==============================================================================
+  PASS  append occurs inside the search loop  — append lines=[351]
+  PASS  single return of the full list after the loop  — return lines=[371]
+  PASS  engine gate line follows the scan call  — gate=[1171, 1400] call=[1154]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S7_gate_after_accumulation.py] positive exit=0  negative-control exit=1
+==============================================================================
+S8 — Saturn retrograde loops 2026–2029 → E5 oracle points (with provenance)
+==============================================================================
+  provenance: swisseph 2.10.03; ephe_path=/tmp/se1; requested flags 65794, returned 65858 → SWIEPH; .se1 sha256[:16]={'seas_18.se1': 'a2cd8fc33807c78c', 'sepl_18.se1': 'ca1393ceab3a44fb', 'semo_18.se1': '1ca07bd67c24374d'}; ayanamsha Lahiri
+  PASS  exactly three SR→SD loops found  — found=3
+  loop SR 2026-07-26 350.519° → SD 2026-12-11 343.695°  arc 6.824°
+  PASS    inside 347.107° crosses 3×  — count=3
+  PASS    control 352.519° crosses 1×  — count=1
+  loop SR 2027-08-09 3.634° → SD 2027-12-24 356.769°  arc 6.865° (wraps 0°)
+  PASS    inside 0.201° crosses 3×  — count=3
+  PASS    control 5.634° crosses 1×  — count=1
+  loop SR 2028-08-22 17.052° → SD 2029-01-05 10.149°  arc 6.902°
+  PASS    inside 13.601° crosses 3×  — count=3
+  PASS    control 19.052° crosses 1×  — count=1
+VERDICT: PASS — ORACLE POINTS CONSTRUCTED ON SWIEPH (backend + checksums recorded)
+  [S8_saturn_loop_oracle.py] positive exit=0  negative-control exit=1
+==============================================================================
+S9 — sandhi_flag semantics
+==============================================================================
+  PASS  sandhi_flag = duration_days < 20 (exact line)  — line=[1062]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S9_sandhi_flag_meaning.py] positive exit=0  negative-control exit=1
+==============================================================================
+S10 — Mode A necessary vs supporting
+==============================================================================
+  PASS  necessary terms are dignity/orb/vedha  — lines=[1221, 1442]
+  PASS  dasha enters as a supporting current  — lines=[1223]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S10_mode_a_necessary_terms.py] positive exit=0  negative-control exit=1
+==============================================================================
+S11 — dignity 0 zeroes the score (adverse activity erased)
+==============================================================================
+  PASS  dignity 0 → score exactly 0.0 despite full support  — score=0.0
+  PASS  dignity 0.2 → nonzero (kernel is multiplicative in dignity)  — score=0.0524
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S11_dignity_zero_erases_activity.py] positive exit=0  negative-control exit=1
+==============================================================================
+S12 — lagna defaults to Aries on failure
+==============================================================================
+  PASS  default assignment lagna_sign = 'Aries' exists  — line=[1149]
+  PASS  docstring admits the fallback  — line=[1147]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S12_lagna_default_aries.py] positive exit=0  negative-control exit=1
+==============================================================================
+S13 — post-engine TRIGGER composition
+==============================================================================
+  PASS  apply_trigger_suppression is defined in the writer  — line=[50]
+  PASS  it is called after both mode searches  — calls=[50, 682, 708] mode_a=[667] mode_b=[695]
+  PASS  admitted weights 0.2/0.2 referenced  — lines=[41, 46, 47, 55, 680]
+VERDICT: PASS — PRE-FIX DEFECT PRESENT
+  [S13_trigger_composition_post_engine.py] positive exit=0  negative-control exit=1
+scripts run: 13; verdict: SUITE-PASS

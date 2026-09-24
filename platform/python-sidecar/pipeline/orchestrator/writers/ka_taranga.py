@@ -28,8 +28,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import psycopg.rows
 
@@ -74,9 +75,103 @@ _BATCH = 2000
 class KaTarangaWriter(WriterBase):
     """ka_taranga — Activation Waveform (L3 Kāla). LIGHT writer."""
 
+    @staticmethod
+    def _resolve_birth_timezone(conn, chart_id: str, birth_params) -> int:
+        """Return birth-timezone offset in minutes (east-positive).
+
+        Prefers ctx.config['birth_params']; falls back to public.charts.timezone_id.
+        Used to pin month boundaries to the chart's birth timezone per E5/RRV-05.
+        """
+        if isinstance(birth_params, dict):
+            tz_hours = birth_params.get('tz_offset_hours')
+            if tz_hours is not None:
+                return int(round(float(tz_hours) * 60))
+
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT timezone_id FROM public.charts WHERE id = %s OR chart_id = %s LIMIT 1",
+                (chart_id, chart_id),
+            )
+            row = cur.fetchone()
+
+        tzid = row[0] if row else None
+        if not tzid:
+            # E5: if timezone is genuinely missing, fall back to UTC rather than
+            # blocking the waveform.  The offset is recorded in components so the
+            # fallback is visible.
+            return 0
+
+        try:
+            offset = ZoneInfo(tzid).utcoffset(datetime.now())
+            if offset is None:
+                raise ValueError(f"no utcoffset for {tzid!r}")
+            return int(offset.total_seconds() / 60)
+        except Exception as exc:
+            logger.warning("ka_taranga: could not resolve timezone_id=%r: %s", tzid, exc)
+            return 0
+
+    @staticmethod
+    def _occupied_local_months(
+        intervals: list[tuple[date, date]],
+        tz_offset_minutes: int,
+        clip_start: date,
+        clip_end: date,
+    ) -> set[date]:
+        """Return the set of first-of-month dates (in birth timezone) occupied by
+        the union of date intervals.
+
+        E5/RRV-05: month boundaries are pinned to the chart's birth timezone, not
+        UTC or runtime local.  For each UTC day in the union, the local date at
+        the start and end of that day is checked, catching timezone crossings.
+        """
+        months: set[tuple[int, int]] = set()
+        if not intervals:
+            return set()
+
+        # Compute union of intervals.
+        union: list[tuple[date, date]] = []
+        for ws, we in sorted(intervals):
+            if ws > we:
+                continue
+            if union and ws <= union[-1][1] + timedelta(days=1):
+                union[-1] = (union[-1][0], max(union[-1][1], we))
+            else:
+                union.append((ws, we))
+
+        offset = timedelta(minutes=tz_offset_minutes)
+        for ws, we in union:
+            ws = max(ws, clip_start)
+            we = min(we, clip_end)
+            if ws > we:
+                continue
+            d = ws
+            while d <= we:
+                # Check both ends of the UTC day to catch timezone-crossed local dates.
+                for hour in (0, 23):
+                    local_dt = datetime.combine(d, time(hour, 0, 0)) + offset
+                    months.add((local_dt.year, local_dt.month))
+                d += timedelta(days=1)
+
+        return {date(y, m, 1) for y, m in months}
+
+    @staticmethod
+    def _window_identity(w: dict) -> tuple:
+        """Stable identity tuple for duplicate-invariance in taranga aggregation."""
+        if w.get('is_episode'):
+            return ('episode', str(w.get('episode_uuid') or ''))
+        return (
+            'contact',
+            str(w.get('signal_id') or ''),
+            str(w.get('mode') or ''),
+            str(w.get('peak_date') or ''),
+            str(w.get('window_start') or ''),
+            str(w.get('window_end') or ''),
+        )
+
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn
         chart_id = ctx.config["chart_id"]
+        birth_params = ctx.config.get("birth_params")
 
         # Idempotency: delete-then-insert
         with conn.cursor() as _timeout_cur:
@@ -85,6 +180,9 @@ class KaTarangaWriter(WriterBase):
             cur.execute("DELETE FROM kala_taranga WHERE chart_id = %s", (chart_id,))
 
         # ── Load raw data ────────────────────────────────────────────────────
+
+        # E5: birth-timezone offset for month-boundary pinning.
+        tz_offset_minutes = self._resolve_birth_timezone(conn, chart_id, birth_params)
 
         # 1. All MD dasha rows (system=vimshottari for primary dasha contribution)
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
@@ -104,10 +202,23 @@ class KaTarangaWriter(WriterBase):
                                 notes="no vimshottari MD rows — run ka_dasha_kala first")
 
         # 2. Transit windows from kala_convergence (domain × month presence)
+        # E5: select episode metadata so occupancy can be computed from the union
+        # of child intervals; signal_id/mode/peak_date give contact identity for
+        # duplicate-invariance.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
-                SELECT domain, window_start::date, window_end::date, convergence_score
+                SELECT
+                    domain,
+                    window_start::date AS window_start,
+                    window_end::date AS window_end,
+                    convergence_score,
+                    is_episode,
+                    episode_uuid,
+                    episode_children,
+                    signal_id,
+                    mode,
+                    peak_date
                 FROM kala_convergence
                 WHERE chart_id = %s AND domain IS NOT NULL
                   AND window_start IS NOT NULL AND window_end IS NOT NULL
@@ -159,13 +270,36 @@ class KaTarangaWriter(WriterBase):
             return None
 
         # transit: month → {domain: mean_convergence_score}
+        # E5/RRV-05: unit = occupied-day union per month per (contract × valence-sign).
+        # signal_id identifies the contract; duplicate rows with the same identity
+        # contribute only once per occupied month.
         transit_by_month_domain: dict[date, dict[str, list[float]]] = {}
+        counted: dict[tuple, float] = {}  # (month, domain, window_identity) -> score
         for tw in transit_windows:
-            ws = tw["window_start"]
-            we = tw["window_end"]
-            d  = tw.get("domain") or "unknown"
+            d = tw.get("domain") or "unknown"
             cs = float(tw.get("convergence_score") or 0)
-            for m in _month_range(max(ws, _WAVEFORM_START), min(we, _WAVEFORM_END)):
+            identity = self._window_identity(tw)
+
+            if tw.get("is_episode"):
+                children = tw.get("episode_children") or []
+                if isinstance(children, str):
+                    children = json.loads(children)
+                intervals = [
+                    (date.fromisoformat(c["window_start"]), date.fromisoformat(c["window_end"]))
+                    for c in children
+                    if c.get("window_start") and c.get("window_end")
+                ]
+            else:
+                intervals = [(tw["window_start"], tw["window_end"])]
+
+            occupied_months = self._occupied_local_months(
+                intervals, tz_offset_minutes, _WAVEFORM_START, _WAVEFORM_END
+            )
+            for m in occupied_months:
+                key = (m, d, identity)
+                if key in counted:
+                    continue
+                counted[key] = cs
                 transit_by_month_domain.setdefault(m, {}).setdefault(d, []).append(cs)
 
         # Determine scope lists
