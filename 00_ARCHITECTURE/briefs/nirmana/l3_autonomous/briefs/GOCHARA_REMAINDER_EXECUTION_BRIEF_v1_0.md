@@ -425,3 +425,17 @@ this file.
    the 12.9 staleness gate, which the L3 session is adding.
 
 Push order: fetch first; both writers commit by explicit path, never `git add -A`.
+
+### 12.12 UPDATE 14:20 — §12.9 is DONE for both writers; 1084 changed; main is blocked by the L0 lane's pins
+
+Supersedes the "IN PROGRESS" row for 12.9 in §12.11. **Skip §12.9 entirely.**
+
+| item | state | commit / where |
+|---|---|---|
+| **12.9 upstream fingerprint, detector, candidate-build gate** | **DONE for vedha AND mūrti** | `bb7644ee4` (vedha), `b70115631` (mūrti + combined gate). Step 6 exits **7** if EITHER `kala_vedha_gochara` or `kala_moorti_nirnaya` is not fresh. Mūrti needed a nullable `upstream_fingerprint JSONB` column, **added to migration 1082 in place** (unapplied; no new number). Step 4's expected schema includes it |
+| **migration 1084** | **CHANGED — the `ka_kshetra -> ka_gochara` edge is HELD OUT, do not re-add it** | `64bdc10da`. Reasons in the migration header and `REVIEW_REQUEST_K1.md`; `test_wp12_k1_edges.py` fails if it returns. The Kṣetra stream's executor applies or declines that edge, stating its consequence |
+| **the merge of PR #2731** | **WILL FAIL until the L0 lane re-seals its pins — do not try to fix it yourself** | Main's `nirmana-analysis-layer-pins.json` references commit `7d40f8c70640` 12 times; it is on `origin/l0/vedha-and-frame-repair` only and is **not an ancestor of main** (verified). The pins test therefore fails for every PR entering the merge queue. This is the L0 lane's governed artifact; the L3 session relayed it to them. Your §12.10c regeneration (writer digests, pin re-admission, census) still applies but must happen **after** the L0 lane re-seals |
+
+**Test-database ports.** Three disposable databases may exist: WP6 on 55433, the run's WP10 on 55434, and a private
+verification DB the L3 session starts and removes on 55435. The L3 session never uses 55434. Tear down whatever
+remains at the end of your run, including the WP6 container the L3 session started.
