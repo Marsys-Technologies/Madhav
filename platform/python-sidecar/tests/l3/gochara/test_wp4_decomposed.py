@@ -609,7 +609,7 @@ def test_ledger_write_and_serve_cost(conn):
                 "epistemic_class": "observed_event",
                 "completeness_state": ep.completeness_state,
                 "operator_role": "kernel",
-                "claim_grain": "exact_instant",
+                "precision_regime": "instant_grain",
                 "time_basis": "event_time_utc",
                 "comparable_with": "same_convention_same_inputs",
                 "ephemeris_backend": {"mode": "synthetic_cubic",

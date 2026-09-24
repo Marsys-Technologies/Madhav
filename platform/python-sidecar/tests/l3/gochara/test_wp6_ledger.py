@@ -127,7 +127,7 @@ def make_episode(body="Saturn", relation="conjunction", t_exact=None, *,
         "epistemic_class": "observed_event",
         "completeness_state": completeness,
         "operator_role": "kernel",
-        "claim_grain": "exact_instant",
+        "precision_regime": "instant_grain",
         "time_basis": "event_time_utc",
         "comparable_with": "same_convention_same_inputs",
         "ephemeris_backend": EPHEM_BACKEND_JSON,
@@ -655,3 +655,56 @@ def test_storage_and_latency_measured(conn):
     # Soft sanity only — the numbers are reported, not gate-passed on speed.
     warm = timings["p4_body_relation_range"][-1]["execution_ms"]
     assert warm < 5000, f"P-4 warm serving query too slow: {warm} ms"
+
+
+# ── 10. 4.13b/d/e stamp columns: populated on write, CHECKs reject ───────────
+
+
+def test_stamp_columns_populated_on_written_rows(conn):
+    """4.13e exit gate: a production caller (ledger.write_contacts via
+    _normalize_episode) populates precision_regime and inclusivity on every
+    written row; 4.13b/d: inclusivity defaults closed_closed, time_basis is
+    event_time_utc, tier_basis is relative_uncalibrated."""
+    chart = synth(20)
+    cid, _, _ = setup_candidate(conn, chart)
+    with conn.transaction():
+        write_contacts(conn, chart, "4.0", cid, [make_episode()],
+                       "wp6-build-stamps")
+    row = conn.execute(
+        "SELECT precision_regime, time_basis, inclusivity, tier_basis"
+        "  FROM kala_gochara_contacts"
+        " WHERE chart_id = %s AND generation = '4.0'",
+        (chart,),
+    ).fetchone()
+    assert row == ("instant_grain", "event_time_utc",
+                   "closed_closed", "relative_uncalibrated")
+
+
+def test_stamp_check_constraints_reject_out_of_vocabulary(conn):
+    """Negative fixtures for the 1087 CHECKs: bad inclusivity, time_basis,
+    tier_basis, and pre-F06 completeness_state values must all fail."""
+    chart = synth(21)
+    cid, _, _ = setup_candidate(conn, chart)
+    bad_patches = [
+        {"inclusivity": "open_open"},
+        {"time_basis": "event_time"},
+        {"tier_basis": "calibrated"},            # missing :<gate_id>
+        {"tier_basis": "uncalibrated"},
+        {"completeness_state": "qualified"},     # pre-F06
+        {"completeness_state": "complete_resolved"},
+    ]
+    for i, patch in enumerate(bad_patches):
+        ep = make_episode(t_exact=datetime(2022, 3, 15 + i, 12, tzinfo=UTC))
+        ep.update(patch)
+        with pytest.raises(psycopg.errors.CheckViolation):
+            with conn.transaction():
+                write_contacts(conn, chart, "4.0", cid, [ep],
+                               f"wp6-build-bad-stamp-{i}")
+
+    # Positive control inside the same vocabulary bounds.
+    ok = make_episode(t_exact=datetime(2022, 4, 15, 12, tzinfo=UTC))
+    ok["tier_basis"] = "calibrated:gate-W2G"
+    ok["inclusivity"] = "closed_open"
+    with conn.transaction():
+        ids = write_contacts(conn, chart, "4.0", cid, [ok], "wp6-build-ok-stamp")
+    assert len(ids) == 1

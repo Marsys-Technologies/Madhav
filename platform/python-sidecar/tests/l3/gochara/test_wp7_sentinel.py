@@ -72,7 +72,7 @@ def _episode(i: int, t0: datetime) -> dict:
         "epistemic_class": "structural_prior",
         "completeness_state": "applied",
         "operator_role": "transit_agent",
-        "claim_grain": "instant",
+        "precision_regime": "instant_grain",
         "time_basis": "event_time_utc",
         "comparable_with": "same_convention_same_inputs",
         "evidence_fact_ids": ["wp7synth.fact.venus.lon"],

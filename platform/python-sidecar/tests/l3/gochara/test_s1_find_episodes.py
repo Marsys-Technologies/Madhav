@@ -108,7 +108,7 @@ def _contact(body='Saturn', relation='drishti_contact', aspect=60.0,
         't_in': '2023-03-14T12:00:00Z', 't_exact': t_exact,
         't_out': '2023-03-16T12:00:00Z', 'branch': 'direct',
         'truncated_at_horizon': None, 'completeness_state': completeness,
-        'claim_grain': 'contact', 'convention_id': 'sha256:conv',
+        'precision_regime': 'instant_grain', 'convention_id': 'sha256:conv',
     }
 
 
@@ -235,7 +235,7 @@ class TestMoonOnDemand:
         assert len(batch.episodes) == 1
         ep = batch.episodes[0]
         assert ep.contact_id is None
-        assert ep.body == 'Moon' and ep.claim_grain == 'on_demand_live'
+        assert ep.body == 'Moon' and ep.precision_regime == 'instant_grain'
         moon_cov = next(c for c in batch.coverage
                         if c.partition_kind == 'moon_on_demand')
         assert moon_cov.requested_horizon == moon_cov.completed_horizon

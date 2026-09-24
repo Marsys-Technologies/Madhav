@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS kala_gochara_contacts (
                                                 --   from near_station_unresolved, never a
                                                 --   silent boolean
   operator_role     TEXT NOT NULL,
-  claim_grain       TEXT NOT NULL,
+  precision_regime  TEXT NOT NULL,  -- renamed from claim_grain in place (4.13e, D-S5); 1081 never applied outside disposable DBs
   time_basis        TEXT NOT NULL,
   comparable_with   TEXT NOT NULL CHECK (comparable_with IN
                     ('self','same_convention_same_inputs',

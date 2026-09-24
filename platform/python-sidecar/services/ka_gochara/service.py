@@ -117,7 +117,7 @@ class GocharaEpisode:
     branch: str
     truncated_at_horizon: str | None
     completeness_state: str
-    claim_grain: str
+    precision_regime: str
     convention_id: str
     target_longitude_deg: float | None = None
 
@@ -448,7 +448,7 @@ class GocharaTransitService:
             'SELECT contact_id, independence_group, body, relation, aspect_deg,'
             '       target_type, target_ref, target_resolution_state,'
             '       target_longitude_deg, t_in, t_exact, t_out, branch,'
-            '       truncated_at_horizon, completeness_state, claim_grain,'
+            '       truncated_at_horizon, completeness_state, precision_regime,'
             '       convention_id'
             '  FROM kala_gochara_contacts'
             ' WHERE chart_id = %s AND generation = %s'
@@ -499,7 +499,7 @@ class GocharaTransitService:
                 branch=r['branch'],
                 truncated_at_horizon=r['truncated_at_horizon'],
                 completeness_state=r['completeness_state'],
-                claim_grain=r['claim_grain'],
+                precision_regime=r['precision_regime'],
                 convention_id=r['convention_id'],
                 target_longitude_deg=(float(r['target_longitude_deg'])
                                       if r['target_longitude_deg'] is not None else None),
@@ -632,7 +632,7 @@ class GocharaTransitService:
                             if e.truncated_at_horizon in ('start', 'end') else None
                         ),
                         completeness_state=e.completeness_state,
-                        claim_grain='on_demand_live',
+                        precision_regime='instant_grain',
                         convention_id=convention_id,
                         target_longitude_deg=float(t.longitude_deg),
                     ))
