@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_BINDING
 canonical_id: KALA_SYNERGY_BINDING
-version: "2.2"
+version: "2.3"
 status: PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -51,7 +51,8 @@ whose birth tz differs from the run tz.
 | `epistemic_class` (F04) | as the Foundation defines | OFFERS | MUST ADD | MUST ADD |
 | `completeness_state` (F06) | **exactly six**: `applied, inapplicable, unavailable, unqualified, contradictory_unresolved, unexplored` | MUST CONSTRAIN — column comment (`1081:176`) promises six; live values are `qualified` (not an F06 name) and `unqualified` (is one) | MUST EMIT (proposed; today `computed`/`honest_empty`) | MUST EMIT |
 | `operator_role` (F12) | as the Foundation defines | OFFERS | MUST EMIT | MUST EMIT |
-| **`comparable_with`** | **one name.** Values pinned by Gochara at WP1 (N-7); enum `{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}` — **stays at four** (Gochara D-S6): it is the *relation* between two rows' conventions and inputs, never a property of one row. An identity property such as an unstable surrogate key is expressed as `NOT_RUN` with reason on the comparison record, as F06 `unqualified` on the row, or as an additive `id_basis ∈ {content_addressed, surrogate_unstable}` on the asset's own table — not as a fifth value | OFFERS | MUST RENAME `comparability_class` → `comparable_with`; emit the enum, not `ka_sangam/{sig}` | MUST ADD |
+| **`comparable_with`** | **a RELATION** between this row and a reference row's conventions and inputs. Values pinned by Gochara at WP1 (N-7); enum `{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}` — **stays at four** (D-S6): never a property of one row (an unstable key is `NOT_RUN`-with-reason on the comparison record, F06 `unqualified` on the row, or an additive `id_basis` on the asset's own table) | OFFERS | MUST ADD (**implemented, pending merge**) | MUST ADD |
+| **`comparability_class`** | **a PARTITION KEY**, not a relation — *v2.0–2.2 wrongly ordered this renamed to `comparable_with`; corrected by Saṅgam.* Saṅgam's `ka_sangam/<signature_class>` says what a projection may **rank within**: every top-N partitions by it, cross-class pairs are `incomparable` and never ranked (Saṅgam brief :183, :225, :266; `exposure.py:65`). Both fields coexist | n/a (contacts are one class) | OFFERS; keep the current value form | MUST ADD, or declare a single class, before any ranking over Kṣetra windows |
 | `tier_basis` | `{relative_uncalibrated, calibrated:<gate_id>}` | MUST ADD | OFFERS | PROMISED (brief 333-334); MUST EMIT |
 | `source_qualification` · `corpus_verifiable` · `precision_regime` on the **producer row** (`kala_vedha_gochara`) | the three stamps Gochara §5.4 promised; **none exist on that table today** (`corpus_verifiable` exists on `kala_gochara_contacts`; `precision_regime` is emitted by Kṣetra) | MUST EMIT (L3's own table, WP9) | consumes | consumes |
 | R-6 separation `activity, valence, applicability, availability` | all four **persisted**, never a product | n/a | MUST PERSIST (M-7; three of four dropped at `writer.py:990-999`) | DECISION B8-7 — not ruled for Kṣetra |
@@ -80,7 +81,7 @@ asset at the same generation and fails loudly at a different one.
 | field | rule | Gochara | Saṅgam | Kṣetra |
 |---|---|---|---|---|
 | `independence_group` | jsonb `[{group_id, family, roots[], members[], basis}]`; `basis` is always `declared_lineage`, never "demonstrated" (**shape is DECISION B8-4**) | OFFERS (column) | MUST EMIT; rename `independent_current_count` → `declared_current_count` | MUST INHERIT the union of its witnesses' groups |
-| downstream rule | any projection carrying a score carries `independence_group` + `comparable_with` | — | binding on its seven named readers | binding |
+| downstream rule | any projection carrying a score carries `independence_group` + `comparable_with`, and **partitions by `comparability_class`** | — | binding on its seven named readers | binding |
 
 *Proof:* Layer test 5 (duplicate/shared-root) and test 8 (omission challenge: dropping a witness's
 group must change the union, never pass silently).

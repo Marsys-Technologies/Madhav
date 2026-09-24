@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AMENDMENTS
 canonical_id: KALA_SYNERGY_AMENDMENTS
-version: "2.1"
+version: "2.2"
 status: PROPOSED_TO_THE_THREE_STREAMS
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc)"
@@ -30,8 +30,8 @@ posture: >
 
 ## Saṅgam
 
-1. **Persist all four R-6 components** — `activity`, `valence`, `applicability` are computed (`engine.py:915-946`) and dropped at `writer.py:990-999`; `availability` is the only one persisted. M-7 ruled the separation; the §4.5 inheritance rule is unenforceable until they are columns.
-2. **Rename `comparability_class` → `comparable_with`** and emit the WP1-pinned enum; today the brief says one vocabulary and the code emits `ka_sangam/{sig}`.
+1. **Persist all four R-6 components** — **code-complete on `sangam/stage3` pending merge**: `activity`, `valence`, `applicability` are now in the INSERT (`writer.py:1132`, migration 1088) alongside `availability`. The finding closes on merge.
+2. ~~Rename `comparability_class` → `comparable_with`~~ **Withdrawn — v2.0/2.1 were wrong, and you caught it.** `comparability_class` is your partition key (rank-within); `comparable_with` is a relation to a reference row. Keep both; you have implemented both (`writer.py:1132-1135`). The brief's `A_B_contact · C_residence · D_ingress` vocabulary versus the code's `ka_sangam/{sig}` is still a packet-vs-code mismatch on the *partition key's* values, and is yours to reconcile — but it is not the rename.
 3. **Unify inclusivity** (daśā half-open at `engine.py:437`, vedha closed at `:672`) and declare it per row; take the tz offset at the **birth instant** (`writer.py:897`); remove `date.today()` and the 29-Feb crash (`:558-559`).
 4. **Emit `coverage`** on every window and every empty result; when consuming Gochara events under N-7, join the producer's coverage by `window_ref`, and **emit `window_ref`** `{asset_id:'ka_gochara', generation, id}` on every window that cites a contact.
 5. **Emit `independence_group`** (proposed) and rename the scalar to `declared_current_count`; then your seven named readers can inherit it — today zero read even the scalar.

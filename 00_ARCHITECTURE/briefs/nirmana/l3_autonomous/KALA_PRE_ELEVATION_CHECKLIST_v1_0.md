@@ -1,7 +1,7 @@
 ---
 artifact: KALA_PRE_ELEVATION_CHECKLIST
 canonical_id: KALA_PRE_ELEVATION_CHECKLIST
-version: "1.8"
+version: "1.9"
 status: CURRENT
 date: 2026-09-24
 revision_note: "v1.2 — after the L0 repair (PR #2727): §A shrinks to three native items; §C becomes the PR close-out; §D gains the Sade-Sati query result; §E records that the Saṅgam entry gate did not gate; §B4 downgraded (production reachable via proxy on 5432)."
@@ -101,7 +101,7 @@ Seven of eight items applied to production and **verified live by this session w
 | # | item |
 |---|---|
 | F1 | Governance frontmatter gate blind to the briefs tree; parse failure raises nothing (G18) [V] |
-| F2 | **Migration claim map, 2026-09-24 (verified: none of 1080–1088 is applied to production).** L0 repair holds **1075–1079** (applied). Gochara wp0-7 holds **1080–1086** (`platform/migrations`). `sangam/stage3` holds **1085, 1086, 1087** (`platform/supabase/migrations`). Rule recorded by Gochara and adopted here: *applied keeps the number; otherwise first claim holds.* Gochara's 1085/1086 predate Saṅgam's → **Saṅgam renumbers 1085/1086/1087 to 1088+**; next free is **1088**. Same number in different directories is not a tracker collision (filename + sha) but ordering falls to a lexical tie-break. **Scope flag for the native:** the Gochara branch carries an **L5** migration (1083) and two **L0**-prefixed migrations (1085, 1086); D-B/D-E say every L0 edit needs its own authorization [V] |
+| F2 | **Migration claim map, 2026-09-24 (verified: none of 1080–1088 is applied to production).** L0 repair holds **1075–1079** (applied). Gochara wp0-7 holds **1080–1086** (`platform/migrations`). `sangam/stage3` holds **1085, 1086, 1087** (`platform/supabase/migrations`). Rule recorded by Gochara and adopted here: *applied keeps the number; otherwise first claim holds.* **Resolved:** Saṅgam renumbered to **1088–1090**, applying the rule in the direction that cost them; **1087 is free**; next free is **1091**. Gochara's 1086 renamed to an `l1_` basename keeping its number (its content is an L1 `ga_strength` change). Scope authority for Gochara's 1083 (L5) / 1085 (L0 file-only) / 1086 (L1) recorded by that stream at `39bbb974a` §7.5A as the **2026-09-23 brief's**, all unapplied. Same number in different directories is not a tracker collision (filename + sha) but ordering falls to a lexical tie-break. **Scope flag for the native:** the Gochara branch carries an **L5** migration (1083) and two **L0**-prefixed migrations (1085, 1086); D-B/D-E say every L0 edit needs its own authorization [V] |
 | F3 | `l3/kala-elevation-readiness` and `sangam/stage3` diverged — a merge plan is owed [V] |
 | F4 | No cost budget; registry claims 24 min/chart, ≥7.5 h measured (G5) [V] |
 | F5 | No cancel/pause/resume, no substep progress, unearned `rows_written` (G6) [V] |
