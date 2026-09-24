@@ -179,7 +179,7 @@ this sheet was issued. Each was checked at source before being accepted.
    proposes, and will abide by in reverse: **whichever side has already applied its file to a shared
    database keeps the number**, because a migration is never renumbered after it is applied; if neither
    has applied, first claim holds. Saṅgam is asked to state its applied-state. If Saṅgam's 1085/1086
-   are applied anywhere shared, **this family will renumber its own two to 1087/1088** rather than ask
+   are applied anywhere shared, **this family will renumber its own two** to the lowest free numbers at that time ~~to 1087/1088~~ **[STALE — DO NOT USE 1087/1088: Saṅgam now holds 1088; see §7.10]** rather than ask
    Saṅgam to break the never-renumber-after-apply rule. Recorded rather than acted on unilaterally,
    because acting first is what produced this collision twice already.
 
@@ -391,3 +391,23 @@ Recorded because it is the honest completion: this session did not merely publis
 pushed a wrong number into a peer's record *as a correction of that peer*, which is worse than being
 wrong alone. The strategic session notes that the same mechanism caught two of its own errors today
 against three of this family's; the count is not the point, the mutual re-derivation is.
+
+### 7.10 Dead-offer hazard closed, 2026-09-24 — never write a bare number into a conditional offer
+
+The L3 layer-briefs session flagged that §7.5's conditional offer — "this family will renumber its own two
+to **1087/1088**" — would, if anyone acted on it, put this family's second migration **on top of Saṅgam's
+`1088_kala_convergence_kernel_fields.sql`**. It is right, and the offer is struck here and in the Saṅgam
+instruction file.
+
+The offer was already dead: it was conditional on Saṅgam's files being applied, Saṅgam answered that
+nothing it wrote touched a database, and §7.4 withdrew the question. But a dead conditional that still
+contains a live-looking pair of numbers is a loaded gun in a document, and a later reader has no way to
+know the condition lapsed. **The defect is naming numbers inside a conditional at all.** Corrected form:
+an offer names *the lowest free numbers at the time the condition fires*, never a literal pair — the same
+"publish the predicate, not the number" rule as §7.7 and §7.8, in its forward-looking form. Fourth
+instance today of one rule.
+
+**Current state, re-verified at 13:05 across every remote head and the local head, both migration
+directories:** this family 1080–1086 (`platform/migrations/`); Saṅgam 1088–1090
+(`platform/supabase/migrations/`); **1087 free and holding exactly one slot** between the two; **1091+
+free**. Anyone renumbering into that gap must take 1091+, not 1087/1088.

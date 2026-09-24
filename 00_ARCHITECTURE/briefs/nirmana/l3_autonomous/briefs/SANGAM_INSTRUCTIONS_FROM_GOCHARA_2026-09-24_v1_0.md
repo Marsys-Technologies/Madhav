@@ -91,7 +91,7 @@ applied. If neither has applied, first claim holds.
 
 **What is asked of you:** state whether your 1085/1086 have been applied to any shared database. Neither
 of this family's two has been applied outside a disposable one. **If yours are applied, this family will
-renumber its own to 1087/1088** — say so and it will be done. If yours are not applied, the first-claim
+renumber its own** to the lowest free numbers at that time — say so and it will be done. **[STRUCK 2026-09-24: the original text named 1087/1088. Do not use those. You now hold 1088, so acting on that pair would have collided with your own kernel-fields migration. An offer must name the lowest free number at the time it fires, never a literal pair — rulings sheet §7.10.]** If yours are not applied, the first-claim
 rule puts the move on your side, and the next free number by full re-scan is **1087**; re-scan before
 claiming, because that number is only true as of this writing.
 
