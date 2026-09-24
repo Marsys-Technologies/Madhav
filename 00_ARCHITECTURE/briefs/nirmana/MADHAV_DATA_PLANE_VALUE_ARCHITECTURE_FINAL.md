@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_VALUE_ARCHITECTURE
-version: "3.0"
-status: PROPOSED_FOR_NATIVE_ADOPTION
-produced_on: 2026-09-13
+version: "FINAL"
+status: CURRENT
+produced_on: 2026-09-24  # v3.0 realignment; v2.0 was 2026-09-13
 session_id: MADHAV-DATA-PLANE-V2-20260913
 parent_definition: ../../MADHAV_PRODUCT_DEFINITION_FINAL.md  # v3.0 superseded 2026-09-24
 source_revision: 45120d72dd4e968234d5e77cc1d665e74bc595d6
@@ -14,7 +14,9 @@ lineage: "Successor planning synthesis of the conversation-issued earlier data-p
 companions:
   - MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md
   - MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md
+review_record: reviews/REVIEW_DATA_PLANE_v3_0.md  # verdict REJECT, 2 BLOCKER + 10 MAJOR + 11 MINOR, all folded
 changelog:
+  - "FINAL (2026-09-24): review returned REJECT on two blockers, both orphans of the surgical realignment: §12.1 still carried 'Excluded medical/mortality requests must remain excluded through every intermediary', re-imposing the exclusion the parent removed and contradicting this document's own V12; and four V-journey P-citations were stale under FINAL numbering while the text asserted they were current. Both fixed, all 21 findings folded. Notable: §3.4's mapping cited DP05 for clauses that PASSED when DP05 carries only failing clauses, and cited DP17 (a second computation) for competing readings; DP02 amended to carry school/tradition and tested-and-passed prerequisites; a temporal/manifestation row added, without which no L3 or L4 acharya rendering was derivable. P24 given a real obligation beneath its V-row. The storage-separation clause restored - without it OFF was ambiguous between deselect and rebuild. Parent obligations that had no data obligation here added: narration-vs-arithmetic verification, and the rebuild chronology-reset leak."
   - "3.0 (2026-09-24): Realigned to MADHAV_PRODUCT_DEFINITION_FINAL, which superseded v3.0 the same day. ELIMINATED: V12 excluded-outputs (it enforced the death/illness/fertility exclusions FINAL removed, and contradicted P23); the four life-event purpose paths, replaced by FINAL's single switch; voluntary observation briefs and the cross-population research framing in DP14 and V11; DP18 future-qualification; PPR-/C3 compliance scaffolding; `permitted` where the cleanse left it without a referent. ADDED: the presentation contract (§3.4) — the data obligations that exist because FINAL promises one analysis rendered at two levels of exposed detail; āyurdāya as a domain obligation; V13 for FINAL's new present-tense need P24; LEL switch semantics; binding of the layer stories and the layer-plan template to FINAL §14's ten obligations; ablation as the per-asset scoring method; learning's defined output; the inherited definition of `qualified`, used 71 times here and previously undefined. RETAINED deliberately: DP01-DP17, the eight-disposition hierarchy, the five edge types, the six evidence states, §13.3's eight layer-plan elements, `a citation with no declared use is not a contract`, and `lack of a caller in a bounded search is not redundancy`."
   - "2.0: Aligns the entire data plane to final Product Definition v3.0; adds consumer-to-asset contribution, qualified Jyotish operators, cross-layer use contracts, source-grounded preservation dispositions, delivery obligations and upstream-first execution design. Proposed, not implemented or canonically adopted."
 ---
@@ -64,13 +66,13 @@ The unit of value is an **earned distinction**, not an asset count, a longer ans
 
 This is the proposed master for deriving six layer definitions and then asset/interface briefs. It is not six completed layer audits or 129 completed asset certifications. The companion register covers the known writer/non-writer universe with provisional component dispositions and named investigation needs. Representative source paths have been examined; no production population, deployment, private event history, source rights or predictive accuracy is certified here.
 
-The [Product Definition v3.0](../../MADHAV_PRODUCT_DEFINITION_v3_0.md) governs the target. Root architecture, frozen writer contracts, access/safety decisions and active campaign authorities remain binding. Existing L0/L1/L2 closures are historical evidence to preserve, not a prohibition on value review and not automatically revoked by it. Nothing here pauses or dispatches another session.
+The [Product Definition FINAL](../../MADHAV_PRODUCT_DEFINITION_FINAL.md) governs the target. Root architecture, frozen writer contracts, access/safety decisions and active campaign authorities remain binding. Existing L0/L1/L2 closures are historical evidence to preserve, not a prohibition on value review and not automatically revoked by it. Nothing here pauses or dispatches another session.
 
 ## 2. Consumer requirements translated into data obligations
 
-The P identifiers below refer to the product master. **They were remapped at v3.0:** the product
-definition removed its old P20 at v3.1 and shifted P21–P24 down to P20–P23, then appended a new P24.
-Any V-journey citation of P20–P24 in v2.0 referred to the old numbering; the citations below are current. The examples are requirements, not personal readings. Each obligation has a named owning contribution; not every query needs every asset.
+The P identifiers below refer to the product master. Citations follow the parent's FINAL numbering (see its
+`p_identifier_note`). Any V-journey citation of P20–P24 written before 2026-09-24 referred to superseded
+numbering and has been remapped here. The examples are requirements, not personal readings.
 
 | Value journey | Product needs | Data obligations and resulting distinction |
 |---|---|---|
@@ -78,13 +80,13 @@ Any V-journey citation of P20–P24 in v2.0 referred to the old numbering; the c
 | V02 Resources and business | P03–04 | Separate income, receipts, profit, liquidity, debt burden and retained prosperity; business growth, resilience, recognition, authority and remuneration. Structural routes and timing must retain these distinctions. |
 | V03 Relationships, family and life circumstances | P05–08 | Relevant qualified domains, reference frames, event definitions and temporal contexts. Personal marriage/family interpretation is not another person's inner life, fertility diagnosis or guaranteed conception. |
 | V04 Configuration and activation | P09–10 | Formation ledger, partial/failed prerequisites, actual cancellation and strength/condition; whole configuration identity; multiple qualified temporal routes, recurrence, inhibition and horizon coverage. Nearest contact is not automatically full manifestation. |
-| V05 Calendar, action and method selection | P11, P21–22 | General time/location context, personal relevance and undertaking-specific constraints kept distinct; qualified Praśna/Muhūrta inputs and operators. Suitability of initiation is not a guarantee of success. |
-| V06 Honest history and forecast review | P12, P20 | Subject observations with event and knowledge clocks; independently established mechanisms; original claim definitions and exposure; fit, misfit, unknowns and observed non-events. Retrodiction is not prospective proof. |
+| V05 Calendar, action and method selection | P11, P20–21 | General time/location context, personal relevance and undertaking-specific constraints kept distinct; qualified Praśna/Muhūrta inputs and operators. Suitability of initiation is not a guarantee of success. |
+| V06 Honest history and forecast review | P12 | Subject observations with event and knowledge clocks; independently established mechanisms; original claim definitions and exposure; fit, misfit, unknowns and observed non-events. Retrodiction is not prospective proof. |
 | V07 Sensitivity and controlled comparison | P13, P19 | Actual alternate calculations/operators, conventions, stable identity matching and dependency-aware differences. Input sensitivity, method sensitivity and feasible choice remain separate. |
-| V08 Source learning and scholarly depth | P15, P23 | Rights-permitted text/chapter/passage context, edition/translation, source relationships, qualified rules, exceptions and worked application. Source agreement does not establish empirical probability. |
+| V08 Source learning and scholarly depth | P15, P22 | Rights-permitted text/chapter/passage context, edition/translation, source relationships, qualified rules, exceptions and worked application. Source agreement does not establish empirical probability. |
 | V09 Exact lookup and open inquiry | P16–18 | A precise fact contract or expandable question/concept/relationship map. Correctly scoped lookup; otherwise whole-chart consultation, omission challenge, relevant adjacency and explicit gaps. |
-| V10 Continuing and portable understanding | P12–13, P19–20; master §§5–6,10 | Stable evidence/claim/reading identities, consumed snapshots, corrections and versioned comparisons. Replay, regeneration and a changed interpretation are distinguishable across authorized channels. |
-| V11 Relational and entity inquiry | P14; master §15 | Horizon only. Reuse qualified subject/reference foundations; add distinct relationship/entity contracts only after separate authority. No invented entity birth or automatic cohort admission. |
+| V10 Continuing and portable understanding | P12–13, P19; master §§5–6,10 | Stable evidence/claim/reading identities, consumed snapshots, corrections and versioned comparisons. Replay, regeneration and a changed interpretation are distinguishable across authorized channels. |
+| V11 Relational and entity inquiry | P14; master §15 | Horizon only. Reuse qualified subject/reference foundations; add distinct relationship/entity contracts only after separate authority. No invented entity birth . |
 | V12 Lifespan and constitution | P07, P23 | Āyurdāya as the classical discipline: the applicable method and school, its inputs, the cancellations, the disagreement between authorities and the genuine uncertainty. The corpus and its computation are served as the tradition's method and its limits, never as a bare date. |
 | V13 The present interval | P24 | Which mechanisms are active now, what each is doing, and how this interval differs from the one before it. Requires the active-clock set, its participants and the preceding interval for contrast — neither a forecast nor a history. |
 
@@ -147,21 +149,22 @@ onward**, not merely use internally:
 
 | What the acharya presentation renders | Which contract must carry it |
 |---|---|
-| The method and school a finding rests on, and where authorities disagree | DP02 rule qualification |
-| The prerequisites actually tested and the exceptions actually checked, including those that passed silently | DP02, DP05 formation ledger |
+| The method and school a finding rests on, and where authorities disagree | DP02 rule qualification, amended to carry school/tradition and unresolved alternatives |
+| The prerequisites actually tested and the exceptions actually checked, including those that passed silently | DP02 (tested-and-passed clauses), DP05 (partial and failing clauses) |
 | Conventions in force - ayanamsha, node, house system, varga construction | DP01 identity/release, DP03 chart facts |
 | Intermediate quantities, not only the graded result | DP03, DP04 condition decomposition |
 | Dignity, strength and condition components **separately**, with their units and their disagreements | DP04 |
-| The competing readings and which classical authority each rests on | DP06 structural relationship, DP17 controlled comparison |
+| The competing readings and which classical authority each rests on | DP06 structural relationship (variants and their source witnesses) |
 | The chain of influence with its typed relations, not a summarized verdict | DP06 |
+| The clock geometry, the activation rule, the named nearest-versus-better-supported criterion, and the manifestation bridge or its falsifier | DP07 clocks/contacts, DP08 temporal mechanism, DP09 manifestation |
 
 A layer that collapses these into a single grade has not merely lost detail - it has made the acharya
 presentation **underivable**, and with it the audience commitment. A component may present less; it may
 not *compute* less or *hand onward* less. The difference between the two presentations is what is shown,
 never what was computed or concluded.
 
-This also sets the acceptance test: for any finding, both renderings must be producible from one stored
-analysis without recomputation, and must agree on the finding, its confidence and its uncertainty.
+This also sets the acceptance test: for any finding, both renderings must be producible from the consumed
+reading package (§11) without recomputation, and must agree on the finding, its confidence and its uncertainty.
 
 ## 4. The shared semantic foundation: standardize L0 through the whole plane
 
@@ -218,9 +221,10 @@ Construct a coherent qualified bundle **within each method before comparing meth
 | Varga and reference perspectives | Varga method, domain, sensitivity, relationship to D1, reference lagna and exceptions; arūḍha/special-lagna meaning. | Distinguish resources from appearance/standing and stable versus input-sensitive support; multiple views of one input are not independent votes. |
 | Yoga/doṣa/bhaṅga | Catalog definition, actual formed/partial/not-formed states, participants, failed clauses, cancellation conditions and further manifestation qualifications. | Nīcha-bhaṅga is not automatically a fully effective Rāja Yoga; temporalize the configuration and its conditions, not just a planet label. |
 | Nakshatra/KP | Nakshatra/pada relationships and scope; symbolic/source layer distinct from calculated chains; method-native cusp/sub-lord/nodal-agency prerequisites. | Specialized evidence joins only within qualified contexts, then compares coherently with other methods. |
+| Present interval (P24) | The active clock set at `as_of`, each active clock's participants and what it is doing, and the immediately preceding interval retained for contrast. Activation is L3; expression of what it is doing is L4. | L3 owns the interval set and its boundaries; L4 owns the expression; neither may infer the other's half. |
 | Kāla | Daśā hierarchy, contact geometry, reference sign/house, transit conditions, applicable AV/vedha, annual/return conventions and precise coverage. | Background period, enablement, trigger, inhibition and recurrence are distinct contributors to the same structural mechanism. |
 | Praśna/Muhūrta/calendar | Correct question/undertaking, location/time, method eligibility and constraints. | Preserve existing services; do not relabel conversational Paripraśna as a completed Praśna method or birth pañcāṅga as arbitrary future election data. |
-| Ayurdaya and constitution | Method and school identity, its required inputs, the cancellations and exceptions each school applies, the disagreement between authorities, and the uncertainty carried by each step. Retain the computation and its limits together; a bare figure without its method and its cancellations is not a qualified result. | L0 method/source -> L1 computed inputs -> L2 constitutional structure -> L3 applicable intervals -> L4 expression, with the tradition's own caveats preserved at every hop. |
+| Ayurdaya and constitution | Method and school identity, its required inputs, the cancellations and exceptions each school applies, the disagreement between authorities, and the uncertainty carried by each step. Retain the computation and its limits together; a bare figure without its method and its cancellations is not a qualified result. | L0 method/source -> L1 ayurdaya computed under each applicable school -> L2 constitutional structure -> L3 applicable intervals -> L4 expression, with the tradition's own caveats preserved at every hop. |
 | Voluntary practice and wider tradition | Attributed practice, scope, burden, suitability, contraindication and evidence class; proper spatial/collective/non-natal inputs. | Qualified permitted guidance only; source testimony is not demonstrated remedial efficacy. Horizon qualification cannot bypass exclusions. |
 
 Completeness means the relevant qualified concept was applied, was found inapplicable, or has an explicit unavailable/unqualified/unresolved state. A tool name, an empty result or a populated confidence flag does not prove application.
@@ -281,7 +285,7 @@ restriction applies to the product's own forward claim rather than to the tradit
 
 Preserve evidence ledgers, original predictions, observations, audits, comparison/discovery kernels and legitimately shared services/models. Differentiate stored evidence, structural estimates, actual measured performance and service readiness. Learning is a separately admitted outcome, not the automatic consequence of data arriving.
 
-A family of interpretations must be able to lose authority after a fair evaluation. Ordinary periods, counterexamples, unmatched activations and failures belong in the research design. Neither satisfaction nor a subjective sense that a reading resonates becomes a prediction weight.
+A family of interpretations must be able to lose authority after a fair evaluation. Ordinary periods, counterexamples, unmatched activations and failures belong in the evaluation design. Neither satisfaction nor a subjective sense that a reading resonates becomes a prediction weight.
 
 L5 may identify source/computation defects for a future owned fix, and may publish a qualified future artifact through existing gates. It must not feed the observed outcome, a derived personal multiplier, rectification selection or cached retrospective narrative back into the prospective generation being evaluated.
 
@@ -298,7 +302,7 @@ Every consumer declares whether an input contributes to calculation, applicabili
 | Contract | Producer → consumer | Required use and preserved distinction |
 |---|---|---|
 | DP01 Identity/release | L0 → all adapters and writers | Canonical entities, qualified aliases, units and released definitions; local representations cannot diverge in meaning. |
-| DP02 Rule qualification | L0 → calculation, interpretation and investigator | Exact rule clauses, method, prerequisites, exceptions and executable scope; invocation is not application. |
+| DP02 Rule qualification | L0 → calculation, interpretation and investigator | Exact rule clauses, method, school/tradition, prerequisites tested (including those that passed), exceptions, unresolved alternatives and executable scope; invocation is not application. |
 | DP03 Chart facts | L1 → L2–L4/services | `fact_id`, grain/value/unit, chart/build, ayanāṃśa/frame/varga, input precision and verification; no downstream re-derivation. |
 | DP04 Condition decomposition | L1 → L2/L3/L4 | Separate condition/bala/benefit/functional role, constituents and reasons. Retain zeros as zeros and unavailable as unavailable. |
 | DP05 Configuration | L0+L1 → L2 → L3 | Formation, participants, partial/failing clauses and cancellation; hydrate actual configuration before timing. |
@@ -310,9 +314,9 @@ Every consumer declares whether an input contributes to calculation, applicabili
 | DP11 Investigation completeness and question compass | Capabilities/evidence → planner/omission audit | Expandable concept and relationship obligations; real application states; low-ranked decisive evidence; independent challenge; consequential uncertainty → smallest admissible discriminating next step and burden. |
 | DP12 Complete delivery | Findings → managed channels/export/replay | Every relevant authorized fact and conjoint interpretation mapped to delivered parts; material counter-evidence survives budgets and resumption. |
 | DP13 Observation intake | Creation/import/chat → canonical subject-observation owner | Original testimony, subject, source, deduplication, event/knowledge/confirmation clocks, precision, purpose and revisions. Canonical owner/path must be resolved, not a new competing diary. |
-| DP14 Historical comparison and voluntary observation brief | Admitted observations + independent L1/L2/L3/L4 context → permitted comparison | Fit/misfit/unassessable and unmatched activations; rival propositions with predeclared distinguishing criteria/window/ambiguity, voluntary burden and exposure. Classify retrospective versus prospective use before routing; no chart-fact rewrite. |
-| DP15a Claim issuance protection | Completed reading → protected claim authority, without outcomes | Capture/seal original proposition, wording, model probability, window, cutoff and actual consumed evidence at issuance; preserve operator-band freeze point separately. Required before a forecast is exposed as a completed issued claim. |
-| DP15b Later evaluation | Already-protected claim + eligible observation revision → protected L5 | Independent adjudication, valid eligibility/observation denominators and versioned correction; C3 never enters provider synthesis. Score frozen forecast probability against independent outcome—not a match score against its own derived verdict. |
+| DP14 Historical comparison | Admitted observations + independent L1/L2/L3/L4 context → permitted comparison | Fit/misfit/unassessable and unmatched activations; rival propositions with predeclared distinguishing criteria/window/ambiguity, voluntary burden and exposure. Classify retrospective versus prospective use before routing; no chart-fact rewrite. |
+| DP15a Claim issuance protection | Completed reading → protected claim authority, without outcomes | A rebuild never re-stamps an issued claim's emission time; re-stamping turns a frozen claim into a hindsight leak. Capture/seal original proposition, wording, model probability, window, cutoff and actual consumed evidence at issuance; preserve operator-band freeze point separately. Required before a forecast is exposed as a completed issued claim. |
+| DP15b Later evaluation | Already-protected claim + eligible observation revision → protected L5 | Independent adjudication, valid eligibility/observation denominators and versioned correction; admitted outcomes never enter provider synthesis. Score frozen forecast probability against independent outcome—not a match score against its own derived verdict. |
 | DP16 Version/correction | Changed authorized input/source → dependent current products | Dependency-specific stale marking, coherent publication and cache invalidation; retain consumed snapshots and original forecasts. |
 | DP17 Controlled comparison | Alternate qualified input/method/options → matched findings | Real changed computation/application, shared ancestry, changed/unchanged/unsupported findings and reason—not two unconstrained essays. |
 
@@ -375,6 +379,10 @@ purposes. There are two states and no third.
 "Across all layers" means every justified consumer receives the minimum complete purpose-qualified
 projection when the switch is ON. It does not mean every table gets the raw diary.
 
+**Storage separation, which is what makes OFF a selection rather than a rebuild:** event-conditioned
+overlays are kept separate from event-free structural and temporal products. Turning the switch OFF
+deselects the overlays; it never requires recomputing the event-free products.
+
 **The correctness rule that survives regardless of switch state** is the product definition's per-layer
 prohibition list: biography must never alter a chart fact; a biography-dependent support must never be
 presented as event-free chart structure; and **L3 must never use an observed event to choose the
@@ -384,11 +392,11 @@ supposedly prior trigger.** Violating these makes the output wrong, not merely i
 
 An event correction invalidates affected historical comparisons/evaluation candidates, not the natal chart automatically. A birth-input correction has a distinct dependency path. In both cases, current projections and caches must reflect staleness before reuse; publish a coherent new generation after accepted rebuilds. Keep original consumed readings and forecast contexts under the applicable retention policy.
 
-Retain the forecast actually delivered. A predicted formal promotion does not become a success because workload increased. Interrupted turns remain retained exposure but excluded from prediction detection under PPR-19. Model-stated probability and later operator bands have separate immutability points. Uncertain observation is not an automatic hit or miss.
+Retain the forecast actually delivered. A predicted formal promotion does not become a success because workload increased. Interrupted turns remain retained exposure but excluded from prediction detection. Model-stated probability and later operator bands have separate immutability points. Uncertain observation is not an automatic hit or miss.
 
 Eligibility distinguishes pre-window forecasts, forecasts of the still-future remainder, nowcasts and retrodictions. Retaining an original `recorded_at` while overwriting event content cannot make a later revision known earlier. Use the actual observation revision and its knowledge-time lineage. Score the frozen forecast probability against independently adjudicated outcomes, never a composite match score against a verdict derived from that score.
 
-Withdrawal/deletion/restriction must propagate to derived views, caches and any affected research artifact under existing law/policy; snapshot retention is not unlimited access. A hash/tombstone is not assumed anonymous. These details belong in the intake/correction execution brief and its actual owner contracts.
+Withdrawal/deletion/restriction must propagate to derived views, caches and any affected evaluation artifact under existing law/policy; snapshot retention is not unlimited access. A hash/tombstone is not assumed anonymous. These details belong in the intake/correction execution brief and its actual owner contracts.
 
 ## 10. Preservation and rationalization decisions
 
@@ -447,9 +455,9 @@ Quality precedes latency, but unlimited work is not the design. Measure cost at 
 
 **Named yoga, including Nīcha-bhaṅga Rāja Yoga.** Validate formation and cancellation first, then any additional qualifications for the stronger interpretation. Temporalize actual configuration participants and conditions. Explain partial expression, dispute and alternate routes. A nearby transit of one participant is not sufficient by label alone. The test must reject a flattering unsupported premise while still explaining the actual chart configuration.
 
-**Historical challenge.** Preserve a permitted event-free structural/temporal analysis independently before comparing it with an admitted historical log when the study requires blindness. Match stated outcomes and uncertainty; inspect non-matching events and unmatched activations. For a prior forecast, retrieve its frozen definition, not a new interpretation from today's rules. Failed formal promotion is not reclassified as responsibility. Route protected C3 adjudication separately from provider-facing historical explanation.
+**Historical challenge.** Preserve a permitted event-free structural/temporal analysis independently before comparing it with an admitted historical log when the study requires blindness. Match stated outcomes and uncertainty; inspect non-matching events and unmatched activations. For a prior forecast, retrieve its frozen definition, not a new interpretation from today's rules. Failed formal promotion is not reclassified as responsibility. Route adjudication separately from provider-facing historical explanation.
 
-Also prove a deep structural/meaning question without a forced forecast; exact lookup and escalation; a source exception's worked effect; method/input comparison; and correct calendar-to-inquiry context. Excluded medical/mortality requests must remain excluded through every intermediary.
+Also prove a deep structural/meaning question without a forced forecast; exact lookup and escalation; a source exception's worked effect; method/input comparison; and correct calendar-to-inquiry context. An ayurdaya request is answered as V12 requires - method, inputs, cancellations, disagreement, uncertainty - through every intermediary; never a bare date.
 
 ### 12.2 Tests that demonstrate use and value
 
@@ -457,13 +465,16 @@ Also prove a deep structural/meaning question without a forced forecast; exact l
 difference between the reading produced with it and the reading produced without it. The ablated reading
 is the "competent simpler baseline" the product definition's Distinctive understanding obligation names,
 and the difference — including any error or burden the asset introduces — is the asset's score on that
-obligation. An asset that cannot be ablated because nothing reads it has already answered the question.
+obligation. An asset that cannot be ablated because nothing reads it has already answered the question - it has not
+reached the 'consumed' state of §11's six evidence states, and ablation is how the last two states,
+'served' and 'value evaluated', are measured.
 The tests below are the shapes that difference is measured in.
 
 | Test | Required result |
 |---|---|
 | Qualification/source | Clause supports actual operator and scope; competing witness retained; unsupported timing or manifestation not borrowed from a formation rule. |
-| Numeric/context | Reproducible fact, unit/frame/varga/time precision and real verification scope; cross-chart/build mismatch rejected or isolated. |
+| Numeric/context | Reproducible fact, unit/frame/varga/time precision and real verification scope; cross-chart/build mismatch rejected or isolated; the sentence that grades or labels the number is verified separately from the arithmetic that produced it. |
+| Presentation parity | Both renderings produced from the consumed reading package without recomputation; identical finding, confidence and uncertainty; the acharya rendering exposes every §3.4 field its layer owns. |
 | Relevant perturbation | Change a qualifying condition/cancellation and observe the declared consequence while unrelated geometry remains stable. |
 | Irrelevant control | Array order, a cosmetic alias or unrelated configuration cannot change evidential meaning. |
 | Dependence control | Duplicate wrappers, graph paths sharing roots, total/components and repeated texts do not inflate independent support. |
@@ -491,7 +502,7 @@ Do not set arbitrary universal accuracy thresholds or fabricate current results.
 | W05 L3 mechanism slice | Reconcile previous Kāla plan against accepted upstream outputs; one structure–time route with proper clocks, counterconditions and alternative windows. | Real producer dependency pins; broader campaign layer gates remain binding. |
 | W06 L4 manifestation slice | Outcome-specific bridge and rivals, ordinary expressions, supported forward claim or exact unresolved bridge. | Accepted W04/W05 inputs/method scope; DP15a issuance/eligibility/firewall proof before forecast cutover; no calibration takeover. |
 | W07 Serving/complete-reading slice | Capability discovery, omission challenge/question compass, answer-shaper qualification, complete findings and managed parity/replay. | Interface research from W01; execution binds accepted slice. Forecast exposure requires scoped DP15a proof, not the entire L5 rebuild. |
-| W08 Observation/history slice | Canonical intake/revision ownership, purpose/chronology, voluntary discriminating observation brief and one historical comparison/protected review. | Own intake/firewall contracts; can be designed in parallel, no automatic future conditioning. |
+| W08 Observation/history slice | Canonical intake/revision ownership, purpose/chronology, one historical comparison/protected review. | Own intake/firewall contracts; can be designed in parallel, no automatic future conditioning. |
 | W09 L5 challenge and value | Frozen comparison sets, independently adjudicated outcomes, misfit/unknowns, explanatory and empirical tests; qualified future artifact procedure. | DP15a already protected at issuance; DP15b evaluates later. No dormant fitting/service activation without existing gates and separate authority. |
 | W10 Portfolio propagation | Extend proven contracts to every relevant accepted/residual/supporting asset and service; resolve consolidation candidates and unknown use. | Governed dependency order; reuse unchanged evidence; retirement only after migration proof. |
 
@@ -517,14 +528,14 @@ No need to wait for every L0 method or years of outcome evidence to correct a dr
 7. Generation/invalidation, compatibility, retained history, cost and rollback.
 8. Bounded work packets, dependencies, focused proof, consumer cutover and remaining activation decisions.
 
-Each **asset brief** then supplies actual tables/services/columns, current algorithm and consumers, preserved kernels/tests, exact delta and expected semantic difference. No new field is considered “used” until its transformation and receiving answer obligation are proved.
+Each **asset brief** then supplies the P-needs it serves and the parent's ten proof obligations it is scored on, its manifestation or temporal role, actual tables/services/columns, current algorithm and consumers, preserved kernels/tests, exact delta and expected semantic difference. No new field is considered “used” until its transformation and receiving answer obligation are proved.
 
 ## 14. Decision delta from earlier planning
 
 | Earlier work retained | v2.0 alignment or correction |
 |---|---|
 | Deep-inquiry companion C01–C06/C16: semantics, capability discovery, relationships, omission and complete delivery | Carried into DP01–DP12 and W02–W07; now explicitly includes intermediate answer authorities and the entire six-layer contribution story. |
-| Companion C07–C14: observations, historical use, correction and purpose | Carried into DP13–DP16 and W08–W09, with product v3.0's exact C1/C3/PPR-31 separation and immutable interrupted/completed claim semantics. |
+| Companion C07–C14: observations, historical use, correction and purpose | Carried into DP13–DP16 and W08–W09, with the parent's switch and §8.1 correctness rules and immutable interrupted/completed claim semantics. |
 | Companion C15/W07: possible context-conditioned forecasting | Remains an amendment proposal, outside initial execution. No useful-data argument silently activates it. |
 | Kāla cross-layer A/B/F input-use contracts and mechanism-first consumer plan | Retain source meaning, precision, signed paths, full configurations, outcome specificity and no-circularity. Revalidate actual producers before reusing old gap assertions. |
 | Earlier Kāla capability/view groupings and asset dispositions | Treat as hypotheses and reusable kernels, not the product's permanent screen count or a mandate to rename/delete assets. |
