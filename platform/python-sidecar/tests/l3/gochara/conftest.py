@@ -112,6 +112,14 @@ WP6_MIGRATION_1072 = (
     / "migrations/1081_nirmana_l3_gochara_ledger_coverage_publication.sql"
 )
 
+# §12.3 (4.13a–d) additive follow-on to 1081: inclusivity, the six-state F06
+# completeness CHECK, time_basis CHECK, tier_basis, and the fourth coverage
+# partition kind. Applied after 1081 on the same disposable DB (E-011).
+WP6_MIGRATION_1087 = (
+    Path(__file__).resolve().parents[4]
+    / "migrations/1087_nirmana_l3_gochara_contacts_inclusivity_completeness_tier_basis.sql"
+)
+
 WP6_DROP_SQL = """
 DROP TABLE IF EXISTS kala_gochara_contacts;
 DROP TABLE IF EXISTS kala_gochara_coverage;
@@ -132,7 +140,8 @@ def _wp6_check_reachable() -> bool:
 
 @pytest.fixture(scope="session")
 def wp6_schema():
-    """Apply migration 1081 (formerly 1076) to a fresh schema on the disposable DB.
+    """Apply migration 1081 (formerly 1076) + the §12.3 follow-on 1087 to a
+    fresh schema on the disposable DB.
 
     Skips the requesting test NOT_RUN when the disposable DB is unreachable.
     """
@@ -141,6 +150,7 @@ def wp6_schema():
     conn = psycopg.connect(WP6_DSN, autocommit=True)
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
+    conn.execute(WP6_MIGRATION_1087.read_text())
     conn.close()
     return True
 

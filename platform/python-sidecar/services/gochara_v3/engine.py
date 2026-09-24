@@ -1726,6 +1726,13 @@ def find_episodes(
     searched, including a zero-answer search (L3-Q08; kernel coverage.py:
     Moon on demand is first-class).
 
+    D-S1(a) (§12.3 4.13a): EVERY branch returns a coverage object, never
+    None. The non-Moon branch writes a 'bodies_on_demand' partition — a
+    fourth partition_kind (migration 1087), chosen over per-body
+    body_target rows because a zero-contact search has no bodies to
+    partition by and live-search coverage must not mix into the build
+    manifest's body_target semantics.
+
     The payload is contact episodes + coverage only: Sade-Sati testimony
     is NOT in the Moon channel, and the channel's doctrine content stays
     [U] (no citation is invented here).
@@ -1753,7 +1760,20 @@ def find_episodes(
             "coverage": coverage,
             "moon_channel": "separate",
         }
-    return {"episodes": sentences, "coverage": None}
+    coverage = _kernel_coverage.build_coverage(
+        chart_id=context.chart_id,
+        generation=generation,
+        partition_kind="bodies_on_demand",
+        partition_key=f"bodies:interval:{start_jd}/{end_jd}",
+        requested_horizon=(float(start_jd), float(end_jd)),
+        completed_horizon=(float(start_jd), float(end_jd)),
+        resolution_arcsec=1.0,
+        relations_searched=tuple(sorted({s.primitive for s in sentences})),
+        resolution_states={"resolved": len(targets)},
+        convention_id=_WP5_PROVISIONAL_CONVENTION_ID,
+        ephemeris_backend={"source": "swiss_ephemeris", "path": "on_demand"},
+    )
+    return {"episodes": sentences, "coverage": coverage}
 
 
 def _compute_permission_from_context(

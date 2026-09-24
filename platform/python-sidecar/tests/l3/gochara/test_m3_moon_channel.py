@@ -103,6 +103,47 @@ def test_find_episodes_moon_zero_contacts_still_writes_coverage(monkeypatch):
     assert coverage.unsearched_reason is None  # search DID run (H-3)
 
 
+# ── §12.3 4.13a (D-S1(a)): coverage on EVERY branch ──────────────────────────
+
+def test_find_episodes_non_moon_zero_contacts_returns_coverage_row(monkeypatch):
+    """A zero-contact non-Moon search still returns a coverage object —
+    interval-scoped, fourth partition kind 'bodies_on_demand' (migration
+    1087), searched horizon == requested horizon (H-3: the search ran)."""
+    monkeypatch.setattr(
+        engine, "_gather_sentences_no_db",
+        lambda swe, context, targets, start, end: [],
+    )
+    result = engine.find_episodes(
+        None, _StubContext(), ["syn:target"], T_JD - 5.0, T_JD + 5.0,
+    )
+    assert result["episodes"] == []
+    coverage = result["coverage"]
+    assert coverage is not None
+    assert coverage.partition_kind == "bodies_on_demand"
+    assert coverage.partition_key == f"bodies:interval:{T_JD - 5.0}/{T_JD + 5.0}"
+    assert coverage.requested_horizon == coverage.completed_horizon
+    assert coverage.relations_searched == ()
+    assert coverage.unsearched_reason is None
+
+
+def test_find_episodes_no_branch_returns_coverage_none(monkeypatch):
+    """D-S1(a) exit gate: neither the moon=True nor the moon=False branch may
+    return coverage: None — including a zero-answer search on each."""
+    monkeypatch.setattr(
+        engine, "_gather_sentences_no_db",
+        lambda swe, context, targets, start, end: [],
+    )
+    for moon in (False, True):
+        result = engine.find_episodes(
+            None, _StubContext(), ["syn:target"], T_JD - 5.0, T_JD + 5.0,
+            moon=moon, generation="syn-gen",
+        )
+        assert result["coverage"] is not None, f"moon={moon} returned coverage None"
+        assert result["coverage"].partition_kind == (
+            "moon_on_demand" if moon else "bodies_on_demand"
+        )
+
+
 def test_flag_off_byte_identical():
     sentences = [_sentence("Saturn", 0.5), _sentence("Moon", 0.5)]
     a_default, d_default, tb_default = engine._compute_activity_v3(

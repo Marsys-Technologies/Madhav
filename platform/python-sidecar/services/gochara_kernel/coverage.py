@@ -1,7 +1,7 @@
 """Search-coverage records (plan §4.4; WP1_CONTRACTS.md §4).
 
 One record per (chart, generation, partition = body × target_type, or
-event_class, or a moon_on_demand interval). The kernel does not persist
+event_class, or a moon_on_demand / bodies_on_demand interval). The kernel does not persist
 (WP6 owns the table); it builds the row-shaped record so every search —
 including a zero-answer search — carries its coverage object (Strategy §3;
 L3-Q08).
@@ -26,6 +26,7 @@ class CoverageRecord:
     chart_id: str
     generation: str
     partition_kind: str          # 'body_target' | 'event_class' | 'moon_on_demand'
+                                 #   | 'bodies_on_demand' (D-S1(a))
     partition_key: str           # e.g. 'saturn:karaka' | 'moon:interval:<start>/<end>'
     requested_horizon: tuple[float, float]
     completed_horizon: tuple[float, float]
@@ -84,7 +85,8 @@ def build_coverage(
     'unqualified': n} for the honest nulls (WP1_CONTRACTS.md §2.1). A dangling
     yoga id or an absent overlay is counted here — never a silent skip.
     """
-    if partition_kind not in ("body_target", "event_class", "moon_on_demand"):
+    if partition_kind not in ("body_target", "event_class", "moon_on_demand",
+                              "bodies_on_demand"):
         raise ValueError(f"unknown partition_kind {partition_kind!r}")
     resolved = resolution_states.get("resolved", 0)
     unresolved = {k: v for k, v in resolution_states.items() if k != "resolved"}
