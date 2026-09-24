@@ -489,3 +489,11 @@ to work alone on a disposable database, so it does **not** need the Clear fix, t
 each step's evidence precedes the next governs the *sequence you run in*; make this the first step run and record its evidence as
 `step03`. **This run has no production access and must not apply it to a shared database itself** — put it in front of the native with
 the exact command in E-014. Do not weaken the guard to make any test pass.
+
+### 12.16 After PR #2733 merges — update this branch from main, but NOT mid-run
+
+The L0 session reports (via the API, not checked by the L3 session) that #2733, the fix for the two pins tests, is at position 1 of the merge queue, awaiting checks. Its
+first push failed four unit tests because the digest fix moved the capability snapshot hash; the L0 session regenerated the pinned baselines and added a Purna v6 artifact. Once it
+merges, **a PR with a stale base needs a branch update from main to pick up the fix — that includes PR #2731.** Do that only when this run is idle and the tree is clean: merging main into a
+branch a live run is editing brings the L0 migrations, the regenerated digests and pins, and can conflict with in-flight work. The merge-time regeneration in §12.10c (writer digests,
+pin re-admission, capability census) must run AFTER that update, never before. Expect PR #2731 to stay red on the two pins tests until the update.
