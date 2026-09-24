@@ -627,3 +627,42 @@ applied as `amjis_app` after re-granting CREATE. The rehearsal-harness
 `clear_tables` TEXT-vs-`text[]` fidelity gap remains an open fix for the
 harness itself (not blocking; recorded in step05 evidence). Outcome recorded
 in `evidence/step05_evidence.md` (2026-09-24 RESUMED section).
+
+## E-018 — tranche 2 halted at step 6: §12.9 gate RED on production + two prepared artifacts missing
+
+Under the native ruling of 2026-09-24T11:39:01Z ("Approved on point number two.
+Go ahead to everything."), tranche 2 was entered after tranche 1 went green
+(step 5 resumed and passed). Step 6 did not run:
+
+1. **§12.9 staleness gate is RED on production** for both authority charts —
+   every `kala_vedha_gochara` / `kala_moorti_nirnaya` row predates migration
+   1082 and carries a NULL `upstream_fingerprint` (135/135, 72/72 on
+   `1c826d5a…`; 132/132, 71/71 on `482012f1…`; 0 mismatched). The gate tests
+   themselves are green (40/40 with the disposable DBs up). Remediation is the
+   prescribed overlay rebuild with this branch's writers; NOT performed this
+   run because the build is blocked independently (next item) and the rebuild
+   rewrites live-served overlay rows — it should land as its own reviewed
+   change, not as an orphan step of a halted tranche.
+2. **The step-6 episode enumeration driver does not exist.** step06 consumes
+   `--episodes-json`/`--coverage-json` from "the kernel pipeline"; nothing on
+   the branch enumerates a chart's full episode set (only tests and step06 call
+   `ledger.write_contacts`; `find_episodes` serves from the ledger). Writing it
+   is the '4.0' writer's core — new engineering, barred as improvisation under
+   the standing order, and §10 bars live-chart writes before the proof matrix
+   gates run for it.
+3. **E-012 still in force:** the '4.0' windows projection writer does not
+   exist; step 7's `windows_present` gate is RED by design and step 8 refuses
+   to flip. The authority flip is physically unreachable this run regardless.
+
+**Native decisions requested:** (i) owners for the enumeration driver and the
+windows projection writer (the E-012 owner question carries); (ii) whether the
+overlay fingerprint rebuild for `1c826d5a…` and `482012f1…` runs now as its own
+reviewed change so §12.9 is green at the next step-6 attempt; (iii) confirm
+the M-1 candidate-1 parameters recorded for that attempt
+(`activity_shape=linear_no_box, orb_max_deg=5.0`; orb 1.0 = candidate 2, not
+ratified; 0.5 rejected).
+
+Production state at halt: no '4.0' rows anywhere; generations v1=38287 /
+3.0=1830; authorities both '3.0'; century `is_active=false`; registry re-pin
+(step 5) live; 1080/1081/1082/1083/1084/1087 all applied. Evidence:
+`evidence/step06_evidence.md`.
