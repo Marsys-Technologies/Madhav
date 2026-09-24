@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.16"
+version: "1.17"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.17 (2026-09-24) — §8: the six native questions are RULED under delegation, not open; each summarised with its disposition and pointed at the ruling sheet 1.13. P1 per-class grids not funded (B-4); the refinement_depth dormant-vs-disabled question closed on evidence. No prior ruling re-opened."
   - "1.16 (2026-09-24) — §7.8 figures corrected to post-repair (42: 36/0/6; Mercury 2→5 page-grain) on O-3's re-count, reproduced from the served table."
   - "1.15 (2026-09-24) — inbound reconciliation: ruling 7's L0 side recorded DONE as implemented (no mean derivation; S0 frame decision); sarvatobhadra \"populatable today\" withdrawn on the L0 attempt; PG349/PG353 scale question; §8 gains the native questions and W7-scope notes; refuted claims pointed to KSHETRA_INBOUND_RECONCILIATION_v1_0.md §5."
   - "1.14 (2026-09-24) — NEW RANK 0 above G3, §2 item 00: the field's time axis mixes J2000 knots with birth-relative clip/horizon/decade constants; measured live on the canonical chart (field spans 2000-01-01 … 2100-01-01, not birth … birth+100y; first sixteen years absent). Found by the strategic session's synergy audit (63b5fb429), scoped up and measured here. Fix and detector routed to stage-3 Phase 1 item zero. No ruling changed."
@@ -458,11 +459,19 @@ hard to cite precisely is a real cost, not absence.
 
 ## §8 — Not settled, and non-claims
 
-**Added 2026-09-24 by the inbound reconciliation (`KSHETRA_INBOUND_RECONCILIATION_v1_0.md` §4) — questions only the native can answer, none
-blocking stage 3's first four phases:** B8-7 (adopt R-6's four-way separation as columns, or map Kshetra's four
-λ terms to it); B-2 (does "Accepted N/22" count a partially-elevated Kshetra); B-4 (shared knot grid vs
-per-class grids — cost against cross-class comparability, before P1 is funded); B8-4 (`independence_group`
-jsonb shape); B8-6 (one contact producer); PG349 vs PG353 for the transit malefic scale. **Recorded for the W7
+**Added 2026-09-24 by the inbound reconciliation, then RULED the same day under native delegation**
+(*"On my behalf, rule the six Questions"*) — full rulings with their evidence in
+`KSHETRA_RULING_SHEET_v1_0.md` §NATIVE-DELEGATED RULINGS (sheet 1.13): **B8-7** R-6 adopted as a declared
+alias map (`activity`/`applicability`/`availability` alias fields already owed; `valence` NULL with reason
+plus an L2 DEMAND for `event_class.valence`) — *not* as a re-decomposition of λ, whose four terms are all
+contributors to one nonnegative intensity; **B-2** "Accepted N/22" counts terminal assets only, Kshetra is 0
+until `t3 FROZEN`, stage progress reported separately and never summed; **B-4** keep the shared chart-level
+knot grid, **P1 per-class grids not funded** (measured: 25 × 342,803 uniform, `refinement_depth = 0`
+everywhere with a live τ detector — closing *dormant-vs-disabled* as dormant); **B8-4** shape ratified with
+`group_id` content-addressed over `(family, sorted(roots))`, rename routed to Saṅgam; **B8-6** evaluation-only
+— the episodes are an internal knot source, not a contact verdict, and `kala_gochara_contacts` does not exist
+in production; **PG349 vs PG353** NEITHER — both are Sarvatobhadra-chakra scales (PG353 explicitly
+battle-conditioned), so the malefic covariate is F06 `unqualified` and the field is built without it. **Recorded for the W7
 packet, not stage 3:** stage 8's per-view substep (1,210 s) exceeds `_WRITER_TIMEOUT_SECONDS` (F-KSHETRA-6); the
 six-view stage-8 grain is orphaned by the product definition (T1 orphan item 2). **Refuted upstream claims** are
 listed in that artifact's §5 — notably "the hazard field is flat" (8,417,290 canonical rows with γ ≠ 0).

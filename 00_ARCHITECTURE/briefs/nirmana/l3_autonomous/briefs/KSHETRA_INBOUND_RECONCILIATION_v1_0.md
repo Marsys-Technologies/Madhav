@@ -1,7 +1,7 @@
 ---
 artifact: KSHETRA_INBOUND_RECONCILIATION
 canonical_id: KSHETRA_INBOUND_RECONCILIATION
-version: "1.2"
+version: "1.3"
 status: RECONCILED_FOR_STAGE_3
 date: 2026-09-24
 purpose: >
@@ -18,6 +18,7 @@ method: >
   reading the L0 repair's diff and PR record, and by SELECT-only queries against production through
   the project's read-only proxy — before folding it. Presence alone was never treated as capture.
 changelog:
+  - "1.3 (2026-09-24) — §4's six questions all RULED under native delegation; pointer added to the ruling sheet's NATIVE-DELEGATED RULINGS section."
   - "1.2 (2026-09-24) — K-1 row corrected: the guard finding is real today; recorded as a three-way choice (prompt 1.7 b′)."
   - "1.1 (2026-09-24) — ruling 8 post-repair arithmetic corrected on O-3's independent re-count (42/36/0/6; Mercury 2→5 page-grain); recorded in §3 and §5."
 sweeps: 2026-09-24, main @ 0dcf28d6d; readiness @ 5c05a0e2f+; gochara wp0-7 @ e93112eb0; sangam/stage3 @ 8ad8e0b52
@@ -124,6 +125,12 @@ pair-scored, not a binomial test (recorded in KIMI/Sangam exchange); Sangam's `-
 exclusion — Kshetra's own suite is its proof, not Sangam's.
 
 ## §4 — Questions only the native can answer (none block stage 3's first four phases)
+
+> **ALL SIX RULED 2026-09-24** under the native's delegation (*"On my behalf, rule the six Questions"*).
+> The rulings, each with the evidence gathered for it, are in `KSHETRA_RULING_SHEET_v1_0.md`
+> §NATIVE-DELEGATED RULINGS. The list below is retained as the question record. One ruling (B-4) was
+> reached only after two wrong intermediate readings of `kala_field` — both chart-blind — were caught
+> and withdrawn; the sheet records them so they are not re-inherited.
 
 1. **B8-7** — does Kshetra adopt the R-6 four-way separation (`activity · valence · applicability ·
    availability`) as emitted columns, as Sangam did, or declare its λ decomposition (promise, clock,

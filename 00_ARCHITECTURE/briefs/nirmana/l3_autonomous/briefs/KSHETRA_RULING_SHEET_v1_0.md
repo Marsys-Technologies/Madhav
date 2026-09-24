@@ -1,9 +1,10 @@
 ---
 artifact: KSHETRA_RULING_SHEET
 canonical_id: KSHETRA_RULING_SHEET
-version: "1.12"
+version: "1.13"
 status: CLOSED  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md), each re-verified at source by the author before adoption — no ruling re-opened. Native delegation ("Go ahead and do it.") discharged — PR #2722 merged 54766b5da; all ten rulings AFFIRMed by the author under delegation except ruling 8, RE-OPENED and corrected by independent review (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md); brief/plan status moves to APPROVED_FOR_EXECUTION with the house-vedha correction folded in
 changelog:
+  - "1.13 (2026-09-24) — NATIVE-DELEGATED RULINGS section added: the six §4 questions ruled under the native's delegation (\"On my behalf, rule the six Questions\"). B8-7 declared alias map with valence NULL + an L2 DEMAND; B-4 shared grid kept and P1 per-class grids not funded (refinement_depth dormant-not-disabled closed on evidence); B-2 terminal assets only; B8-4 ratified with group_id content-addressed; B8-6 evaluation-only; PG349/PG353 NEITHER — both are Sarvatobhadra-chakra scales, the covariate stays unqualified. Two wrong intermediate readings of kala_field (per-class structure; stale-generation accretion) were chart-blind, caught, and are recorded as withdrawn. No prior ruling re-opened."
   - "1.12 (2026-09-24) — row 8: post-repair figures corrected on O-3's independent re-count (42 rows: 36 matching / 0 deferred / 6 unsourced; Mercury 2→5 page-grain only, OCR token Bill) — the sheet had published the pre-repair 32/3/6 in the post-repair tense; counts now cited by predicate. The re-count covers ruling 8's arithmetic only, not 7 or 9. No ruling re-opened."
   - "1.11 (2026-09-24) — row 7: L0 side recorded as DONE as N-4a implemented it (declaration + anchor, no mean derivation); row 8: the sarvatobhadra \"buildable from prose\" claim withdrawn on the L0 attempt's evidence; PCD-2 records the inbound reconciliation. No ruling re-opened."
   - "1.10 (2026-09-24) — PCD-1 states the t-axis-before-G3 sequencing as a delegated re-rank (binding B8-10). No ruling re-opened."
@@ -99,3 +100,203 @@ consumer rows; M-8; D-S5; PG349/PG353). Six inbound claims were refuted by measu
 so they are not re-inherited — including this sheet's own sarvatobhadra claim (withdrawn above) and the upstream
 "flat hazard field" claim (canonical `kala_field`: 8,417,290 rows with γ ≠ 0). Six questions only the native
 can answer are listed in that artifact's §4; none blocks stage 3's first four phases. No ruling re-opened.
+
+## NATIVE-DELEGATED RULINGS — the six questions of `KSHETRA_INBOUND_RECONCILIATION_v1_0.md` §4
+
+**Delegation.** Native, 2026-09-24: *"On my behalf, rule the six Questions and then proceed as per the
+sequence you suggested."* Ruled by the author under that delegation, each on evidence gathered for the
+ruling and cited inline. Live measurements are from production on 2026-09-24 through the read-only MCP
+path (canonical chart `482012f1-710e-4a25-994a-93821f5871aa`). No prior ruling re-opened. Nothing here
+authorizes a build, migration, grant or deployment.
+
+### B8-7 — R-6 four-way separation → **ADOPT AS A DECLARED ALIAS MAP; `valence` is NULL with a reason and a DEMAND on L2. NOT as a re-decomposition of λ.**
+
+R-6 exists to stop a *signed* judgment being multiplied into a *nonnegative* combiner — Saṅgam's
+`score([0,1,1]) = 0.0` erased adverse activity (`SANGAM_ALGORITHM_ELEVATION_PLAN_v0_4.md` :55, :146). It
+is an anti-collapse rule, not a naming convention.
+
+**Kṣetra does not have that defect.** `kala_field` already persists `promise_term`,
+`clock_term_start`, `modifier_term_start`, `suppression_term_start` and `signed_obstruction_start` as
+separate columns (production, measured) — the λ terms are stored separately and never only as a product.
+The discipline R-6 enforces is already met.
+
+**But the four λ terms are not the four R-6 axes.** All four are contributors to one nonnegative
+intensity `ln λ_e(t)` (`layer1.py:22-30`); none of them is a valence, an applicability or an
+availability. Declaring them "the equivalent, with a mapping" would be a false equivalence (§N.7 items
+3 and 6). So Kṣetra emits the R-6 axes as a **declared alias map** onto fields it already owes, adding
+exactly one new emission:
+
+| R-6 axis | Kṣetra emission | new column? |
+|---|---|---|
+| `activity` | the row's computed intensity — `kala_field`'s `(alpha, gamma)` segment form / `lambda_start`; window-level peak on `kala_field_windows` | no — alias |
+| `applicability` | the F06 `completeness_state` Kṣetra already MUST EMIT (binding B2) | no — alias |
+| `availability` | the B5 `coverage` shape + F06 `unavailable` | no — alias |
+| `valence` | **NULL**, reason `class_polarity_not_declared_upstream` | the one new emission |
+
+**Why `valence` is null and not computed.** Measured: `bodha_pratijna` carries no polarity or valence
+column (only `grade`, `occurrence_grade`, `condition_grade`), and no event-class catalogue table exists
+in production. A window's valence is a property of its *event class* — `bereavement` is adverse,
+`major_gain` favourable, `relocation` neither — not of a hazard rate, which is a nonnegative intensity
+for an already-named class. Kṣetra inventing the sign by classifying the 27 class names would re-derive
+what L2 owns (§N.5) and substitute a plausible default for "not declared" (§N.7 item 6). **DEMAND on L2**
+(a packet, not a requirement): declare `event_class.valence` in the class catalogue. Until it lands,
+`valence` is null with its reason — never a default sign.
+
+The one valence Kṣetra genuinely owns stays where it is: the stage-1 symbol `polarity ∈ {supportive,
+obstructive, neutral}` (`stage1_symbolization.py:124`) is an *input* grain, already consumed
+asymmetrically by the suppression term, and is **not** promoted to a window-level valence.
+
+Per the binding's own rule of adoption the map is non-conformant until *declared*: cite it in brief §1
+and prove each alias in §6 with a detector that fails when the alias is absent or mis-valued.
+
+### B-4 — knot grid → **KEEP THE SHARED (chart-level) GRID. Do not fund per-class grids.**
+
+**Measured.** Canonical chart, snapshot `kfs_180521585e89394014dcf30015ef8e5f`: `kala_field` =
+8,570,075 rows = **25 classes × exactly 342,803 segments**, uniform. (The second snapshot
+`kfs_b3bcf77a…`, 6 classes × 402,147, belongs to the *other* production chart `1c826d5a…` —
+Abhinandan — not to a second generation of the canonical chart. A chart-blind aggregation made while
+gathering this ruling read those two charts first as per-class structural variation and then as a
+stale-generation accretion with a tiling violation; **both readings were wrong**, were caught by adding
+`chart_id` to the grouping, and are recorded here as withdrawn rather than carried.)
+
+**Per-class grids buy nothing, and the reason is structural, not incidental:**
+
+1. `FieldEvaluator.breakpoints()` (`stage4_field.py:880-896`) is **class-independent by construction** —
+   the union of stage-0 kinematics roots, stage-1 envelope knots, precision-supported daśā boundaries
+   and the horizon ends. Every one of those is a property of the *chart*; the class only re-weights them.
+   A weighted sum of functions that are log-linear between knots is log-linear between the same knots,
+   so a per-class knot set is necessarily a **subset** of the chart-level union. The one class-specific
+   operation — SM-R-7 Option B suppression filtering — *removes* obstruction knots for a class and never
+   adds one.
+2. **Per-class adaptive refinement already exists, is a real detector, and reports nothing to refine.**
+   `integrator._refine` (`integrator.py:106+`) splits a segment whenever the true `ln λ` deviates from
+   the stored log-linear form at its midpoint by more than τ = 0.02 nats, and stores an exhausted
+   segment visibly rather than dropping it. Measured: `refinement_depth = 0` on all 8,570,075 rows across
+   all 25 classes, `refinement_exhausted = false` everywhere. With 342,803 knots over a 36,525-day
+   horizon the mean segment is ≈ 0.107 d ≈ 2.6 h, at which scale `ln λ` is linear. **This closes the
+   standing "`refinement_depth` dormant-vs-disabled" question on evidence: dormant, with a live
+   detector behind it — not disabled.**
+3. Cross-class comparability is therefore **free today** — one t-axis for every class means integrals and
+   top-N comparisons align without resampling. Per-class grids would spend P1's budget to *lose* that
+   property while gaining no resolution the τ detector says is missing.
+
+**Obligations attached, so the claim keeps a detector (§N.8):** (a) add the invariant as a test — for any
+class, the class knot set ⊆ the chart-level breakpoint union — failing if a class ever introduces a knot
+outside the union, which would falsify the argument above and re-open B-4 on the merits; (b) the uniform
+count is a *measured* quantity, so it belongs in a re-runnable query cited by predicate with its date,
+never in prose as a standing claim (ruling 8's durable form); (c) a shared x-axis is **not**
+comparability — B2's `comparability_class` must still be declared, or a single class declared, before any
+ranking over Kṣetra windows. Reading a shared grid as comparability would be the §N.8 "looks green, no
+detector" defect exactly.
+
+### B-2 — "Accepted N/22" → **counts TERMINAL ASSETS ONLY, one indivisible unit each. Kṣetra contributes 0 until its own terminal gate. Stage progress is reported separately and never summed into N.**
+
+The counter asserts *"N of 22 assets have been accepted."* Under §N.8 a status must be computed by a
+detector that measures the specific claim it asserts. Admitting a partially-elevated asset into N makes
+the numerator a mixture of two units — whole assets and stage families — and the quantity then measures
+nothing and cannot read false when it should. That is §N.8 instance 4's defect class precisely: a
+promotion predicate satisfied by a proxy (some stages done) rather than by the claim (this asset's
+elevation is complete).
+
+The snapshot is **not** a 23rd asset: it is Kṣetra's terminal gate (plan stage 6 exit, `t3 FROZEN`).
+Counting it separately would inflate the denominator with a gate.
+
+So: N counts assets at their terminal state. Kṣetra's stage-family progress is real and must stay
+visible — as a separate `stages_accepted: k/9` figure displayed beside N/22, **never summed into it**. A
+surface that cannot carry two fields shows N/22 and omits the stage figure rather than blending them.
+
+### B8-4 — `independence_group` shape → **RATIFY `[{group_id, family, roots[], members[], basis}]` with `basis` always `declared_lineage`, plus ONE amendment: `group_id` is content-addressed, not a surrogate.**
+
+**Measured:** `independence_group` exists in **no** production table today (the binding records Gochara
+as OFFERing the column; it is on an unmerged branch). `independent_current_count` exists on
+`kala_convergence` as `smallint`. So this ruling constrains a shape before it lands — the cheap moment.
+
+- **Ratify** the five fields, and `basis = declared_lineage` always. Layer contract §7's whole point is
+  that shared inputs are not independent evidence; a `basis` that could read "demonstrated" would be a
+  claim with no detector (§N.8). The field is kept rather than dropped precisely so the declaration is
+  explicit on every row.
+- **Amendment — the one substantive change.** `group_id` MUST be content-addressed: sha256 over
+  `(family, sorted(roots))`, never a bigint or a per-build uuid. Kṣetra's B4 obligation is to *inherit the
+  union of its witnesses' groups*, and a union is well-defined only if the same shared root yields the
+  same `group_id` in Gochara, Saṅgam and Kṣetra. With a surrogate id the union silently over-counts
+  independence — the exact error the field exists to prevent. This introduces no new convention: it is
+  B8-1's content-addressed identity pattern.
+- `members[]` stays per-asset (the citing asset's own rows in the group); the union is over
+  `(group_id, family, roots)` with `members` concatenated, **never deduped away** — otherwise test 8
+  (dropping a witness must change the union) can pass vacuously.
+- `declared_current_count`: the rename is right — the count is of *declared* independents, never
+  demonstrated ones, and the current name asserts more than the data supports. But
+  `independent_current_count` is a live production column with readers, so the mechanism is **additive
+  column + backfill + one alias generation + reader cutover**, never an in-place rename. This sheet rules
+  the name's honesty; **Saṅgam owns the migration and its timing.**
+
+### B8-6 — one contact producer → **EVALUATION-ONLY, `comparable_with = different_convention`. `find_contact_episodes` is NOT made a consumer of `kala_gochara_contacts`.**
+
+**They are not the same object.** A Gochara contact is a **served, discretized verdict** about a transit
+event, carrying a claim grain and admissibility. Kṣetra's `find_contact_episodes`
+(`stage0_kinematics.py:329`) is an **internal knot source**: it returns `(t_in, t_out, t_peak)` plus the
+ohm-core crossings from Kṣetra's own Hermite spline, to place breakpoints for a continuous-time integral
+(§3.1's within-episode envelope knots). B-4 above shows those knots *are* the entire field grid.
+
+Making the knot set depend on another asset's discretization would mean the hazard field's shape changes
+whenever Gochara rebuilds, and a date-grain rounding would enter a continuous-time integral. A knot set
+must come from the same continuous kinematics the integral is taken over, or the stored segments no
+longer integrate the function they claim to. **Measured:** `kala_gochara_contacts` does not exist in
+production — a "consume it" ruling is not executable today and would bind Kṣetra to a shape that can
+still change.
+
+**B6 single-producer is respected, not waived:** Kṣetra produces **no contact verdict at all**. That is
+why evaluation-only is honest here rather than a dodge. Obligations: (a) the episodes stay internal — no
+episode is served as a transit claim, with a detector that fails if one reaches a served surface as a
+contact verdict; (b) where Kṣetra cites a transit **as evidence for a window** rather than as a knot, it
+consumes Gochara by `window_ref` — that is the real consumer surface and B6 binds there; (c) every
+Kṣetra row comparable with a Gochara contact stamps `comparable_with = different_convention`, carrying
+the mean/true node split (ruling 7).
+
+**Interaction with the DAG-guard finding, stated so it is not mistaken:** this ruling does *not* worsen
+it. The knot path reads no Gochara table and so creates no guard edge. The guard finding is solely about
+`writer.py:2344`'s legacy cross-check read of `kala_gochara_windows`, which prompt 1.7 (b′) puts to the
+executor unchanged.
+
+### PG349 vs PG353 — the malefic scale → **NEITHER. The transit covariate reads no malefic scale; it emits F06 `unqualified` with its reason, and the field is built without it.**
+
+Read at the served corpus 2026-09-24 (`classical_text_chunks`, `phaladeepika_pg0349_c01` and
+`phaladeepika_pg0353_c01`). **The question's premise — that one of the two is "the transit scale" — does
+not survive reading both.**
+
+- **PG353 is explicitly battle-conditioned:** *"When at the time of a battle, there is a Vedha caused by
+  one, two, three, four or five malefics, the corresponding effects will be fear, failure, killing
+  (blood-shed), death and ignominy respectively."* A natal-transit covariate is never "at the time of a
+  battle."
+- **PG349 is also not a general transit scale.** Its 1–5 scale counts vedhas *within the Sarvatobhadra
+  chakra* — *"When the Vedha is with an asterism, there is confusion; when with a letter, loss; with a
+  vowel, sickness… When there are five Vedhas simultaneously, the individual will not live"* — and its
+  own count-scale likewise opens on battle: *"A single Vedha will engender fear in battle; two, loss of
+  money; three, some obstacle; and four, death."*
+- **Both pages sit inside Adh. XXVI, the Sarvatobhadra chakra chapter** — the mechanism ruling 8 holds
+  `unqualified`, and which the L0 attempt conclusively could not build (3 of 28 asterisms worked,
+  traversal direction never stated, glyphs garbled). A scale cannot be admitted for a covariate while
+  the mechanism it scales is not.
+- The one sentence on PG349 that *is* about a transiting planet rather than the chakra — *"when the
+  planet causing the Vedha is retrograde, the effect is two-fold; thrice when he is in exaltation; when
+  his motion is rapid (direct), the usual (natural) effect; and when in depression, the effect is only
+  half"* — is a genuine motion/dignity multiplier, but it too modifies "the planet causing the **Vedha**"
+  and so inherits the SBC's qualification. It is recorded as the **candidate** the covariate may read
+  *if and when* the SBC is admitted. It is not read today.
+
+`bg_vedha_malefic_scale` (5 rows, PG353) is correctly cited where it sits and is consumed only by
+something in a battle context — nothing in Kṣetra is. Kṣetra's malefic-scale covariate therefore emits
+F06 `unqualified` with reason `mechanism_not_admitted:sarvatobhadra`, and the field is built **without**
+that covariate rather than with a mis-scoped one. ADJUDICATION-11's "never seat unqualified" governs;
+§N.7 item 6 — an honest null beats an invented judgment — is the doctrine.
+
+### What these six change downstream
+
+| ruling | binds at | effect |
+|---|---|---|
+| B8-7 | S5 projection | one new emission (`valence`, null + reason); three declared aliases; an L2 DEMAND packet |
+| B-4 | P1 funding | **P1 per-class grids not funded**; one new invariant test; the dormant-vs-disabled question closed |
+| B-2 | PRODUCER_READY / tracker | Kṣetra counts 0 in N/22 until `t3 FROZEN`; `stages_accepted` reported separately |
+| B8-4 | S5 | `group_id` content-addressed; rename routed to Saṅgam |
+| B8-6 | S1 packet | interim declaration ratified as the ruling; episodes stay internal knots |
+| PG349/PG353 | S1 packet | the malefic covariate is `unqualified`, not seated; candidate recorded for a future SBC admission |
