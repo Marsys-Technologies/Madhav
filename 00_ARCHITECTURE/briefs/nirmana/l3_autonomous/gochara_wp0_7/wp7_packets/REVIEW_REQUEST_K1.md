@@ -35,3 +35,20 @@
 - **P-1d consistency:** this packet applies the same "absent authority ⇒ unpublished" rule that P-1 applied to the MCP serving layer. `platform/src/lib/retrieval/registry/layers/reading_checklist.ts` still carries the old COALESCE seam (flagged in REVIEW_REQUEST_P1.md and P2.md) — **cross-layer ruling still needed**.
 - `term_key`/`source_pk` shapes changed — any downstream consumer pattern-matching `gate:legacy_sweep_xref:{id}:` must be updated; grep found no consumers outside writer/tests.
 - Fakes may produce `generation='unknown'` in edge keys; production cannot (column selected). Acceptable sentinel per packet's "pin the generation" intent.
+
+## Amendment 2026-09-24 — the `ka_kshetra -> ka_gochara` edge is held out of 1084
+
+At the Kṣetra stream's request, verified at source by the L3 session before acting. Migration 1084 now
+declares only the service seam (`ka_kshetra -> ka_vedha_gochara`, `ka_sangam -> ka_vedha_gochara`).
+
+Verified: (1) `depends_on` is a hard build gate — `asset_runner` requires a dependency `lit` for the chart,
+and dependencies feed `canonical_upstream_hash`; (2) the seed registers `ka_gochara` as owning
+`kala_gochara_windows` while its writer writes `kala_gochara_windows_v2` — the registry and the writer
+disagree, and Kṣetra reads the authoritative generation, not the W2G rows; (3) migration 569 had to remove a
+retired-asset edge that deadlocked every `ka_kshetra` dispatch; (4) the register has no role column.
+
+Not verified, and stated as such: whether `tests/test_dag_edge_guard.py::test_live_registry_has_no_hard_violations`
+(needs `DATABASE_URL`; no allowlist for this read) would report the now-undeclared read, because the guard scans
+`@register` writer files and it is unclear it reaches `stage4_field.py`. No registry database was available.
+That is the consequence the Kṣetra stage-3 executor must state when it applies or declines the edge.
+Regression test: `tests/l3/gochara/test_wp12_k1_edges.py`.
