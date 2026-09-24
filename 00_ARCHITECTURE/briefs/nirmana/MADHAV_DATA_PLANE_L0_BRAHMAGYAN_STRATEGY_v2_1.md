@@ -661,7 +661,7 @@ evidence are shown. Unchanged rows keep v1.0's `P/I/E/Q` and are not re-argued.
 | `bg_ghatana` | P/I | highest reach in the layer (52 files); **I**: its 5 registered consumers understate 31 |
 | `bg_ephemeris`, `bg_ephemeris_engine`, `bg_gochara_arcs`, `bg_sky_calendar` | P/Q | conventions now declared (1075/1076); re-verify file resolver |
 | `bg_muhurta_lattice` | **P/I** | **I**: 4/9 factor families reachable (W2 MUST-1, open) |
-| `bg_class_priors` / `bg_class_lifetime_counts` | **P/E** | **E**: reconcile 171/165/164 against live 177; declare the partition |
+| `bg_class_priors` / `bg_class_lifetime_counts` | **P** | v1.0 stands. The v2.0 count finding is **withdrawn**: the registry `count_sql` (`WHERE prior_version='1.0'`) returns 171, which is the asset's own partition and matches registry, seed and snapshot; 177 is the shared `brahma_class_priors` table including `bg_class_lifetime_counts`' `ne_v01` rows — the partition this document describes two sections earlier. Two stale writer comments (165, 164) go to W-L0-1. |
 | `bg_vidhi_floors` | **Q** | status decision (DRAFT accurate or stale) — native, W2 §3 |
 | `bg_vidhi_primitives` | P/E | **E**: no provenance beyond `version` |
 | `bg_sarvatobhadra_grid` | **U/H** | 0 rows by adjudication; **U** until the school ruling; consumer plumbing already wired |
