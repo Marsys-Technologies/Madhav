@@ -34,7 +34,7 @@ from services.ka_sangam.engine import (
     derive_sade_sati_severity,
     group_station_loop_episodes,
 )
-from services.ka_sangam.exposure import compute_exposure_manifest
+from services.ka_sangam.exposure import build_scan_coverage, compute_exposure_manifest
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
@@ -145,6 +145,19 @@ _LAGNA_SIGN_NUM: dict[str, int] = {
 # Raised from 5y → 7y: provides ~40% more actionable near-term windows while
 # remaining within the 15-min orphan watchdog budget.
 _HORIZON_YEARS = 7
+
+
+def _notes_with_coverage(manifest, coverage) -> str:
+    """Compose the exposure manifest and the scan coverage into WriterResult.notes.
+
+    The frozen WriterBase contract gives a writer no side-channel; `notes` is the
+    sanctioned carrier, so both objects travel there under named keys rather than
+    one silently replacing the other.
+    """
+    return json.dumps({
+        'exposure_manifest': json.loads(manifest.to_json()),
+        'scan_coverage': coverage.to_dict(),
+    })
 
 
 def _add_years(d: date, years: int) -> date:
@@ -600,6 +613,14 @@ class KaSangamWriter(WriterBase):
         # attached to WriterResult.notes as JSON (the frozen WriterBase
         # contract has no side-channel; notes is the sanctioned carrier).
         manifest = compute_exposure_manifest(near_deduped, today, horizon_end)
+        # Synergy audit #4: what was SEARCHED. Without it, 0 windows reads the same
+        # whether nothing was in scope, nothing fired, or everything deduped away.
+        coverage = build_scan_coverage(
+            today, horizon_end,
+            predicates_scanned=len(self._pred_dicts),
+            windows_generated=len(near_windows),
+            windows_emitted=len(near_deduped),
+        )
 
         rows = 0
         if not dry_run:
@@ -607,7 +628,7 @@ class KaSangamWriter(WriterBase):
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
             self._record_substep(conn, chart_id, 'near', rows)
         return WriterResult(asset_id='ka_sangam', rows_inserted=rows,
-                            notes=manifest.to_json())
+                            notes=_notes_with_coverage(manifest, coverage))
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
         pred      = self._lt_preds[idx]
@@ -649,6 +670,12 @@ class KaSangamWriter(WriterBase):
 
         # E6 exposure manifest for this lifetime substep's slice.
         manifest = compute_exposure_manifest(deduped, horizon_start, horizon_end)
+        coverage = build_scan_coverage(
+            horizon_start, horizon_end,
+            predicates_scanned=1,
+            windows_generated=len(windows),
+            windows_emitted=len(deduped),
+        )
 
         rows = 0
         if not dry_run:
@@ -656,7 +683,7 @@ class KaSangamWriter(WriterBase):
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
             self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
         return WriterResult(asset_id='ka_sangam', rows_inserted=rows,
-                            notes=manifest.to_json())
+                            notes=_notes_with_coverage(manifest, coverage))
 
     # ── helpers ──────────────────────────────────────────────────────────────
 

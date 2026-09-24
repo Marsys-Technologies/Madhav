@@ -76,6 +76,17 @@ _fdict = _fd(_frame)
 _grp_same = _ig('s1', 'Saturn', 'f1') == _ig('s1', 'Saturn', 'f1')
 _grp_diff = _ig('s1', 'Saturn', 'f1') != _ig('s2', 'Saturn', 'f1')
 
+from services.ka_sangam.exposure import build_scan_coverage as _bsc  # noqa: E402
+from datetime import date as _date  # noqa: E402
+_h0, _h1 = _date(2026, 1, 1), _date(2033, 1, 1)
+_cov_reasons = [_bsc(_h0, _h1, 0, 0, 0).empty_reason,
+                _bsc(_h0, _h1, 5, 0, 0).empty_reason,
+                _bsc(_h0, _h1, 5, 9, 0).empty_reason]
+_cov_none = _bsc(_h0, _h1, 5, 9, 4).empty_reason
+# CALL sites only: the def line matches a bare-name search, which made this
+# detector read 3 and fail correct code on its first run.
+_cov_in_notes = writer_src.count('notes=_notes_with_coverage(')
+
 seed = open(__file__.rsplit('/00_ARCHITECTURE/', 1)[0]
             + '/platform/scripts/seed/asset_registry_seed.ts').read()
 si = seed.index("asset_id: 'ka_sangam'")
@@ -94,6 +105,9 @@ if NEG:  # noqa: F405
     _id_mean = _id_true
     _fdict = dict(_fdict, ephemeris_backend='swieph', house_frame='placidus')
     _grp_diff = False
+    _cov_reasons = [None, None, None]
+    _cov_none = 'invented_reason'
+    _cov_in_notes = 0
 
 missing = [c for c in KERNEL_COLUMNS if c not in cols]
 prop("(a) all six R-6 kernel columns persisted in the INSERT", not missing, f"missing={missing}")  # noqa: F405
@@ -126,5 +140,14 @@ prop("(i) frame records the SCANNER's node convention, so the M-1 mismatch stays
      _fdict['node_convention'] == 'true_node')
 prop("(j) independence_group: same root testimony groups, different does not",  # noqa: F405
      _grp_same and _grp_diff)
+
+# --- #4: scan coverage — empty is no longer indistinguishable from failure ---
+prop("(k) three distinct empty reasons, none of them 'unknown'",  # noqa: F405
+     len(set(_cov_reasons)) == 3 and all(r and r != 'unknown' for r in _cov_reasons),
+     f"{_cov_reasons}")
+prop("(k) no empty_reason when windows were emitted", _cov_none is None)  # noqa: F405
+prop("(k) both substeps carry coverage AND the exposure manifest in notes",  # noqa: F405
+     _cov_in_notes == 2 and "'scan_coverage'" in writer_src and "'exposure_manifest'" in writer_src,
+     f"{_cov_in_notes} call sites")
 
 done(kind="POST-FIX BEHAVIOUR")  # noqa: F405

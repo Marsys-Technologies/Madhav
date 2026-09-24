@@ -619,3 +619,41 @@ readers plus a serving layer behind the §6.2 sentinel, sequenced below, not a w
 adverse condition surviving to a real caller) runs green; (iv) only then do the two columns drop, in
 their own migration. Steps (i)–(iii) touch other assets' writers and belong to their owners or to a
 coordinated session, which is why this pass did not start them.
+
+
+## Engineering pass 3 — #4 closed; suite result stated honestly (2026-09-24T12:24:25+05:30)
+
+**#4 closed.** `ScanCoverage` (`services/ka_sangam/exposure.py`) records what was **searched**:
+horizon, `predicates_scanned`, `windows_generated`, `windows_emitted`, and — only when zero windows
+were emitted — an `empty_reason` drawn from three distinct causes: `no_predicates_in_scope`,
+`predicates_scanned_no_contact_fired`, `all_generated_windows_deduped`. **It is never `unknown`**: if
+the producer cannot say why, that is itself the reason and it is named. Both substeps carry it into
+`WriterResult.notes` **alongside** the exposure manifest under named keys (`_notes_with_coverage`) —
+the frozen contract gives a writer no side-channel, so neither object may silently displace the other.
+An empty result is no longer indistinguishable from a failure. Under N-7 the consumed events bring
+their own coverage; the two compose via the binding's `window_ref`.
+
+**S20 had to be de-pinned, and this is the S3 lesson recurring.** Two of its propositions asserted
+**exact expressions** — `from services.ka_sangam.exposure import compute_exposure_manifest` and
+`notes=manifest.to_json()`. Composing coverage into notes is a legitimate change, and it turned the
+suite red: the detector forbade the improvement rather than detecting a defect. Both are now
+behavioural — the symbol is imported (however many names share the line), and the manifest **reaches**
+notes in both substeps under a named key, however composed. Caught by the suite this time rather than
+by a reviewer.
+
+**Suite result for this pass, stated as it is: 20/21 verified, 1 NOT_RUN.**
+`S8_saturn_loop_oracle.py` exits **3 = NOT_RUN** because the Swiss ephemeris files are **absent from
+this host** — `/tmp/se1` has been cleared since the earlier runs, `_resolve_ephe_path()` returns
+`None`, and a live `swe.calc_ut` returns retflag 65860 with the SWIEPH bit **clear** (Moshier).
+S8 v2.1 refuses to act as a Saturn-loop oracle on the fallback, which is **the script behaving
+correctly**, not a regression: every other script passes positive and fails under `NEG=1`.
+**The MANIFEST was deliberately NOT relaxed to accept exit 3.** Accepting NOT_RUN as a pass would
+convert an honest "I cannot verify this" into a green suite — the precise defect class this packet
+exists to prevent. **Handoff item: the D-K merge-gate reviewer needs the `.se1` files restored to
+verify S8; until then the suite's honest ceiling on this host is 20/21 + 1 NOT_RUN.**
+
+**Audit status after three passes — closed: #1, #3, #4, #5, #6, #7, #8, #10 (eight of ten).**
+Open: **#2** (rename to `comparable_with` — Gochara's four-value enum is on an unpushed branch; values
+requested) and **#9** (`confidence_score`/`confidence_label` removal — unblocked in principle since
+pass 1 gave the replacement a home, sequenced in four steps above, not started because steps (i)–(iii)
+touch other assets' writers).

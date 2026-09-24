@@ -241,6 +241,60 @@ def compute_power(n: int, critical: int, alternative_rate: float) -> float:
 # ── Outcome record ───────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
+class ScanCoverage:
+    """Synergy audit #4 — what was SEARCHED, so an empty result is not a failure.
+
+    Before this, a substep returning zero windows was indistinguishable from a
+    substep that crashed, scanned nothing, or found nothing: the row count was 0
+    either way and nothing recorded which. `empty_reason` is only populated when
+    `windows_emitted == 0`, and it is never 'unknown' — if the producer cannot
+    say why, that itself is the reason and it is named.
+
+    This is Saṅgam's OWN scan coverage. Under the N-7 producer the consumed
+    events carry their own coverage object; the two compose, they do not
+    replace each other (the binding's `window_ref` is the join key).
+    """
+    horizon_start: Optional[date]
+    horizon_end: Optional[date]
+    predicates_scanned: int
+    windows_generated: int
+    windows_emitted: int          # after dedup
+    empty_reason: Optional[str]   # None unless windows_emitted == 0
+
+    def to_dict(self) -> dict:
+        return {
+            'horizon_start': self.horizon_start.isoformat() if self.horizon_start else None,
+            'horizon_end': self.horizon_end.isoformat() if self.horizon_end else None,
+            'predicates_scanned': self.predicates_scanned,
+            'windows_generated': self.windows_generated,
+            'windows_emitted': self.windows_emitted,
+            'empty_reason': self.empty_reason,
+        }
+
+
+def build_scan_coverage(horizon_start, horizon_end, predicates_scanned: int,
+                        windows_generated: int, windows_emitted: int) -> ScanCoverage:
+    """Coverage for one substep's scan. `empty_reason` distinguishes the three
+    ways a scan legitimately yields nothing — and refuses to invent a fourth."""
+    reason = None
+    if windows_emitted == 0:
+        if predicates_scanned == 0:
+            reason = 'no_predicates_in_scope'
+        elif windows_generated == 0:
+            reason = 'predicates_scanned_no_contact_fired'
+        else:
+            reason = 'all_generated_windows_deduped'
+    return ScanCoverage(
+        horizon_start=horizon_start,
+        horizon_end=horizon_end,
+        predicates_scanned=predicates_scanned,
+        windows_generated=windows_generated,
+        windows_emitted=windows_emitted,
+        empty_reason=reason,
+    )
+
+
+@dataclass(frozen=True)
 class StratumOutcome:
     domain: str
     route: str

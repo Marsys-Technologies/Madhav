@@ -204,3 +204,41 @@ class TestIndependenceGroup:
     def test_writer_binds_the_computed_group_not_the_window_field(self):
         # w.get('independence_group') was always None — the engine never emitted it.
         assert '_indep_group,' in WRITER.read_text()
+
+
+class TestScanCoverage:
+    """Synergy audit #4 — an empty result was indistinguishable from a failure."""
+
+    def test_three_distinct_empty_reasons(self):
+        from datetime import date as _d
+
+        from services.ka_sangam.exposure import build_scan_coverage
+        h0, h1 = _d(2026, 1, 1), _d(2033, 1, 1)
+        assert build_scan_coverage(h0, h1, 0, 0, 0).empty_reason == 'no_predicates_in_scope'
+        assert build_scan_coverage(h0, h1, 5, 0, 0).empty_reason == 'predicates_scanned_no_contact_fired'
+        assert build_scan_coverage(h0, h1, 5, 9, 0).empty_reason == 'all_generated_windows_deduped'
+
+    def test_no_empty_reason_when_windows_were_emitted(self):
+        from datetime import date as _d
+
+        from services.ka_sangam.exposure import build_scan_coverage
+        c = build_scan_coverage(_d(2026, 1, 1), _d(2033, 1, 1), 5, 9, 4)
+        assert c.empty_reason is None and c.windows_emitted == 4
+
+    def test_empty_reason_is_never_unknown(self):
+        """If the producer cannot say why, that IS the reason and it is named."""
+        from datetime import date as _d
+
+        from services.ka_sangam.exposure import build_scan_coverage
+        for scanned, generated in ((0, 0), (5, 0), (5, 9)):
+            r = build_scan_coverage(_d(2026, 1, 1), _d(2033, 1, 1), scanned, generated, 0).empty_reason
+            assert r and r != 'unknown', r
+
+    def test_both_substeps_carry_coverage_in_notes(self):
+        src = WRITER.read_text()
+        # Count CALL sites, not the def line — the definition matches a bare-name
+        # search too, which is how this detector first read 3 and failed correct code.
+        assert src.count('notes=_notes_with_coverage(') == 2, \
+            "near and lifetime substeps must both carry coverage"
+        assert "'scan_coverage'" in src and "'exposure_manifest'" in src, \
+            "coverage must not silently replace the exposure manifest in notes"

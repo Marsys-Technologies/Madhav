@@ -82,10 +82,20 @@ writer_lt = grep('pipeline/orchestrator/writers/ka_sangam.py',
                  r'def _substep_lifetime')
 manifest_calls = grep('pipeline/orchestrator/writers/ka_sangam.py',
                       r'compute_exposure_manifest\(')
+# Behavioural, not expression-pinned: assert the SYMBOL is imported from the
+# exposure module, not that the import line has one exact shape. The previous
+# pattern pinned a single-name import and went red when `build_scan_coverage`
+# joined it — a legitimate change failing a correct build, the S3 defect class.
 manifest_import = grep('pipeline/orchestrator/writers/ka_sangam.py',
-                       r'from services\.ka_sangam\.exposure import compute_exposure_manifest')
+                       r'from services\.ka_sangam\.exposure import .*compute_exposure_manifest')
+# Assert the manifest REACHES notes in both substeps, however it is composed.
+# It is now carried under the named key 'exposure_manifest' alongside the scan
+# coverage object (synergy audit #4); pinning `notes=manifest.to_json()` would
+# forbid composing the two, which is the opposite of what this detector wants.
 notes_json = grep('pipeline/orchestrator/writers/ka_sangam.py',
-                  r'notes=manifest\.to_json\(\)')
+                  r'notes=(manifest\.to_json\(\)|_notes_with_coverage\()')
+manifest_in_notes = grep('pipeline/orchestrator/writers/ka_sangam.py',
+                         r"'exposure_manifest':")
 
 if NEG:
     # Inverted expectations: the detector must fail on correct code.
@@ -116,7 +126,8 @@ if NEG:
     prop("writer defines lifetime substep", not writer_lt)
     prop("writer imports compute_exposure_manifest", not manifest_import)
     prop("writer calls compute_exposure_manifest in both substeps", len(manifest_calls) != 2)
-    prop("writer attaches manifest JSON to notes in both substeps", len(notes_json) != 2)
+    prop("writer attaches manifest JSON to notes in both substeps",
+         len(notes_json) != 2 or not manifest_in_notes)
 else:
     prop("per-stratum alpha reproduces 0.0321", abs(alpha_s - PER_STRATUM_ALPHA) < 1e-4,
          f"alpha={alpha_s:.6f}")
@@ -151,6 +162,8 @@ else:
     prop("writer imports compute_exposure_manifest", bool(manifest_import))
     prop("writer calls compute_exposure_manifest in both substeps", len(manifest_calls) == 2,
          f"{len(manifest_calls)} call sites (near + lifetime)")
-    prop("writer attaches manifest JSON to notes in both substeps", len(notes_json) == 2)
+    prop("writer attaches manifest JSON to notes in both substeps",
+         len(notes_json) == 2 and bool(manifest_in_notes),
+         f"{len(notes_json)} substeps; manifest carried under a named key")
 
 done("POST-FIX BEHAVIOUR")
