@@ -708,3 +708,36 @@ def test_stamp_check_constraints_reject_out_of_vocabulary(conn):
     with conn.transaction():
         ids = write_contacts(conn, chart, "4.0", cid, [ok], "wp6-build-ok-stamp")
     assert len(ids) == 1
+
+
+# ── 11. 4.13h: window_ref resolves to a ledger row by primary key ────────────
+
+
+def test_window_ref_resolves_by_primary_key(conn):
+    """window_ref = {asset_id:'ka_gochara', generation, id: contact_id}
+    (WP1 §5.5, PACKET_C1 §7) resolves to exactly one row via the
+    PRIMARY KEY (chart_id, generation, contact_id) — a point lookup, no
+    re-derivation, no new target_type."""
+    chart = synth(22)
+    cid, _, _ = setup_candidate(conn, chart)
+    episodes = [make_episode(t_exact=datetime(2021, m, 15, 12, tzinfo=UTC))
+                for m in range(1, 4)]
+    with conn.transaction():
+        ids = write_contacts(conn, chart, "4.0", cid, episodes,
+                             "wp6-build-window-ref")
+    window_ref = {"asset_id": "ka_gochara", "generation": "4.0", "id": ids[1]}
+    assert window_ref["asset_id"] == "ka_gochara"
+    row = conn.execute(
+        "SELECT contact_id, body, relation FROM kala_gochara_contacts"
+        " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
+        (chart, window_ref["generation"], window_ref["id"]),
+    ).fetchone()
+    assert row is not None and row[0] == ids[1]
+    assert (row[1], row[2]) == ("Saturn", "conjunction")
+    # A ref into a generation with no rows resolves empty, never by fallback.
+    missing = conn.execute(
+        "SELECT 1 FROM kala_gochara_contacts"
+        " WHERE chart_id = %s AND generation = '4.1' AND contact_id = %s",
+        (chart, ids[1]),
+    ).fetchone()
+    assert missing is None

@@ -155,3 +155,18 @@ over an empty generation.
   any reach toward `v1`/`'3.0'`/`g3_*` rows.
 - It does not edit the registry itself (migration ≥1071, WP10-adjacent authority class
   — this packet is the design artifact that migration lifts verbatim).
+
+## 7. `window_ref` convention (4.13h)
+
+A consumer holding a window reference resolves it to the persisted contact row by
+primary key (WP1_CONTRACTS.md §5.5):
+
+```
+window_ref = { asset_id: 'ka_gochara', generation: <generation label>,
+               id: <contact_id> }
+```
+
+Resolution is a point lookup on `PRIMARY KEY (chart_id, generation, contact_id)` —
+no new `target_type` is introduced for window refs (R2 stands). After a Clear under
+this packet, a `window_ref` into the cleared generation resolves to zero rows; the
+consumer's correct surface is the `unpublished` coverage object (P-1d), not a retry.

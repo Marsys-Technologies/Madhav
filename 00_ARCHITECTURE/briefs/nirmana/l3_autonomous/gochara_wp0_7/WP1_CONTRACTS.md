@@ -475,7 +475,13 @@ Invariants: `targets_resolved + targets_unresolved = targets_requested`;
 states; `completed_horizon` ⊄ `requested_horizon` only with a non-NULL
 `unsearched_reason` (H-3). A `moon_on_demand` row is written for every Moon search
 even when the answer is zero contacts — otherwise L3-Q08 cannot be answered for
-Moon-dependent classes (plan §4.2).
+Moon-dependent classes (plan §4.2). The same zero-contact rule applies to non-Moon
+live searches (4.13a, D-S1(a)): a non-Moon `find_episodes` call that contacts no
+partitioned bodies returns a coverage record with `partition_kind='bodies_on_demand'`
+rather than `coverage=None`, so absence of contacts is always distinguishable from
+absence of search. `bodies_on_demand` is kept distinct from `body_target` because a
+zero-contact search has no bodies to partition by, and live-search coverage must not
+mix into build-manifest `body_target` semantics.
 
 ---
 
@@ -565,6 +571,22 @@ diff, not silently served stale.
   schema change is designed here, and none may be). Absent authority row ⇒
   `unpublished`, served as a coverage object (N-10 P-1d); the `'v1'` COALESCE
   fall-through is removed from every reader by P-1, not by this family.
+
+### 5.5 `window_ref` — resolving a serving window back to its ledger row (4.13h)
+
+A consumer holding a window reference resolves it to the persisted contact row by
+primary key, not by re-derivation:
+
+```
+window_ref = { asset_id: 'ka_gochara', generation: <generation label>,
+               id: <contact_id> }
+```
+
+Resolution: `SELECT ... FROM kala_gochara_contacts WHERE chart_id = :chart_id AND
+generation = window_ref.generation AND contact_id = window_ref.id` — the §3.1
+`PRIMARY KEY (chart_id, generation, contact_id)` makes this a point lookup. No new
+`target_type` is introduced for window refs (R2 stands); the ref names an existing
+ledger row, nothing else.
 
 ---
 
