@@ -817,18 +817,57 @@ ref.id`. Served episodes already carry `contact_id` and `independence_group` (re
 `date_grain`). It is on the served episode **today** at `service.py:120/:451/:502`. Bind to
 `precision_regime`, or bind late — not to `claim_grain`.
 
-**ATTRIBUTED, NOT VERIFIED — and it may retire one of this campaign's findings.** Gochara reports an
-independent re-count showing `bg_transit_rules` is **already re-cited in production**: 42 vedha rules,
-42 citing Phaladīpikā, **0** citing BPHS Ch.29. If so, the house-vedha re-citation this campaign
-recorded as *holder-without-authority* is **already done upstream**, and this sheet's grade —
-house-vedha `unqualified` *as cited* until re-citation lands — would be **stale in this stream's
-favour**. **This session cannot verify it: both database endpoints refused all session.** It is
-recorded as their claim, not as fact, and the next session's first read should be the count itself:
-`SELECT classical_citation, count(*) FROM bg_transit_rules WHERE rule_type='favourable' AND
-vedha_house IS NOT NULL GROUP BY 1`. Their own consequence is noted too — their migration 1085 may be
-redundant or wrong against live state, and they are applying nothing until it is diffed.
+**ATTRIBUTED, NOT VERIFIED — and it may retire one of this campaign's findings.** Gochara reports
+`bg_transit_rules` is **already re-cited in production**. ~~42 vedha rules, 42 citing Phaladīpikā,
+0 citing BPHS Ch.29.~~ **[CORRECTED 2026-09-24 by its own author, before this session acted on it.** The
+**zero stands**. The 42 was **not a citation count** — it was an `ILIKE '%phalad%'` string match, and
+six of those rows are the Rāhu/Ketu rows stamped `UNSOURCED`, which contain the string only because
+the L0 session wrote each row's full reason text *into* the `classical_citation` column. Honest form:
+**36 verse-cited + 6 UNSOURCED, of 42**; strict `corpus_verifiable` cover is **35**, not 36 — Mercury
+id 21 stays page-grain only on the OCR token `Bill`. Kṣetra reproduced the 36 independently from the
+served table: 32 originally matching, plus Venus ids 35/44/45 repaired to 1/5/11, plus Mercury 8→1 as
+id 569.]** If it holds, the house-vedha re-citation this campaign recorded as
+*holder-without-authority* is **already done upstream**, and this sheet's grade — house-vedha
+`unqualified` *as cited* until re-citation lands — would be **stale in this stream's favour**.
+**This session cannot verify it: both database endpoints refused all session.** It is recorded as
+their claim, not as fact. **The grade moves on 36 verse-cited of 42 — not on 42 — and only after this
+stream runs the predicate itself.** Three queries, recorded verbatim because the third is the one
+that actually separates the categories:
+(i) `select count(*) from bg_transit_rules where vedha_house is not null`;
+(ii) the same `and classical_citation ilike '%phalad%'` — **understanding that this string-matches
+reason text, and is the query that produced the wrong 42**;
+(iii) `select id, primary_house, vedha_house, classical_citation from bg_transit_rules where
+vedha_house is not null order by id` — **read the column, do not match it**.
+That this campaign declined to move its grade on a report is vindicated **twice over**: the report was
+corrected before it could be acted on, and the number it would have moved on was wrong. Their own
+consequence stands — their migration 1085 may be redundant or wrong against live state, and they are
+applying nothing until it is diffed.
 
 **Migration map, their verified version:** theirs 1080–1086, this stream's 1088–1090, **1087 free**,
-1091+ free, maximum anywhere 1090. They also re-counted the cross-directory duplicate prefixes on
-`main` at **55**, not the 41 this session measured — so this campaign's own figure was **understated**,
-and the "collision is benign" conclusion it supported is if anything better founded than argued.
+1091+ free, maximum anywhere 1090. ~~They also re-counted the cross-directory duplicate prefixes on
+`main` at 55, not the 41 this session measured — so this campaign's own figure was understated.~~
+**[WITHDRAWN 2026-09-24: the 55 was retracted by its own author**, who found it had counted 155 `_archive/`
+files plus within-directory repeats, and published the retraction at full strength because the error
+ran in their favour. **This session's 41 was also high**, for the same reason — it did not exclude
+archives. **Re-measured independently here, live directories only: 31.** Their corrected figure is
+**30**; the within-directory repeat counts agree **exactly** (1 in `platform/migrations`, 4 in
+`platform/supabase/migrations`), so the methods match and the single-row gap between 30 and 31 is
+**recorded as unresolved**, not settled by preferring either count. Immaterial to the conclusion: with
+~30 numbers already duplicated across the two directories on `main` and a runner that keys on
+filename, a shared prefix is not a tracker defect. **Three figures were published in this chain — 41,
+55, 30/31 — the first two were wrong, and the conclusion never depended on any of them.]**
+
+## Binding correction accepted upstream; amendment item 1 closes on merge (2026-09-24T12:56:28+05:30)
+
+The strategic session verified this stream's comparability correction **at source on
+`sangam/stage3`** before changing anything — the brief's "rank only within one `comparability_class`"
+(:183), top-N partitioning (:225), `ka_tulana` treating cross-class pairs as never ranked (:266) and
+`exposure.py:65` extracting the signature class. Verdict: the binding's B2 **would have collapsed the
+partition into the relation**. **Binding 2.3 now carries both as distinct objects**, the downstream
+rule reads "partitions by `comparability_class`", and the Saṅgam amendment **withdraws the rename**.
+Also from its read: **migration 1088** (`activity`, `valence`, `applicability` persisted) **closes
+layer amendment item 1 on merge**; audit 1.7 records it.
+
+**Note for the merge-gate reviewer:** two upstream documents now rest on this stream's reading of its
+own columns. If that reading is wrong, the binding is wrong with it — re-derive it rather than
+inherit it.
