@@ -8,7 +8,8 @@
 -- branches (sangam/stage3 + l3/kala-elevation-readiness in platform/supabase/migrations;
 -- l3/kala-p1-1-b1-clear-guard and l3/kala-p1-2-builder-grants-timeout in platform/migrations).
 -- 1075/1076 were the lowest numbers free across every remote branch at renumbering time.
--- Migration 1072: kala_gochara_convention + kala_gochara_contacts +
+-- Migration 1081 (originally authored as 1072, renumbered twice — see header above):
+--   kala_gochara_convention + kala_gochara_contacts +
 --                 kala_gochara_coverage + kala_gochara_publication
 -- Created: 2026-09-23
 -- WP6 (GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §4.3/§4.4/§4.7/§5.5;

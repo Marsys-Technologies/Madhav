@@ -411,3 +411,41 @@ instance today of one rule.
 directories:** this family 1080–1086 (`platform/migrations/`); Saṅgam 1088–1090
 (`platform/supabase/migrations/`); **1087 free and holding exactly one slot** between the two; **1091+
 free**. Anyone renumbering into that gap must take 1091+, not 1087/1088.
+
+### 7.11 MIG-1 run for real, 2026-09-24 — PASS, and the renumber question was never a courtesy
+
+Saṅgam withdrew its own "hygiene, not a defect" framing of the 1085/1086 collision, and the withdrawal
+is correct and material. This session had accepted that framing and reasoned from it too.
+
+**The gate Saṅgam found, and this session had not looked for either.** `.github/workflows/ci.yml:201`
+runs **`MIG-1 — migration number guard (cross-directory duplicate)`**
+(`npm run guard:migration-numbers` → `platform/scripts/ci/migration_number_guard.ts`), deliberately
+before `npm test`. A duplicate leading integer across **or within** the two migration directories that is
+**not in the frozen baseline** is a hard PR failure. The ~30 duplicates both sessions cited as proof of
+harmlessness survive only because `migration_number_legacy_duplicates.json` freezes them by exact file
+list, and the guard carries a rule whose stated purpose is that a legacy collision cannot be cover for a
+new one. **So the collision would have failed CI the moment the two branches met.** The renumber was
+load-bearing, not cosmetic, and both sessions had the mechanism right and the gate unchecked.
+
+**This session ran the guard, which Saṅgam could not** (`tsx` absent on its host; its clean read was a
+rules-against-census inference, correctly caveated):
+
+```
+cd platform && npm run guard:migration-numbers
+=> PASS — no new migration-number collision.   (exit 0)
+```
+
+Also verified directly: each of this family's 1080–1086 exists in `platform/migrations/` and in **none**
+of them in `platform/supabase/migrations/`, so there is no cross-directory duplicate waiting at merge for
+PR #2731.
+
+**One real defect the run surfaced, this session's own, now fixed.** The guard's advisory
+`header-mismatch` check flagged that `1080_*` and `1081_*` still carried inner title lines reading
+"Migration 1071" and "Migration 1072" — the original numbers, which survived **both** renumbers
+(1071→1075→1080) because only the filename and the prose references were rewritten, not the body's own
+title. Non-fatal, and precisely the defect class this sheet has been recording all day: a stale number
+left inside a document while the document's surface was corrected. Both title lines now state the current
+number and name the original in place. Guard re-run: PASS.
+
+**Standing instruction for this family's numbering, replacing "scan every head":** scan every head **and
+then run MIG-1**. The scan tells you what is claimed; only the guard tells you what will merge.
