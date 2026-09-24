@@ -453,3 +453,8 @@ The strategic session set `is_active: false` on the century entry in `platform/s
 so there is no conflict. Status of the three options: seed edit **done, pending merge**; production `is_active=false` **applied**; the `(table, generation)` trigger
 half of step 3 **still unapplied and still the native's decision**. Consequence recorded: `step03_reversal.sql` restores `is_active = true`, which a re-seed would
 undo; it is now annotated as not a lasting state and not to be run without a Gochara ruling reopening the century build.
+
+**E-014 addendum 4 — the seed fix's vehicle is PR #2734, not `strategic/dis031-fix` (2026-09-24)** The strategic session moved it because that branch was never a fit (137 commits, conflicts).
+Verified by the L3 session: PR #2734, branch `fix/century-seed-is-active-false`, ONE commit, ONE file (`asset_registry_seed.ts`), the same `is_active: false` hunk with its explanatory comment;
+auto-merge is armed. Its merge state read BLOCKED when checked; the cause was not confirmed, and it is plausibly the same two pins tests that #2733 fixes, since #2734 has a stale base.
+Status unchanged: **pending merge**. Once it merges, a hand-run re-seed no longer re-arms the writer.
