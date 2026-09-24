@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "4.7"
+version: "4.8"
 status: CURRENT
 date: 2026-09-22
 position: >
@@ -15,6 +15,7 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "4.8 (2026-09-24): §6 W0 claim of twelve June-brief reconciliations WITHDRAWN — no artifact exists; the per-asset brief-state table (KALA_ASSET_BRIEF_STATE_v1_0.md) written."
   - "4.7 (2026-09-24): second pass by three independent verifiers — status PROPOSED_FOR_NATIVE_RULING→CURRENT (stale since v1.0); §3.3/§9.5 corrected (four edges not one; two names and an absence; convention split); binding 2.0 posture change and its ten native decisions referenced."
   - "4.6 (2026-09-24): synergy audit of the three critical assets — NOT synergistic at the data level; §3.3 carries the measured matrix; the binding (KALA_SYNERGY_BINDING) and per-stream amendments written; §9.5 risk restated."
   - "4.5 (2026-09-24): D-K premise RETRACTED — the Saṅgam entry review did run (my head -5 cut it off); the merge gate stands on the true grounds: builder-certified dispositions with one breach. §4 row and §9.5 risk corrected."
@@ -334,8 +335,7 @@ wave names entry, packets, what runs in parallel, exit, and **what the person ca
 ### W0 — Environment, safety, truth (RUNNING)
 **Entry:** DP-SD-017 + W0 records accepted. **Packets:** §5.1, plus the build-UX packets of §1.2
 where they are environment (badge truth from `count_sql`/receipts; honest `error` reasons; cost
-surfaced). **Parallel:** the three hard-asset briefs (stages 0–2) and the twelve June-brief
-reconciliations (Template v2.0) — all in their own worktrees. **Exit (corrected at v4.0):** the five decisions ruled — **three of five now are** (D6, D7, D8; D1 open, D2/D3/D5 unruled); B1 closed; ~~harness carries `.se1` files (G4)~~ **G4 retracted** — the files were present all along, the real gap is the unowned process-global backend. **`KALA_PHASE01_CLOSE_v1_0.md` does not exist** and is not cited as an exit any more; W0 closes on the checklist (`KALA_PRE_ELEVATION_CHECKLIST_v1_0.md` §B empty). **The person can now:** see
+surfaced). **Parallel:** the three hard-asset briefs (stages 0–2). ~~and the twelve June-brief reconciliations (Template v2.0) — all in their own worktrees~~ **Withdrawn at v4.8: no such reconciliation exists as an artifact on any ref, and none of the twelve June briefs cites the template. They were never re-checked. See `KALA_ASSET_BRIEF_STATE_v1_0.md`.** **Exit (corrected at v4.0):** the five decisions ruled — **three of five now are** (D6, D7, D8; D1 open, D2/D3/D5 unruled); B1 closed; ~~harness carries `.se1` files (G4)~~ **G4 retracted** — the files were present all along, the real gap is the unowned process-global backend. **`KALA_PHASE01_CLOSE_v1_0.md` does not exist** and is not cited as an exit any more; W0 closes on the checklist (`KALA_PRE_ELEVATION_CHECKLIST_v1_0.md` §B empty). **The person can now:** see
 honest asset states and a real cost, and cannot delete the protected snapshot by accident.
 
 ### W1 — Takeoff: physical upstream truth, plus everything that does not need it
