@@ -458,3 +458,44 @@ undo; it is now annotated as not a lasting state and not to be run without a Goc
 Verified by the L3 session: PR #2734, branch `fix/century-seed-is-active-false`, ONE commit, ONE file (`asset_registry_seed.ts`), the same `is_active: false` hunk with its explanatory comment;
 auto-merge is armed. Its merge state read BLOCKED when checked; the cause was not confirmed, and it is plausibly the same two pins tests that #2733 fixes, since #2734 has a stale base.
 Status unchanged: **pending merge**. Once it merges, a hand-run re-seed no longer re-arms the writer.
+
+## E-015 — WP10 tranche 1 HALTED at step 3: `amjis_app` lacks CREATE on schema public; the durable N-6a guard half cannot be applied with any local credential (§7.B run, 2026-09-24)
+
+- **What happened:** with both `PRODUCTION_TRANCHE_*` flags true and the Cloud SQL proxy up
+  (127.0.0.1:5433), the §7.B run executed the steps in §12.15 order — step 3 first.
+  `step03_guard_n6a.sql` failed on its FIRST statement: `CREATE OR REPLACE FUNCTION
+  kala_gochara_generation_guard()` → `ERROR: permission denied for schema public`. The
+  transaction aborted; nothing was created; the gate probe never ran. Post-checks confirm
+  production is byte-identical to the pre-state (no function, 0 triggers, century
+  `is_active=false` from the strategic session's earlier half, generations v1=38287 /
+  3.0=1830 unchanged, `build_protected_assets` 0 rows).
+- **Root cause (verified read-only):** `has_schema_privilege('amjis_app','public','CREATE')` = false;
+  `amjis_app` is not superuser and holds no role memberships; schema `public` is owned by
+  **`data_plane_schema_owner`**. Every local credential source (`platform/.env`,
+  `platform/.env.local`, `.env.rag`) carries `amjis_app` only. `amjis_app` owns
+  `kala_gochara_windows` and can `UPDATE asset_registry`, which is why the strategic
+  session's is_active half worked and the trigger half does not.
+- **Decision needed from the native:** run step 3 as a principal with CREATE on schema
+  public (`data_plane_schema_owner` or `postgres`):
+  ```
+  psql "$PRODUCTION_DSN" -v ON_ERROR_STOP=1 \
+       -f platform/python-sidecar/scripts/kala_gochara_cutover/step03_guard_n6a.sql
+  ```
+  then verify (read-only): `SELECT tgname FROM pg_trigger WHERE
+  tgrelid='kala_gochara_windows'::regclass AND NOT tgisinternal` lists
+  `trg_kgw_generation_guard_row` + `trg_kgw_generation_guard_truncate`;
+  `SELECT generation, count(*) FROM kala_gochara_windows GROUP BY 1` unchanged
+  (v1=38287, 3.0=1830). Reversal: `step03_reversal.sql`.
+  Alternatively GRANT CREATE ON SCHEMA public TO amjis_app and this run re-attempts.
+- **Tranche state:** steps 0, 1, 2, 4, 5 NOT RUN — the tranche halts on the failed
+  step per the brief's gate rule (never proceed past a red gate). Tranche 1 is **not
+  green**; 7.C must not proceed. Evidence:
+  `platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step03_evidence.md`.
+- **Also recorded (would have been step 4's discrepancy note, E-010 open item):**
+  step04's committed APPLY_SET is 1080–1084 + 1087, exceeding sheet A-2's literal
+  "1080/1081 only"; E-010 leaves 1082–1084(/1087) to the deploy pipeline pending native
+  confirmation. Never reached — no migration was attempted against production. Live
+  production state at halt: **none of 1080/1081/1082/1083/1084/1087 are applied**
+  (verified: no `target_resolution_state` on `gochara_resonance_map`, no
+  `kala_gochara_contacts`, no stamp columns on `kala_vedha_gochara`, no `contact_id`
+  on the L5 tables).
