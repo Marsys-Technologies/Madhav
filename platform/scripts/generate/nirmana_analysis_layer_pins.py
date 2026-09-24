@@ -110,6 +110,18 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "DP-SD-019",
         "authority_identity_binding": "`16590cc49f720e4200a8d9b6cad3f52b68e21792`",
     },
+    "NATIVE-2026-09-24-L0-REPAIR-REPIN": {
+        # L0 repair (PR #2727). The approval is the native's, recorded verbatim in
+        # the evidence document with its provenance. The authority identity is the
+        # tip of the PR at the moment of approval, which is also the successors'
+        # source commit, so what was approved and what is pinned cannot diverge.
+        "authority_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee",
+        "evidence_commit": "a9701272d08388997b79b7203d20e207e165ca30",
+        "path": "00_ARCHITECTURE/briefs/nirmana/L0_REPAIR_ANALYSIS_REPIN_DECISION_v1_0.md",
+        "sha256": "6ade3fe137d777a8a7a1bf53527da540a398cfef03f93b70a1b493f02cddc3b9",
+        "decision_binding": "status: L0_REPAIR_REPIN_APPROVED",
+        "authority_identity_binding": "`101171f76517fa3c6b0b44fa9d1cc46358612eee`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -180,6 +192,13 @@ AUTHORIZED_SOURCE_COMMITS = {
             "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
             "87cc8c9baf894c615e167672c6c7af57a15cf71c",
         }),
+    },
+    # L0 repair (PR #2727): exactly one source commit, for exactly the three layers
+    # whose writer digests moved. L1, L4 and L5 are deliberately absent.
+    "NATIVE-2026-09-24-L0-REPAIR-REPIN": {
+        "L0": frozenset({"101171f76517fa3c6b0b44fa9d1cc46358612eee"}),
+        "L2": frozenset({"101171f76517fa3c6b0b44fa9d1cc46358612eee"}),
+        "L3": frozenset({"101171f76517fa3c6b0b44fa9d1cc46358612eee"}),
     },
 }
 
