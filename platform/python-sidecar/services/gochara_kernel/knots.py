@@ -62,6 +62,16 @@ class EphemerisBackendError(RuntimeError):
         self.retflag = retflag
 
 
+class NodeModelError(RuntimeError):
+    """A Rāhu/Ketu calc was attempted with a non-mean-node swe id.
+
+    N-4a(b″) pins both nodes to swe.MEAN_NODE; the convention vector's
+    node_model='mean' is the only admitted model. A per-call assertion (not
+    just a mapping invariant) so a mutated/patched GRAHA_TO_SWE cannot
+    silently produce true-node longitudes.
+    """
+
+
 @dataclass(frozen=True)
 class KnotSeries:
     """Noon-UT sidereal knots for one body over a closed date range."""
@@ -99,6 +109,11 @@ def calc_sidereal_lon(body: str, jd_ut: float, ephe_path: str | None) -> tuple[f
         swe.set_ephe_path(ephe_path)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     swe_id = GRAHA_TO_SWE[body]
+    if body in ("Rahu", "Ketu") and swe_id != swe.MEAN_NODE:
+        raise NodeModelError(
+            f"{body}: swe id {swe_id} is not MEAN_NODE — node_model='mean' "
+            f"is the only admitted model (N-4a(b″)); refusing the calc."
+        )
     out, retflag = swe.calc_ut(jd_ut, swe_id, EPHE_FLAGS)
     lon = float(out[0])
     if body == "Ketu":

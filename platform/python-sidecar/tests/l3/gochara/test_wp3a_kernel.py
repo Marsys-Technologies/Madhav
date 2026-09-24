@@ -537,3 +537,34 @@ def test_guard_fires_when_the_module_is_not_a_module(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "swisseph", MagicMock())
     with pytest.raises(AssertionError, match="not a real module"):
         assert_real_ephemeris()
+
+
+# ── 4.13g: per-call node-mode assertion (N-4a(b″), mean node only) ──────────
+
+
+def test_rahu_ketu_calc_asserts_mean_node_per_call(monkeypatch):
+    """Patching GRAHA_TO_SWE to TRUE_NODE must raise NodeModelError before any
+    calc_ut call — the node model is asserted per call, not assumed from the
+    module-level mapping."""
+    from services.gochara_kernel import knots
+
+    monkeypatch.setitem(knots.GRAHA_TO_SWE, "Rahu", swe.TRUE_NODE)
+    with pytest.raises(knots.NodeModelError, match="MEAN_NODE"):
+        knots.calc_sidereal_lon("Rahu", 2460000.5, None)
+    monkeypatch.setitem(knots.GRAHA_TO_SWE, "Ketu", swe.TRUE_NODE)
+    with pytest.raises(knots.NodeModelError, match="MEAN_NODE"):
+        knots.calc_sidereal_lon("Ketu", 2460000.5, None)
+
+
+def test_rahu_ketu_mean_node_calc_unaffected():
+    """Positive control: with the pinned mapping the calc proceeds (retflag
+    gate still applies; any backend result other than a raise is success)."""
+    from services.gochara_kernel import knots
+
+    try:
+        lon, retflag = calc_sidereal_lon("Rahu", 2460000.5, EPHE_PATH)
+    except EphemerisBackendError:
+        pytest.skip("swieph data unavailable on this host")
+    assert 0.0 <= lon < 360.0
+    assert knots.GRAHA_TO_SWE["Rahu"] == swe.MEAN_NODE
+    assert knots.GRAHA_TO_SWE["Ketu"] == swe.MEAN_NODE
