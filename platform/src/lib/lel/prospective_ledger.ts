@@ -107,6 +107,11 @@ export interface FileProspectivePredictionInput {
   falsifier: string
   generator_class: GeneratorClass
   configuration_signature?: string | null
+  /** WP7 P-3: `sha256:<64 hex>` id of the kala_gochara_contacts episode this
+   * claim rests on (WP1_CONTRACTS §3.2), when it rests on a specific Gochara
+   * contact. Validated at filing time — format AND existence under the chart's
+   * authoritative generation; a dangling id is rejected, never stored. */
+  contact_id?: string
   filed_by: string
   source_citation: string
   /** REQUIRED when `generator_class === 'engine'` AND the event_class is
@@ -131,6 +136,7 @@ export interface ProspectiveLedgerRow {
   as_of: string
   generator_class: GeneratorClass
   configuration_signature: string | null
+  contact_id: string | null   // WP7 P-3 / migration 1083; NULL for non-contact-anchored claims
   lifecycle_status: LifecycleStatus
   matched_event_id: string | null
   matched_at: string | null
@@ -417,6 +423,57 @@ export function assertDr16AdverseDisclosure(
 
 // ── Claim-shape -> DB row translation ───────────────────────────────────────────
 
+// ── WP7 P-3 — contact_id (frozen-claim identity chain) ───────────────────────────
+//
+// A claim filed against `contact_id X` is about exactly that kala_gochara_contacts
+// episode under exactly that convention — ids are stable under horizon
+// repartitioning (WP1_CONTRACTS §3.2) and a convention change implies NEW ids, so a
+// mismatch is detectable rather than silently re-pointed. Filing-time validation is
+// therefore two-step: format (`sha256:<64 lowercase hex>`), then existence under the
+// chart's AUTHORITATIVE generation (explicit kala_gochara_authority read — N-10: an
+// absent row is unpublished, never a 'v1' default, so there is no ledger to resolve
+// against and the id is rejected). A dangling id is the F-18 orphan class one layer
+// up and is refused, not stored.
+
+const CONTACT_ID_PATTERN = /^sha256:[0-9a-f]{64}$/
+
+async function assertContactIdResolves(chartId: string, contactId: string): Promise<void> {
+  if (!CONTACT_ID_PATTERN.test(contactId)) {
+    throw new Error(
+      `fileProspectivePrediction: contact_id '${contact_id_preview(contactId)}' is malformed — ` +
+        "expected 'sha256:<64 lowercase hex>' per WP1_CONTRACTS §3.2."
+    )
+  }
+  const { rows: authority } = await query<{ authoritative_generation: string }>(
+    `SELECT authoritative_generation FROM kala_gochara_authority WHERE chart_id = $1::uuid`,
+    [chartId]
+  )
+  const generation = authority[0]?.authoritative_generation
+  if (!generation) {
+    throw new Error(
+      `fileProspectivePrediction: contact_id cannot be filed — no kala_gochara_authority row for ` +
+        `chart ${chartId} (N-10: unpublished, never a 'v1' default), so there is no contact ledger ` +
+        'to resolve the id against.'
+    )
+  }
+  const { rows: found } = await query<{ contact_id: string }>(
+    `SELECT contact_id FROM kala_gochara_contacts
+      WHERE chart_id = $1::uuid AND generation = $2 AND contact_id = $3`,
+    [chartId, generation, contactId]
+  )
+  if (found.length === 0) {
+    throw new Error(
+      `fileProspectivePrediction: contact_id does not resolve in kala_gochara_contacts for ` +
+        `(chart_id, generation='${generation}') — a frozen claim pointing at a nonexistent ` +
+        'episode is rejected, not stored (WP7 P-3 / F-18 orphan class).'
+    )
+  }
+}
+
+function contact_id_preview(id: string): string {
+  return id.length > 24 ? `${id.slice(0, 24)}…` : id
+}
+
 /** Builds the A-2 ClaimShape value this input represents, for assertClaimShape. */
 function toClaimShape(input: FileProspectivePredictionInput): ClaimShape {
   if (input.claim_shape === 'point') {
@@ -505,6 +562,11 @@ export async function fileProspectivePrediction(
     assertDr16AdverseDisclosure(input.falsifier, input.dr16_adverse_disclosure)
   }
 
+  // ── WP7 P-3: a contact-anchored claim's id must resolve at filing time.
+  if (input.contact_id !== undefined) {
+    await assertContactIdResolves(input.chart_id, input.contact_id)
+  }
+
   const claim = toClaimShape(input)
   // Throws with the precise ShapeViolation(s) on mismatch — e.g. a point-claim
   // against an interval-shaped class (major_gain, major_loss, ...) is rejected here
@@ -527,14 +589,15 @@ export async function fileProspectivePrediction(
     `INSERT INTO brahma_prospective_ledger
         (chart_id, claim, event_class, claim_shape, observation_window, milestone_set,
          model, formula_version, confidence, falsifier, generator_class,
-         configuration_signature, filed_by, source_citation)
+         configuration_signature, filed_by, source_citation, contact_id)
      VALUES
         ($1::uuid, $2, $3, $4, $5::daterange, $6::jsonb,
          $7, $8, $9, $10, $11,
-         $12, $13, $14)
+         $12, $13, $14, $15)
      RETURNING prediction_id, chart_id, claim, event_class, claim_shape,
                observation_window::text, milestone_set, model, formula_version,
                confidence, falsifier, as_of, generator_class, configuration_signature,
+               contact_id,
                lifecycle_status, matched_event_id, matched_at, match_note,
                filed_by, filing_method, source_citation, created_at`,
     [
@@ -552,6 +615,7 @@ export async function fileProspectivePrediction(
       input.configuration_signature ?? null,
       input.filed_by,
       input.source_citation,
+      input.contact_id ?? null,
     ]
   )
 
@@ -626,6 +690,7 @@ export async function listProspectivePredictions(
     `SELECT prediction_id, chart_id, claim, event_class, claim_shape,
             observation_window::text, milestone_set, model, formula_version,
             confidence, falsifier, as_of, generator_class, configuration_signature,
+            contact_id,
             lifecycle_status, matched_event_id, matched_at, match_note,
             filed_by, filing_method, source_citation, created_at
        FROM brahma_prospective_ledger
@@ -701,6 +766,7 @@ export async function matchOpenPredictionsForLelEvent(
     `SELECT prediction_id, chart_id, claim, event_class, claim_shape,
             observation_window::text, milestone_set, model, formula_version,
             confidence, falsifier, as_of, generator_class, configuration_signature,
+            contact_id,
             lifecycle_status, matched_event_id, matched_at, match_note,
             filed_by, filing_method, source_citation, created_at
        FROM brahma_prospective_ledger
