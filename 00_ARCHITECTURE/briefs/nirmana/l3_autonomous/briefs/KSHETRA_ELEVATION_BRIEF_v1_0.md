@@ -1,6 +1,6 @@
 ---
 artifact: MADHAV_DATA_PLANE_ASSET_INTERFACE_EXECUTION_BRIEF
-version: "4.9"
+version: "4.10"
 status: APPROVED_FOR_EXECUTION  # CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; PR #2722 merged 54766b5da
 execution_prompt: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md   # v1.2 AUTHORIZED_STAGE_3_ONLY (native record 2026-09-24); executor not started
 ablation_preregistration: KSHETRA_ABLATION_PREREGISTRATION_v1_0.md   # judge named; rubric sealed before any arm
@@ -43,6 +43,7 @@ shape: "Staged internal DAG — the frozen stage plan is the packet boundary (FO
 governed_by: KALA_ASSET_ELEVATION_PLAN_TEMPLATE_v2_0.md · KALA_ASSET_BRIEF_INSTANTIATION_GUIDE_v1_0.md §2-§12 · ELEVATION_PROMPT_KSHETRA_v2.md · W0_DELTA_KSHETRA.md · KALA_ASSET_BRIEF_CONTEXT_v1_0.md
 does_not_authorize: "Any change. A populated brief is a proposal until the native rules."
 changelog:
+  - "4.10 (2026-09-24) — inbound reconciliation: binding adopted by reference in §1 with the §6 conformance rows (tests 5/6/7/9 + negative fixtures); §2.4 vedha chain updated for the applied L0 repair and the stale consumer rows. No stage, contract or ruling changed."
   - "4.9 (2026-09-24) — stage 3 authorized by native record (verified at source); stage 4 not opened; executor not started. implementation_owner and execution_prompt pointers updated. Nothing else changed."
   - "4.8 (2026-09-23) — three delegated items discharged: judge named and rubric sealed (§4.1 → KSHETRA_ABLATION_PREREGISTRATION_v1_0.md); stage-3 executor named with its prompt and isolated worktree (implementation_owner amended; AWAITING_NATIVE_AUTHORIZATION); L0 row fixes routed (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md). Three new frontmatter pointers. No stage, contract or ruling changed."
   - "4.7 (2026-09-23) — CLOSED. Independent review of rulings 7/8/9 discharged (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md); the house-vedha citation claim corrected (32/41 applied, 3 deferred, 6 unqualified — see plan v1.8). status -> APPROVED_FOR_EXECUTION, approval_record filled."
@@ -80,6 +81,8 @@ disposition is park-with-preservation and P1 is never funded.
 ---
 
 ## §1 — Admission and exact authority
+
+**Binding adopted by reference (rule of adoption; D-S3 approved this form 2026-09-24):** `KALA_SYNERGY_BINDING_v1_0.md` v2.2 §B1–B7. Every OFFER/MUST row that names Kshetra is proved in §6 with the binding's tests 5, 6, 7 and 9, each with a negative fixture; the rows are itemized in `KSHETRA_INBOUND_RECONCILIATION_v1_0.md` §3 and carried into the stage-3 prompt v1.5 (Phase 2 items (a)–(h), Phase 4 S1/S5, Phase 5 exit).
 
 Header above. This brief implements **only** the §4 deltas and infers no authority from the layer
 plan, existing code, W0 acceptance, a migration number or a test. **Holds obeyed, not argued:**
@@ -174,7 +177,7 @@ SAVEPOINT** (`writer.py:1754-1770`; correct pattern at `ka_sangam.py:997,1028,10
 `kala_moorti_nirnaya`, `kala_kota_chakra`, `kala_sudarshana`, `kala_tithi_pravesha`,
 `kala_av_transit_gating`. It **re-derives** vedha (`build_vedha_primitive`, from `bg_transit_rules`)
 and moorti (`build_moorti_primitive`, from its own ingress kinematics) internally, while the
-`ka_vedha_gochara` (admitted chain: **L0 `bg_transit_rules` (`rule_type='favourable' AND vedha_house IS NOT NULL`, `services/ka_vedha_gochara/writer.py:100-101`), co-cited Phaladīpikā Ch.26 — the "BPHS Ch.29" half of that co-citation is a miscitation in the L0 data and in `logic.py:13,105` (Gochara F-23/G-8, L0 owner strikes it); sarvatobhadra from `bg_sarvatobhadra_grid`, lattā from `bg_phaladeepika_latta`, the malefic scale from `bg_vedha_malefic_scale` (Phaladīpikā PG353, ADJUDICATION-11). There is **no `bg_phaladeepika_vedha` relation** — that is a writer *filename*; earlier versions had named it as a table** — **not** "BPHS Ch.29", which in the corpus is Bhāva Padas; the phrase is inherited from FOUNDATION_SAFETY §5:207 and the L0 headers; 41 tests — of which independent review finds 32 verified verbatim and re-cited, 3 Venus rows geometry-contradicted and deferred, and 6 Rāhu/Ketu rows genuinely unsourced; see `KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md`) and `ka_moorti_nirnaya` sit unread beside
+`ka_vedha_gochara` (admitted chain: **L0 `bg_transit_rules` (`rule_type='favourable' AND vedha_house IS NOT NULL`, `services/ka_vedha_gochara/writer.py:100-101`), co-cited Phaladīpikā Ch.26 — the "BPHS Ch.29" half of that co-citation was a miscitation in the L0 data and in `logic.py:13,105` (Gochara F-23/G-8) — **struck by the L0 repair 2026-09-24 (PR #2727: rules re-cited at page grain, `logic.py` docstring corrected); the canonical chart's `kala_vedha_gochara` rows themselves are still the 2026-09-07 build and carry the old citation until rebuilt**; sarvatobhadra from `bg_sarvatobhadra_grid`, lattā from `bg_phaladeepika_latta`, the malefic scale from `bg_vedha_malefic_scale` (Phaladīpikā PG353, ADJUDICATION-11). There is **no `bg_phaladeepika_vedha` relation** — that is a writer *filename*; earlier versions had named it as a table** — **not** "BPHS Ch.29", which in the corpus is Bhāva Padas; the phrase is inherited from FOUNDATION_SAFETY §5:207 and the L0 headers; 41 tests — of which independent review finds 32 verified verbatim and re-cited, 3 Venus rows geometry-contradicted and deferred, and 6 Rāhu/Ketu rows genuinely unsourced; see `KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md`) and `ka_moorti_nirnaya` sit unread beside
 it; `av_kaksha_gate` and `latta` are honest `not_in_corpus` gaps (`stage1_symbolization.py:346-362`).
 **Two vedha verdicts and two moorti verdicts can exist in one layer for one instant** — a §N.5
 authority split inside L3 and a VA §10.2 duplicate-evidence hazard the moment both reach synthesis.
@@ -459,6 +462,8 @@ nothing verified prevents a late worker publishing over a newer accepted generat
 ---
 
 ## §6 — Focused proof matrix
+
+**Binding conformance rows (added 2026-09-24):** tests 5 (temporal contract: `time_basis`, `inclusivity`, instant conversion after the t-axis fix), 6 (epistemic columns: `epistemic_class`, six-state `completeness_state`, `operator_role`, `tier_basis`, `comparable_with` within the four-value enum), 7 (co-reference: `window_id`, `window_ref`, `(generation, id)` provenance pinning, `field_snapshot_id` published), 9 (coverage and independence: seven-field `coverage` on every result, empty = row + coverage, `independence_group` union) — each with a negative fixture that fails under `NEG=1`; test 12 once `KALA_BASELINE_v1_0.md` exists.
 
 Fixture boundary for every row: the disposable small fixture of the W0 baseline (no production DB,
 no person data). A planned test is not a pass (F23).

@@ -1,7 +1,7 @@
 ---
 artifact: KSHETRA_INDEPENDENT_REVIEW_7_8_9
 canonical_id: KSHETRA_INDEPENDENT_REVIEW_7_8_9
-version: "1.2"
+version: "1.3"
 status: COMPLETED_INDEPENDENT_REVIEW  # amended again 2026-09-23 (v1.2): the Venus repair is UPDATE-not-delete, the v1.1 dedup wording withdrawn. v1.1: three corrections from a second, independent review (Kimi K3 desktop app, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md), each re-verified at source by the author before adoption
 date: 2026-09-23
 reviews: KSHETRA_RULING_SHEET_v1_0.md rulings 7 (node frame), 8 (vedha admission / G-9), 9 (G3 suppression semantics)
@@ -118,7 +118,7 @@ asterism ring, the twelve rāśis, the five tithi groups, the weekdays, the moti
 direction and the five-fold effect scale — everything the `vedha_pair` cells in
 `bg_sarvatobhadra_grid` need. The vowel/consonant *letter* cell assignments on the same pages are
 themselves OCR-degraded fragments embedded in the otherwise-clean prose and are not transcribable
-without the diagram at PG345. "Buildable from prose today" holds for the vedha-pair construction
+without the diagram at PG345. "Buildable from prose today" holds for the vedha-pair construction — **[WITHDRAWN 2026-09-24: the L0 repair attempted the construction from the same pages and was blocked on primary-source grounds (PR #2727 item 4); this narrowing rested on reading the prose, not on attempting the build. Sarvatobhadra is not buildable from the prose.]**
 the grid needs; it does not hold for the full 81-square chakra including its letter partitions.
 
 **Verdict: RE-OPEN, corrected as above.** The shared-producer decision, the uniform admission rule
