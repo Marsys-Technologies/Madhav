@@ -122,6 +122,47 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     expect(NIRMANA_L0_ANALYSIS_RECEIPTS).toEqual(NIRMANA_ANALYSIS_RECEIPTS.L0)
   })
 
+  it('admits the L0-repair successors for exactly L0, L2 and L3, append-only', () => {
+    const decision = 'NATIVE-2026-09-24-L0-REPAIR-REPIN'
+    // approval identity vs pinned source are different commits on purpose: the inventory at
+    // the approved state was stale, so the source is the commit that regenerates it
+    // (L0_REPAIR_ANALYSIS_REPIN_DECISION_ADDENDUM_v1_0.md)
+    const approved = '101171f76517fa3c6b0b44fa9d1cc46358612eee'
+    const source = '7d40f8c706406ee8187eadb5c3930553800a1a4a'
+    const expected = {
+      L0: { generation: 'l0:7d40f8c70640:64b8859fe692', supersedes: 'l0:d2369b888e76:3dda261170ee', changed: 9, history: 2 },
+      L2: { generation: 'l2:7d40f8c70640:dbbbb24c09cb', supersedes: 'l2:149f8479ac4e:51d3164426ac', changed: 23, history: 3 },
+      L3: { generation: 'l3:7d40f8c70640:dfcf30d8b3d2', supersedes: 'l3:87cc8c9baf89:002a118b218e', changed: 6, history: 4 },
+    } as const
+    for (const layer of ['L0', 'L2', 'L3'] as const) {
+      const pin = layerPinRecord.layers[layer]
+      const want = expected[layer]
+      expect(pin.generation_id).toBe(want.generation)
+      expect(pin.supersedes_generation_id).toBe(want.supersedes)
+      expect(pin.convergence_commit).toBe(source)
+      expect(pin.admission?.authority_decision).toBe(decision)
+      expect(pin.admission?.authority_commit).toBe(approved)
+      expect(pin.admission?.source_commit).toBe(source)
+      expect(pin.admission?.changed_assets).toHaveLength(want.changed)
+      expect(Object.keys(pin.admission?.delta_classifications ?? {})).toEqual(pin.admission?.changed_assets)
+      expect(Object.values(pin.admission?.delta_classifications ?? {})).not.toContain('unapproved_foreign_source')
+      // the predecessor is archived whole, and named by the successor
+      const archived = layerPinRecord.history[layer].at(-1)!
+      expect(archived.generation_id).toBe(want.supersedes)
+      expect(archived.superseded_by_generation_id).toBe(want.generation)
+      expect(layerPinRecord.history[layer]).toHaveLength(want.history)
+    }
+    // L1, L4 and L5 are untouched by the repair
+    expect(layerPinRecord.layers.L1.generation_id).toBe('l1:149f8479ac4e:93de3b2c84b7')
+    expect(layerPinRecord.history.L1).toHaveLength(2)
+    expect(layerPinRecord.history.L4).toHaveLength(1)
+    expect(layerPinRecord.history.L5).toEqual([])
+    // the predecessors' receipts stay re-derivable from the archived generation
+    expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L2)).toContain('l2:149f8479ac4e:51d3164426ac')
+    expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L3)).toContain('l3:87cc8c9baf89:002a118b218e')
+    expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L0)).toContain('l0:d2369b888e76:3dda261170ee')
+  })
+
   it('keeps the four L0 non-writer assets receipt-addressable', () => {
     for (const assetId of layerPinRecord.layers.L0.non_writer_assets) {
       const base = getNirmanaAnalysisReceiptBase(assetId, 'L0' as NirmanaAnalysisLayer)
@@ -158,20 +199,25 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md',
       sha256: 'a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5',
     }])
-    expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_kshetra'])
-    expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
+    // The Kshetra (DP-SD-019) successor was the active L3 pin when this was written; the
+    // L0-repair successor (PR #2727) is now appended after it, so it is the archived
+    // predecessor. Every assertion below is unchanged, only rebased onto that entry.
+    const kshetraL3 = layerPinRecord.history.L3[3].pin
+    expect(kshetraL3.generation_id).toBe('l3:87cc8c9baf89:002a118b218e')
+    expect(kshetraL3.admission?.changed_assets).toEqual(['ka_kshetra'])
+    expect(kshetraL3.admission?.delta_classifications).toEqual({
       ka_kshetra: 'approved_intentional_change',
     })
-    expect(layerPinRecord.layers.L3.admission.authority_decision).toBe('DP-SD-019')
-    expect(layerPinRecord.layers.L3.admission.source_commit)
+    expect(kshetraL3.admission?.authority_decision).toBe('DP-SD-019')
+    expect(kshetraL3.admission?.source_commit)
       .toBe('87cc8c9baf894c615e167672c6c7af57a15cf71c')
-    expect(layerPinRecord.layers.L3.admission.review_artifacts).toEqual([{
+    expect(kshetraL3.admission?.review_artifacts).toEqual([{
       commit: '58b7d455d803c54238bdae050c1770f9f514d21e',
       decision_binding: 'status: SOURCE_PACKET_ACCEPTED',
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_KSHETRA_GATE_ACCEPTANCE_v1_0.md',
       sha256: '687eed0309e906730364a394fb674ebac17ce58220309308bfcf071ac972175d',
     }])
-    expect(layerPinRecord.history.L3).toHaveLength(3)
+    expect(layerPinRecord.history.L3).toHaveLength(4)
     expect(layerPinRecord.layers.L4.admission.delta_classifications).toEqual({
       ph_muhurta: 'derived_import_change',
       ph_rectification: 'derived_import_change',
@@ -225,14 +271,17 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       'platform/tests/integration/data_plane_protected_roles.db.test.ts',
       'platform/tests/unit/data_plane_security_contract.test.ts',
     ]
+    // L1 is unchanged. The L2 security successor was active when this was written; the
+    // L0-repair successor (PR #2727) now follows it, so it is the archived predecessor.
+    const securityL2 = layerPinRecord.history.L2[2].pin
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:149f8479ac4e:93de3b2c84b7')
-    expect(layerPinRecord.layers.L2.generation_id).toBe('l2:149f8479ac4e:51d3164426ac')
+    expect(securityL2.generation_id).toBe('l2:149f8479ac4e:51d3164426ac')
     expect(layerPinRecord.layers.L1.admission.changed_assets).toEqual([
       'ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga',
       'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree',
       'ga_strength', 'ga_structural', 'ga_tajaka', 'ga_vargas', 'ga_yoga',
     ])
-    expect(layerPinRecord.layers.L2.admission.changed_assets).toEqual([
+    expect(securityL2.admission?.changed_assets).toEqual([
       'bo_arudha', 'bo_bimba', 'bo_grounding', 'bo_karanajala', 'bo_laksana',
       'bo_laksana_rerank', 'bo_nakshatra_semantic', 'bo_pramana_mapa',
       'bo_samskara', 'bo_sangati', 'bo_special_lagna', 'bo_sudarshana',
@@ -240,15 +289,15 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     ])
     for (const acceptance of [
       layerPinRecord.layers.L1.admission.source_acceptance,
-      layerPinRecord.layers.L2.admission.source_acceptance,
+      securityL2.admission?.source_acceptance,
     ]) {
       expect(acceptance).toMatchObject(expectedSourceAcceptance)
-      expect(acceptance.reviewed_surface.map(item => item.path)).toEqual(expectedReviewedPaths)
-      expect(acceptance.reviewed_surface).toHaveLength(23)
-      expect(acceptance.reviewed_surface.every(item => /^[a-f0-9]{40}$/.test(item.blob_oid))).toBe(true)
+      expect(acceptance!.reviewed_surface.map(item => item.path)).toEqual(expectedReviewedPaths)
+      expect(acceptance!.reviewed_surface).toHaveLength(23)
+      expect(acceptance!.reviewed_surface.every(item => /^[a-f0-9]{40}$/.test(item.blob_oid))).toBe(true)
     }
     expect(layerPinRecord.layers.L1.admission.review_artifacts).toEqual(
-      layerPinRecord.layers.L2.admission.review_artifacts,
+      securityL2.admission?.review_artifacts,
     )
     expect(layerPinRecord.layers.L1.admission.review_artifacts[0]).toEqual({
       commit: '149f8479ac4e22874aabe9a5e5b340fb86bc16fb',
@@ -257,7 +306,7 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       sha256: '94cbe76aff7d1a15d5efd1d3f355a6f49a6af49fafc14edf7b708bb8f454c084',
     })
     expect(layerPinRecord.history.L1).toHaveLength(2)
-    expect(layerPinRecord.history.L2).toHaveLength(2)
+    expect(layerPinRecord.history.L2).toHaveLength(3)
     expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L1)).toContain(
       'l1:d2369b888e76:3e8816fc708a',
     )
