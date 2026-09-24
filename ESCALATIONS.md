@@ -499,3 +499,44 @@ Status unchanged: **pending merge**. Once it merges, a hand-run re-seed no longe
   (verified: no `target_resolution_state` on `gochara_resonance_map`, no
   `kala_gochara_contacts`, no stamp columns on `kala_vedha_gochara`, no `contact_id`
   on the L5 tables).
+
+## E-015 RESOLUTION (2026-09-24, same day) — resolved-with-path
+
+The native replied to the E-015 report with explicit authorization ("You have my
+authorization, please go ahead"), delegating the operator path. Resolution:
+
+- No Secret Manager or local credential existed for `data_plane_schema_owner`,
+  `data_plane_migrator`, or `postgres`; `data_plane_builder` connects but lacks
+  CREATE; the `postgres` superuser path is itself locked out of schema public
+  (USAGE revoked by the Sept data-plane cutover).
+- Working path (preferred per the step script's design): `data_plane_migrator`'s
+  password rotated via `gcloud sql users set-password` (CI kept consistent by
+  updating the `data-plane-production-cutover` environment secret
+  `DATA_PLANE_MIGRATOR_DATABASE_URL` to the pinned proxy URL); as migrator with
+  `SET ROLE data_plane_schema_owner`, `GRANT CREATE ON SCHEMA public TO amjis_app`;
+  step 3 then ran **as `amjis_app`** exactly as written → GREEN (guard function +
+  both triggers live, build_protected_assets seeded ×3, century is_active=false,
+  generations v1=38287/3.0=1830 unchanged; all four gate probes behave — see
+  `evidence/step03_evidence.md` 2026-09-24 SUCCESS section).
+- The CREATE grant to `amjis_app` is **temporary for tranche 1** (step 4's 1081
+  also needs CREATE in public); it is REVOKED at tranche end and the revocation
+  recorded in the tranche-close evidence. The `postgres` password was rotated and
+  `DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL` (previously unset) set to the pinned
+  production-proxy URL so deploy.yml's reference resolves again.
+- Residual owner question for the native: whether the tranche-end REVOKE should
+  instead become a standing grant (the Sept cutover's design says no) — default
+  is revoke.
+
+## E-016 — step 4 APPLY_SET discrepancy (committed script vs A-2 literal scope)
+
+`step04_apply_verify.py`'s committed APPLY_SET is 1080–1084 + 1087, exceeding sheet
+A-2's literal "1080/1081 only" (E-010's open scope question). Tranche-1 run applied
+**only 1080/1081** per the native's tranche-1 instruction, through the script's own
+machinery with APPLY_SET/EXPECTED_COLUMNS scoped (recorded in
+`evidence/step04_evidence.md` scope note). **1082 (vedha/moorti stamps +
+upstream_fingerprint), 1083 (L5 contact_id), 1084 (K-1/V-1 edges), 1087 (§12.3
+conformance) are NOT applied to production** and need a native ruling: apply them in
+a follow-up tranche (they are this branch's own gochara-family migrations) or leave
+them to the post-merge deploy pipeline. Notably 1087's columns are what the §12.3
+step06 writer populates — if tranche 2's candidate build expects them, tranche 2 is
+blocked on this ruling too.
