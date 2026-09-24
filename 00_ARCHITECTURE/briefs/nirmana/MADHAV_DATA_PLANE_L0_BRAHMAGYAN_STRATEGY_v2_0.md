@@ -19,7 +19,7 @@ measured_against:
   code_readers: "grep over platform/python-sidecar (*.py, excl. tests/migrations/scripts) and platform/src + platform-mcp/src (*.ts, excl. tests/generated) at 85bf8f14e"
   evidence_ledger: "nirmana_evidence.nirmana_elevation_campaign_events, entity_type=asset"
 vocabulary_measured_on: 2026-09-25  # §2.6 added after the data plane's controlled-vocabulary principle was elevated in place
-not_measured: "ablation deltas (no L0 ablation harness exists); presentation-parity test (not run); whether any bg_* table carries a subject/chart column (not checked); whether brahma_remedy_corpus.source_canonical_id values resolve to a texts registry (not checked)"
+not_measured: "consumer-perturbation deltas (the cross-layer harness, W-L0-7, does not exist — ablation is NOT L0's individual measure, see §1.2); presentation-parity test (not run); whether any bg_* table carries a subject/chart column (not checked); whether brahma_remedy_corpus.source_canonical_id values resolve to a texts registry (not checked)"
 ---
 
 # L0 Brahmagyan — definition, strategy and evaluation (template instance 1)
@@ -229,29 +229,42 @@ of the first's rows.
 is on `origin/main` and applied to production; no L0 migration is pending on any live head. This is
 the only layer for which that is true today.
 
-### 1.2 · Individual contribution — ablate one
+### 1.2 · Individual contribution — measured as fidelity, not ablation
 
 ```
-inherits:    Product §14.1; Data plane §12.2
-measured_by: NOT RUN — no L0 ablation harness exists. Proxy recorded instead: reachability (served files / consuming writer files, §1.1) and the six-state position (§1.4). An asset's individual term is UNMEASURED until a served-reading ablation is run against the ref_* surface.
+inherits:    Product §11 L0 row (source and domain fidelity); template §1.2 reference-layer clause
+measured_by: provenance-column probe (§1.1) · integrity_check_sql presence · identity joins (§1.3 seam 1) · row-count vs registry declaration · evidence-ledger sub-states
 traces_to:   0.1
 ```
 
-What the proxy says, honestly labelled as proxy:
+L0 is a reference layer. Its assets are the tradition, not products of a chart, so an asset's
+individual term is **whether the knowledge is faithful** — identity correct, source present and
+qualified, method boundary stated, provenance carried — and not what removing it does to a reading.
+An unread doṣa definition is not worth zero; it is the corpus. This section therefore scores fidelity.
+Ablation appears for L0 only in §1.4, aimed at consumers, and never as grounds to disposition an asset.
 
-- **Every one of the 40 is read by something.** No asset is ≈ 0 on reachability. The template's
-  "≈ 0 on all three terms → R/H candidate" test yields **no candidates** from reachability alone.
-- **Two assets have no served path:** `bg_reference` (`reference_planets`, 4 writer readers, 0
-  serving) and `bg_cohort` (`bg_synthetic_cohort`, 3 writer readers, 0 serving). The first is a
-  genuine gap — the graha reference table is not exposed through any `ref_*` capability, so P16's
-  "give me this exact fact" cannot reach it; candidate **I**. The second is engineering capital by
-  design (synthetic population); **H**, as v1.0 already held.
-- **One asset has no writer path and only a served one:** `bg_gochara_citation_resolution` (0 writer
-  readers, 4 serving). It is a resolver consumed at serve time; static by disposition. Not a defect.
-- **The highest-reach assets are the invisible ones:** `brahma_event_ontology` (52 reading files),
-  `classical_text_chunks` (40), `ephemeris_daily` (42), `bg_transit_rules` (35), `brahma_ontology`
-  (18). Their individual term, once ablated, will be the largest in the layer — and four of the five
-  have 0–6 *registered* consumers.
+Fidelity per asset, from the measurements already in §1.1 and §1.3:
+
+| fidelity dimension | passes | fails / partial | evidence |
+|---|---|---|---|
+| **Identity correct** — canonical id resolves in the ontology | yoga, doṣa, daśā catalogs; parihāra → doṣa | `bg_remedies` (`source_canonical_id` is a source-work name, not an entity id) | §1.3 seam 1 / seam 3 |
+| **Source present and qualified** — a witness column, populated | catalogs (`classical_citations`, `source_chunk_ids`, `school`); texts; attributions; `bg_dignity_reference`; `bg_parihara_rules`; `bg_kp_sublord_division`; `bg_sarvatobhadra_grid` (schema only) | `sutravali_rules` (text, no school); `bg_transit_rules` (per-row citation, no school; provenance not table-wide per 1079); `vidhi_floor_items` (**no provenance column**); `vidhi_primitives` (version only) | provenance probe, §1.1 |
+| **Method boundary stated** — the asset says what it may and may not qualify | `bg_gochara_citation_resolution` ("resolution does not qualify a rule"); `bg_transit_engine` (mean motion, distinct from precise observation); `bg_cohort` (synthetic, labelled) | `bg_rules` — 3,002 extractions with `confidence` but no executable-scope statement per rule (v1.0 L0-C04's "executable status" is not a column) | §2.4 |
+| **Integrity detector present** | 37 of 40 | services (probes instead), `bg_sarvatobhadra_grid` (empty) — all three honest | registry |
+| **Declared count truthful** | most | `bg_class_priors` — 171 / 165 / 164 declared vs 177 live; `brahma_formula_constants` 18 declared vs 17 live | W2 MUST-3; exact counts |
+| **Alias set present** (the vocabulary half of identity) | 662 of 741 entities | all 79 doṣas | §2.6 |
+
+**What this term says:** L0's knowledge is largely faithful where it is *catalogued* — the yoga /
+doṣa / daśā / text core is identified, sourced and schooled — and thin where it is *extracted or
+derived*: the rule corpus has passages but no school and no executable scope, two vidhi tables carry
+almost no provenance, and one remedy column reuses the identity vocabulary for a different space.
+None of this is grounds to remove anything. All of it is grounds to complete it.
+
+**Reachability, recorded as context and not as a score:** every one of the 40 is read by something
+(§1.1). Two have no served path — `bg_reference` (a genuine gap: the graha reference table is not
+exposed through any `ref_*` capability, candidate **I**) and `bg_cohort` (engineering capital by
+design, **H**). One has no writer path and only a served one — `bg_gochara_citation_resolution`,
+static by disposition. These are integration facts, not worth judgements.
 
 ### 1.3 · Synergistic contribution — ablate the group
 
@@ -342,7 +355,9 @@ traces_to:   0.2
 
 > **L0 value = Σ individual + Σ synergistic + Σ cross-layer handoff**
 
-- **Individual:** unmeasured (no harness). Reachability proxy: 40/40 reached; 2 without a served path.
+- **Individual (fidelity):** faithful at the catalogued core; thin where extracted or derived — rules
+  without school or executable scope, two vidhi tables without provenance, one remedy column in the
+  wrong identity space, 79 doṣas without aliases. Nothing fails fidelity outright.
 - **Synergistic:** real at the catalog-identity core; absent at rules→concepts; mismatched at
   remedies; undeclared for dependencies; unspecified for serving.
 - **Cross-layer handoff:** the dominant term — five contracts consumed by 59+ writer files across
@@ -357,11 +372,12 @@ rules to the concepts they qualify; separate the two identity spaces; declare th
 exist; put a contract on the served surface; and build the one instrument — ablation against the
 `ref_*` surface — that would let the individual term be measured at all.** Part 3 itemises it.
 
-**R/H candidates by the accounting:** none at ≈ 0 on all terms. **I candidates:** `bg_reference`
-(unserved), `bg_rules` (unlinked). **H confirmed:** `bg_cohort`, `bg_vastu_directions`,
-`bg_medical_mappings` family (research/testimony capital, served as attributed testimony only).
-**C candidates:** none — the two shared-table pairs are partition patterns, verified by their
-`count_sql`.
+**Retirement is not decided by contribution in a reference layer.** The only **R** in this instance
+is the legacy `reference_nakshatras` table, retired for *superseded authority* (its successor is
+`reference_nakshatra`; closure §7). **I candidates:** `bg_reference` (unserved), `bg_rules`
+(unlinked). **H confirmed:** `bg_cohort`, `bg_vastu_directions`, the `bg_medical_mappings` family
+(research or testimony capital, served as attributed testimony only). **C candidates:** none — the two
+shared-table pairs are partition patterns, verified by their `count_sql`.
 
 ---
 
@@ -648,7 +664,8 @@ traces_to:   3.x — each closes named delta items
 | **W-L0-8 Controlled vocabulary, end to end** | §2.6 rules 1–6; seam 6; seam 3 (the remedy column is a vocabulary violation instance) | (1) `SELECT count(*) FROM brahma_ontology WHERE cardinality(synonyms)=0` = 0; (2) a parity test joins `l0_semantic_release_v1.json` to `brahma_ontology` and fails on any alias-set difference — Venus 10 ≟ 7 is the first failure it must report; (3) the `domain` class has one authority, with DB↔Python↔TypeScript parity, and the count is one number, not 45/13/1; (4) the serving resolver and the release share one declared normalization (`śukra` resolves in both); (5) the graha census is generalised to a per-class census over all sixteen classes, permitted count one, and the two escaping name-tuple modules import the SSoT; (6) the interface-parameter census reports 0 free-string planet/graha parameters (enum or resolver-validated); (7) the release's `admission_status` leaves `LOCAL_EXECUTION_ONLY` by a recorded native decision, not by drift. Depends on W-L0-1 (a registry it can trust) and pairs with W-L0-3 (the identity-space decision). |
 | **W-L0-7 The instrument** | 1.2, 1.4 "value evaluated" | an L0 ablation harness: run a fixed set of `ref_*` and L1–L3 readings with and without a named `bg_*` table (or with it emptied in a disposable DB), diff the readings, score against the ten obligations. Detector: the harness exists, runs in CI on a disposable snapshot, and produces a non-empty delta for at least `bg_ontology` |
 
-W-L0-7 is the packet without which §1.2 stays a proxy forever. It is named last because it depends
+W-L0-7 is the packet without which §1.4 stays at "consumed" and never reaches "value evaluated" — for
+L0's consumers, not for L0. It It is named last because it depends
 on W-L0-1 (a registry it can trust) and W-L0-2 (dependencies it can follow), not because it matters
 least.
 
@@ -692,20 +709,24 @@ A brief that must invent any of these has found a defect in this instance.
 
 ## Part 5 · EVALUATION AND CERTIFICATION
 
-### 5.1 · The score is ablation, in three flavours
+### 5.1 · The score — fidelity for the assets, ablation only for their consumers
 
 ```
-inherits:    Product §14, §14.1; Data plane §12.2
-measured_by: W-L0-7 (does not exist yet)
+inherits:    Product §14, §14.1; Data plane §12.2 (reference-layer carve-out); template §5.1
+measured_by: fidelity dimensions of §1.2 (measurable today); consumer-perturbation harness W-L0-7 (does not exist)
 traces_to:   0.2
 ```
 
-L0 scores on **source and domain fidelity** (all 40), **computational correctness** (the five
-substrate assets), **delivery fidelity** (the served surface), **operational honesty** (registry and
-description truthfulness). The three flavours for L0: *individual* — a `ref_*` reading and an L1–L3
-reading with the table present vs emptied; *synergistic* — the same readings with the ontology joins
-severed (seam 1 broken deliberately) to measure what shared identity is worth; *cross-layer* — an L2
-mechanism reading with `bg_rules`/`bg_yogas` absent, measured at the L2 consumer. None has been run.
+L0 scores on **source and domain fidelity** (all 40), **computational correctness** (the five substrate
+assets), **delivery fidelity** (the served surface) and **operational honesty** (registry and
+description truthfulness). The individual flavour of ablation is **replaced by the fidelity score** of
+§1.2 — an L0 asset is never scored, and never dispositioned, by what its removal does to a reading.
+
+Ablation runs against L0 in exactly one flavour, **cross-layer**, and answers exactly one question:
+*does the consumer use this knowledge correctly?* Perturb a `bg_transit_rules` row and confirm the L3
+reading moves; sever the ontology joins and confirm L2 resolution fails loudly rather than silently.
+A consumer that does not move has not consumed. That is a finding about L1–L5, recorded in their
+plans; it is never a finding against the L0 asset.
 
 ### 5.2 · The per-asset checklist
 
@@ -764,6 +785,12 @@ Recorded here for repair in `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`, no
 5. **The "synergistic term as a fraction" instruction cannot be honestly met without ablation.** The
    template should accept a seam-by-seam measurement as the recorded value until a harness exists,
    rather than invite a number.
+7. **Ablation was the wrong individual measure for a reference layer**, and the template applied it
+   uniformly. Raised by the native: perennial knowledge judged by today's readers would be retired one
+   unread chunk at a time. Repaired 2026-09-25 in the template (§1.2 reference-layer clause, §1.5
+   exemption, §5.1) and in the data plane (§12.2 carve-out). This instance's §1.2 was rewritten from a
+   reachability proxy to a fidelity score, and W-L0-7 re-aimed from judging L0 assets to verifying
+   their consumers. The second finding that propagated upward.
 6. **Vocabulary conformance was missing from the template entirely** until this instance's
    measurement surfaced three disagreeing authorities. Repaired 2026-09-25 in the template (§2.6, T4
    `Vocab`) and in the data plane (§4.1 raised to a governing principle) — the first defect this

@@ -16,6 +16,7 @@ role: >
 independent_review: NOT YET. This template has not been reviewed by a fresh-context session. Its first
   test is the L0 instance; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "1.0 (elevated in place, 2026-09-25, second change): reference-layer clause in §1.2, §1.5 and §5.1 — a layer whose assets are knowledge authorities measures its individual term by fidelity, is never retirement-scored by ablation, and receives ablation only cross-layer to verify consumers. The first case where the template's definition of value had to be layer-appropriate rather than uniform; raised by the native against the L0 instance."
   - "1.0 (elevated in place, 2026-09-25): §2.6 Vocabulary conformance added, inheriting the data plane's controlled-vocabulary principle (§4.1); the per-asset checklist gains a 32nd criterion, T4 `Vocab`; the adaptation table now says L0 OWNS the vocabulary and every other layer CONFORMS. Found missing by the L0 instance and repaired here, per this template's own rule."
   - "1.0 (2026-09-24): first version. Built on the native's two reframings: (1) a layer's definition begins from the value it contributes to the customer, and every later section either traces to that value or is struck; (2) a layer is the sum of its assets and services, so its value decomposes into individual, synergistic and cross-layer terms, each measurable by ablation, and the shortfall between that sum and the objective IS the elevation delta. Carries forward the earlier design decisions: definition / strategy / evaluation kept as separate parts because they change at different rates; traceability structural via `inherits:` on every section; baseline measured by a named instrument, never inherited; certification per criterion, not per definition revision, so a scale revision costs one re-test and not a re-freeze."
 ---
@@ -152,6 +153,12 @@ difference including any error or burden the asset introduces.
 An asset that cannot be ablated because nothing reads it has already answered the question for this
 term. Do not invent a contribution; record ≈ 0 and let 1.5 decide.
 
+**Reference-layer clause.** Where the layer is a knowledge authority — its assets are the tradition,
+not products of a chart (L0) — the individual term is **fidelity**, not contribution: identity
+correct, source present and qualified, method boundary stated, provenance carried. Ablation is not
+the measure, because an unread piece of authentic knowledge is not worth zero. Record fidelity per
+asset here; ablation for such a layer appears only in 1.4, aimed at consumers.
+
 ### 1.3 · Synergistic contribution — ablate the group
 
 ```
@@ -195,7 +202,9 @@ traces_to:   0.2
 - Compare the sum against the objective in 0.2. **The shortfall is the elevation delta**; Part 3
   itemises it.
 - Any asset ≈ 0 on all three terms is a candidate for disposition **R** or **H** in Part 3 — a
-  candidate, not a verdict; "lack of a caller in a bounded search is not redundancy."
+  candidate, not a verdict; "lack of a caller in a bounded search is not redundancy." **This rule does
+  not apply to a reference layer:** there, an asset is retired only for failed fidelity (inauthentic,
+  unsourced, wrongly identified, superseded by a corrected authority), never for lack of a reader.
 - Any asset with a large individual term and no synergistic term is a candidate for **I** (integrate).
 - Record the synergistic term as a fraction of the total. That fraction is the layer's
   department-ness, and the tracker carries it.
@@ -405,6 +414,9 @@ traces_to:   0.2
 | individual | one asset | its contribution to each of the ten obligations |
 | synergistic | a shared contract, vocabulary or ordering | what only the combination provided |
 | cross-layer | this layer's produced contract, at the consumer | what downstream loses |
+
+For a reference layer the individual flavour is replaced by a fidelity score, and only the
+cross-layer flavour runs — to verify consumers, never to judge the asset (see 1.2).
 
 The ten obligations are the product's, not the layer's: source and domain fidelity · computational
 correctness · concept and relationship completeness · interpretive fidelity · distinctive
