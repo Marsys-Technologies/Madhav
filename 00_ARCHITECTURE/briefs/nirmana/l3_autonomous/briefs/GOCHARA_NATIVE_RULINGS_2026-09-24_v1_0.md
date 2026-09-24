@@ -375,3 +375,19 @@ by a peer re-deriving rather than reading. That is the layer's review mechanism 
 standing evidence for why **the figure belongs in a predicate, not in prose** — the conclusion O-3 reached
 about ruling 8, DVA Ruling 16 reached about the L1 row counts, and this session has now demonstrated three
 times by violating it.
+
+### 7.9 Blast radius of the §7.7 error, traced and closed
+
+A wrong number's real cost is where it propagates, so the correction is not complete until that is traced.
+The 55 figure reached three places; two are clean and one is another stream's record:
+
+| where | state |
+|---|---|
+| this family's own artifacts | **corrected** — the rulings sheet §7.4, the Kṣetra instruction file and the Saṅgam instruction file all now read 30, with the reproducible command in §7.7 rather than a bare figure |
+| the strategic session's artifacts | **never entered them.** That session confirmed, on checking, that 55 appears in no artifact and no commit message on its side. It had the figure only in a message |
+| **the Saṅgam stream's record** | **contaminated by this family, then informed.** Saṅgam had recorded, on this family's assertion, that its own 41 was "understated". That framing was inherited from the wrong 55. Saṅgam has been told the correct figure is 30 and that its 41 was closer than this family claimed; whether its record is updated is Saṅgam's to do, and this entry stands as the trace if it is not |
+
+Recorded because it is the honest completion: this session did not merely publish a wrong number, it
+pushed a wrong number into a peer's record *as a correction of that peer*, which is worse than being
+wrong alone. The strategic session notes that the same mechanism caught two of its own errors today
+against three of this family's; the count is not the point, the mutual re-derivation is.
