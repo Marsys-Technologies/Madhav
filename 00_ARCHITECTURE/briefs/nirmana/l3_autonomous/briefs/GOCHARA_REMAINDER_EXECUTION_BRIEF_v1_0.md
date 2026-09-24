@@ -58,6 +58,12 @@ Done and committed (do not redo): WP0, WP1, WP2, WP3a (kernel), WP3b, WP3c (R-1.
 WP7 (sentinel chain + eight design packets). Ratified since: the sheet v2.0 (M-1..M-8 parameters
 and semantics; N-15..N-22; A-1..A-3; O-1..O-3; G-6..G-10).
 
+**Binding adopted by reference (§12.4):** `KALA_SYNERGY_BINDING_v1_0.md` §B1–B7 — read LIVE as
+**version 2.3 at commit `7374d8f71`** on `origin/l3/kala-elevation-readiness` (never trust a version
+quoted anywhere else, including §12.4). Proof per OFFERS/DEMANDS row:
+`wp7_packets/BINDING_PROOF_MATRIX_v1_0.md`. B6 is adopted as written: this family is the sole
+contact-episode producer.
+
 ## 2. Task order (the critical path), and why
 
 ```
@@ -158,6 +164,17 @@ independent reviewer (§9) — you do not self-certify a packet.
 | **P-3** | L5 claim/prediction ledger | nullable `contact_id` (`sha256:` id) so frozen claims keep identity across rebuild/republish/rollback via `contact_id → window_id → manifest_id`; the `lel/prospective_ledger.ts` filing path per the packet |
 | **S-1 / S-2** | `services/ka_gochara/service.py` | `find_aspects` keeps its exact shape (adapter over episodes) for `kala_trigger` `:96/:150/:199`, `currents.py:59`, `ka_sangam/engine.py:464`; new `find_episodes(chart_id, targets, horizon, *, bodies, relations, moon) -> EpisodeBatch` returning solved episodes with grain, coverage, `contact_id`; **S-2**: directed contact events as kernel episodes — per-graha Parāśari angles, **no node dṛṣṭi (N-14)**, `planets` as a list, absent when nothing fires, never a zero row. Test: all five existing callers run unchanged; `find_episodes` returns coverage even for zero contacts |
 | **T-1** | note only, to the `kala_trigger` owner | fold this run's measured `find_episodes` numbers into `PACKET_T1_kala_trigger.md` v1.2; **do not** modify `services/kala_trigger/**` |
+
+### 6.11 Layer binding adoption (§12.4)
+
+`KALA_SYNERGY_BINDING_v1_0.md` §B1–B7 adopted by reference (see §1): live version **2.3 @ `7374d8f71`**.
+Every Gochara OFFERS/DEMANDS row is proven in `wp7_packets/BINDING_PROOF_MATRIX_v1_0.md` with Layer
+contract §9 tests 5, 6, 7 and 9, each with a negative fixture that makes the detector fire (new
+detectors in `tests/l3/gochara/test_b_binding_conformance.py`; the rest cite existing tests). The
+matrix also records where the live binding's own claims about Gochara were already stale (closed by
+§12.3 / 4.13). B1's resolver row is vacuous for Gochara — the kernel works in JD/UTC end-to-end with
+no private civil date↔instant conversion; the "no private conversion" failure mode is guarded by a
+static detector. Verdict tier: COMPUTATIONAL_CORRECTNESS only (binding §B7).
 
 ## 7. Point 4 — WP10: prepare and rehearse now; execute only under the flags
 
