@@ -6766,6 +6766,27 @@ block (post-rebuild era), and proceeds.
 >
 > **D-1.5a CLOSED 2026-07-15** (13/15 gate assertions green; final proof achieved live — `judgment_query(482012f1, wealth)` composite moved `convergent_moderate`/1.15 → `convergent_strong`/~2.79, `bearing_yogas` carries the Dhana Yoga naming Venus+Jupiter). 6 hotfix cycles beyond the original 4-lane scope (PRs #563–#568 + migration 437) were required and independently verified; full detail in `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/REPORT_D-1.5a.md`. 2 items PARKED (documented, bounded, pre-existing, non-blocking): assertion #4 (5 residual `keyword_heuristic_v1` rows) and A7 (a `ganita_structural_get` serving-layer gap unrelated to this wave's writer-level fix, which is independently verified correct) — both carried forward as D-1.5b's open agenda, alongside a pre-existing `ka_vighnakara` ForeignKeyViolation discovered but out of scope to fix there (since RESOLVED in D-1.5b — see banner above). Live wave state ledger (CLOSED): `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/STATE_D-1.5a.md`. Gate: register §K.2 (12 assertions) + A5/A7, executable via `platform/scripts/audit/doctrine_harness/run.ts` — the harness's assertion definitions are the canonical copy of the gate per protocol §8.8(v). The banners this replaces (BRAHMA re-architecture SEALED 2026-06-02; "M6 INCOMING" / `OPERATOR_ACTIONS_PENDING.md` gate, 2026-05-31) are superseded — the BRAHMA rebuild and the M-series macro-phase banners are historical; the project's active-work framing since 2026-07-13 is the doctrine-waves campaign, not the M-series macro-phase arc. See SESSION_LOG.md Night-1 (2026-07-14), doctrine-waves campaign brief pack, and D-1.5a conductor-close (SESSION_LOG 2026-07-15) entries for full provenance.
 
+### §2.0 — Strategy stack ratified (2026-09-24)
+
+Both top tiers of the four-tier chain — product definition → data-plane value architecture → L0–L5
+layer plans → asset briefs — are FINAL and registered in `CAPABILITY_MANIFEST.json`, the
+authoritative registry. `CANONICAL_ARTIFACTS_v1_0.md` was deliberately not amended: it is the
+SUPERSEDED historical registry.
+
+| tier | artifact | status |
+|---|---|---|
+| 1 · Product | `00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md` | **CURRENT** — supersedes v3.0 (CCD-010) |
+| 2 · Data plane | `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md` | **CURRENT** — supersedes v2.0, which was PROPOSED and never adopted |
+| 3 · Layer plans | L0–L3 at v1.0 `APPROVED_STRATEGY`; **L4 and L5 do not exist** | STALE — all four derived from product v3.0 |
+| 4 · Asset briefs | 19 Kāla briefs | none final |
+
+Both were independently reviewed before ratification — product: ACCEPT with 25 findings folded;
+data plane: REJECT on two blockers with 21 findings folded. Reviews at
+`00_ARCHITECTURE/briefs/reviews/`.
+
+**The chain is ratified at the top and stale below it.** Tier 3 is the open work: four layer
+strategies cite a superseded parent, and two layers have no strategy at all.
+
 ### §2.1 — D-1.6 Lane S-8 banner-consistency check (2026-07-16)
 
 **FINDING (flag, not a fix — per this lane's scope, the wave banner is not re-advanced here).**
