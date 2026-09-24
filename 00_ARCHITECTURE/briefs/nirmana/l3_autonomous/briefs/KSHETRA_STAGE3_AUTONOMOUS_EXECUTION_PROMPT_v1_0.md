@@ -1,12 +1,13 @@
 ---
 artifact: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
 canonical_id: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
-version: "1.3"
+version: "1.4"
 status: AUTHORIZED_STAGE_3_ONLY  # native record 2026-09-24 (see authorized_by); stage 4 explicitly NOT opened; executor not yet started
 layer: L3
 asset: ka_kshetra
 campaign_id: kshetra-stage3
 changelog:
+  - "1.4 (2026-09-24) — binding 2.0 (5c05a0e2f) folded in: precision_regime rename REVERSED (ruled column; re-value day_grade→date_grain, aliased per D-7); the kala_gochara_windows read declared as an evaluation-role table edge, not a depends_on on the RETIRED sweep (migration 569 / SAMPŪRTI R0); find_contact_episodes unruled (B8-6) — evaluation-only until ruled; retirement explicitly per ruling 4; the L2 key is a demand via L3-U01 — id_basis column + unqualified identity + NOT_RUN self, no fifth comparable_with value (Gochara D-S6). Nothing else changed; executor not started."
   - "1.3 (2026-09-24) — Phase 1 item zero added ABOVE G3: the time-axis defect (J2000 knots under birth-relative clip/horizon constants), measured live; detector-first fix. Phase 0 gains check (g) reproducing the measurement. Phase 2 gains the six synergy-binding items from the strategic session's audit, spot-verified. Nothing else changed; authorization unchanged; executor not started."
   - "1.2 (2026-09-24) — status AUTHORIZED_STAGE_3_ONLY on the native's verbatim record (blueprint v4.3 / checklist v1.5, verified at source); stage 4 explicitly not opened; W1 release and the live L0 repair carried into §2; migration facts refreshed (next free 1082, verify). Executor NOT started by this change."
   - "1.1 (2026-09-23) — migration-number allocation rule: list both directories across every origin head; 1071–1074 claimed on origin by four unmerged branches, 1075/1076 by Gochara locally (Gochara madhav-e6's finding, verified here). Nothing else changed."
@@ -234,26 +235,21 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   admitted L1 birth-time-precision artifact; interim `default_120s_assumption`
   (`uncertainty.py:170-173`) + F06 `unavailable`; scope `chart_dashas` by ayanāṃśa with a total
   `ORDER BY` (closes `_boundaries` QX, `_system_sigma_t`'s `rows[0]`); read L1 `sandhi_flag`.
-  **S2:** carry L2 sign/occurrence (`stage2_promise.py:351-355,457`); natural edge key (closes
-  `_routes` QX — no reminted surrogate ids). **Pins:** add `node_mode` / `epoch_convention` to
+  **S2:** carry L2 sign/occurrence (`stage2_promise.py:351-355,457`); the natural edge key is a **demand on L2 via L3-U01** (binding 2.0), not minted here; until it lands, `_routes.path_edge_ids` stays a bigserial reassigned per rebuild, so: add an additive `id_basis ∈ {content_addressed, surrogate_unstable}` column on Kshetra's own routes table, mark the row's identity claim F06 `unqualified`, and record the comparison `self` as `NOT_RUN` with reason `unstable_key` — `comparable_with` stays within Gochara's four-value enum (D-S6, d8d910fec); `unstable_key` is a property of one row, not a relation, and is not a fifth value. **Pins:** add `node_mode` / `epoch_convention` to
   `config_pin` (`stage4_field.py:186-212`, `writer.py:318-336`) declaring the consumed ephemeris
   frame (TRUE node, noon-UT) — first verify whether `corpus_pin` already covers the L0 ephemeris
-  generation; if it does, record that and skip. **Edge register:** true in both directions (the
-  ~10 read-never-declared tables; `bo_sangati`/`bo_upaya` declared-never-read); F12 role per edge.
+  generation; if it does, record that and skip. **Edge register:** true in both directions (the ~10 read-never-declared tables; `bo_sangati`/`bo_upaya` declared-never-read); F12 role per edge. **Including the `kala_gochara_windows` read at `stage4_field.py:1384`, undeclared today: declare it as an evaluation-role edge on the TABLE — read-only cross-check, generation resolved through `kala_gochara_authority`, cited by the binding's `window_ref`, never a λ contributor — NOT as a `depends_on` on `ka_gochara_sweep`, which is `RETIRED` and was removed from Kshetra's dependencies by migration 569 under SAMPŪRTI R0; re-adding it would reverse a ruling.**
   **SAVEPOINT** on the cohort read (`writer.py:1754-1770`; pattern `ka_sangam.py:997,1028,1033`).
   Second `'v1'` COALESCE at `stage4_field.py:1386-1389` resolved with `writer.py:2330-2347`.
   **Synergy-binding items (strategic session's `KALA_SYNERGY_AUDIT_v1_0.md` @ 63b5fb429; the author spot-verified
   the marked ones, re-verify all before acting):** (i) [verified: 0 hits] the layer's temporal object is
   `timestamptz` UTC via the shared `ka_temporal` resolver — Kshetra has no reference to it; adopt it for served
   dates once item zero fixes the axis; (ii) [verified: 8 sites] `precision_regime='day_grade'` collides with
-  Gochara's `date_grain`/`instant_grain` — rename to `claim_grain`, alias `day_grade → date_grain` for one
-  generation; (iii) [verified: half-open convention at `dhara_sweep.py:138,222`; `inclusivity` appears in
+  Gochara's `date_grain`/`instant_grain` — **keep the name** — `precision_regime` is a ruled column (ruling 8; Gochara G-9; Saṅgam M-3) and the binding may not rename it (binding 2.0, 5c05a0e2f); re-value `day_grade → date_grain`, aliased until every dependent claim has a successor (D-7's condition, not a generation count); (iii) [verified: half-open convention at `dhara_sweep.py:138,222`; `inclusivity` appears in
   migration 492 — check whether the column exists on `kala_field`/`kala_field_windows` or only in prose]
   declare `inclusivity` per row; (iv) [verified: `find_contact_episodes` at `stage0_kinematics.py:329` mints
   its own `episode_id` (:490,:506)] Kshetra is a second producer of contact-shaped rows beside the Gochara
-  kernel's `contact_id` — in the S1 packet either consume `kala_gochara_contacts` by the binding's
-  `window_ref` or declare episodes `evaluation`-only with `comparable_with = different_convention`; never both
-  silently; (v) [verified: 0 hits] no coverage object on any result and no `independence_group` inherited from
+  kernel's `contact_id` — this is UNRULED (binding B8-6 puts it to the native): until ruled, declare the episodes `evaluation`-only with `comparable_with = different_convention`, and do NOT consume `kala_gochara_contacts` as a substitute without the ruling; (v) [verified: 0 hits] no coverage object on any result and no `independence_group` inherited from
   any witness — both are binding rows, add them in S5/S1; (vi) the `'v1'` COALESCE fall-throughs and the
   `_routes` surrogate ids are already above.
   **Exit:** every seam has an assertion-based test with a negative control; the register census
@@ -274,8 +270,7 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   sarvatobhadra unqualified; every row `unqualified` until the producer's `corpus_verifiable` /
   `source_qualification` / `precision_regime` columns exist — check, do not assume) and
   `ka_moorti_nirnaya` (unify the moorti split across term families, `stage1_symbolization.py:229-230`);
-  internal `build_vedha_primitive` / `build_moorti_primitive` become one-generation cross-checks,
-  then retire under contract §5; `av_kaksha_gate` from `ganita_av_transit_gating` (the same admitted
+  internal `build_vedha_primitive` / `build_moorti_primitive` become one-generation cross-checks, then retire under contract §5 — **per ruling 4, after one cross-check generation, never unconditionally**; `av_kaksha_gate` from `ganita_av_transit_gating` (the same admitted
   AV source as Saṅgam E2); kota / sudarshana / tithi-praveśa declared as applicability covariates
   (E7b needs `ka_tithi_pravesha`'s own source qualification first — C8). **S5:** denominator prose;
   the null's non-comparability flag and `1/R` resolution survive every projection.

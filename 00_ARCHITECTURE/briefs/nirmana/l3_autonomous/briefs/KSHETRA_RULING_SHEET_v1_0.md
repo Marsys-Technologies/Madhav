@@ -1,9 +1,10 @@
 ---
 artifact: KSHETRA_RULING_SHEET
 canonical_id: KSHETRA_RULING_SHEET
-version: "1.9"
+version: "1.10"
 status: CLOSED  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md), each re-verified at source by the author before adoption — no ruling re-opened. Native delegation ("Go ahead and do it.") discharged — PR #2722 merged 54766b5da; all ten rulings AFFIRMed by the author under delegation except ruling 8, RE-OPENED and corrected by independent review (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md); brief/plan status moves to APPROVED_FOR_EXECUTION with the house-vedha correction folded in
 changelog:
+  - "1.10 (2026-09-24) — PCD-1 states the t-axis-before-G3 sequencing as a delegated re-rank (binding B8-10). No ruling re-opened."
   - "1.9 (2026-09-24) — POST-CLOSE DEFECT REGISTER added with PCD-1, the time-axis defect (measured live). No ruling re-opened."
   - "1.8 (2026-09-24) — row 8: the L0 repair is applied in production, verified live via the served rules (Venus 35/44/45 → 1/5/11; Mercury 8→1 as id 569; six node rows stamped UNSOURCED); the only remaining reason every row is unqualified today is the producer stamp columns (WP9). Stage 3 authorized by native record (see the execution prompt v1.2); stage 4 not opened."
   - "1.7 (2026-09-23) — row 8 tightened per madhav-fc D-B (8a9734a32): the 32/3/6 split is the outcome WHEN the L0 re-citation and the producer stamp columns land; TODAY every vedha row is unqualified by construction — the spec is routed to a holder (Gochara G-9) with no bound L0 authority, and a routing is not an outcome. No ruling re-opened."
@@ -84,4 +85,6 @@ live on the canonical chart: the stored field spans 2000-01-01 … 2100-01-01, n
 the strategic session's synergy audit (63b5fb429), scoped up and measured by the author. It changes no ruling:
 ruling 2 (build fresh at W7) already discards the held substrate, and the fix is a stage-3 source item with a
 detector. It is recorded here because a defect of this rank found after CLOSE must be visible on the ruling
-record, not only in the plan.
+record, not only in the plan. **Delegated re-rank, stated explicitly (binding B8-10):** in stage-3 sequencing the
+t-axis fix precedes G3 — both rank 0; ruling 9's content and disposition untouched — the author's decision under
+the standing delegation, overridable by one native line.
