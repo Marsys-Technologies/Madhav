@@ -103,8 +103,7 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect(ops![0].sql).not.toMatch(/\bJOIN\b/i)
   })
 
-  it('lel_events is an explicit null — a clear/rebuild leaves LEL rows intact (JL-010/JL-020 IRREPLACEABLE)', () => {
-    // life_events + event_chart_state_index are user-authored source data (migration
+  it('lel_events is an explicit null — a clear/rebuild leaves LEL rows intact (JL-010/JL-020 IRREPLACEABLE)', () => {    // life_events + event_chart_state_index are user-authored source data (migration
     // 423, has_writer=false). A per-chart clear must NEVER delete them.
     expect('lel_events' in EXPLICIT_CLEAR_OPS).toBe(true)
     expect(EXPLICIT_CLEAR_OPS['lel_events']).toBeNull()
@@ -116,6 +115,44 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect(deriveDeleteSqlFromCountSql(lelCountSql))
       .toBe('DELETE FROM life_events WHERE chart_id = $1')
     // Because the explicit spec is null, that derived DELETE is never executed.
+  })
+
+  it("ka_gochara deletes coverage → contacts → windows, generation-scoped, no JOIN (WP7 C-1 / F-24)", () => {
+    // F-24: ka_gochara's re-pinned count_sql reaches ONLY kala_gochara_windows —
+    // without this entry a chart-owner Clear would orphan every kala_gochara_contacts /
+    // kala_gochara_coverage row. Three WHERE-scoped DELETEs in dependency order, pinned
+    // to generation '4.0' so v1 / '3.0' / g3_* rows are unreachable here.
+    const ops = EXPLICIT_CLEAR_OPS['ka_gochara']
+    expect(ops, 'ka_gochara must have an explicit clear spec').toBeTruthy()
+    expect(ops).toHaveLength(3)
+    const deletedTables = ops!.map(op => op.sql.match(/DELETE FROM (\w+)/i)?.[1])
+    expect(deletedTables).toEqual([
+      'kala_gochara_coverage',
+      'kala_gochara_contacts',
+      'kala_gochara_windows',
+    ])
+    for (const op of ops!) {
+      expect(op.sql).toMatch(/WHERE chart_id = \$1 AND generation = '4\.0'/)
+      expect(op.sql).not.toMatch(/\bJOIN\b/i)
+    }
+  })
+
+  it("ka_gochara carries the authoritative-generation refusal guard on its first op (WP7 C-1 Option A)", () => {
+    const ops = EXPLICIT_CLEAR_OPS['ka_gochara']!
+    const guard = ops[0].guard
+    expect(guard, 'first op must carry the refusal guard').toBeTruthy()
+    expect(guard!.sql).toMatch(/FROM kala_gochara_authority/)
+    expect(guard!.sql).toMatch(/chart_id = \$1/)
+    expect(guard!.sql).toMatch(/authoritative_generation = '4\.0'/)
+    expect(guard!.refuse_message).toMatch(/authoritative generation/)
+    // Only the first op carries the guard — it refuses the whole asset.
+    expect(ops[1].guard).toBeUndefined()
+    expect(ops[2].guard).toBeUndefined()
+    // Release-authority cascade: authority reset + manifest 'cleared'.
+    expect(guard!.cascade).toEqual([
+      'DELETE FROM kala_gochara_authority WHERE chart_id = $1',
+      "UPDATE kala_gochara_publication SET status = 'cleared' WHERE chart_id = $1 AND generation = '4.0'",
+    ])
   })
 })
 

@@ -160,10 +160,41 @@ export async function POST(req: NextRequest) {
       if (asset.asset_id in EXPLICIT_CLEAR_OPS) {
         const explicitOps = EXPLICIT_CLEAR_OPS[asset.asset_id]
         if (explicitOps === null) continue  // no data rows, skip cleanly
-        ops = explicitOps.map(op => ({
-          sql: op.sql,
-          params: op.sql.includes('$1') ? [chart_id] : [],
-        }))
+
+        // WP7 C-1 guard: an op carrying `guard` must be evaluated BEFORE any
+        // statement of the asset runs. Guard matches + non-release principal →
+        // refuse the whole asset (no SAVEPOINT, no statements). Guard matches +
+        // release authority → proceed, with `guard.cascade` statements appended
+        // so the cascade shares the asset's SAVEPOINT.
+        const guard = explicitOps.find(op => op.guard)?.guard
+        if (guard) {
+          const guardResult = await client.query(
+            guard.sql,
+            guard.sql.includes('$1') ? [chart_id] : []
+          )
+          if ((guardResult.rowCount ?? 0) > 0 && !isSuperAdmin) {
+            failed_tables.push({ table: asset.asset_id, error: guard.refuse_message })
+            continue
+          }
+          if ((guardResult.rowCount ?? 0) > 0 && guard.cascade?.length) {
+            ops = [
+              ...explicitOps.map(op => ({
+                sql: op.sql,
+                params: op.sql.includes('$1') ? [chart_id] : [],
+              })),
+              ...guard.cascade.map(sql => ({
+                sql,
+                params: sql.includes('$1') ? [chart_id] : [],
+              })),
+            ]
+          }
+        }
+        if (!ops) {
+          ops = explicitOps.map(op => ({
+            sql: op.sql,
+            params: op.sql.includes('$1') ? [chart_id] : [],
+          }))
+        }
       } else if (asset.count_sql) {
         const deleteSql = deriveDeleteSqlFromCountSql(asset.count_sql)
         if (deleteSql) {

@@ -16,7 +16,23 @@
  * Everything else in this map exists to fix multi-table-writer coverage gaps or
  * un-derivable count_sql shapes for otherwise-REBUILDABLE assets.
  */
-export type ClearOp = { sql: string }
+export type ClearOp = {
+  sql: string
+  /**
+   * Optional pre-execution guard (WP7 packet C-1, Option A). When present, the
+   * execute route runs `guard.sql` (with the same $1 chart binding as the op)
+   * BEFORE any statement of the asset runs. If the guard returns ≥1 row and the
+   * principal is NOT the release authority, the whole asset op is refused —
+   * pushed to failed_tables with `refuse_message`, zero statements executed.
+   * The release authority proceeds, and `guard.cascade` statements (if any) run
+   * as additional ops inside the same per-asset SAVEPOINT.
+   */
+  guard?: {
+    sql: string
+    refuse_message: string
+    cascade?: string[]
+  }
+}
 
 /**
  * Transforms a simple single-table count_sql into the equivalent DELETE statement.
@@ -223,4 +239,35 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // clear/rebuild leaves every life_events + event_chart_state_index row intact.
   // LEL rows are only ever mutated by the intake API, never by the asset build path.
   lel_events: null,
+
+  // ── L3 Kāla Gochara — contact ledger + coverage + windows (F-24) ─────────
+  // ka_gochara's re-pinned count_sql reaches ONLY kala_gochara_windows; without
+  // this entry a chart-owner Clear would orphan every kala_gochara_contacts /
+  // kala_gochara_coverage row (§N.3 violation; integrity conjunct (i)). Three
+  // generation-scoped DELETEs in dependency order, each WHERE chart_id=$1 AND
+  // generation='4.0'. No JOIN (§6.4). Clears the '4.0' candidate/publication
+  // generation ONLY — v1 / '3.0' / g3_* rows are unreachable here, and the
+  // (table, generation) guard from runbook step 3 is the second lock.
+  // REFUSAL: if '4.0' is this chart's authoritative_generation, a non-release
+  // principal is refused before any statement runs (guard on the first op);
+  // the release authority proceeds and the guard's cascade resets authority
+  // and marks the manifest 'cleared', inside the same per-asset SAVEPOINT.
+  // (WP7 packet C-1, Option A. The generation literal mirrors the registry
+  // re-pin of count_sql; when a '4.1' publication re-pins count_sql, this entry
+  // re-pins in the same migration — plan §6.3.)
+  ka_gochara: [
+    {
+      sql: "DELETE FROM kala_gochara_coverage WHERE chart_id = $1 AND generation = '4.0'",
+      guard: {
+        sql: "SELECT 1 FROM kala_gochara_authority WHERE chart_id = $1 AND authoritative_generation = '4.0'",
+        refuse_message: "Refused: '4.0' is this chart's authoritative generation. Only the release authority may clear it (cascades authority reset + manifest 'cleared').",
+        cascade: [
+          'DELETE FROM kala_gochara_authority WHERE chart_id = $1',
+          "UPDATE kala_gochara_publication SET status = 'cleared' WHERE chart_id = $1 AND generation = '4.0'",
+        ],
+      },
+    },
+    { sql: "DELETE FROM kala_gochara_contacts WHERE chart_id = $1 AND generation = '4.0'" },
+    { sql: "DELETE FROM kala_gochara_windows   WHERE chart_id = $1 AND generation = '4.0'" },
+  ],
 }
