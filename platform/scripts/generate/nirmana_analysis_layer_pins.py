@@ -947,8 +947,26 @@ def validate_post_integration_source_acceptance_bindings(
 
 
 def validate_review_artifacts(
-    layer: str, artifacts: list[dict[str, str]], source_commit: str
+    layer: str,
+    artifacts: list[dict[str, str]],
+    source_commit: str,
+    protected_baseline_commit: str | None = None,
 ) -> None:
+    """Validate the review artifacts a successor cites.
+
+    `protected_baseline_commit` (optional) admits ONE narrow fallback, and only
+    for an artifact whose commit is not an ancestor of HEAD: the trusted base
+    must already carry those exact bytes as a one-parent squash delivery, which
+    `validate_protected_squash_artifact_binding` re-derives (digest plus decision
+    binding). Without a baseline, or for an artifact that is neither reachable
+    nor squash-delivered on the baseline, behaviour is unchanged and strict.
+
+    Why this exists (L0 repair, 2026-09): the L0-L3 data-plane evidence was
+    delivered to main by squash (fa9857f00), which severs the source branch's
+    ancestry. A branch cut from that main can never reach 5142109f7f2..., so a
+    successor citing the standing acceptance artifacts could be *verified* on
+    the protected baseline (check()) but could not be *admitted* here.
+    """
     source_binding = SOURCE_ACCEPTANCE_BINDINGS.get(source_commit)
     expected = (
         source_binding.get("review_artifacts", {}).get(layer)
@@ -961,7 +979,14 @@ def validate_review_artifacts(
             f"for source {source_commit}"
         )
     for index, artifact in enumerate(artifacts):
-        validate_artifact_binding(artifact, f"{layer} review artifact {index}")
+        label = f"{layer} review artifact {index}"
+        commit, _, _, _ = _artifact_metadata(artifact, label)
+        if protected_baseline_commit is not None and not _commit_is_ancestor_of_head(commit):
+            validate_protected_squash_artifact_binding(
+                artifact, label, protected_baseline_commit
+            )
+        else:
+            validate_artifact_binding(artifact, label)
 
 
 def validate_authorized_source(decision: str, layer: str, source_commit: str) -> None:
@@ -1007,6 +1032,47 @@ def parse_review_artifacts(values: list[str]) -> list[dict[str, str]]:
     return artifacts
 
 
+def _resolve_definition_bindings(
+    existing: dict[str, Any] | None,
+    definition_snapshot_commit: str,
+    protected_baseline_commit: str | None,
+) -> dict[str, Any]:
+    """Return the definition bindings a successor admission must carry.
+
+    Normal path: re-derive them from the (reachable) definition snapshot commit.
+
+    Squash-delivery path: when `protected_baseline_commit` is given AND the
+    bindings already committed are byte-identical to the ones the protected
+    baseline carries AND every layer names `definition_snapshot_commit`, the
+    snapshot commit cannot be re-dereferenced from this branch (squash delivery
+    severed its ancestry) but is already accepted history on the trusted base.
+    Carry those bindings verbatim. This mirrors check(), which already compares
+    a candidate's definition to the baseline's rather than re-dereferencing.
+
+    It weakens nothing that carries the evidence: the caller still verifies the
+    candidate membership against each layer's carried `membership_sha256`
+    (admit_successor, "candidate membership does not match the immutable
+    definition snapshot"), so a wrong membership is still refused.
+    """
+    if existing is not None and protected_baseline_commit is not None:
+        _require_reachable_commit(protected_baseline_commit, "protected baseline")
+        baseline_definitions = _pins_at_commit(protected_baseline_commit).get(
+            "definition_bindings"
+        )
+        if (
+            existing == baseline_definitions
+            and isinstance(existing, dict)
+            and set(existing) == set(LAYER_PREFIX)
+            and all(
+                isinstance(binding, dict)
+                and binding.get("snapshot_commit") == definition_snapshot_commit
+                for binding in existing.values()
+            )
+        ):
+            return json.loads(json.dumps(existing))
+    return build_definition_bindings(definition_snapshot_commit)
+
+
 def admit_successor(
     committed: dict[str, Any],
     *,
@@ -1021,6 +1087,7 @@ def admit_successor(
     classifications: dict[str, str],
     historical_snapshot_commit: str,
     definition_snapshot_commit: str,
+    protected_baseline_commit: str | None = None,
 ) -> dict[str, Any]:
     """Append one fail-closed provenance successor without rewriting history.
 
@@ -1039,7 +1106,9 @@ def admit_successor(
     if not authority_decision.strip() or not reason.strip():
         raise SystemExit("authority decision and reason must be non-empty")
     validate_authority_binding(authority_decision, authority_commit)
-    validate_review_artifacts(layer, review_artifacts, source_commit)
+    validate_review_artifacts(
+        layer, review_artifacts, source_commit, protected_baseline_commit
+    )
     validate_authorized_source(authority_decision, layer, source_commit)
     if _inventory_at_commit(source_commit) != candidate_writer_digests:
         raise SystemExit(
@@ -1055,8 +1124,10 @@ def admit_successor(
             f"cannot admit successor from pins version {document.get('version')!r}"
         )
     document.setdefault("history", {known_layer: [] for known_layer in LAYER_PREFIX})
-    definition_bindings = build_definition_bindings(definition_snapshot_commit)
     existing_definitions = document.get("definition_bindings")
+    definition_bindings = _resolve_definition_bindings(
+        existing_definitions, definition_snapshot_commit, protected_baseline_commit
+    )
     if existing_definitions is not None and existing_definitions != definition_bindings:
         raise SystemExit("definition bindings cannot be silently replaced")
     document["definition_bindings"] = definition_bindings
@@ -1358,7 +1429,9 @@ def check(
             failures.append(f"{label}: review artifacts are missing")
         elif validate_references:
             try:
-                validate_review_artifacts(layer, artifacts, source_commit)
+                validate_review_artifacts(
+                    layer, artifacts, source_commit, protected_baseline_commit
+                )
             except SystemExit as exc:
                 failures.append(f"{label}: {exc}")
         else:
@@ -1760,6 +1833,7 @@ def main() -> int:
             classifications=parse_classifications(args.classification),
             historical_snapshot_commit=args.historical_snapshot_commit,
             definition_snapshot_commit=args.definition_snapshot_commit,
+            protected_baseline_commit=args.protected_baseline_commit,
         )
         args.output.write_text(render(successor), encoding="utf-8")
         print(

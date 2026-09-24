@@ -1040,3 +1040,176 @@ def test_every_commit_dereferenced_by_check_is_an_ancestor_of_head(monkeypatch) 
     assert "da498ebd980cac87796eceb889c7f1c42cfb952b" not in dereferenced
     assert "7f21f27b14a7909424591a530096dc2f5d6e2b13" not in dereferenced
     assert "d2369b888e760e5b8d693328f00683877cbd5f28" not in dereferenced
+
+
+# ── Squash-delivery admission (L0 repair, 2026-09) ────────────────────────────
+#
+# check() could always *verify* successors whose evidence commits were severed
+# from ancestry by GitHub's squash delivery, but admit_successor() and
+# validate_review_artifacts() could not *admit* one: every artifact commit had to
+# be an ancestor of HEAD, and 5142109f7f2... never is for a branch cut from the
+# squashed main. These tests pin the narrow fallback added for that and, just as
+# importantly, everything it must NOT relax.
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.strict: list[str] = []
+        self.squash: list[tuple[str, str]] = []
+
+
+def _record_validators(monkeypatch, recorder: _Recorder, *, reachable: bool) -> None:
+    monkeypatch.setattr(pins_module, "_commit_is_ancestor_of_head", lambda commit: reachable)
+    monkeypatch.setattr(
+        pins_module,
+        "validate_artifact_binding",
+        lambda artifact, label: recorder.strict.append(label),
+    )
+    monkeypatch.setattr(
+        pins_module,
+        "validate_protected_squash_artifact_binding",
+        lambda artifact, label, baseline, **_: recorder.squash.append((label, baseline)),
+    )
+
+
+@pytest.mark.parametrize("layer", ["L0", "L2", "L3"])
+def test_unreachable_review_artifacts_use_squash_path_only_with_a_baseline(
+    monkeypatch, layer: str
+) -> None:
+    artifacts = copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS[layer])
+    baseline = "a" * 40
+
+    with_baseline = _Recorder()
+    _record_validators(monkeypatch, with_baseline, reachable=False)
+    pins_module.validate_review_artifacts(layer, artifacts, "b" * 40, baseline)
+    assert len(with_baseline.squash) == len(artifacts)
+    assert all(b == baseline for _, b in with_baseline.squash)
+    assert with_baseline.strict == []
+
+    # No baseline: behaviour is exactly the old strict one, never the fallback.
+    without = _Recorder()
+    _record_validators(monkeypatch, without, reachable=False)
+    pins_module.validate_review_artifacts(layer, artifacts, "b" * 40)
+    assert without.squash == []
+    assert len(without.strict) == len(artifacts)
+
+    # A baseline does not divert an artifact that IS reachable.
+    reachable = _Recorder()
+    _record_validators(monkeypatch, reachable, reachable=True)
+    pins_module.validate_review_artifacts(layer, artifacts, "b" * 40, baseline)
+    assert reachable.squash == []
+    assert len(reachable.strict) == len(artifacts)
+
+
+def test_squash_fallback_does_not_relax_the_required_artifact_set(monkeypatch) -> None:
+    baseline = "a" * 40
+    _record_validators(monkeypatch, _Recorder(), reachable=False)
+    tampered = copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L2"])
+    tampered[0]["sha256"] = "0" * 64
+    with pytest.raises(SystemExit, match="do not match the required acceptance artifacts"):
+        pins_module.validate_review_artifacts("L2", tampered, "b" * 40, baseline)
+    with pytest.raises(SystemExit, match="do not match the required acceptance artifacts"):
+        pins_module.validate_review_artifacts("L2", tampered[:1], "b" * 40, baseline)
+
+
+def test_squash_fallback_rejects_an_artifact_the_baseline_does_not_carry(monkeypatch) -> None:
+    def refuse(artifact, label, baseline, **_):
+        raise SystemExit(f"{label} is not an exact protected one-parent delivery")
+
+    monkeypatch.setattr(pins_module, "_commit_is_ancestor_of_head", lambda commit: False)
+    monkeypatch.setattr(pins_module, "validate_protected_squash_artifact_binding", refuse)
+    with pytest.raises(SystemExit, match="not an exact protected one-parent delivery"):
+        pins_module.validate_review_artifacts(
+            "L0",
+            copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L0"]),
+            "b" * 40,
+            "a" * 40,
+        )
+
+
+def _definition_fixture(monkeypatch, *, baseline_bindings):
+    built: list[str] = []
+
+    def fake_build(snapshot: str):
+        built.append(snapshot)
+        raise SystemExit("re-derived from snapshot")
+
+    monkeypatch.setattr(pins_module, "_require_reachable_commit", lambda commit, label: None)
+    monkeypatch.setattr(
+        pins_module, "_pins_at_commit", lambda commit: {"definition_bindings": baseline_bindings}
+    )
+    monkeypatch.setattr(pins_module, "build_definition_bindings", fake_build)
+    return built
+
+
+def test_definition_bindings_are_carried_only_when_the_baseline_carries_them(monkeypatch) -> None:
+    existing = copy.deepcopy(CURRENT_PINS["definition_bindings"])
+    label = existing["L0"]["snapshot_commit"]
+    baseline = "a" * 40
+
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    assert pins_module._resolve_definition_bindings(existing, label, baseline) == existing
+    assert built == []  # carried verbatim, never re-derived from the severed commit
+
+    # No baseline -> the old strict re-derivation, which refuses an unreachable commit.
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(existing, label, None)
+    assert built == [label]
+
+    # Bindings the baseline does NOT carry (a rewritten membership) are re-derived.
+    rewritten = copy.deepcopy(existing)
+    rewritten["L2"]["membership_sha256"] = "0" * 64
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(rewritten, label, baseline)
+    assert built == [label]
+
+    # A snapshot label that does not match what is recorded is re-derived, not carried.
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(existing))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(existing, "c" * 40, baseline)
+    assert built == ["c" * 40]
+
+    # A record covering fewer layers than L0-L5 is never carried.
+    partial = {k: v for k, v in existing.items() if k != "L5"}
+    built = _definition_fixture(monkeypatch, baseline_bindings=copy.deepcopy(partial))
+    with pytest.raises(SystemExit, match="re-derived from snapshot"):
+        pins_module._resolve_definition_bindings(partial, label, baseline)
+
+
+def test_admission_refuses_a_candidate_whose_membership_disagrees_with_carried_bindings(
+    monkeypatch,
+) -> None:
+    """The carried bindings are trusted only as evidence, never as an override:
+    admit_successor still re-derives membership and compares it to them."""
+    tampered_definitions = copy.deepcopy(CURRENT_PINS["definition_bindings"])
+    tampered_definitions["L2"]["membership_sha256"] = "0" * 64
+    document = copy.deepcopy(LEGACY_PINS)
+    document["definition_bindings"] = copy.deepcopy(tampered_definitions)
+    baseline = "a" * 40
+    fixture_pins_at_commit = pins_module._pins_at_commit
+
+    def pins_at_commit(commit: str) -> dict:
+        if commit == baseline:
+            return {"definition_bindings": copy.deepcopy(tampered_definitions)}
+        return fixture_pins_at_commit(commit)
+
+    monkeypatch.setattr(pins_module, "_pins_at_commit", pins_at_commit)
+    monkeypatch.setattr(pins_module, "_require_reachable_commit", lambda commit, label: None)
+    with pytest.raises(SystemExit, match="candidate membership does not match"):
+        pins_module.admit_successor(
+            document,
+            layer="L2",
+            previous_writer_digests=BASELINE,
+            candidate_writer_digests=CANDIDATE,
+            source_commit="d2369b888e760e5b8d693328f00683877cbd5f28",
+            review_artifacts=copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L2"]),
+            authority_decision="DP-SD-018",
+            authority_commit="7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            reason="fixture",
+            classifications=L2_CLASSIFICATIONS,
+            historical_snapshot_commit="c558e60d3267ded79d65fd25f50ee926ce27b75a",
+            definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
+            protected_baseline_commit=baseline,
+        )
