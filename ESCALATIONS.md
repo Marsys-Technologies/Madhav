@@ -311,3 +311,27 @@ what a human needs to decide.
   applied by the test harness after 1081. Never applied to a shared database; production application
   is WP10-gated.
 - **Decision needed from the native:** none.
+
+## E-012 — The '4.0' windows projection has NO WRITER: tranche 2 cannot produce a servable candidate (L3 session, 2026-09-24 14:05) — **native decision needed**
+
+- **What:** Plan §2.2 says that after elevation `ka_gochara` writes the contact ledger, the coverage manifest, **and the
+  windows projection into `kala_gochara_windows` under generation `'4.0'`**, and stops writing `'2.0'`. Only the first two
+  exist. Verified at source: `pipeline/orchestrator/writers/ka_gochara.py` still writes `GENERATION_V2` (`'2.0'`) into
+  `kala_gochara_windows_v2`; `scripts/kala_gochara_cutover/step06_candidate_build.py` drives only
+  `register_convention → publish_candidate → write_contacts → write_coverage` from an externally supplied episode list; and
+  the only other code that INSERTs into `kala_gochara_windows` is the retired sweep (generation `'v1'`). No code path
+  produces a `'4.0'` window row.
+- **Why it matters (tranche 2 is authorised):** step 8 flips `kala_gochara_authority` to `'4.0'`, and serving reads
+  `kala_gochara_windows` at the authoritative generation. Flipping onto a generation with zero rows **empties the served
+  forecast for that chart**. The four step-7 flip gates read only the ledger, coverage manifest, TS-side disclosure and a
+  scratch rollback, so none could see it. The rehearsal itself recorded the symptom without flagging it: it flipped with no
+  windows, watched registry conjunct (k) go red, then inserted a window by hand.
+- **Done here (a guard, not a fix):** step 7 gains gate `windows_present`; step 8 refuses (exit 8) when
+  `kala_gochara_windows` has no rows for `(chart, generation)`. Two negative tests prove each can go red, and two rehearsal
+  tests now seed a **synthetic stand-in window and say so**, so the rehearsal no longer implies the pipeline produced one.
+  Result: tranche 2 will now STOP at step 7 on the real chart rather than flip onto an empty generation.
+- **NOT done, and it is the actual work:** the projection writer — extending `ka_gochara` to project λ over the ledger for
+  `'4.0'` under the ratified flags (M-1 shape at 5.0°, M-3, N-14, N-15, N-17, N-22, M-8) into `kala_gochara_windows`, with
+  the factor-level delta report against `'3.0'`. That is a work package of its own (plan §4.5), not a runbook step.
+- **Decision needed from the native:** who builds the projection writer, and whether tranche 2 stays authorised in the
+  meantime. Recommendation: leave the flags as they are — the new gates make a premature run harmless — and name the owner.

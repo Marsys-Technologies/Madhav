@@ -439,3 +439,12 @@ Supersedes the "IN PROGRESS" row for 12.9 in §12.11. **Skip §12.9 entirely.**
 **Test-database ports.** Three disposable databases may exist: WP6 on 55433, the run's WP10 on 55434, and a private
 verification DB the L3 session starts and removes on 55435. The L3 session never uses 55434. Tear down whatever
 remains at the end of your run, including the WP6 container the L3 session started.
+
+### 12.13 CRITICAL — the '4.0' windows projection has no writer (E-012). Read before running any of tranche 2.
+
+`ka_gochara` is meant to write the windows projection under `'4.0'` (plan §2.2/§4.7). **Nothing does.** Step 6 writes only
+the contact ledger and coverage, and step 8 flips serving authority onto `'4.0'`. The L3 session added a `windows_present`
+gate to step 7 and a refusal to step 8, so **tranche 2 will now stop at step 7 on the real chart. That is the correct
+outcome; do not weaken those gates, and do not seed a window to get past them.** The rehearsal's two synthetic windows are
+stand-ins and are labelled as such. Building the projection writer is out of this run's scope unless the native assigns it.
+Escalate; do not attempt it as a side task.

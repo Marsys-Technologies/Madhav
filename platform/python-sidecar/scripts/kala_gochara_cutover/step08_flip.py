@@ -120,6 +120,19 @@ def main() -> int:
                 "WHERE chart_id = %s AND generation = %s",
                 (args.chart_id, args.generation))
             n_contacts = cur.fetchone()[0]
+            # E-012: the ledger and coverage checks above cannot see the SERVED table. Serving
+            # reads kala_gochara_windows at the authoritative generation, so flipping onto a
+            # generation with no window rows empties the served forecast for this chart.
+            cur.execute(
+                "SELECT count(*) FROM kala_gochara_windows "
+                "WHERE chart_id = %s AND generation = %s",
+                (args.chart_id, args.generation))
+            if cur.fetchone()[0] == 0:
+                problems.append(
+                    "no kala_gochara_windows rows for this generation — flipping serving "
+                    "authority would empty the served forecast for this chart; the '4.0' windows "
+                    "projection (plan §2.2/§4.7) has no writer yet (E-012). A flip over a void "
+                    "is refused.")
         if problems:
             for p in problems:
                 print(f"PRECONDITION FAILED: {p}", file=sys.stderr)

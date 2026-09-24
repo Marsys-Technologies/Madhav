@@ -89,6 +89,23 @@ def main() -> int:
             "ts_gate": "NOT_RUN (route test lives in platform-mcp)",
         }
 
+        # Gate 5 (E-012): the SERVED table has window rows for this generation. Gates 1-2 read
+        # the contact ledger and coverage manifest only, so they stay green when no window was
+        # ever written — and the flip in step 8 repoints serving at kala_gochara_windows. Plan
+        # §2.2/§4.7 has ka_gochara write the windows projection under '4.0'; no code does yet.
+        cur.execute(
+            "SELECT count(*) FROM kala_gochara_windows "
+            "WHERE chart_id = %s AND generation = %s",
+            (args.chart_id, args.generation))
+        n_win = cur.fetchone()[0]
+        gates["windows_present"] = {
+            "pass": n_win > 0,
+            "detail": f"kala_gochara_windows rows for generation {args.generation}: {n_win}. "
+                      "Flipping serving authority onto a generation with no window rows would "
+                      "empty the served forecast for this chart. The '4.0' windows projection "
+                      "(plan §2.2/§4.7) has no writer yet (E-012).",
+        }
+
         # Gate 3: disclosure is TS-only.
         gates["disclosure_derive_resolution"] = {
             "pass": None,

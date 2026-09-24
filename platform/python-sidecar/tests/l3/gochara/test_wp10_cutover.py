@@ -442,17 +442,62 @@ def test_step06_candidate_build_and_rebuild(db):
                        "WHERE generation='3.0'") == 2
 
 
+def _seed_synthetic_4_0_window(conn, chart: str) -> None:
+    """A stand-in for the '4.0' windows PROJECTION, which has no writer yet.
+
+    Plan §2.2/§4.7 says ka_gochara writes the windows projection into
+    kala_gochara_windows under '4.0'; no code does (ka_gochara.py still writes '2.0' to
+    kala_gochara_windows_v2, and step 6 drives only the contact ledger and coverage). Steps 7
+    and 8 now REFUSE without window rows (E-012), so the rehearsal must seed one — and says so,
+    rather than let the rehearsal imply the pipeline produced it.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO kala_gochara_windows (chart_id, event_class, temporal_shape,"
+            " window_start, window_end, peak_date, signed_intensity, raw_intensity,"
+            " valence, is_adverse, generation) VALUES (%s,'marriage','point',"
+            " '2026-06-15','2026-06-15','2026-06-15',1,1,'gain',false,'4.0')",
+            (chart,))
+
+
 def test_step07_flip_gates(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
     assert _step06(CHART_A).returncode == 0
+    _seed_synthetic_4_0_window(db, CHART_A)  # stand-in for the unbuilt projection (E-012)
     r = _run_script("step07_flip_gates.py", "--dsn", DSN, "--chart-id", CHART_A)
     assert r.returncode == 0, r.stderr
     assert '"pass": true' in r.stdout
 
 
+def test_step07_windows_gate_is_red_without_window_rows(db):
+    """E-012: the four gates could not see that no '4.0' windows exist. This one can."""
+    _run_script("step04_apply_verify.py", "--dsn", DSN)
+    assert _step06(CHART_A).returncode == 0  # contacts + coverage exist, windows do not
+    r = _run_script("step07_flip_gates.py", "--dsn", DSN, "--chart-id", CHART_A)
+    assert r.returncode == 7, (r.returncode, r.stdout, r.stderr)
+    assert '"windows_present"' in r.stdout
+    assert "kala_gochara_windows rows for generation 4.0: 0" in r.stdout
+    assert "E-012" in r.stdout
+
+
+def test_step08_refuses_to_flip_without_window_rows(db):
+    """E-012: authority must not flip onto a generation the served table has no rows for."""
+    _run_script("step04_apply_verify.py", "--dsn", DSN)
+    assert _step06(CHART_A).returncode == 0
+    before = _scalar(db, "SELECT count(*) FROM kala_gochara_authority WHERE chart_id=%s", (CHART_A,))
+    r = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,
+                    "--flipped-by", "wp10-rehearsal")
+    assert r.returncode == 8, (r.returncode, r.stdout, r.stderr)
+    assert "kala_gochara_windows" in r.stderr
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_authority WHERE chart_id=%s", (CHART_A,)) == before
+    assert _scalar(db, "SELECT status FROM kala_gochara_publication "
+                       "WHERE chart_id=%s AND generation='4.0'", (CHART_A,)) == "candidate"
+
+
 def test_step08_flip_and_reverse(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
     assert _step06(CHART_A).returncode == 0
+    _seed_synthetic_4_0_window(db, CHART_A)  # stand-in for the unbuilt projection (E-012)
     r = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,
                     "--flipped-by", "wp10-rehearsal")
     assert r.returncode == 0, r.stderr
@@ -467,16 +512,9 @@ def test_step08_flip_and_reverse(db):
     assert _scalar(db, "SELECT authoritative_generation "
                        "FROM kala_gochara_authority WHERE chart_id=%s",
                    (CHART_A,)) == "4.0"
-    # conjunct (k) now satisfiable only with a window: none exists → red.
+    # conjunct (k) holds because a window exists. The published-over-void case is covered by
+    # test_step05_conjunct_k_detects_published_over_void; step 8 now refuses that flip up front.
     _apply_sql_file(db, "step05_registry_repin.sql")
-    assert _integrity(db) is False
-    with db.cursor() as cur:  # add the '4.0' window → green
-        cur.execute(
-            "INSERT INTO kala_gochara_windows (chart_id, event_class, temporal_shape,"
-            " window_start, window_end, peak_date, signed_intensity, raw_intensity,"
-            " valence, is_adverse, generation) VALUES (%s,'marriage','point',"
-            " '2026-06-15','2026-06-15','2026-06-15',1,1,'gain',false,'4.0')",
-            (CHART_A,))
     assert _integrity(db) is True
     # reversal: authority back to '3.0', manifest rolled_back
     rr = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,
