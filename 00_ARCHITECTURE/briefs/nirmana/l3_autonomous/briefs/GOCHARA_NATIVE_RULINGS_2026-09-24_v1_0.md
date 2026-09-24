@@ -273,9 +273,13 @@ re-reading this family's summary of them. Several of those numbers were wrong. T
 at the source of the error.
 
 **The finding that changes the picture.** `bg_transit_rules` is **already re-cited in production**:
-`count(*) where vedha_house is not null` → **42** (not 41), of which **42 cite Phaladīpikā** and **0 cite
-BPHS Ch.29 as a source** — the six BPHS mentions are Rāhu/Ketu rows whose `UNSOURCED` stamp names Ch.29
-*only to record its absence*. The geometry split is **36 matching / 0 deferred / 6 nodal**, not 32/3/6:
+`count(*) where vedha_house is not null` → **42** (not 41), of which **36 are verse-cited** to PG322/PG323
+and **6 are `UNSOURCED` Rāhu/Ketu rows**, and **0 cite BPHS Ch.29 as a source** — the six BPHS mentions
+are those same node rows, whose `UNSOURCED` stamp names Ch.29 *only to record its absence*.
+**Corrected 2026-09-24 (see §7.8):** this sheet first wrote "42 cite Phaladīpikā". That was an `ILIKE
+'%phalad%'` string match, not a citation count: the L0 session wrote each row's full *reason text* into
+`classical_citation`, so the six node rows merely mention the text they are not cited to. The honest form
+is **36 + 6**, which is what the geometry line already said. The geometry split is **36 matching / 0 deferred / 6 nodal**, not 32/3/6:
 the three Venus rows (ids 35, 44, 45) now read vedha 1/5/11 and all match. So:
 
 - **Plan §5.4's "39 rules citing BPHS Ch.29 alone and exactly 2 citing Phaladīpikā" is stale.** It was
@@ -348,3 +352,26 @@ comm -12 <(echo "$a") <(echo "$b") | wc -l     # => 30
 Saṅgam's 41 and this session's 55 are both artifacts of undeclared method. The lesson is the one O-3 drew
 about ruling 8's figure and DVA Ruling 16 drew about the L1 row counts, arriving for the third time today:
 **publish the predicate, not the number.**
+
+### 7.8 Third correction against this session, same day — "42 cite Phaladīpikā" conflated a string match with a citation
+
+Both the strategic session and Kṣetra independently caught the same thing, and they are right. O-3's report
+gave two distinct numbers — `ILIKE '%phalad%'` → **42**, and geometry-matching verse-cited rows → **36** —
+and this session's headline collapsed them into "42 cite Phaladīpikā". The six extra rows are the Rāhu/Ketu
+rows, stamped `UNSOURCED`, which contain the string only because the L0 session wrote each row's full reason
+text into the `classical_citation` column. O-3's own report carried the mechanism for this in its next
+sentence; this session read past it while writing the summary.
+
+Kṣetra's fuller decomposition, reproduced from the served table on its side and consistent with O-3's:
+**36 = 32 originally matching + Venus ids 35/44/45 repaired to 1/5/11 + Mercury 8→1 as id 569**, with **6**
+node rows `UNSOURCED`. And the strict `corpus_verifiable` cover is **35**, not 36, because Mercury id 21
+remains page-grain only — its śloka-6 vedha house is the OCR token `Bill`.
+
+**The pattern, stated plainly, because this is the third time today.** §7.4 withdrew an over-applied renumber
+rule. §7.7 corrected a duplicate-prefix count that this session had published as a correction *of* another
+stream. §7.8 corrects a count that conflated a match with a claim. Every one of the three ran in the
+direction that made this session's own position look better supported than it was, and every one was caught
+by a peer re-deriving rather than reading. That is the layer's review mechanism working, and it is also the
+standing evidence for why **the figure belongs in a predicate, not in prose** — the conclusion O-3 reached
+about ruling 8, DVA Ruling 16 reached about the L1 row counts, and this session has now demonstrated three
+times by violating it.
