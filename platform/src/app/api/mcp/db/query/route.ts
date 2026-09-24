@@ -75,10 +75,14 @@ const ALLOWED_TABLES = new Set([
   // generation) written by the candidate pipeline and by the release authority's
   // WP10 flip — never by any MCP-served query. kala_gochara_coverage = the
   // ka_gochara writer's own search-coverage manifest (chart-scoped, read-only).
-  // kala_gochara_contacts is deliberately NOT added here — P-4's read capability
-  // owns that decision.
   'kala_gochara_publication',
   'kala_gochara_coverage',
+  // WP7 packet P-4 §4 (2026-09-24): the contact-ledger read capability
+  // (gochara_contact_ledger_get) reads the per-contact episode grain through
+  // this proxy. kala_gochara_contacts is written only by the ka_gochara
+  // candidate pipeline (migration 1081) — read-only here, same contract as
+  // the two relations above.
+  'kala_gochara_contacts',
   'brahma_remedy_corpus',
   // SATYA-ŚEṢA W2 (2026-07-25): gochara_forecast_get/activation_get/election_avoidance_get's
   // new category-coverage attestation (`coverage` block, S4-05 fix) computes, mechanically per
