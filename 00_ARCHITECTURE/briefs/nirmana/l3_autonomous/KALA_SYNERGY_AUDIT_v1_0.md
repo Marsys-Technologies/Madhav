@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AUDIT
 canonical_id: KALA_SYNERGY_AUDIT
-version: "1.7"
+version: "1.8"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -96,7 +96,9 @@ O-3 session: **42** favourable vedha rows, **0** citing BPHS Ch.29. One nuance t
 blurs: **36 are verse-cited** to Phaladīpikā `PG322:C1`/`PG323:C1`; **6 node rows are `UNSOURCED`**
 and merely *mention* Phaladīpikā in their reason text — "42 citing Phaladīpikā" is a string match,
 36 + 6 is the honest split, and the recount's own geometry line (36 matching / 0 deferred / 6 nodal)
-gets it right. **The downstream staleness (§7, checklist C3) is now quantified:** 132 `house_vedha`
+gets it right. Decomposed from the served table by the Kṣetra stream: 36 = 32 originally matching + Venus
+35/44/45 repaired + Mercury 8→1 inserted (id 569); **strict `corpus_verifiable` cover is 35**, because
+Mercury id 21 rests on a page-grain citation whose only anchor is the OCR token "Bill". **The downstream staleness (§7, checklist C3) is now quantified:** 132 `house_vedha`
 rows in `kala_vedha_gochara` still cite BPHS Ch.29, with no detector for the divergence; the Gochara
 stream has made it a gate on the `'4.0'` candidate build (brief §12.9), and its own migration 1085
 is on hold until diffed against live state. Gochara's plan has also withdrawn its "full primary SBC
