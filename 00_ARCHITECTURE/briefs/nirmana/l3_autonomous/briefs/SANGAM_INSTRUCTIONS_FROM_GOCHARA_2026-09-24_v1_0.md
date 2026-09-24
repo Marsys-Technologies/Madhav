@@ -98,8 +98,10 @@ claiming, because that number is only true as of this writing.
 ### WITHDRAWN, 2026-09-24 — the 1085/1086 question above
 
 Saṅgam answered and was right; this family's alarm was over-applied and is withdrawn. Duplicate
-numbers across the two migration directories are already routine on `main`: a full count gives **55
-duplicated prefixes** there — Saṅgam reported 41 and understated it. The runner keys on filename plus
+numbers across the two migration directories are already routine on `main`: a correct count gives **30**
+numbers claimed in both live directories. This family first published **55** and told Saṅgam it had
+understated at 41; that was this family's own error — 55 counted 155 `_archive/` files and
+within-directory repeats. See the rulings sheet §7.7. The runner keys on filename plus
 sha256, never on number, and orders duplicates numerically then lexically, so two files sharing 1085 in
 different directories with different names and no dependency between them are **benign**. Saṅgam's
 1085/1086 stay; this family's stay; nobody renumbers, and the applied-state question is moot.

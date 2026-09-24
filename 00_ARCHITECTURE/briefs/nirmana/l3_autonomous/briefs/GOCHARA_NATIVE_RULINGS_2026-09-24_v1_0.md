@@ -187,7 +187,7 @@ this sheet was issued. Each was checked at source before being accepted.
 
 Saṅgam (`madhav-11`, the `ka_sangam` stream) replied and was right. Duplicate prefixes across
 `platform/migrations/` and `platform/supabase/migrations/` are **already routine**: a count on
-`origin/main` gives **55** duplicated numbers. The runner keys on filename plus sha256, never on number,
+`origin/main` gives **30** numbers claimed in BOTH live directories (see §7.7 — an earlier figure of 55 stated here was this session's own measurement error). The runner keys on filename plus sha256, never on number,
 and orders duplicates numerically then lexically. Two files sharing 1085 in different directories, with
 different names and no dependency, are benign. **Nobody renumbers; both sides keep their numbers**, and
 the applied-state question put to Saṅgam is moot and withdrawn.
@@ -313,3 +313,38 @@ report as having reviewed them.** They were bundled with 8 for a shared *reviewe
 shared evidence base. O-3 also declined to restate two node longitudes it did not itself compute (B.10),
 and did not attempt the Sarvatobhadra transcription. Four `NOT_RUN` items, each with its reason. That is
 the correct output of an honest reviewer, and the bundling assumption is itself a finding.
+
+### 7.7 Correction against this session, 2026-09-24 — the duplicate-prefix count was wrong, and wrong in this session's own favour
+
+This session published **55** as the number of duplicated migration prefixes on `origin/main`, and told
+both the Saṅgam and the strategic session that Saṅgam's figure of 41 had *understated* it. **The 55 is
+wrong.** Saṅgam questioned it, this session re-measured, and the command behind 55 counted two things it
+should not have: **155 `_archive/` files**, and numbers repeated *within* a single directory.
+
+Measured properly, excluding `_archive/`, on `origin/main`:
+
+| measure | value |
+|---|---|
+| numbers claimed in **both** live directories (the figure that matters to the runner) | **30** |
+| repeats within `platform/migrations` alone | 1 |
+| repeats within `platform/supabase/migrations` alone | 4 |
+
+The conclusion is unchanged and if anything is cleanest at 30: cross-directory duplicate numbers are
+routine on `main`, so a shared number is not by itself a defect, and nobody needed to renumber. But the
+error ran in the direction that made this session's own correction look better founded than it was, and
+it was published to two other streams as a correction *of* one of them. That is the same defect class this
+campaign has been closing all day — a number restated with more confidence than its derivation supported
+— committed here by the session policing it. Recorded at full strength rather than quietly fixed. The
+reproducible form, which is what should have been published in the first place:
+
+```
+a=$(git ls-tree -r --name-only origin/main -- platform/migrations \
+      | grep -v '_archive/' | grep -oE '/[0-9]{3,4}_' | grep -oE '[0-9]{3,4}' | sort -u)
+b=$(git ls-tree -r --name-only origin/main -- platform/supabase/migrations \
+      | grep -v '_archive/' | grep -oE '/[0-9]{3,4}_' | grep -oE '[0-9]{3,4}' | sort -u)
+comm -12 <(echo "$a") <(echo "$b") | wc -l     # => 30
+```
+
+Saṅgam's 41 and this session's 55 are both artifacts of undeclared method. The lesson is the one O-3 drew
+about ruling 8's figure and DVA Ruling 16 drew about the L1 row counts, arriving for the third time today:
+**publish the predicate, not the number.**
