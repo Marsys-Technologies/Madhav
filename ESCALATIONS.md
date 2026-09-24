@@ -540,3 +540,49 @@ a follow-up tranche (they are this branch's own gochara-family migrations) or le
 them to the post-merge deploy pipeline. Notably 1087's columns are what the §12.3
 step06 writer populates — if tranche 2's candidate build expects them, tranche 2 is
 blocked on this ruling too.
+
+## E-017 — step 5 script defect (clear_tables type), rehearsal-fidelity gap, tranche HALT
+
+Step 5 (`platform/migrations/1091_wp10_ka_gochara_registry_repin.sql`, numbered
+per E-009 re-scan, MIG-1 guard PASS) was run as `amjis_app` against production
+on 2026-09-24 and **FAILED**:
+
+```
+ERROR: malformed array literal: "[kala_gochara_windows, kala_gochara_contacts, kala_gochara_coverage]"
+```
+
+Production `asset_registry.clear_tables` is `text[]`; the script used
+JSON-style `'[...]'` literals (two sites) instead of Postgres `'{...}'`. The
+single-transaction migration aborted; production verified unchanged
+(count_sql still '2.0' value, snapshot table absent, generations
+v1=38287/3.0=1830, century is_active=false). Full record:
+`platform/python-sidecar/scripts/kala_gochara_cutover/evidence/step05_evidence.md`.
+
+**Rehearsal-fidelity gap:** the rehearsal harness
+(`test_wp10_cutover.py` ~line 137) declares `clear_tables` as TEXT, against
+which `'[...]'` is legal — rehearsal passed green and never exercised the
+production type. Harness column must be corrected to `text[]` before any
+future rehearsal of this script is treated as authoritative.
+
+**Fix prepared, NOT re-run:** 1091 was corrected in place (`'[...]'` →
+`'{...}'` ×2, header note documenting the correction). The native's E-015
+"go ahead" covered the privilege path, not script surgery, so per the
+fail-closed doctrine the tranche halts here for a native ruling. The
+preparation copy `step05_registry_repin.sql` is left unchanged as the record
+of what was attempted.
+
+**Grant hygiene at halt:** the temporary `CREATE ON SCHEMA public` grant to
+`amjis_app` (E-015 resolution) was REVOKED and verified
+(`has_schema_privilege('amjis_app','public','CREATE') = f`). To resume step 5:
+re-grant via `data_plane_migrator` with `SET ROLE data_plane_schema_owner`,
+then apply corrected 1091 as `amjis_app`.
+
+**Conjunct-(j) / 1072 interplay (for merge-time ruling):** cherry-picked but
+unapplied migration 1072 would set ka_gochara `target_table` to
+`kala_gochara_windows_v2` where it is currently `kala_gochara_windows`; if
+1072 applies after a successful step 5, conjunct (j) breaks. See step05
+evidence §12.14 sweep.
+
+**Tranche state at halt:** steps 0, 1, 3, 4 GREEN; step 2 NOT_RUN (no
+2026-08-23 dump available locally; recorded, not waived); step 5 FAILED.
+Tranche 1 is **not green**; 7.C must not proceed; steps 6–10 not started.
