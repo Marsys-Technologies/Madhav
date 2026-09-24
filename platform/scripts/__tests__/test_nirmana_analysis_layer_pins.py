@@ -16,8 +16,8 @@ assert SPEC and SPEC.loader
 pins_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pins_module)
 
-CURRENT_PINS = json.loads(pins_module.PINS_PATH.read_text(encoding="utf-8"))
-CURRENT_INVENTORY = json.loads(
+LIVE_PINS = json.loads(pins_module.PINS_PATH.read_text(encoding="utf-8"))
+LIVE_INVENTORY = json.loads(
     pins_module.WRITER_DIGESTS_PATH.read_text(encoding="utf-8")
 )["writers"]
 
@@ -40,6 +40,24 @@ def replace_layer_writers(
     }
     result.update(writers)
     return result
+
+
+# LIVE_* is the committed document, which now carries the L0-repair successors
+# (PR #2727, decision NATIVE-2026-09-24-L0-REPAIR-REPIN) on top of the chain that
+# was delivered to protected main. Most tests below assert facts about THAT
+# delivered chain, so CURRENT_* is the delivered chain: the live document with the
+# three L0-repair successors rewound, and the inventory replaced by the archived
+# predecessor slices. The tests at the end of the file assert the repair
+# successors themselves against LIVE_*. This follows the file's own convention
+# (see PRE_KSHETRA_PINS): rewind, do not weaken.
+REPAIR_LAYERS = ("L0", "L2", "L3")
+CURRENT_PINS = LIVE_PINS
+CURRENT_INVENTORY = LIVE_INVENTORY
+for _layer in REPAIR_LAYERS:
+    CURRENT_INVENTORY = replace_layer_writers(
+        CURRENT_INVENTORY, _layer, CURRENT_PINS["history"][_layer][-1]["writer_digests"]
+    )
+    CURRENT_PINS = rewind_layer(CURRENT_PINS, _layer)
 
 
 # Unit fixtures must survive GitHub's squash topology and branch deletion.  The
@@ -1213,3 +1231,103 @@ def test_admission_refuses_a_candidate_whose_membership_disagrees_with_carried_b
             definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
             protected_baseline_commit=baseline,
         )
+
+
+# ── The L0-repair successors themselves (PR #2727) ────────────────────────────
+
+REPAIR_DECISION = "NATIVE-2026-09-24-L0-REPAIR-REPIN"
+REPAIR_SOURCE = "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+REPAIR_INTENTIONAL = {
+    "bg_transit_rules", "bg_transit_engine", "bg_vedha_malefic_scale",
+    "bg_phaladeepika_latta", "bg_ephemeris",
+}
+REPAIR_BOTH = {"ka_vedha_gochara"}
+
+
+def test_live_document_with_repair_successors_verifies() -> None:
+    assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
+
+
+@pytest.mark.parametrize("layer", REPAIR_LAYERS)
+def test_repair_successor_is_append_only_and_names_its_exact_predecessor(layer: str) -> None:
+    delivered_active = CURRENT_PINS["layers"][layer]
+    live_active = LIVE_PINS["layers"][layer]
+    delivered_history = CURRENT_PINS["history"][layer]
+    live_history = LIVE_PINS["history"][layer]
+
+    # every previously packaged history entry survives byte-for-byte, in order
+    assert live_history[: len(delivered_history)] == delivered_history
+    assert len(live_history) == len(delivered_history) + 1
+    # the delivered active pin is archived whole as the new predecessor
+    archived = live_history[-1]
+    assert archived["pin"] == delivered_active
+    assert archived["generation_id"] == (
+        delivered_active.get("generation_id") or pins_module.generation_id(layer, delivered_active)
+    )
+    assert live_active["supersedes_generation_id"] == archived["generation_id"]
+    assert archived["superseded_by_generation_id"] == live_active["generation_id"]
+    # and the predecessor's writer slice is exactly what the delivered inventory said
+    assert archived["writer_digests"] == pins_module.layer_writer_slice(
+        CURRENT_INVENTORY, pins_module.LAYER_PREFIX[layer]
+    )
+
+
+@pytest.mark.parametrize("layer", REPAIR_LAYERS)
+def test_repair_successor_records_the_approved_decision_and_source(layer: str) -> None:
+    admission = LIVE_PINS["layers"][layer]["admission"]
+    assert admission["authority_decision"] == REPAIR_DECISION
+    # what was approved and what is pinned are the same commit
+    assert admission["authority_commit"] == REPAIR_SOURCE
+    assert admission["source_commit"] == REPAIR_SOURCE
+    assert LIVE_PINS["layers"][layer]["convergence_commit"] == REPAIR_SOURCE
+    assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS[layer]
+    assert "source_acceptance" not in admission
+    assert pins_module.AUTHORIZED_SOURCE_COMMITS[REPAIR_DECISION][layer] == frozenset({REPAIR_SOURCE})
+
+
+@pytest.mark.parametrize("layer", REPAIR_LAYERS)
+def test_repair_classifications_equal_the_actual_digest_delta(layer: str) -> None:
+    prefix = pins_module.LAYER_PREFIX[layer]
+    before = pins_module.layer_writer_slice(CURRENT_INVENTORY, prefix)
+    after = pins_module.layer_writer_slice(LIVE_INVENTORY, prefix)
+    exact_delta = sorted(a for a in set(before) | set(after) if before.get(a) != after.get(a))
+    admission = LIVE_PINS["layers"][layer]["admission"]
+    assert admission["changed_assets"] == exact_delta
+    assert exact_delta, "a successor with no delta must not have been admitted"
+    for asset_id, classification in admission["delta_classifications"].items():
+        if asset_id in REPAIR_BOTH:
+            expected = "approved_intentional_and_derived_import_change"
+        elif asset_id in REPAIR_INTENTIONAL:
+            expected = "approved_intentional_change"
+        else:
+            expected = "derived_import_change"
+        assert classification == expected, asset_id
+    assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
+
+
+def test_repair_leaves_every_other_layer_and_the_definitions_untouched() -> None:
+    for layer in pins_module.LAYER_PREFIX:
+        if layer in REPAIR_LAYERS:
+            continue
+        assert LIVE_PINS["layers"][layer] == CURRENT_PINS["layers"][layer]
+        assert LIVE_PINS["history"][layer] == CURRENT_PINS["history"][layer]
+    assert LIVE_PINS["definition_bindings"] == CURRENT_PINS["definition_bindings"]
+    assert LIVE_PINS["version"] == CURRENT_PINS["version"]
+
+
+def test_repair_only_l0_l2_l3_are_authorised_for_the_decision() -> None:
+    authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[REPAIR_DECISION]
+    assert set(authorised) == set(REPAIR_LAYERS)
+    for layer in ("L1", "L4", "L5"):
+        with pytest.raises(SystemExit, match="is not authorized by"):
+            pins_module.validate_authorized_source(REPAIR_DECISION, layer, REPAIR_SOURCE)
+
+
+def test_repair_authority_chain_binds_the_recorded_decision_document() -> None:
+    binding = pins_module.AUTHORITY_BINDINGS[REPAIR_DECISION]
+    assert binding["authority_commit"] == REPAIR_SOURCE
+    assert binding["authority_identity_binding"] == f"`{REPAIR_SOURCE}`"
+    assert binding["decision_binding"] == "status: L0_REPAIR_REPIN_APPROVED"
+    pins_module.validate_authority_binding(REPAIR_DECISION, REPAIR_SOURCE)
+    with pytest.raises(SystemExit, match="is not bound to"):
+        pins_module.validate_authority_binding(REPAIR_DECISION, "0" * 40)
