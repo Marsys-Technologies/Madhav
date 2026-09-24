@@ -1,10 +1,12 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.12"
+version: "1.14"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.14 (2026-09-24) — NEW RANK 0 above G3, §2 item 00: the field's time axis mixes J2000 knots with birth-relative clip/horizon/decade constants; measured live on the canonical chart (field spans 2000-01-01 … 2100-01-01, not birth … birth+100y; first sixteen years absent). Found by the strategic session's synergy audit (63b5fb429), scoped up and measured here. Fix and detector routed to stage-3 Phase 1 item zero. No ruling changed."
+  - "1.13 (2026-09-24) — §7.8: the L0 repair is live in production (verified via the served rules); stamp columns are the sole remaining gate to applied. Stage 3 authorized by native record; stage 4 not opened."
   - "1.12 (2026-09-23) — §7.8 tightened per madhav-fc D-B: today every vedha row is unqualified by construction; the 32/3/6 split is the outcome when the re-citation and producer stamp columns land. No stage, guarantee or ruling changed."
   - "1.11 (2026-09-23) — §7.7 gains the sign-anchor finding (a detector that cannot fail; degree-level anchor required for disposition (b)). No stage, guarantee or ruling changed."
   - "1.10 (2026-09-23) — delegated items discharged: §7.10 points at the sealed ablation pre-registration (judge named); §7.8 repair instruction corrected to UPDATE-not-delete with the L0 spec routed; stage-3 execution prompt prepared (AWAITING_NATIVE_AUTHORIZATION). No stage, guarantee or ruling changed."
@@ -94,6 +96,30 @@ route-scoped so an unrelated vighna cannot touch a class — more disciplined th
 **Where it falls short of an acharya's reading — re-ranked after independent review, in descending
 order of classical weight:**
 
+00. **The field's time axis is two conventions joined without conversion — rank 0, above G3 (found
+   by the strategic session's synergy audit @ 63b5fb429, scoped up and MEASURED LIVE here 2026-09-24).**
+   Every knot source is on the J2000 axis: stage 0 stores `t_days` as days since J2000
+   (`stage0_kinematics.py:47,501-503,659`); stage 1 passes episode times through unchanged
+   (`stage1_symbolization.py:183`); stage 3 writes `t_boundary = to_t_days(start_iso)`, J2000
+   (`stage3_clocks.py:169-186,1050`); `load_ladder`/`load_primitives` re-base nothing
+   (`stage4_field.py:1288-1345`). Meanwhile the sweep clips the knot union to `[0, H]` and adds `0`, `H`
+   and `d·H/10` (`dhara_sweep.py:75-99`), `FieldEvaluator.breakpoints()` clips the same way
+   (`stage4_field.py:880-896`), the writer partitions decades of `H` (`writer.py:655-665`), and migration
+   492 documents `kala_field.t_start` as "days since birth" — birth-relative arithmetic on J2000 knots.
+   **Measured on the canonical chart (read-only, 2026-09-24):** `kala_field_kinematics.t_days` −5808.75 …
+   30717 with `event_ts` 1984-02-05 … 2084-02-06 (J2000 confirmed); `kala_field_boundaries` −18262.5 …
+   36888; `kala_field_primitives` −18265.5 … 36891; **`kala_field` t_start 0 … t_end 36525 exactly = 2000-01-01
+   … 2100-01-01 on that axis, not birth … birth+100y**; `kala_field_windows` earliest 5.17 = 2000-01-06. The
+   native's first sixteen years are absent from the stored field, the last sixteen are extrapolated past the
+   ephemeris on decade knots alone, and `mi_bhara/living_lel.py:113` reads `t` as days since birth — a
+   sixteen-year mis-dating waiting at the L5 bind. Unseen because the 8.57M rows are held substrate never
+   served; the W7 rebuild would reproduce it unchanged. **Fix:** one declared convention end to end (the DDL and
+   L5 say birth-relative: convert at load, `t − t_birth_J2000`, or carry the birth epoch on the evaluator and
+   clip to `[t_birth, t_birth+H]`), pinned in `config_pin` as `t_axis_convention`, with a **detector that fails
+   on today's data**: the field's `min(t_start)` equals birth and `max(t_end)` equals birth+36525 on the declared
+   axis, and every window's date round-trips through the same epoch. Executed as stage-3 Phase 1 item zero
+   (`KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` v1.3), before G3. G3's byte-equality test would never
+   have caught this — §N.8 asks for a detector per claim, and "the axis is birth-relative" was a claim with none.
 0. **The suppression the stored field applies is not the suppression the contract documents (G3).**
    `dhara_build_segments` evaluates via `evaluator.terms_at` (`dhara_sweep.py:212,227,243,248`), and
    `FieldEvaluator.terms_at` hands **every** active obstruction to `hazard.evaluate`
@@ -405,8 +431,9 @@ hard to cite precisely is a real cost, not absence.
    layer's single producers; Kshetra's internal derivations become one-generation cross-checks,
    then retire under contract §5. Ratify the uniform admission rule (F06 `applied` iff
    `corpus_verifiable` and geometry passes) — whose outcome **today is `unqualified` for every row, by construction** (producer stamp columns unbuilt —
-   Gochara WP9; re-citation and row repairs routed to Gochara's G-9 lane but STAGED and unapplied, with no L0
-   authority bound anywhere — madhav-fc D-B @ 8a9734a32; a routing is not an outcome) and whose outcome
+   Gochara WP9 — now the only reason: the re-citation and row repairs, routed as staged under madhav-fc D-B @
+   8a9734a32, are APPLIED in production, verified live 2026-09-24 — Venus 35/44/45 → 1/5/11, Mercury 8→1 as
+   id 569, six node rows stamped UNSOURCED; L0 repair PR #2727) and whose outcome
    **once those land**, corrected by independent review, is: **`applied` for 32 of 41 house-vedha rows on the L0 re-citation at page grain (F-23/G-8);
    `deferred` for 3 Venus rows (ids 35, 44, 45 — `vedha_house` UPDATE to 1/5/11, never a delete: 35 and 44 are column-swap
    transpositions of rows 179/33 by origin, but their `primary_house` is the text's; the 1.9 "dedup" wording

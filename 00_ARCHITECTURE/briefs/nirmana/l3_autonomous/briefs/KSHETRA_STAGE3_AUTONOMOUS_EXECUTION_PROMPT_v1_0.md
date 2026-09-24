@@ -1,16 +1,26 @@
 ---
 artifact: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
 canonical_id: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
-version: "1.1"
-status: AWAITING_NATIVE_AUTHORIZATION
+version: "1.4"
+status: AUTHORIZED_STAGE_3_ONLY  # native record 2026-09-24 (see authorized_by); stage 4 explicitly NOT opened; executor not yet started
 layer: L3
 asset: ka_kshetra
 campaign_id: kshetra-stage3
 changelog:
+  - "1.4 (2026-09-24) — binding 2.0 (5c05a0e2f) folded in: precision_regime rename REVERSED (ruled column; re-value day_grade→date_grain, aliased per D-7); the kala_gochara_windows read declared as an evaluation-role table edge, not a depends_on on the RETIRED sweep (migration 569 / SAMPŪRTI R0); find_contact_episodes unruled (B8-6) — evaluation-only until ruled; retirement explicitly per ruling 4; the L2 key is a demand via L3-U01 — id_basis column + unqualified identity + NOT_RUN self, no fifth comparable_with value (Gochara D-S6). Nothing else changed; executor not started."
+  - "1.3 (2026-09-24) — Phase 1 item zero added ABOVE G3: the time-axis defect (J2000 knots under birth-relative clip/horizon constants), measured live; detector-first fix. Phase 0 gains check (g) reproducing the measurement. Phase 2 gains the six synergy-binding items from the strategic session's audit, spot-verified. Nothing else changed; authorization unchanged; executor not started."
+  - "1.2 (2026-09-24) — status AUTHORIZED_STAGE_3_ONLY on the native's verbatim record (blueprint v4.3 / checklist v1.5, verified at source); stage 4 explicitly not opened; W1 release and the live L0 repair carried into §2; migration facts refreshed (next free 1082, verify). Executor NOT started by this change."
   - "1.1 (2026-09-23) — migration-number allocation rule: list both directories across every origin head; 1071–1074 claimed on origin by four unmerged branches, 1075/1076 by Gochara locally (Gochara madhav-e6's finding, verified here). Nothing else changed."
 produced_on: 2026-09-23
 produced_by: "L3 Kshetra design session (madhav-d2) — the AUTHOR of the packet this prompt executes; it certifies nothing built under it"
-authorized_by: "<NOT YET AUTHORIZED — the native fills this line. Pasting this file into a Kimi Code session in the worktree below is the act of authorization; until the native does so, this document opens nothing.>"
+authorized_by: >
+  NATIVE RECORD, verified at source 2026-09-24: KALA_ELEVATION_BLUEPRINT_v1_0.md v4.3 line 471 and
+  KALA_PRE_ELEVATION_CHECKLIST_v1_0.md v1.5 line 29 on origin/l3/kala-elevation-readiness, verbatim —
+  "I want to authorize Kshetra … I have just authorized stage three now." — and, in the same session,
+  "I don't want to start the stage four." STAGE 3 (source elevation) ONLY. Stage 4 (the W7 populated
+  build) is NOT opened: fence 2 stands in full. Recorded here by the author (madhav-d2) from that record;
+  the act of starting the executor remains the native's (paste this file into a Kimi Code session in the
+  worktree below) or the author's on the native's direct word — never on a relay.
 opens_goal: >
   The bounded goal in KSHETRA_ELEVATION_BRIEF_v1_0.md `goal_objective` (stage 3 of the brief's own
   `scope_stages`: "Stage 3 is a separate execution session"). Per the brief contract, the execution
@@ -53,7 +63,7 @@ blocker beat six phases with a flag nothing checks.
 You may, without asking: read anything; write code, tests, evidence scripts and **at most one
 migration** for `ka_kshetra` (brief `may_touch`: `services/ka_kshetra/{hazard,layer1,writer,
 stage2_promise,stage3_clocks,uncertainty}.py`; `dhara_null.py` docstring only;
-`platform/python-sidecar/tests/l3/**`; ONE migration — **allocate its number by listing BOTH migration directories across EVERY `origin/*` head** (`git ls-tree -r --name-only origin/<branch> -- platform/migrations platform/supabase/migrations`), never from the working tree alone: as of 2026-09-23 unmerged branches already claim 1071–1074 on origin (kala-elevation-readiness, sangam/stage3, kala-p1-1, kala-p1-2) and Gochara holds 1075/1076 locally — allocated by directory listing, the collision this rule exists to prevent; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
+`platform/python-sidecar/tests/l3/**`; ONE migration — **allocate its number by listing BOTH migration directories across EVERY `origin/*` head** (`git ls-tree -r --name-only origin/<branch> -- platform/migrations platform/supabase/migrations`), never from the working tree alone: as of 2026-09-24 03:50 IST (Gochara's sweep of every remote and local head, relayed by the strategic session): 1071–1074 claimed by unmerged branches, 1075–1079 APPLIED to production by the L0 repair (PR #2727), 1080/1081 taken by Gochara — **next free 1082; verify before claiming**, the collision this rule exists to prevent; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
 commit and push to **`l3/kshetra-stage3`** (the packet is on `main`; this branch was cut from it);
 open PRs to `main` through CI and the merge queue. You may decide implementation detail the plan
 leaves open, and record the choice.
@@ -83,6 +93,7 @@ leaves open, and record the choice.
   `null_p = (1 + exceed) / 1024`, `_EXCEEDANCE_REL_TOL = 1e-12`; `_RESUME_VERSION = 10`; DHARA 1.2
   left-limit rule; the DP-SD-019 midpoint fix `87cc8c9baf`. These are pins, not knobs.
 - The FROZEN orchestrator contract. See §3.
+- **Two facts from the authorizing session (2026-09-24):** the W1 hold on the generation infrastructure is released — FOUNDATION_SAFETY §6's design may now be built physically by whoever takes that packet, so your source work may assume it will exist rather than design around its absence; and **stage 4 is explicitly NOT opened** — W1's release changes nothing about fence 2. Also: the L0 vedha row repair is **applied in production** (verified live 2026-09-24: Venus 35/44/45 → 1/5/11 page-cited; Mercury 8→1 as id 569; six node rows stamped UNSOURCED), so under the uniform rule the 35 house-vedha rows become `applied` the moment the producer's stamp columns (Gochara WP9) exist — check that they do; do not assume.
 
 **If the plan and this prompt disagree, the plan wins and you record the discrepancy.** If a ruling
 and the plan disagree, **stop and raise it** — that is a defect in the packet, not a choice for you.
@@ -184,7 +195,27 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   (f) **Open the goal:** append the L3 stage entry for `KSHETRA-STAGE3-SOURCE-ELEVATION-01` to
       `MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md` (append-only, its own format), citing the brief's
       `goal_objective`, this prompt's commit, and the authorization line the native filled.
-  **Exit:** all five checks recorded in `KSHETRA_STAGE3_STATE.md`; the ledger entry committed.
+  (g) **Reproduce the time-axis measurement** (plan §2 item 00): on the canonical chart, `min(t_start)`,
+      `max(t_end)` of `kala_field`, and `min/max` of `t_days` in `kala_field_kinematics` and `t_boundary` in
+      `kala_field_boundaries`. Expected today: field 0 … 36525; kinematics −5808.75 … 30717. Record it; it is
+      the baseline your Phase 1 detector must turn red.
+  **Exit:** all six checks recorded in `KSHETRA_STAGE3_STATE.md`; the ledger entry committed.
+
+**Phase 1, item zero — THE TIME AXIS (rank 0, above G3; plan §2 item 00).** Every knot source is J2000
+  days (stage 0 roots, stage 1 primitives, stage 3 boundaries); the sweep, the evaluator's `breakpoints()`
+  and the writer's decade partition clip and partition as birth-relative `[0, H]`; migration 492 and L5
+  (`mi_bhara/living_lel.py:113`) say "days since birth". Choose ONE convention end to end — the DDL and L5
+  say birth-relative, so the least-surprise fix is to convert at load (`t − t_birth_J2000`, birth epoch
+  from `ctx.config` birth_params, the same instant stage 0's horizon uses) in `load_ladder`,
+  `load_primitives` and `load_kinematics_breakpoints`, and to render `event_ts`/dates from the same epoch —
+  or, if you find a reason the axis must stay J2000, carry `t_birth` on the evaluator and clip to
+  `[t_birth, t_birth+H]` and fix the DDL comment and L5's reader. Either way: pin `t_axis_convention` in
+  `config_pin`; write the **detector first and watch it fail on today's rows** — `min(t_start)` = birth,
+  `max(t_end)` = birth+36525 on the declared axis, every window date round-trips through the same epoch,
+  and no primitive or boundary knot lies outside `[birth−ε, birth+H]` after conversion; negative control
+  under `NEG=1`. Record which convention you chose and why in the state file.
+  **Exit:** the detector is green on fixture-bound source and would be red on the held substrate; the
+  kinematics roots, primitives and boundaries all land inside the birth horizon.
 
 **Phase 1 — G3 (rank 0): the suppression contract, then the gate.**
   Hoist the SM-R-7 route filter (`layer1.py:143-160`'s `suppressed_keys`) into `hazard.evaluate`,
@@ -204,14 +235,23 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   admitted L1 birth-time-precision artifact; interim `default_120s_assumption`
   (`uncertainty.py:170-173`) + F06 `unavailable`; scope `chart_dashas` by ayanāṃśa with a total
   `ORDER BY` (closes `_boundaries` QX, `_system_sigma_t`'s `rows[0]`); read L1 `sandhi_flag`.
-  **S2:** carry L2 sign/occurrence (`stage2_promise.py:351-355,457`); natural edge key (closes
-  `_routes` QX — no reminted surrogate ids). **Pins:** add `node_mode` / `epoch_convention` to
+  **S2:** carry L2 sign/occurrence (`stage2_promise.py:351-355,457`); the natural edge key is a **demand on L2 via L3-U01** (binding 2.0), not minted here; until it lands, `_routes.path_edge_ids` stays a bigserial reassigned per rebuild, so: add an additive `id_basis ∈ {content_addressed, surrogate_unstable}` column on Kshetra's own routes table, mark the row's identity claim F06 `unqualified`, and record the comparison `self` as `NOT_RUN` with reason `unstable_key` — `comparable_with` stays within Gochara's four-value enum (D-S6, d8d910fec); `unstable_key` is a property of one row, not a relation, and is not a fifth value. **Pins:** add `node_mode` / `epoch_convention` to
   `config_pin` (`stage4_field.py:186-212`, `writer.py:318-336`) declaring the consumed ephemeris
   frame (TRUE node, noon-UT) — first verify whether `corpus_pin` already covers the L0 ephemeris
-  generation; if it does, record that and skip. **Edge register:** true in both directions (the
-  ~10 read-never-declared tables; `bo_sangati`/`bo_upaya` declared-never-read); F12 role per edge.
+  generation; if it does, record that and skip. **Edge register:** true in both directions (the ~10 read-never-declared tables; `bo_sangati`/`bo_upaya` declared-never-read); F12 role per edge. **Including the `kala_gochara_windows` read at `stage4_field.py:1384`, undeclared today: declare it as an evaluation-role edge on the TABLE — read-only cross-check, generation resolved through `kala_gochara_authority`, cited by the binding's `window_ref`, never a λ contributor — NOT as a `depends_on` on `ka_gochara_sweep`, which is `RETIRED` and was removed from Kshetra's dependencies by migration 569 under SAMPŪRTI R0; re-adding it would reverse a ruling.**
   **SAVEPOINT** on the cohort read (`writer.py:1754-1770`; pattern `ka_sangam.py:997,1028,1033`).
   Second `'v1'` COALESCE at `stage4_field.py:1386-1389` resolved with `writer.py:2330-2347`.
+  **Synergy-binding items (strategic session's `KALA_SYNERGY_AUDIT_v1_0.md` @ 63b5fb429; the author spot-verified
+  the marked ones, re-verify all before acting):** (i) [verified: 0 hits] the layer's temporal object is
+  `timestamptz` UTC via the shared `ka_temporal` resolver — Kshetra has no reference to it; adopt it for served
+  dates once item zero fixes the axis; (ii) [verified: 8 sites] `precision_regime='day_grade'` collides with
+  Gochara's `date_grain`/`instant_grain` — **keep the name** — `precision_regime` is a ruled column (ruling 8; Gochara G-9; Saṅgam M-3) and the binding may not rename it (binding 2.0, 5c05a0e2f); re-value `day_grade → date_grain`, aliased until every dependent claim has a successor (D-7's condition, not a generation count); (iii) [verified: half-open convention at `dhara_sweep.py:138,222`; `inclusivity` appears in
+  migration 492 — check whether the column exists on `kala_field`/`kala_field_windows` or only in prose]
+  declare `inclusivity` per row; (iv) [verified: `find_contact_episodes` at `stage0_kinematics.py:329` mints
+  its own `episode_id` (:490,:506)] Kshetra is a second producer of contact-shaped rows beside the Gochara
+  kernel's `contact_id` — this is UNRULED (binding B8-6 puts it to the native): until ruled, declare the episodes `evaluation`-only with `comparable_with = different_convention`, and do NOT consume `kala_gochara_contacts` as a substitute without the ruling; (v) [verified: 0 hits] no coverage object on any result and no `independence_group` inherited from
+  any witness — both are binding rows, add them in S5/S1; (vi) the `'v1'` COALESCE fall-throughs and the
+  `_routes` surrogate ids are already above.
   **Exit:** every seam has an assertion-based test with a negative control; the register census
   (`FROM`-census over every module vs the seed) is clean; the migration is verified applied.
 
@@ -230,8 +270,7 @@ These are fences. Crossing one is a campaign failure regardless of what it achie
   sarvatobhadra unqualified; every row `unqualified` until the producer's `corpus_verifiable` /
   `source_qualification` / `precision_regime` columns exist — check, do not assume) and
   `ka_moorti_nirnaya` (unify the moorti split across term families, `stage1_symbolization.py:229-230`);
-  internal `build_vedha_primitive` / `build_moorti_primitive` become one-generation cross-checks,
-  then retire under contract §5; `av_kaksha_gate` from `ganita_av_transit_gating` (the same admitted
+  internal `build_vedha_primitive` / `build_moorti_primitive` become one-generation cross-checks, then retire under contract §5 — **per ruling 4, after one cross-check generation, never unconditionally**; `av_kaksha_gate` from `ganita_av_transit_gating` (the same admitted
   AV source as Saṅgam E2); kota / sudarshana / tithi-praveśa declared as applicability covariates
   (E7b needs `ka_tithi_pravesha`'s own source qualification first — C8). **S5:** denominator prose;
   the null's non-comparability flag and `1/R` resolution survive every projection.

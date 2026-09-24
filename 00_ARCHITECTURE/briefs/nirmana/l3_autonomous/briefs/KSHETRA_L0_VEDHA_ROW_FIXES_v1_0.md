@@ -1,8 +1,8 @@
 ---
 artifact: KSHETRA_L0_VEDHA_ROW_FIXES
 canonical_id: KSHETRA_L0_VEDHA_ROW_FIXES
-version: "1.2"
-status: ROUTED_TO_L0_OWNER  # accepted into Gochara's lane 2026-09-23: recorded under G-9 in GOCHARA_RULING_SHEET_v2_0.md (unmerged branch l3/gochara-autonomous-wp0-7; verified by a read-only look at that worktree), marked 'not yet re-verified by this session' by Gochara; G-9 is now a repair, not only a re-citation; node rows → N-14; stamp columns → WP9. The L0 owner behind that lane is still not named by any session — surfaced to the native
+version: "1.3"
+status: APPLIED_IN_PRODUCTION  # verified live 2026-09-24 via ref_transit_rules_get: §2 Venus 35/44/45 → 1/5/11 (page-cited PG323:C1); §3 Mercury 8→1 as id 569; §4 exceptions declared in rule_notes as a precision limit; §5 node rows stamped UNSOURCED and retained (B.10, N-14). Applied by the L0 repair (PR #2727, open at the time of writing). Nineteen non-vedha rows outside this spec's predicate still carry the refuted citation — correctly untouched. §6 (producer stamp columns) remains Gochara WP9
 date: 2026-09-23
 routed_to: >
   the L0 owner of `bg_transit_rules`, via the Gochara family stream (madhav-e6), whose
