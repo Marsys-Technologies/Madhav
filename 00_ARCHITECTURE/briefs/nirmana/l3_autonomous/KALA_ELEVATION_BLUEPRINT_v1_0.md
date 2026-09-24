@@ -952,25 +952,37 @@ recorded in the brief's changelog; the reviewer's report is retained beside the 
 
 | # | brief | shape | the decision it puts to the native (one line) | status |
 |---|---|---|---|---|
-| 1 | `KA_DASHA_KALA_ELEVATION_BRIEF_v1_0` | service | wire the live route to the service, or retire the traversal surface as unresolved-use | written; review pending |
-| 2 | `KA_GRAHA_SANCARA_ELEVATION_BRIEF_v1_0` | service | one ayanāṃśa vocabulary for engine and router; live-path qualification is the acceptance | written; review pending |
-| 3 | `KA_MUHURTA_SEVA_ELEVATION_BRIEF_v1_0` | service | Q7 criterion for election; whether personal suitability may enter the score | written; review pending |
-| 4 | `KA_TULANA_ELEVATION_BRIEF_v1_0` | pure service | Q7 three comparators; rename `kala_priority_get` until it wraps Tulana | written; review pending |
-| 5 | `KA_YOJAKA_ELEVATION_BRIEF_v1_0` | rows | orphan policy (fail-closed vs flagged) for dangling `signal_id`s | written; review pending |
-| 6 | `KA_AVADHI_ELEVATION_BRIEF_v1_0` | rows | Q8 for its two caps; whether the dossier is the layer's chapter substrate (with Jivana) | written; review pending |
-| 7 | `KA_TITHI_PRAVESHA_ELEVATION_BRIEF_v1_0` | rows | method adjudication route (second L0 lane) and the interim `unqualified` stamp | written; review pending |
-| 8 | `KA_SUDARSHANA_VARSHA_ELEVATION_BRIEF_v1_0` | rows | Q2/Q3: one root, three testimonies, a voice in the ledger | written; review pending |
-| 9 | `KA_KOTA_CHAKRA_ELEVATION_BRIEF_v1_0` | rows | Q2 with corpus 0: testimony-only until a source lands | written; review pending |
-| 10 | `KA_MOORTI_NIRNAYA_ELEVATION_BRIEF_v1_0` | rows | grant + guard now; ingress-instant grading with the kernel (WP9) | written; review pending |
-| 11 | `KA_KALASUTRA_ELEVATION_BRIEF_v1_0` | rows | Q7/Q8: complete recurrence, all contributions, `as_of` persisted | written; review pending |
-| 12 | `KA_VIGHNAKARA_ELEVATION_BRIEF_v1_0` | rows | Q8; Vedha-root reconciliation (SC-7) | written; review pending |
-| 13 | `KA_TARANGA_ELEVATION_BRIEF_v1_0` | rows | Q6: keep the grain, change the algebra | written; review pending |
-| 14 | `KA_KALA_DARSHANA_ELEVATION_BRIEF_v1_0` | rows | Q8; whether it owns the concurrence ledger (SC-6) | written; review pending |
-| 15 | `KA_JIVANA_PARVA_ELEVATION_BRIEF_v1_0` | rows | Q8 for LIMIT 1; mechanism links vs keyword themes | written; review pending |
-| 16 | `KA_BHAVISHYA_LEKHA_ELEVATION_BRIEF_v1_0` | rows | Q5 | written; review pending |
+| 1 | `KA_DASHA_KALA_ELEVATION_BRIEF_v1_0` | service | wire the live route to the service, or retire the traversal surface as unresolved-use | v1.2 · 2 reviews · REWORK → ACCEPT_WITH_CORRECTIONS, 43 findings folded · **PROPOSED_FOR_NATIVE_RULING** |
+| 2 | `KA_GRAHA_SANCARA_ELEVATION_BRIEF_v1_0` | service | one ayanāṃśa vocabulary for engine and router; live-path qualification is the acceptance | v1.2 · 2 reviews · REWORK → ACCEPT_WITH_CORRECTIONS, 37 findings folded · **PROPOSED_FOR_NATIVE_RULING** |
+| 3 | `KA_MUHURTA_SEVA_ELEVATION_BRIEF_v1_0` | service | Q7 criterion for election; whether personal suitability may enter the score | v1.2 · 2 reviews · REWORK → ACCEPT_WITH_CORRECTIONS, 38 findings folded · **PROPOSED_FOR_NATIVE_RULING** |
+| 4 | `KA_TULANA_ELEVATION_BRIEF_v1_0` | pure service | Q7 three comparators; rename `kala_priority_get` until it wraps Tulana | v1.2 · 2 reviews · REWORK → ACCEPT_WITH_CORRECTIONS, 37 findings folded · **PROPOSED_FOR_NATIVE_RULING** |
+| 5 | `KA_YOJAKA_ELEVATION_BRIEF_v1_0` | rows | orphan policy (fail-closed vs flagged) for dangling `signal_id`s | v1.1 · 2 reviews · REWORK (2 BLOCKER) → REWORK, narrower (17/21 resolved; 5 new MAJOR on the resolver's caller, the identity hash, the interim generation, Kalasutra's unconditional FK hazard, the unparameterised gate) · **v1.2 owed** |
+| 6 | `KA_AVADHI_ELEVATION_BRIEF_v1_0` | rows | Q8 for its two caps; whether the dossier is the layer's chapter substrate (with Jivana) | v1.1 · 2 reviews · REWORK (1 BLOCKER) → REWORK (13/25 resolved; 2 new MAJOR — L2 ids are content-addressed so regeneration cannot orphan, and the same-start_iso premise is the five-ayanāṃśa pooling) · **v1.2 owed** |
+| 7 | `KA_TITHI_PRAVESHA_ELEVATION_BRIEF_v1_0` | rows | method adjudication route (second L0 lane) and the interim `unqualified` stamp | v1.1 · 2 reviews · REWORK → **ACCEPT_WITH_CORRECTIONS** (17/25 resolved; 4 MAJOR: the knife-edge is 0.84 %/yr not measure-zero, both serving-render forms are defective, the w27b register says `admitted`, no Context/missingness row) · **v1.2 owed** |
+| 8 | `KA_SUDARSHANA_VARSHA_ELEVATION_BRIEF_v1_0` | rows | Q2/Q3: one root, three testimonies, a voice in the ledger | v1.1 · 2 reviews · REWORK → **ACCEPT_WITH_CORRECTIONS** (15/21 resolved; 1 MAJOR: fact-id roots would make this asset *independent* of Tithi-praveśa — root granularity is a binding-wide B4 question) · **v1.2 owed** |
+| 9 | `KA_KOTA_CHAKRA_ELEVATION_BRIEF_v1_0` | rows | Q2 with corpus 0: testimony-only until a source lands | v1.1 · 2 reviews · ACCEPT_WITH_CORRECTIONS → REWORK, scoped (14/21 resolved; 9 MAJOR — the disposition holds, the mechanisms behind §10 D1/D4/D5 do not) · **v1.2 owed** |
+| 10 | `KA_MOORTI_NIRNAYA_ELEVATION_BRIEF_v1_0` | rows | grant + guard now; ingress-instant grading with the kernel (WP9) | v1.1 · 2 reviews · REWORK (1 BLOCKER) → REWORK (15/20 resolved; new BLOCKER: the recommended refuse-path ends `lit` with the reason discarded) · **v1.2 owed** |
+| 11 | `KA_KALASUTRA_ELEVATION_BRIEF_v1_0` | rows | Q7/Q8: complete recurrence, all contributions, `as_of` persisted | v1.0 · review pending |
+| 12 | `KA_VIGHNAKARA_ELEVATION_BRIEF_v1_0` | rows | Q8; Vedha-root reconciliation (SC-7) | v1.0 · review pending |
+| 13 | `KA_TARANGA_ELEVATION_BRIEF_v1_0` | rows | Q6: keep the grain, change the algebra | v1.0 · review pending |
+| 14 | `KA_KALA_DARSHANA_ELEVATION_BRIEF_v1_0` | rows | Q8; whether it owns the concurrence ledger (SC-6) | v1.0 · review pending |
+| 15 | `KA_JIVANA_PARVA_ELEVATION_BRIEF_v1_0` | rows | Q8 for LIMIT 1; mechanism links vs keyword themes | v1.0 · review pending |
+| 16 | `KA_BHAVISHYA_LEKHA_ELEVATION_BRIEF_v1_0` | rows | Q5 | v1.0 · review pending |
 
 The status column is rewritten as each review returns; the reviewer reports live beside the
 briefs at `briefs/reviews/`.
+
+**Programme state, 2026-09-24.** All sixteen briefs are written. Twenty-two independent Fable 5.1
+reviews have returned across them. Four briefs (1–4) are at v1.2 with every finding from two rounds
+folded and are `PROPOSED_FOR_NATIVE_RULING`; six (5–10) are at v1.1 with a second round's findings
+recorded and a v1.2 owed; six (11–16) await their first review. **Not one brief passed its first
+review** — the lowest first-pass verdict was `ACCEPT_WITH_CORRECTIONS` and most were `REWORK`, on
+defects no author-side check would have caught (an orphan detector with no code path that can fire,
+a convergence flag that is a per-chart constant, an integrity migration superseded on the brief's own
+base, a graha→domain map 58 % outside its ontology's vocabulary, a guard whose refuse-path ends
+`lit`). Two rounds also caught defects introduced by the *author adopting a reviewer's `[R]` claim
+without re-verifying it* — the review loop is load-bearing in both directions, and `[R]` marks a
+reviewer's verification, not the author's.
 
 ### 17.3 What binds the sixteen to the three
 
