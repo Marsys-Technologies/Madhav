@@ -114,3 +114,63 @@ Verbatim: **"Approved on point number two. Go ahead to everything."** (native,
 re-grant CREATE, apply corrected 1091 as `amjis_app`, run the step-5 gates,
 revoke on GREEN. Full text in ESCALATIONS.md (NATIVE RULING 2026-09-24T11:39:01Z).
 Run outcome is appended below this section when the resume executes.
+
+## 2026-09-24T11:39Z+ — RESUMED under native ruling — GREEN
+
+Executed per the ruling's scope (a): re-grant CREATE → apply corrected 1091 as
+`amjis_app` → gates → revoke.
+
+### Apply
+
+- Re-grant: `SET ROLE data_plane_schema_owner; GRANT CREATE ON SCHEMA public TO
+  amjis_app` (verified `has_schema_privilege = t` before the apply).
+- `psql -v ON_ERROR_STOP=1 -f platform/migrations/1091_wp10_ka_gochara_registry_repin.sql`
+  as `amjis_app` → clean: BEGIN; snapshot table CREATE + INSERT 0 2; UPDATE 1 ×3
+  (ka_gochara row, century row, integrity conjuncts); DO gate probe; COMMIT. The
+  corrected `'{...}'` array literals parsed without error against the real `text[]`
+  column — confirming the rehearsal-fidelity diagnosis (harness TEXT vs production
+  text[]).
+
+### Gates (all green)
+
+1. **count_sql relation = target_table** — `true`
+   (`target_table='kala_gochara_windows'`, count_sql reads `kala_gochara_windows`).
+2. **Cockpit reads new count** — new count_sql executes: `SELECT COUNT(*) FROM
+   kala_gochara_windows WHERE chart_id=$1 AND generation='4.0'` → **0 for both
+   authority charts** (`1c826d5a…`, `482012f1…`). **Cockpit-0-between-5-and-6 is
+   EXPECTED** — no '4.0' windows exist before step 6.
+3. **Clear-proof test green** — fresh disposable Postgres 16
+   (`gochara-wp10-disposable`, 55434) recreated; `test_wp10_cutover.py` **16/16
+   passed**.
+4. **integrity_check_sql executes on production** — extracted from the registry
+   row and run as `amjis_app`: **integrity_passed = t** (all conjuncts (a)–(k)
+   hold on the pre-'4.0' state).
+5. **Conjunct-(j)/1072 interplay — recorded state:** 1072 is **NOT applied**;
+   `target_table='kala_gochara_windows'`, which is exactly the relation the new
+   count_sql reads — conjunct (j) holds. If 1072 is ever applied later it would
+   flip `target_table` to `kala_gochara_windows_v2` and break conjunct (j);
+   merge-time ruling still required (now E-016-resolved scope does not include
+   1072, which remains cherry-picked-but-unapplied).
+
+### Registry post-state
+
+- `ka_gochara.count_sql` → '4.0'-scoped on `kala_gochara_windows`.
+- `ka_gochara.clear_tables` → `{kala_gochara_windows, kala_gochara_contacts, kala_gochara_coverage}` (display-only, F-24).
+- `ka_gochara.depends_on` → bg_ephemeris, bg_transit_rules, ka_gochara_resonance, ka_vedha_gochara, ka_moorti_nirnaya, ga_positions, ga_dashas, ga_yoga.
+- century row `clear_tables` → `{kala_gochara_windows, kala_gochara_windows_v2}` (F-30).
+- `integrity_check_sql` → conjuncts (a)–(k) re-scoped per §6.3.
+- Generations unchanged: **v1=38287, 3.0=1830**; authorities both `'3.0'`;
+  century `is_active=false` untouched.
+
+### Grant hygiene
+
+Temporary CREATE grant **revoked** at gate-green; verified
+`has_schema_privilege('amjis_app','public','CREATE') = f`. The disposable
+rehearsal container `gochara-wp10-disposable` (55434) is left up only until the
+7.C steps finish reusing it; torn down at close.
+
+### Remaining open item (not blocking)
+
+Rehearsal harness `test_wp10_cutover.py:137` still declares
+`clear_tables TEXT` — should be `text[]` so the harness matches production.
+Recorded for the reviewer; the corrected 1091 is what production now carries.
