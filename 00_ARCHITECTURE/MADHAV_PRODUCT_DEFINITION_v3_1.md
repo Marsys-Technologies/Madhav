@@ -21,11 +21,15 @@ hold, and uses artificial intelligence to turn that computation into understandi
 
 That is the whole differentiator, and it has two halves that only work together:
 
-- **Data engineering** performs chart computation at a scale, resolution and interconnection that was
-  not previously possible — every graha in every relevant condition, across every applicable varga,
-  relationship chain, clock and window, held simultaneously rather than sampled by memory.
+- **Data engineering** performs chart computation at a depth, resolution and interconnection that
+  existing software does not reach. Conventional Jyotish software computes each element on demand and
+  presents it — a varga when asked for it, a daśā table when asked for it. Madhav computes the whole
+  estate and, critically, the **relationships between its parts**: every graha in every relevant
+  condition, across every applicable varga, relationship chain, clock and window, held together and
+  cross-referenced rather than produced one panel at a time for a person to reconcile by eye.
 - **Artificial intelligence** reads across that computed depth to find the connections, relationships
-  and patterns inside it, and derives interpretation, insight and prediction from them.
+  and patterns inside it, and derives interpretation, insight and prediction from them. No existing
+  Jyotish software does this at all — it presents computation and leaves the reasoning to the reader.
 
 Neither half is the product. A very large computation nobody can interpret is a database. A capable
 model without that computation beneath it is a chatbot with astrological vocabulary. The product is
@@ -70,8 +74,19 @@ Two primary audiences, one depth:
   analysis expressed in Jyotish terms with its conventions, prerequisites and exceptions explicit.
 
 These are **two presentation modes over identical analytical depth**, not two products and not two
-tiers of rigour. Nothing is withheld from the layperson; it is translated. Nothing is simplified for
-the acharya; it is named correctly.
+tiers of rigour. The analysis is one analysis and the portfolio below is written in one voice; what
+differs is how much of the astrological machinery is exposed.
+
+- **The acharya's presentation carries more technical detail** — the method and school, the
+  prerequisites tested and the exceptions checked, the conventions and ayanāṃśa in force, the
+  intermediate quantities, the dignity and strength components separately, the competing readings and
+  which classical authority each rests on.
+- **The layperson's presentation carries less** — the same finding, the same confidence and the same
+  uncertainty, with the machinery behind it available on request rather than in the way.
+
+Nothing is withheld from the layperson: the conclusion, its strength and its limits are identical,
+and any technical layer can be opened. Nothing is simplified for the acharya: it is named correctly.
+A difference in exposed detail is never a difference in what was computed or concluded.
 
 A person is not a chart. An interpretation does not establish moral worth, fixed identity, another
 person's thoughts or an inevitable destiny.
@@ -316,6 +331,12 @@ Freeze the evaluated proposition before the outcome is known. Keep partial, laps
 unverifiable outcomes visible; a missing observation is not an automatic success or failure, nor
 permission to drop a difficult case. A functioning feedback loop proves lifecycle behaviour, not
 forecast accuracy.
+
+**What learning produces.** Learning's output is a visible change to a claim family's scope,
+confidence or availability, with the reason stated: a family may be revised, narrowed, demoted or
+withdrawn where the evidence warrants it. Evidence that cannot change what the product says is not
+learning. Attributed traditional interpretation may remain available where a restriction applies to
+the product's own forward claim rather than to the tradition's testimony.
 
 ## 8. Life-event evidence sits behind a switch
 
