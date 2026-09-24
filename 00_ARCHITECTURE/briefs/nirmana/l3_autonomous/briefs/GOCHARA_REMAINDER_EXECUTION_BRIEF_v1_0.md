@@ -480,3 +480,12 @@ digest. Before step 5 runs against any shared database, grep the repo for a dist
 and diff every copy found (seed, snapshots, census, tests, pins). A digest pin is recomputed with
 `canonicalNirmanaProbeContractDigest` (`NODE_OPTIONS=--conditions=react-server`), never by hand, and a `toMatchObject`
 comparison is a subset check that will not catch a missing field.
+
+### 12.15 URGENT ORDER CHANGE — run WP10 step 3 FIRST, before steps 0–2 (E-014)
+
+The century writer is `is_active = true` with state `error`, and the planner treats `error` as "needs build". A build that includes
+it would DELETE the native's served `'3.0'` rows, and no trigger stops it. `step03_guard_n6a.sql` is self-contained and was verified
+to work alone on a disposable database, so it does **not** need the Clear fix, the grant or the restore drill first. The rule that
+each step's evidence precedes the next governs the *sequence you run in*; make this the first step run and record its evidence as
+`step03`. **This run has no production access and must not apply it to a shared database itself** — put it in front of the native with
+the exact command in E-014. Do not weaken the guard to make any test pass.

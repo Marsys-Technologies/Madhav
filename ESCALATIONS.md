@@ -362,3 +362,45 @@ declaring both on `ka_gochara_resonance` would **not** block the next resonance 
 the two edges as their own reviewed change. The same read found `ph_nimitta` `stale` (139 rows) on the canonical and test charts,
 which sharpens rather than settles the separate layer-inversion question: `ka_bhavishya_lekha` consumes a table whose L4 producer
 is stale everywhere.
+
+## E-014 — URGENT: the century writer is armed and can delete the native's served '3.0' rows; WP10 step 3 (N-6a) is the mitigation and can run FIRST (L3 session, 2026-09-24)
+
+- **Reported by** the strategic session from live, read-only production reads (**attributed, not run by the L3 session**):
+  `ka_gochara_v3_century_materialize` is `is_active = true` with state `error`; `kala_gochara_authority` names `'3.0'` the served
+  generation for the native's chart (flipped 2026-08-11), which holds **914 rows** at `'3.0'` (1,830 in the table overall);
+  migration 588 dropped every protecting trigger and emptied `build_protected_assets` (0 rows, 0 triggers on any `kala_*` table).
+- **Verified by the L3 session at source:**
+  - `platform/src/lib/build/plan.ts:590` selects an asset for build when its state is `dormant`, **`error`** or `incomplete`. So
+    `error` means "needs build", not "blocked". The stale error everyone read as a hold is what marks the writer for dispatch.
+  - The writer is `@register`ed (`:1731`), has no refusal guard on the `'3.0'` path, and DELETEs `kala_gochara_windows … generation
+    = '3.0'` in the same transaction as its staging write. Its own comments say its old trigger only ever blocked `'v1'`, never `'3.0'`.
+  - Migration 588 removed protection **deliberately**, on the native's instruction of 2026-08-23, because the campaign rebuilds every
+    asset; its text says that if protection is reinstated it must be keyed on `(table, generation)`. That is what step 3 does.
+  - The recovery dump 588 names **exists** (16,214,137 bytes, matching 588 exactly) but only as one **untracked** file in the main
+    checkout on this machine, dated 08-23, describing 1,884 `'3.0'` rows against 1,830 now. It is a fragile approximation of recovery,
+    not a substitute for the guard, and it should be backed up.
+- **Correction to this family's own framing:** the plan (N-6a, F-30) already said the hold was "procedural only", but the runbook
+  sequenced the mitigation fourth, behind a Clear fix, a grant and a restore drill that has no dump to run against. Nothing in the
+  mitigation depends on those.
+- **What step 3 does** (`step03_guard_n6a.sql`, one transaction, idempotent, reversible): installs a `(table, generation)`-keyed guard
+  refusing DELETE/UPDATE/TRUNCATE of `'v1'` and `'3.0'` on `kala_gochara_windows` (`'4.0'` passes), re-seeds `build_protected_assets`
+  for the sweep asset, sets the century writer `is_active = false`, and probes that the flag landed or raises. **Verified on a disposable
+  database, applied alone with no earlier step:** the four destructive statements are refused, `'4.0'` writes pass, and the test now also
+  covers the exact century `DELETE` in both shapes; removing the `'3.0'` protection makes it fail.
+- **NOT done by the L3 session, and it will not be:** applying it to production. The session has no production write access and the
+  standing constraints forbid it. **The native, or a session the native gives a write path, must run it.** Sheet A-2 already authorises it.
+  The runner is `psql`; there is no script wrapper, and the SQL file carries no production-refusal check.
+- **Operator path (production write — the native's to run):**
+  ```
+  psql "$PRODUCTION_DSN" -v ON_ERROR_STOP=1 \
+       -f platform/python-sidecar/scripts/kala_gochara_cutover/step03_guard_n6a.sql
+  ```
+  Verify afterwards, read-only: `SELECT is_active FROM asset_registry WHERE asset_id='ka_gochara_v3_century_materialize'` must be
+  `f`; `SELECT tgname FROM pg_trigger WHERE tgrelid='kala_gochara_windows'::regclass AND NOT tgisinternal` must list
+  `trg_kgw_generation_guard_row` and `trg_kgw_generation_guard_truncate`; `SELECT generation, count(*) FROM kala_gochara_windows
+  GROUP BY 1` must show `'3.0'` and `'v1'` counts unchanged. Reversal: `step03_reversal.sql`.
+- **Disclosed consequence:** once installed, any legitimate write to `'3.0'` or `'v1'` is refused until a release-authority session sets
+  `app.allow_protected_sweep_rewrite = on`. That is the intended effect and it is the reason 588 removed the old guard for a
+  campaign that rebuilds everything, so the native should read it as a deliberate reversal of that 2026-08-23 instruction for these
+  two generations only.
+- **Decision needed from the native:** run step 3 now, ahead of steps 0–2. Recommendation: yes.
