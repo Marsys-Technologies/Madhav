@@ -464,3 +464,19 @@ whether it matters. Record the result in step 4's evidence file: what was checke
 (port 55433) by the test harness while the ledger code still wrote the old completeness states, so unrelated WP6 tests
 failed with a `CheckViolation`. Until §12.3's code migration finishes, full-suite runs against that database will show
 those failures; verify on a fresh database instead of trusting a shared one.
+
+**12.14 — RESULT of the narrow check, run by the L3 session 2026-09-24 (method from the L0 session):** only assets in
+`nirmana_probe_contracts.json` get the release smoke — `bg_panchanga`, `bg_ephemeris_engine`, `ka_graha_sancara`,
+`ka_tulana`, `ka_dasha_kala`, `ka_muhurta_seva`. A grep of migrations **1080–1084** for `health_probe`,
+`integrity_check_sql`, `asset_registry` and those six asset names found: **no probe and no integrity check touched by
+any of the five; none of the six smoke-tested assets named; the only `asset_registry` statements are 1084's two
+`depends_on` updates, on `ka_kshetra` and `ka_sangam`, neither in the smoke set.** So 1080–1084 cannot, by this
+criterion, break the release smoke. `[S]` — a grep, and it says nothing about consumers outside that contract.
+
+**NOT covered by that check, and open:** the WP10 **step 5 registry re-pin** (`step05_registry_repin.sql`) DOES rewrite
+`ka_gochara`'s `integrity_check_sql`, `count_sql`, `clear_tables` and `depends_on`, and the century row's `clear_tables`.
+`ka_gochara` is not in the smoke set, but a frozen integrity contract or an availability pin may name those values by
+digest. Before step 5 runs against any shared database, grep the repo for a distinctive value of each field it rewrites
+and diff every copy found (seed, snapshots, census, tests, pins). A digest pin is recomputed with
+`canonicalNirmanaProbeContractDigest` (`NODE_OPTIONS=--conditions=react-server`), never by hand, and a `toMatchObject`
+comparison is a subset check that will not catch a missing field.
