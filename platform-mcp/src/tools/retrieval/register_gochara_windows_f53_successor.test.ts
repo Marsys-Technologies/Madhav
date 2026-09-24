@@ -35,7 +35,9 @@ function mockAuthorities(options: AuthorityOptions = {}) {
       params: unknown[]
     }
     if (sql.includes('kala_gochara_authority') && !sql.includes('kala_gochara_windows')) {
-      return response([])
+      // P-1d: an absent authority row is now unpublished — the v1 path under
+      // test here requires an explicit 'v1' row.
+      return response([{ authoritative_generation: 'v1' }])
     }
     if (sql.includes('gochara_resonance_map')) {
       return mappingReachable

@@ -10,7 +10,9 @@ function mockFetch(opts: { maxWindowEnd: string; rowWindowEnd: string }) {
     // contains 'kala_gochara_authority' as a substring — without the exclusion guard that
     // query is intercepted here and returns [] instead of the horizon row (SPEC-EXIT-TEST-MOCK-ROUTING-BUG).
     if (sql.includes('kala_gochara_authority') && !sql.includes('kala_gochara_windows')) {
-      return Promise.resolve(fakeJsonResponse([]))
+      // P-1d: an absent authority row is now unpublished — the v1 path under
+      // test here requires an explicit 'v1' row.
+      return Promise.resolve(fakeJsonResponse([{ authoritative_generation: 'v1' }]))
     }
     if (sql.includes('MAX(window_end)')) {
       return Promise.resolve(fakeJsonResponse([{ materialized_through: opts.maxWindowEnd }]))

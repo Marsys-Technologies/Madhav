@@ -69,6 +69,16 @@ const ALLOWED_TABLES = new Set([
   // generation is currently served. Read-only; the table itself is written
   // only by a future cutover flip, never by any MCP-served query.
   'kala_gochara_authority',
+  // WP7 packet P-1 §4 (2026-09-24, WP0 E-004 item 1): the gochara serving tools'
+  // manifest-driven provenance/coverage (N-10) reads these two relations through
+  // this proxy. kala_gochara_publication = one manifest row per (chart_id,
+  // generation) written by the candidate pipeline and by the release authority's
+  // WP10 flip — never by any MCP-served query. kala_gochara_coverage = the
+  // ka_gochara writer's own search-coverage manifest (chart-scoped, read-only).
+  // kala_gochara_contacts is deliberately NOT added here — P-4's read capability
+  // owns that decision.
+  'kala_gochara_publication',
+  'kala_gochara_coverage',
   'brahma_remedy_corpus',
   // SATYA-ŚEṢA W2 (2026-07-25): gochara_forecast_get/activation_get/election_avoidance_get's
   // new category-coverage attestation (`coverage` block, S4-05 fix) computes, mechanically per
