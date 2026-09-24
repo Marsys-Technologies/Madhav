@@ -393,6 +393,11 @@ def scan(env_file=None, do_probe=True):
     unapplied=[]
     if db.get("ran"):
         ap=set(db.get("applied") or [])
+        # CAVEAT (measured 2026-09-25): _migrations_applied is NOT a reliable record of what is
+        # deployed. Migrations 1080/1081/1082/1084/1087 have their effects live in production —
+        # columns and registry edges verified present — and none is recorded here. A "pending"
+        # verdict from this function therefore means "not in the ledger", which is weaker than
+        # "not applied". Verify against production structure before acting on it.
         # Only BRANCH-ONLY migrations count as pending work. Comparing main's filenames
         # against _migrations_applied invents phantoms: the early schema was applied under
         # a consolidated legacy naming (0000_seed_legacy_applied.sql, 0001_brahma_baseline.sql,
