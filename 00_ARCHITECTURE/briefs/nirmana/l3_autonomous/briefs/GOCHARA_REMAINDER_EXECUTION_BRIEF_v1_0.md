@@ -448,3 +448,19 @@ gate to step 7 and a refusal to step 8, so **tranche 2 will now stop at step 7 o
 outcome; do not weaken those gates, and do not seed a window to get past them.** The rehearsal's two synthetic windows are
 stand-ins and are labelled as such. Building the projection writer is out of this run's scope unless the native assigns it.
 Escalate; do not attempt it as a side task.
+
+### 12.14 Precondition to tranche 1 step 4 — a migration can pass the runner and still break a downstream contract
+
+Prompted by the L0 session: its migration 1075 passed the runner but left the release-smoke contract
+(`nirmana_probe_contracts.json`) and the registry seed on the old `bg_ephemeris_engine` contract, so the sidecar
+deploy on `main` failed (production kept the previous sidecar; nothing live broke). Before step 4 applies 1080–1084 to
+any shared database, **check** — do not assume — whether any of them touches an asset or table that the release-smoke
+contract or the seed pins: the `gochara_resonance_map` and ledger tables, `kala_vedha_gochara` / `kala_moorti_nirnaya`
+(1082 adds columns), `brahma_prospective_ledger` / `mimamsa_predictions` (1083), and the `asset_registry` rows for
+`ka_kshetra`, `ka_sangam` and `ka_vedha_gochara` (1084). The L3 session has **not** done this check and does not know
+whether it matters. Record the result in step 4's evidence file: what was checked, against which file, and the outcome.
+
+**Shared-database hazard, observed today.** The executor's §12.3 migration 1087 was applied to the shared WP6 database
+(port 55433) by the test harness while the ledger code still wrote the old completeness states, so unrelated WP6 tests
+failed with a `CheckViolation`. Until §12.3's code migration finishes, full-suite runs against that database will show
+those failures; verify on a fresh database instead of trusting a shared one.
