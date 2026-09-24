@@ -2,6 +2,14 @@
 -- trigger + restore is_active (both recorded)").
 --
 -- Tranche 1. Apply with: psql "$DSN" -f step03_reversal.sql
+--
+-- READ BEFORE USING (2026-09-24, E-014): the final UPDATE below sets the century writer's
+-- is_active back to true, and that is NOT a lasting state. Once the seed fix lands
+-- (asset_registry_seed.ts carries is_active: false for this writer, decision D-O), any later
+-- re-seed puts it back to false. That is intended: the seed comment says to reverse only via a
+-- Gochara ruling that reopens the century build. Running this file re-arms the writer for as
+-- long as it stays true, and the writer's first act on dispatch is to DELETE the served '3.0'
+-- rows. Do not run it without that ruling.
 -- Record the reversal in evidence/step03_evidence.md when used.
 
 BEGIN;

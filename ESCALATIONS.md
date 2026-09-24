@@ -444,3 +444,12 @@ is stale everywhere.
   `asset_registry_seed.ts`. It survives both a re-seed and a build, and refuses no legitimate writes, unlike the trigger. Options are now: trigger half of step 3 (durable, refuses
   `'3.0'`/`'v1'` writes without the override), the seed edit (durable, refuses nothing, but is the seed owner's file), or both. The L3 recommendation of the trigger stands
   for the reason that it protects the rows even if the writer is re-activated by some path other than the seed; the seed edit protects only against the seed.
+
+**E-014 addendum 3 — the seed half is FIXED ON A SHARED BRANCH, PENDING MERGE (2026-09-24)**
+
+The strategic session set `is_active: false` on the century entry in `platform/scripts/seed/asset_registry_seed.ts`: commit `3fa377efa`, on
+`origin/strategic/dis031-fix` (verified by the L3 session: pushed, one line changed, comment states the reason), decided as D-O under the native's delegation.
+**It is not on `main`**, so a re-seed run from main today would still re-arm the writer; it takes effect when that branch merges. PR #2731 does not touch the seed,
+so there is no conflict. Status of the three options: seed edit **done, pending merge**; production `is_active=false` **applied**; the `(table, generation)` trigger
+half of step 3 **still unapplied and still the native's decision**. Consequence recorded: `step03_reversal.sql` restores `is_active = true`, which a re-seed would
+undo; it is now annotated as not a lasting state and not to be run without a Gochara ruling reopening the century build.
