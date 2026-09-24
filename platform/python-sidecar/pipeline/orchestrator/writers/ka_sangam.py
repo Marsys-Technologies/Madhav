@@ -41,6 +41,12 @@ from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
 from brahmagyan.graha_vocabulary import norm_graha
 from pipeline.orchestrator.birth_params import fetch_birth_params
+from services.ka_sangam.identity import (
+    contact_uuid as _contact_uuid,
+    frame_vector as _frame_vector,
+    frame_dict as _frame_dict,
+    independence_group as _independence_group,
+)
 from ga_writers.ga_sensitive_writer import _derive_is_day_birth
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
@@ -1042,6 +1048,36 @@ class KaSangamWriter(WriterBase):
                 # data, never re-derived; §4.5's never-pool rule needs them as columns.
                 applicability = w.get('applicability')
 
+                # Synergy audit #6/#10: R-5 identity + R-3 convention frame.
+                # contact_uuid is defined OVER the frame, so both land together or
+                # neither does. Identity needs a target_fact_id and a graha; when
+                # either is absent the row says WHY rather than carrying a NULL with
+                # no reason (B.10 / §N.8).
+                _prov = target_provenance if isinstance(target_provenance, dict) else {}
+                _fv = _frame_vector(_prov.get('ayanamsha_id') or w.get('ayanamsha_id'))
+                _graha = cf.get('planet')
+                _tfid = _prov.get('target_fact_id')
+                if _tfid is None:
+                    _identity_state, _cuuid = 'no_target_fact_id', None
+                elif not _graha:
+                    _identity_state, _cuuid = 'no_graha', None
+                else:
+                    _identity_state = 'computed'
+                    _cuuid = _contact_uuid(
+                        chart_id,
+                        w.get('kernel_version'),
+                        _graha,
+                        _tfid,
+                        cf.get('aspect_deg'),
+                        _fv,
+                        cf.get('orb_deg'),
+                        w.get('mode'),
+                    )
+                # Synergy audit #5: witness-independence BETWEEN rows. ICC discounts
+                # correlated currents WITHIN a row; nothing exposed correlation across
+                # rows, so seven named readers could double-count the same testimony.
+                _indep_group = _independence_group(w.get('signal_id'), _graha, _tfid)
+
                 cur.execute(
                     """
                     INSERT INTO kala_convergence (
@@ -1055,7 +1091,8 @@ class KaSangamWriter(WriterBase):
                         target_provenance, availability,
                         is_episode, episode_uuid, episode_children, episode_hull, perfected,
                         activity, valence, applicability, comparability_class,
-                        kernel_version, independence_group
+                        kernel_version, independence_group,
+                        contact_uuid, convention_frame, identity_state
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -1067,7 +1104,8 @@ class KaSangamWriter(WriterBase):
                         %s::jsonb, %s::jsonb,
                         %s, %s, %s::jsonb, %s::jsonb, %s,
                         %s, %s, %s::jsonb, %s,
-                        %s, %s
+                        %s, %s,
+                        %s, %s::jsonb, %s
                     )
                     """,
                     (
@@ -1104,7 +1142,10 @@ class KaSangamWriter(WriterBase):
                         json.dumps(applicability) if applicability is not None else None,
                         w.get('comparability_class'),
                         w.get('kernel_version'),
-                        w.get('independence_group'),
+                        _indep_group,
+                        _cuuid,
+                        json.dumps(_frame_dict(_fv)),
+                        _identity_state,
                     ),
                 )
                 rows_inserted += 1

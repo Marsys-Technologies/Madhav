@@ -20,6 +20,7 @@ SEED = Path(__file__).resolve().parents[3] / 'scripts' / 'seed' / 'asset_registr
 
 KERNEL_COLUMNS = ['activity', 'valence', 'applicability',
                   'comparability_class', 'kernel_version', 'independence_group']
+IDENTITY_COLUMNS = ['contact_uuid', 'convention_frame', 'identity_state']
 
 
 def _split_top_level(s: str):
@@ -126,3 +127,80 @@ class TestDeclaredVedhaEdge:
     def test_writer_actually_reads_that_relation(self):
         # The edge must be declared because the read exists — not the reverse.
         assert 'kala_vedha_gochara' in WRITER.read_text()
+
+
+class TestR5IdentityReachesProduction:
+    """Synergy audit #6/#10 — identity is defined over R-3's frame; neither existed."""
+
+    def test_identity_columns_in_insert(self):
+        block = _insert_block()
+        missing = [c for c in IDENTITY_COLUMNS if not re.search(rf'\b{c}\b', block)]
+        assert not missing, f"INSERT does not persist: {missing}"
+
+    def test_production_identity_equals_the_qualified_harness_identity(self):
+        """Phase 1 qualified identity in the disposable harness against seven §6.3
+        attacks. That qualification transfers only if the production function is
+        byte-identical in output — otherwise the harness proved a different thing."""
+        import importlib.util
+        from services.ka_sangam.identity import contact_uuid, frame_vector
+
+        hpath = (Path(__file__).resolve().parents[4] / '00_ARCHITECTURE' / 'briefs' /
+                 'nirmana' / 'l3_autonomous' / 'briefs' / 'evidence_sangam' /
+                 'r5_harness' / 'r5_identity.py')
+        spec = importlib.util.spec_from_file_location('_r5_harness', hpath)
+        h = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(h)
+
+        fv = frame_vector('lahiri_chitrapaksha')
+        args = ('c1', 'separated_v2', 'Saturn', 'f123', 180.0, fv, 3.2, 'A')
+        assert contact_uuid(*args) == h.contact_uuid(*args)
+
+    def test_identity_is_stable_when_the_date_moves(self):
+        """The property that makes a window citable across a rebuild: peak_date and
+        interval endpoints are content, not identity."""
+        from services.ka_sangam.identity import contact_uuid, frame_vector
+        fv = frame_vector('lahiri_chitrapaksha')
+        a = contact_uuid('c1', 'separated_v2', 'Saturn', 'f1', 180.0, fv, 3.2, 'A')
+        b = contact_uuid('c1', 'separated_v2', 'Saturn', 'f1', 180.0, fv, 3.2, 'A')
+        assert a == b
+
+    def test_identity_changes_when_the_frame_changes(self):
+        """Two convention frames must never coalesce into one identity (R-3)."""
+        from services.ka_sangam.identity import contact_uuid, frame_vector
+        true_fv = frame_vector('lahiri_chitrapaksha', node_convention='true_node')
+        mean_fv = frame_vector('lahiri_chitrapaksha', node_convention='mean')
+        args = ('c1', 'separated_v2', 'Rahu', 'f1', 180.0)
+        assert contact_uuid(*args, true_fv, 3.2, 'A') != contact_uuid(*args, mean_fv, 3.2, 'A')
+
+    def test_frame_declares_its_gaps_rather_than_claiming_values(self):
+        """§N.8: a component with no detector behind it must say so."""
+        from services.ka_sangam.identity import frame_dict, frame_vector
+        f = frame_dict(frame_vector('lahiri_chitrapaksha'))
+        assert f['ephemeris_backend'] == 'unasserted', "R-4 asserts no backend today"
+        assert f['house_frame'] == 'unavailable', "ka_sangam reads no cusp system"
+        assert f['node_convention'] == 'true_node', \
+            "must record what the SCANNER did, not what M-1 ruled — that is how the mismatch stays visible"
+
+    def test_writer_records_why_identity_is_absent(self):
+        src = WRITER.read_text()
+        for state in ('no_target_fact_id', 'no_graha', 'computed'):
+            assert state in src, f"identity_state {state!r} never set"
+
+
+class TestIndependenceGroup:
+    """Synergy audit #5 — correlation BETWEEN rows was invisible."""
+
+    def test_same_root_testimony_shares_a_group(self):
+        from services.ka_sangam.identity import independence_group
+        assert independence_group('sig1', 'Saturn', 'f1') == independence_group('sig1', 'Saturn', 'f1')
+
+    def test_different_root_testimony_differs(self):
+        from services.ka_sangam.identity import independence_group
+        a = independence_group('sig1', 'Saturn', 'f1')
+        assert a != independence_group('sig2', 'Saturn', 'f1')
+        assert a != independence_group('sig1', 'Jupiter', 'f1')
+        assert a != independence_group('sig1', 'Saturn', 'f2')
+
+    def test_writer_binds_the_computed_group_not_the_window_field(self):
+        # w.get('independence_group') was always None — the engine never emitted it.
+        assert '_indep_group,' in WRITER.read_text()

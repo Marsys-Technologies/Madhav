@@ -570,3 +570,52 @@ producer's row), #5 (emit `independence_group`; column now exists), #6 (blocked 
 `different_convention` stamp — needs #2's vocabulary), #9 (`confidence_score`/`confidence_label`
 removal — **not attempted**: five readers plus a serving layer, a coordinated change behind the §6.2
 sentinel, not a writer edit).
+
+
+## Engineering pass 2 — #5, #6, #8, #10 closed (2026-09-24T11:42:05+05:30)
+
+Same authorship caveat as pass 1: written by the **author** session; the D-K merge-gate reviewer must
+scrutinise it. Every fix carries a detector that fails when the fix is reverted.
+
+**#10 → #6, together, because neither works alone.** `services/ka_sangam/identity.py` ports R-5's
+identity from the disposable harness into production, and emits R-3's six-component convention frame
+that `contact_uuid` is defined over. Migration **1086** adds `contact_uuid`, `convention_frame`,
+`identity_state`. **The production function is byte-identical in output to the harness** — asserted by
+test and by evidence — so Phase 1's seven-attack qualification **transfers** instead of being
+re-claimed. `convergence_id` remains the surrogate; `contact_uuid` is now the citable key, which is
+what `mi_adhilepa`'s binding (RRV-04) needed and never had.
+
+**The frame is emitted honestly, and two of its six components declare gaps rather than claim values:**
+`ephemeris_backend = 'unasserted'` (R-4 requires assertion per call from Swiss's return flag;
+`_calc_ut_cached` discards `result[1]`, so nothing asserts it — the gap is now data, not silence) and
+`house_frame = 'unavailable'` (ka_sangam reads no cusp system, so nothing may claim Placidus).
+
+**#8 closed without the manual stamp it asked for.** `node_convention` records **what the scanner did**
+(`'true_node'`, `transit_search.py:10,64`), not what M-1 ruled (`mean`). The mismatch is therefore
+**visible and queryable on every row** rather than depending on someone remembering to stamp Kṣetra
+comparisons. It becomes `'mean'` when the N-7 producer replaces the scan — a data change, not a comment
+edit. Two frames never coalesce into one identity (tested), so a convention change cannot silently
+merge rows.
+
+**#5 closed.** `independence_group` — a stable digest over (signal_id, graha, target_fact_id) — is now
+computed and persisted. ICC discounts correlated currents **within** a row; nothing exposed correlation
+**between** rows, so the seven named readers could double-count one testimony. The definition is new and
+is recorded in code, in the column comment and here.
+
+**Verification:** suite **22/22 + 22/22 NEG**; `test_ka_sangam_synergy_fixes.py` **20 tests**; targeted
+and broader L3 green but for the pre-existing `transit_search_cache` flake (file untouched).
+
+**Audit status after two passes:** closed — #1, #3, #5, #6, #7, #8, #10. Open — **#2** (rename to
+`comparable_with`: Gochara's enum is on an unpushed branch; asked for the values), **#4** (coverage
+object: Saṅgam's own scan coverage is emittable now, the producer's arrives with N-7), **#9**
+(`confidence_score`/`confidence_label` removal — **now unblocked in principle**, because pass 1 gave the
+replacement a home: `activity`/`valence` are columns. It remains a coordinated change across five
+readers plus a serving layer behind the §6.2 sentinel, sequenced below, not a writer edit).
+
+**#9, the sequence, so it stops being a standing "deferred":** (i) readers migrate from
+`confidence_label` to `activity`/`valence` one at a time, each with its own test —
+`ka_bhavishya_lekha`, `ka_kala_darshana`, `ka_tulana/writer`, `ka_tulana/ranker`,
+`register_d7_channel.ts`; (ii) the capability census regenerates; (iii) the §6.2 sentinel (a low-ranked
+adverse condition surviving to a real caller) runs green; (iv) only then do the two columns drop, in
+their own migration. Steps (i)–(iii) touch other assets' writers and belong to their owners or to a
+coordinated session, which is why this pass did not start them.

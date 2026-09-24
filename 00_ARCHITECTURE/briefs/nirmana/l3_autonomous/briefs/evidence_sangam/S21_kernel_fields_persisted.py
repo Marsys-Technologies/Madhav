@@ -17,6 +17,7 @@ sangam/stage3 0b439b0c7 and repaired in migration 1085 + writer:
 Run with NEG=1 for the negative control (evidence-bearing inputs mutated).
 """
 import re
+import sys
 from datetime import date
 
 from _common import *  # noqa: F403
@@ -26,6 +27,7 @@ head("S21 — R-6 kernel fields persisted; horizon, tz and vedha edge (synergy a
 
 KERNEL_COLUMNS = ['activity', 'valence', 'applicability',
                   'comparability_class', 'kernel_version', 'independence_group']
+IDENTITY_COLUMNS = ['contact_uuid', 'convention_frame', 'identity_state']
 
 writer_src = "\n".join(src('pipeline/orchestrator/writers/ka_sangam.py'))
 i = writer_src.index('INSERT INTO kala_convergence')
@@ -53,10 +55,26 @@ cols = [c.strip() for c in _split_top_level(
 vals = [v.strip() for v in _split_top_level(
     values_part[values_part.index('(') + 1:values_part.rindex(')')]) if v.strip()]
 
-mig = "\n".join(src('../../../../../platform/supabase/migrations/1085_kala_convergence_kernel_fields.sql')) \
-    if False else open(
-        __file__.rsplit('/00_ARCHITECTURE/', 1)[0]
-        + '/platform/supabase/migrations/1085_kala_convergence_kernel_fields.sql').read()
+_root = __file__.rsplit('/00_ARCHITECTURE/', 1)[0]
+mig = open(_root + '/platform/supabase/migrations/1085_kala_convergence_kernel_fields.sql').read()
+mig86 = open(_root + '/platform/supabase/migrations/1086_kala_convergence_r5_identity.sql').read()
+
+sys.path.insert(0, _root + '/platform/python-sidecar')
+from services.ka_sangam.identity import (  # noqa: E402
+    contact_uuid as _cu, frame_vector as _fv, frame_dict as _fd,
+    independence_group as _ig,
+)
+sys.path.insert(0, _root + '/00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/r5_harness')
+import r5_identity as _H  # noqa: E402
+
+_frame = _fv('lahiri_chitrapaksha')
+_args = ('c1', 'separated_v2', 'Saturn', 'f123', 180.0, _frame, 3.2, 'A')
+_prod_id, _harness_id = _cu(*_args), _H.contact_uuid(*_args)
+_mean_frame = _fv('lahiri_chitrapaksha', node_convention='mean')
+_id_true, _id_mean = _cu(*_args[:5], _frame, 3.2, 'A'), _cu(*_args[:5], _mean_frame, 3.2, 'A')
+_fdict = _fd(_frame)
+_grp_same = _ig('s1', 'Saturn', 'f1') == _ig('s1', 'Saturn', 'f1')
+_grp_diff = _ig('s1', 'Saturn', 'f1') != _ig('s2', 'Saturn', 'f1')
 
 seed = open(__file__.rsplit('/00_ARCHITECTURE/', 1)[0]
             + '/platform/scripts/seed/asset_registry_seed.ts').read()
@@ -71,6 +89,11 @@ if NEG:  # noqa: F405
     mig = mig.replace('ADD COLUMN IF NOT EXISTS', 'DROP COLUMN')
     depends = [d for d in depends if d != 'ka_vedha_gochara']
     writer_src = writer_src.replace('_birth_instant_for_offset', 'datetime_now_only')
+    mig86 = mig86.replace('contact_uuid', 'nothing')
+    _harness_id = 'mismatched'
+    _id_mean = _id_true
+    _fdict = dict(_fdict, ephemeris_backend='swieph', house_frame='placidus')
+    _grp_diff = False
 
 missing = [c for c in KERNEL_COLUMNS if c not in cols]
 prop("(a) all six R-6 kernel columns persisted in the INSERT", not missing, f"missing={missing}")  # noqa: F405
@@ -86,5 +109,22 @@ prop("(d) 29-Feb preserved when the target year IS leap", _add_years(date(2024, 
 prop("(e) tz offset evaluated at the birth instant", '_birth_instant_for_offset' in writer_src  # noqa: F405
      and bool(re.search(r'utcoffset\(_at or datetime\.now\(\)\)', writer_src)))
 prop("(f) ka_vedha_gochara declared in ka_sangam.depends_on", 'ka_vedha_gochara' in depends, f"{len(depends)} edges")  # noqa: F405
+
+# --- #6/#10: R-5 identity over R-3's frame ---
+missing_id = [c for c in IDENTITY_COLUMNS if c not in cols]
+prop("(g) identity columns persisted (contact_uuid, convention_frame, identity_state)",  # noqa: F405
+     not missing_id, f"missing={missing_id}")
+prop("(g) migration 1086 ships identity and frame TOGETHER",  # noqa: F405
+     'contact_uuid' in mig86 and 'convention_frame' in mig86)
+prop("(h) production identity == the qualified harness identity",  # noqa: F405
+     _prod_id == _harness_id, f"prod={_prod_id}")
+prop("(h) two convention frames never coalesce into one identity", _id_true != _id_mean)  # noqa: F405
+prop("(i) frame declares its gaps, never claims an unasserted backend",  # noqa: F405
+     _fdict['ephemeris_backend'] == 'unasserted' and _fdict['house_frame'] == 'unavailable',
+     f"{_fdict}")
+prop("(i) frame records the SCANNER's node convention, so the M-1 mismatch stays visible",  # noqa: F405
+     _fdict['node_convention'] == 'true_node')
+prop("(j) independence_group: same root testimony groups, different does not",  # noqa: F405
+     _grp_same and _grp_diff)
 
 done(kind="POST-FIX BEHAVIOUR")  # noqa: F405
