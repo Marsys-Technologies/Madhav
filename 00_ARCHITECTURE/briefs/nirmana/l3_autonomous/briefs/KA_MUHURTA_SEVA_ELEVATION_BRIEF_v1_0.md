@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_muhurta_seva", "sidecar routes routers/muhurta_score.py + routers/muhurat.py (re-pointed through the service — coordinated)", "IP-10a (NEW, proposed for blueprint §12.2): kala_elect_get DISCLOSURE packet — location_used + personal state from the existing lane_f.tara_bala_status", "cross-asset item (L0+L4, not a packet): panchanga_daily is a single-observer table read by phala/muhurta.py for every chart"]
 goal_objective: "Make ka_muhurta_seva the one election engine its registration claims: a typed verdict built as an extension of the finder's existing per-factor breakdown (calendar / personal / weight-source carried separately, vetoes as vetoes, the horizon and cap disclosed, the location actually used typed on every answer, a named comparator from the blueprint's vocabulary) — and route the two sidecar election endpoints through it, so that 'the best window in your range' can never be read as 'a good window'. The chart-bound served election (kala_elect_get) does not touch this service today; its real hazard lives in a single-observer L0 table and is raised, not absorbed."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at bf70a3477 and 27b0146f3 (2026-09-24)"
@@ -243,7 +244,7 @@ doctrinal validity not judged; cap incidence and latency unmeasured; no DB.
 7. **Time.** Window rows: `t_start = sunrise_utc`, `t_end = sunset_utc` (`finder.py:250-251`),
    `time_basis='event_instant'`, **`inclusivity` declared on the window row** (B1 requires it there,
    not on the horizon — N12; state whether sunset is exclusive); the search horizon's
-   `closed_closed` lives in `coverage.requested_horizon`; `claim_grain='date_grain'` on the search.
+   `closed_closed` lives in `coverage.requested_horizon`; `precision_regime='date_grain'` on the search.
    The finder iterates dates itself (`:242,:258`) — `resolver` is **not** `date_resolver`, stated.
    **B3:** `window_id = sha256(event_class, date, location, weights_hash)`; `generation =
    weights_hash`; `window_ref = {asset_id, generation, id: window_id}` (N16).
@@ -346,7 +347,7 @@ cross-asset/IP-10a.
 | Value | EXPLANATORY_DISCRIMINATIVE_VALUE | R | frozen Q10 / ordinary-period question | the verdict states which claim bound the answer; the float cannot | — | no distinction | baseline |
 | Evaluation | — | — | `not_applicable`: an election is an initiation-suitability claim, not an outcome prediction (Product §10) | — | — | — | — |
 
-Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity` on the window, `time_basis`, `claim_grain`),
+Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity` on the window, `time_basis`, `precision_regime`),
 B2 (`completeness_state`, `epistemic_class`, `operator_role`, `comparable_with`, `tier_basis`,
 `source_qualification` — **not** `corpus_verifiable` or the R-6 four), B3 (`window_id`, `generation`,
 `window_ref`), B5 (`coverage`, seven keys). **B4:** proposed n/a — scores here are per-day facts, not

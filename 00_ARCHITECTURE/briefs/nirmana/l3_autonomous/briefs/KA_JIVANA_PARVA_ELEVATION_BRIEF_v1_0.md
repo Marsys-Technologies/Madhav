@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_jivana_parva", "SC-1 (it already reads `ctx.config['as_of_date']` — the ONE writer in the layer that does; that key is the precedent every other as_of proposal should cite)", "SC-9 (the LATERAL LIMIT 1 predicate pick is an unordered choice among per-ayanāṃśa rows)", "registry packet: it DECLARES ka_dasha_kala and reads chart_dashas directly"]
 goal_objective: "Make the life-arc chapters say which evidence they rest on: the dominant-signal class and the convergence counts are computed from a window set joined to a predicate chosen by an UNORDERED `LATERAL … LIMIT 1` across per-ayanāṃśa rows, so a chapter's headline class can change between builds from identical data; and the PD level is materialised only for the CURRENT antardaśā against a build-time clock, which the row does not declare."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at fb46b258f (2026-09-24)"

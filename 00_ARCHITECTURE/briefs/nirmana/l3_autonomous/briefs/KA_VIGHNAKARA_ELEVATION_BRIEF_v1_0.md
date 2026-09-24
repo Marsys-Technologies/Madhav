@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_vighnakara", "SC-5 (the top-500 convergence cap and the 200-anchor cap → coverage)", "SC-7 (Vedha-root reconciliation: this asset and ka_vedha_gochara both speak obstruction)", "SC-8 (its swisseph integration is a FOURTH one, and it is TRUE-node while the ruled convention is mean)", "registry packet: declare bg_ephemeris and ga_dashas; the seeded ka_gochara edge", "B4: independence_group per detector — five detectors are not five witnesses"]
 goal_objective: "Make the obstruction detector's testimony countable and its conventions declared: five detectors of very different evidential weight are emitted as flat rows with one severity scale and no independence marking; two caps (top-500 convergence windows, 200 daśā anchors) bound the search undisclosed; one detector silently degrades to a day-modulo proxy when the pañcāṅga engine fails; and its Rāhu is the TRUE node while the layer's ruled convention is mean."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at a99300bb7 (2026-09-24)"
@@ -265,7 +266,7 @@ Binding: **OFFERS** B2 (`epistemic_class`, `completeness_state`, `operator_role=
 `source_qualification`, `tier_basis`, `comparable_with`), B4 (`independence_group`,
 `declared_current_count` — the load-bearing offer), B5 (`coverage`), and the SC-8 convention vector.
 **DEMANDS** the mean-node reconciliation (coordinated with the position reference) and SC-7's
-Vedha-root reconciliation. B1: the rows are anchored at a `peak_date` (DATE) — `claim_grain=
+Vedha-root reconciliation. B1: the rows are anchored at a `peak_date` (DATE) — `precision_regime=
 'date_grain'`, `time_basis='event_instant'` for the swisseph calls at `jd` midnight, declared.
 **Asset-local:** `convergence_available`, `detail.source`, `detail.anchor`, `override_score`.
 

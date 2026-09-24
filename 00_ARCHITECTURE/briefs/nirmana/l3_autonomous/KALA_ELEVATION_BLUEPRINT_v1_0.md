@@ -984,6 +984,38 @@ base, a graha→domain map 58 % outside its ontology's vocabulary, a guard whose
 without re-verifying it* — the review loop is load-bearing in both directions, and `[R]` marks a
 reviewer's verification, not the author's.
 
+**Binding version correction, 2026-09-24 (post-programme).** All sixteen briefs were written against
+`KALA_SYNERGY_BINDING` **v1.0**, whose §B1 named the shared grain field `claim_grain` and instructed
+Gochara to rename `precision_regime` → `claim_grain`. That row is **superseded and reversed**. The
+binding has advanced v1.0 → v1.1 → v2.0 → **v2.2**, and v2.2 §B1 records `precision_regime` as *the
+ruled name* — "Kṣetra ruling 8, Gochara G-9, Saṅgam M-3 all name it" — with **no rename**, values
+unified to `{instant_grain, date_grain}`, and `day_grade` aliased to `date_grain` **until the
+successor condition of Saṅgam D-7 is met (every dependent claim has an authorized successor), not
+for a count of generations**. The native's own Gochara ruling **D-S4** (2026-09-24) rules the same
+way. All sixteen briefs are corrected: 33 occurrences of `claim_grain` renamed, and each brief's
+frontmatter now pins `synergy_binding_version: "2.2"`. The briefs' enum *values* were already
+`instant_grain`/`date_grain` and did not move.
+
+**Two governance hazards this correction surfaced, both unresolved and neither this session's to
+close.** (1) **The authoritative binding is unpushed.** v2.2 exists only on the local branch
+`strategic/dis031-fix` in this machine's repository — it is on no `origin/*` head, and its own status
+is still `PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION`. Every stream that fetches from origin sees
+v1.0, i.e. the superseded and reversed vocabulary, which is exactly how sixteen briefs came to be
+written against it. (2) **v2.2 has not absorbed the ruling it reports.** Its §B8 item 9 still lists
+the rename direction as an open native decision while D-S4 has already ruled it — the binding is
+self-inconsistent between its §B1 row and its own open-decisions list.
+
+**Migration numbering is not a single-branch question.** Numbering against `origin/main` is unsafe
+here: `origin/main` maxes at 1070 while unmerged heads hold 1080–1090 (Gochara 1080–1086 on
+`origin/l3/gochara-autonomous-wp0-7`; Saṅgam **1088–1090** on `origin/sangam/stage3`, already
+renumbered up off its earlier 1085–1087). Max across all heads is **1090**; 1087 is a lone free slot
+between the two. `platform/migrations/` and `platform/supabase/migrations/` are one runner sequence
+and must both be scanned — **the two streams do not use the same one**: Gochara's 1080–1086 are in
+`platform/migrations/`, Saṅgam's 1088–1090 are in `platform/supabase/migrations/`. A scan of one
+directory sees a clean max of 1086 and a free 1087, and misses Saṅgam entirely; that is the
+mechanism by which a wrong "next free" number gets published and believed. Any figure here —
+including this one — is re-scanned at execution, across both directories and every head.
+
 ### 17.3 What binds the sixteen to the three
 
 `KALA_PORTFOLIO_RULING_SHEET_v1_0.md` consolidates §9.2's six portfolio questions with every

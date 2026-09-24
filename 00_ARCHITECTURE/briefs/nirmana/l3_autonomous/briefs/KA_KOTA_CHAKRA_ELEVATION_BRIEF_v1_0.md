@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_kota_chakra", "SC-1 (the build-time date.today() horizon becomes a declared input)", "SC-5 (coverage on a rolling horizon)", "SC-8 (the single ayanāṃśa offset as a declared, edge-bounded approximation)", "registry successor: a version-aware integrity conjunct (a) — today's has NO version predicate", "Gochara w25 proposed-use (N-8 / M-4) + a registry-disagreement item"]
 goal_objective: "Make the fort chart's rows say which horizon they were computed for and under which ring-table version, so a rebuild is a declared re-scan rather than a silent replacement and the integrity check can distinguish a stale grading from a wrong one; label the posture/severity synthesis the uncited extension it already admits to being and constrain its vocabulary; derive corpus verifiability from the L0 row that already carries it; and bound the single-offset approximation where it actually bites — window edges, not nakṣatra spans."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at 3387c9ac3 (2026-09-24)"
@@ -14,7 +15,7 @@ accepted_upstream_contract: "L1 chart_facts MOON longitude_sidereal at lahiri_ch
 implementation_owner: "<one writer, named at stage 3 — not the author>"
 independent_review_owner: "Fable 5.1 review agent, fresh context; report at briefs/reviews/REVIEW_KA_KOTA_CHAKRA_v1_0.md (ACCEPT_WITH_CORRECTIONS); re-verification of v1.1 pending"
 release_authority: "NONE"
-may_touch: ["platform/python-sidecar/services/ka_kota_chakra/{logic,writer}.py", "platform/python-sidecar/tests/l3/test_ka_kota_chakra_writer.py (today it covers only the two fetch helpers; run() is untested)", "one NEW registry migration: a version-aware successor to ka_kota_chakra's integrity_check_sql (conjunct (a) must join on table_version) plus a stale_partition signal — migration 670 is applied and is never edited", "one additive DDL migration on kala_kota_chakra (requested_horizon_start/end, ring_table_version, window_id, claim_grain/comparable_with/tier_basis/corpus_verifiable, and the two CHECK constraints) — or a qualification JSONB per §10.2"]
+may_touch: ["platform/python-sidecar/services/ka_kota_chakra/{logic,writer}.py", "platform/python-sidecar/tests/l3/test_ka_kota_chakra_writer.py (today it covers only the two fetch helpers; run() is untested)", "one NEW registry migration: a version-aware successor to ka_kota_chakra's integrity_check_sql (conjunct (a) must join on table_version) plus a stale_partition signal — migration 670 is applied and is never edited", "one additive DDL migration on kala_kota_chakra (requested_horizon_start/end, ring_table_version, window_id, precision_regime/comparable_with/tier_basis/corpus_verifiable, and the two CHECK constraints) — or a qualification JSONB per §10.2"]
 interface_packet_targets_not_may_touch: ["platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:83 (the UTC-date `as_of` default) and :103-109 (the explicit column whitelist a new stamp must be added to) — Pūrṇa-owned", "platform-mcp/src/tools/kala_views/now.ts:418-445 (item 16) — Pūrṇa-owned; L3 owns only the sentinel test"]
 must_not_touch: ["brahmagyan/l0_kota_chakra_rings.py, bg_kota_chakra_rings (L0 — the partition, its citation tier and its corpus_status are L0's)", "ephemeris_daily / bg_ephemeris (L0)", "services/gochara_v3/mechanisms/w25_kota_chakra.py (Gochara-owned)", "platform-mcp/src/tools/kala_views/**", "platform/supabase/migrations/520_kala_kota_chakra.sql, platform/migrations/670_*, 853_* (applied)", "applied migrations 1033–1070", ".github/workflows/deploy.yml", "kala_gochara_windows WHERE generation='v1'", "WriterBase / orchestrator contract"]
 target_state_data_plane: "PRODUCER_READY"
@@ -186,7 +187,7 @@ live on the wrapper.
    is** — never a writer-local basis string, which would shadow the L0 value and drift from it the
    day the corpus gains Muhūrta-Cintāmaṇi (`523:39-42` files that work item) [F-05];
    `comparable_with='self'` and `tier_basis='relative_uncalibrated'` on `severity` (B2 requires both
-   on a graded quantity, F-12/binding); `claim_grain='date_grain'`, `time_basis='noon_ut_knot'`,
+   on a graded quantity, F-12/binding); `precision_regime='date_grain'`, `time_basis='noon_ut_knot'`,
    `inclusivity='closed_closed'` (`logic.py:121` uses `<=`).
 5. **Closed vocabularies.** `severity` and `posture` gain CHECK constraints over the §2.2 value sets
    — one additive migration.
@@ -274,7 +275,7 @@ Columns: **verdict tier** F24; **scope** `[U]` unit, `[I]` DB fixture, `[S]` ser
 | Value | EXPLANATORY_DISCRIMINATIVE_VALUE | S | the frozen Q-K06 baseline question | a posture with its horizon, version, corpus stamp and edge tolerance; the baseline gives posture alone | — | no distinction | baseline record |
 | Evaluation | — | — | `not_applicable` | — | — | — | — |
 
-Binding: **OFFERS** B1 (`inclusivity`, `time_basis`, `claim_grain`; `t_start/t_end` as declared
+Binding: **OFFERS** B1 (`inclusivity`, `time_basis`, `precision_regime`; `t_start/t_end` as declared
 resolver-derived views over the DATE key), B2 (`epistemic_class`, `completeness_state`,
 `source_qualification`, `corpus_verifiable` **derived from L0**, `comparable_with`, `tier_basis`,
 `operator_role='testimony'`), B3 (`window_id` sha256 + a version-bearing `generation`), B5

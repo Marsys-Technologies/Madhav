@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_graha_sancara", "SC-8 (convention vector: the node-frame and ayanāṃśa-application deltas plus the field-name mapping)", "SC-10 (ayanāṃśa vocabulary via L0's AYANAMSHA_MAP)", "IP (NEW): the served route's _service_context reaching the TS wrapper — today dropped", "L0 hygiene note: l0_ephemeris.py:77 'Mean North Node' comment over swe_id 11 (TRUE_NODE)"]
 goal_objective: "Make ka_graha_sancara one honest position service: its registered engine stops claiming instant precision it does not compute, adopts the ruled node frame and one ayanāṃśa-application convention, validates ayanāṃśa ids against L0's existing map, and is bound by golden-value tests to the served route's computation (the bg_ephemeris_engine surface) that is already instant-grain, MEAN-node and backend-asserting — so the probe that gates the served route's availability certifies the computation callers actually receive."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code re-verified identical at 27b0146f3 (2026-09-24)"
@@ -169,7 +170,7 @@ live. The route's own convention vector reaches no caller — the wrapper drops 
 ### 2.4 Epistemic class of the important quantities
 | quantity | class | authority | note |
 |---|---|---|---|
-| tropical longitude/speed at a knot | `COMPUTED_FACT_CONFIGURATION` | L0 `ephemeris_daily` (noon UT `:278`; `swe_id 11` TRUE node `:77,:289`) | PATH-A: `time_basis='noon_ut_knot'`, `claim_grain='date_grain'` |
+| tropical longitude/speed at a knot | `COMPUTED_FACT_CONFIGURATION` | L0 `ephemeris_daily` (noon UT `:278`; `swe_id 11` TRUE node `:77,:289`) | PATH-A: `time_basis='noon_ut_knot'`, `precision_regime='date_grain'` |
 | sidereal longitude (PATH-A) | computed fact | `derive_sidereal` under a named ayanāṃśa | `ayanamsa_application='mean_get_ayanamsa_ut'` (N2) |
 | "live" positions | computed fact **at 00:00 UT of the date** | `compute_transits.py` (Moshier forced, TRUE node, `FLG_SIDEREAL`) | not an instant; `ayanamsa_application='apparent_flg_sidereal'` — the *other* convention |
 | route positions | computed fact at the instant | L0 `bg_ephemeris_engine` surface; MEAN node; `apparent_flg_sidereal`; backend observed per call | the qualified-by-receipt computation (N6) |
@@ -200,7 +201,7 @@ does not name this asset [R]). t3: no event. Cost: unmeasured.
 
 1. **L3-Q served.** Substrate for Q01/Q03; directly Q09 (convention sensitivity — five ayanāṃśas at
    one instant; `comparable_with='different_convention'` between them). No window question.
-2. **Grading before repair (B1).** PATH-A: `time_basis='noon_ut_knot'`, `claim_grain='date_grain'`.
+2. **Grading before repair (B1).** PATH-A: `time_basis='noon_ut_knot'`, `precision_regime='date_grain'`.
    The engine's current live path is a 00:00-UT knot — not in the B1 enum. **The v1.1 amendment ask
    is withdrawn (N9):** the delegate is retired in the same commit that lands the delegation, so no
    generation is served under a new enum value; if the native prefers a rollback flag, the flagged
@@ -348,14 +349,14 @@ does not name this asset [R]). t3: no event. Cost: unmeasured.
 | Duplication | same instant PATH-A vs instant path | `time_basis` **and** `ayanamsa_application` differ; longitudes within date-grain tolerance; Rāhu differs by ~1.0162° until PATH-A's mean derivation lands (declared) | labelled | labels equal; the gap undeclared |
 | Context | `.se1` absent | `moshier_analytic_fallback` in `ephemeris_backends_observed` | observed | missing |
 | Boundary | 1900-01-01 00:00; **2150-12-31 23:59 (in range)**; **2151-01-01 00:00 (out)**; 0°/360° seam | instant path answers; PATH-A `unavailable(out_of_range)` only past 2150-12-31 | seam-safe; range per `engine.py:58,:416` | mishandled; 2150-12-31 refused |
-| Delivery (PATH-A) | sentinel `claim_grain='date_grain'` on a PATH-A answer | reaches the envelope PATH-A actually reaches — `EphemerisResult`, observed at its L4 consumer (`muhurta.py:737`) | survives in-process | absent |
+| Delivery (PATH-A) | sentinel `precision_regime='date_grain'` on a PATH-A answer | reaches the envelope PATH-A actually reaches — `EphemerisResult`, observed at its L4 consumer (`muhurta.py:737`) | survives in-process | absent |
 | Delivery (route) | the route's `_service_context` on a live call | survives the TS forward (`call_service_wrappers.ts:253-260`) to the capability's `content` | context not dropped | absent (today's behaviour) |
 | Revision | L0 `ephemeris_daily` regenerated | PATH-A changes; instant path unchanged | no cache | stale |
 | Value | mutate the reference kernel (`MEAN_NODE → TRUE_NODE`; one `SIDM_*`) | golden values at the served envelope fail; tolerance ≥ 0.5e-4° (the route's rounding floor); provenance = kernel-pinned, FORENSIC instant the one independent ground | detector | passes under mutation |
 | Transition | engine ↔ route parity at N instants incl. the forensic instant, a station, the seam | agree within tol before delegation | one computation after | disagree |
 | Evaluation | n/a (no claim issued) | — | — | — |
 
-Binding: **OFFERS** B1 (`time_basis`, `claim_grain`), B2 (`epistemic_class='COMPUTED_FACT_
+Binding: **OFFERS** B1 (`time_basis`, `precision_regime`), B2 (`epistemic_class='COMPUTED_FACT_
 CONFIGURATION'`, `completeness_state`, `operator_role='computation'`, `comparable_with=
 'different_convention'` across ayanāṃśas), the SC-8 vector under the route's names with the corrected
 mapping to the binding's build-side names. **DEMANDS** L0 items 6–7 (blocker: not in tree) and, if a

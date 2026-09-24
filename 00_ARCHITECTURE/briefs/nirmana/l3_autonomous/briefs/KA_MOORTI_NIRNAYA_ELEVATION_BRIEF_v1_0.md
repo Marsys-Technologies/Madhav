@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_moorti_nirnaya", "G21 (the F4 grant on bg_transit_moorti — numbered 1071 by ruling R6, 1073 by blueprint §5.3; absent on this base)", "a 670-SUCCESSOR migration amending conjunct (f) IF the native takes §10.1(a) — without it, an 'unavailable' row fails the post-write gate and the build still errors", "SC-1 (the build-time date.today() horizon)", "SC-8 / a DEMAND on the position reference for ingress-INSTANT grading", "Gochara w22 + Kṣetra ruling-4: both recorded as not-live"]
 goal_objective: "Make the mūrti grading survive its own dependencies and say what it measures: an L0-table lookup (cited) keyed by the Moon's nakṣatra at the ingress DATE's noon-UT knot — which LAGS the true ingress instant by 0–24 h, one-sided, so roughly half of all graded rows are expected to carry an offset one step ahead of the instant value — over a declared horizon, with a missing grant producing an F06 state rather than a build outage, and without asserting a repair the post-write integrity gate would reject."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); `git diff 9feac52d7 3387c9ac3 -- services/ka_moorti_nirnaya/` is empty"
@@ -61,7 +62,7 @@ rows (`context.py:186,:252,:274`) and `engine.py` **never consumes them** (no w2
 formula at `:632` has no mūrti term), and Kṣetra's `build_moorti_primitive`
 (`stage1_symbolization.py:222-238`) reads `bg_transit_moorti` directly and has **no caller** — so
 this asset has **zero live integrators**. Recommendation: **`ENRICH_CORRECT` + `QUALIFY_LIMIT`** —
-the guard with the failure mode the gate actually admits (§10.1); `grading_basis` and `claim_grain`
+the guard with the failure mode the gate actually admits (§10.1); `grading_basis` and `precision_regime`
 stamped now with the one-sided lag named; an **ingress-instant DEMAND** whose root-find owner is
 named; `requested_horizon` + coverage; `as_of` in the chart's zone. Decisions: §10.
 
@@ -168,7 +169,7 @@ role (G21).
    F06 state (with `reason`, `owner`, `evidence_ref`, `next_eligible_action` — F-12) is what a
    consumer sees instead of only `asset_throughput.last_error`.
 3. **Grain and basis declared, with the right sign and size (F-02).** Every row:
-   `claim_grain='date_grain'`, `time_basis='noon_ut_knot'`,
+   `precision_regime='date_grain'`, `time_basis='noon_ut_knot'`,
    `grading_basis='moon_nakshatra_on_ingress_date_noon_ut'`, and an explicit
    `grading_lag='0_to_24h_after_ingress_one_sided'`; `source_qualification`: the L0 lookup
    `'verse_cited'` (carrying `classical_citation`), the date-grain keying
@@ -217,7 +218,7 @@ role (G21).
   assemble-before-delete; the 525 CHECK; `now.ts`'s null carriage; the honest whole-build refusal on
   an incomplete series.
 - `ENRICH_CORRECT`: the guard (§10.1); `as_of` from config.
-- `QUALIFY_LIMIT`: `claim_grain`, `grading_basis`, `grading_lag`, `source_qualification`,
+- `QUALIFY_LIMIT`: `precision_regime`, `grading_basis`, `grading_lag`, `source_qualification`,
   `requested_horizon`, coverage, `reason` + its F06 companions.
 - **Dead code named**: `:292-295` (unreachable under the completeness gate).
 - **DEMANDS**: ingress-instant positions from the position reference (the root-find itself owned
@@ -267,7 +268,7 @@ Columns: **verdict tier** F24; **scope** `[U]` unit, `[I]` DB fixture, `[S]` ser
 | Value | EXPLANATORY_DISCRIMINATIVE_VALUE | X | **tied to the §4.11 ablation**: the frozen Q05 question on a fixture where the two bases disagree | the served reading's tier (and the caveat the reader is told) changes | the answer improves, not just the field set | the served answer is identical under both bases | baseline record |
 | Evaluation | — | — | `not_applicable` | — | — | — | — |
 
-Binding: **OFFERS** B1 (`claim_grain`, `time_basis`, `inclusivity='closed_closed'`; `t_start/t_end`
+Binding: **OFFERS** B1 (`precision_regime`, `time_basis`, `inclusivity='closed_closed'`; `t_start/t_end`
 as declared resolver-derived views), B2 (`completeness_state` + the F06 companions,
 `epistemic_class`, `source_qualification`, **`corpus_verifiable`, `comparable_with`, `tier_basis`**,
 `operator_role='applicability'`), B3 (`window_id`, `generation`, `window_ref`), B5 (`coverage`, all
@@ -298,7 +299,7 @@ the lag incidence is an expectation until measured; the grant is not this brief'
 **Walkthrough (ordinary period).** "What is the quality of Jupiter's current sign transit?" → one
 current row: Jupiter in Taurus since D, `moorti_name='rajata'`, `quality_tier=2`, the L0 citation,
 `grading_basis='moon_nakshatra_on_ingress_date_noon_ut'`,
-`grading_lag='0_to_24h_after_ingress_one_sided'`, `claim_grain='date_grain'`, `requested_horizon`
+`grading_lag='0_to_24h_after_ingress_one_sided'`, `precision_regime='date_grain'`, `requested_horizon`
 shown. The reader gets a cited grade and knows exactly which instant it was keyed on and which way
 that can be off.
 

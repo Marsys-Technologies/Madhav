@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_tithi_pravesha", "SC-1 (tz-aware instants — on the row AND on the serving path, which strips the offset)", "D-M second L0 lane (source adjudication — which must adjudicate the w27b registry's contrary citation string too)", "SC-6 voice (annual frame)", "Gochara w27b: a registered candidate whose modifier schedule is the operand class Q2 bars before M-4"]
 goal_objective: "Make ka_tithi_pravesha's stored return instants say what they are: the cast is computed at the CORRECT absolute instant (local jd + Place(tz), the FORENSIC-verified L1 pattern), so the lagna, graha positions and audit are right — it is only window_start/window_end that are handed naive to a timestamptz column and therefore ASSERT an instant 5.5 h late. Fix the assertion without disturbing the cast; stamp the method unsourced-with-receipt until the L0 lane adjudicates it; type the rows as one root's annual testimony; and decide the integrator use as a concurrence voice rather than a λ-product modifier."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); `git diff --stat 9feac52d7 e82dd34a3` on services/ka_tithi_pravesha/, query_tithi_pravesha.ts and kala_views/now.ts is empty"
@@ -148,7 +149,7 @@ candidate whose proposed use is a λ-product modifier.
 |---|---|
 | Observed behavior | Read any row's `window_start`: the column is `timestamptz`, the value was inserted naive, and production measures it **5.5 h late** (context §4). The **cast at that row is nevertheless correct** — lagna, grahas and audit were computed at the true instant. So the row is internally inconsistent in one direction only: a consumer that *displays* the moment is 5.5 h off, and a consumer that *re-casts* from it gets a chart ~3° of lunar motion away from the one stored beside it. The served path compounds it: `to_char` renders the timestamp **without its offset**, so in a UTC session today's mislabeled rows print the *correct-looking* IST digits — and after the fix they will print UTC digits 5.5 h earlier, which a consumer comparing to local wall-clock will read as the regression |
 | Evidence | `writer.py:125,:130-146,:149-156,:215-216,:81-98`; `531:49-50`; `compute.py:30-33,:58-66`; `drik.py:1773`; `test_ka_tithi_pravesha_writer.py:189-196`; `query_tithi_pravesha.ts:83-90`; context §4 [A] — [V]/[R] |
-| Expected contract | Binding B1 (`t_start/t_end` as tz-aware instants, `time_basis='event_instant'`, `claim_grain='instant_grain'`) **and its tz-source rule on the serving path**; §N.7 item 1 (a stored value restates what was computed); DP03 |
+| Expected contract | Binding B1 (`t_start/t_end` as tz-aware instants, `time_basis='event_instant'`, `precision_regime='instant_grain'`) **and its tz-source rule on the serving path**; §N.7 item 1 (a stored value restates what was computed); DP03 |
 | Defect class | **mis-asserted context** (a correct instant declared in the wrong zone) + **serving-render loss** (the offset stripped) + **unqualified method with an unreceipted absence claim** + **an unwired registered candidate proposing a barred operand class** |
 | Impact | a served praveśa moment is 5.5 h wrong; any re-cast from it is ~3° of lunar motion out; migration 670's (b) re-derives from the same naive audit and is structurally blind to it, so nothing detects the error today |
 | Non-claim | **no claim that the cast is wrong** — it is not; no claim that any consumer re-casts today (none does); the 5.5 h is context §4's production measurement, not re-measured here; the builder session's `TimeZone` setting is unverified (no `SET TIME ZONE` appears in the orchestrator) |
@@ -166,7 +167,7 @@ candidate whose proposed use is a λ-product modifier.
    offset to the wall clock and converts to UTC before the INSERT. An ISO string that *does* carry an
    offset is a second, secondary fixture. `t_start/t_end` (aliasing `window_start/window_end` for one
    generation), `inclusivity='closed_open'`, `time_basis='event_instant'`,
-   `claim_grain='instant_grain'`.
+   `precision_regime='instant_grain'`.
 3. **The equivalence contract — the inverse of v1.0's (F-01).** After the repair:
    `pravesha_lagna_*`, `graha_positions_jsonb`, `ephemeris_audit_jsonb` and
    `natal_moon_longitude_deg` are **byte-identical**; `window_start`/`window_end` move by exactly
@@ -228,7 +229,7 @@ candidate whose proposed use is a λ-product modifier.
   `:196` and `:205` (aware − naive raises `TypeError`), and
   `test_w2_first_frontier_writer_preservation.py:289`.
 - **Migration**: one additive migration (qualification columns). Number: the next free slot verified
-  at execution against `origin/main` (in-tree max is 1072) — not asserted (F-18).
+  at execution by scanning **every `origin/*` head** across BOTH `platform/migrations/` and `platform/supabase/migrations/` (one runner sequence) — NOT `origin/main` alone. As of 2026-09-24 `origin/main` maxes at 1070 while unmerged heads hold 1080–1090 (Gochara 1080–1086, Saṅgam 1088–1090), so a number picked off `main` collides on merge. Max across heads = 1090; 1087 is a single free slot. Re-scan at execution; do not trust this figure either — not asserted (F-18).
 - **Writer-digest regeneration (F-23):** the code digest at
   `platform/src/generated/nirmana-writer-digests.json:100` is consumed by
   `dispatch_frozen_rebuild.py:29,58,113`; changing the writer changes it, so the file is
@@ -274,7 +275,7 @@ Columns: **verdict tier** F24; **scope** `[U]` unit, `[I]` DB fixture, `[S]` ser
 | Value | EXPLANATORY_DISCRIMINATIVE_VALUE | I | **the ablation**: re-evaluate the Moon at each stored instant read as UTC | today ~3° from natal; after, within `LUNAR_RETURN_TOL_DEG` | the fix, not plumbing | no change | ablation record |
 | Evaluation | — | — | `not_applicable` — no governed outcome set exists for an annual frame | — | — | — | — |
 
-Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `claim_grain`), B2
+Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `precision_regime`), B2
 (`completeness_state` + F06 companions, `epistemic_class`, `source_qualification`,
 `corpus_verifiable`, `comparable_with='different_convention'`, `operator_role='computation'`), B4
 (`independence_group` in the array shape, `declared_current_count`), B5 (`coverage`, seven keys).

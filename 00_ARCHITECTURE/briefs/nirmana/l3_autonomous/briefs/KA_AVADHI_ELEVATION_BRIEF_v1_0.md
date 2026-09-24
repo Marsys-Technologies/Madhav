@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_avadhi", "DP01 (one daśā-system vocabulary across L1 / writer / registry)", "SC-9 (L2 generation binding for the pratijñā references)", "SC-5 (the two caps, which cannot bind today)", "registry packet: a successor to migration 1023 re-pinning conjunct (b) + a successor to 859's volume inputs", "ontology DEMAND: _GRAHA_DOMAINS vs brahma_event_ontology.domain's CHECK vocabulary"]
 goal_objective: "Make ka_avadhi's dossier say what it is: a per-period bundle of L1 fact references and L2 pratijñā references whose lord-condition refs resolve, whose pratijñā list is labelled the domain match it is AND speaks the ontology's own domain vocabulary (today 21 of its 36 strings cannot match, and Rāhu can never match at all), whose orphan detection lives where it can actually fire, whose seventh daśā system is named the same way by the writer, the registry contract and the volume formula, and whose promised-but-absent field is struck."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at 3387c9ac3 (2026-09-24)"
@@ -219,7 +220,7 @@ unmeasured.
 11. **Citations per system** from L0's source field (referenced), else `['unsourced']`.
 12. **Instants (B1).** `period_start/end` stay DATE (the natural key); the dossier gains
     `t_start/t_end` from L1 `start_iso/end_iso` as `timestamptz`, `inclusivity='closed_open'`,
-    `time_basis='event_instant'`, `claim_grain='instant_grain'`, **and carries L1's `sandhi_flag` by
+    `time_basis='event_instant'`, `precision_regime='instant_grain'`, **and carries L1's `sandhi_flag` by
     reference** (blueprint §12.1's qualification set, F17) — additive JSONB or columns (§10.3).
 13. **Interface packets.** `query_dasha_dossier.ts`: serve `coverage`, `pratijna_refs` and the
     read-time resolver. `kala_temporal.ts`: disclose `systems_included: ['vimshottari']`,
@@ -304,7 +305,7 @@ Columns: **verdict tier** is F24's; **scope** `[U]` unit/DB-free, `[I]` DB fixtu
 | Value | EXPLANATORY_DISCRIMINATIVE_VALUE | S | frozen Q06 question, **M4-only rebuild vs elevated rebuild** | labelled refs, non-empty Rāhu, coverage/exclusions, seventh system, disclosed filters | the elevation, not the M4 fix | no difference beyond M4's | baseline record |
 | Evaluation | — | — | `not_applicable` (a dossier issues no claim) | — | — | — | — |
 
-Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `claim_grain`, and L1's
+Binding: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `precision_regime`, and L1's
 `sandhi_flag` by reference), B2 (`completeness_state` + the F06 companions, `epistemic_class`,
 `operator_role`, `source_qualification`), B5 (`coverage`). **B3 — not offered as an id today
 (F6):** `avadhi_id` is a `gen_random_uuid()` surrogate regenerated every build, which B3 forbids;

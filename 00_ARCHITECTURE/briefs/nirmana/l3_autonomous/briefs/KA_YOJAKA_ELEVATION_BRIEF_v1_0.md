@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_yojaka", "L3-U01 (L2→Yojaka binding)", "L3-U07 interface to ph_nimitta (per-domain map)", "SC-9 (generation binding)", "SC-3 DEMAND: the shared resolver services/ka_qualification/identity.py — a W1 deliverable that DOES NOT EXIST on this base"]
 goal_objective: "Make ka_yojaka's predicates carry an identified L2 generation rather than a bare signal_id, so that a regeneration is DETECTABLE where detection can actually happen — at read/check time, not at build, where the writer compiles its candidate from the live L2 rows in the same transaction and a dangling reference cannot exist; type each predicate's datability across all THREE reasons the writer emits; and deliver the per-domain structure it already persists to the consumer that reads one scalar of it."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); `git diff 9feac52d7 e82dd34a3` on ka_yojaka.py, services/ka_yojaka/, ph_nimitta.py and migration 670 is empty"
@@ -241,7 +242,7 @@ write; **unmeasured** (no `KALA_COST_PROFILE_v1_0.md` on this base).
 - **Migration**: one additive migration — `signal_ref jsonb`, `consumed_msr_build_ids text[]`, and
   a CHECK enumerating the three `always_on_reason` literals. **No FK. No stored orphan/staleness
   column** (F1). Number: the next free slot verified at execution time against `origin/main`
-  (in-tree max is 1072; ruling R4 says the L3 range is 1071+) — not asserted here (F15).
+  (ruling R4 says the L3 range is 1071+). Pick the number by scanning **every `origin/*` head** across BOTH `platform/migrations/` and `platform/supabase/migrations/` — NOT `origin/main` alone, which maxes at 1070 while unmerged heads hold 1080–1090 (Gochara 1080–1086, Saṅgam 1088–1090); max across heads = 1090, 1087 is a single free slot. Re-scan at execution; do not trust this figure either — not asserted here (F15).
 - **Fences**: `bodha_msr_signals` and `_idempotency.py` are L2's; `ph_nimitta.py` is sealed and
   changes only by its own packet; `kala_views/**` is Pūrṇa's — all three are in `must_not_touch`,
   and the interface targets are listed separately (F7).

@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_dasha_kala", "IP-9 (call_dasha_eligibility default + cap)", "SC-6 producer (clock concurrence rows)", "L1 amendment request: applies_to_this_chart_flag detector + conditions_for_use clauses"]
 goal_objective: "Make ka_dasha_kala the clock authority the blueprint names it (§3.5 row 2): the served daśā routes obtain hierarchy, atomic-segment agreement and per-system applicability from this service under the binding's temporal and qualification fields, referencing L1's own flags rather than restating or ignoring them, with every existing scalar labelled for what it is and every cap disclosed."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); every cited code path re-verified identical at 27b0146f3 (2026-09-24)"
@@ -142,7 +143,7 @@ L4 today and **no served answer**. The bypass routes are live and user-reachable
 | `next_dasha_start_iso`, `sandhi_with_next_dasha_lord` | computed fact (post-pass `:1089-1090`, `:2945+`: the **next sibling's** `start_iso`) | L1 | the input for a *derived* boundary-proximity field (§4 item 4) |
 | `eligibility_score`, `BAND_SCORE` | `INTERPRETIVE_INFERENCE`, soft (`eligibility.py:9`) | this service | `tier_basis='relative_uncalibrated'`, `source_qualification='algorithmic_approximation'`, `corpus_verifiable=false`; consumed by Saṅgam `:1445-1449` |
 | `high_agreement_count` (≥2) | engineered threshold | this service | labelled likewise; never served as confidence — **and L4 derives its own multiplier from the agreement count (N18)** |
-| prāṇa subdivision | approximation (`n_subdivisions=9`) | this service | `claim_grain='date_grain'` + `source_qualification='algorithmic_approximation'` + `corpus_verifiable=false` |
+| prāṇa subdivision | approximation (`n_subdivisions=9`) | this service | `precision_regime='date_grain'` + `source_qualification='algorithmic_approximation'` + `corpus_verifiable=false` |
 | `CrossDashaAgreement` / `AgreementSummary` | computed relation over computed facts | this service | the concurrence producer (SC-6) |
 | system id vocabulary | identity | service `tree_walk.py:40-43` = L1 `:3205-3217`; L0 lacks three | SC-10-class reconciliation (§10 decision 2) |
 
@@ -175,8 +176,8 @@ rows for this asset). Cost: bounded reads of `chart_dashas`, no ephemeris; servi
 2. **Instants (binding B1) — the ordering constraint.** The service reads and carries L1's
    `start_iso/end_iso` (`tree_walk.py:80,111` change from the DATE columns), `t_start/t_end` as
    `timestamptz`, `inclusivity='closed_open'` (matches `intersection.py:34` and L1's half-open
-   contract), `time_basis='event_instant'`, `claim_grain='instant_grain'`; prāṇa subdivisions
-   `claim_grain='date_grain'` + `source_qualification='algorithmic_approximation'` +
+   contract), `time_basis='event_instant'`, `precision_regime='instant_grain'`; prāṇa subdivisions
+   `precision_regime='date_grain'` + `source_qualification='algorithmic_approximation'` +
    `n_subdivisions`. **IP-9 may route the served tools through the service only after this lands** —
    routing first would *lose* the hour grain the route already serves [R].
 3. **Applicability referenced, not invented (B2).** Per system, `completeness_state`:
@@ -331,7 +332,7 @@ rows for this asset). Cost: bounded reads of `chart_dashas`, no ephemeris; servi
 | Value | frozen L3-Q01/Q05 questions before/after (baseline) | atomic-segment agreement and per-system states appear; the exact-pair route cannot show them | — | no distinction | baseline |
 | Evaluation | n/a (no claim issued) | — | — | — | — |
 
-Binding rows: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `claim_grain`), B2
+Binding rows: **OFFERS** B1 (`t_start/t_end`, `inclusivity`, `time_basis`, `precision_regime`), B2
 (`epistemic_class`, `completeness_state`, `operator_role`, `comparable_with`, `tier_basis`,
 `source_qualification`, `corpus_verifiable` on the band, the constant flag and prāṇa), B4
 (`independence_group`, `declared_current_count`), B5 (`coverage`, seven keys, over `active_systems`).

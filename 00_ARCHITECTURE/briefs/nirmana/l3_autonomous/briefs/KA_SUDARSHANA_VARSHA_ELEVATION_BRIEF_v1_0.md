@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_sudarshana_varsha", "SC-4 (one group, one current: the three frames share an anchor and a rule)", "SC-1 interface packet (NEW, proposed for blueprint §12.2): the omitted-`as_of` default resolves in the chart's zone — at now.ts:1643 AND the wrapper, since the former never reaches the latter", "binding amendment (generic, not asset-local): a B1 time_basis value for DATE-grain producers", "Gochara w27c: a three-way disposition, not a binary"]
 goal_objective: "Qualify the year-wheel for what it provably is: ONE temporal current with one anchor and one rule, whose `tri_lagna_convergence` flag is a per-chart CONSTANT carrying no annual information; whose windows are calendar anniversaries, not solar returns; and whose served 'current year' is chosen by a UTC clock on both served paths. A consumer must never count three witnesses, read an anniversary as a return, or get the wrong year around a birthday."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at 3387c9ac3 (2026-09-24)"
@@ -67,7 +68,7 @@ paths. Decisions: §10.
 |---|---|---|
 | Register §5 (`…CONTRIBUTION_REGISTER_v2_0.md:145`) | annual frame; year-wheel progression | — |
 | Strategy §3 *Clock interval* (`:91`) | annual/return adapters; inclusivity; exact vs approximated | the anniversary is *approximated*; unstamped |
-| Strategy A10 (`:280`) / blueprint §3.5 row 8 (`:324`), §4 (`:396`), §16.2 (`:906`) | *"no integrator reads it"*; `independence_group = natal_root`; day-grade declared; concurrence voice (Q2) | confirmed; blueprint `:906` still says `precision_regime` — stale against binding `:32` (`claim_grain`), which this brief uses |
+| Strategy A10 (`:280`) / blueprint §3.5 row 8 (`:324`), §4 (`:396`), §16.2 (`:906`) | *"no integrator reads it"*; `independence_group = natal_root`; day-grade declared; concurrence voice (Q2) | confirmed; blueprint `:906` still says `precision_regime` — stale against binding `:32` (`precision_regime`), which this brief uses |
 | **`MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION_v1_0.md:130`** [R] | *"no L3 input; annual evidence \| preserve; receiving operator owed"* | the owed operator is exactly §10.3's question |
 | **W0 field register (`…FIELD_CONTRACT_REGISTER_v1_0.md:35,:215-218`)** [R] | lists *"gochara-v3 annual stack"* as a receiver | **stale** — nothing populates `sudarshana_rows` (§2.3); recorded as such per guide §1 |
 | Binding B1 (`:30-32`), B4 (`:64`) | `inclusivity` declared on every row; `time_basis` enum; `independence_group` = `[{group_id, family, roots[], members[], basis}]` | a calendar-anniversary bound fits no `time_basis` value — and neither does the binding's own tz-aware-midnight derivation for DATE producers (§4.3) |
@@ -121,7 +122,7 @@ live on both served paths.
 | natal sign indices + fact ids | `COMPUTED_FACT_CONFIGURATION` (referenced) | L1 | correct; 670(e) re-derives the index from the L1 value |
 | progressed signs | `QUALIFIED_RULE` if the `(N−1) mod 12` rule is verse-cited; prose-cited today | this logic | the row's **single** `source_qualification` (B2 allows one, F-16) |
 | `tri_lagna_convergence` | derived boolean, **constant per chart** | this logic | carries no temporal information; `convergence_basis='natal_constant'` |
-| windows | calendar anniversary — an approximation of the solar return | this logic | `claim_grain='date_grain'`; `inclusivity='closed_open'`; the approximation is carried by the asset-local `window_basis`/`approximates`, not by a second `source_qualification` |
+| windows | calendar anniversary — an approximation of the solar return | this logic | `precision_regime='date_grain'`; `inclusivity='closed_open'`; the approximation is carried by the asset-local `window_basis`/`approximates`, not by a second `source_qualification` |
 | `is_current` | serving-time derivation | TS | depends on the `as_of` default's zone |
 
 ### 2.5 Ladders
@@ -135,7 +136,7 @@ live on both served paths.
 |---|---|
 | Observed behavior | A concurrence reader (Q2/Q3, SC-4) receiving a `tri_lagna_convergence=true` row sees three frames agreeing, with no field saying they share one anchor and one rule — and no field saying the flag is the **same in all 120 rows of that chart**, so it can be read as "this year is special" when it means "this chart's three natal signs coincide". The served description calls it *"a classically notable alignment year"*. The same reader sees DATE windows with no grain or basis and cannot tell an anniversary from a solar return. And a caller at 2026-02-04 23:30 IST — the eve of the native's birthday — is told year 42 or 43 depending on a **UTC** clock read in `now.ts:1643` |
 | Evidence | `logic.py:69-74,:83-91,:117`; `writer.py:44-52,:98-113`; `521:32-57,:66-67`; `670:1252-1254`; `now.ts:1643,:474-478`; `query_sudarshana_varsha.ts:38-39,:71`; binding B1/B4 — [V]/[R] |
-| Expected contract | B4 (`independence_group` + `declared_current_count` on anything a concurrence reads), B1 (`inclusivity`, `claim_grain`, `time_basis` on every row), SC-1 (`as_of` in the chart's zone), Strategy §3 (exact vs approximated), §N.7 item 1 (narration restates what the fact is) and item 5 |
+| Expected contract | B4 (`independence_group` + `declared_current_count` on anything a concurrence reads), B1 (`inclusivity`, `precision_regime`, `time_basis` on every row), SC-1 (`as_of` in the chart's zone), Strategy §3 (exact vs approximated), §N.7 item 1 (narration restates what the fact is) and item 5 |
 | Defect class | **unqualified** (independence, grain, basis, citation absent) + **mis-framed** (a natal constant described as an annual event) + **wrong context** (UTC `as_of` on both served paths) + **dangling declaration** (w27c) |
 | Impact | over-counting in any annual-frame concurrence; misreading an anniversary as a return; an off-by-one current year around birthdays; a Gochara mechanism naming an input it cannot fetch in a shape neither table has |
 | Non-claim | no computed value is wrong; 670 (a)–(h) is assumed green (not queried); the flag's constancy is proved by arithmetic and 670's own comment, not by a DB count |
@@ -161,7 +162,7 @@ live on both served paths.
    and the `moon_fact_id` in `roots[]` is what makes this asset non-independent of
    `ka_tithi_pravesha` for a consumer of both.
 4. **Time (B1) — one generic amendment, not an asset-local one (F-09).** `inclusivity='closed_open'`,
-   `claim_grain='date_grain'`, and the asset-local `window_basis='calendar_anniversary'` with
+   `precision_regime='date_grain'`, and the asset-local `window_basis='calendar_anniversary'` with
    `approximates='solar_return_instant'`. `time_basis`: none of `{event_instant, noon_ut_knot,
    date_grain_midpoint}` describes a calendar-anniversary bound — and the binding's own Saṅgam rule
    (`:27`, *"instant at the chart's tz-aware midnight"*) names a fourth derivation the enum also
@@ -232,7 +233,7 @@ live on both served paths.
 | C | invariants: 670 (a)–(h) + (h′)/(i)/(j); `declared_current_count=1`; `tri_lagna_convergence` identical in all 120 rows of a chart; `is_current` invariant to the server's zone. Golden: canonical chart year 1 = natal signs |
 | D | the verse citation (DP02) |
 | E | served ×2; integrator ×0 |
-| F | `independence_group`, `convergence_basis`, `claim_grain`, `approximates`, echoed `as_of` |
+| F | `independence_group`, `convergence_basis`, `precision_regime`, `approximates`, echoed `as_of` |
 | G | trivial; justified no-change |
 | H | idempotent; no ephemeris |
 | I | files in `may_touch`; W2; one successor migration; one optional DDL |
@@ -259,7 +260,7 @@ Columns: **verdict tier** F24; **scope** `[U]` unit, `[I]` DB fixture, `[S]` ser
 | Value | EXPLANATORY_DISCRIMINATIVE_VALUE | S | ordinary-period case (year 43, no convergence) — **the frozen-question fixture is pending the baseline freeze** (`KALA_BASELINE_v1_0.md` does not exist) | one annual voice with its basis and a count of 1; the baseline gives three unlabelled frames and an "alignment year" phrase | — | no distinction | baseline record (pending) |
 | Evaluation | — | — | `not_applicable` (no claim issued) | — | — | — | — |
 
-Binding: **OFFERS** B1 (`inclusivity`, `claim_grain`; `time_basis` null pending the generic
+Binding: **OFFERS** B1 (`inclusivity`, `precision_regime`; `time_basis` null pending the generic
 amendment), B2 (`epistemic_class`, `completeness_state='applied'`, one `source_qualification`), B3
 (`window_ref` with a sha256 id), B4 (`independence_group` in the array shape,
 `declared_current_count`), B5 (`coverage`). **DEMANDS** a B1 ruling on DATE-grain derivation.
@@ -284,7 +285,7 @@ pending; the 3→1 count is unmeasurable until SC-6/IP-5.
 
 **Walkthrough (ordinary year).** "Which year of the wheel am I in?" → year 43, the three progressed
 signs, `tri_lagna_convergence=false` **with `convergence_basis='natal_constant'`**,
-`declared_current_count=1`, `claim_grain='date_grain'`, `approximates='solar_return_instant'`,
+`declared_current_count=1`, `precision_regime='date_grain'`, `approximates='solar_return_instant'`,
 `as_of` echoed in Asia/Kolkata. Quiet, exact, honest about what it approximates and about what the
 flag is not.
 

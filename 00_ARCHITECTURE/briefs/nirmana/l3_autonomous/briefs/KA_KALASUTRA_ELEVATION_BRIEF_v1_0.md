@@ -7,6 +7,7 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
+synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
 asset_or_interface_ids: ["ka_kalasutra", "SC-1 (the shared date resolver's `date.today()` default and its 8-window cap)", "SC-5 (the cap → coverage)", "SC-9 (the signal reference it inherits from Yojaka)", "registry packet: declare the undeclared L1 read (`chart_dashas` via ka_temporal)"]
 goal_objective: "Make the activation table say which periods it searched and which it dropped: the shared resolver caps every predicate at eight matched periods and picks its 'primary' one against the SERVER's today, so a build's own date silently decides which window a consumer sees; and the table's dating authority, upstream agreement and signal identity are already contracted but two of the three read FALSE on a cascade-damaged chart. Declare the cap, declare the horizon anchor, declare the L1 read, and carry the producer's own convergence contributions instead of only the best one."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at a99300bb7 (2026-09-24)"
@@ -236,7 +237,7 @@ Columns: **verdict tier** F24; **scope** `[U]` unit, `[I]` DB fixture, `[S]` ser
 | Evaluation | — | — | `not_applicable` (activation windows are not outcome claims) | — | — | — | — |
 
 Binding: **OFFERS** B1 (`t_start/t_end` as declared resolver-derived views over the DATE columns,
-`inclusivity`, `claim_grain='date_grain'`), B2 (`completeness_state` + reason, `epistemic_class`,
+`inclusivity`, `precision_regime='date_grain'`), B2 (`completeness_state` + reason, `epistemic_class`,
 `operator_role`, `tier_basis`), B5 (`coverage`, seven keys). **DEMANDS** Yojaka's `signal_ref`
 (SC-9) and Saṅgam's per-contribution `mode`/`tier_basis`/independence fields. B3: the row's identity
 is the semantic key `(chart, signal, ayanamsha, period_idx)` — offered as `window_ref` with
