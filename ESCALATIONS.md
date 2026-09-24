@@ -294,3 +294,20 @@ what a human needs to decide.
   K-1/V-1). They are benign and additive, but they exceed A-2's literal text and were not separately ruled.
   Until the native confirms, tranche 1 step 4 should be treated as authorised for 1080/1081 and the other three
   applied through the normal deploy pipeline with their own verification.
+
+## E-011 — Migration number reservation for §12.3 (4.13a–d additive migration)
+
+- **What:** §12.3's one additive migration takes number **1087**
+  (`1087_nirmana_l3_gochara_contacts_inclusivity_completeness_tier_basis.sql`, platform/migrations/).
+- **How the number was derived (predicate, not just the figure):** fresh scan 2026-09-24 of every
+  `refs/remotes/origin/*` head (`git ls-tree -r --name-only` over both `platform/migrations/` and
+  `platform/supabase/migrations/`, `_archive/` excluded) plus the local head and worktree: claimed
+  numbers in the 10xx range are 1080–1084, 1086 (this family) and 1088–1090 (Saṅgam); **1085 was
+  retired** (E-010) and stays unused; **1087 is the lowest free number** and 1091+ are free.
+  MIG-1 (`cd platform && npm run guard:migration-numbers`) run after the scan: **PASS — no new
+  migration-number collision** (the three `header-mismatch` advisories on 549/554/555 are
+  pre-existing and not this family's).
+- **Application scope:** the disposable WP6 Postgres only (`gochara-wp6-disposable`, port 55433),
+  applied by the test harness after 1081. Never applied to a shared database; production application
+  is WP10-gated.
+- **Decision needed from the native:** none.
