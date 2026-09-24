@@ -258,3 +258,22 @@ what a human needs to decide.
   `services/gochara_grammar/derived_points.py`; enrichment unavailable-state
   tests in `tests/l3/gochara/test_m6_derived_target_rows.py` (4 `neg_m6_*`
   fixture cases, all passing).
+
+## E-009 — Migration number reservation for §8.4/§8.5 (G-9 repair, G-10 BAV contributor)
+
+- **What:** Per brief §11 step 4 and the E-007 addendum's supersession, every
+  `origin/*` head and every local head was re-scanned across both
+  `platform/migrations/` and `platform/supabase/migrations/` on 2026-09-24
+  (after pushing `l3/gochara-autonomous-wp0-7`). The maximum numeric prefix
+  found anywhere is **1084** (`1084_wp7_k1_v1_registry_edges.sql`, this
+  branch). **1085 is reserved for the G-9 Kṣetra L0 vedha repair migration
+  (§8.4) and 1086 for the G-10 per-contributor BAV `chart_facts` migration
+  (§8.5).**
+- **Also noted:** an earlier scan draft under-counted because its filename
+  regex excluded digits after the numeric prefix (`*_l0_*`); the scan was
+  re-run with a corrected pattern and 1075–1079 on
+  `origin/l0/vedha-and-frame-repair` are accounted for.
+- **Decision needed:** None.
+- **Evidence:** `git ls-tree -r --name-only <each ref> -- platform/migrations
+  platform/supabase/migrations` over all `refs/remotes/origin/*` and
+  `refs/heads/*`, max prefix 1084.
