@@ -1,8 +1,8 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "5.0"
-status: PROPOSED_FOR_NATIVE_RULING
+version: "5.1"
+status: CURRENT
 date: 2026-09-22
 position: >
   The operating blueprint for elevating the Kāla (L3) layer, written UNDER the adopted authorities
@@ -20,6 +20,7 @@ provenance_rule: >
   Live database figures are Lane C/D/E/F measurements of 2026-09-22 unless a later live query is
   cited; the canonical-chart tables can be emptied by an L2 rebuild at any time (§5.3 G20).
 changelog:
+  - "5.1 (2026-09-24): LINEAGE REPAIR — v5.0 was cut from v4.6 on a branch that was never re-based, so it never absorbed v4.7/v4.8 and carried five statements those revisions had already corrected or withdrawn. Folded now, from the readiness branch (`origin/l3/kala-elevation-readiness`, `8211c2dc6`): (a) 'three names for the comparability concept' → two names and an absence — `comparable_with` and `comparability_class` are NOT synonyms (binding v2.3 §B5: a relation vs a partition key); (b) 'the code shares one edge' → four edges, all into the Gochara family, two undeclared, none between Kṣetra and Saṅgam; (c) the W1 packet is adopted INTO each stream's stage 3 as its first packet, NOT a gate before stage 3 starts; (d) 'two producers per verdict' → two producers for three verdicts plus a convention split on a fourth; (e) status PROPOSED_FOR_NATIVE_RULING → CURRENT, stale since v1.0 per the v4.7 three-verifier pass. Also folded: the binding is UNADOPTED and lists ten §B8 decisions that are the native's. The v4.8 withdrawal of the twelve June-brief reconciliations does not apply — v5.0 had already rewritten that section and makes no such claim. Same defect class as the retraction recorded in §17.2: a figure or claim carried forward without re-deriving it against the current source. The branch has since been re-based onto `origin/l3/kala-elevation-readiness`, so v4.7/v4.8 are now in this file's actual ancestry rather than folded in by hand; the corrections below were already applied before the re-base and are retained with their attribution."
   - "5.0 (2026-09-24): THE LAYER AS ONE DEPARTMENT — written on v4.6, absorbing the synergy audit/binding/amendments (`KALA_SYNERGY_AUDIT/BINDING/AMENDMENTS_v1_0.md`) as the field-level authority for every contract below and for all 22 assets, not only the three. v4.x planned three assets in depth and named the other nineteen by group; v5.0 gives every one of the 22 a row that says what it does, which object it owns, which consumer question it answers, what it receives and owes (with the F12 operator role), where it is served today, and where it sits on both ladders (§3.5, §4). The five synergy contracts become a ten-contract synergy map with the cross-stream rulings already taken (Kṣetra 4/7/8, Saṅgam M-1/M-2/M-3, Gochara N-4a/N-7/N-14/M-8) bound to their seams and owners (§3.3). Six sections the review found missing are added: the serving contract L3 guarantees per object (§12), the learning loop from window to outcome to recalibration (§13), a checkable UX walkthrough per wave (§14), the disciplines as CI guards (§15), and — because elevation is code, not prose — a consolidated code-change register across all assets and contracts (§16). §17 opens the brief programme: sixteen per-asset elevation briefs for the assets outside the three hard packets, each built with the same six-stage template the three packets used and each reviewed by an independent Fable 5.1 agent before it is called ready. Stream state re-verified against the three branches on 2026-09-24 (Kṣetra a95cd8af3, Saṅgam 0b439b0c7, Gochara local 9250741cc); the one thing newer than v4.5 is v4.6 itself, folded in. §9 rebuilt: every native item of v4.x is ruled or delegated; what remains for the native is the portfolio ruling set the briefs converge on (Q2/Q3/Q5/Q6/Q7/Q8) plus one decision per brief."
   - "4.8 (2026-09-24): §6 W0 claim of twelve June-brief reconciliations WITHDRAWN — no artifact exists; the per-asset brief-state table (KALA_ASSET_BRIEF_STATE_v1_0.md) written."
   - "4.7 (2026-09-24): second pass by three independent verifiers — status PROPOSED_FOR_NATIVE_RULING→CURRENT (stale since v1.0); §3.3/§9.5 corrected (four edges not one; two names and an absence; convention split); binding 2.0 posture change and its ten native decisions referenced."
@@ -254,19 +255,22 @@ elevated synergistically.
 
 **Measured 2026-09-24 against the three critical assets (`KALA_SYNERGY_AUDIT_v1_0.md`).** None of the
 five contracts is shared by all three. Three temporal types (timestamptz UTC / DATE / float days
-since birth), three qualification vocabularies with two names and an absence for the comparability concept
-(`comparable_with` / `comparability_class` / none), no key any two assets share, an independence
+since birth), three qualification vocabularies with **two names and an absence** for the comparability concept
+(`comparable_with` / `comparability_class` / none — corrected at 4.7; the two are not synonyms,
+see binding v2.3 §B5: a relation versus a partition key), no key any two assets share, an independence
 group emitted by Gochara and read by nobody, a coverage object emitted by Gochara on one branch and
 by neither of the others. Two verdicts (vedha, mūrti) and the contact episode are each produced
 **twice** inside the layer, and the node longitude is read under two conventions. The code shares
-four edges, all into the Gochara family, two undeclared, none between Kṣetra and Saṅgam. The "shared vocabulary" two packets adopted
+**four edges, all into the Gochara family, two of them undeclared, and none between Kṣetra and
+Saṅgam** (corrected at 4.7; "one edge" was wrong). The "shared vocabulary" two packets adopted
 exists in a third packet's prose and in no code. **The remedy is the binding** —
 `KALA_SYNERGY_BINDING_v1_0.md`, one layer contract in the Layer contract §5 demand/offer shape,
 adopted by reference and proved by Layer tests 5/6/7/9 — plus per-stream amendments in
-`KALA_SYNERGY_AMENDMENTS_v1_0.md`. It is adopted **into** each stream's stage 3 as its
-first packet — Kṣetra has already placed its t-axis item at rank 0 — not as a gate before stage 3
-starts; a stream that closes stage 3 without it has elevated an asset, not the layer. Binding v2.0
-lists ten decisions (§B8) that are the native's before any row of it binds.
+`KALA_SYNERGY_AMENDMENTS_v1_0.md`. It is the first W1 packet and is adopted **into** each stream's
+stage 3 as its first packet — Kṣetra has already placed its t-axis item at rank 0 — **not** as a
+gate before stage 3 starts (corrected at 4.7); a stream that *closes* stage 3 without it has
+elevated an asset, not the layer. The binding lists ten decisions (§B8) that are the native's
+before any row of it binds, and it remains UNADOPTED.
 
 v4.x named five contracts; the binding fixed their **field names** (B1–B5) and added the
 single-producer rule (B6) and the conformance tests (B7); this arc's packets and Lane E's synergy
@@ -700,8 +704,9 @@ Gochara P-class steps on WP10 authorization · Moorti/Kṣetra/Bhavishya rebuild
   inherits this (chronicle §11.26). The Fable reviewer in §17 is instructed to query, not to agree.
 - **The synergy contracts now have a packet (the binding) and a measured baseline (the audit);
   they still have no lane.** Until each of the three streams adopts the binding in its brief and
-  proves it, the layer holds three temporal types, two producers per verdict, and one code edge —
-  the campaign is elevating three assets, not a layer. The sixteen briefs of §17 adopt it by
+  proves it, the layer holds three temporal types, **two producers for three verdicts and a
+  convention split on a fourth**, and **four code edges all into one family** — the campaign is
+  elevating three assets, not a layer. The sixteen briefs of §17 adopt it by
   reference, which makes it the layer's language on paper; D-L's packet session makes it code.
 - **The receiving-operator gap is larger than the computation gap.** Three desks compute what
   nothing reads; one surface presents L2 salience under an L3 name; the largest asset has no read
