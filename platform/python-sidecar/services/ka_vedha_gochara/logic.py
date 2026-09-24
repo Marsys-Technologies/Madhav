@@ -171,6 +171,47 @@ SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximat
 PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
 STRUCK_BPHS_CH29_MARKER = "BPHS Ch.29"
 
+# ── M-8: vedha exceptions + vipareeta vedha (F-26; verse-cited against
+# Phaladīpikā Adh. XXVI — PG322:C1 the Sun's vedha pairs "provided the
+# corresponding Vedha places … are not marred by the transit of any of the
+# planets other than Saturn", PG323:C1 Mercury's with the Moon excepted;
+# vipareeta vedha — a second graha joining the transiting graha cancels the
+# obstruction — bphs_vol1_rsanthanam_djvu.txt:24414-24441, translator
+# commentary tier). The omission was one-directional (Vedha only ever lowers
+# quality_gates), which is why M-8 was ruled early. GOCHARA_REMAINDER_
+# EXECUTION_BRIEF_v1_0 §5.2, evaluation order: exceptions first, then
+# vipareeta.
+MUTUAL_EXCLUSION_PAIRS: frozenset[frozenset[str]] = frozenset({
+    frozenset({"Sun", "Saturn"}),
+    frozenset({"Moon", "Mercury"}),
+})
+
+
+def is_mutual_exclusion(graha_a: str, graha_b: str) -> bool:
+    """True when vedha never operates BETWEEN this pair in either direction —
+    Sun↔Saturn and Moon↔Mercury (Phaladīpikā PG322:C1 / PG323:C1). An
+    occupancy of the vedha house by the excluded partner is not an
+    obstruction; when it is the ONLY occupancy, no house_vedha row is emitted
+    at all (the exception is recorded in coverage instead)."""
+    return frozenset({graha_a, graha_b}) in MUTUAL_EXCLUSION_PAIRS
+
+
+def vipareeta_cancellation(
+    obstruction_start: date, obstruction_end: date,
+    companion_runs: list[SignRun],
+) -> Optional[Overlap]:
+    """Vipareeta vedha: a second graha JOINING THE TRANSITING (primary) graha
+    cancels the obstruction. `companion_runs` are the candidate companions'
+    sign-runs already filtered to the PRIMARY graha's sign; the cancelled
+    interval is companionship ∩ obstruction. Returns the earliest such
+    overlap, or None when no companion joins during the obstruction."""
+    best: Optional[Overlap] = None
+    for r in companion_runs:
+        ov = overlap_window(obstruction_start, obstruction_end, r["start_date"], r["end_date"])
+        if ov is not None and (best is None or ov["start"] < best["start"]):
+            best = ov
+    return best
+
 
 def source_qualification_for(vedha_kind: str, grid_basis: Optional[str]) -> str:
     """The WP9 `source_qualification` stamp. Sarvatobhadra is
@@ -329,6 +370,9 @@ __all__ = [
     "SOURCE_QUALIFICATIONS",
     "PRECISION_REGIMES",
     "STRUCK_BPHS_CH29_MARKER",
+    "MUTUAL_EXCLUSION_PAIRS",
+    "is_mutual_exclusion",
+    "vipareeta_cancellation",
     "source_qualification_for",
     "corpus_verifiable_for",
 ]
