@@ -53,7 +53,8 @@ TIERS = {
    ("Ldgr","derivation ledger",r"DERIVATION_LEDGER|derivation ledger|constituent_facts|fact_id"),
    ("Idem","idempotency",r"idempoten"),("Earn","earned signal",r"§N\.8|earned[- ]signal|real detector|detector that (can )?fails?"),
    ("Narr","narration fidelity",r"§N\.7|narration"),("Dens","serving density",r"§N\.6|densit|catalog_only|hardFloor"),
-   ("Null","honest null",r"honest null|honest absence|honest(ly)? (empty|zero|tier)|null rather than")]),
+   ("Null","honest null",r"honest null|honest absence|honest(ly)? (empty|zero|tier)|null rather than"),
+   ("Vocab","vocabulary conformance",r"controlled vocabulary|vocabulary conformance|closed alias|synonyms|semantic_release|graha_vocabulary|resolve_entity|norm_graha|independent[- ]map")]),
  "T5":("Two ladders",[
    ("DPL","data-plane ladder",r"PLAN_REVIEWED|PRODUCER_READY|DATA_ACCEPTED"),
    ("CmL","campaign ladder",r"ANALYZED|ENRICHED|QUALIFIED|FROZEN")]),

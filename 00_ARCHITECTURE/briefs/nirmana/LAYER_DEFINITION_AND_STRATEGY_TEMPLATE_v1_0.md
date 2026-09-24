@@ -16,6 +16,7 @@ role: >
 independent_review: NOT YET. This template has not been reviewed by a fresh-context session. Its first
   test is the L0 instance; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "1.0 (elevated in place, 2026-09-25): §2.6 Vocabulary conformance added, inheriting the data plane's controlled-vocabulary principle (§4.1); the per-asset checklist gains a 32nd criterion, T4 `Vocab`; the adaptation table now says L0 OWNS the vocabulary and every other layer CONFORMS. Found missing by the L0 instance and repaired here, per this template's own rule."
   - "1.0 (2026-09-24): first version. Built on the native's two reframings: (1) a layer's definition begins from the value it contributes to the customer, and every later section either traces to that value or is struck; (2) a layer is the sum of its assets and services, so its value decomposes into individual, synergistic and cross-layer terms, each measurable by ablation, and the shortfall between that sum and the objective IS the elevation delta. Carries forward the earlier design decisions: definition / strategy / evaluation kept as separate parts because they change at different rates; traceability structural via `inherits:` on every section; baseline measured by a named instrument, never inherited; certification per criterion, not per definition revision, so a scale revision costs one re-test and not a re-freeze."
 ---
 
@@ -259,6 +260,23 @@ Which of the product's coverage obligations this layer owns, with prerequisites,
 negative cases and uncertainty. Each ends in one of the five states. A tool name, an empty result or a
 populated confidence field is not "applied".
 
+### 2.6 · Vocabulary conformance
+
+```
+inherits:    Data plane §4.1 (the controlled vocabulary — six rules with detectors)
+measured_by: alias-set coverage per entity class the layer touches · independent-map census per class · interface-parameter census (enum / resolver-validated / free) · presence of a parity test for every code-side snapshot the layer relies on
+traces_to:   0.2 — the value is real only if the layer speaks the plane's one language
+```
+
+Which of the sixteen entity classes this layer emits or accepts; for each, whether every name resolves
+through the controlled set, whether an unlisted name is raised, how many independent maps the layer's
+code carries (permitted: one), and whether each Python/TypeScript snapshot it depends on is generated
+from the authority, pinned by release id and digest, and joined to it by a parity test.
+
+**For L0 the section inverts:** L0 does not conform to the vocabulary; it **owns** it. Its 2.6 states
+the authority, its releases, the classes covered, the classes not yet covered, and the detectors
+that stand between the authority and every consumer.
+
 ### 2.5 · Edges and order
 
 ```
@@ -393,7 +411,7 @@ correctness · concept and relationship completeness · interpretive fidelity ·
 understanding · consumer understanding · temporal integrity · predictive performance · delivery
 fidelity · operational honesty. A layer scores on the subset its 0.2 row names.
 
-### 5.2 · The per-asset checklist — five tiers, thirty-one criteria
+### 5.2 · The per-asset checklist — five tiers, thirty-two criteria
 
 ```
 inherits:    kala_brief_tracker.py TIERS (as run); Product §14; CLAUDE.md §N.6-N.8
@@ -414,7 +432,7 @@ synergy obligations · consumer walkthrough · knowledge-time discipline
 upstream/downstream · serving contract
 
 **T4 · Discipline gates** — facts/interpretation separation · derivation ledger · idempotency · earned
-signal · narration fidelity · serving density · honest null
+signal · narration fidelity · serving density · honest null · **vocabulary conformance**
 
 **T5 · Two ladders** — data-plane ladder position · campaign ladder position
 
@@ -459,7 +477,7 @@ section, never the accounting in 1.5, never the checklist in 5.2. Specifically:
 
 | layer | what is distinctive to fill |
 |---|---|
-| L0 Brahmagyan | 0.1 is mostly *indirect* — L0 is necessary to everything and directly served to little; 1.4 (cross-layer handoff) dominates; 2.1's "private observations must not become global doctrine" |
+| L0 Brahmagyan | 0.1 is mostly *indirect* — L0 is necessary to everything and directly served to little; 1.4 (cross-layer handoff) dominates; 2.1's "private observations must not become global doctrine"; **2.6 inverts: L0 owns the controlled vocabulary, every other layer conforms to it** |
 | L1 Gaṇita | computational correctness dominates 5.1; "downstream consumers refer to L1 facts, they do not recompute them" is the load-bearing 2.3 rule; L1 holds judged structure too — "layer ownership is not epistemic type" |
 | L2 Bodha | shared roots visible (several assets from one placement are not independent confirmations); 1.3 is where whole-chart reading lives or fails |
 | L3 Kāla | temporal integrity; nearest-versus-better-supported under a named criterion; honest "none found"; the switch rule that the observed event never chooses the trigger; 2.2's temporal row |

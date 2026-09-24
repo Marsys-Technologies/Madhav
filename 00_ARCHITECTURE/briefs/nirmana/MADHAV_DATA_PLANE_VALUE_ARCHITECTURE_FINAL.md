@@ -16,6 +16,7 @@ companions:
   - MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md
 review_record: reviews/REVIEW_DATA_PLANE_v3_0.md  # verdict REJECT, 2 BLOCKER + 10 MAJOR + 11 MINOR, all folded
 changelog:
+  - "FINAL (elevated in place, 2026-09-25, native-directed): §4.1 raised from an illustration (the Sun problem) to a governing principle — the CONTROLLED VOCABULARY. Every entity, concept, method, convention, unit and event class has exactly one canonical identifier and one closed alias set, owned by L0; the closed set is the only permitted surface for that thing, internally and externally; an unlisted name is an error to raise, never a synonym to guess; code-side representations are generated from the authority with a release id and digest and joined to it by a parity test, so a hand-maintained mirror is a forbidden second authority; external inputs are typed to the set. Detectors named. Scope is all sixteen entity classes, not graha alone. Wired into §3.4 (the alias set is what lets one identity render two ways), §12.2 (a test row) and §13.3 (a required layer-plan element). Version unchanged by native instruction: this is an elevation of a FINAL document, recorded as such."
   - "FINAL (2026-09-24): review returned REJECT on two blockers, both orphans of the surgical realignment: §12.1 still carried 'Excluded medical/mortality requests must remain excluded through every intermediary', re-imposing the exclusion the parent removed and contradicting this document's own V12; and four V-journey P-citations were stale under FINAL numbering while the text asserted they were current. Both fixed, all 21 findings folded. Notable: §3.4's mapping cited DP05 for clauses that PASSED when DP05 carries only failing clauses, and cited DP17 (a second computation) for competing readings; DP02 amended to carry school/tradition and tested-and-passed prerequisites; a temporal/manifestation row added, without which no L3 or L4 acharya rendering was derivable. P24 given a real obligation beneath its V-row. The storage-separation clause restored - without it OFF was ambiguous between deselect and rebuild. Parent obligations that had no data obligation here added: narration-vs-arithmetic verification, and the rebuild chronology-reset leak."
   - "3.0 (2026-09-24): Realigned to MADHAV_PRODUCT_DEFINITION_FINAL, which superseded v3.0 the same day. ELIMINATED: V12 excluded-outputs (it enforced the death/illness/fertility exclusions FINAL removed, and contradicted P23); the four life-event purpose paths, replaced by FINAL's single switch; voluntary observation briefs and the cross-population research framing in DP14 and V11; DP18 future-qualification; PPR-/C3 compliance scaffolding; `permitted` where the cleanse left it without a referent. ADDED: the presentation contract (§3.4) — the data obligations that exist because FINAL promises one analysis rendered at two levels of exposed detail; āyurdāya as a domain obligation; V13 for FINAL's new present-tense need P24; LEL switch semantics; binding of the layer stories and the layer-plan template to FINAL §14's ten obligations; ablation as the per-asset scoring method; learning's defined output; the inherited definition of `qualified`, used 71 times here and previously undefined. RETAINED deliberately: DP01-DP17, the eight-disposition hierarchy, the five edge types, the six evidence states, §13.3's eight layer-plan elements, `a citation with no declared use is not a contract`, and `lack of a caller in a bounded search is not redundancy`."
   - "2.0: Aligns the entire data plane to final Product Definition v3.0; adds consumer-to-asset contribution, qualified Jyotish operators, cross-layer use contracts, source-grounded preservation dispositions, delivery obligations and upstream-first execution design. Proposed, not implemented or canonically adopted."
@@ -168,7 +169,41 @@ reading package (§11) without recomputation, and must agree on the finding, its
 
 ## 4. The shared semantic foundation: standardize L0 through the whole plane
 
-### 4.1 One authority, many efficient representations
+### 4.1 The controlled vocabulary — one authority, one closed set, everywhere
+
+**This is a governing principle of the data plane, not an illustration.** Every entity, concept,
+method, convention, unit and event class the plane names has **exactly one canonical identifier and
+one closed alias set**, and that set is the only permitted surface for the thing — in every writer,
+every service, every prompt, every export, and every **external** interface. The reason is not
+tidiness. It is that a system which calls Venus "Venus" in one place, "Shukra" in another and
+"VENUS" in a third will, somewhere, fail to find a Venus it was looking for, and will do so silently.
+The product's entire differentiator is reading across the whole computed estate; a vocabulary that
+fragments the estate defeats it at the root. One language across the plane is what makes it *one*
+plane, and what lets external systems work with it without a translation layer of their own.
+
+Six rules, each with a detector, because a rule without one is a wish:
+
+| # | rule | detector |
+|---|---|---|
+| 1 | **One canonical id, one closed alias set, per thing.** The set is owned by L0 (`bg_ontology` is the identity owner; specialized `bg_*` assets own their specialized semantics) and changed only by governed release, never by local invention. | every ontology entity carries a non-empty alias set; a class with none is a finding |
+| 2 | **The set is the only permitted surface.** An unlisted name is an error to be **raised**, never a synonym to be guessed at. This holds for internal code, served answers, prompts and exports alike. | a fail-closed adapter (`UnknownIdentity`, `AmbiguousIdentity`) on every resolution path; a term that resolves by fuzzy match has not resolved |
+| 3 | **Resolution is one-directional and deterministic.** Any listed alias → the canonical id; normalization (case, diacritics, whitespace) is declared once; ambiguous aliases are listed as ambiguous, not silently assigned. | the normalization rule and the ambiguous-alias list are part of the release, not of a consumer |
+| 4 | **Code-side representations are generated, pinned and joined.** A Python or TypeScript snapshot of the vocabulary is legitimate only if it is generated from the authority, carries the release id and content digest, and is joined to the authority by a **parity test** that fails when they diverge. A hand-maintained mirror is a second authority, and a second authority is a defect. | parity test per snapshot per language; a snapshot without one is untrusted |
+| 5 | **External inputs are typed to the set.** An interface parameter that names an entity is an enum over the canonical ids, or a free string that is validated through the resolver *before* any comparison. A free string compared raw against a stored label is the exact mechanism by which a Venus goes missing. | a census of interface parameters: enum-typed or resolver-validated, per parameter |
+| 6 | **Independent maps are counted, and the permitted count is one per class.** Adoption is measured by the *removal* of local dictionaries, not by the existence of a canonical module. | a census detector per entity class that scans code for independent name→id maps and fails above one |
+
+**Scope.** All six semantic families of §4.2 and all sixteen entity classes of the ontology — planets,
+signs, houses, nakshatras, vargas, karakas, aspect types, upagrahas, yogas, doṣas, daśā systems,
+domains, concepts, remedy types, texts, schools. A principle implemented for eleven planets and
+nothing else has not been implemented.
+
+**The presentation contract depends on this.** One canonical id rendering as *Śukra* for the acharya
+and *Venus* for the layperson (§3.4) is possible only because both are members of one closed set
+bound to one identity. Two audiences, one depth, one vocabulary.
+
+**The identity problem, concretely.** A user may say Sun, Surya, Sūrya, Ravi or another qualified
+alias; Python, TypeScript, ingestion, computation, retrieval and rendering must resolve every one of
+them to the same identity, and must refuse the ones they do not know.
 
 The Sun problem illustrates a systemic requirement: a user may say Sun, Surya, Sūrya, Ravi or another qualified alias; Python, TypeScript, ingestion, computation, retrieval and rendering must resolve the same entity. They may use different physical representations through explicit adapters. They must not independently invent its meaning.
 
@@ -475,6 +510,7 @@ The tests below are the shapes that difference is measured in.
 | Qualification/source | Clause supports actual operator and scope; competing witness retained; unsupported timing or manifestation not borrowed from a formation rule. |
 | Numeric/context | Reproducible fact, unit/frame/varga/time precision and real verification scope; cross-chart/build mismatch rejected or isolated; the sentence that grades or labels the number is verified separately from the arithmetic that produced it. |
 | Presentation parity | Both renderings produced from the consumed reading package without recomputation; identical finding, confidence and uncertainty; the acharya rendering exposes every §3.4 field its layer owns. |
+| Vocabulary conformance | Every name the component emits or accepts resolves through the controlled set (§4.1); an unlisted name is raised; the independent-map census for each entity class it touches is one; every code-side snapshot it relies on is generated, pinned and parity-tested against the authority. |
 | Relevant perturbation | Change a qualifying condition/cancellation and observe the declared consequence while unrelated geometry remains stable. |
 | Irrelevant control | Array order, a cosmetic alias or unrelated configuration cannot change evidential meaning. |
 | Dependence control | Duplicate wrappers, graph paths sharing roots, total/components and repeated texts do not inflate independent support. |
@@ -520,6 +556,9 @@ No need to wait for every L0 method or years of outcome evidence to correct a dr
    contracts; and **which of the product definition's ten proof obligations this layer is scored on**,
    per its §11 layer table. A layer plan that names its own criteria instead of inheriting these is
    not derived from the product definition.
+1a. **Vocabulary conformance (§4.1):** which entity classes the layer emits or accepts; that every
+   one resolves through the controlled set; the independent-map census per class; and, for L0
+   only, that it *owns* the set and its releases.
 2. Complete owned inventory including accepted, residual, service, shared and historical capital; source/runtime evidence levels separated.
 3. Internal asset interplay, exact input/output/use matrix and boundary with adjacent layers and answer authorities.
 4. Qualified Jyotish coverage: prerequisites, variants, exceptions, negative cases, uncertainty and source rights where relevant.

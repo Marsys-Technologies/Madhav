@@ -18,6 +18,7 @@ measured_against:
   production: "information_schema + pg_class.reltuples (estimates marked ~) + exact count(*) where stated"
   code_readers: "grep over platform/python-sidecar (*.py, excl. tests/migrations/scripts) and platform/src + platform-mcp/src (*.ts, excl. tests/generated) at 85bf8f14e"
   evidence_ledger: "nirmana_evidence.nirmana_elevation_campaign_events, entity_type=asset"
+vocabulary_measured_on: 2026-09-25  # §2.6 added after the data plane's controlled-vocabulary principle was elevated in place
 not_measured: "ablation deltas (no L0 ablation harness exists); presentation-parity test (not run); whether any bg_* table carries a subject/chart column (not checked); whether brahma_remedy_corpus.source_canonical_id values resolve to a texts registry (not checked)"
 ---
 
@@ -296,6 +297,13 @@ consumer; 40 of 40 are read. The orchestrator's staleness propagation runs on th
 (§N.6). The `bg_muhurta_lattice` capability's `FACTOR_FAMILIES` allowlist covers 4 of 9 families the
 writer produces — ~72,580 of ~165K rows unreachable by explicit filter (W2 MUST-1, still open).
 
+**Seam 6 — the vocabulary itself: THREE AUTHORITIES.** The DB ontology (741 entities, `synonyms
+text[]`), the Python writer-side release `l0.semantic.2026-09-13.1` (12 entities, graha only), and the
+domain vocabulary (`domain_vocabulary.py` ↔ `.ts`, 13 members). They disagree where they overlap:
+Venus has **7** aliases in the DB and **10** in the release (`venus`, `VE`, `śukra` are release-only);
+the `domain` class has **45** entities in the DB, **13** in the domain module, **1** in the release.
+No test joins the release to the DB. Full measurement in §2.6.
+
 **The synergistic term as a fraction:** not computable without ablation, and this instance will not
 invent one. Recorded as measured: one seam complete (catalog identity), one mismatched (remedy
 identity), one absent (rule→concept), one mostly undeclared (dependencies), one unspecified (served
@@ -450,6 +458,38 @@ L0 owns the *meaning* half of every coverage obligation. State per obligation, u
 | Āyurdāya and constitution | `bg_dasha_systems`, `bg_formula_constants` (method); medical mappings (constitution testimony) | applied as method; computation is L1 |
 | Practices and wider tradition | `bg_remedies`, `bg_parihara_rules` | applied; identity space mismatched (seam 3) |
 
+### 2.6 · Vocabulary conformance — inverted: L0 owns the controlled vocabulary
+
+```
+inherits:    Data plane §4.1 (controlled vocabulary, six rules); template §2.6 (L0 inverts: owner, not conformer)
+measured_by: brahma_ontology alias-set coverage by class (exact count) · l0_semantic_release_v1.json contents · CANONICAL_DOMAINS member count · test_graha_vocabulary_census.py scope · literal-count grep (non-test .py/.ts) · interface-parameter census (z.enum vs z.string over planet/graha params)
+traces_to:   0.2 — "one identity per entity" IS L0's objective; this section measures whether it holds
+```
+
+L0 does not conform to the plane's vocabulary. It **is** the vocabulary, and the six rules of data
+plane §4.1 are scored against L0 as owner. Measured 2026-09-25:
+
+| rule | state | evidence |
+|---|---|---|
+| 1 · one id, one closed alias set, per thing | **PARTIAL** | `brahma_ontology`: 741 entities, 16 classes, `synonyms text[]`; **662 populated, 79 empty — and all 79 are the entire `dosha` class.** Venus = `{shukra, sukra, Venus, Bhargava, usana, VEN, VENUS}`. |
+| 2 · the set is the only permitted surface; unlisted names are raised | **PARTIAL** | A fail-closed adapter exists — `UnknownGrahaIdentity`, `AmbiguousGrahaIdentity` in `l0_semantic_release.py` — **for graha, in Python**. The serving resolver `resolve_entity.ts` reads DB `synonyms` + names live. Meanwhile **130 Python files and 42 TypeScript files** carry Venus-variant string literals (`"Venus"` ×952, `'Venus'` ×38, `"VENUS"` ×5, `"Shukra"` ×4 …); the top carriers are L1 writers (`ga_structural_writer` 44, `ga_sensitive_writer` 29) and one L0 writer (`bg_dignity_reference` 21). |
+| 3 · deterministic, one-directional, normalization declared, ambiguity explicit | **YES for graha; two normalizations overall** | The release declares `unicode_nfc_trim_casefold` and an `ambiguous_aliases` list. The DB resolver uses `$1 = ANY(synonyms) OR lower(name)` — a *different* normalization (no NFC, no diacritic fold). `śukra` resolves in Python and not in the TS resolver unless spelled as stored. |
+| 4 · code-side snapshots generated, pinned, parity-tested | **PARTIAL, and it is the central defect** | Release `l0.semantic.2026-09-13.1` carries `content_sha256`, `generation_id`, `supersedes_release_id` and names `bg_ontology` as `identity_owner` — the *shape* is right. But **no test joins the release to `brahma_ontology`**; its `release_status` is `PRODUCER_READY_CANDIDATE`, `admission_status` **`LOCAL_EXECUTION_ONLY`**; it covers **12 entities** (graha) with six near-empty catalogues (concepts 3, roles 2, domains 1, outcomes 2, methods 1, operator_scopes 1). `graha_labels.ts` is hand-extracted from `address_resolver.ts` and pins the release id — pinned, not generated. The **domain** vocabulary is the one place rule 4 fully holds: `domain_vocabulary.py` ↔ `domain_vocabulary.ts` with a member-for-member test — but it holds between two *code* files, and neither derives from the DB's 45 `domain` entities. |
+| 5 · external inputs typed to the set | **NO** | Across the retrieval registry and MCP: **2 enum-typed** planet/graha parameters, **32 free-string**. Whether each free-string parameter is resolver-validated before comparison is unverified per tool; `gochara_intensity/enrichment.py`'s own docstring records the failure mode — `fact_subject = 'Venus'` compared raw, mismatching — which it has since fixed by importing the SSoT. |
+| 6 · independent maps censused, one per class | **graha only** | `test_graha_vocabulary_census.py` (ADHIṢṬHĀNA A2) reduced 46 independent graha maps to 1 and fails above it — a real detector. It censuses *maps*; two name *tuples* escape it (`panchang_engine/planets.py`, `brahmagyan/ganita/l1_positions.py`, 0 imports of the SSoT). **Fifteen of sixteen entity classes have no census at all.** |
+
+**Where the plane actually stands:** the controlled vocabulary exists end-to-end for **eleven planets on
+the Python writer side**, with a serving-side resolver over the full DB set that normalizes
+differently, and a cross-language domain vocabulary that agrees with itself and not with the DB. It
+is *three* authorities that overlap on a few classes and disagree where they do. The user's example —
+a Venus missed because it was called something else — is measured: 32 unconstrained interface
+parameters, ~1,000 raw literals, and a diacritic form (`śukra`) that resolves in one language and not
+the other.
+
+A correction to §1.1's reader table: `parity_check.ts` appears there as a reader of
+`brahma_ontology`, but it is the MCP↔chat *registry* parity gate, not a vocabulary parity check. No
+vocabulary parity test exists on the TypeScript side.
+
 ### 2.5 · Edges and order
 
 ```
@@ -486,7 +526,7 @@ traces_to:   0.2
 
 | obligation (Product §14) | where L0 stands, measured | what closes the gap |
 |---|---|---|
-| **Source and domain fidelity** (primary) | Catalog identity complete. Rules text-anchored, 0.6 % concept-linked. Remedy identity space mismatched. `bg_transit_rules` provenance per-row, registry description corrected (1079) but no standing detector. `bg_sarvatobhadra_grid` empty pending ruling. | Rule→concept linkage (W-L0-3); identity-space separation (W-L0-3); a description-vs-table detector (W-L0-5); the school ruling (W-L0-6). |
+| **Source and domain fidelity** (primary) | Catalog identity complete. Rules text-anchored, 0.6 % concept-linked. Remedy identity space mismatched. `bg_transit_rules` provenance per-row, registry description corrected (1079) but no standing detector. `bg_sarvatobhadra_grid` empty pending ruling. **The controlled vocabulary is three authorities: DB 741 / release 12 / domains 13, disagreeing on Venus (7 vs 10) and on domains (45 / 13 / 1); the `dosha` class has no alias set at all; 32 of 34 external planet parameters are free strings.** | Rule→concept linkage (W-L0-3); identity-space separation (W-L0-3); **one vocabulary authority with parity to every snapshot, all 16 classes, typed interfaces (W-L0-8)**; a description-vs-table detector (W-L0-5); the school ruling (W-L0-6). |
 | **Computational correctness** (substrate) | Node frame and epoch declared on `ephemeris_daily` (1076); engine probe degree-anchored (1075); `.se1` file-presence finding from another session not re-verified. | Re-verify the ephemeris file resolver in production (W-L0-1); nothing else measured as wrong. |
 | **Concept and relationship completeness** | No L0 object for sambandha typing or Bhāvat Bhāvam scope; varga construction conventions live in L1 code, not L0 data. | Decide whether these are L0 data or remain L1/L2 code — a native/strategy call, recorded in §4.2 as W-L0-6, not assumed. |
 | **Delivery fidelity** (served surface) | 49 capability files, 0 `density_contract`; `bg_muhurta_lattice` allowlist 4/9 families; `bg_reference` unserved. | `density_contract` on all 49; allowlist 9/9; a `ref_` capability for graha reference (W-L0-4). |
@@ -526,7 +566,9 @@ evidence are shown. Unchanged rows keep v1.0's `P/I/E/Q` and are not re-argued.
 
 Compact; the asset brief's "exact delta" inherits from here.
 
-- `bg_ontology`: declared consumers; a decision on the second identity space.
+- `bg_ontology`: declared consumers; a decision on the second identity space; **alias sets for the 79
+  doṣas; a DB↔release parity test; one normalization rule shared with the serving resolver; census
+  extended from graha to all sixteen classes.**
 - `bg_reference`: a served capability; declared consumers.
 - `bg_rules`: a concept link (`yoga_canonical_id` / `dasha_system_id` / a doṣa key) on every rule
   that qualifies a catalogued concept, or an explicit `unlinked_reason`; a `school` column.
@@ -603,6 +645,7 @@ traces_to:   3.x — each closes named delta items
 | **W-L0-4 Served-surface contract** | seam 5; 3.1 delivery fidelity | `density_contract` present on 49/49 (grep = 49); lattice allowlist 9/9 with a test that fails on 8; `ref_graha_reference_get` (or equivalent) exists and is exercised |
 | **W-L0-5 Provenance completion and truthfulness** | 2.2 partial/absent rows; 2.1 description-vs-table gap | `school` on `sutravali_rules`, `bg_transit_rules`, `bg_parihara_rules`; provenance columns on `vidhi_floor_items`; a standing check that a registry `english_description` provenance claim is supported by the table (the 1079 defect class, generalised) |
 | **W-L0-6 Native rulings** | `bg_sarvatobhadra_grid` school; `bg_prashna_rules` facility; `bg_vidhi_floors` status; whether sambandha typing / Bhāvat Bhāvam scope / varga construction become L0 data or stay L1/L2 code; whether the remedy identity space merges into the ontology or stays a separate, honestly-named source registry | rulings recorded in `KALA_DELEGATED_DECISIONS` or its L0 equivalent; each packet above that depends on one names it |
+| **W-L0-8 Controlled vocabulary, end to end** | §2.6 rules 1–6; seam 6; seam 3 (the remedy column is a vocabulary violation instance) | (1) `SELECT count(*) FROM brahma_ontology WHERE cardinality(synonyms)=0` = 0; (2) a parity test joins `l0_semantic_release_v1.json` to `brahma_ontology` and fails on any alias-set difference — Venus 10 ≟ 7 is the first failure it must report; (3) the `domain` class has one authority, with DB↔Python↔TypeScript parity, and the count is one number, not 45/13/1; (4) the serving resolver and the release share one declared normalization (`śukra` resolves in both); (5) the graha census is generalised to a per-class census over all sixteen classes, permitted count one, and the two escaping name-tuple modules import the SSoT; (6) the interface-parameter census reports 0 free-string planet/graha parameters (enum or resolver-validated); (7) the release's `admission_status` leaves `LOCAL_EXECUTION_ONLY` by a recorded native decision, not by drift. Depends on W-L0-1 (a registry it can trust) and pairs with W-L0-3 (the identity-space decision). |
 | **W-L0-7 The instrument** | 1.2, 1.4 "value evaluated" | an L0 ablation harness: run a fixed set of `ref_*` and L1–L3 readings with and without a named `bg_*` table (or with it emptied in a disposable DB), diff the readings, score against the ten obligations. Detector: the harness exists, runs in CI on a disposable snapshot, and produces a non-empty delta for at least `bg_ontology` |
 
 W-L0-7 is the packet without which §1.2 stays a proxy forever. It is named last because it depends
@@ -721,3 +764,7 @@ Recorded here for repair in `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`, no
 5. **The "synergistic term as a fraction" instruction cannot be honestly met without ablation.** The
    template should accept a seam-by-seam measurement as the recorded value until a harness exists,
    rather than invite a number.
+6. **Vocabulary conformance was missing from the template entirely** until this instance's
+   measurement surfaced three disagreeing authorities. Repaired 2026-09-25 in the template (§2.6, T4
+   `Vocab`) and in the data plane (§4.1 raised to a governing principle) — the first defect this
+   instance found that propagated *upward* rather than down.
