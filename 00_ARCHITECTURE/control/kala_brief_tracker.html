@@ -3,94 +3,100 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kāla Brief Tracker</title>
+<title>Kāla Elevation Tracker</title>
 <style>
-  :root{
-    --bg:#fbfaf8; --panel:#fff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e4e1db;
-    --ok:#1a7f4b; --okbg:#e8f5ed; --no:#b42318; --nobg:#fdeceb;
-    --warn:#9a6700; --accent:#3d5a80; --sticky:#f4f1ec;
-    --t1:#3d5a80; --t2:#6b4e7d; --t3:#1f6f6b; --t4:#9a5b2c; --t5:#5c6b3d;
-  }
-  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-    --bg:#16181c; --panel:#1e2126; --ink:#e8e6e3; --muted:#9a9a9a; --line:#33373d;
-    --ok:#5ec98a; --okbg:#16301f; --no:#f27d72; --nobg:#3a1d1a;
-    --warn:#e0b050; --accent:#8fb3d9; --sticky:#242830;
-    --t1:#8fb3d9; --t2:#b493c7; --t3:#68bdb6; --t4:#d79a63; --t5:#a3b878;
-  }}
-  :root[data-theme="dark"]{
-    --bg:#16181c; --panel:#1e2126; --ink:#e8e6e3; --muted:#9a9a9a; --line:#33373d;
-    --ok:#5ec98a; --okbg:#16301f; --no:#f27d72; --nobg:#3a1d1a;
-    --warn:#e0b050; --accent:#8fb3d9; --sticky:#242830;
-    --t1:#8fb3d9; --t2:#b493c7; --t3:#68bdb6; --t4:#d79a63; --t5:#a3b878;
-  }
+  :root{--bg:#fbfaf8;--panel:#fff;--ink:#1a1a1a;--muted:#6b6b6b;--line:#e4e1db;
+    --ok:#1a7f4b;--okbg:#e8f5ed;--no:#b42318;--nobg:#fdeceb;--warn:#9a6700;--warnbg:#fdf4e3;
+    --accent:#3d5a80;--sticky:#f4f1ec;--blue:#3d5a80;--bluebg:#e9eff6;
+    --t1:#3d5a80;--t2:#6b4e7d;--t3:#1f6f6b;--t4:#9a5b2c;--t5:#5c6b3d;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#16181c;--panel:#1e2126;--ink:#e8e6e3;--muted:#9a9a9a;--line:#33373d;
+    --ok:#5ec98a;--okbg:#16301f;--no:#f27d72;--nobg:#3a1d1a;--warn:#e0b050;--warnbg:#332a14;
+    --accent:#8fb3d9;--sticky:#242830;--blue:#8fb3d9;--bluebg:#1b2733;
+    --t1:#8fb3d9;--t2:#b493c7;--t3:#68bdb6;--t4:#d79a63;--t5:#a3b878;}}
+  :root[data-theme="dark"]{--bg:#16181c;--panel:#1e2126;--ink:#e8e6e3;--muted:#9a9a9a;--line:#33373d;
+    --ok:#5ec98a;--okbg:#16301f;--no:#f27d72;--nobg:#3a1d1a;--warn:#e0b050;--warnbg:#332a14;
+    --accent:#8fb3d9;--sticky:#242830;--blue:#8fb3d9;--bluebg:#1b2733;
+    --t1:#8fb3d9;--t2:#b493c7;--t3:#68bdb6;--t4:#d79a63;--t5:#a3b878;}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-    font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
-    padding:0 16px 64px}
-  header{max-width:1200px;margin:0 auto;padding:28px 0 12px}
+  body{margin:0;background:var(--bg);color:var(--ink);padding:0 16px 64px;
+    font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif}
+  header{max-width:1280px;margin:0 auto;padding:26px 0 10px}
   h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
-  .sub{color:var(--muted);font-size:13px}
-  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0 6px}
-  .pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;
-    padding:5px 11px;font-size:12px;color:var(--muted)}
+  .sub{color:var(--muted);font-size:13px;max-width:78ch}
+  .bar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:14px 0 8px}
+  .pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--muted)}
   .pill b{color:var(--ink);font-weight:600}
   button{font:inherit;font-size:12px;background:var(--panel);color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer}
   button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
   .live{display:inline-flex;align-items:center;gap:6px}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);
-    animation:p 2s ease-in-out infinite}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:p 2s ease-in-out infinite}
   @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
+  .alert{max-width:1280px;margin:8px auto 0;background:var(--warnbg);border:1px solid var(--warn);
+    border-radius:8px;padding:9px 13px;font-size:12.5px}
   .wrap{max-width:100%;overflow:auto;border:1px solid var(--line);border-radius:10px;
-    background:var(--panel);margin:0 auto;max-height:78vh}
+    background:var(--panel);margin:10px auto 0;max-height:76vh}
   table{border-collapse:separate;border-spacing:0;font-size:12px;width:max-content;min-width:100%}
   th,td{border-bottom:1px solid var(--line);padding:6px 7px;text-align:center;white-space:nowrap}
   thead th{position:sticky;top:0;z-index:3;background:var(--sticky);font-weight:600}
-  thead tr.tiers th{top:0;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
-  thead tr.keys th{top:27px;z-index:3}
-  th.ast,td.ast{position:sticky;left:0;z-index:2;background:var(--sticky);
-    text-align:left;min-width:210px;max-width:210px;white-space:normal}
+  thead tr.keys th{top:27px}
+  th.ast,td.ast{position:sticky;left:0;z-index:2;background:var(--sticky);text-align:left;
+    min-width:245px;max-width:245px;white-space:normal}
   thead th.ast{z-index:5}
   td.ast{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
-  td.ast .g{display:block;color:var(--muted);font-size:10.5px;font-family:inherit}
+  td.ast .g{display:block;color:var(--muted);font-size:10.5px;font-family:ui-sans-serif,system-ui}
+  td.ast .dep{display:block;color:var(--muted);font-size:10px;margin-top:2px}
   td.y{color:var(--ok);background:var(--okbg);font-weight:700}
   td.n{color:var(--no);background:var(--nobg);font-weight:700}
-  tbody tr:hover td{filter:brightness(.97)}
-  .t1{color:var(--t1)}.t2{color:var(--t2)}.t3{color:var(--t3)}.t4{color:var(--t4)}.t5{color:var(--t5)}
-  td.meta{font-size:11px;color:var(--muted);text-align:left;white-space:nowrap}
+  .badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:700;white-space:nowrap}
+  .b-ELEVATED{background:var(--okbg);color:var(--ok)}
+  .b-AWAITING_VERIFY,.b-EXECUTING,.b-HANDED_OFF{background:var(--bluebg);color:var(--blue)}
+  .b-BRIEF_FINAL{background:var(--okbg);color:var(--ok)}
+  .b-BRIEF_REWORK,.b-BRIEF_ABSENT,.b-BLOCKED{background:var(--nobg);color:var(--no)}
+  .b-BRIEF_CORRECTIONS,.b-BRIEF_AWAITING_REREVIEW,.b-BRIEF_UNREVIEWED,.b-BRIEF_DRAFT{background:var(--warnbg);color:var(--warn)}
+  .dl{display:inline-block;min-width:17px;font-variant-numeric:tabular-nums;color:var(--muted);font-size:10.5px}
   .sc{font-variant-numeric:tabular-nums;font-weight:600}
+  td.meta{font-size:11px;color:var(--muted);text-align:left;white-space:nowrap}
+  tr.rdy td.ast{box-shadow:inset 3px 0 0 var(--ok)}
+  tr.blk td.ast{box-shadow:inset 3px 0 0 var(--no)}
   tfoot td{position:sticky;bottom:0;background:var(--sticky);font-weight:600;
     font-variant-numeric:tabular-nums;font-size:11px}
   tfoot td.gap{color:var(--no)}
-  .legend{max-width:1200px;margin:22px auto 0;display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:14px}
+  .t1{color:var(--t1)}.t2{color:var(--t2)}.t3{color:var(--t3)}.t4{color:var(--t4)}.t5{color:var(--t5)}
+  .legend{max-width:1280px;margin:20px auto 0;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
-  .card h3{margin:0 0 8px;font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+  .card h3{margin:0 0 8px;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
   .card div{font-size:12px;color:var(--muted);padding:2px 0}
   .card code{color:var(--ink);font-weight:600;font-family:ui-monospace,Menlo,monospace}
-  .note{max-width:1200px;margin:20px auto 0;color:var(--muted);font-size:12.5px;
+  .note{max-width:1280px;margin:18px auto 0;color:var(--muted);font-size:12.5px;
     border-left:3px solid var(--warn);padding:8px 0 8px 12px}
-  @media (max-width:640px){ th.ast,td.ast{min-width:150px;max-width:150px} header{padding-top:18px} }
+  @media (max-width:640px){th.ast,td.ast{min-width:170px;max-width:170px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Kāla Brief Tracker</h1>
-  <div class="sub">22 L3 assets &times; 31 elevation criteria across five tiers &mdash;
-    a tick means the brief <em>addresses</em> the criterion, not that it addresses it well.</div>
+  <h1>Kāla Elevation Tracker</h1>
+  <div class="sub">22 L3 assets in <b>DAG order</b> &mdash; upstream before downstream, so nothing is
+    elevated before what it depends on. Lifecycle comes from the append-only elevation ledger;
+    criteria ticks mean the brief <em>addresses</em> a criterion, never that it addresses it correctly.</div>
   <div class="bar">
     <span class="pill live"><span class="dot"></span> <b id="stamp">loading…</b></span>
-    <span class="pill">assets <b id="nast">–</b></span>
-    <span class="pill">cells met <b id="nmet">–</b></span>
-    <span class="pill">weakest <b id="weak">–</b></span>
+    <span class="pill">elevated <b id="nelev">–</b></span>
+    <span class="pill">ready to hand off <b id="nrdy">–</b></span>
+    <span class="pill">blocked <b id="nblk">–</b></span>
+    <span class="pill">criteria met <b id="nmet">–</b></span>
+    <button id="ord" aria-pressed="true">DAG order</button>
     <button id="fgap" aria-pressed="false">Only gap columns</button>
-    <button id="fmine" aria-pressed="false">Only my 16</button>
+    <button id="frdy" aria-pressed="false">Only actionable</button>
     <button id="theme">Theme</button>
   </div>
 </header>
+<div id="alerts"></div>
 
-<div class="wrap"><table id="tbl">
-  <thead><tr class="tiers" id="hTier"></tr><tr class="keys" id="hKey"></tr></thead>
+<div class="wrap"><table>
+  <thead><tr id="hTier"></tr><tr class="keys" id="hKey"></tr></thead>
   <tbody id="body"></tbody>
   <tfoot><tr id="foot"></tr></tfoot>
 </table></div>
@@ -101,82 +107,101 @@
 <script>
 const TIER_NAMES={T1:"Ten analysis lenses",T2:"Six elevation lenses",T3:"Strategy alignment",
                   T4:"Discipline gates",T5:"Two ladders"};
-let DATA=null, onlyGap=false, onlyMine=false;
+const STATE_HELP={
+ BRIEF_ABSENT:"no brief artifact found",
+ BRIEF_UNREVIEWED:"brief exists, no independent review on record here",
+ BRIEF_DRAFT:"drafted",
+ BRIEF_REWORK:"latest review returned REWORK — findings outstanding",
+ BRIEF_CORRECTIONS:"latest review accepted with corrections owed",
+ BRIEF_AWAITING_REREVIEW:"newer version folds the last review's findings; not re-reviewed",
+ BRIEF_FINAL:"author-final / approved — may be handed to execution once DAG-unblocked",
+ HANDED_OFF:"dispatched to the execution session; not started",
+ EXECUTING:"execution session is working it",
+ AWAITING_VERIFY:"execution reported done; strategy session has NOT verified",
+ ELEVATED:"execution verified here — done",
+ BLOCKED:"execution reported blocked"};
+let DATA=null,onlyGap=false,onlyRdy=false,dagOrder=true;
 
 function render(){
-  if(!DATA) return;
-  const A=DATA.assets, C=DATA.criteria, N=A.length;
-  const gapKeys=new Set(C.filter(c=>DATA.coverage[c.key] < N*0.6).map(c=>c.key));
+  if(!DATA)return;
+  const A0=DATA.assets,C=DATA.criteria,N=A0.length;
+  const gapKeys=new Set(C.filter(c=>DATA.coverage[c.key]<N*0.6).map(c=>c.key));
   const cols=onlyGap?C.filter(c=>gapKeys.has(c.key)):C;
-  const rows=onlyMine?A.filter(a=>a.kind==="mine"):A;
+  let A=[...A0].sort((a,b)=>dagOrder?(a.dag-b.dag||a.n-b.n):(a.n-b.n));
+  if(onlyRdy)A=A.filter(a=>a.ready||a.state==="AWAITING_VERIFY"||a.state==="BLOCKED");
 
-  // header: tier band
-  const groups=[]; cols.forEach(c=>{const g=groups[groups.length-1];
-    if(g&&g.t===c.tier)g.n++; else groups.push({t:c.tier,n:1});});
-  document.getElementById("hTier").innerHTML =
-    '<th class="ast">asset</th>'+groups.map(g=>
-      `<th colspan="${g.n}" class="${g.t.toLowerCase()}">${g.t} · ${TIER_NAMES[g.t]}</th>`).join("")
-    +'<th>score</th><th>brief</th><th>review</th>';
-  document.getElementById("hKey").innerHTML =
-    '<th class="ast"></th>'+cols.map(c=>
-      `<th class="${c.tier.toLowerCase()}" title="${c.tier} — ${c.label}">${c.key}</th>`).join("")
-    +'<th></th><th></th><th></th>';
+  const groups=[];cols.forEach(c=>{const g=groups[groups.length-1];
+    if(g&&g.t===c.tier)g.n++;else groups.push({t:c.tier,n:1});});
+  document.getElementById("hTier").innerHTML='<th class="ast">'+(dagOrder?"DAG #":"reg #")+' · asset</th>'
+    +'<th>state</th><th>next</th>'
+    +groups.map(g=>`<th colspan="${g.n}" class="${g.t.toLowerCase()}">${g.t} · ${TIER_NAMES[g.t]}</th>`).join("")
+    +'<th>score</th><th>brief</th>';
+  document.getElementById("hKey").innerHTML='<th class="ast"></th><th></th><th></th>'
+    +cols.map(c=>`<th class="${c.tier.toLowerCase()}" title="${c.tier} — ${c.label}">${c.key}</th>`).join("")
+    +'<th></th><th></th>';
 
-  document.getElementById("body").innerHTML = rows.map(a=>{
-    const cells=cols.map(c=>a.cells[c.key]
-      ? '<td class="y" title="'+c.label+'">✓</td>'
-      : '<td class="n" title="'+c.label+' — NOT addressed">✗</td>').join("");
-    const v=a.verdict==="REWORK"?'<span style="color:var(--no)">REWORK</span>'
-        :a.verdict==="ACCEPT_WITH_CORRECTIONS"?'<span style="color:var(--warn)">ACCEPT+corr</span>'
-        :a.verdict==="external"?'<span style="color:var(--muted)">external (Astra/Kimi)</span>'
-        :a.reviews?a.verdict:'<span style="color:var(--no)">none</span>';
-    return `<tr><td class="ast">${a.n}. ${a.id}<span class="g">${a.group}${a.note?" · "+a.note:""}</span></td>`
-      +cells+`<td class="sc">${a.score}/${a.total}</td>`
-      +`<td class="meta">v${a.ver}<br><span style="font-size:10px">${a.status}</span></td>`
-      +`<td class="meta">${a.reviews<0?'':a.reviews+'× '}${v}</td></tr>`;
+  document.getElementById("body").innerHTML=A.map(a=>{
+    const cells=cols.map(c=>a.cells[c.key]?`<td class="y" title="${c.label}">✓</td>`
+      :`<td class="n" title="${c.label} — NOT addressed">✗</td>`).join("");
+    const deps=a.deps.length?`<span class="dep">↑ ${a.deps.join(", ")}</span>`:"";
+    const blk=a.blocked_by.length?`<span class="dep" style="color:var(--no)">⛔ waits on ${a.blocked_by.join(", ")}</span>`:"";
+    return `<tr class="${a.ready?'rdy':a.blocked_by.length?'blk':''}">`
+      +`<td class="ast"><span class="dl">${dagOrder?a.dag:a.n}</span> ${a.id}`
+      +`<span class="g">L${a.depth} · ${a.group}${a.note?" · "+a.note:""}</span>${deps}${blk}</td>`
+      +`<td><span class="badge b-${a.state}" title="${STATE_HELP[a.state]||''} — ${a.why}">${a.state.replace(/_/g," ")}</span></td>`
+      +`<td class="meta">${a.next}</td>`+cells
+      +`<td class="sc">${a.score}/${a.total}</td>`
+      +`<td class="meta">v${a.ver}<br><span style="font-size:10px">${a.reviews<0?"external review":a.reviews+"× "+a.verdict}</span></td></tr>`;
   }).join("");
 
-  document.getElementById("foot").innerHTML='<td class="ast">coverage</td>'
-    +cols.map(c=>{const v=DATA.coverage[c.key];
-      return `<td class="${v<N*0.6?'gap':''}">${v}/${N}</td>`;}).join("")
-    +'<td></td><td></td><td></td>';
+  document.getElementById("foot").innerHTML='<td class="ast">coverage</td><td></td><td></td>'
+    +cols.map(c=>{const v=DATA.coverage[c.key];return `<td class="${v<N*0.6?'gap':''}">${v}/${N}</td>`;}).join("")
+    +'<td></td><td></td>';
 
   document.getElementById("stamp").textContent=new Date(DATA.generated).toLocaleTimeString();
-  document.getElementById("nast").textContent=N;
-  const met=A.reduce((s,a)=>s+a.score,0), tot=A.reduce((s,a)=>s+a.total,0);
+  const el=A0.filter(a=>a.state==="ELEVATED").length,rd=A0.filter(a=>a.ready).length,
+        bk=A0.filter(a=>a.blocked_by.length).length;
+  document.getElementById("nelev").textContent=el+"/"+N;
+  document.getElementById("nrdy").textContent=rd;
+  document.getElementById("nblk").textContent=bk;
+  const met=A0.reduce((s,a)=>s+a.score,0),tot=A0.reduce((s,a)=>s+a.total,0);
   document.getElementById("nmet").textContent=met+"/"+tot+" ("+Math.round(met/tot*100)+"%)";
-  document.getElementById("weak").textContent=
-    C.map(c=>[DATA.coverage[c.key],c.key]).sort((x,y)=>x[0]-y[0]).slice(0,3)
-     .map(([v,k])=>k+" "+v+"/"+N).join(", ");
 
-  document.getElementById("legend").innerHTML=Object.keys(TIER_NAMES).map(t=>{
-    const items=C.filter(c=>c.tier===t);
-    return `<div class="card"><h3 class="${t.toLowerCase()}">${t} · ${TIER_NAMES[t]}</h3>`
-      +items.map(c=>`<div><code>${c.key}</code> — ${c.label} · <b>${DATA.coverage[c.key]}/${N}</b></div>`).join("")
-      +`</div>`;}).join("");
+  const al=[];
+  if(DATA.cycle&&DATA.cycle.length)al.push("<b>DAG cycle detected:</b> "+DATA.cycle.join(", ")+" — ordering is not trustworthy until this is resolved.");
+  if(DATA.untracked_ka_assets&&DATA.untracked_ka_assets.length)al.push("<b>Untracked ka_* asset(s) in the registry seed:</b> <code>"+DATA.untracked_ka_assets.join(", ")+"</code> — present in asset_registry.depends_on but on no brief and in no tracker row.");
+  if(DATA.ledger_bad_lines)al.push("<b>"+DATA.ledger_bad_lines+" malformed line(s)</b> in "+DATA.ledger_path+" — ignored, not repaired.");
+  document.getElementById("alerts").innerHTML=al.map(x=>`<div class="alert">${x}</div>`).join("");
+
+  document.getElementById("legend").innerHTML=
+    `<div class="card"><h3>Lifecycle states</h3>`
+    +Object.keys(STATE_HELP).map(k=>`<div><span class="badge b-${k}">${k.replace(/_/g," ")}</span> — ${STATE_HELP[k]}</div>`).join("")
+    +`</div>`
+    +Object.keys(TIER_NAMES).map(t=>{const items=C.filter(c=>c.tier===t);
+      return `<div class="card"><h3 class="${t.toLowerCase()}">${t} · ${TIER_NAMES[t]}</h3>`
+        +items.map(c=>`<div><code>${c.key}</code> — ${c.label} · <b>${DATA.coverage[c.key]}/${N}</b></div>`).join("")+`</div>`;}).join("");
 
   document.getElementById("note").innerHTML=
-    "Detection is marker-based: a ✓ means the brief mentions/addresses the criterion, not that it does so "
-    +"correctly or fully. Rows 4–6 inherit the Gochara family plan and have no standalone brief, so their "
-    +"cells repeat row 3. Re-run <code>kala_brief_tracker.py</code> to refresh; this page polls every 5s.";
+    "<b>DAG order</b> is a topological sort of <code>asset_registry.depends_on</code> (ka_* block of "
+    +"<code>asset_registry_seed.ts</code>); L0–L5 shows depth. An asset turns <span style='color:var(--ok)'>ready</span> "
+    +"only when its brief is final AND every upstream ka_* asset is ELEVATED. "
+    +"<b>Lifecycle</b> is driven by <code>"+(DATA.ledger_path||"the ledger")+"</code>: the execution session appends, this page reads. "
+    +"A <code>completed</code> event alone does not mean elevated — it shows AWAITING VERIFY until the strategy session appends "
+    +"<code>verified</code>. <b>Rows 4–6</b> inherit the Gochara family plan and have no standalone brief, so their criteria cells repeat the family row.";
 }
-
-function poll(){
-  const s=document.createElement("script");
-  s.src="kala_brief_tracker.js?t="+Date.now();
-  s.onload=()=>s.remove();
-  s.onerror=()=>{document.getElementById("stamp").textContent="data file not found";s.remove();};
-  document.head.appendChild(s);
-}
-window.addEventListener("kala-data",()=>{DATA=window.KALA_DATA;render();});
-document.getElementById("fgap").onclick=e=>{onlyGap=!onlyGap;
-  e.target.setAttribute("aria-pressed",onlyGap);render();};
-document.getElementById("fmine").onclick=e=>{onlyMine=!onlyMine;
-  e.target.setAttribute("aria-pressed",onlyMine);render();};
-document.getElementById("theme").onclick=()=>{
-  const cur=document.documentElement.getAttribute("data-theme");
-  document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");};
-poll(); setInterval(poll,5000);
+function poll(){const s=document.createElement("script");
+  s.src="kala_brief_tracker.js?t="+Date.now();s.onload=()=>s.remove();
+  s.onerror=()=>{document.getElementById("stamp").textContent="run kala_brief_tracker.py";s.remove();};
+  document.head.appendChild(s);}
+addEventListener("kala-data",()=>{DATA=window.KALA_DATA;render();});
+const tog=(id,fn)=>document.getElementById(id).onclick=e=>{fn();e.target.setAttribute("aria-pressed",
+  id==="ord"?dagOrder:id==="fgap"?onlyGap:onlyRdy);render();};
+tog("ord",()=>dagOrder=!dagOrder);tog("fgap",()=>onlyGap=!onlyGap);tog("frdy",()=>onlyRdy=!onlyRdy);
+document.getElementById("ord").onclick=e=>{dagOrder=!dagOrder;e.target.setAttribute("aria-pressed",dagOrder);
+  e.target.textContent=dagOrder?"DAG order":"Registry order";render();};
+document.getElementById("theme").onclick=()=>{const c=document.documentElement.getAttribute("data-theme");
+  document.documentElement.setAttribute("data-theme",c==="dark"?"light":"dark");};
+poll();setInterval(poll,5000);
 </script>
 </body>
 </html>
