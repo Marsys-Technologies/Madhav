@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.79
+version: 6.81
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,19 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.81 (2026-09-24, L3-GOCHARA-WP0-7-CLOSE-20260924): §2 top banner updated for the WP0-7
+    closing session — §12 close-out items landed (12.3/12.4/12.5/12.9), gochara battery 334
+    passed, WP10 tranche 1 attempted per the now-true flags and HALTED at step 3 (E-015:
+    `amjis_app` lacks CREATE on schema public; production verified byte-identical), tranche 2
+    NOT STARTED (precondition + E-012 writer gate), all disposable containers torn down, PR
+    #2731 remains the open review surface; CLAUDECODE_BRIEF.md stays ACTIVE.
+  - v6.80 (2026-09-24, L3-GOCHARA-WP0-7-REMAINDER-20260924): §2 banner added for the L3
+    gochara WP0-7 remainder campaign close — remainder brief §4–§8 complete and §7.A (WP10
+    cutover runbook as runnable artifacts + disposable-DB rehearsal) landed on branch
+    l3/gochara-autonomous-wp0-7 (PR #2731, open); WP10 production tranches remain blocked on
+    the brief's false tranche flags; the Kṣetra rulings 7/8/9 reviewer is still the native's
+    to name; root CLAUDECODE_BRIEF.md stays ACTIVE (L3 data-plane elevation close condition
+    not met).
   - v6.79 (2026-09-20, L3 KĀLA AUTONOMOUS CONDUCTOR, Packet B3, DP-SD-021): New top banner records
     the native-authorized platform split — L3 Kāla data-plane elevation moves to Claude Code
     (integration branch codex/madhav-l3-claude-code) while Pūrṇa Anveṣaṇa remains in Codex — with a
@@ -5939,6 +5952,28 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟣 **L3 GOCHARA WP0–7 — CLOSING SESSION (2026-09-24, session
+> L3-GOCHARA-WP0-7-CLOSE-20260924).** Follow-up to the remainder close: the §12 close-out
+> items landed on branch `l3/gochara-autonomous-wp0-7` (**PR #2731 open against `main`,
+> unmerged**) — §12.3 WriterBase conformance (migration 1087 + tests), §12.4 plan v2.3 +
+> binding detectors, §12.5 disposable-DB test isolation guard, §12.9/§12.12 WP9 overlay
+> stamps + `upstream_fingerprint`; gochara battery **334 passed, 0 failed**; cutover gate
+> 16/16. **WP10 tranche 1 was attempted** — the native flipped
+> `PRODUCTION_TRANCHE_1_AUTHORIZED`/`_2_` to `true` (ruling §3) — and **HALTED at step 3**
+> per the failed-gate rule: `amjis_app` lacks CREATE on schema `public` (E-015; operator
+> path: run step 3 as `data_plane_schema_owner`/`postgres`, or grant CREATE to `amjis_app`).
+> Steps 0/1/2/4/5 NOT RUN; production verified byte-identical pre/post. **Tranche 2 NOT
+> STARTED** (tranche-1 precondition unmet + E-012 `'4.0'` windows writer unassigned). All
+> disposable containers (`gochara-wp6-disposable`, `gochara-wp10-disposable`) torn down at
+> close; none remain. Review requests for §12.3/§12.5/§7.B written under
+> `gochara_wp0_7/wp7_packets/` (IMPLEMENTED_AWAITING_REVIEW / STOPPED_AWAITING_NATIVE;
+> nothing marked REVIEWED). Authoritative account:
+> `briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md` (updated this
+> session). The **Kṣetra rulings 7/8/9 reviewer is now named (O-3, §8.6)**; the E-015 native
+> action and the E-012 writer owner remain open. Root `CLAUDECODE_BRIEF.md` stays
+> `status: ACTIVE` — the L3 data-plane elevation close condition is not met while the WP10
+> production tranches are incomplete.
+
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
 > three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
@@ -9394,9 +9429,9 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
+  last_session_id: L3-GOCHARA-WP0-7-REMAINDER-20260924
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 is at a metadata-only final source candidate. CI and review refutations for stale census, post-release sequencing, weighted starvation, nested pagination and log schema are repaired. Exact pre-release head b32974cbe is approved with no HIGH/MEDIUM findings; corrective lease released at 80d47c44d. Fresh exact-head CI and independent final reviews remain, with no later source mutation. No merge, deployment, shared migration, production, user or empirical acceptance claim."
+  last_session_drift_verdict: "L3 gochara WP0-7 remainder campaign closed: remainder brief §4–§8 complete and §7.A (WP10 cutover runbook as runnable artifacts + disposable-DB rehearsal, tests/l3/gochara 266 passed) landed on l3/gochara-autonomous-wp0-7 (PR #2731 open). WP10 production tranches remain blocked on the brief's false tranche flags; Kṣetra rulings 7/8/9 reviewer remains the native's to name; CLAUDECODE_BRIEF.md stays ACTIVE. No merge, deployment, shared/production DB write, or acceptance claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md

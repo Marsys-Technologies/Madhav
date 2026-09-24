@@ -130,8 +130,14 @@ def build_tables(*, with_lifetime_prior: bool = True,
             {'chart_id': CHART_ID, 't_days': 110.0, 'ayanamsha_id': 'lahiri'},
             {'chart_id': CHART_ID, 't_days': 260.0, 'ayanamsha_id': 'lahiri'},
         ],
+        'kala_gochara_authority': [
+            # WP7 K-1/N-10: the crosscheck seam is authority-gated — an absent
+            # row means UNPUBLISHED (zero rows), never a 'v1' fallback.
+            {'chart_id': CHART_ID, 'authoritative_generation': 'v1'},
+        ],
         'kala_gochara_windows': [
             {'id': 991, 'chart_id': CHART_ID, 'event_class': EVENT_CLASS,
+             'generation': 'v1',
              'window_start': None, 'window_end': None, 'peak_date': '2026-04-16',
              'temporal_shape': 'interval'},
         ],

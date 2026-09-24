@@ -252,7 +252,8 @@ describe('computeGocharaElectionAvoidance — MR-12 is_irreversibility_milestone
 // Tests for the coverage_quality field added in SAMPŪRTI-γ C3.
 // Mocks global.fetch to intercept platformQuery calls — same pattern as the
 // MR-12 block above. The four queries computeGocharaCoverage issues are:
-//   1. kala_gochara_authority  → authority generation (returns [] → v1 path)
+//   1. kala_gochara_authority  → authority generation (explicit 'v1' row; P-1d:
+//      an absent row is now unpublished, so the v1 path requires the row)
 //   2. gochara_resonance_map   → targeted classes + domains (classesResp)
 //   3. brahma_event_ontology   → universe domains (universeResp)
 //   4. build_substep_progress  → substeps + swept classes (substepResp)
@@ -279,9 +280,11 @@ function mockCoverageFetch(
     const body = JSON.parse((opts as { body: string }).body) as { sql?: string }
     const sql = body.sql ?? ''
 
-    // Query 1: kala_gochara_authority → empty (v1 path)
+    // Query 1: kala_gochara_authority → explicit 'v1' authority row.
+    // (P-1d: an ABSENT row now means unpublished, not v1 — the v1 path
+    // under test here requires the row to exist.)
     if (sql.includes('kala_gochara_authority')) {
-      return { ok: true, json: async () => ({ rows: [] }) }
+      return { ok: true, json: async () => ({ rows: [{ authoritative_generation: 'v1' }] }) }
     }
     // Query 2: gochara_resonance_map → classRows
     if (sql.includes('gochara_resonance_map')) {

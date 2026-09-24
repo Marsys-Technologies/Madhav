@@ -49,15 +49,19 @@ const DOMAIN_OF: Record<string, string> = {
 }
 
 /**
- * Routes the three queries `computeGocharaCoverage` fires, by SQL substring.
+ * Routes the queries `computeGocharaCoverage` fires, by SQL substring.
  * `targeted` = classes with gochara_resonance_map rows; `swept` = classes with
- * committed ka_gochara_sweep substeps.
+ * committed ka_gochara_sweep substeps. The authority lookup gets an explicit
+ * 'v1' row — P-1d: an absent kala_gochara_authority row is now unpublished,
+ * so the v1 sweep path under test requires the row to exist.
  */
 function mockDb(targeted: string[], swept: string[]) {
   mockFetch.mockImplementation(async (_url: string, init: { body: string }) => {
     const { sql } = JSON.parse(init.body) as { sql: string }
     let rows: Record<string, unknown>[] = []
-    if (sql.includes('FROM gochara_resonance_map')) {
+    if (sql.includes('FROM kala_gochara_authority')) {
+      rows = [{ authoritative_generation: 'v1' }]
+    } else if (sql.includes('FROM gochara_resonance_map')) {
       rows = targeted.map((ec) => ({ event_class: ec, domain: DOMAIN_OF[ec] ?? null }))
     } else if (sql.includes('FROM brahma_event_ontology')) {
       rows = DOMAIN_UNIVERSE.map((d) => ({ domain: d }))

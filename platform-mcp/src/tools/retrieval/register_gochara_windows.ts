@@ -563,6 +563,52 @@ function computeResolutionBreakdown(
   return breakdown
 }
 
+// ── P-1: manifest-driven provenance/coverage (N-10) ─────────────────────────
+// One row per (chart_id, generation). NULL result = legacy generation
+// ('v1' / '3.0' / g3_*), which keeps its existing string branches.
+// The status filter admits candidate + published + superseded + rolled_back
+// deliberately: provenance must remain honest for a rolled-back or superseded
+// generation (the rows still exist; the citation must still name ka_gochara).
+export interface GocharaPublicationManifest {
+  manifest_id: string
+  chart_id: string
+  generation: string
+  writer_asset_id: string
+  convention_id: string
+  input_generation_vector: Record<string, unknown>
+  ephemeris_backend: Record<string, unknown>
+  horizon: string
+  row_counts: { contacts?: number; coverage?: number; windows?: number }
+  content_digest: string
+  status: 'candidate' | 'published' | 'superseded' | 'rolled_back'
+}
+
+async function fetchPublicationManifest(
+  chartId: string,
+  generation: string | null | undefined,
+  principal: Principal
+): Promise<GocharaPublicationManifest | null> {
+  if (generation == null) return null
+  // Deliberately NOT generation-literal: any label with a manifest row resolves
+  // here — '4.0' today, '4.1' after the first rebuild, '5.0' after the next
+  // elevation. This is the entire fix for the hardcoded-'4.0' recurrence.
+  // Failure mode of the lookup itself: degrade to null (legacy string
+  // branches) — never throw, never fabricate a manifest.
+  const { rows } = await platformQuery(
+    `SELECT manifest_id, chart_id, generation, writer_asset_id, convention_id,
+            input_generation_vector, ephemeris_backend, horizon::text AS horizon,
+            row_counts, content_digest, status
+       FROM kala_gochara_publication
+      WHERE chart_id = $1 AND generation = $2
+      LIMIT 1`,
+    [chartId, generation],
+    principal
+  ).catch(() => ({ rows: [] as Record<string, unknown>[] }))
+  const r = rows[0]
+  if (!r) return null
+  return { ...(r as unknown as GocharaPublicationManifest) }
+}
+
 // W5.1 (GOCHARA-UTKARSA): SOURCE_CITATION is now generation-conditional.
 // For v3/g3_* rows the citation names the UTKARSA campaign's own engine;
 // for legacy v1 rows it names the original D-5 G-4 sweep. A response that
@@ -570,7 +616,26 @@ function computeResolutionBreakdown(
 // time, but the citation is set per-tool-call, not per-row) uses the
 // per-generation string for whichever generation the filter resolved to.
 // The filter guarantees all rows in one response share one generation.
-function buildSourceCitation(generation: string | null | undefined): string {
+function buildSourceCitation(
+  chartId: string,
+  generation: string | null | undefined,
+  manifest: GocharaPublicationManifest | null
+): string {
+  // P-1a (N-10): manifest-driven. Any generation carrying a
+  // kala_gochara_publication row resolves provenance FROM THE MANIFEST —
+  // never from a generation-literal match. '4.1' after a rebuild names
+  // ka_gochara exactly as '4.0' did, because both have manifest rows.
+  void chartId // provenance text is manifest-derived; chartId pins the lookup site
+  if (manifest != null) {
+    return (
+      `kala_gochara_windows (L3 Kāla, ${manifest.writer_asset_id} writer — ` +
+      'contact ledger + search-coverage manifest per GOCHARA_FAMILY_ELEVATION_PLAN v2.1 §4.3–4.7; ' +
+      `convention_id=${manifest.convention_id}; manifest_id=${manifest.manifest_id}; ` +
+      `content_digest=${manifest.content_digest}; generation=${manifest.generation})`
+    )
+  }
+  // Legacy fallbacks — string branches survive ONLY for generations with no
+  // manifest row: 'v1', '3.0', g3_*. These three branches are unchanged.
   // MR-03: explicit branch for generation='3.0' (post-cutover W6.4 rows).
   // ka_gochara (renamed from ka_gochara_v2_materialize at migration 563) is the
   // authoritative writer for these rows; ka_gochara_sweep was RETIRED at cutover.
@@ -599,7 +664,7 @@ function buildSourceCitation(generation: string | null | undefined): string {
 
 // Convenience: SOURCE_CITATION for legacy v1 rows (used as a static
 // default in the election_avoidance per-row citation that predates W5.1).
-const SOURCE_CITATION_V1 = buildSourceCitation(null)
+const SOURCE_CITATION_V1 = buildSourceCitation('', null, null)
 
 const ROW_COLUMNS = `
   id, chart_id, event_class, temporal_shape,
@@ -626,21 +691,22 @@ const ROW_COLUMNS = `
 // code passes them through without requiring them non-null, per §N.3 "honest
 // tier over fabricated".
 
-// ADJUDICATION-6 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md, migration 527):
-// GOCHARA-2.0 writes generation-stamped rows BESIDE v1, never over it — so
-// every read that SERVES rows to a caller must resolve which generation is
-// currently authoritative for this chart and filter to exactly that one, or
-// a 2.0 row and its v1 counterpart for the same (chart_id, event_class,
-// window) would both appear in one response. An ABSENT `kala_gochara_authority`
-// row means 'v1' authoritative BY DEFINITION (never requires a seeded row —
-// see migration 527's COMMENT ON TABLE). Today this is a no-op: every row is
-// generation='v1' and the authority table is empty everywhere, so this filter
-// is byte-identical to its absence — it only becomes load-bearing once a 2.0
-// writer lands a second generation's rows for the same chart.
+// P-1d (N-10): generation-authority resolution. GOCHARA-2.0 writes
+// generation-stamped rows BESIDE v1, never over it — so every read that SERVES
+// rows to a caller must resolve which generation is currently authoritative for
+// this chart and filter to exactly that one. An ABSENT kala_gochara_authority
+// row means the chart is UNPUBLISHED (no authoritative generation at all) —
+// the correlated subquery returns NULL and `generation = NULL` matches nothing,
+// which is correct: an unflipped chart serves no rows until the WP10 release
+// authority flips it. The pre-P-1 COALESCE(..., 'v1') treated "no authority row"
+// as "'v1' authoritative by definition"; that convention is retired — 'v1' is
+// authoritative ONLY where an authority row literally says so, and the handlers'
+// empty-rows path surfaces the absent-authority case as empty_reason
+// 'unpublished' (never silent v1 provenance).
 const AUTHORITATIVE_GENERATION_FILTER =
-  " AND kala_gochara_windows.generation = COALESCE(" +
+  " AND kala_gochara_windows.generation = " +
   '(SELECT authoritative_generation FROM kala_gochara_authority ' +
-  "WHERE chart_id = kala_gochara_windows.chart_id), 'v1')"
+  "WHERE chart_id = kala_gochara_windows.chart_id)"
 
 async function queryRows(
   sql: string,
@@ -898,6 +964,46 @@ export interface GocharaCoverage {
     covered_domain_count: number
     reason: string
   }
+  /** P-1d (N-10): publication state. 'unpublished' when the chart has NO
+   *  kala_gochara_authority row at all (the pre-P-1 COALESCE-to-'v1' convention
+   *  is retired — absent authority is never silently served as v1). Absent on
+   *  the legacy paths, which predate the field and keep their shapes. */
+  status?: 'unpublished'
+  /** Present when status === 'unpublished'. */
+  note?: string
+  /** P-1b: coverage derived from kala_gochara_coverage manifest rows for a
+   *  manifest-carrying generation ('4.x'). Present only when ≥1 coverage row
+   *  exists for (chart_id, generation) — the writer's own record of what was
+   *  searched, per partition, never substep archaeology (F-11/§N.8). */
+  coverage_manifest?: {
+    source: string
+    generation: string
+    partitions: Array<{
+      partition_kind: string | null
+      partition_key: string | null
+      requested_horizon: string | null
+      completed_horizon: string | null
+      resolution: string | null
+      targets_resolved: number | null
+      targets_unresolved: number | null
+      unsearched_reason: string | null
+    }>
+    event_classes: Record<string, {
+      requested_horizon: string | null
+      completed_horizon: string | null
+      resolution: string | null
+      targets_resolved: number | null
+      targets_unresolved: number | null
+    }>
+  } | null
+  /** P-1b: the substep-execution axis, demoted to its own labelled block when
+   *  the coverage_manifest block is authoritative. Execution evidence stays
+   *  visible — it is never presented as coverage of the searched horizon. */
+  sweep_execution?: {
+    substeps_committed: number
+    swept_event_classes: string[]
+    source: string
+  } | null
 }
 
 export interface GocharaNotCovered {
@@ -934,20 +1040,22 @@ export async function computeGocharaCoverage(
   eventClassDomains: Record<string, string>
   eventClassDomainsOk: boolean
 }> {
-  // MR-02 (PARIṢKĀRA): coverage source is authority-aware.
-  // After migration 563 retires ka_gochara_sweep, v3-authority charts never had
-  // substeps recorded under 'ka_gochara_sweep' — the v3 materializer (ka_gochara,
-  // renamed from ka_gochara_v2_materialize) logs under its own asset_id. Querying
-  // build_substep_progress for 'ka_gochara_sweep' on a v3-authority chart would
-  // always return 0, misreporting a fully-built chart as uncovered.
+  // MR-02 (PARIṢKĀRA) + P-1 (N-10): coverage source is authority- and
+  // manifest-aware.
   //
-  // Resolution:
-  //   - No kala_gochara_authority row (or absent table) → v1 authority → use
-  //     'ka_gochara_sweep' substep history (unchanged existing behaviour).
-  //   - kala_gochara_authority row present with any g3_* or '3.0' generation →
-  //     v3 authority → use 'ka_gochara' (the renamed materializer) substep history.
-  //     The resonance-map coverage (classesResp) is still the canonical scope source
-  //     for WHAT was built; the substep count shifts to the v3 asset_id.
+  //   - No kala_gochara_authority row (or absent table) → UNPUBLISHED (P-1d):
+  //     the coverage object is served as status 'unpublished' — the pre-P-1
+  //     COALESCE-to-'v1' convention is retired; absent authority is never
+  //     silently treated as v1.
+  //   - Authority row naming a generation with a kala_gochara_publication
+  //     manifest row ('4.0', '4.1', …) → P-1b: substep asset is the manifest's
+  //     writer_asset_id ('ka_gochara'), and when ≥1 kala_gochara_coverage row
+  //     exists for (chart, generation) the coverage block is derived FROM THE
+  //     MANIFEST ROWS; the substep axis is demoted to sweep_execution.
+  //   - Authority row naming '3.0' or g3_* with no manifest → v3 behaviour
+  //     (ka_gochara_v3_century_materialize substep history), verbatim.
+  //   - Authority row literally naming 'v1' → legacy sweep-substep behaviour,
+  //     verbatim.
   //
   // The authority lookup is a single SELECT that never throws on a missing table
   // (the IF NOT EXISTS guard produces an empty rows array instead).
@@ -962,8 +1070,14 @@ export async function computeGocharaCoverage(
 
   const authGen = typeof authorityResp.rows[0]?.['authoritative_generation'] === 'string'
     ? authorityResp.rows[0]['authoritative_generation'] as string
-    : 'v1'
-  const isV3Authority = authGen === '3.0' || authGen.startsWith('g3_')
+    : null
+
+  const manifest = authGen != null
+    ? await fetchPublicationManifest(chartId, authGen, principal)
+    : null
+  // P-1b: three regimes (see the block comment above).
+  const isManifestGeneration = manifest != null
+  const isV3Authority = !isManifestGeneration && authGen != null && (authGen === '3.0' || authGen.startsWith('g3_'))
 
   // The substep asset_id and source description differ by authority generation.
   // v1: 'ka_gochara_sweep' (D-5 Lane G-4 sweep writer, now RETIRED but substep
@@ -974,16 +1088,24 @@ export async function computeGocharaCoverage(
   //     'ka_gochara' here — R1 SEV-1 fix).
   //     Key format: '{event_class}::{era_slice_key}' — split on '::' extracts the class.
   //     Using ':year:' split on v3 keys returns NULL for every row → swept_event_classes=[].
-  const substepAssetId = isV3Authority ? 'ka_gochara_v3_century_materialize' : 'ka_gochara_sweep'
-  const substepSourceLabel = isV3Authority
-    ? `build_substep_progress (asset_id=ka_gochara_v3_century_materialize, chart-scoped, century materializer)`
-    : `build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)`
+  // manifest ('4.x'): the manifest's writer_asset_id ('ka_gochara') — the
+  //     writer-owned substeps reuse the '{event_class}::{partition_key}' shape
+  //     (plan §6.3 ka_gochara.has_substeps declares the format) → split on '::'.
+  const substepAssetId = isManifestGeneration
+    ? manifest.writer_asset_id
+    : isV3Authority ? 'ka_gochara_v3_century_materialize' : 'ka_gochara_sweep'
+  const substepSourceLabel = isManifestGeneration
+    ? `build_substep_progress (asset_id=${manifest.writer_asset_id}, chart-scoped, manifest generation ${manifest.generation})`
+    : isV3Authority
+      ? `build_substep_progress (asset_id=ka_gochara_v3_century_materialize, chart-scoped, century materializer)`
+      : `build_substep_progress (asset_id=ka_gochara_sweep, chart-scoped)`
 
   // R1 SEV-1 fix (Bug 2): the substep SQL query must be authority-aware because the
   // key separator differs between generations.
   //   v1 (ka_gochara_sweep): '{event_class}:year:{n}'   → split_part(key, ':year:', 1)
   //   v3 (ka_gochara_v3_century_materialize): '{event_class}::{era_slice_key}' → split_part(key, '::', 1)
-  const substepQuery = isV3Authority
+  //   manifest ('4.x', ka_gochara): '{event_class}::{partition_key}' → split_part(key, '::', 1)
+  const substepQuery = (isV3Authority || isManifestGeneration)
     ? `SELECT COUNT(*)::int AS substeps_committed,
               COALESCE(
                 ARRAY_AGG(DISTINCT split_part(substep_key, '::', 1))
@@ -1001,7 +1123,75 @@ export async function computeGocharaCoverage(
          FROM build_substep_progress
         WHERE chart_id = $1 AND asset_id = $2`
 
-  const [classesResp, universeResp, substepResp, horizonResp] = await Promise.all([
+  // P-1d (N-10): absent authority row → the chart is UNPUBLISHED. Serve a
+  // first-class unpublished coverage object — never the silent-'v1' substep
+  // archaeology the retired COALESCE convention produced. The vocabulary axes
+  // (knownDomains / eventClassDomains) are still resolved so a `domain` filter
+  // keeps validating against the real ontology.
+  if (authGen == null) {
+    const [classesRespU, universeRespU] = await Promise.all([
+      platformQuery(
+        `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
+           FROM gochara_resonance_map rm
+           LEFT JOIN brahma_event_ontology eo ON eo.event_class_id = rm.event_class
+          WHERE rm.chart_id = $1
+          ORDER BY 1`,
+        [chartId],
+        principal
+      ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
+      platformQuery(
+        `SELECT DISTINCT domain FROM brahma_event_ontology WHERE domain IS NOT NULL ORDER BY 1`,
+        [],
+        principal
+      ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
+    ])
+    const universeDomainsU = universeRespU.rows.map((r) => r['domain']).filter((d): d is string => typeof d === 'string').sort()
+    const eventClassDomainsU = Object.fromEntries(
+      classesRespU.rows.flatMap((row) => {
+        const eventClass = row['event_class']
+        const domain = row['domain']
+        return typeof eventClass === 'string' && typeof domain === 'string'
+          ? [[eventClass.toLocaleLowerCase(), domain]]
+          : []
+      })
+    )
+    return {
+      ok: classesRespU.ok && universeRespU.ok,
+      knownDomains: universeDomainsU,
+      knownDomainsOk: universeRespU.ok,
+      eventClassDomains: eventClassDomainsU,
+      eventClassDomainsOk: classesRespU.ok,
+      coverage: {
+        status: 'unpublished' as const,
+        note:
+          'This chart has no kala_gochara_authority row — no generation is authoritative for it, ' +
+          'so nothing is served as published coverage. The retired COALESCE-to-\'v1\' convention ' +
+          'would have silently served this as a v1-authority chart; absent authority is now the ' +
+          'honest unpublished state (N-10 / P-1d). A release-authority flip publishes a generation.',
+        event_classes_covered: [],
+        event_classes_targeted_not_swept: [],
+        domains_not_covered: universeDomainsU,
+        universe_source: COVERAGE_UNIVERSE_SOURCE,
+        sweep_completeness: {
+          substeps_committed: 0,
+          source: 'unpublished — no kala_gochara_authority row for this chart',
+          note:
+            'No authoritative generation exists for this chart, so no sweep execution is ' +
+            'attributed to a published generation. Substep history, if any exists, belongs to ' +
+            'candidate/legacy generations and is not served as coverage.',
+          materialized_through: null,
+        },
+        coverage_quality: {
+          tier: 'thin' as const,
+          covered_class_count: 0,
+          covered_domain_count: 0,
+          reason: '0 event classes covered — chart is unpublished (no kala_gochara_authority row)',
+        },
+      },
+    }
+  }
+
+  const [classesResp, universeResp, substepResp, horizonResp, coverageRowsResp] = await Promise.all([
     platformQuery(
       `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
          FROM gochara_resonance_map rm
@@ -1029,6 +1219,23 @@ export async function computeGocharaCoverage(
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const }))
      .catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
+    // P-1b: the writer's own search-coverage rows for a manifest generation.
+    // Only queried in the manifest regime; other regimes skip it entirely.
+    isManifestGeneration
+      ? platformQuery(
+          `SELECT partition_kind, partition_key,
+                  requested_horizon::text AS requested_horizon,
+                  completed_horizon::text AS completed_horizon,
+                  resolution, relations_searched,
+                  targets_requested, targets_resolved, targets_unresolved,
+                  target_resolution_state_counts, unavailable_inputs,
+                  unsearched_reason
+             FROM kala_gochara_coverage
+            WHERE chart_id = $1 AND generation = $2`,
+          [chartId, authGen],
+          principal
+        ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) }))
+      : Promise.resolve({ rows: [] as Record<string, unknown>[], ok: true as const }),
   ])
 
   const targetedClasses = [...new Set(classesResp.rows.map((r) => r['event_class']).filter((v): v is string => typeof v === 'string'))].sort()
@@ -1038,16 +1245,41 @@ export async function computeGocharaCoverage(
       .filter((v): v is string => typeof v === 'string')
   )
 
+  // P-1b: when ≥1 kala_gochara_coverage row exists for (chart, generation), the
+  // served coverage is derived FROM THE MANIFEST ROWS — the writer's own record
+  // of what was searched — and the substep axis is demoted to sweep_execution.
+  // Zero coverage rows (writer has not yet landed them) falls back to the
+  // substep-only object, which says so in its source label. Substep history is
+  // never presented as coverage of the searched horizon (F-11/§N.8).
+  const coverageRows = coverageRowsResp.rows
+  const hasCoverageManifest = isManifestGeneration && coverageRowsResp.ok && coverageRows.length > 0
+  const eventClassPartitions = hasCoverageManifest
+    ? coverageRows.filter((r) => r['partition_kind'] === 'event_class')
+    : []
+  const manifestCoveredClasses = new Set(
+    eventClassPartitions
+      .filter((r) => r['completed_horizon'] != null)
+      .map((r) => r['partition_key'])
+      .filter((v): v is string => typeof v === 'string')
+  )
+
   // A class only counts as COVERED when both axes hold for THIS chart: G-1 built its resonance
   // targets AND the sweep has committed at least one substep for it. Targets alone would let a
   // freshly-extended grammar (item 9's health classes, before any chart has been re-swept) drop
   // 'health' out of domains_not_covered while kala_gochara_windows still holds nothing for it —
   // reinstating the exact S4-05 shape the coverage attestation exists to prevent.
-  const eventClasses = targetedClasses.filter((ec) => sweptClasses.has(ec))
-  const targetedNotSwept = targetedClasses.filter((ec) => !sweptClasses.has(ec))
+  // (Manifest regime: the writer's coverage rows ARE the swept axis — a class
+  // with a completed event_class partition was searched over its completed horizon.)
+  const eventClasses = hasCoverageManifest
+    ? targetedClasses.filter((ec) => manifestCoveredClasses.has(ec))
+    : targetedClasses.filter((ec) => sweptClasses.has(ec))
+  const targetedNotSwept = targetedClasses.filter((ec) =>
+    hasCoverageManifest ? !manifestCoveredClasses.has(ec) : !sweptClasses.has(ec)
+  )
+  const coveredDomainSet = hasCoverageManifest ? manifestCoveredClasses : sweptClasses
   const coveredDomains = new Set(
     classesResp.rows
-      .filter((r) => typeof r['event_class'] === 'string' && sweptClasses.has(r['event_class'] as string))
+      .filter((r) => typeof r['event_class'] === 'string' && coveredDomainSet.has(r['event_class'] as string))
       .map((r) => r['domain'])
       .filter((d): d is string => typeof d === 'string')
   )
@@ -1063,7 +1295,40 @@ export async function computeGocharaCoverage(
     })
   )
 
-  const ok = classesResp.ok && universeResp.ok && substepResp.ok
+  const ok = classesResp.ok && universeResp.ok && substepResp.ok && (!isManifestGeneration || coverageRowsResp.ok)
+
+  // P-1b: manifest-derived blocks (only populated in the manifest regime with
+  // ≥1 coverage row). Per-partition detail is carried verbatim — the writer's
+  // own record of requested/completed horizon, resolution counts, and any
+  // unsearched_reason — never reduced to a bare class list.
+  const coverageManifestBlock = hasCoverageManifest
+    ? {
+        source: `kala_gochara_coverage (writer search-coverage manifest, generation ${authGen})`,
+        generation: authGen,
+        partitions: coverageRows.map((r) => ({
+          partition_kind: (r['partition_kind'] as string | null) ?? null,
+          partition_key: (r['partition_key'] as string | null) ?? null,
+          requested_horizon: (r['requested_horizon'] as string | null) ?? null,
+          completed_horizon: (r['completed_horizon'] as string | null) ?? null,
+          resolution: (r['resolution'] as string | null) ?? null,
+          targets_resolved: r['targets_resolved'] == null ? null : Number(r['targets_resolved']),
+          targets_unresolved: r['targets_unresolved'] == null ? null : Number(r['targets_unresolved']),
+          unsearched_reason: (r['unsearched_reason'] as string | null) ?? null,
+        })),
+        event_classes: Object.fromEntries(
+          eventClassPartitions.map((r) => [
+            r['partition_key'] as string,
+            {
+              requested_horizon: (r['requested_horizon'] as string | null) ?? null,
+              completed_horizon: (r['completed_horizon'] as string | null) ?? null,
+              resolution: (r['resolution'] as string | null) ?? null,
+              targets_resolved: r['targets_resolved'] == null ? null : Number(r['targets_resolved']),
+              targets_unresolved: r['targets_unresolved'] == null ? null : Number(r['targets_unresolved']),
+            },
+          ])
+        ),
+      }
+    : null
 
   // C3 (SAMPŪRTI-γ): compute coverage_quality — tier classification based on covered class count.
   const coveredClassCount = eventClasses.length
@@ -1106,16 +1371,33 @@ export async function computeGocharaCoverage(
         source: substepSourceLabel,
         note:
           'Execution completeness ONLY — how many substeps have committed for THIS chart ' +
-          '(MR-02: asset_id is authority-aware: ka_gochara_sweep for v1-authority charts, ' +
-          'ka_gochara_v3_century_materialize for v3-authority charts per kala_gochara_authority.authoritative_generation). ' +
+          '(MR-02/P-1b: asset_id is authority-aware: ka_gochara_sweep for v1-authority charts, ' +
+          'ka_gochara_v3_century_materialize for v3-authority charts, the manifest writer_asset_id ' +
+          "for '4.x' manifest generations, per kala_gochara_authority.authoritative_generation). " +
           'NOT the same axis as the category coverage above (which domains the sweep can ever ' +
           'surface at all, per event_classes_covered/domains_not_covered) — a fully-executed sweep ' +
           '(every substep committed) still structurally excludes any domain in domains_not_covered. ' +
           'No total-planned-substep denominator is reported here: that figure is not independently ' +
           'queryable post-build without re-deriving the writer\'s own planning logic, and this field ' +
-          'will not fabricate one.',
+          'will not fabricate one.' +
+          (isManifestGeneration && !hasCoverageManifest
+            ? ' NOTE (P-1b): this is a manifest-generation chart with ZERO kala_gochara_coverage ' +
+              'rows served — the coverage above is substep-derived execution evidence only, NOT ' +
+              'coverage of the searched horizon (F-11/§N.8).'
+            : ''),
         materialized_through: horizonResp.ok ? (horizonResp.rows[0]?.['materialized_through'] as string | null ?? null) : null,
       },
+      coverage_manifest: coverageManifestBlock,
+      // P-1b: when the manifest rows are the coverage source, the substep axis
+      // is demoted to this labelled execution-evidence block (preserved, never
+      // presented as coverage of the searched horizon).
+      sweep_execution: hasCoverageManifest
+        ? {
+            substeps_committed: substepsCommitted,
+            swept_event_classes: [...sweptClasses].sort(),
+            source: substepSourceLabel,
+          }
+        : null,
     },
   }
 }
@@ -1500,8 +1782,15 @@ export async function computeGocharaActivation(
   const rows = capActiveSentences(withPlateauDisclosure(rawRows))
 
   // W5.1: compute facets (real detector per I3) and resolve generation-conditional citation.
+  // P-1a: one manifest fetch per tool call (the AUTHORITATIVE_GENERATION_FILTER
+  // guarantees one generation per response) — manifest-driven provenance (N-10).
   const facets = computeWindowFacets(rows)
-  const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
+  const manifest = await fetchPublicationManifest(chartId, rawRows[0]?.generation ?? null, principal)
+  // P-1d: an unpublished chart must never be served with generation=v1
+  // provenance — the citation names the unpublished state instead.
+  const resolvedCitation = coverage.status === 'unpublished'
+    ? 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
+    : buildSourceCitation(chartId, rawRows[0]?.generation ?? null, manifest)
 
   // MR-25: resolve citation strings from active_sentences to verse_refs.
   // Soft failure: verseRefMap is empty Map on any error (additive, never gating).
@@ -1534,9 +1823,11 @@ export async function computeGocharaActivation(
       context_only_note,
       resolution_breakdown,
       empty_reason: rows.length === 0
-        ? (ok
-            ? 'no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one'
-            : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
+        ? (coverage.status === 'unpublished'
+            ? 'unpublished'
+            : ok
+              ? 'no kala_gochara_windows row spans this date for this chart/event_class/domain filter — an honest zero-activation result, not a fabricated one'
+              : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
         : null,
     },
   }
@@ -1804,8 +2095,28 @@ export async function computeGocharaForecast(
   for (const r of rawRows) byShape[r.temporal_shape] = (byShape[r.temporal_shape] ?? 0) + 1
 
   // W5.1: compute facets (real detector per I3) and resolve generation-conditional citation.
+  // P-1a: manifest-driven provenance (N-10) — one fetch per tool call.
   const facets = computeWindowFacets(rows)
-  const resolvedCitation = buildSourceCitation(rawRows[0]?.generation ?? null)
+  const manifest = await fetchPublicationManifest(chartId, rawRows[0]?.generation ?? null, principal)
+  // P-1d: an unpublished chart must never be served with generation=v1
+  // provenance — the citation names the unpublished state instead.
+  const resolvedCitation = coverage.status === 'unpublished'
+    ? 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
+    : buildSourceCitation(chartId, rawRows[0]?.generation ?? null, manifest)
+
+  // P-1e (H-5 serving rule): admission is cap-free; the LIMIT above is a
+  // serve-time trim ONLY — a view, never evidence that trimmed rows do not
+  // exist. Report the pre-trim count; never re-rank (stored ORDER BY stands).
+  // The count query strips ORDER BY/LIMIT (and the limit param) so it counts
+  // the full admitted set, not the served page.
+  const trimmed = rawRows.length === limit
+  const preTrimCount = trimmed
+    ? await platformQuery(
+        `SELECT count(*)::int AS n FROM (${sql.replace(/\s+ORDER BY[\s\S]*$/i, '')}) pre_trim`,
+        params.slice(0, -1),
+        principal
+      ).then((r) => Number(r.rows[0]?.['n'] ?? rawRows.length)).catch(() => rawRows.length)
+    : rawRows.length
 
   // MR-25: resolve citation strings from active_sentences to verse_refs.
   // Soft failure: verseRefMap is empty Map on any error (additive, never gating).
@@ -1840,6 +2151,8 @@ export async function computeGocharaForecast(
       ...baseEnvelope,
       source_citation: resolvedCitation,
       window_count: rawRows.length,
+      trimmed,
+      pre_trim_count: preTrimCount,
       shape_breakdown: byShape,
       backing_data_reachable: ok && coverageOk,
       citation_verse_refs_available: verseRefMap.size > 0,
@@ -1847,12 +2160,14 @@ export async function computeGocharaForecast(
       context_only_note,
       resolution_breakdown,
       empty_reason: rawRows.length === 0
-        ? (ok
-            ? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +
-              'Note: G-4 has only materialized rows for chart-relative decades that have actually been swept ' +
-              '(see coverage.sweep_completeness) — an empty result for an unswept decade is a coverage gap, not ' +
-              'a negative signal; check kala_gochara_windows build coverage before reading this as "nothing happens".'
-            : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
+        ? (coverage.status === 'unpublished'
+            ? 'unpublished'
+            : ok
+              ? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +
+                'Note: G-4 has only materialized rows for chart-relative decades that have actually been swept ' +
+                '(see coverage.sweep_completeness) — an empty result for an unswept decade is a coverage gap, not ' +
+                'a negative signal; check kala_gochara_windows build coverage before reading this as "nothing happens".'
+              : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
         : null,
       coverage_disclosure: {
         requested_range: dateRange,
@@ -2079,8 +2394,26 @@ export async function computeGocharaElectionAvoidance(
 
   const { rows, ok, error } = await queryRows(sql, params, principal)
 
-  // W5.1: resolve generation-conditional citation once, applied to envelope + per-row.
-  const resolvedCitation = buildSourceCitation(rows[0]?.generation ?? null)
+  // W5.1 + P-1a: resolve generation-conditional citation once, applied to
+  // envelope + per-row. The manifest is fetched once per tool call (the
+  // AUTHORITATIVE_GENERATION_FILTER guarantees one generation per response).
+  const manifest = await fetchPublicationManifest(chartId, rows[0]?.generation ?? null, principal)
+  // P-1d: an unpublished chart must never be served with generation=v1
+  // provenance — the citation names the unpublished state instead.
+  const resolvedCitation = coverage.status === 'unpublished'
+    ? 'unpublished — no kala_gochara_authority row for this chart (N-10 / P-1d)'
+    : buildSourceCitation(chartId, rows[0]?.generation ?? null, manifest)
+
+  // P-1e (H-5 serving rule): the LIMIT above is a serve-time trim ONLY —
+  // report the pre-trim count; never re-rank (stored ORDER BY stands).
+  const trimmed = rows.length === limit
+  const preTrimCount = trimmed
+    ? await platformQuery(
+        `SELECT count(*)::int AS n FROM (${sql.replace(/\s+ORDER BY[\s\S]*$/i, '')}) pre_trim`,
+        params.slice(0, -1),
+        principal
+      ).then((r) => Number(r.rows[0]?.['n'] ?? rows.length)).catch(() => rows.length)
+    : rows.length
 
   const avoidWindows = await Promise.all(
     rows.map(async (row) => {
@@ -2179,8 +2512,9 @@ export async function computeGocharaElectionAvoidance(
         contributing_systems_active: (row.contributing_systems ?? []).filter((s) => s.active).map((s) => s.system_id),
         active_sentences_count: row.active_sentences.length,
         peak_basis: row.peak_basis,
-        // W5.1: generation-conditional per-row citation.
-        source_citation: buildSourceCitation(row.generation ?? null),
+        // W5.1 + P-1a: generation-conditional per-row citation (manifest-driven;
+        // one manifest per response — the filter guarantees one generation).
+        source_citation: buildSourceCitation(chartId, row.generation ?? null, manifest),
       }
     })
   )
@@ -2206,16 +2540,20 @@ export async function computeGocharaElectionAvoidance(
       ...baseEnvelope,
       source_citation: resolvedCitation,
       window_count: rows.length,
+      trimmed,
+      pre_trim_count: preTrimCount,
       backing_data_reachable: ok && coverageOk,
       context_only_rows_in_page,
       context_only_note,
       resolution_breakdown,
       empty_reason: rows.length === 0
-        ? (ok
-            ? 'no adverse (is_adverse=true) kala_gochara_windows rows overlap this date_range/filter -- ' +
-              'an honestly clean window, not a fabricated all-clear (verify coverage.sweep_completeness ' +
-              'for this range)'
-            : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
+        ? (coverage.status === 'unpublished'
+            ? 'unpublished'
+            : ok
+              ? 'no adverse (is_adverse=true) kala_gochara_windows rows overlap this date_range/filter -- ' +
+                'an honestly clean window, not a fabricated all-clear (verify coverage.sweep_completeness ' +
+                'for this range)'
+              : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
         : null,
       coverage_disclosure: {
         requested_range: dateRange,

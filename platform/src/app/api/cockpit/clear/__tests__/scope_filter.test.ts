@@ -57,3 +57,51 @@ describe('filterScopeAssets', () => {
     expect(result[0].scope).toBe('per_chart')
   })
 })
+
+/**
+ * B1 — Kāla pre-elevation Phase 1.1. `filterScopeAssets` is the second of the
+ * two independent layers that keep a RETIRED asset out of a Clear (the first is
+ * the `is_active` predicate on the routes' own registry SELECT). Neither is
+ * allowed to be the only load-bearing one.
+ *
+ * Semantics chosen deliberately: only an EXPLICIT `is_active === false` excludes.
+ * `undefined` (a caller that did not select the column) and `true` both pass, so
+ * this filter narrows the route's already-filtered set rather than silently
+ * emptying a scope for a caller that shapes its rows differently. Production has
+ * exactly one row with `is_active IS NOT TRUE` — `ka_gochara_sweep` — and zero
+ * NULLs (measured 2026-09-22: 0 null / 1 false / 128 true).
+ */
+const REGISTRY_WITH_RETIRED: RegistryRow[] = [
+  { asset_id: 'ka_kshetra',       layer: 'kala', scope: 'per_chart', target_table: 'kala_field',            is_active: true },
+  { asset_id: 'ka_gochara_sweep', layer: 'kala', scope: 'per_chart', target_table: 'kala_gochara_windows',  is_active: false },
+  { asset_id: 'ka_sangam',        layer: 'kala', scope: 'per_chart', target_table: 'kala_convergence' },
+]
+
+describe('filterScopeAssets — B1 retired-asset exclusion', () => {
+  it('layer scope excludes an is_active=false asset', () => {
+    const result = filterScopeAssets(REGISTRY_WITH_RETIRED, 'layer', 'kala', ['per_chart'])
+    expect(result.map(r => r.asset_id)).toEqual(['ka_kshetra', 'ka_sangam'])
+  })
+
+  it('global scope excludes an is_active=false asset', () => {
+    const result = filterScopeAssets(REGISTRY_WITH_RETIRED, 'global', null, ['per_chart'])
+    expect(result.map(r => r.asset_id)).not.toContain('ka_gochara_sweep')
+  })
+
+  it('a DIRECT asset-scope request for the retired asset returns nothing', () => {
+    const result = filterScopeAssets(REGISTRY_WITH_RETIRED, 'asset', 'ka_gochara_sweep', ['per_chart'])
+    expect(result).toHaveLength(0)
+  })
+
+  it('asset_set scope excludes it even when explicitly named in the set', () => {
+    const result = filterScopeAssets(
+      REGISTRY_WITH_RETIRED, 'asset_set', 'ka_kshetra,ka_gochara_sweep', ['per_chart']
+    )
+    expect(result.map(r => r.asset_id)).toEqual(['ka_kshetra'])
+  })
+
+  it('a row with no is_active field is NOT excluded — the filter narrows, it does not invent', () => {
+    const result = filterScopeAssets(REGISTRY_WITH_RETIRED, 'asset', 'ka_sangam', ['per_chart'])
+    expect(result.map(r => r.asset_id)).toEqual(['ka_sangam'])
+  })
+})

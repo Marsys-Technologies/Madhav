@@ -292,6 +292,99 @@ mechanisms:
     weight_type: structural_modifier=1.0
     module_path: services.gochara_v3.mechanisms.w29_citation_resolution
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # LEGACY ENABLED (1 mechanism) — live in engine.py today; N-14 retires behind a flag
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - toggle_key: w30_nodal_drishti
+    mechanism_id: w30_nodal_drishti
+    wave: "W3.0"
+    lane: nodal_drishti
+    admission_state: legacy_enabled
+    description: >-
+      Nodal dṛṣṭi — Rāhu and Ketu cast their sign-level aspect on the transited sign.
+      Live in services/gochara_v3/engine.py lambda_v3 today. Ruling N-14 will retire it
+      behind input-vector flag nodal_drishti ∈ {enabled(legacy), removed}; until then it
+      is tracked as legacy_enabled so the wiring-truth detector (N-16) records its
+      production contribution honestly.
+    classical_citation: >-
+      Nodal dṛṣṭi is attested in classical sources as a gochara amplifier, but the specific
+      sign-aspect rule used here was not independently verified against the served corpus
+      (classical_text_chunks unreachable from this checkout). Marked corpus_verifiable=false
+      per N-21 until G-9/G-10 re-citation lands.
+    uncited_extension: false
+    evidence_link: "Engine.py lambda_v3 product (N-16 wiring-truth detector); N-14 retires behind a flag"
+    weight_type: fitted
+    module_path: services.gochara_v3.mechanisms.w30_nodal_drishti
+
+# ─────────────────────────────────────────────────────────────────────────
+# PLANNED INPUT-VECTOR FLAGS (recorded, not mechanisms — no mechanisms: entry,
+# so the N-16 wiring detector's three-way set is unaffected)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# kakshya_bindu_interim ∈ {off(legacy), on}, default off — N-22 / N-13
+# sign-level bindu interim (L3 §4.3; M-7 interim). Engine constant
+# engine.py::_KAKSHYA_BINDU_INTERIM_ENABLED. When on: a kakṣyā crossing whose
+# transiting graha has no resolvable bindu in the transited sign (chart_facts
+# ashtakavarga_bindu_sign, graha × sign; count 0 or row absent) contributes no
+# activity and carries completeness_state='unqualified' + failure_detail; a
+# resolvable count >= 1 qualifies the crossing at the coarser grain
+# (qualification_grain='sign'). Flipping the flag changes what the engine
+# emits, so a build under a different flag value is a new candidate (input
+# generation vector diff, WP1_CONTRACTS.md §5.3/§4.7), never an in-place
+# refill.
+#
+# activity_shape ∈ {legacy_box(legacy), linear_no_box}, default legacy_box —
+# M-1 (L3 §4.5) activity shape projection. Engine constant
+# engine.py::_ACTIVITY_SHAPE_DEFAULT; companion parameter orb_max_deg
+# (default 5.0°, per WP1_CONTRACTS.md §7 orb_source). When linear_no_box:
+# activity is 1 − |Δ|/orb_max_deg with |Δ| the transit body's separation
+# from the target longitude AT the evaluation instant — no time box; the
+# ±5-day gather only enumerates candidate events. _ACTIVITY_MAX_ORB_DEG and
+# its mirrors stay until the M-1 value ratification that follows the WP8
+# orb battery (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.6). Flipping the
+# flag changes what the engine emits, so a build under a different flag
+# value is a new candidate (input generation vector diff,
+# WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
+#
+# moon_channel ∈ {blended(legacy), separate}, default blended — M-3
+# (L3 §4.8) Moon channel split. Engine constant
+# engine.py::_MOON_CHANNEL_DEFAULT. When separate: Moon-body sentences are
+# excluded from the century λ's activity term; Moon-scale classes are
+# served on demand by engine.find_episodes(..., moon=True), which writes a
+# 'moon_on_demand' coverage partition for its searched interval (even a
+# zero-answer search, L3-Q08). Tārā-bala (W2.3) and mūrti qualifiers are
+# instant qualifiers and still enter slow-body windows; Sade-Sati
+# testimony is NOT in the Moon channel. Channel doctrine content stays
+# [U]. Flipping the flag changes what the engine emits, so a build under a
+# different flag value is a new candidate (input generation vector diff,
+# WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
+#
+# nodal_drishti ∈ {enabled(legacy), removed}, default enabled — N-14
+# (L3 §4.9) nodal dṛṣṭi removal. Engine constant
+# engine.py::_NODAL_DRISHTI_DEFAULT. When removed: drishti_contact emits no
+# rows with body ∈ {Rahu, Ketu} (nodes stay agents/targets for
+# conjunction, ingress, kakṣyā, return); w30_modifier leaves the λ
+# product; the removed term is kept one generation as a labelled
+# non-scoring annotation (term_breakdown.w30_annotation) and the absence
+# is recorded as completeness_state='removed_by_ruling_N14' on w30_detail.
+# Flipping the flag changes what the engine emits, so a build under a
+# different flag value is a new candidate (input generation vector diff,
+# WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
+#
+# sade_sati_mode ∈ {permission_weight(legacy), testimony}, default
+# permission_weight — N-15 (L3 §4.10) Sade-Sati to testimony. Engine
+# constant engine.py::_SADE_SATI_MODE_DEFAULT. When testimony: sade_sati
+# leaves the PERMISSION weight set entirely (total_weight renormalised,
+# never a zero-weight row) and is reported as typed testimony
+# (epistemic_class='testimony', corpus_verifiable=false, citations
+# PG1334/PG786/PG1333 at MEDIUM provenance per N-21) with the global
+# permission lift reported as a first-class delta
+# (sade_sati_permission_lift). Flipping the flag changes what the engine
+# emits, so a build under a different flag value is a new candidate
+# (input generation vector diff, WP1_CONTRACTS.md §5.3/§4.7), never an
+# in-place refill.
+
 # ─────────────────────────────────────────────────────────────────────────
 # SUMMARY
 # ─────────────────────────────────────────────────────────────────────────
@@ -301,7 +394,9 @@ mechanisms:
 #   w27a_tajaka_year_lord, w27b_tithi_pravesha, w27c_sudarshana
 # structural_only_count: 2
 #   w28_bhava_degrees, w29_citation_resolution
-# total: 12
+# legacy_enabled_count: 1
+#   w30_nodal_drishti
+# total: 13
 #
 # Fits stored: gochara_v3_calibration (migration 561, W4.4)
 # Prospective ledger seeded: W4.5 (w45_post_fit_rebuild.py)

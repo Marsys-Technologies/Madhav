@@ -66,12 +66,30 @@ Resolution coverage (documented, NOT exhaustive -- an honest scope choice):
     nakshatra_ingress_tara, sarvatobhadra_vedha -- honestly skip it;
     sign_ingress/av_threshold_state/kakshya_cell_crossing/gochara_vedha_pair,
     which only need `target_sign`, work fully.
+  - `target_type == 'bhava_arudha'` (M-6, WP1_CONTRACTS §2.2 item 11):
+    resolves `target_sign` ONLY, via the arudha_pada sign fact of the
+    ARUDHA_A{h} subject the symbolic target_ref names -- a sign-level
+    interval, never a degree (same structural honesty as 'bhava').
+  - `target_type == 'gulika_mandi_distance'` / `'yamakantaka_difference'`
+    (M-6, §2.2 items 9-10): resolves `target_sign` ONLY, by recomputing the
+    sign-grain Phaladīpikā Adh. XVII derivation from the chart's facts
+    (LAGNA sign, reference_signs rulership, graha occupied signs,
+    sensitive_point_gulika_mandi signs, natal Moon nakshatra). The shared
+    arithmetic is imported from services.gochara_grammar.derived_points --
+    the SAME module the resonance writer builds these rows from, so writer
+    and reader can never drift. Any missing operand leaves the target
+    unresolved (the writer will already have stamped the row's
+    target_resolution_state honestly; enrichment never guesses). The
+    verses' navāṃśa refinement and trikona positions are NOT resolved
+    here either -- sign-grain operands cannot anchor them.
   - `target_type in ('lord', 'sensitive_degree', 'arudha',
     'mechanism_node', 'yoga_constituent')`: NOT resolved here (would
     require house-lord derivation, sensitive-degree fact-category lookups,
     arudha-pada tables, etc. -- each a further live-schema investigation
     beyond this lane's scope; left as a documented gap, honestly
-    unenriched rather than silently guessed).
+    unenriched rather than silently guessed). Note the legacy `arudha`
+    rows (target_ref = fact_id) stay unresolved here; the M-6
+    `bhava_arudha` type above is the resolved ārūḍha surface.
 """
 from __future__ import annotations
 
@@ -80,6 +98,15 @@ from dataclasses import replace
 from typing import Optional
 
 from services.gochara_grammar.models import ResonanceTarget
+from services.gochara_grammar.derived_points import (
+    MANDI_DISTANCE_REF,
+    YAMAKANTAKA_FORMULAS,
+    difference_sign_num,
+    fifth_star_lord,
+    mandi_distance_target_sign_num,
+    sign_name_of,
+    sign_num_of,
+)
 from ._dbutil import savepoint_scope
 from brahmagyan.graha_vocabulary import norm_graha
 
@@ -154,6 +181,152 @@ def _fetch_graha_position(conn, chart_id: str, subject: str, ayanamsha_id: str) 
     return out or None
 
 
+# ── M-6 derived-target resolution helpers (WP1_CONTRACTS §2.2 items 9-11) ────
+# All best-effort, savepoint-wrapped like `_fetch_graha_position`: any missing
+# operand returns None and the caller leaves the target unresolved -- the
+# honest degrade, never a guess.
+
+def _fetch_sign_text_fact(conn, chart_id: str, ayanamsha_id: str,
+                          category: str, subject: str) -> Optional[str]:
+    """fact_value_text of a fact_key='sign' row for (category, subject)."""
+    if conn is None:
+        return None
+    try:
+        with savepoint_scope(conn, "sign_fact"):
+            cur = conn.execute(
+                """
+                SELECT fact_value_text
+                  FROM chart_facts
+                 WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = %s
+                   AND fact_subject = %s AND fact_key = 'sign'
+                """,
+                [chart_id, ayanamsha_id, category, subject],
+            )
+            row = cur.fetchone()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[enrichment] sign fact read failed for %s/%s: %s", category, subject, exc)
+        return None
+    if row is None:
+        return None
+    value = row.get("fact_value_text") if isinstance(row, dict) else row[0]
+    value = str(value or "").strip()
+    return value if value in SIGNS else None
+
+
+def _fetch_reference_sign_lords(conn) -> Optional[dict]:
+    """The L0 classical rulership table ({1..12: lord}), or None when
+    unreachable/incomplete -- mirroring the resonance writer's R-4 discipline
+    (no silent fallback to a hardcoded copy)."""
+    if conn is None:
+        return None
+    try:
+        with savepoint_scope(conn, "reference_signs"):
+            cur = conn.execute("SELECT sign_id, lord FROM reference_signs ORDER BY sign_id")
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[enrichment] reference_signs read failed: %s", exc)
+        return None
+    lords = {}
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(zip(["sign_id", "lord"], row))
+        if d.get("sign_id") is not None and d.get("lord"):
+            lords[int(d["sign_id"])] = str(d["lord"])
+    return lords if len(lords) == 12 else None
+
+
+def _fetch_moon_nakshatra_id(conn, chart_id: str, ayanamsha_id: str) -> Optional[int]:
+    if conn is None:
+        return None
+    try:
+        with savepoint_scope(conn, "moon_nakshatra"):
+            cur = conn.execute(
+                """
+                SELECT fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND ayanamsha_id = %s
+                   AND fact_category = 'panchanga_nakshatra_moon'
+                   AND fact_subject = 'NAKSHATRA_MOON_BIRTH' AND fact_key = 'number'
+                """,
+                [chart_id, ayanamsha_id],
+            )
+            row = cur.fetchone()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[enrichment] moon nakshatra read failed: %s", exc)
+        return None
+    if row is None:
+        return None
+    value = row.get("fact_value_num") if isinstance(row, dict) else row[0]
+    return int(value) if value is not None else None
+
+
+def _graha_occupied_sign(conn, chart_id: str, ayanamsha_id: str, graha_name: str) -> Optional[str]:
+    subject = GRAHA_TO_FACT_SUBJECT.get(graha_name)
+    if subject is None:
+        return None
+    pos = _fetch_graha_position(conn, chart_id, subject, ayanamsha_id)
+    return pos.get("sign") if pos else None
+
+
+def _house_lord_occupied_sign(conn, chart_id: str, ayanamsha_id: str, house_n: int) -> Optional[str]:
+    """Lord of whole-sign house N (LAGNA anchor + reference_signs) → that
+    graha's occupied sign. None on any missing operand."""
+    lagna_pos = _fetch_graha_position(conn, chart_id, "LAGNA", ayanamsha_id)
+    if not lagna_pos or not lagna_pos.get("sign"):
+        return None
+    sign_lords = _fetch_reference_sign_lords(conn)
+    if not sign_lords:
+        return None
+    house_sign_num = (SIGNS.index(lagna_pos["sign"]) + (house_n - 1)) % 12 + 1
+    lord = sign_lords.get(house_sign_num)
+    if not lord:
+        return None
+    return _graha_occupied_sign(conn, chart_id, ayanamsha_id, lord)
+
+
+def _m6_operand_sign(conn, chart_id: str, ayanamsha_id: str, role: str) -> Optional[str]:
+    if role == "lagna_lord":
+        return _house_lord_occupied_sign(conn, chart_id, ayanamsha_id, 1)
+    if role in ("yamakantaka", "mandi"):
+        return _fetch_sign_text_fact(conn, chart_id, ayanamsha_id,
+                                     "sensitive_point_gulika_mandi", role.upper())
+    if role == "fifth_star_lord":
+        nak_id = _fetch_moon_nakshatra_id(conn, chart_id, ayanamsha_id)
+        if nak_id is None:
+            return None
+        return _graha_occupied_sign(conn, chart_id, ayanamsha_id, fifth_star_lord(nak_id))
+    # 'Sun' and any other plain graha role
+    return _graha_occupied_sign(conn, chart_id, ayanamsha_id, role)
+
+
+def _resolve_m6_derived_sign(conn, target: ResonanceTarget, ayanamsha_id: str) -> Optional[str]:
+    """Recompute the M-6 sign-grain derivation (Phaladīpikā Adh. XVII) from
+    the chart's facts -- the SAME arithmetic the resonance writer used, via
+    the shared services.gochara_grammar.derived_points module."""
+    chart_id = target.chart_id
+    if target.target_type == "gulika_mandi_distance":
+        if target.target_ref != MANDI_DISTANCE_REF:
+            return None
+        eighth_lord_sign = _house_lord_occupied_sign(conn, chart_id, ayanamsha_id, 8)
+        mandi_sign = _m6_operand_sign(conn, chart_id, ayanamsha_id, "mandi")
+        e_num = sign_num_of(eighth_lord_sign) if eighth_lord_sign else None
+        m_num = sign_num_of(mandi_sign) if mandi_sign else None
+        if e_num is None or m_num is None:
+            return None
+        return sign_name_of(mandi_distance_target_sign_num(e_num, m_num))
+    if target.target_type == "yamakantaka_difference":
+        formula = next((f for f in YAMAKANTAKA_FORMULAS if f["ref"] == target.target_ref), None)
+        if formula is None:
+            return None
+        minuend = _m6_operand_sign(conn, chart_id, ayanamsha_id, formula["minuend"])
+        subtrahend = _m6_operand_sign(conn, chart_id, ayanamsha_id, formula["subtrahend"])
+        a_num = sign_num_of(minuend) if minuend else None
+        b_num = sign_num_of(subtrahend) if subtrahend else None
+        if a_num is None or b_num is None:
+            return None
+        return sign_name_of(difference_sign_num(a_num, b_num))
+    return None
+
+
 def enrich_target(
     conn, target: ResonanceTarget, ayanamsha_id: str = "lahiri_chitrapaksha",
 ) -> ResonanceTarget:
@@ -214,6 +387,30 @@ def enrich_target(
             # honestly (empty result, not a crash) when target_nakshatra_id
             # is None -- see each primitive's own docstring.
             return replace(target, target_sign=bhava_sign)
+        return target
+
+    if target.target_type == "bhava_arudha":
+        # M-6 (WP1_CONTRACTS §2.2 item 11): target_ref is the symbolic
+        # 'BHAVA_ARUDHA_A{h}'; resolve target_sign ONLY via the arudha_pada
+        # sign fact of ARUDHA_A{h} -- a sign-level interval, never a degree
+        # (same structural honesty as 'bhava' above).
+        ref = str(target.target_ref or "")
+        if not (ref.startswith("BHAVA_ARUDHA_A") and ref[len("BHAVA_ARUDHA_A"):].isdigit()):
+            return target
+        arudha_subject = f"ARUDHA_A{int(ref[len('BHAVA_ARUDHA_A'):])}"
+        sign = _fetch_sign_text_fact(conn, target.chart_id, ayanamsha_id,
+                                     "arudha_pada", arudha_subject)
+        if sign:
+            return replace(target, target_sign=sign)
+        return target
+
+    if target.target_type in ("gulika_mandi_distance", "yamakantaka_difference"):
+        # M-6 (§2.2 items 9-10): recompute the sign-grain derivation from the
+        # chart's facts via the shared derived_points module; target_sign
+        # ONLY (whole-sign span -- no degree/nakshatra anchor exists).
+        sign = _resolve_m6_derived_sign(conn, target, ayanamsha_id)
+        if sign:
+            return replace(target, target_sign=sign)
         return target
 
     return target

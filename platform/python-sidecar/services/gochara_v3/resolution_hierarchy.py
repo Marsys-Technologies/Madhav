@@ -23,25 +23,41 @@ tiling design (fixed 30-day/1-day step subdivision with a midpoint-sampled
         WINDOW'S OWN P90 (never lambda_thresh — that would make admission
         externally gate-dependent instead of a property of this window's
         own λ distribution). A flat/constant series admits nothing.
-  R8.4  Retention: rank (λ DESC, jd ASC), greedy-retain enforcing
-        MIN_PEAK_SEPARATION_DAYS, capped at MAX_PEAKS_PER_ERA_WINDOW.
+  R8.4  Retention — N-17/H-5 SUPERSESSION (2026-09-24, GOCHARA_REMAINDER_
+        EXECUTION_BRIEF_v1_0 §4.2): admission is CAP-FREE. Every P90-
+        admitted peak persists; plateau ties all rank 1 (kernel
+        gochara_kernel/peaks.py admit_peaks semantics, WP2 case 12 — a
+        trim is stable and never re-ranks). The legacy
+        MAX_PEAKS_PER_ERA_WINDOW=3 admission cap is REMOVED from this
+        module; it survives only in the frozen WP3b legacy-semantics
+        reproduction (services/gochara_kernel/legacy_semantics.py), which
+        pins the superseded baseline and must not be "modernised". The
+        90-day separation filter (MIN_PEAK_SEPARATION_DAYS, kept as the
+        conventional trim value) is now a SERVE-TIME TRIM POLICY: callers
+        pass `min_separation_days` explicitly to apply it, the default is
+        NO trim, and the pre-trim count is always returned
+        (HierarchyResult.peaks_admitted / EraWindowAccounting.
+        peaks_admitted, with `trim_applied` marking whether a trim ran).
         MR-44 AMENDMENT (2026-08-11, register MASTER_REMEDIATION_
-        REGISTER_v2_0.md): when one decade slice genuinely produces
-        MULTIPLE era windows (find_threshold_crossings returning >=2
-        intervals — a real, observed production condition), retention now
-        runs ONCE, POOLED, across ALL of that call's era windows —
-        MIN_PEAK_SEPARATION_DAYS is enforced GLOBALLY, never per-interval
-        only. Rationale: two peaks admitted from two DIFFERENT era windows
-        could each trivially clear their own interval's within-interval
-        separation check (nothing else in that interval to collide with)
-        yet independently day-refine (R8.5) to the IDENTICAL calendar
-        date — a duplicate row on uq_kala_gochara_windows_v2_natural_key
-        (chart_id, event_class, window_start, peak_date, milestone_id,
-        generation). MAX_PEAKS_PER_ERA_WINDOW stays a PER-ERA-WINDOW cap
-        (register MR-44's ruled interpretation of PK-R-8 R8.4: "cap at
-        MAX_PEAKS_PER_ERA_WINDOW per era window as before") — only the
-        SEPARATION check widens to global scope. See
-        retain_candidates_pooled.
+        REGISTER_v2_0.md) survives as the trim's pooled mechanics: when a
+        trim IS applied and one decade slice genuinely produces MULTIPLE
+        era windows (find_threshold_crossings returning >=2 intervals — a
+        real, observed production condition), the trim runs ONCE, POOLED,
+        across ALL of that call's era windows — separation is enforced
+        GLOBALLY, never per-interval only. Rationale: two peaks admitted
+        from two DIFFERENT era windows could each trivially clear their
+        own interval's within-interval separation check (nothing else in
+        that interval to collide with) yet independently day-refine (R8.5)
+        to the IDENTICAL calendar date — a duplicate row on
+        uq_kala_gochara_windows_v2_natural_key (chart_id, event_class,
+        window_start, peak_date, milestone_id, generation). Under the
+        N-17 default (no trim) every admitted peak persists, so such
+        cross-interval peak-date duplicates CAN occur at write time; the
+        writer's per-row honest-skip on natural-key conflict
+        (ka_gochara_v3_century_materialize.py) is the backstop, and the
+        serving layer's trim (P-1e H-5 serving rule: serve-time trim with
+        trimmed:true + pre-trim count, never re-rank) is the
+        deduplication point. See retain_candidates_pooled.
   R8.5  Day refinement: each retained candidate is re-sampled at 1-day
         resolution over a ±7-day window around it; the TRUE argmax (not
         the coarse candidate) is what peak_date is stamped with, on BOTH
@@ -100,9 +116,15 @@ PEAK_SCAN_STRIDE_DAYS: float = 7.0
 # property of the window's own data, independent of that external gate).
 ADMISSION_PERCENTILE: float = 90.0
 
-# R8.4: greedy-retention parameters.
+# R8.4 (N-17/H-5, 2026-09-24): the conventional SERVE-TIME TRIM separation.
+# Admission is cap-free — nothing here gates persistence any more. This
+# constant is the value callers pass as `min_separation_days` when they
+# want the legacy 90-day trim applied (the serving layer's H-5 trim, and
+# tests pinning the MR-44 pooled-trim path). The legacy
+# MAX_PEAKS_PER_ERA_WINDOW=3 admission cap was REMOVED by N-17/H-5; it
+# survives only in the frozen WP3b legacy-semantics reproduction
+# (services/gochara_kernel/legacy_semantics.py).
 MIN_PEAK_SEPARATION_DAYS: float = 90.0
-MAX_PEAKS_PER_ERA_WINDOW: int = 3
 
 # R8.5: day-refinement window around each retained coarse candidate.
 DAY_REFINEMENT_HALF_WINDOW_DAYS: float = 7.0
@@ -114,14 +136,17 @@ ZERO_PEAKS_ERA_WINDOW_TOO_SHORT = "era_window_too_short"
 ZERO_PEAKS_FLAT_LAMBDA_CURVE = "flat_lambda_curve"
 ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90 = "no_candidate_above_p90"
 # MR-44: an era window admitted >=1 candidate (cleared its own P90) but
-# retained ZERO after the POOLED cross-interval retention pass — every
-# admitted candidate either fell within MIN_PEAK_SEPARATION_DAYS of a
-# higher-lambda peak retained from a SIBLING era window in the same
-# build_resolution_hierarchy call, or the per-era MAX_PEAKS_PER_ERA_WINDOW
-# cap was exhausted by that window's own higher-ranked candidates first.
+# retained ZERO after the POOLED cross-interval separation TRIM — every
+# admitted candidate fell within min_separation_days of a strictly-
+# higher-λ peak retained from a SIBLING era window in the same
+# build_resolution_hierarchy call. N-17/H-5 (2026-09-24): reachable ONLY
+# when a serve-time trim was applied (min_separation_days set) — under
+# the cap-free default every admitted peak persists, so nothing is ever
+# "lost to pooled retention". The per-era MAX_PEAKS_PER_ERA_WINDOW cap
+# that could also exhaust a window pre-N-17 no longer exists.
 # Distinct from ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90 (that reason means
 # admission itself found nothing; this one means admission succeeded but
-# the candidate lost the pooled retention competition) — §N.8: a real,
+# the candidate lost the pooled trim competition) — §N.8: a real,
 # distinguishable detector, not a proxy folded into an existing reason.
 ZERO_PEAKS_LOST_TO_POOLED_RETENTION = "lost_to_pooled_retention"
 
@@ -162,6 +187,9 @@ class WindowResolutionRecord:
                         only (same honest-None rule as term_breakdown).
     ci_source           'structural_prior' | 'fitted_posterior' disclosure tag,
                         era-tier only (same honest-None rule as term_breakdown).
+    completeness_state  'applied' | 'unqualified'. WP5 H-2: 'unqualified'
+                        when the source IntervalBoundary failed evaluation.
+    failure_detail      Non-None when completeness_state='unqualified'.
     """
     window_id: str
     parent_window_id: Optional[str]
@@ -174,6 +202,8 @@ class WindowResolutionRecord:
     lambda_v3_ci_low: Optional[float] = None
     lambda_v3_ci_high: Optional[float] = None
     ci_source: Optional[str] = None
+    completeness_state: str = "applied"
+    failure_detail: Optional[str] = None
 
 
 @dataclass
@@ -185,11 +215,19 @@ class PeakCandidate:
 
 @dataclass
 class EraWindowAccounting:
-    """Peak-accounting for ONE era window's peak-anchoring pass (R8.13)."""
+    """Peak-accounting for ONE era window's peak-anchoring pass (R8.13).
+
+    `peaks_admitted` is the PRE-TRIM count (N-17/H-5): every P90-admitted
+    candidate, whether or not a serve-time separation trim later dropped
+    it. `trim_applied` records whether THIS pass ran with a trim
+    (`min_separation_days` set) or under the cap-free default — when
+    False, `peaks_retained == peaks_admitted` structurally.
+    """
     peaks_scanned: int
     peaks_admitted: int
     peaks_retained: int
     zero_peaks_reason: Optional[str]
+    trim_applied: bool = False
 
 
 @dataclass
@@ -209,10 +247,14 @@ class HierarchyResult:
     peaks_scanned        Total local-maximum candidates found across ALL
                          era windows in this call (R8.13).
     peaks_admitted       Total candidates whose λ >= their era window's own
-                         P90 (R8.13).
-    peaks_retained       Total candidates surviving greedy retention —
-                         equals len(month_windows) == len(day_windows)
-                         (R8.6/R8.13).
+                         P90 (R8.13). PRE-TRIM count (N-17/H-5): this is
+                         the number persisted under the cap-free default;
+                         when a serve-time trim was applied it is the
+                         count BEFORE the trim dropped anything.
+    peaks_retained       Total candidates surviving retention — equals
+                         len(month_windows) == len(day_windows)
+                         (R8.6/R8.13). Equals `peaks_admitted` whenever no
+                         trim was applied (the N-17/H-5 default).
     zero_peaks_reason    Populated ONLY when peaks_retained == 0 across the
                          whole call AND at least one era window was scanned;
                          the reason from the (first, or only) era window
@@ -256,6 +298,18 @@ class HierarchyResult:
                          own candidate globally rejected while the pool as
                          a whole still retains something else). Empty list
                          for calls with zero era windows.
+    requested_start_jd   WP5 H-3: the JD horizon the caller requested.
+    requested_end_jd     WP5 H-3: the JD horizon the caller requested.
+    completed_start_jd   WP5 H-3: the actual start of detected era windows,
+                         or None when no era window was detected (honest
+                         empty, never silently padded to the requested span).
+    completed_end_jd     WP5 H-3: the actual end of detected era windows,
+                         or None when no era window was detected.
+    trim_applied         N-17/H-5: whether this build ran with a serve-time
+                         separation trim (`min_separation_days` set) or
+                         under the cap-free default (False — every admitted
+                         peak persisted; `peaks_admitted` is then both the
+                         pre-trim AND the persisted count).
     """
     era_windows: list[WindowResolutionRecord]
     month_windows: list[WindowResolutionRecord]
@@ -267,6 +321,11 @@ class HierarchyResult:
     peaks_retained: int = 0
     zero_peaks_reason: Optional[str] = None
     era_window_accounting: list["EraWindowAccounting"] = field(default_factory=list)
+    requested_start_jd: Optional[float] = None
+    requested_end_jd: Optional[float] = None
+    completed_start_jd: Optional[float] = None
+    completed_end_jd: Optional[float] = None
+    trim_applied: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +417,8 @@ def assign_parent_window_ids(
             lambda_v3_ci_low=w.lambda_v3_ci_low,
             lambda_v3_ci_high=w.lambda_v3_ci_high,
             ci_source=w.ci_source,
+            completeness_state=w.completeness_state,
+            failure_detail=w.failure_detail,
         ))
 
     return result
@@ -440,49 +501,74 @@ def admit_candidates(
 
 
 # ---------------------------------------------------------------------------
-# R8.4 — retention: rank, greedy-retain with separation, cap
+# R8.4 — retention: cap-free by default (N-17/H-5); separation as a
+# serve-time trim policy
 # ---------------------------------------------------------------------------
 
 def retain_candidates(
     admitted: list[PeakCandidate],
     *,
-    max_peaks: int = MAX_PEAKS_PER_ERA_WINDOW,
-    min_separation_days: float = MIN_PEAK_SEPARATION_DAYS,
+    min_separation_days: Optional[float] = None,
 ) -> list[PeakCandidate]:
-    """Rank (λ DESC, jd ASC) and greedily retain, skipping any candidate
-    within min_separation_days of an already-retained one, capped at
-    max_peaks. Deterministic on ties (jd ASC is the tiebreaker).
+    """Persist the admitted candidates (N-17/H-5, cap-free admission).
+
+    DEFAULT (``min_separation_days=None``): EVERY admitted candidate
+    persists — no cap, no separation filter — returned sorted jd
+    ASCENDING (deterministic; plateau ties keep their stable order).
+
+    When ``min_separation_days`` is set, apply the legacy greedy
+    separation TRIM: rank (λ DESC, jd ASC), retain greedily, skipping any
+    candidate within ``min_separation_days`` of an already-retained
+    STRICTLY-higher-λ one. Plateau ties (equal λ) are never dropped —
+    kernel gochara_kernel/peaks.py admit_peaks semantics (WP2 case 12):
+    every tied maximum ranks 1, and a trim is stable and never re-ranks.
+    The trim changes membership only.
 
     Returns the retained set sorted by jd ASCENDING (stable emission order).
     """
+    if min_separation_days is None:
+        return sorted(admitted, key=lambda c: c.jd)
     ranked = sorted(admitted, key=lambda c: (-c.lam, c.jd))
     retained: list[PeakCandidate] = []
     for c in ranked:
-        if len(retained) >= max_peaks:
-            break
-        if all(abs(c.jd - r.jd) >= min_separation_days for r in retained):
+        if all(
+            abs(c.jd - r.jd) >= min_separation_days or r.lam == c.lam
+            for r in retained
+        ):
             retained.append(c)
     return sorted(retained, key=lambda c: c.jd)
 
 
 # ---------------------------------------------------------------------------
-# MR-44 fix — R8.4 amendment: retention POOLED across all era windows in one
-# build_resolution_hierarchy call, so MIN_PEAK_SEPARATION_DAYS is enforced
-# GLOBALLY (not just within each interval's own candidate set).
+# MR-44 fix — R8.4 amendment: when a separation TRIM is applied, it runs
+# POOLED across all era windows in one build_resolution_hierarchy call, so
+# the separation is enforced GLOBALLY (not just within each interval's own
+# candidate set). N-17/H-5: the default is NO trim — every admitted peak
+# persists.
 # ---------------------------------------------------------------------------
 
 def retain_candidates_pooled(
     admitted_by_era: list[list[PeakCandidate]],
     *,
-    max_peaks_per_era: int = MAX_PEAKS_PER_ERA_WINDOW,
-    min_separation_days: float = MIN_PEAK_SEPARATION_DAYS,
+    min_separation_days: Optional[float] = None,
 ) -> list[list[PeakCandidate]]:
     """Pool admitted candidates from MULTIPLE era windows into ONE
     retention pass (MR-44 fix; register `MASTER_REMEDIATION_REGISTER_v2_0.md`
-    MR-44, PK-R-8 R8.4 amendment).
+    MR-44, PK-R-8 R8.4 amendment; N-17/H-5 cap-free default).
+
+    N-17/H-5 DEFAULT (``min_separation_days=None``): every admitted
+    candidate from every era window persists — no cap, no separation
+    filter. Each era window's own admitted set is returned at result[i],
+    sorted jd ASCENDING. (Under this default, cross-interval peak-date
+    duplicates CAN reach the writer after independent day-refinement —
+    the writer's per-row honest-skip on natural-key conflict is the
+    backstop; the serving layer's trim is the deduplication point.)
+
+    When ``min_separation_days`` is set, apply MR-44's pooled separation
+    TRIM:
 
     THE BUG THIS CLOSES: `retain_candidates` (above) enforces
-    MIN_PEAK_SEPARATION_DAYS only within the ONE candidate set it is
+    min_separation_days only within the ONE candidate set it is
     handed. When `find_threshold_crossings` genuinely returns >=2 intervals
     for a single decade slice (a real, observed production condition — not
     a threshold artifact) and each interval's `build_peak_anchored_windows`
@@ -495,14 +581,13 @@ def retain_candidates_pooled(
     generation). Observed live: chart 482012f1, event_class=career_setback,
     decade g3_2014_2024, two intervals' peaks both refined to 2017-03-01.
 
-    THE FIX: rank ALL candidates from ALL era windows TOGETHER using the
+    THE TRIM: rank ALL candidates from ALL era windows TOGETHER using the
     exact same tie-break `retain_candidates` uses (λ DESC, jd ASC), then
-    greedily retain enforcing MIN_PEAK_SEPARATION_DAYS across the WHOLE
-    pooled set — while still capping each INDIVIDUAL era window's own
-    retained count at `max_peaks_per_era` (register MR-44's ruled
-    interpretation of PK-R-8 R8.4: option (a), "cap at
-    MAX_PEAKS_PER_ERA_WINDOW per era window as before" — the cap is
-    per-window; only the separation check widens to global scope).
+    greedily retain enforcing min_separation_days across the WHOLE pooled
+    set. Plateau ties (equal λ) are never dropped (kernel admit_peaks
+    semantics — a trim is stable and never re-ranks). N-17/H-5 REMOVED the
+    per-era MAX_PEAKS_PER_ERA_WINDOW cap from this path: separation is the
+    trim's only filter.
 
     Parameters
     ----------
@@ -516,9 +601,12 @@ def retain_candidates_pooled(
     A list, index-aligned with `admitted_by_era`, of each era window's own
     RETAINED subset (sorted jd ASCENDING within each era window, mirroring
     `retain_candidates`' own stable emission order). An era window whose
-    candidates all lost the pooled competition gets an empty list — never
+    candidates all lost the pooled trim gets an empty list — never
     a fallback fabrication.
     """
+    if min_separation_days is None:
+        return [sorted(bucket, key=lambda c: c.jd) for bucket in admitted_by_era]
+
     tagged: list[tuple[int, PeakCandidate]] = [
         (era_idx, c)
         for era_idx, candidates in enumerate(admitted_by_era)
@@ -528,13 +616,12 @@ def retain_candidates_pooled(
     ranked = sorted(tagged, key=lambda t: (-t[1].lam, t[1].jd))
 
     retained: list[tuple[int, PeakCandidate]] = []
-    per_era_count: dict[int, int] = {}
     for era_idx, c in ranked:
-        if per_era_count.get(era_idx, 0) >= max_peaks_per_era:
-            continue
-        if all(abs(c.jd - r.jd) >= min_separation_days for _, r in retained):
+        if all(
+            abs(c.jd - r.jd) >= min_separation_days or r.lam == c.lam
+            for _, r in retained
+        ):
             retained.append((era_idx, c))
-            per_era_count[era_idx] = per_era_count.get(era_idx, 0) + 1
 
     result: list[list[PeakCandidate]] = [[] for _ in admitted_by_era]
     for era_idx, c in retained:
@@ -735,8 +822,7 @@ def build_peak_anchored_windows(
     era_window: WindowResolutionRecord,
     coarse_series: tuple[np.ndarray, np.ndarray],
     *,
-    max_peaks: int = MAX_PEAKS_PER_ERA_WINDOW,
-    min_separation_days: float = MIN_PEAK_SEPARATION_DAYS,
+    min_separation_days: Optional[float] = None,
 ) -> tuple[list[WindowResolutionRecord], list[WindowResolutionRecord], EraWindowAccounting]:
     """Build peak-anchored month + day children for ONE era window (PK-R-8).
 
@@ -745,15 +831,18 @@ def build_peak_anchored_windows(
     already-computed find_threshold_crossings coarse series covering
     [era_window.enter_jd, era_window.exit_jd] (reused, not re-swept).
 
-    NOTE (MR-44): this function's own `retain_candidates` call is scoped to
-    THIS era window's candidates only — it is the right behaviour for a
-    caller anchoring exactly ONE era window in isolation (as this function's
-    own direct callers/tests do). `build_resolution_hierarchy` (the
-    multi-interval top-level entry) does NOT call this function for its
-    retention step — it pools ALL era windows' admitted candidates via
+    NOTE (MR-44 + N-17/H-5): this function's own `retain_candidates` call
+    is scoped to THIS era window's candidates only — under the N-17
+    default (no trim) every admitted candidate persists, and when a trim
+    is requested it applies within this one era window, which is the
+    right behaviour for a caller anchoring exactly ONE era window in
+    isolation (as this function's own direct callers/tests do).
+    `build_resolution_hierarchy` (the multi-interval top-level entry)
+    does NOT call this function for its retention step — when a trim is
+    requested there it pools ALL era windows' admitted candidates via
     `retain_candidates_pooled` first (closing the MR-44 cross-interval
-    duplicate-peak defect), then calls `_emit_retained_peaks` directly with
-    each era window's POOLED-retained subset. See `build_resolution_
+    duplicate-peak defect), then calls `_emit_retained_peaks` directly
+    with each era window's POOLED-retained subset. See `build_resolution_
     hierarchy` and `retain_candidates_pooled` for the full rationale.
 
     Parameters
@@ -765,9 +854,13 @@ def build_peak_anchored_windows(
                         peaks within (used for parent_window_id + clipping).
     coarse_series       (jds, lambdas) — the reused coarse-sweep slice for
                         this era window's own JD span.
-    max_peaks, min_separation_days
-                        R8.4 retention parameters (module defaults; kept as
-                        parameters for testability).
+    min_separation_days N-17/H-5 serve-time trim policy. None (default) =
+                        NO trim: every P90-admitted peak persists
+                        (cap-free admission). Set (conventional value:
+                        MIN_PEAK_SEPARATION_DAYS) to apply the legacy
+                        greedy separation trim. The accounting's
+                        `peaks_admitted` is always the PRE-TRIM count;
+                        `trim_applied` records which mode ran.
 
     Returns
     -------
@@ -777,15 +870,19 @@ def build_peak_anchored_windows(
     """
     admitted, peaks_scanned, peaks_admitted, zero_reason = _scan_and_admit(coarse_series)
     if zero_reason is not None:
-        return [], [], EraWindowAccounting(peaks_scanned, peaks_admitted, 0, zero_reason)
+        return [], [], EraWindowAccounting(
+            peaks_scanned, peaks_admitted, 0, zero_reason,
+            trim_applied=min_separation_days is not None,
+        )
 
-    retained = retain_candidates(admitted, max_peaks=max_peaks, min_separation_days=min_separation_days)
+    retained = retain_candidates(admitted, min_separation_days=min_separation_days)
     peaks_retained = len(retained)
 
     month_windows, day_windows = _emit_retained_peaks(swe, context, era_window, retained)
 
     return month_windows, day_windows, EraWindowAccounting(
         peaks_scanned, peaks_admitted, peaks_retained, None,
+        trim_applied=min_separation_days is not None,
     )
 
 
@@ -838,6 +935,8 @@ def build_era_windows(
             lambda_v3_ci_low=interval.lambda_v3_ci_low,
             lambda_v3_ci_high=interval.lambda_v3_ci_high,
             ci_source=interval.ci_source,
+            completeness_state=interval.completeness_state,
+            failure_detail=interval.failure_detail,
         ))
 
     return records
@@ -853,6 +952,8 @@ def build_resolution_hierarchy(
     start_jd: float,
     end_jd: float,
     threshold_config: ThresholdConfig,
+    *,
+    min_separation_days: Optional[float] = None,
 ) -> HierarchyResult:
     """Build the full era⊃month⊃day peak-anchored hierarchy (PK-R-8) for a
     given search range.
@@ -865,13 +966,21 @@ def build_resolution_hierarchy(
     3. For each era window, slice the reused series to its own JD span and
        run the R8.2/R8.3 scan+admission (_scan_and_admit) on that slice —
        no re-sweep, no tiling.
-    4. MR-44 FIX: retain ONCE across ALL era windows in this call, POOLED
-       (`retain_candidates_pooled`) — MIN_PEAK_SEPARATION_DAYS is enforced
-       GLOBALLY across the whole decade, not just within each interval's
-       own candidate set (R8.4 amendment; see module docstring + `retain_
-       candidates_pooled`'s own docstring for the full defect this closes).
-       MAX_PEAKS_PER_ERA_WINDOW remains a PER-ERA-WINDOW cap.
-    5. For each era window, day-refine (R8.5) + emit (R8.6) its own POOLED-
+    4. N-17/H-5 (2026-09-24): retention is CAP-FREE by default — every
+       P90-admitted peak persists (plateau ties all rank 1, kernel
+       admit_peaks semantics). `min_separation_days` is a SERVE-TIME TRIM
+       POLICY parameter: pass it (conventional value
+       MIN_PEAK_SEPARATION_DAYS) to apply the legacy separation trim; the
+       pre-trim count is always returned (`peaks_admitted`, and
+       `trim_applied` marks which mode ran). MR-44 survives as the trim's
+       pooled mechanics: when a trim IS requested it runs ONCE, POOLED,
+       across ALL era windows in this call (`retain_candidates_pooled`) —
+       separation enforced GLOBALLY across the whole decade, not just
+       within each interval's own candidate set (R8.4 amendment; see
+       module docstring + `retain_candidates_pooled`'s own docstring for
+       the full defect this closes). The per-era MAX_PEAKS_PER_ERA_WINDOW
+       cap no longer exists.
+    5. For each era window, day-refine (R8.5) + emit (R8.6) its own
        retained subset via `_emit_retained_peaks`.
     6. Aggregate peak accounting across all era windows for the caller's
        WriterResult.notes (R8.13).
@@ -887,6 +996,10 @@ def build_resolution_hierarchy(
         return HierarchyResult(
             era_windows=[], month_windows=[], day_windows=[],
             resolution_facet={"era": 0, "month": 0, "day": 0},
+            requested_start_jd=start_jd,
+            requested_end_jd=end_jd,
+            completed_start_jd=None,
+            completed_end_jd=None,
         )
 
     intervals, series_jds, series_lambdas = find_threshold_crossings(
@@ -915,6 +1028,8 @@ def build_resolution_hierarchy(
             lambda_v3_ci_low=interval.lambda_v3_ci_low,
             lambda_v3_ci_high=interval.lambda_v3_ci_high,
             ci_source=interval.ci_source,
+            completeness_state=interval.completeness_state,
+            failure_detail=interval.failure_detail,
         )
         era_windows.append(era_record)
 
@@ -934,13 +1049,16 @@ def build_resolution_hierarchy(
         admitted_by_era.append(admitted)
         scan_meta.append((peaks_scanned, peaks_admitted, zero_reason))
 
-    # MR-44 fix: ONE pooled retention pass across ALL era windows in this
-    # call — MIN_PEAK_SEPARATION_DAYS enforced globally; MAX_PEAKS_PER_ERA_
-    # WINDOW still capped per era window. For a single-era-window call this
-    # is exactly equivalent to calling retain_candidates on that one
-    # window's admitted set (no behavioural change from before MR-44 in the
-    # common single-interval case).
-    retained_by_era = retain_candidates_pooled(admitted_by_era)
+    # N-17/H-5: ONE retention pass across ALL era windows in this call.
+    # Default (min_separation_days=None) is CAP-FREE — every admitted peak
+    # persists. When a trim IS requested, MR-44's pooled mechanics apply:
+    # separation enforced globally across the whole decade. For a
+    # single-era-window call this is exactly equivalent to calling
+    # retain_candidates on that one window's admitted set.
+    trim_applied = min_separation_days is not None
+    retained_by_era = retain_candidates_pooled(
+        admitted_by_era, min_separation_days=min_separation_days,
+    )
 
     all_month: list[WindowResolutionRecord] = []
     all_day: list[WindowResolutionRecord] = []
@@ -973,22 +1091,24 @@ def build_resolution_hierarchy(
             all_month.extend(month_rows)
             all_day.extend(day_rows)
             era_window_accounting.append(
-                EraWindowAccounting(peaks_scanned, peaks_admitted, len(retained), None)
+                EraWindowAccounting(peaks_scanned, peaks_admitted, len(retained), None, trim_applied=trim_applied)
             )
         elif pre_retention_reason is not None:
             era_window_accounting.append(
-                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, pre_retention_reason)
+                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, pre_retention_reason, trim_applied=trim_applied)
             )
         elif peaks_admitted > 0:
             # MR-44: this era window HAD admittable candidates but none
-            # survived the POOLED cross-interval retention pass -- an
+            # survived the POOLED cross-interval separation TRIM -- an
             # honest, distinct reason from "no candidate above P90" (see
             # ZERO_PEAKS_LOST_TO_POOLED_RETENTION's own docstring note).
             # MR-45: this is THIS era window's OWN accounting entry,
             # reported regardless of whether a sibling era window's peak
-            # survived pooled retention (the fix for the dead-code finding).
+            # survived the trim (the fix for the dead-code finding).
+            # N-17/H-5: reachable only when trim_applied is True -- under
+            # the cap-free default every admitted peak persists.
             era_window_accounting.append(
-                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, ZERO_PEAKS_LOST_TO_POOLED_RETENTION)
+                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, ZERO_PEAKS_LOST_TO_POOLED_RETENTION, trim_applied=trim_applied)
             )
         else:
             # Defensive: _scan_and_admit's own contract guarantees a
@@ -996,7 +1116,7 @@ def build_resolution_hierarchy(
             # branch is not expected to execute. An honest None rather than
             # a fabricated reason if it ever does (§N.7 item 6).
             era_window_accounting.append(
-                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, None)
+                EraWindowAccounting(peaks_scanned, peaks_admitted, 0, None, trim_applied=trim_applied)
             )
 
     resolution_facet: dict[str, int] = {
@@ -1029,6 +1149,13 @@ def build_resolution_hierarchy(
         total_scanned, total_admitted, total_retained, start_jd, end_jd,
     )
 
+    if era_windows:
+        completed_start_jd = min(w.enter_jd for w in era_windows)
+        completed_end_jd = max(w.exit_jd for w in era_windows)
+    else:
+        completed_start_jd = None
+        completed_end_jd = None
+
     return HierarchyResult(
         era_windows=era_windows,
         month_windows=all_month,
@@ -1040,6 +1167,11 @@ def build_resolution_hierarchy(
         peaks_retained=total_retained,
         zero_peaks_reason=overall_zero_reason,
         era_window_accounting=era_window_accounting,
+        requested_start_jd=start_jd,
+        requested_end_jd=end_jd,
+        completed_start_jd=completed_start_jd,
+        completed_end_jd=completed_end_jd,
+        trim_applied=trim_applied,
     )
 
 
@@ -1049,7 +1181,6 @@ __all__ = [
     "PEAK_SCAN_STRIDE_DAYS",
     "ADMISSION_PERCENTILE",
     "MIN_PEAK_SEPARATION_DAYS",
-    "MAX_PEAKS_PER_ERA_WINDOW",
     "DAY_REFINEMENT_HALF_WINDOW_DAYS",
     "DAY_REFINEMENT_STEP_DAYS",
     "ZERO_PEAKS_ERA_WINDOW_TOO_SHORT",

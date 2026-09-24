@@ -191,11 +191,12 @@ class FakeCursor:
                 {r['t_days'] for r in t.get('kala_field_kinematics', [])})]
             return
         if 'FROM kala_gochara_authority' in s and 'AS gen' in s:
-            # A1 pin: SELECT COALESCE((SELECT authoritative_generation ...), 'v1') AS gen
-            # (not the legacy crosscheck's subquery, which also references this table)
+            # A1 pin: SELECT authoritative_generation AS gen FROM kala_gochara_authority
+            # WHERE chart_id = %s. WP7 K-1: no COALESCE — absent row ⇒ no rows.
             rows = [r for r in t.get('kala_gochara_authority', [])
                     if str(r.get('chart_id')) == str(params[0])]
-            self._rows = [{'gen': rows[0]['authoritative_generation'] if rows else 'v1'}]
+            self._rows = ([{'gen': rows[0]['authoritative_generation']}]
+                          if rows else [])
             return
         if 'calibration_state' in s and 'COUNT(*)' in s and 'FROM kala_gochara_windows' in s:
             # A1 pin: SELECT calibration_state, COUNT(*) AS n FROM kala_gochara_windows
@@ -214,8 +215,20 @@ class FakeCursor:
                 self._rows = [{'calibration_state': top[0], 'n': top[1]}]
             return
         if 'FROM kala_gochara_windows' in s:
-            self._rows = [dict(r) for r in t.get('kala_gochara_windows', [])
-                          if r.get('event_class') == params[1]]
+            rows = [r for r in t.get('kala_gochara_windows', [])
+                    if r.get('event_class') == params[1]]
+            if 'kala_gochara_authority' in s:
+                # WP7 K-1/N-10 seam: rows must match the authoritative
+                # generation; an absent authority row means UNPUBLISHED and
+                # yields zero rows (no 'v1' fallback).
+                auth = [r for r in t.get('kala_gochara_authority', [])
+                        if str(r.get('chart_id')) == str(params[0])]
+                if not auth:
+                    self._rows = []
+                    return
+                gen = auth[0]['authoritative_generation']
+                rows = [r for r in rows if r.get('generation') == gen]
+            self._rows = [dict(r) for r in rows]
             return
         if 'FROM gochara_resonance_map' in s and 'md5' in s:
             # A1 pin: SELECT md5(COUNT(*)::text || '|' || ...) AS digest

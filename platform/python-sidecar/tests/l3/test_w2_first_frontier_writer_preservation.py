@@ -82,7 +82,7 @@ def test_gochara_requires_every_event_class_before_replacement(monkeypatch):
     monkeypatch.setattr(
         resonance,
         "_fetch_event_class_rows",
-        lambda _conn, _chart, event: [{"event_class_id": event}] if event == first else [],
+        lambda _conn, _chart, event, **_kw: [{"event_class_id": event}] if event == first else [],
     )
 
     result = resonance.KaGocharaResonanceWriter().run(_ctx(conn))
@@ -94,15 +94,30 @@ def test_gochara_requires_every_event_class_before_replacement(monkeypatch):
 
 def test_gochara_replaces_only_after_all_event_classes_are_ready(monkeypatch):
     conn = RecordingConnection()
-    monkeypatch.setattr(
-        resonance,
-        "_fetch_event_class_rows",
-        lambda _conn, _chart, event: [{"event_class_id": event}],
-    )
+    def _stub_rows(_conn, _chart, event, report=None, **_kw):
+        if report is not None:
+            report.setdefault("sensitive_degree", {"kept": 0, "dropped_negative": 0,
+                                                   "dropped_unknown_value": 0,
+                                                   "kept_subjects": set()})
+            report.setdefault("arudha", {"rows": 0, "invalid_sign_value": 0})
+            report.setdefault("bhava_arudha", {"rows": 0, "unavailable": 0})
+            report.setdefault("yoga_constituent", {"validated_ids": set(), "constituents": {}})
+            report.setdefault("roots", {"discarded": 0, "details": []})
+        return [{"event_class_id": event, "target_type": "sensitive_degree",
+                 "target_ref": "ABHIJIT"}]
+
+    monkeypatch.setattr(resonance, "_fetch_event_class_rows", _stub_rows)
 
     result = resonance.KaGocharaResonanceWriter().run(_ctx(conn))
 
-    assert result.rows_inserted == len(resonance.TARGET_EVENT_CLASSES)
+    # One stub row per event class, plus the M-6 derived rows the writer
+    # always emits (honest state, never dropped) for the M-6 classes
+    # present in TARGET_EVENT_CLASSES: 1 gulika_mandi_distance + 4
+    # yamakantaka_difference per M-6 class.
+    m6_classes_present = [c for c in resonance.TARGET_EVENT_CLASSES
+                          if c in resonance.M6_EVENT_CLASSES]
+    expected = len(resonance.TARGET_EVENT_CLASSES) + 5 * len(m6_classes_present)
+    assert result.rows_inserted == expected
     assert [call[0] for call in conn.mutations] == ["execute", "executemany"]
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
 
