@@ -567,7 +567,10 @@ class TestWriterStamps:
         assert computed, "expected at least one moorti-computed row"
         for r in computed:
             assert r["source_qualification"] == "verse_cited"
-            assert r["precision_regime"] == "date_grain"
+            # WP9 5.3: non-truncated runs are graded at the true kernel
+            # sign-ingress instant -> instant_grain (day-grain only remains
+            # on runs the kernel could not solve).
+            assert r["precision_regime"] == "instant_grain"
             assert r["corpus_verifiable"] is True
         assert uncomputed, "expected moorti-uncomputed rows (truncated horizon runs)"
         for r in uncomputed:

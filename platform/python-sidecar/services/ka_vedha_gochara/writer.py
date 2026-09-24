@@ -76,6 +76,8 @@ from services.ka_vedha_gochara.logic import (
 )
 from services.gochara_grammar.sarvatobhadra import _vedha_pairs_from_db, opposite_nakshatra_id
 from services.gochara_grammar import citations as C
+from services.gochara_kernel.ids import independence_group as _kernel_independence_group
+from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 
 logger = logging.getLogger(__name__)
 
@@ -199,6 +201,34 @@ def _compute_ayanamsha_offset(reference_date: date) -> float:
 
     jd = _tropical_to_jd(reference_date)
     return derive_sidereal(0.0, jd, CANONICAL_AYANAMSHA)["ayanamsha_offset"]
+
+
+def _config_horizon_date(value: Any) -> date | None:
+    """Parse an optional caller-passed horizon bound (date or ISO string)."""
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value))
+
+
+def _vedha_independence_group(
+    *, body: str, relation: str, target_deg: float, window_start: date,
+) -> str:
+    """A08 / H-6: one physical obstruction root attenuates once. The group is
+    computed by the family's single identity scheme
+    (gochara_kernel.ids.independence_group) from the PHYSICAL root only — the
+    obstructing body, the obstruction relation, the obstructed degree and the
+    window-start instant — never from the rule that surfaced it, so several
+    rows rooted in the same physical occupancy share one group."""
+    return _kernel_independence_group(
+        body=body,
+        relation=relation,
+        aspect_deg=0.0,
+        target_deg=target_deg,
+        t_exact_jd=None,
+        t_fallback_jd=_date_to_jd(window_start),
+    )
 
 
 def _fetch_vedha_rules(conn: Any) -> dict[tuple[str, int], dict[str, Any]]:
@@ -329,8 +359,16 @@ class KaVedhaGocharaWriter(WriterBase):
         latta_rules = _fetch_latta_rules(conn)
 
         today = date.today()
-        horizon_start = today - timedelta(days=HORIZON_BACK_DAYS)
-        horizon_end = today + timedelta(days=HORIZON_FORWARD_DAYS)
+        # WP9 5.3 (F-11): the caller may pass the REQUESTED horizon explicitly
+        # (ctx.config['horizon_start'] / ['horizon_end'], date or ISO string);
+        # the ±60/+400 d build window is only the default, never silently
+        # treated as the requested coverage.
+        horizon_start = _config_horizon_date(ctx.config.get("horizon_start")) or (
+            today - timedelta(days=HORIZON_BACK_DAYS)
+        )
+        horizon_end = _config_horizon_date(ctx.config.get("horizon_end")) or (
+            today + timedelta(days=HORIZON_FORWARD_DAYS)
+        )
 
         offset = _compute_ayanamsha_offset(today)
         daily_by_body = _fetch_daily_sidereal_by_body(conn, horizon_start, horizon_end, offset, ALL_GRAHAS)
@@ -555,6 +593,19 @@ class KaVedhaGocharaWriter(WriterBase):
                         "obstructing_graha": obstructing_graha,
                         "obstruction_window_start": obstruction_start.isoformat() if obstruction_start else None,
                         "obstruction_window_end": obstruction_end.isoformat() if obstruction_end else None,
+                        # A08: one physical obstruction root attenuates once.
+                        # Present exactly when an obstruction is active; rows
+                        # with no active obstruction have no group (they
+                        # attenuate nothing).
+                        "independence_group": (
+                            _vedha_independence_group(
+                                body=obstructing_graha,
+                                relation="vedha_obstruction",
+                                target_deg=vedha_sign_idx * SIGN_SIZE_DEG,
+                                window_start=obstruction_start,
+                            )
+                            if obstruction_active else None
+                        ),
                         "malefic_obstructing_grahas": malefic_occupants,
                         "malefic_count": malefic_count,
                         "malefic_effect_grade": grade_row["effect_grade"] if grade_row else None,
@@ -636,6 +687,12 @@ class KaVedhaGocharaWriter(WriterBase):
                         "target_nakshatra_name": NAKSHATRAS[janma_moon_nak_idx],
                         "vedha_nakshatra_idx": vedha_nak_idx,
                         "vedha_nakshatra_name": NAKSHATRAS[vedha_nak_idx],
+                        "independence_group": _vedha_independence_group(
+                            body=graha,
+                            relation="sarvatobhadra_vedha",
+                            target_deg=vedha_nak_idx * NAK_SIZE_DEG,
+                            window_start=run["start_date"],
+                        ),
                         "grid_basis": grid_basis,
                         "grid_school_tag": grid_school_tag,
                         "cancellation_effect": (
@@ -690,6 +747,12 @@ class KaVedhaGocharaWriter(WriterBase):
                         "direction": rule["direction"],
                         "latta_nakshatra_idx": latta_nak_idx,
                         "latta_nakshatra_name": NAKSHATRAS[latta_nak_idx],
+                        "independence_group": _vedha_independence_group(
+                            body=graha,
+                            relation="latta",
+                            target_deg=latta_nak_idx * NAK_SIZE_DEG,
+                            window_start=run["start_date"],
+                        ),
                         "janma_nakshatra_idx": janma_moon_nak_idx,
                         "janma_nakshatra_name": NAKSHATRAS[janma_moon_nak_idx],
                         "effect_description": rule["effect_description"],
