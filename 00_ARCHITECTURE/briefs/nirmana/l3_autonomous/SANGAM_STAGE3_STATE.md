@@ -509,3 +509,64 @@ activity/valence/applicability/`comparable_with`/`kernel_version`/`contact_uuid`
 scan-every-branch rule), then #3's three fixes, then #4/#5 (coverage + `independence_group` as columns or as
 N-7 pass-throughs), #7 (declare the edges — a seed change), #9 (coordinated with its five readers), #8 (interim
 stamp now; resolved by S-2). **The merge-gate reviewer should be pointed at this table.**
+
+
+## Engineering pass 1 — synergy audit #1, #3, #7 closed (2026-09-24T11:25:24+05:30)
+
+**Authorship caveat, stated first.** This pass was written by the **plan's author session**, not by an
+independent executor. The packet's separation (author designs, another session builds, neither
+certifies its own work) is bent here at the native's instruction to proceed. **The merge-gate reviewer
+(D-K) must scrutinise this commit specifically**, and nothing below is self-certified: every fix has a
+detector that fails when the fix is reverted.
+
+**#1 — R-6's separation now reaches the table.** `migration 1085_kala_convergence_kernel_fields.sql`
+(additive only; number chosen by scanning **all 1082 remote branches and both migration directories** —
+1071-1084 were claimed across four branches) adds `activity`, `valence`, `applicability`,
+`comparability_class`, `kernel_version`, `independence_group`, plus an index on
+`(chart_id, kernel_version, comparability_class)`. The writer's INSERT persists all six. **§4.5's
+never-pool rule is now expressible in SQL**; before this it could only be honoured by convention.
+`independence_group` is a column that the engine does not yet populate (audit #5) — declared NULL and
+named as such, not silently absent.
+
+**#3 — two real bugs, both repaired with detectors.**
+- **29-Feb crash:** `date(today.year + _HORIZON_YEARS, today.month, today.day)` raises `ValueError`
+  every 29 February whose target year is not leap. Replaced with `_add_years()`, which clamps to the
+  28th; the test asserts the raw constructor *would* have raised, so the defect is documented by the
+  detector rather than only by a comment.
+- **tz offset at run time:** `ZoneInfo(tzid).utcoffset(datetime.now())` used the birth *zone* with
+  *today's* offset — wrong wherever the zone's rules changed (India unified to +05:30 in 1955; every
+  DST zone twice a year). Now evaluated at the birth instant via `_birth_instant_for_offset()`, which
+  reads `public.charts` and returns `None` rather than inventing one; the run-time fallback is
+  **logged, never silent** (B.10).
+
+**#7 — the undeclared read is declared.** `ka_vedha_gochara` added to `ka_sangam.depends_on` (now 11
+edges). The migration-224 cycle (`ka_sangam → ka_kalasutra` while `ka_kalasutra → ka_sangam`) is
+recorded in the seed at the point of change, with the instruction to retire or supersede `224:85`
+when this seed is applied.
+
+**#10 — NEW FINDING, and it explains #6.** R-3's convention vector —
+`ephemeris_backend`, `epoch_convention`, `ayanamsa_application`, `node_convention`, `house_frame` — is
+emitted **nowhere** in engine or writer (grep: zero occurrences). `contact_uuid` is *defined over* that
+six-component frame (`r5_harness/r5_identity.py:62-76`). **So R-5's identity cannot be computed in
+production until R-3's vector exists** — that is *why* R-5 lived and died in the harness, and why
+migration 1085 deliberately ships **no `contact_uuid` column**: it would sit NULL or be filled from an
+invented frame. #6 is blocked on #10, and #10 is partly blocked on the N-7 producer (which supplies
+`ephemeris_backend`/`retflag` per call). Recorded, not worked around.
+
+**Verification:** evidence `S21_kernel_fields_persisted.py` joined MANIFEST (`|0|1`), suite
+**21/21 + 21/21 NEG** (`OUTPUT_2026-09-24T112426.txt`); `test_ka_sangam_synergy_fixes.py` 11 tests;
+targeted regression **307 passed**; broader `tests/l3 -k 'not ka_kshetra'` **1033 passed, 1 failed** =
+the pre-existing `test_transit_search_cache` pyswisseph parity flake, in a file this pass never touched.
+
+**Two of my own detectors caught my own errors before commit** and are worth naming: the value-slot
+count check (33 columns vs 32 `%s` — because `computed_at` uses `NOW()`, so counting `%s` alone was the
+wrong detector, not the wrong code), and the `depends_on` anchor, which first read the *comment* I had
+just written instead of the declaration — the same read-the-wrong-shape error that produced the
+withdrawn #7 over-claim, caught this time by a test.
+
+**Still open from the audit:** #2 (rename to `comparable_with` — deferred: Gochara's four-value enum is
+on an unpushed branch and cannot be read at source), #4 (coverage object — comes from the N-7
+producer's row), #5 (emit `independence_group`; column now exists), #6 (blocked on #10), #8 (interim
+`different_convention` stamp — needs #2's vocabulary), #9 (`confidence_score`/`confidence_label`
+removal — **not attempted**: five readers plus a serving layer, a coordinated change behind the §6.2
+sentinel, not a writer edit).

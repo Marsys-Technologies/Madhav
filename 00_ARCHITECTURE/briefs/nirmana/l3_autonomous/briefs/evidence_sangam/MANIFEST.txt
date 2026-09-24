@@ -19,3 +19,4 @@ S17_r2_intersection_oracle.py|0|1
 S18_e5_station_loop_episodes.py|0|1
 S19_e4_typed_conditions_and_tajika_gate.py|0|1
 S20_e6_exposure_and_gates.py|0|1
+S21_kernel_fields_persisted.py|0|1

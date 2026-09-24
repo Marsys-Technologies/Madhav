@@ -139,6 +139,18 @@ _LAGNA_SIGN_NUM: dict[str, int] = {
 # Raised from 5y → 7y: provides ~40% more actionable near-term windows while
 # remaining within the 15-min orphan watchdog budget.
 _HORIZON_YEARS = 7
+
+
+def _add_years(d: date, years: int) -> date:
+    """Add whole years, clamping 29 Feb to 28 Feb in non-leap target years.
+
+    `date(d.year + years, d.month, d.day)` raises ValueError on 29 February.
+    Synergy audit #3.
+    """
+    try:
+        return date(d.year + years, d.month, d.day)
+    except ValueError:
+        return date(d.year + years, d.month, 28)
 _MAX_PREDICATES = 200  # raised from 60: covers ~0.3% of 66,738 signals at full breadth
 
 # U2 lifetime tier: dāśā-boundary-anchored convergence over the native's full life.
@@ -556,7 +568,9 @@ class KaSangamWriter(WriterBase):
                 )
 
         today        = date.today()
-        horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
+        # Synergy audit #3: date(y+N, m, d) raises on 29 Feb whenever the target
+        # year is not a leap year. Clamp to the last valid day of that month.
+        horizon_end  = _add_years(today, _HORIZON_YEARS)
         def _keepalive():
             with conn.cursor() as _cur:
                 _cur.execute("SELECT 1")
@@ -894,9 +908,22 @@ class KaSangamWriter(WriterBase):
         try:
             from datetime import datetime
             from zoneinfo import ZoneInfo
-            offset = ZoneInfo(tzid).utcoffset(datetime.now())
+            # Synergy audit #3: the offset must be taken AT THE BIRTH INSTANT.
+            # datetime.now() gives today's offset, which differs from the birth
+            # offset wherever the zone's rules have changed (India moved to a
+            # single +05:30 in 1955; DST zones change twice a year). The birth
+            # instant is the only correct evaluation point for a natal chart.
+            _at = self._birth_instant_for_offset(conn, chart_id) if hasattr(
+                self, '_birth_instant_for_offset') else None
+            offset = ZoneInfo(tzid).utcoffset(_at or datetime.now())
             if offset is None:
                 raise ValueError(f"no utcoffset for {tzid!r}")
+            if _at is None:
+                logger.warning(
+                    "ka_sangam: birth instant unavailable for chart %s; tz offset "
+                    "taken at run time. Declared, not silent (synergy audit #3).",
+                    chart_id,
+                )
             tz_offset_minutes = int(offset.total_seconds() / 60)
         except Exception as exc:
             raise RuntimeError(
@@ -905,6 +932,33 @@ class KaSangamWriter(WriterBase):
             ) from exc
 
         return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
+
+    def _birth_instant_for_offset(self, conn, chart_id: str):
+        """Birth instant (naive local) for evaluating the zone's UTC offset.
+
+        Returns None when the chart carries no birth timestamp — the caller then
+        falls back to run time and logs that it did (B.10: declare, never invent).
+        Synergy audit #3.
+        """
+        from datetime import datetime as _dt
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT birth_date, birth_time
+                    FROM public.charts
+                    WHERE id = %s OR chart_id = %s
+                    LIMIT 1
+                    """,
+                    (chart_id, chart_id),
+                )
+                row = cur.fetchone()
+            if not row or row[0] is None:
+                return None
+            bd, bt = row[0], row[1]
+            return _dt.combine(bd, bt) if bt is not None else _dt.combine(bd, _dt.min.time())
+        except Exception:
+            return None
 
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
@@ -984,6 +1038,9 @@ class KaSangamWriter(WriterBase):
 
                 target_provenance = cf.get('target_provenance')
                 availability = w.get('availability')
+                # Synergy audit #1: R-6's separation reaches the table. Persisted as
+                # data, never re-derived; §4.5's never-pool rule needs them as columns.
+                applicability = w.get('applicability')
 
                 cur.execute(
                     """
@@ -996,7 +1053,9 @@ class KaSangamWriter(WriterBase):
                         horizon_tier, domain,
                         confidence_label_relative, tier_basis,
                         target_provenance, availability,
-                        is_episode, episode_uuid, episode_children, episode_hull, perfected
+                        is_episode, episode_uuid, episode_children, episode_hull, perfected,
+                        activity, valence, applicability, comparability_class,
+                        kernel_version, independence_group
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -1006,7 +1065,9 @@ class KaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s::jsonb, %s::jsonb,
-                        %s, %s, %s::jsonb, %s::jsonb, %s
+                        %s, %s, %s::jsonb, %s::jsonb, %s,
+                        %s, %s, %s::jsonb, %s,
+                        %s, %s
                     )
                     """,
                     (
@@ -1038,6 +1099,12 @@ class KaSangamWriter(WriterBase):
                         json.dumps(w.get('episode_children')) if w.get('episode_children') is not None else None,
                         json.dumps(w.get('episode_hull')) if w.get('episode_hull') is not None else None,
                         w.get('perfected'),
+                        w.get('activity'),
+                        w.get('valence'),
+                        json.dumps(applicability) if applicability is not None else None,
+                        w.get('comparability_class'),
+                        w.get('kernel_version'),
+                        w.get('independence_group'),
                     ),
                 )
                 rows_inserted += 1
