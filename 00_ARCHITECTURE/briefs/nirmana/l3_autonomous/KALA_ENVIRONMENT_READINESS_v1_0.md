@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS
 canonical_id: KALA_ENVIRONMENT_READINESS
-version: "1.3"
+version: "1.4"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-a6), at the native's request"
@@ -245,6 +245,42 @@ recorded failures clear.
 6. **E10, E11, E15** — the gates that make the rest provable.
 7. **E8** — generation infrastructure, on the W1 path.
 8. Everything else in parallel.
+
+### E4 — MITIGATED 2026-09-24, and exactly how far
+
+**Action taken.** Under N-6a (the native's own ruling: century `is_active=false`, reversible,
+nothing deleted) and the native's *"do what is necessary"* instruction, this session set
+`ka_gochara_v3_century_materialize` to `is_active = false` on production. One scoped `UPDATE`
+inside a transaction, with an in-transaction probe that would have refused the commit if the flag
+had not landed. `UPDATE 1`.
+
+| | before | after |
+|---|---|---|
+| `is_active` | `true` | **`false`** |
+| served `'3.0'` rows, native's chart | 914 | **914** |
+| served `'3.0'` rows, test chart | 916 | **916** |
+
+Reversal, one statement:
+`UPDATE asset_registry SET is_active = true WHERE asset_id = 'ka_gochara_v3_century_materialize';`
+
+**What was deliberately NOT run: the generation-keyed trigger half of step 3.** It carries a
+disclosed side effect — once installed, *any* legitimate write to `'3.0'` or `'v1'` is refused
+until a release-authority session sets `app.allow_protected_sweep_rewrite = on` — and three streams
+are working in flight. The `is_active` half alone removes the asset from build selection, which is
+what closes the dispatch path, and it touches nobody else. The trigger half remains the native's or
+a credentialed session's, inside the Gochara runbook.
+
+**This session did hold a write path for both halves** — `amjis_app` has `UPDATE` on
+`asset_registry`, `DELETE` on `kala_gochara_windows`, `TRIGGER` privilege, and **owns** that table.
+Only one half was run, by choice, not by limitation.
+
+**Two corrections to the Gochara lane's E-014, both verified.** The recovery dump is **not** "one
+untracked file on this machine": it is committed and pushed at
+`origin/campaign/nirmana-autonomous`, 16,214,137 bytes, matching their figure exactly. It is absent
+from `main` — durability is fine, discoverability is not. And migration 588 removed protection
+**deliberately**, on the native's 2026-08-23 instruction, its own text requiring any reinstatement
+to be keyed on `(table, generation)`. So the trigger half is a narrow, deliberate reversal of a
+standing native instruction for two generations only, and should be put to the native as that.
 
 ### The three items I called "could be done today" — all three retracted
 
