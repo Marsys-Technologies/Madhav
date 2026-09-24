@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS
 canonical_id: KALA_ENVIRONMENT_READINESS
-version: "1.2"
+version: "1.3"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-a6), at the native's request"
@@ -85,7 +85,7 @@ From `asset_throughput`, the native's chart, verbatim:
 | # | activity | evidence |
 |---|---|---|
 | **E3** | **Raise or scope the idle-in-transaction timeout for the build role.** `amjis_app` carries `idle_in_transaction_session_timeout=600s` and `statement_timeout=1800s`; Kṣetra's substeps exceed ten minutes of open transaction and the server kills the connection. Note `data_plane_builder` — the post-cutover role — currently has **no timeout configuration at all**, which is the opposite error | live `pg_roles` |
-| **E4** | **Clear the stale BUILD-PROTECTED error on the century writer.** The guard it names **no longer exists**: `build_protected_assets` has **0 rows** and there are **0 triggers on any `kala_*` table** (migration 588 dropped them). The error is six-week-old residue blocking an asset that is otherwise ready | live |
+| **E4** | **INVERTED — this is now the highest-severity item in the document, and my first reading was backwards.** I called the stale `BUILD-PROTECTED` error inert residue. `platform/src/lib/build/plan.ts:590` treats **`state === 'error'` as a NEEDS-BUILD criterion**, not a barrier. So `ka_gochara_v3_century_materialize` is **`is_active = true`**, **selected for build**, and DELETEs `kala_gochara_windows … generation = '3.0'` in the same transaction as its staging write. `kala_gochara_authority` makes **`'3.0'` the authoritative served generation for the native's chart** (flipped 2026-08-11), and that chart holds **914 rows at `'3.0'`**. Migration 588 dropped all three protecting triggers and their functions — live, **0 triggers on any `kala_*` table, 0 rows in `build_protected_assets`**. **The next full-layer sweep of the native's chart deletes the 914 served gochara windows, and nothing in the database stops it.** It is a leaf asset (0 dependents), so only a sweep reaches it — narrower, not safe. **N-6a's `is_active=false` is not a tidy-up step; it is the only mitigation.** Escalated to the Gochara lane, whose asset and runbook step it is | live, verified |
 | **E5** | **Resolve `ka_avadhi`'s integrity contract.** `kala_avadhi` holds 1,169 rows against a `target_floor` of 1,169, yet `integrity_check_sql` returns False. Either the contract is wrong or the data is — both are elevation-blocking, and a floor met by a failing contract is exactly the earned-signal defect class | live |
 | **E6** | **Seed hygiene**: `ka_avadhi` and `ka_taranga` omit `asset_kind` entirely; `ka_kalasutra`, `ka_sangam` and `ka_vighnakara` carry no `catalog_status`; eight rows sit at `DRAFT`. Harmless today, load-bearing the moment any build or cockpit path filters on them | seed rows |
 
@@ -246,5 +246,23 @@ recorded failures clear.
 7. **E8** — generation infrastructure, on the W1 path.
 8. Everything else in parallel.
 
-**E19 costs an hour and prevents a recurring failure. E4 is a `DELETE` of a stale error string. E3
-is one role setting.** Those three could be done today.
+### The three items I called "could be done today" — all three retracted
+
+I closed v1.0 saying E19, E4 and E3 could be done today. Checking each before doing it:
+
+- **E4 was backwards** (above). The error was never a barrier, so clearing it would have removed
+  nothing — and the danger it appeared to hold back was already live the whole time.
+- **E15 would break the build.** A recursive glob over `00_ARCHITECTURE/briefs` covers 1,023 `.md`
+  files: 439 conformant, 211 with no byte-0 frontmatter, 373 with frontmatter missing a required
+  key or unparseable. That is **~584 new violations against a `schema_validator` baseline of 43** —
+  the required gate turns red and every PR blocks. Even the narrow campaign-only glob adds 48
+  (36 of 84 in `l3_autonomous/`, 12 of 29 in its `briefs/`). It needs a staged rollout or a
+  new-files-only rule.
+- **E19 is not a wiring job.** The allocator *computes and prints* a claim row; its own docstring
+  states it never writes to any governance file and that the append is a conductor action on a
+  separate coordination branch. The real fix is a guard that fails a PR adding a migration whose
+  number is unclaimed — a larger change than "wire the script".
+
+**The pattern is worth keeping.** Three items were labelled cheap from reading what they were, not
+from checking what doing them would cause. One of the three was not merely not-cheap; it was
+pointing the wrong way at a live data-loss risk.
