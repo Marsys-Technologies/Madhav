@@ -6,8 +6,8 @@ date: 2026-09-23
 executes: "Everything left after WP0–WP7 (FINAL_REPORT_v1_0.md) under the native-ratified GOCHARA_RULING_SHEET_v2_0.md: point-1 residuals (rulings that still need code or evidence), point 2 (the eight receiving-contract packets), point 3 (WP9 overlays), point 4 (WP10 — prepared and rehearsed here; executed only when the flags in §0 are set), point 5 (loose ends)."
 branch: "l3/gochara-autonomous-wp0-7 @ /Users/Dev/madhav-l3/gochara-wp0-7 — the same branch and worktree WP0–WP7 ran in; HEAD at brief time 367087bb7 (+ this brief's commit)"
 authorization_flags:
-  PRODUCTION_TRANCHE_1_AUTHORIZED: false   # WP10 runbook steps 0–5 (guards, drill, schema, registry). Native flips to true, in this file, before the run may touch any shared database.
-  PRODUCTION_TRANCHE_2_AUTHORIZED: false   # WP10 steps 6–10 (candidate build, flip gates, flip, soak, second chart, N-11). Requires tranche 1's evidence file to exist and be green.
+  PRODUCTION_TRANCHE_1_AUTHORIZED: true    # AUTHORIZED 2026-09-24 by the native via GOCHARA_NATIVE_RULINGS_2026-09-24_v1_0.md §3. Guards are NOT weakened: steps 0 and 5 still BUILD the (table,generation) guard, the Clear is_active filter and EXPLICIT_CLEAR_OPS. Evidence preconditions unchanged.
+  PRODUCTION_TRANCHE_2_AUTHORIZED: true    # AUTHORIZED 2026-09-24, same ruling §3. Still requires tranche 1 evidence green, P-1 merged, WP9 §5.2 merged, N-19 on main, M-1 ratified (ruling §2). A failed flip gate yields a NEW candidate, never a patch.
 scope_extension: "By the native's instruction of 2026-09-23 ('build a detailed brief implementation plan which I will paste into Kimi Code to execute … points 2 to 5'), this run is the IMPLEMENTATION OWNER for the eight WP7 packets (P-1, P-2, P-3, P-4, S-1/S-2, T-1, C-1, V-1, K-1). Their target files are IN SCOPE for this run — under every other constraint below. This does not name this run the independent reviewer (§9), and it does not extend scope to anything in §3's hard list."
 ---
 
@@ -224,3 +224,92 @@ down, the PR URL, and the artifact list.
    free number in `ESCALATIONS.md` before writing any migration.
 5. Read the frontmatter flags of **this** file; note their values in your first log line.
 6. Execute §4 → §5 → §6 → §8 → §7.A; then §7.B/§7.C only as the flags allow. Escalate, never ask.
+
+---
+
+## 12. DELTA of 2026-09-24 — read this before you do anything else
+
+Everything in §§1–11 stands. This section is **added** work and **two changed answers**, ruled by the
+native on 2026-09-24 in `GOCHARA_NATIVE_RULINGS_2026-09-24_v1_0.md` (read it in full; it is short).
+Migrations 1075/1076 were renumbered to **1080/1081**; the next free number is by fresh scan.
+
+### 12.1 Both authorization flags are now `true`
+
+§7.B and §7.C are live. **Guards are not weakened** — steps 0 and 5 still build the
+`(table, generation)` guard, the Phase 1.1 Clear `is_active` filter and `EXPLICIT_CLEAR_OPS`, and
+step 0 consumes `origin/l3/kala-p1-1-b1-clear-guard` rather than duplicating it. Every evidence
+precondition in §7.B/§7.C is unchanged and is checked by the scripts themselves. A failed gate stops
+the tranche, writes its evidence and escalates. A failed **flip** gate yields a new candidate, never
+a patch. `'3.0'` and `'v1'` remain protected and are never regenerated.
+
+### 12.2 M-1 is ratified, with the value split — this changes §7.C
+
+- **Shape:** linear in separation, no time box: `activity = 1 − |Δ| / orb_max_deg`. Ratified.
+- **Candidate 1 of `'4.0'` uses `orb_max_deg = 5.0`**, so the factor-level delta report against
+  `'3.0'` isolates the shape change and stays interpretable.
+- **`orb_max_deg = 1.0` is candidate 2**, ratified only on candidate 1's delta report against the
+  real canonical chart. `0.5` is rejected (plateau failure). `2.0` is the recorded runner-up.
+- Record the value in the input generation vector of each candidate.
+
+### 12.3 New task block §4.13 — the D-S1/D-S2 conformance fixes
+
+One additive migration (fresh-scan number, disposable DB only) plus the code and tests:
+
+| # | task | exit gate |
+|---|---|---|
+| 4.13a | `find_episodes` returns a `coverage` object on **every** branch, not only `moon=True` (`engine.py` ~:1756). `kala_gochara_coverage.partition_kind` admits only `body_target`/`event_class`/`moon_on_demand` — either emit per-body `body_target` rows or add a fourth kind in the same migration, and say which you chose and why | a zero-contact non-Moon search returns a coverage row; a test asserts no branch can return `coverage: None` |
+| 4.13b | `inclusivity` column on `kala_gochara_contacts`, CHECK ∈ {`closed_closed`,`closed_open`}, value `closed_closed` on every row, because `t_in`/`t_out` are both in-orb threshold crossings | CHECK present; a row with a bad value is rejected |
+| 4.13c | `completeness_state` CHECK-constrained to the six F06 states `{applied, inapplicable, unavailable, unqualified, contradictory_unresolved, unexplored}`; migrate live `qualified` → **`applied`** through `ledger.py`, `episodes.py`, `interval_solver.py`, `resolution_hierarchy.py` and every test. In `engine.py` ~:924 the λ-detail key becomes `completeness_state: 'inapplicable'` + `removed_by_ruling: 'N-14'` | CHECK present; suite green; no `qualified` literal survives |
+| 4.13d | CHECK-constrain `time_basis`; add `tier_basis TEXT` CHECK ∈ {`relative_uncalibrated`,`calibrated:<gate_id>`}; pin both vocabularies in `WP1_CONTRACTS.md` §3.1 | columns constrained; §3.1 states the closed sets |
+| 4.13e | **Rename `claim_grain` → `precision_regime`** in migration 1081, `ledger.py`, the kernel dataclasses and the tests — 1081 has never been applied outside a disposable DB, so edit it in place and re-verify; no alias generation is needed. Values `{instant_grain, date_grain}`, pinned at `WP1_CONTRACTS.md` §3.1, with `day_grade` accepted as a read-alias for one generation. **Also fix the one caller writing the non-vocabulary value `"exact_instant"`** (`tests/l3/gochara/test_wp4_decomposed.py` ~:612) and make a production caller actually populate both columns | no `claim_grain` identifier remains; a test asserts a populated `precision_regime` on a written contact row |
+| 4.13f | `services/gochara_grammar/primitives.py:193-194` — correct the comment: its BPHS Ch.26 citation is **refuted by F-29**, and the Rāhu/Ketu entry is retained **only** for the legacy arm of flag `nodal_drishti`, retiring when candidate `'4.0'` is accepted. Comment and docstring only; **do not remove the entry** | comment states the refutation and the retirement condition |
+| 4.13g | **Per-call node-mode assertion** in this family's own readers: every node longitude read asserts `RAH_MEAN`/`KET_MEAN` and **raises** rather than degrading to `TRUE_NODE` | a test proves the assertion fires when a true-node value is injected |
+| 4.13h | `window_ref = {asset_id:'ka_gochara', generation, id: contact_id}` documented in `WP1_CONTRACTS.md` §5 and in packet C-1's contract. **No new `target_type`** — plan R2 stands, this family imports nothing from Kṣetra or Saṅgam | one test resolves a `window_ref` against the PK `(chart_id, generation, contact_id)` |
+| 4.13i | `comparable_with` stays at the four values pinned at WP1 §6. **`unstable_key` is declined** (D-S6). Record the decline in `WP1_CONTRACTS.md` §6 with its reason | §6 states the closed four and the declined value |
+
+### 12.4 Adopt the layer binding — new §6.11
+
+Adopt `KALA_SYNERGY_BINDING_v1_0.md` **§B1–B7 by reference** in §1 of this brief (it is at
+`5c05a0e2f` on `origin/l3/kala-elevation-readiness`; version 2.0 or later — read the live file, do not
+trust a quoted version). Prove each row this family OFFERS or DEMANDS in the packet proof matrix with
+the binding's tests 5, 6, 7 and 9, **each with a negative fixture that makes the detector fire**. A
+green run that could not go red does not count. B6 is adopted as written: this family is the sole
+contact-episode producer.
+
+### 12.5 A live test-isolation defect — fix before §7.B
+
+`tests/l3/gochara/test_wp3a_kernel.py::test_case_02_mean_node_convention` **passes alone and fails in
+the full suite**, deterministically. In the suite the module-global `swe` is left stubbed by an earlier
+test, so `swe.julday(2026,1,1,0)` returns ≈ 0 and the call dies with "jd -0.001010 outside Moshier
+planet range". This is finding F-31's process-global trap, and it means the one test that guards the
+**mean-node convention three rulings pin** cannot actually run under the suite, while reporting as a
+single ordinary failure. Fix the leak at its source (restore the global in the offending test, or make
+the fixture that sets it function-scoped and self-restoring), **not by skipping the test**, and add a
+guard that fails loudly if the ephemeris module is a stub when a real-ephemeris test runs. This is
+exactly §N.8's earned-signal rule: the assertion existed, the detector could not run.
+
+### 12.6 Owners are named — §9 is unchanged for you
+
+O-1 is this run, already discharged for the nine packets. **O-2 is Kimi K3 at max effort, run by the
+native's L3 session on the whole campaign once you report complete** — so keep writing
+`REVIEW_REQUEST_*.md` per §9 and mark nothing `REVIEWED`. O-3 (the Kṣetra rulings 7/8/9 re-count) is
+dispatched to an independent session and is **not yours**.
+
+### 12.7 Still missing from §9's list
+
+Write the five `REVIEW_REQUEST_*.md` files that do not exist yet: **§4 as a whole, §5, §7.A, §8.4,
+§8.5** (the nine packet ones exist). Then §10's `REMAINDER_FINAL_REPORT_v1_0.md`.
+
+### 12.8 Order of the remaining work
+
+1. §8.5 G-10 — finish and commit what is already in the tree.
+2. §12.5 the test-isolation fix (before anything touches a shared database).
+3. §12.3 §4.13a–i and §12.4 §6.11.
+4. §7.A the cutover kit + `WP10_REHEARSAL_v1_0.md` on the disposable DB.
+5. §7.B tranche 1, then §7.C tranche 2, each step's evidence file before the next.
+6. §12.7 the five review requests, then §10's final report.
+7. **Tear down both disposable containers** — `gochara-wp6-disposable` and
+   `gochara-remainder-disposable` are both still running; the brief requires them gone.
+8. Push, and keep PR #2731 current.
+
+Escalate to `ESCALATIONS.md`, never ask.
