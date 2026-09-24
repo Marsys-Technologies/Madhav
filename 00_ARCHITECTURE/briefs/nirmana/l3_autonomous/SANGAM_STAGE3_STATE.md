@@ -602,7 +602,7 @@ computed and persisted. ICC discounts correlated currents **within** a row; noth
 **between** rows, so the seven named readers could double-count one testimony. The definition is new and
 is recorded in code, in the column comment and here.
 
-**Verification:** suite **22/22 + 22/22 NEG**; `test_ka_sangam_synergy_fixes.py` **20 tests**; targeted
+**Verification:** suite **21/21 + 21/21 NEG** (`OUTPUT_2026-09-24T114152.txt`) **[corrected 2026-09-24T11:42: this line first read "22/22" — the manifest holds 21 script entries and the runner reported "scripts run: 21". Wrong number, written by the author into the author's own verification record, caught by re-reading the runner's output instead of the sentence. Same class as the D-1 heading drift, one pass later.]**; `test_ka_sangam_synergy_fixes.py` **20 tests**; targeted
 and broader L3 green but for the pre-existing `transit_search_cache` flake (file untouched).
 
 **Audit status after two passes:** closed — #1, #3, #5, #6, #7, #8, #10. Open — **#2** (rename to
