@@ -426,7 +426,7 @@ this file.
 
 Push order: fetch first; both writers commit by explicit path, never `git add -A`.
 
-### 12.12 UPDATE 14:20 — §12.9 is DONE for both writers; 1084 changed; main is blocked by the L0 lane's pins
+### 12.12 UPDATE 13:52 IST (originally mis-stamped 14:20; corrected) — §12.9 is DONE for both writers; 1084 changed; main is blocked by the L0 lane's pins
 
 Supersedes the "IN PROGRESS" row for 12.9 in §12.11. **Skip §12.9 entirely.**
 
