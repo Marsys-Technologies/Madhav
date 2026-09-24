@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_kota_chakra", "SC-1 (the build-time date.today() horizon becomes a declared input)", "SC-5 (coverage on a rolling horizon)", "SC-8 (the single ayanāṃśa offset as a declared, edge-bounded approximation)", "registry successor: a version-aware integrity conjunct (a) — today's has NO version predicate", "Gochara w25 proposed-use (N-8 / M-4) + a registry-disagreement item"]
 goal_objective: "Make the fort chart's rows say which horizon they were computed for and under which ring-table version, so a rebuild is a declared re-scan rather than a silent replacement and the integrity check can distinguish a stale grading from a wrong one; label the posture/severity synthesis the uncited extension it already admits to being and constrain its vocabulary; derive corpus verifiability from the L0 row that already carries it; and bound the single-offset approximation where it actually bites — window edges, not nakṣatra spans."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at 3387c9ac3 (2026-09-24)"

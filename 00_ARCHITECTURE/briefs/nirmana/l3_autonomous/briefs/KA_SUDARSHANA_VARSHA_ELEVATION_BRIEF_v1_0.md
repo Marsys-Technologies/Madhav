@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_sudarshana_varsha", "SC-4 (one group, one current: the three frames share an anchor and a rule)", "SC-1 interface packet (NEW, proposed for blueprint §12.2): the omitted-`as_of` default resolves in the chart's zone — at now.ts:1643 AND the wrapper, since the former never reaches the latter", "binding amendment (generic, not asset-local): a B1 time_basis value for DATE-grain producers", "Gochara w27c: a three-way disposition, not a binary"]
 goal_objective: "Qualify the year-wheel for what it provably is: ONE temporal current with one anchor and one rule, whose `tri_lagna_convergence` flag is a per-chart CONSTANT carrying no annual information; whose windows are calendar anniversaries, not solar returns; and whose served 'current year' is chosen by a UTC clock on both served paths. A consumer must never count three witnesses, read an anniversary as a return, or get the wrong year around a birthday."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at 3387c9ac3 (2026-09-24)"

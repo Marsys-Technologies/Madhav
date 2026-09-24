@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_tulana", "IP-4 (kala_priority_get / kala_priority_ranking_get honesty — enumerated blast radius)", "NEW sidecar route routers/tulana.py + its registration in main.py (stage 3)", "probe-contract successor to migration 849 — coordinated Pūrṇa packet", "L3-U04 (Kalasutra/Tulana → AHEAD/NOW)"]
 goal_objective: "Make ka_tulana the layer's comparison authority in fact: three named comparators (nearest, strongest, robust) instead of one composite; every producer mode admitted and partitioned by a declared comparability key instead of Mode C/D refused at the door; missing inputs dropped and declared rather than defaulted; independence inherited from the producer — and a served surface that either calls it through a route that exists and is mounted, or stops claiming to, at every site that makes the claim."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); every cited code path checked identical at bf70a3477 and again at 27b0146f3 (2026-09-24)"
@@ -210,9 +214,17 @@ but is 0 rows for the canonical chart [A] and is Mode C — refused (§3).
    `tier_basis='relative_uncalibrated'`.
 7. **`WindowInput` adapter by `window_ref` (B3)** from `kala_convergence`: `t_start/t_end/t_peak`
    timestamptz (B1), `activity`, `valence`, `rarity_years` (until retired), `independence_group`,
-   the partition inputs, `generation`, `mode`. **Spelling mapping declared:** `independence_groups`
-   (Saṅgam brief) / `comparability_class` (stage3 `exposure.py:65-82`) → `independence_group` /
-   `comparable_with` (binding). **None of these columns is persisted on any branch today.**
+   the partition inputs, `generation`, `mode`. **Mapping declared — and it is NOT a two-way rename.**
+   `independence_groups` (Saṅgam brief) → `independence_group` (binding) is a spelling rename.
+   `comparability_class` is **not** a spelling of `comparable_with`: binding v2.3 §B5 corrects the
+   v2.0–v2.2 instruction that ordered that rename (Saṅgam raised it). The two coexist and mean
+   different things — `comparable_with` is a **relation** between this row and a reference row
+   (`{self, same_convention_same_inputs, same_convention_newer_inputs, different_convention}`, four
+   values, D-S6), while `comparability_class` (stage3 `exposure.py:65-82`, `ka_sangam/<signature_
+   class>`) is a **partition key** saying what a projection may rank *within*. This kernel consumes
+   both: `comparability_class` selects the partition, `comparable_with` qualifies the pair inside it,
+   and cross-class pairs are excluded as `incomparable` (§9) rather than ranked. **None of these
+   columns is persisted on any branch today.**
 8. **Time discipline (SC-1).** `reference_instant` required, echoed; no `date.today()` (`:287,:319,
    :402`). It is an **asset-local input**, not a B1 field name (§7).
 9. **Coverage (B5 shape).** `coverage = {requested_horizon, completed_horizon, resolution:

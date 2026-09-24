@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_muhurta_seva", "sidecar routes routers/muhurta_score.py + routers/muhurat.py (re-pointed through the service — coordinated)", "IP-10a (NEW, proposed for blueprint §12.2): kala_elect_get DISCLOSURE packet — location_used + personal state from the existing lane_f.tara_bala_status", "cross-asset item (L0+L4, not a packet): panchanga_daily is a single-observer table read by phala/muhurta.py for every chart"]
 goal_objective: "Make ka_muhurta_seva the one election engine its registration claims: a typed verdict built as an extension of the finder's existing per-factor breakdown (calendar / personal / weight-source carried separately, vetoes as vetoes, the horizon and cap disclosed, the location actually used typed on every answer, a named comparator from the blueprint's vocabulary) — and route the two sidecar election endpoints through it, so that 'the best window in your range' can never be read as 'a good window'. The chart-bound served election (kala_elect_get) does not touch this service today; its real hazard lives in a single-observer L0 table and is raised, not absorbed."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at bf70a3477 and 27b0146f3 (2026-09-24)"

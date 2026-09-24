@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_kala_darshana", "SC-5 (the LIMIT 750 intake cap → coverage)", "B4 (the max-over-obstructions suppression depends on Vighnakara's independence marking — a DEMAND)", "SC-6 (this asset IS the layer's verdict producer; B6 says one producer per verdict)"]
 goal_objective: "Make the display layer's verdict auditable: it multiplies a producer's convergence score by one minus the LARGEST obstruction override and labels the result, but it takes the max over rows whose independence is unmarked (so one mechanism seen three ways suppresses as hard as three independent ones), it reads only the top 750 convergence windows with no record of the rest, and its labels are threshold restatements whose thresholds live nowhere but the code."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at fb46b258f (2026-09-24)"

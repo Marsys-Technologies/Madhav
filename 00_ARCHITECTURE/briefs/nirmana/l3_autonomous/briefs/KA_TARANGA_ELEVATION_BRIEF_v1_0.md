@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_taranga", "the W2 §3 SPLIT ruling (the event_class half is degenerate and to be retired; the domain half is kept)", "SC-1 (month boundaries are already tz-pinned — the good pattern)", "registry packet: the declared-but-unread ka_avadhi edge", "Q6 (the semantics of an unevaluated term in a combination rule)"]
 goal_objective: "Stop a missing term from reading as a zero term: the waveform's transit contribution is 0.0 on every canonical-chart row because kala_convergence is empty, and 0.0 flows into an arithmetic mean as if it were a measured absence of transit support — so a chart with no convergence data and a chart with genuinely quiet transits produce the same curve. Make an unevaluated term null with a reason, renormalise explicitly, and retire the degenerate half the W2 ruling already condemned."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at a99300bb7 (2026-09-24)"

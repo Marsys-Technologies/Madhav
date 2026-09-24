@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_graha_sancara", "SC-8 (convention vector: the node-frame and ayanāṃśa-application deltas plus the field-name mapping)", "SC-10 (ayanāṃśa vocabulary via L0's AYANAMSHA_MAP)", "IP (NEW): the served route's _service_context reaching the TS wrapper — today dropped", "L0 hygiene note: l0_ephemeris.py:77 'Mean North Node' comment over swe_id 11 (TRUE_NODE)"]
 goal_objective: "Make ka_graha_sancara one honest position service: its registered engine stops claiming instant precision it does not compute, adopts the ruled node frame and one ayanāṃśa-application convention, validates ayanāṃśa ids against L0's existing map, and is bound by golden-value tests to the served route's computation (the bg_ephemeris_engine surface) that is already instant-grain, MEAN-node and backend-asserting — so the probe that gates the served route's availability certifies the computation callers actually receive."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code re-verified identical at 27b0146f3 (2026-09-24)"

@@ -984,37 +984,68 @@ base, a graha→domain map 58 % outside its ontology's vocabulary, a guard whose
 without re-verifying it* — the review loop is load-bearing in both directions, and `[R]` marks a
 reviewer's verification, not the author's.
 
-**Binding version correction, 2026-09-24 (post-programme).** All sixteen briefs were written against
-`KALA_SYNERGY_BINDING` **v1.0**, whose §B1 named the shared grain field `claim_grain` and instructed
-Gochara to rename `precision_regime` → `claim_grain`. That row is **superseded and reversed**. The
-binding has advanced v1.0 → v1.1 → v2.0 → **v2.2**, and v2.2 §B1 records `precision_regime` as *the
-ruled name* — "Kṣetra ruling 8, Gochara G-9, Saṅgam M-3 all name it" — with **no rename**, values
-unified to `{instant_grain, date_grain}`, and `day_grade` aliased to `date_grain` **until the
-successor condition of Saṅgam D-7 is met (every dependent claim has an authorized successor), not
-for a count of generations**. The native's own Gochara ruling **D-S4** (2026-09-24) rules the same
-way. All sixteen briefs are corrected: 33 occurrences of `claim_grain` renamed, and each brief's
-frontmatter now pins `synergy_binding_version: "2.2"`. The briefs' enum *values* were already
-`instant_grain`/`date_grain` and did not move.
+**Binding version correction, 2026-09-24 (post-programme; this entry supersedes a wrong first
+attempt recorded at `d5e363fbd` and corrected at the commit carrying this text).** All sixteen
+briefs were written against `KALA_SYNERGY_BINDING` **v1.0**, whose §B1 named the shared grain field
+`claim_grain` and instructed Gochara to rename `precision_regime` → `claim_grain`. That row is
+superseded and reversed. The binding has advanced v1.0 → v1.1 → v2.0 → v2.2 → **v2.3**, and §B1
+records `precision_regime` as the ruled name with **no rename**, values `{instant_grain,
+date_grain}`, and `day_grade` aliased to `date_grain` **until the successor condition of Saṅgam D-7
+is met (every dependent claim has an authorized successor), not for a count of generations**. All
+sixteen briefs are corrected: 33 occurrences of `claim_grain` renamed, `synergy_binding_version:
+"2.3"` pinned in every frontmatter. The enum *values* were already right and did not move.
 
-**Two governance hazards this correction surfaced, both unresolved and neither this session's to
-close.** (1) **The authoritative binding is unpushed.** v2.2 exists only on the local branch
-`strategic/dis031-fix` in this machine's repository — it is on no `origin/*` head, and its own status
-is still `PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION`. Every stream that fetches from origin sees
-v1.0, i.e. the superseded and reversed vocabulary, which is exactly how sixteen briefs came to be
-written against it. (2) **v2.2 has not absorbed the ruling it reports.** Its §B8 item 9 still lists
-the rename direction as an open native decision while D-S4 has already ruled it — the binding is
-self-inconsistent between its §B1 row and its own open-decisions list.
+**Cite the rulings, not the binding.** The binding's status is still
+`PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION` on v2.3 — it is **not adopted** and must not be cited as
+settled authority. Worse, it contradicts itself on this very field: §B1 asserts `precision_regime`
+while **§B8 item 9 still lists the rename direction as an open native decision** (confirmed on v2.3,
+item 9 of that list). The sound citation is the underlying rulings, none of which depends on the
+binding being adopted: the *name* comes from Kṣetra ruling 8, Gochara G-9 and Saṅgam M-3, and is
+ruled by the native at **D-S4 (2026-09-24)**; the *alias condition* comes from Saṅgam's own **D-7**.
+Every brief's frontmatter now pins those rulings rather than the binding.
+
+**A correction to this blueprint's own first attempt, recorded because the failure is instructive.**
+The first version of this entry claimed that binding v2.2 "exists only on the local branch
+`strategic/dis031-fix`… it is on no `origin/*` head", and built on that a story in which sixteen
+briefs were written against a reversed vocabulary *because the current binding had never been
+published*. **That claim was false and the causal story with it.** The binding is reachable from
+**`origin/l3/kala-elevation-readiness`**, which carries v2.3 today. The false claim was produced by
+a defect in the scan that made it: the per-ref listing was piped through `sort -u -t'|' -k3`, which
+de-duplicates on the *blob hash* field, so the two refs holding byte-identical copies of the binding
+collapsed into a single printed row — and the row that survived was the local one. The scan reported
+one ref per distinct *content*, and it was read as one ref per *copy*. A de-duplicating sort silently
+answers a different question than the one asked, and a negative existence claim ("on no origin
+head") is exactly the claim such a pipeline cannot support.
+
+The real cause is duller and closer to home: **this branch's base is stale.** `l3/kala-layer-briefs`
+is cut from a commit predating the binding's advance and carries v1.0; the current binding lives on
+`l3/kala-elevation-readiness`, from which this branch was never re-based. Sixteen briefs inherited
+v1.0 because nobody re-based, not because anything was unpublished. Two working rules follow, both
+earned rather than assumed: **re-base or re-read a cited contract before binding sixteen documents to
+it**, and **never assert the non-existence of something from a pipeline containing `sort -u`** —
+re-run without the de-duplication before the claim is written down.
+
+**One substantive v2.3 change beyond the grain name, and a gap it opens.** v2.3 §B5 corrects an
+instruction that v2.0–v2.2 got wrong: `comparability_class` is **not** a spelling of
+`comparable_with` and must not be renamed into it (Saṅgam raised it). The two coexist and differ in
+kind — `comparable_with` is a **relation** between a row and a reference row (four values, D-S6);
+`comparability_class` is a **partition key** naming what a projection may rank *within*, with
+cross-class pairs excluded as `incomparable` rather than ranked. `ka_tulana` §7 carried exactly the
+mis-mapping v2.3 strikes (`comparability_class → comparable_with`) and is corrected in place. The
+**gap**: v2.3's downstream rule now requires that any projection carrying a score also **partitions
+by `comparability_class`**, and none of the score-emitting briefs — `ka_yojaka`, `ka_taranga`,
+`ka_vighnakara`, `ka_kala_darshana`, `ka_kota_chakra` — carries that obligation yet. It is recorded
+here as an open item against those five, not silently folded into them.
 
 **Migration numbering is not a single-branch question.** Numbering against `origin/main` is unsafe
 here: `origin/main` maxes at 1070 while unmerged heads hold 1080–1090 (Gochara 1080–1086 on
 `origin/l3/gochara-autonomous-wp0-7`; Saṅgam **1088–1090** on `origin/sangam/stage3`, already
 renumbered up off its earlier 1085–1087). Max across all heads is **1090**; 1087 is a lone free slot
-between the two. `platform/migrations/` and `platform/supabase/migrations/` are one runner sequence
-and must both be scanned — **the two streams do not use the same one**: Gochara's 1080–1086 are in
-`platform/migrations/`, Saṅgam's 1088–1090 are in `platform/supabase/migrations/`. A scan of one
-directory sees a clean max of 1086 and a free 1087, and misses Saṅgam entirely; that is the
-mechanism by which a wrong "next free" number gets published and believed. Any figure here —
-including this one — is re-scanned at execution, across both directories and every head.
+between the two, holding exactly one migration. `platform/migrations/` and
+`platform/supabase/migrations/` are one runner sequence and must both be scanned — **the two streams
+do not use the same one**: Gochara's are in `platform/migrations/`, Saṅgam's in
+`platform/supabase/migrations/`. Any figure here — including this one — is re-scanned at execution,
+across both directories and every head, because these numbers move within a single working day.
 
 ### 17.3 What binds the sixteen to the three
 

@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_kalasutra", "SC-1 (the shared date resolver's `date.today()` default and its 8-window cap)", "SC-5 (the cap → coverage)", "SC-9 (the signal reference it inherits from Yojaka)", "registry packet: declare the undeclared L1 read (`chart_dashas` via ka_temporal)"]
 goal_objective: "Make the activation table say which periods it searched and which it dropped: the shared resolver caps every predicate at eight matched periods and picks its 'primary' one against the SERVER's today, so a build's own date silently decides which window a consumer sees; and the table's dating authority, upstream agreement and signal identity are already contracted but two of the three read FALSE on a cascade-damaged chart. Declare the cap, declare the horizon anchor, declare the L1 read, and carry the producer's own convergence contributions instead of only the best one."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); cited code identical at a99300bb7 (2026-09-24)"

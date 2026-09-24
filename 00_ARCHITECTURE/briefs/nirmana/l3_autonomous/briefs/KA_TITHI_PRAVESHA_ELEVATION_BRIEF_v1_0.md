@@ -7,7 +7,11 @@ approval_record: "<none yet>"
 parent_layer_contract: "MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md / DP-SD-017 / commit 793972c754b106688097dbc54536c1a9c270a793"
 foundation_contract: MADHAV_DATA_PLANE_FOUNDATION_CONTRACT_AND_GATES_v1_0.md
 synergy_binding: KALA_SYNERGY_BINDING_v1_0.md
-synergy_binding_version: "2.2"  # §B1 ruled name is precision_regime (not claim_grain, which was v1.0); values {instant_grain, date_grain}; day_grade aliases date_grain until Sangam D-7 successor condition, NOT for a count of generations
+synergy_binding_version: "2.3"  # binding is UNADOPTED (PROPOSED_FOR_NATIVE_RULING_THEN_ADOPTION) and its §B8 item 9
+# still lists the rename direction as open while §B1 asserts it. Authority for the field NAME is therefore the
+# underlying rulings, not the binding: Kṣetra ruling 8 + Gochara G-9 + Saṅgam M-3 name `precision_regime`, native
+# ruling D-S4 (2026-09-24) confirms it. Alias condition is Saṅgam D-7: `day_grade` reads as `date_grain` until every
+# dependent claim has an authorized successor — NOT for a count of generations. Values {instant_grain, date_grain}.
 asset_or_interface_ids: ["ka_tithi_pravesha", "SC-1 (tz-aware instants — on the row AND on the serving path, which strips the offset)", "D-M second L0 lane (source adjudication — which must adjudicate the w27b registry's contrary citation string too)", "SC-6 voice (annual frame)", "Gochara w27b: a registered candidate whose modifier schedule is the operand class Q2 bars before M-4"]
 goal_objective: "Make ka_tithi_pravesha's stored return instants say what they are: the cast is computed at the CORRECT absolute instant (local jd + Place(tz), the FORENSIC-verified L1 pattern), so the lagna, graha positions and audit are right — it is only window_start/window_end that are handed naive to a timestamptz column and therefore ASSERT an instant 5.5 h late. Fix the assertion without disturbing the cast; stamp the method unsourced-with-receipt until the L0 lane adjudicates it; type the rows as one root's annual testimony; and decide the integrator use as a concurrence voice rather than a λ-product modifier."
 source_revision: "9feac52d7 (l3/kala-layer-briefs); `git diff --stat 9feac52d7 e82dd34a3` on services/ka_tithi_pravesha/, query_tithi_pravesha.ts and kala_views/now.ts is empty"
