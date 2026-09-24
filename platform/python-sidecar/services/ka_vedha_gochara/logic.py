@@ -300,21 +300,31 @@ def source_qualification_for(vedha_kind: str, grid_basis: Optional[str], *,
     raise ValueError(f"unknown vedha_kind {vedha_kind!r}")
 
 
+# §7.6 ruling / O-3 recount: bg_transit_rules id 21 (Mercury 2→5 vedha) has a
+# page-grain-only śloka anchor — the śloka-6 vedha house is the OCR token
+# "Bill". It must read corpus_verifiable=False even though its citation text
+# carries no UNSOURCED/struck marker.
+PAGE_GRAIN_ONLY_RULES = {("mercury", 2, 5)}
+
+
 def corpus_verifiable_for(vedha_kind: str, *, grid_basis: Optional[str] = None,
-                          classical_citation: Optional[str] = None) -> bool:
+                          classical_citation: Optional[str] = None,
+                          graha: Optional[str] = None,
+                          primary_house: Optional[int] = None,
+                          vedha_house: Optional[int] = None) -> bool:
     """The WP9 `corpus_verifiable` stamp. house_vedha: False when the rule is
     declared UNSOURCED (or has no citation) — decided FIRST, so it does not depend
     on the incidental wording of the UNSOURCED reason text — and False while the
-    citation carries the struck 'BPHS Ch.29' marker; True otherwise.
-    KNOWN OVERSTATEMENT: this is a marker test, not a page-level read. A rule whose
-    śloka anchor is page-grain only (one Mercury row, the OCR token "Bill") still
-    reads True here; the strict cover is one lower. Closing that needs the rule's
-    identity, which this writer does not select — see the O-3 recount.
+    citation carries the struck 'BPHS Ch.29' marker; False for the page-grain-only
+    Mercury 2→5 row (bg_transit_rules id 21, OCR token "Bill" — §7.6 ruling);
+    True otherwise.
     sarvatobhadra: False while grid_basis is the algorithmic approximation.
     latta: True (Phaladīpikā PG338-339, REAL cited; Ketu rows are never
     emitted, so the Ketu gap never surfaces as a False stamp)."""
     if vedha_kind == HOUSE_VEDHA:
         if is_unsourced_citation(classical_citation):
+            return False
+        if (str(graha).lower(), primary_house, vedha_house) in PAGE_GRAIN_ONLY_RULES:
             return False
         return STRUCK_BPHS_CH29_MARKER not in (classical_citation or "")
     if vedha_kind == SARVATOBHADRA:

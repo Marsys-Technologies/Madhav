@@ -603,3 +603,35 @@ class TestIntegrityConjuncts:
         finally:
             c.rollback()
             c.close()
+
+
+class TestCorpusVerifiableMercuryId21:
+    """§7.6 ruling: bg_transit_rules id 21 (Mercury 2→5) has a page-grain-only
+    śloka anchor (OCR token "Bill") and must stamp corpus_verifiable=False."""
+
+    def test_mercury_2_to_5_not_corpus_verifiable(self):
+        from services.ka_vedha_gochara.logic import corpus_verifiable_for
+        assert corpus_verifiable_for(
+            "house_vedha", classical_citation=PD_CH26,
+            graha="Mercury", primary_house=2, vedha_house=5,
+        ) is False
+
+    def test_match_is_case_insensitive_on_graha(self):
+        from services.ka_vedha_gochara.logic import corpus_verifiable_for
+        assert corpus_verifiable_for(
+            "house_vedha", classical_citation=PD_CH26,
+            graha="mercury", primary_house=2, vedha_house=5,
+        ) is False
+
+    def test_clean_house_vedha_row_stays_verifiable(self):
+        """Positive control: a cited rule outside the page-grain-only set is
+        unaffected."""
+        from services.ka_vedha_gochara.logic import corpus_verifiable_for
+        assert corpus_verifiable_for(
+            "house_vedha", classical_citation=PD_CH26,
+            graha="Mercury", primary_house=2, vedha_house=4,
+        ) is True
+        assert corpus_verifiable_for(
+            "house_vedha", classical_citation=PD_CH26,
+            graha="Jupiter", primary_house=2, vedha_house=5,
+        ) is True

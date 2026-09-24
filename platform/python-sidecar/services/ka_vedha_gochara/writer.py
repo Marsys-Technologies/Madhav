@@ -593,6 +593,9 @@ class KaVedhaGocharaWriter(WriterBase):
                     "corpus_verifiable": corpus_verifiable_for(
                         HOUSE_VEDHA,
                         classical_citation=rule.get("classical_citation"),
+                        graha=rule.get("graha"),
+                        primary_house=rule.get("primary_house"),
+                        vedha_house=rule.get("vedha_house"),
                     ),
                     "detail": {
                         "upstream_fingerprint": upstream_fp,
