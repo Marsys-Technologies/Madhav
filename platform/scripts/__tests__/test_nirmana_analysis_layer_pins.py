@@ -50,6 +50,16 @@ def replace_layer_writers(
 # predecessor slices. The tests at the end of the file assert the repair
 # successors themselves against LIVE_*. This follows the file's own convention
 # (see PRE_KSHETRA_PINS): rewind, do not weaken.
+#
+# CAUTION - a rewound document is only a valid `check()` input against a protected
+# baseline that PREDATES the repair. Once the repair is on main, every baseline
+# carries the repair successors, and checking the rewound document against it
+# correctly reports "protected baseline generation ... is absent". So anything that
+# asks "does the committed document verify?" must use LIVE_*, never CURRENT_*; the
+# rewound CURRENT_* is for assertions ABOUT the earlier chain (indexes, prior bytes,
+# and mutation tests that assert on failure text). This bit once: after PR #2727
+# merged, two tests below called check_current() with the rewound default and failed
+# every PR entering the merge queue while the tool's own --check stayed green.
 REPAIR_LAYERS = ("L0", "L2", "L3")
 CURRENT_PINS = LIVE_PINS
 CURRENT_INVENTORY = LIVE_INVENTORY
@@ -106,6 +116,44 @@ def check_current(
         inventory or CURRENT_INVENTORY,
         protected_baseline_commit=baseline,
         delivery_topology=delivery,
+    )
+
+
+def _baseline_carries_live_generations() -> bool:
+    """True when the protected baseline (if any) already carries the live successors."""
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    if not baseline:
+        return True
+    try:
+        baseline_pins = pins_module._pins_at_commit(baseline)
+    except SystemExit:
+        return False
+    return all(
+        baseline_pins.get("layers", {}).get(layer, {}).get("generation_id")
+        == LIVE_PINS["layers"][layer].get("generation_id")
+        for layer in ("L0", "L2", "L3")
+    )
+
+
+def _require_live_document_verifiable() -> None:
+    """Skip, loudly, when the live document cannot be verified from this checkout.
+
+    The one such case: a PR whose base predates the L0-repair successors while its
+    tree already contains them. The successors are then NEW relative to the baseline,
+    so their evidence commits must be dereferenced, and after a squash merge those
+    commits are not ancestors of HEAD. That is not a defect in the pins: the tool's
+    own --check fails for the same reason at that step, and the remedy is to update
+    the branch from main so the protected baseline carries the successors.
+    """
+    if _baseline_carries_live_generations():
+        return
+    source = "7d40f8c706406ee8187eadb5c3930553800a1a4a"
+    if pins_module._commit_is_ancestor_of_head(source):
+        return
+    pytest.skip(
+        "PR base predates the L0-repair successors and their source commit is not an "
+        "ancestor of HEAD (squash delivery): update the branch from main so the "
+        "protected baseline carries them"
     )
 
 
@@ -584,7 +632,8 @@ DP019_SOURCE = "64facb9763d13eece7098b5b24cc03dfb8e3ba81"
 
 
 def test_current_successors_are_exact_and_preserve_prior_bytes() -> None:
-    assert check_current() == []
+    _require_live_document_verifiable()
+    assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
     for layer, expected_delta in (
         ("L1", EXPECTED_L1_SECURITY_DELTA),
         ("L2", EXPECTED_L2_SECURITY_DELTA),
@@ -1052,7 +1101,8 @@ def test_every_commit_dereferenced_by_check_is_an_ancestor_of_head(monkeypatch) 
         real_require(commit, label)
 
     monkeypatch.setattr(pins_module, "_require_reachable_commit", record)
-    assert check_current() == []
+    _require_live_document_verifiable()
+    assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
     assert dereferenced
     assert all(pins_module._commit_is_ancestor_of_head(commit) for commit in dereferenced)
     assert "da498ebd980cac87796eceb889c7f1c42cfb952b" not in dereferenced
@@ -1250,6 +1300,7 @@ REPAIR_BOTH = {"ka_vedha_gochara"}
 
 
 def test_live_document_with_repair_successors_verifies() -> None:
+    _require_live_document_verifiable()
     assert check_current(LIVE_PINS, LIVE_INVENTORY) == []
 
 
