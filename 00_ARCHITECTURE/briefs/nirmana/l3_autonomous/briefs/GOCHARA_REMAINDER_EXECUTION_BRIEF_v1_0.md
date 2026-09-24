@@ -313,3 +313,25 @@ Write the five `REVIEW_REQUEST_*.md` files that do not exist yet: **§4 as a who
 8. Push, and keep PR #2731 current.
 
 Escalate to `ESCALATIONS.md`, never ask.
+
+### 12.9 Upstream-fingerprint gap on the vedha/mūrti overlays — do this BEFORE the candidate build
+
+Received from the Kṣetra stream (checklist C3) and verified at source on this branch.
+
+`services/ka_vedha_gochara/writer.py` reads `bg_transit_rules` (`:106`) and copies each rule's
+`classical_citation` **verbatim** (`:236`), but records **no fingerprint or digest of that upstream
+input**. Consequence, measured by Kṣetra against production: the canonical chart's **132 `house_vedha`
+rows are the 2026-09-07 build and still cite "BPHS Ch.29"** even though the L0 re-citation has moved
+those rules to Phaladīpikā PG322/PG323, and the **24 sarvatobhadra rows cite Prasna Marga**. Nothing
+detects the disagreement. This is the §N.8 earned-signal defect: the citation is asserted and no code
+path could ever report it stale.
+
+| # | task | exit gate |
+|---|---|---|
+| 12.9a | Add an upstream input fingerprint to the vedha and mūrti writers: a digest over the `bg_transit_rules` rows actually consumed (and the sarvatobhadra source for those rows), stored on the output row or its build record | a rebuild after any `bg_transit_rules` change produces a different fingerprint |
+| 12.9b | Make staleness **detectable**: a check that fails when a served vedha/mūrti row's stored upstream fingerprint does not match the current `bg_transit_rules` state, naming the affected rows | the detector fires on the 132 stale rows as they stand today, and goes green only after a rebuild |
+| 12.9c | **Gate the `'4.0'` candidate build on it** (§7.C step 6): the candidate must not be built on vedha rows whose fingerprint is stale, or a published generation carries refuted citations | step 6's evidence file records the fingerprint match before the build proceeds |
+| 12.9d | Rename `platform/migrations/1086_nirmana_l0_gochara_g10_…` to an **`l1_`** basename. Its content is an L1 `ga_strength` change, the brief §8.5 calls G-10 L1, and the `l0_` prefix could route it to the wrong owner. It is unapplied, so this is a filename fix and engages no numbering rule — keep the number 1086 | basename says `l1_`; every reference updated; suite green |
+
+**Do not** apply migration 1085 (the G-9 L0 data repair) to any shared database. It is file-only by
+brief §8.4, and applying it belongs to an L0 owner the native has not named.

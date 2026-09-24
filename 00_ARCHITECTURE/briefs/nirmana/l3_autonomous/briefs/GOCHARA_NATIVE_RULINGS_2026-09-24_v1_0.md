@@ -200,3 +200,116 @@ misreading, never for the mere fact of a shared number.** This session over-appl
 records it.
 
 Saṅgam has since taken **1087**; the next free number is **1088** by scan, re-scanned before claiming.
+
+### 7.5 Second addendum, 2026-09-24 — scope authority for three migrations, the settled number map, and two corrections received
+
+**A. Scope authority for the L5- and L0-prefixed migrations on this branch** (asked by the strategic
+session, answered here so no later reader has to infer it). All three are authorized by the
+**2026-09-23 brief**, not by the 2026-09-24 delegation, and **none is applied to any database**:
+
+| file | authority | applied? |
+|---|---|---|
+| `1083_l5_ledger_contact_id.sql` | brief §6 packet **P-3**, under the brief's own `scope_extension` naming this run the implementation owner of the eight WP7 packets. Its header says so: "L5 ledger contact_id — frozen-claim identity chain (WP7 P-3)" | no |
+| `1085_nirmana_l0_bg_transit_rules_vedha_repair.sql` | brief §8.4, whose wording is explicit: "**G-9 repair as a migration file (L0 data; file only)**". Writing the file is in scope; **applying it is not, and has not happened** — the file's own header states "Applied to a disposable docker Postgres only; unapplied to any shared DB" | no |
+| `1086_nirmana_l0_gochara_g10_ga_strength_contributor_digest_spec.sql` | brief §8.5, "G-10 (**L1**) — design + migration + writer change, carefully" | no |
+
+**Filename defect, recorded:** 1086's basename says `nirmana_l0_` but its content is an **L1** change —
+`ga_strength_writer`'s `chart_facts` category `ashtakavarga_bindu_contributor` and its output-digest
+contract. The brief calls G-10 L1 and the file agrees in substance. The `l0_` in the name is wrong and
+could route this to the wrong owner. It is unapplied, so **rename the file to an `l1_` basename** as part
+of §12.3; a filename is not a number, so no numbering rule is engaged.
+
+**B. The migration map, settled.** Saṅgam renumbered its three files rather than keep contested numbers,
+and this session verified the result at source rather than take it on report:
+
+| range | owner | note |
+|---|---|---|
+| 1080–1086 | this family | 1085/1086 retained; Saṅgam moved instead |
+| **1087** | **free** | released by Saṅgam's renumber; it was double-pointed for about twenty minutes today, so anyone taking it must re-scan first |
+| 1088–1090 | Saṅgam | `kala_convergence_kernel_fields`, `_r5_identity`, `_comparable_with` |
+| 1091+ | free | max prefix anywhere is 1090 |
+
+Saṅgam accepted the first-claim rule in the direction that cost it, having independently re-verified this
+family's commit times, and its own applied-state answer ("both endpoints refused all session") is
+consistent with its session-close record written before the question was asked. §7.4's withdrawal of the
+*question* stands; the *outcome* is Saṅgam's choice, not this family's demand, and this family does not
+ask anyone to renumber again.
+
+**C. Correction received from Kṣetra, accepted: the t-axis defect is not unmentioned.** This family's
+instruction file said Kṣetra's packet does not mention it. Wrong: it is Kṣetra plan §2 item 00 and
+stage-3 Phase 1 item zero, measured live on 2026-09-23, ahead of ruling 9's G3. It is also **larger**
+than this family described — the knot sources are not merged with a missing offset; `dhara_sweep.py:66`
+**excludes the roots by design**, and every knot source (stage-0 roots, stage-1 primitives, stage-3
+boundaries) is J2000 while the sweep, evaluator and writer clip and partition as birth-relative `[0, H]`.
+The Kṣetra instruction file is corrected.
+
+**D. Correction received from Kṣetra, accepted, and it lands on this family's own plan.** Plan §5.4
+asserts that Phaladīpikā Adhyāya XXVI śl. 48 at PG345–PG348 is "a full primary construction of the
+Sarvatobhadra-cakra", and concluded that SBC is therefore "an L0 population task with page anchors, not
+a doctrine gap". **The L0 repair attempted exactly that construction from PG345–354 verbatim and was
+blocked** (PR #2727 item 4); Kṣetra's matching "buildable from prose" claim is withdrawn on its record.
+The honest status is now: the passages exist and are cited correctly, **and the grid is not reconstructible
+from that prose as it stands**. Plan §5.4's conclusion is downgraded to `[U]` pending whoever attempts it
+next with more than the prose. Recorded here rather than quietly left standing, because this family
+supplied the claim.
+
+**E. New work for this family, from Kṣetra's C3 finding — verified at source.** `ka_vedha_gochara`'s
+writer reads `bg_transit_rules` (`writer.py:106`) and copies each rule's citation **verbatim**
+(`writer.py:236`), but **fingerprints no upstream input**. So the canonical chart's 132 `house_vedha`
+rows are still the 2026-09-07 build and still cite "BPHS Ch.29" after the L0 re-citation, the 24
+sarvatobhadra rows cite Prasna Marga, and **nothing in the system detects that the rows disagree with
+their own source**. That is §N.8 exactly: the citation is asserted and no detector could ever find it
+stale. It also threatens tranche 2 directly — a `'4.0'` candidate built on those rows would publish
+refuted citations. Added to the brief as §12.9. Kṣetra is right to consume only rows rebuilt after the
+re-citation.
+
+### 7.6 O-3's independent re-count has returned, and it corrects this family's own citations
+
+Report: `KSHETRA_RULINGS_789_INDEPENDENT_RECOUNT_v1_0.md`, commit `030896ced`, status
+`INDEPENDENT_RECOUNT_COMPLETE`. The session reached the served corpus read-only through the proxy,
+aggregates and verse references only, and stopped the proxy after. It also did the one thing this family
+asked for and could not do itself: it re-derived the numbers **this family supplied** rather than
+re-reading this family's summary of them. Several of those numbers were wrong. They are corrected here,
+at the source of the error.
+
+**The finding that changes the picture.** `bg_transit_rules` is **already re-cited in production**:
+`count(*) where vedha_house is not null` → **42** (not 41), of which **42 cite Phaladīpikā** and **0 cite
+BPHS Ch.29 as a source** — the six BPHS mentions are Rāhu/Ketu rows whose `UNSOURCED` stamp names Ch.29
+*only to record its absence*. The geometry split is **36 matching / 0 deferred / 6 nodal**, not 32/3/6:
+the three Venus rows (ids 35, 44, 45) now read vedha 1/5/11 and all match. So:
+
+- **Plan §5.4's "39 rules citing BPHS Ch.29 alone and exactly 2 citing Phaladīpikā" is stale.** It was
+  true when measured and is not true now. It must be restated as a re-runnable query with its predicate,
+  never as a copied figure — the same lesson DVA Ruling 16 already taught this project for the L1 row
+  counts, and this is the **third** correction to this particular number.
+- **Migration 1085 (the G-9 re-citation repair) may now be redundant or actively wrong**, because the
+  repair it performs appears already applied upstream. **Nobody applies it** until someone diffs it
+  against the live `bg_transit_rules` state. It is file-only by brief §8.4 and unapplied, so nothing has
+  broken; it must not be treated as pending work that is safe to run.
+- **This makes §12.9 more urgent, not less.** Upstream L0 is repaired and this family's 132
+  `house_vedha` output rows still carry the old citations from the 2026-09-07 build. The divergence is
+  live right now, and no detector exists for it. Both facts are true because they are different tables.
+
+**Corrections to this family's own cited page anchors** — each with its predicate in the report:
+
+| this family said | measured | where it lands |
+|---|---|---|
+| Sade-Sati testimony at `PG1334 / PG786 / PG1333` | **`PG786` returns 0 rows.** The five hits are `PG1333, PG1334, PG1339, PG1340, PG1342`, all `nadi_navamsa_patel` | **N-15's citation list is wrong** and is corrected to the five real pages |
+| kakṣyā doctrine in "6 nāḍī rows, PG1615/PG1616" | six **pages**: `PG80, PG1615, PG1616, PG1618, PG1623, PG1624`; bindu semantics verbatim at PG1615/1616 | **M-7's evidence base widens**; the two pages quoted are right, the set was incomplete |
+| SBC construction at `PG345:C1`–`PG346:C1` | **`PG345` is 592 characters of garbled diagram page** carrying only an announcement and a legend; the construction is at **`PG346:C1`** onward | plan §5.4's anchor corrected; reinforces §7.5 D — the prose was not buildable |
+| "two scales: PG349 general, PG353 battle" | **`PG349`'s own count-keyed scale opens "fear in battle"** too, so the clean general-versus-battle split does not hold | the honesty item stands but its framing was too tidy; `bg_vedha_malefic_scale`'s rows already declare the battle scoping in `effect_description`, so the data-layer defect is remediated |
+| — | **new: Mercury's 2→5 row is page-grain only** — the served śloka-6 chunk gives that vedha house as the OCR token `Bill`, not a number | under a mechanical `applied iff corpus_verifiable` rule that row **must not** be stamped beside the 35 clean matches. Added to §12.3's stamp work |
+| — | **new: a bare `'%kaksh%'` count returns 14**, of which 6 are Jaimini's unrelated *Kakṣyā-Hrāsa* longevity doctrine | recorded so no later session "corrects" a right number |
+
+**Confirmed unchanged:** 15 texts / 10,651 chunks; `phaladeepika` 564 chunks with exactly 17 carrying
+vedha; KP **0**; `muhurta_chintamani` **0 of 274** `sarvato*`; `bg_sarvatobhadra_grid` **0**; ślokas 3–8
+name only the seven classical grahas; `PG348:C1`'s Rāhu/Ketu rule is the Sarvatobhadra mechanism, not
+house-transit; laṭṭā at PG338/339.
+
+**What O-3 refused to certify, and this sheet records as uncertified:** rulings **7** and **9** have
+**zero corpus-count dependency** — 7 rests on ephemeris arithmetic and code reconciliation, 9 on code
+semantics — so a re-count can neither confirm nor disturb them, and **no later session may read that
+report as having reviewed them.** They were bundled with 8 for a shared *reviewer-conflict* reason, not a
+shared evidence base. O-3 also declined to restate two node longitudes it did not itself compute (B.10),
+and did not attempt the Sarvatobhadra transcription. Four `NOT_RUN` items, each with its reason. That is
+the correct output of an honest reviewer, and the bundling assumption is itself a finding.
