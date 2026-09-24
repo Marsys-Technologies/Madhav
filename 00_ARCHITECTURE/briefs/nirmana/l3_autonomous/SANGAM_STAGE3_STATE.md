@@ -657,3 +657,31 @@ Open: **#2** (rename to `comparable_with` — Gochara's four-value enum is on an
 requested) and **#9** (`confidence_score`/`confidence_label` removal — unblocked in principle since
 pass 1 gave the replacement a home, sequenced in four steps above, not started because steps (i)–(iii)
 touch other assets' writers).
+
+
+## Open request to the Gochara stream — UNDELIVERED, recorded here instead (2026-09-24T12:25:14+05:30)
+
+The peer sessions this campaign coordinated with (Gochara `madhav-e6`, strategic `madhav-fc`, Kṣetra
+`madhav-d2`) have ended; their socket addresses are stale and the live peers are different sessions.
+**The request below could not be delivered by message, so it lives in the artifact rather than in a
+lost one.** Whoever next holds the Gochara stream should answer it.
+
+**Ask (closes synergy audit #2, the last blocker on it):** the **four literal values** of
+`kala_gochara_contacts.comparable_with`, or a push of `l3/gochara-autonomous-wp0-7` so they can be
+read at source. Saṅgam persists `comparability_class` as `ka_sangam/<signature_class>`; the binding
+proposes both streams share the name `comparable_with` and that vocabulary. **This session will not
+implement against a described enum it has not read** — that is the attributed-not-verified trap, and
+this campaign withdrew a claim tonight for exactly it. The rename is mechanical once the values are
+fixed; guessing them would be worse than waiting.
+
+**What Saṅgam now emits that S-2 will meet** (all on `sangam/stage3`): `contact_uuid` over R-3's
+convention frame — so when S-2's events arrive with `contact_id`, both sides have a rebuild-stable
+key; `convention_frame` with `node_convention='true_node'` recording what the scanner does rather
+than what M-1 ruled, which flips to `'mean'` when the N-7 producer replaces the scan; and
+`scan_coverage` in `WriterResult.notes`, which **composes** with the producer's coverage via
+`window_ref` rather than being replaced by it.
+
+**Environment warning for any stream verifying on this host:** the Swiss `.se1` files are gone
+(`/tmp/se1` cleared). `_resolve_ephe_path()` returns `None` and a live `swe.calc_ut` returns retflag
+65860 — SWIEPH bit clear, i.e. Moshier. Any oracle that assumes SWIEPH here is running on the
+fallback; Saṅgam's S8 exits NOT_RUN rather than pass on it.
