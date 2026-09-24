@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS
 canonical_id: KALA_ENVIRONMENT_READINESS
-version: "1.1"
+version: "1.2"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-a6), at the native's request"
@@ -182,10 +182,53 @@ migrations. `kala_field_salience` reaches a person as five averaged scalars.
 | # | activity |
 |---|---|
 | **E19** | **Wire `reserve_migration_number.py`.** A purpose-built migration-number allocator exists at `platform/scripts/governance/reserve_migration_number.py`, written 2026-09-23, and is **invoked by nothing** — not CI, not `package.json`. Three number collisions occurred across three streams in the following 24 hours. This is the cheapest item on the list |
-| **E28** | **Pins hygiene, not a blocker — and a claim to stop repeating.** 54 of the 57 commits pinned in main's `nirmana-analysis-layer-pins.json` are **not ancestors of main**, several unreachable entirely, and a bare local `--check` fails. A peer concluded from this that *"every PR entering the merge queue fails the pins test."* **That is false:** `governance-gates` is SUCCESS on PRs #2724, #2725 and #2726 — all merged today — and passes on the open #2727. The CI event path validates a narrower set than a local run. Worth cleaning; worth not "fixing" a gate that is not broken |
+| **E28** | **The merge queue is blocked, and my own refutation of that was wrong.** I disputed the claim by citing `governance-gates` SUCCESS on #2724/#2725/#2726 — **all three merged 2026-09-23, and the breaking commit `b6690928f` merged 2026-09-24T07:36:04Z.** My evidence predated the change by thirteen hours and could not have tested it; the only PR based after it is #2733, the fix. **Real cause:** two fixture tests in `test_nirmana_analysis_layer_pins.py` check a rewound pre-repair fixture against a baseline that now carries the repair successors — 2 failed / 60 passed at that baseline — while the tool's own `--check` stays green. **Every PR based on or merged onto main at or after that commit is red on those two tests until #2733 lands.** The part of my caution that held: nothing needs re-sealing on any other side, and the L0 lane confirms it |
 | **E20** | **Publish a merge order.** Four branches carry unmerged Kāla work with interdependent migrations and a shared generated-digest file; `l3/kala-elevation-readiness` and `sangam/stage3` have diverged. Decide what merges first and in what order |
 | **E21** | **One worktree per lane, asserted at first action.** Already earned the hard way: a shared checkout tangled four sessions' commits, and the root cause was a prompt naming an existing directory |
 | **E22** | **Measure the cost.** The registry claims 24 minutes per chart; ≥7.5 hours was measured. No build time can be promised, and E1's rebuild cannot be scheduled, until one real measurement exists |
+
+---
+
+## G3. Three findings from measurement, not reading
+
+### E29 — The DAG edge guard, run live: six hard violations on today's main
+
+The guard runs `--self-test` only in CI and its live path skips without `DATABASE_URL`, so
+**nothing in any gate has ever seen this.** Run read-only against the production registry, 130
+writer assets checked:
+
+| violation | note |
+|---|---|
+| `bo_laksana` reads `bodha_cgm_nodes` (`bo_bimba`) — not in `depends_on` closure | L2 |
+| **`ka_bhavishya_lekha` reads `phala_anchors` (`ph_nimitta`)** | **L3 reading L4 — a layer inversion, an architectural question, not an edge to add** |
+| `ka_gochara_resonance` reads `chart_dashas` (`ga_dashas`) | both producers measured **`lit`** on the canonical chart (483,870 / 53 rows), so adding these edges would not block the next resonance build |
+| `ka_gochara_resonance` reads `ga_yoga_firings` (`ga_yoga`) | as above |
+| `ka_kshetra` reads `kala_gochara_windows` (`ka_gochara`) | predicted from source by the Kṣetra stream — confirmed |
+| `ka_sangam` reads `kala_vedha_gochara` (`ka_vedha_gochara`) | confirms a synergy-audit finding by an independent mechanism |
+
+Plus one SOFT (`ka_gochara_resonance` reads `chart_facts`, no producer in closure). `ph_nimitta` is
+**`stale` on both charts**, which sharpens the inversion question rather than settling it.
+
+**Activity: make this a gate with a database, not a self-test,** and dispose of all six before any
+unattended build.
+
+### E30 — The generation serving is about to be flipped onto has no writer
+
+Verified on `origin/main` **and** the Gochara branch: **no writer emits `'4.0'` into
+`kala_gochara_windows`.** The only `'4.0'` in any source is a docstring at
+`services/gochara_kernel/ledger.py:16`. `ka_gochara.py` writes `GENERATION_V2` throughout. Live, the
+table holds `'3.0'` (1,830 rows) and `'v1'` (38,287 rows) and **no `'4.0'` at all.** Tranche-2 step 8
+flips serving authority onto `'4.0'`, and serving reads this table — the flip would have **emptied
+the served forecast.** Four step-7 gates could not see it. A gate and a refusal now stop it, but
+**the projection writer is an unbuilt work package with no owner**, and it voids Kṣetra's option to
+declare its edge after WP10 step 5.
+
+### E31 — The structural blind spot behind E29
+
+Running that guard required registry access **no executor session has**. Six hard violations sat in
+production unobserved by every stream, not through a series of oversights but because **no lane in
+the campaign can measure the thing the gate only self-tests.** Give one lane a read path, or the
+next six will sit just as long.
 
 ---
 
