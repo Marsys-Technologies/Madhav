@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.80
+version: 6.81
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,12 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.81 (2026-09-24, L3-GOCHARA-WP0-7-CLOSE-20260924): §2 top banner updated for the WP0-7
+    closing session — §12 close-out items landed (12.3/12.4/12.5/12.9), gochara battery 334
+    passed, WP10 tranche 1 attempted per the now-true flags and HALTED at step 3 (E-015:
+    `amjis_app` lacks CREATE on schema public; production verified byte-identical), tranche 2
+    NOT STARTED (precondition + E-012 writer gate), all disposable containers torn down, PR
+    #2731 remains the open review surface; CLAUDECODE_BRIEF.md stays ACTIVE.
   - v6.80 (2026-09-24, L3-GOCHARA-WP0-7-REMAINDER-20260924): §2 banner added for the L3
     gochara WP0-7 remainder campaign close — remainder brief §4–§8 complete and §7.A (WP10
     cutover runbook as runnable artifacts + disposable-DB rehearsal) landed on branch
@@ -5946,24 +5952,27 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟣 **L3 GOCHARA WP0–7 REMAINDER CAMPAIGN — CLOSE (2026-09-24, session
-> L3-GOCHARA-WP0-7-REMAINDER-20260924).** The gochara remainder brief
-> (`GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md`) is fully drained on branch
-> `l3/gochara-autonomous-wp0-7` (worktree `/Users/Dev/madhav-l3/gochara-wp0-7`, **PR #2731
-> open against `main`, unmerged**): §4 point-1 residuals (N-17, N-22/N-13, M-6, M-1 battery),
-> §5 WP9 overlays, §6 review-request notes, §7.A WP10 cutover runbook prepared as runnable
-> artifacts (`platform/python-sidecar/scripts/kala_gochara_cutover/`, steps 0–10 + evidence
-> templates + per-tranche production guard) and rehearsed on a disposable DB
-> (`test_wp10_cutover.py` 14/14; full `tests/l3/gochara/` battery **266 passed**), §8 loose
-> ends (G-9/G-10 migrations 1085/1086 disposable-DB-only). Authoritative account:
-> `briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md` +
-> `WP10_REHEARSAL_v1_0.md`. **Boundary:** WP10 production tranches 1/2 NOT RUN —
-> `PRODUCTION_TRANCHE_1_AUTHORIZED` / `_2_` remain `false` in the brief frontmatter; every
-> migration landed is disposable-DB-only; no shared or production database was written. The
-> **Kṣetra rulings 7/8/9 reviewer remains the native's to name** (§8.6 note-only). Root
-> `CLAUDECODE_BRIEF.md` stays `status: ACTIVE` — the L3 data-plane elevation close condition
-> (22/22 accepted or native-ruled partial close) is not met while the WP10 tranches are
-> flag-blocked.
+> 🟣 **L3 GOCHARA WP0–7 — CLOSING SESSION (2026-09-24, session
+> L3-GOCHARA-WP0-7-CLOSE-20260924).** Follow-up to the remainder close: the §12 close-out
+> items landed on branch `l3/gochara-autonomous-wp0-7` (**PR #2731 open against `main`,
+> unmerged**) — §12.3 WriterBase conformance (migration 1087 + tests), §12.4 plan v2.3 +
+> binding detectors, §12.5 disposable-DB test isolation guard, §12.9/§12.12 WP9 overlay
+> stamps + `upstream_fingerprint`; gochara battery **334 passed, 0 failed**; cutover gate
+> 16/16. **WP10 tranche 1 was attempted** — the native flipped
+> `PRODUCTION_TRANCHE_1_AUTHORIZED`/`_2_` to `true` (ruling §3) — and **HALTED at step 3**
+> per the failed-gate rule: `amjis_app` lacks CREATE on schema `public` (E-015; operator
+> path: run step 3 as `data_plane_schema_owner`/`postgres`, or grant CREATE to `amjis_app`).
+> Steps 0/1/2/4/5 NOT RUN; production verified byte-identical pre/post. **Tranche 2 NOT
+> STARTED** (tranche-1 precondition unmet + E-012 `'4.0'` windows writer unassigned). All
+> disposable containers (`gochara-wp6-disposable`, `gochara-wp10-disposable`) torn down at
+> close; none remain. Review requests for §12.3/§12.5/§7.B written under
+> `gochara_wp0_7/wp7_packets/` (IMPLEMENTED_AWAITING_REVIEW / STOPPED_AWAITING_NATIVE;
+> nothing marked REVIEWED). Authoritative account:
+> `briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md` (updated this
+> session). The **Kṣetra rulings 7/8/9 reviewer is now named (O-3, §8.6)**; the E-015 native
+> action and the E-012 writer owner remain open. Root `CLAUDECODE_BRIEF.md` stays
+> `status: ACTIVE` — the L3 data-plane elevation close condition is not met while the WP10
+> production tranches are incomplete.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
