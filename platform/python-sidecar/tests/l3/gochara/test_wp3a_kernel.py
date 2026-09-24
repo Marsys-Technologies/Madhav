@@ -139,7 +139,7 @@ def test_case_01_close_station_cubic_three_roots():
     for ep in eps:
         assert ep.tolerance_arcsec == declared["tolerance_arcsec"]
         assert ep.bracket_seconds == declared["bracket_seconds"]
-        assert ep.completeness_state == "qualified"
+        assert ep.completeness_state == "applied"
 
 
 # ── Case 02 — true-node excursion under the mean-node convention ────────────

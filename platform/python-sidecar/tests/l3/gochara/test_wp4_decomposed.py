@@ -253,7 +253,7 @@ def test_workload_census_pinned():
     assert sat_conj[1].truncated_at_horizon is None
     assert jup_conj[0].truncated_at_horizon is None
     # No unresolved-station contacts on this workload.
-    assert all(e.completeness_state == "qualified"
+    assert all(e.completeness_state == "applied"
                for eps in solved.values() for e in eps)
 
 
@@ -336,7 +336,7 @@ def test_delta_f08_h2_exception_never_certified_active():
     from services.gochara_v3.interval_solver import EvaluationFailure
     assert issubclass(EvaluationFailure, Exception)
     ep = _solve_all(_build_indexes())[("Saturn", "conjunction")][0]
-    assert ep.completeness_state in ("qualified", "unqualified")
+    assert ep.completeness_state in ("applied", "unqualified")
     print("\nWP4_DELTA F-08/A-1 exception->0.0->active: legacy certifies a "
           "FAILED evaluation as active (thresh=0.0, >= predicate); fixed "
           "side: WP5 EvaluationFailure + kernel completeness_state "

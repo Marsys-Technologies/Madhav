@@ -86,7 +86,7 @@ class IntervalBoundary:
                        I4 degrade.
     ci_source          'structural_prior' | 'fitted_posterior' disclosure tag
                        from the peak IntensityResult. None on I4 degrade.
-    completeness_state 'qualified' | 'unqualified'. WP5 H-2: 'unqualified'
+    completeness_state 'applied' | 'unqualified'. WP5 H-2: 'unqualified'
                        means evaluation failed for this interval and the row
                        carries a failure_detail; peak_lambda is 0.0 because
                        the true value is unknown, not because lambda was
@@ -103,7 +103,7 @@ class IntervalBoundary:
     lambda_v3_ci_low: Optional[float] = None
     lambda_v3_ci_high: Optional[float] = None
     ci_source: Optional[str] = None
-    completeness_state: str = "qualified"
+    completeness_state: str = "applied"
     failure_detail: Optional[str] = None
 
 
@@ -120,7 +120,7 @@ class MilestoneScore:
     is_irreversibility_milestone Flag from the milestone_template entry.
     intensity_result            Full IntensityResult from the engine (or None if
                                 evaluation failed — I4 honest gap).
-    completeness_state          'qualified' | 'unqualified'. WP5 H-2:
+    completeness_state          'applied' | 'unqualified'. WP5 H-2:
                                 'unqualified' when evaluation failed;
                                 lambda_v3 is 0.0 because the value is unknown.
     failure_detail              Non-None when completeness_state='unqualified'.
@@ -131,7 +131,7 @@ class MilestoneScore:
     is_above_threshold: bool
     is_irreversibility_milestone: bool
     intensity_result: Any  # IntensityResult | None
-    completeness_state: str = "qualified"
+    completeness_state: str = "applied"
     failure_detail: Optional[str] = None
 
 
@@ -527,7 +527,7 @@ def score_chain_milestones(
             intensity_result = _eval_single_full(swe, context, milestone_jd)
             lam = float(intensity_result.raw_lambda) if intensity_result is not None else 0.0
             failure_detail = None
-            completeness_state = "qualified"
+            completeness_state = "applied"
         except EvaluationFailure as exc:
             # WP5 H-2: per-milestone explicit failure. Sibling milestones remain
             # normal; this one carries lambda_v3=0.0 because the true value is

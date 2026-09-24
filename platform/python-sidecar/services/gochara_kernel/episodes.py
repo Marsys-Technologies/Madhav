@@ -87,7 +87,7 @@ class Episode:
     truncated_at_horizon: str | None   # 'start' | 'end' | 'both' | None
     tolerance_arcsec: float
     bracket_seconds: int
-    completeness_state: str            # 'qualified' | 'unqualified'
+    completeness_state: str            # 'applied' | 'unqualified' (F06 six-state set)
     near_station_unresolved: bool
     spline_exact_jd: float | None = None   # diagnostics: spline-stage root
 
@@ -281,7 +281,7 @@ def build_episodes(
                         orb_source=orb_source,
                         dwell_days=t_out - t_in,
                         truncated_at_horizon=flag,
-                        completeness_state="qualified" if has_station else "unqualified",
+                        completeness_state="applied" if has_station else "unqualified",
                         near_station_unresolved=not has_station,
                         **stamps,
                     )
@@ -319,7 +319,7 @@ def build_episodes(
                         dwell_days=ci1 - max(ci0, dwell_base),
                         truncated_at_horizon=flag,
                         completeness_state=(
-                            "unqualified" if unresolved else "qualified"
+                            "unqualified" if unresolved else "applied"
                         ),
                         near_station_unresolved=unresolved,
                         spline_exact_jd=root.spline_exact_jd,
@@ -386,7 +386,7 @@ def solve_boundary_episodes(
                 orb_source="orb_ingress",
                 dwell_days=0.0,
                 truncated_at_horizon=None,
-                completeness_state="unqualified" if unresolved else "qualified",
+                completeness_state="unqualified" if unresolved else "applied",
                 near_station_unresolved=unresolved,
                 spline_exact_jd=root.spline_exact_jd,
                 **stamps,
@@ -478,7 +478,7 @@ def residence_spans(
             orb_source="orb_ingress",
             dwell_days=0.0,
             truncated_at_horizon="start" if flag == "start" else None,
-            completeness_state="qualified",
+            completeness_state="applied",
             near_station_unresolved=False,
             spline_exact_jd=ingress.spline_exact_jd if ingress else None,
             **stamps,

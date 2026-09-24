@@ -149,10 +149,9 @@ def test_w30_leaves_lambda_product_when_removed(monkeypatch):
     assert annotation["scoring"] is False
     assert annotation["would_be_modifier"] == W30_VALUE
     assert "N-14" in annotation["label"]
-    assert (
-        result.x_t_detail["w30_detail"]["completeness_state"]
-        == "removed_by_ruling_N14"
-    )
+    w30_detail = result.x_t_detail["w30_detail"]
+    assert w30_detail["completeness_state"] == "inapplicable"
+    assert w30_detail["removed_by_ruling"] == "N-14"
 
 
 def test_w30_in_product_when_enabled(monkeypatch):

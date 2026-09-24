@@ -187,7 +187,7 @@ class WindowResolutionRecord:
                         only (same honest-None rule as term_breakdown).
     ci_source           'structural_prior' | 'fitted_posterior' disclosure tag,
                         era-tier only (same honest-None rule as term_breakdown).
-    completeness_state  'qualified' | 'unqualified'. WP5 H-2: 'unqualified'
+    completeness_state  'applied' | 'unqualified'. WP5 H-2: 'unqualified'
                         when the source IntervalBoundary failed evaluation.
     failure_detail      Non-None when completeness_state='unqualified'.
     """
@@ -202,7 +202,7 @@ class WindowResolutionRecord:
     lambda_v3_ci_low: Optional[float] = None
     lambda_v3_ci_high: Optional[float] = None
     ci_source: Optional[str] = None
-    completeness_state: str = "qualified"
+    completeness_state: str = "applied"
     failure_detail: Optional[str] = None
 
 

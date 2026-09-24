@@ -202,7 +202,7 @@ def _kernel_episode(t_in, t_exact, t_out, branch='direct'):
         branch=branch, station_flag=False, exact_crossing=True,
         orb_max_deg=3.0, orb_source='orb_conj_moon', dwell_days=t_out - t_in,
         truncated_at_horizon=None, tolerance_arcsec=5.0, bracket_seconds=60,
-        completeness_state='qualified', near_station_unresolved=False,
+        completeness_state='applied', near_station_unresolved=False,
     )
 
 

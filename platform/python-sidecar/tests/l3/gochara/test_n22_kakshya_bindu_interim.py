@@ -214,7 +214,7 @@ class TestN22FlagOnQualified:
         sentences = _crossings(ctx)
         assert len(sentences) == 2
         for s in sentences:
-            assert s.detail["completeness_state"] == "qualified"
+            assert s.detail["completeness_state"] == "applied"
             assert s.detail["qualification_grain"] == "sign"
             assert s.detail["bindu_count"] == 4
             assert s.detail["bindu_source"] == "chart_facts.ashtakavarga_bindu_sign"
@@ -232,7 +232,7 @@ class TestN22FlagOnQualified:
         )
         sentences = _crossings(ctx)
         for s in sentences:
-            assert s.detail["completeness_state"] == "qualified"
+            assert s.detail["completeness_state"] == "applied"
             assert s.detail["bindu_count"] == 1
 
 

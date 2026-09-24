@@ -919,9 +919,10 @@ def _evaluate_single_from_context(
             **(
                 {
                     # N-14 (flag nodal_drishti='removed'): the absence of the
-                    # w30 term is recorded as a completeness_state — an
-                    # honest gap, not a silent zero.
-                    "completeness_state": "removed_by_ruling_N14",
+                    # w30 term is recorded via the F06 six-state
+                    # completeness_state — an honest gap, not a silent zero.
+                    "completeness_state": "inapplicable",
+                    "removed_by_ruling": "N-14",
                 }
                 if nodal_drishti == "removed" else {}
             ),
@@ -1447,7 +1448,7 @@ def _bindu_interim_detail(
 
     if bindus is not None and bindus >= 1:
         return {
-            "completeness_state": "qualified",
+            "completeness_state": "applied",
             "qualification_grain": "sign",
             "bindu_count": int(bindus),
             "bindu_source": "chart_facts.ashtakavarga_bindu_sign",

@@ -103,7 +103,7 @@ def make_episode(body="Saturn", relation="conjunction", t_exact=None, *,
                  aspect_deg=0, group=None, truncated=None, branch="direct",
                  orb_max_deg=1.0, orb_source="orb_conj_slow",
                  tolerance_arcsec=2.0, bracket_seconds=300,
-                 completeness="complete_resolved"):
+                 completeness="applied"):
     t_exact = t_exact or datetime(2021, 6, 15, 12, 0, 0, tzinfo=UTC)
     return {
         "independence_group": group or f"ig-{body}-{t_exact.isoformat()}",

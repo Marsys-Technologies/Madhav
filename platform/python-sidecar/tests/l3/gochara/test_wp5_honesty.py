@@ -223,7 +223,7 @@ class TestH2EvaluationFailure:
         s0, s1 = scores
         assert s0.completeness_state == "unqualified"
         assert s0.failure_detail is not None
-        assert s1.completeness_state == "qualified"
+        assert s1.completeness_state == "applied"
         assert s1.failure_detail is None
 
 
@@ -250,7 +250,7 @@ class TestH3HorizonFields:
             "lambda_v3_ci_low": None,
             "lambda_v3_ci_high": None,
             "ci_source": None,
-            "completeness_state": "qualified",
+            "completeness_state": "applied",
             "failure_detail": None,
         })()
 
