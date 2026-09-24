@@ -4,8 +4,9 @@ When sade_sati_mode='testimony':
   - sade_sati leaves the PERMISSION weight set entirely (total_weight
     renormalised; never a zero-weight row);
   - the phase is reported as typed testimony (epistemic_class='testimony',
-    corpus_verifiable=False, citations PG1334/PG786/PG1333 at MEDIUM
-    provenance per N-21);
+    corpus_verifiable=False, citations PG1333/PG1334/PG1339/PG1340/PG1342
+    at MEDIUM provenance per N-21 — the corrected §7.6 list; PG786 resolves
+    to zero rows and is dropped);
   - the global permission lift is a first-class delta
     (sade_sati_permission_lift).
 
@@ -86,7 +87,7 @@ def test_testimony_mode_renormalises_and_reports_lift(monkeypatch):
     assert testimony["epistemic_class"] == "testimony"
     assert testimony["corpus_verifiable"] is False
     refs = {c["ref"] for c in testimony["citations"]}
-    assert refs == {"PG1334", "PG786", "PG1333"}
+    assert refs == {"PG1333", "PG1334", "PG1339", "PG1340", "PG1342"}
     assert all(c["provenance"] == "MEDIUM" for c in testimony["citations"])
     assert "[U]" in testimony["note"]
 

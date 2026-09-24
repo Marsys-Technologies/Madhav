@@ -623,7 +623,9 @@ class ruled at N-15 — and is excluded from every scoring weight set. On the st
 columns this means: `corpus_verifiable=false` until a primary (non-nāḍī) text
 carrying the composite is cited on the row, and `source_qualification` can never
 be `verse_cited` from a nāḍī row alone. The N-15 Sade-Sati testimony block
-(citations PG1334/PG786/PG1333, MEDIUM provenance) is the worked example of this
+(citations PG1333/PG1334/PG1339/PG1340/PG1342, MEDIUM provenance — the corrected
+§7.6 list; the earlier PG1334/PG786/PG1333 form included PG786, which resolves to
+zero rows in the served corpus) is the worked example of this
 rule; which primary text carries the composite remains `[U]`.
 
 ---

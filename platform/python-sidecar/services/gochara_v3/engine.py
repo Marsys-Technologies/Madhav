@@ -289,8 +289,10 @@ _NODAL_DRISHTI_MODES: tuple[str, ...] = ("enabled", "removed")
 #                       instant); the phase becomes typed testimony on the
 #                       window (epistemic_class per F04 — source testimony,
 #                       not computed fact; corpus_verifiable=false;
-#                       citation = the nāḍī rows PG1334/PG786/PG1333 at
-#                       MEDIUM provenance per N-21); the global permission
+#                       citation = the nāḍī rows PG1333/PG1334/PG1339/
+#                       PG1340/PG1342 at MEDIUM provenance per N-21 — the
+#                       corrected §7.6 list; PG786 is dropped, it resolves
+#                       to zero rows in the served corpus); the global permission
 #                       lift is computed and reported as a first-class
 #                       delta (sade_sati_permission_lift).
 # ---------------------------------------------------------------------------
@@ -1923,7 +1925,7 @@ def _compute_permission_from_context(
                     "provenance": "MEDIUM",
                     "ruling": "N-15; N-21 standing rule (WP1_CONTRACTS.md §6)",
                 }
-                for ref in ("PG1334", "PG786", "PG1333")
+                for ref in ("PG1333", "PG1334", "PG1339", "PG1340", "PG1342")
             ],
             "detail": sade_sati_detail,
             "note": (
