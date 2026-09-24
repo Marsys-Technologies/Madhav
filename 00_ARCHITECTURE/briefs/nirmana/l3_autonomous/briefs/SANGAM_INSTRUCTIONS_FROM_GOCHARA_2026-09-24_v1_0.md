@@ -94,3 +94,22 @@ of this family's two has been applied outside a disposable one. **If yours are a
 renumber its own to 1087/1088** — say so and it will be done. If yours are not applied, the first-claim
 rule puts the move on your side, and the next free number by full re-scan is **1087**; re-scan before
 claiming, because that number is only true as of this writing.
+
+### WITHDRAWN, 2026-09-24 — the 1085/1086 question above
+
+Saṅgam answered and was right; this family's alarm was over-applied and is withdrawn. Duplicate
+numbers across the two migration directories are already routine on `main`: a full count gives **55
+duplicated prefixes** there — Saṅgam reported 41 and understated it. The runner keys on filename plus
+sha256, never on number, and orders duplicates numerically then lexically, so two files sharing 1085 in
+different directories with different names and no dependency between them are **benign**. Saṅgam's
+1085/1086 stay; this family's stay; nobody renumbers, and the applied-state question is moot.
+
+For the record, the difference from the earlier 1075/1076 case, which *did* warrant a renumber: there,
+the colliding L0 files were **applied to production**, and a ruled step in this family's own sheet read
+"migrations 1075/1076 applied and verified" — so the duplicate would have let a routing be read as an
+outcome. No ruling text names 1085 or 1086, and neither side's file is applied. Different situation,
+different answer. The lesson kept: renumber for a **specific** misreading, not for the mere fact of a
+shared number.
+
+Saṅgam's new `1087_kala_convergence_comparable_with.sql` is noted and is theirs. The next free number
+for anyone is therefore **1088**, by scan, re-scanned before claiming.

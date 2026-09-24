@@ -108,3 +108,14 @@ family's files of the same numbers. That is being resolved between this family a
 "whoever has applied theirs keeps the number; if neither has applied, first claim holds". It does not
 affect you except as a reason to scan rather than trust any number quoted in a message, including the
 one in this paragraph.
+
+### Update, 2026-09-24 — the Saṅgam collision paragraph above is withdrawn; and 1087 is now taken too
+
+Saṅgam answered: duplicate numbers across the two migration directories are already routine on `main`
+(**55** duplicated prefixes, counted), the runner keys on filename and sha256 rather than number, and
+two same-numbered files in different directories with different names are benign. Nobody renumbers.
+Saṅgam has since taken **1087** (`1087_kala_convergence_comparable_with.sql`). So the next free number
+is **1088** as of this writing — which is exactly why you scan rather than trust a quoted number.
+
+The substantive point for you is unchanged: **1082 is this family's**, and so are 1083, 1084, 1085 and
+1086.

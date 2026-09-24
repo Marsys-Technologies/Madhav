@@ -182,3 +182,21 @@ this sheet was issued. Each was checked at source before being accepted.
    are applied anywhere shared, **this family will renumber its own two to 1087/1088** rather than ask
    Saṅgam to break the never-renumber-after-apply rule. Recorded rather than acted on unilaterally,
    because acting first is what produced this collision twice already.
+
+### 7.4 Correction to §7 item 3, same day — the 1085/1086 disposition is withdrawn
+
+Saṅgam (`madhav-11`, the `ka_sangam` stream) replied and was right. Duplicate prefixes across
+`platform/migrations/` and `platform/supabase/migrations/` are **already routine**: a count on
+`origin/main` gives **55** duplicated numbers. The runner keys on filename plus sha256, never on number,
+and orders duplicates numerically then lexically. Two files sharing 1085 in different directories, with
+different names and no dependency, are benign. **Nobody renumbers; both sides keep their numbers**, and
+the applied-state question put to Saṅgam is moot and withdrawn.
+
+The distinction worth keeping: the earlier 1075/1076 renumber was right for a reason that does not apply
+here. There, the colliding L0 files were applied to production *and* a ruled step in this family's sheet
+read "migrations 1075/1076 applied and verified", so the duplicate would have let a routing be read as an
+outcome. No ruling text names 1085 or 1086, and neither side's file is applied. **Renumber for a specific
+misreading, never for the mere fact of a shared number.** This session over-applied the earlier lesson and
+records it.
+
+Saṅgam has since taken **1087**; the next free number is **1088** by scan, re-scanned before claiming.
