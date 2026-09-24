@@ -18,6 +18,11 @@ U3 pass-2 (2026-06-22): C13 school_consensus activated (post-U4). All 12 current
   EnrichmentContext carries pre-fetched DB data (ashtakavarga, vedha, tajika,
   school_consensus_by_domain) from the writer.
 
+R-4 (2026-09-23, RR-06): C9 transit_to_transit and C4 benefic_dristi are WITHDRAWN
+from the scored supporting product. Their weights in SUPPORTING_WEIGHTS remain
+declared/dormant (not renormalised) for a future qualified method; the two currents
+are still computed and reported as lineage data only.
+
 NEVER calls conn.commit() or conn.rollback() — caller owns the transaction.
 NEVER writes to any bodha_* table.
 """
@@ -25,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import math
+import uuid
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Optional
@@ -43,8 +49,12 @@ SUPPORTING_WEIGHTS: dict[str, float] = {
     'constituent_lord_transit':     0.180,  # spec 0.18, bound [0.14, 0.24] ✓
     'ashtakavarga_transit_potency': 0.120,  # C7, spec 0.12, bound [0.08, 0.16] ✓
     'cross_dasha_agreement':        0.120,  # spec 0.12, bound [0.09, 0.16] ✓
-    'benefic_dristi':               0.100,  # spec 0.10, bound [0.07, 0.13] ✓
-    'transit_to_transit':           0.080,  # C9, spec 0.08, bound [0.05, 0.11] ✓
+    'benefic_dristi':               0.100,  # DORMANT (R-4, RR-06): withdrawn from scored
+                                            # product; weight reserved for a future qualified
+                                            # Parāśari/Tājika dṛṣṭi method.
+    'transit_to_transit':           0.080,  # DORMANT (R-4, RR-06): withdrawn from scored
+                                            # product; weight reserved for a future qualified
+                                            # outer-planet aspect method.
     'panchanga_quality':            0.070,  # spec 0.07, bound [0.05, 0.10] ✓
     'tara_bala':                    0.060,  # spec 0.06, bound [0.04, 0.09] ✓
     'eclipse_proximity':            0.060,  # C8, spec 0.06, bound [0.03, 0.09] ✓
@@ -63,12 +73,18 @@ assert abs(_SW_SUM - 1.0) < 1e-4, f"SUPPORTING_WEIGHTS must sum to 1.0, got {_SW
 
 class EnrichmentContext:
     """
-    Pre-fetched DB data needed by U3 currents (C7, C11, C12, C13).
+    Pre-fetched DB data needed by U3 currents (C7, C11, C12, C13) and E4
+    typed natal/clock conditioning.
     Passed in by the ka_sangam writer to avoid passing db_conn into engine.py.
 
     ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
-        Sourced from chart_facts (sarvashtakavarga) via ga_strength writer.
-        Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
+        Sourced from chart_facts (ashtakavarga_bindu_sign) via ga_strength writer.
+        Sign-keyed (1=Aries). Classical threshold: ≥ 5 bindus = strong; 4 =
+        indeterminate-leaning-adverse (M-2); ≤ 3 = weak/obstruct.
+    ashtakavarga_computed_planets: set of planet names that the producer actually
+        computed. A planet absent from this set is "missing", not "measured zero".
+    ashtakavarga_school_primary: 'BPHS' | 'Phaladīpikā' | None — the school whose
+        bands are primary for SAV verdicts (BPHS per M-2/BPHS-primary ruling).
     vedha_rules: list of dicts with keys {graha, window_start, window_end}
         Sourced from kala_vedha_gochara WHERE vedha_kind='house_vedha', pinned to
         ayanamsha_id='lahiri_chitrapaksha'.
@@ -79,63 +95,188 @@ class EnrichmentContext:
     school_consensus_by_domain: {domain: schools_agreeing (0-7)}
         Sourced from convergence_scores (populated by POST /api/build/school-consensus).
         C13 score = schools_agreeing / 7.0.
+    d1_dignity_by_graha: {planet_name: dignity_string}
+        Sourced from chart_divisionals fact_category='varga_dignity',
+        fact_key='dignity', fact_subject='D1.<PLANET>' (E4). Vocabulary normalised
+        to Title-case planet keys.
+    lagna_sign: str | None
+        Natal lagna sign name (e.g. 'Aries') resolved from chart_facts
+        fact_subject='LAGNA', fact_key='sign'.
+    is_day_birth: bool | None
+        True when birth instant falls between local sunrise and sunset.
     """
 
     def __init__(
         self,
         ashtakavarga_bindu: Optional[dict[str, dict[int, int]]] = None,
+        ashtakavarga_computed_planets: Optional[set[str]] = None,
+        ashtakavarga_school_primary: Optional[str] = None,
         vedha_rules: Optional[list[dict]] = None,
         tajika_year_lords: Optional[list[dict]] = None,
         school_consensus_by_domain: Optional[dict[str, int]] = None,
+        d1_dignity_by_graha: Optional[dict[str, str]] = None,
+        lagna_sign: Optional[str] = None,
+        is_day_birth: Optional[bool] = None,
     ):
         self.ashtakavarga_bindu = ashtakavarga_bindu or {}
+        self.ashtakavarga_computed_planets = ashtakavarga_computed_planets or set()
+        self.ashtakavarga_school_primary = ashtakavarga_school_primary or None
         self.vedha_rules = vedha_rules or []
         self.tajika_year_lords = tajika_year_lords or []
         self.school_consensus_by_domain = school_consensus_by_domain or {}
+        self.d1_dignity_by_graha = d1_dignity_by_graha or {}
+        self.lagna_sign = lagna_sign
+        self.is_day_birth = is_day_birth
 
     @classmethod
     def empty(cls) -> 'EnrichmentContext':
         return cls()
 
 
+# ── E4: typed natal/clock conditioning helpers ────────────────────────────────
+
+# Dignity states that count as "strong" for the typed natal-dignity condition.
+# NB: this is a lineage/explainability flag, never a veto (M-4: no typed
+# condition ever vetoes). It records the natal D1 dignity of the transiting
+# planet so consumers can see when a contact coincides with a strong natal
+# promise/denial versus a weak one.
+_E4_STRONG_DIGNITIES = {'Exalted', 'Moolatrikona', 'Own'}
+
+
+def _e4_natal_dignity_strong_flag(dignity: Optional[str]) -> bool:
+    """E4: natal D1 dignity is one of the strong states."""
+    return dignity is not None and dignity in _E4_STRONG_DIGNITIES
+
+
+def _e4_retrograde_flag(speed_at_event_dps: Optional[float]) -> bool:
+    """E4: transit planet is retrograde at exact contact (speed < 0)."""
+    return speed_at_event_dps is not None and float(speed_at_event_dps) < 0.0
+
+
+def _e4_day_birth_flag(is_day_birth: Optional[bool]) -> bool:
+    """E4: birth instant between local sunrise and sunset."""
+    return bool(is_day_birth)
+
+
+def _e4_kendra_flag(lagna_sign_num: Optional[int], transit_sign_num: Optional[int]) -> bool:
+    """E4: transit sign is 1st/4th/7th/10th from natal lagna (kendra)."""
+    if lagna_sign_num is None or transit_sign_num is None:
+        return False
+    offset = ((transit_sign_num - lagna_sign_num) % 12)
+    return offset in (0, 3, 6, 9)
+
+
+def _e4_typed_conditions(
+    planet: str,
+    transit_sign_num: Optional[int],
+    speed_at_event_dps: Optional[float],
+    ctx: EnrichmentContext,
+) -> dict[str, bool]:
+    """
+    E4: assemble the per-window typed natal/clock condition flags.
+
+    All four are boolean lineage data inside constituent_factors; none veto
+    the score (M-4). `tajika_covering` is a separate boolean recording whether
+    a varṣa row covered the window — the consumer-facing availability state is
+    still availability['tajika'].
+    """
+    lagna_sign_num = _LAGNA_SIGN_NUM.get(ctx.lagna_sign) if ctx.lagna_sign else None
+    dignity = ctx.d1_dignity_by_graha.get(planet) if planet else None
+    return {
+        'natal_dignity_strong': _e4_natal_dignity_strong_flag(dignity),
+        'retrograde_at_peak': _e4_retrograde_flag(speed_at_event_dps),
+        'day_birth': _e4_day_birth_flag(ctx.is_day_birth),
+        'kendra_from_lagna': _e4_kendra_flag(lagna_sign_num, transit_sign_num),
+    }
+
+
 # ── U3 current derivation helpers ─────────────────────────────────────────────
 
-def _c7_ashtakavarga_potency(
+def _c7_ashtakavarga_verdict(
     planet: str,
     transit_sign: Optional[int],
     ctx: EnrichmentContext,
-) -> Optional[float]:
+) -> Optional[dict[str, Any]]:
     """
-    C7: ashtakavarga_transit_potency — does the transit DELIVER?
-    Bindus ≥ 5 → strong (→ 1.0 scaled linearly). ≤ 2 → weak (→ 0.0).
-    Range: 0.0 (0 bindus) … 1.0 (8 bindus). Formula: bindus / 8.0.
-    Classical source: Parāśara, Ashtakavarga adhyāya.
-    """
-    if not ctx.ashtakavarga_bindu or transit_sign is None:
-        return None
+    C7: own-BAV structured verdict (E2/M-2). Returns None when unavailable.
 
-    # NIRMĀṆA L3-W3 (§N.8). This lookup has NEVER matched: `ctx.ashtakavarga_bindu` is keyed by
-    # the stored L1 vocabulary — JUP / MAR / MER / MOON / SAT / SUN / VEN / SARVA — while `planet`
-    # arrives Title-case from `_resolve_transit_planet` ("Jupiter"). So `sign_map` is always {},
-    # bindus always 0, and the term has been 0.0 on **4,729 of 4,729** rows carrying the key.
-    #
-    # The vocabulary half is fixable here via the L0 SSoT. The SECOND half is NOT, and is why this
-    # returns an honest None rather than a repaired number:
-    #
-    #   the stored facts are keyed `<GRAHA>-HOUSE_<N>`, and this function looks up by
-    #   `transit_sign` (1-12 rāśi). HOUSE and SIGN are different frames. Classical ashtakavarga
-    #   counts bindus per RĀŚI, which suggests the lookup is right and the fact label is a
-    #   misnomer — but that is an inference about an L1 fact's meaning, not a fact.
-    #
-    # **Both canonical charts have Āries lagna**, where house N ≡ sign N, so the two frames are
-    # indistinguishable on every chart this campaign builds. A vocabulary-only fix would therefore
-    # look perfectly correct here and be silently wrong for any non-Āries-lagna chart. Guessing the
-    # frame to make a number appear is precisely the invented judgment §N.7 item 6 forbids.
-    #
-    # Held pending the frame adjudication. Until then the term is DROPPED, not scored zero —
-    # `sup.get(key, 0.0)` in the saturating combiner makes an absent key contribute nothing, which
-    # is arithmetically what it has always done, but now says so.
-    return None
+    Verdict ∈ {support, indeterminate, obstruct}:
+      ≥ 5 bindus  → support
+      = 4 bindus  → indeterminate-leaning-adverse (M-2)
+      ≤ 3 bindus  → obstruct
+
+    The verdict is recorded as data; it does NOT feed the positive supporting
+    combiner (R-6). A missing planet (not in the producer's computed_planets
+    receipt) is unavailable, not a measured zero.
+    """
+    if transit_sign is None:
+        return None
+    # Vocabulary normalisation: producer subjects are Title-case ('Saturn'),
+    # but callers may pass all-caps pyjhora keys. Accept both.
+    canon = planet.capitalize()
+    if canon not in ctx.ashtakavarga_computed_planets:
+        return None
+    sign_map = ctx.ashtakavarga_bindu.get(canon)
+    if not sign_map:
+        return None
+    bindus = sign_map.get(transit_sign)
+    if bindus is None:
+        return None
+    if bindus >= 5:
+        verdict = 'support'
+    elif bindus == 4:
+        verdict = 'indeterminate'
+    else:
+        verdict = 'obstruct'
+    return {
+        'value': int(bindus),
+        'rule': 'own_bav',
+        'source': f"ashtakavarga_bindu_sign:{canon}-SIGN_{transit_sign}",
+        'availability': 'computed',
+        'verdict': verdict,
+        'school': ctx.ashtakavarga_school_primary or 'BPHS',
+    }
+
+
+def _sav_verdict(
+    transit_sign: Optional[int],
+    ctx: EnrichmentContext,
+) -> Optional[dict[str, Any]]:
+    """
+    Mode D: SAV structured verdict (E2). BPHS 72.3-5 bands primary:
+      > 30 rekhas → support
+      25–30       → indeterminate
+      < 25        → obstruct
+    Phaladīpikā 23.20 (>28/<28) is retained as an alternate label only.
+    """
+    if transit_sign is None:
+        return None
+    sarva = ctx.ashtakavarga_bindu.get('SARVA', {})
+    sav = sarva.get(transit_sign)
+    if sav is None:
+        return None
+    school = ctx.ashtakavarga_school_primary or 'BPHS'
+    if school == 'BPHS':
+        if sav > 30:
+            verdict = 'support'
+        elif 25 <= sav <= 30:
+            verdict = 'indeterminate'
+        else:
+            verdict = 'obstruct'
+    else:
+        # Phaladīpikā 23.20: >28 favourable, <28 unfavourable.
+        if sav > 28:
+            verdict = 'support'
+        else:
+            verdict = 'obstruct'
+    return {
+        'value': int(sav),
+        'rule': 'sav_bphs' if school == 'BPHS' else 'sav_phaladeepika',
+        'source': f"ashtakavarga_bindu_sign:SARVA-SIGN_{transit_sign}",
+        'availability': 'computed',
+        'verdict': verdict,
+        'school': school,
+    }
 
 
 def _c8_eclipse_score(
@@ -347,6 +488,8 @@ _ZODIAC_SIGNS_ORDERED = (
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
 _SIGN_NAME_TO_IDX: dict[str, int] = {s: i for i, s in enumerate(_ZODIAC_SIGNS_ORDERED)}
+# E4: 1-based sign numbers for lagna-relative kendra checks (1=Aries … 12=Pisces).
+_LAGNA_SIGN_NUM: dict[str, int] = {s: i + 1 for i, s in enumerate(_ZODIAC_SIGNS_ORDERED)}
 
 
 @dataclass(frozen=True)
@@ -488,12 +631,19 @@ def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> Optional
     """
     C6: cross_dasha_agreement — how many dasha systems agree at peak_date.
 
-    Uses the cross_dasha_agreement.count on EligibleWindow (already computed
-    by KaDashaKalaService across 7 dasha systems).
-    Score = max(count across overlapping windows) / 7.0, capped at 1.0.
+    Uses the cross_dasha_agreement.count on EligibleWindow (computed by
+    KaDashaKalaService across 7 dasha systems via the R-2 intersection
+    oracle — direct co-support, not exact-endpoint keys).
+    Score = max(count across covering windows) / 7.0, capped at 1.0.
     Returns honest None when no eligible window covers peak_date — distinct
     from a real 0.0, which means "a window covers this date, and its own
     agreement count is genuinely zero".
+
+    R-2 (2026-09-23, SPEC R-2 / F-13): covering test uses the declared S-H
+    boundary convention [start, end) — start-inclusive, end-exclusive
+    (services/ka_dasha_kala/intersection.py BOUNDARY_CONVENTION). A peak_date
+    exactly equal to a window's end_date is NOT covered (the contiguous next
+    window covers it).
 
     NIRMĀṆA L3-W3 (§N.8). Measured live against the canonical chart: 95.7%
     of Mode A rows (868/907 post-birth) score 0.0 here, and this is NOT the
@@ -519,7 +669,7 @@ def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> Optional
         return None
     best: Optional[float] = None
     for ew in eligible_windows:
-        if ew.start_date <= peak_date <= ew.end_date:
+        if ew.start_date <= peak_date < ew.end_date:   # R-2 S-H: [start, end)
             agreement = getattr(ew, 'cross_dasha_agreement', None)
             count = agreement.count if agreement is not None else 0
             score = min(1.0, count / 7.0)
@@ -756,6 +906,92 @@ def _current_stance(value: Optional[float], empty_reason: Optional[str] = None) 
     return {'state': 'honest_empty', 'empty_reason': empty_reason}
 
 
+# ── R-6: score-kernel separation (RR-05, decision M-7; RRV-03, RRV-08) ───────
+
+KERNEL_VERSION_SEPARATED = 'separated_v2'
+KERNEL_VERSION_LEGACY = 'legacy_i16'
+
+
+def separate_kernel(
+    dignity_score: float,
+    necessary_without_dignity: list[float],
+    supporting: dict[str, float],
+    availability: Optional[dict[str, str]] = None,
+    applicability: Optional[dict[str, bool]] = None,
+    c7_verdict: Optional[dict[str, Any]] = None,
+) -> dict:
+    """
+    R-6 (RR-05, decision M-7; ASTRA amendments RRV-03/RRV-08).
+
+    E2 (M-2): C7 own-BAV is a structured verdict, not BAV/8 in the positive
+    supporting combiner. When `c7_verdict` is supplied, it modulates valence:
+      support       → no change
+      indeterminate → −0.1
+      obstruct      → −0.2
+    The verdict itself is carried in constituent_factors, not in `supporting`.
+    """
+    valence = 2.0 * max(0.0, min(1.0, float(dignity_score))) - 1.0
+    if c7_verdict and c7_verdict.get('availability') == 'computed':
+        verdict = c7_verdict.get('verdict')
+        if verdict == 'indeterminate':
+            valence -= 0.1
+        elif verdict == 'obstruct':
+            valence -= 0.2
+        valence = max(-1.0, min(1.0, valence))
+    return {
+        'activity': round(convergence_score(necessary_without_dignity, supporting), 4),
+        'valence': round(valence, 4),
+        'applicability': dict(applicability or {}),
+        'availability': dict(availability or {}),
+    }
+
+
+def separate_kernel_sign_level(
+    dignity_score: float,
+    intensity: float,
+    availability: Optional[dict[str, str]] = None,
+    applicability: Optional[dict[str, bool]] = None,
+) -> dict:
+    """
+    R-6 for sign-level routes with no orb and no supporting combinator
+    (mode C subsystem periods, mode D AV-bindhu): the non-dignity intensity
+    (severity / SAV fraction) IS the activity; valence still from dignity.
+    These routes never assemble a supporting dict, so the saturating
+    combinator of separate_kernel has nothing honest to combine — running an
+    empty-support activity would multiply real sign-level intensity to 0 and
+    re-create the erased-activity defect on another route.
+    """
+    activity = max(0.0, min(1.0, float(intensity)))
+    return {
+        'activity': round(activity, 4),
+        'valence': round(2.0 * max(0.0, min(1.0, float(dignity_score))) - 1.0, 4),
+        'applicability': dict(applicability or {}),
+        'availability': dict(availability or {}),
+    }
+
+
+def ordering_key(window: dict) -> tuple:
+    """
+    RRV-03 (binding design pin, HIGH): R-6 removes the only rankable scalar
+    (convergence_score), so one within-class ordering key is declared per
+    comparability_class — `activity DESC, contact instant ASC` (deterministic
+    tiebreak). valence/applicability/availability are carried as DATA, never
+    pooled into the key: two equal-activity windows of opposite valence stay
+    adjacent in serving order and BOTH survive a page cut (SPEC R-6 asserts
+    exactly this). Legacy/new partitioning enforcement is SQL-level
+    (comparability_class/kernel_version in every consumer query — companion
+    §4.4 partition rule), not policy.
+    """
+    klass = str(window.get('comparability_class') or 'default')
+    activity_desc = -float(window.get('activity', 0.0) or 0.0)
+    contact = window.get('peak_date') or window.get('window_start')
+    if hasattr(contact, 'toordinal'):
+        contact_key: tuple = (0, contact.toordinal())
+    else:
+        contact_key = (1, str(contact))
+    return (klass, activity_desc, contact_key)
+
+
 # ── I-17: orb_strength_score ─────────────────────────────────────────────────
 
 def orb_strength_score(
@@ -989,6 +1225,38 @@ def _rarity_years(planet: str, aspect_deg: float) -> float:
     return round(max(0.5, min(rarity, period)), 2)
 
 
+# ── R-1 target provenance helpers ─────────────────────────────────────────────
+
+_R1_PROVENANCE_KEYS = ('target_fact_id', 'target_type', 'frame', 'ayanamsha_id', 'derivation')
+
+
+def _has_target_provenance(transit_trig: dict) -> bool:
+    """
+    R-1 (RR-03): a sourced trigger carries explicit provenance fields stamped
+    by the writer against L1 chart_facts. Presence of any provenance key (or
+    the legacy-shaped target_point_provenance sub-dict) distinguishes a
+    sourced target from a silently-defaulted coordinate.
+    """
+    if not transit_trig:
+        return False
+    if any(transit_trig.get(k) for k in _R1_PROVENANCE_KEYS):
+        return True
+    if transit_trig.get('target_point_provenance'):
+        return True
+    return False
+
+
+def _target_provenance_dict(transit_trig: dict) -> dict:
+    """Return the provenance sub-dict carried on transit_trigger_jsonb."""
+    if not transit_trig:
+        return {}
+    prov = {k: transit_trig[k] for k in _R1_PROVENANCE_KEYS if transit_trig.get(k)}
+    tpp = transit_trig.get('target_point_provenance')
+    if isinstance(tpp, dict):
+        prov['target_point_provenance'] = tpp
+    return prov
+
+
 def _resolve_transit_planet(predicate: dict) -> Optional[str]:
     """
     Per-signature transit planet resolver (design §4.6).
@@ -1073,6 +1341,28 @@ def mode_a_search(
     caller from chart_facts. No native default; never falls back to another
     chart's value.
 
+    R-1 (RR-03): a trigger is unresolvable when transit_trigger_jsonb lacks
+    both 'target_longitude_deg' and explicit sourced point-target provenance
+    (target_fact_id / target_type / frame / ayanamsha_id / derivation, or a
+    target_point_provenance sub-dict). In that case the function logs a warning
+    naming signal_id and returns [] — no Aries-point default scan. A present
+    target_longitude_deg key (even value 0.0) remains valid and scans as before.
+    When provenance is present it is copied into each window's
+    constituent_factors['target_provenance'] and availability['target'] is set
+    to 'computed'; otherwise availability['target'] defaults to 'unavailable'.
+
+    R-4 (RR-06): C9 transit_to_transit and C4 benefic_dristi are WITHDRAWN
+    from the scored supporting product (both legacy and R-6 kernel). Their
+    measured values still appear in constituent_factors as lineage data, with
+    '_withdrawn' reason keys. SUPPORTING_WEIGHTS is intentionally not
+    renormalised.
+
+    R-2 (SPEC R-2 / F-13): daśā agreement comes from the intersection oracle
+    (direct co-support, never exact-endpoint keys or transitive merging).
+    Boundary convention S-H [start, end) throughout. The query outcome is
+    recorded: 'failed' → c_cross *_unavailable; 'ok' with no covering window →
+    c_cross *_evaluated_empty — never merged.
+
     1. Ask dasha_kala_service (or predicate) for eligible dasha windows.
     2. For each eligible window, use find_aspect_events from transit_search to
        find transit events matching the predicate's transit_trigger.
@@ -1107,6 +1397,9 @@ def mode_a_search(
     # the service is None (preserves old behavior for tests / dry-run).
     static_dasha_score = float(dasha_rule.get('eligibility_score', 0.5))
     eligible_windows: list[Any] = []  # EligibleWindow list from service
+    # R-2: the query outcome itself is data. 'ok' (evaluated — even when zero
+    # windows come back) must never be recorded as 'failed' (unavailable).
+    dasha_query_state = 'not_queried'
     if dasha_kala_service is not None:
         target_lords = set(dasha_rule.get('constituent_lords', []))
         if target_lords:
@@ -1121,31 +1414,57 @@ def mode_a_search(
                     related_lords=set(),
                     date_start=h_start,
                     date_end=h_end,
+                    # R-2: max_level DECLARED = 3 (executor decision, recorded in
+                    # SANGAM_STAGE3_STATE.md): level-3 is the deepest daśā depth
+                    # whose span is commensurate with Mode-A window lengths; the
+                    # service default 4 (Sūkṣma, days-long) is in-window noise
+                    # for a peak-date eligibility prior.
                     max_level=3,
                 )
                 eligible_windows = result.windows
+                dasha_query_state = 'ok'
                 logger.debug(
                     "mode_a_search: dasha query returned %d eligible windows for lords=%s",
                     len(eligible_windows), sorted(target_lords),
                 )
             except Exception as exc:
+                dasha_query_state = 'failed'
                 logger.warning("mode_a_search: dasha_kala_service.query failed: %s", exc)
 
-    def _dasha_score_for_date(peak_date: Any) -> float:
-        """Return max eligibility_score of any dasha window overlapping peak_date."""
+    def _dasha_score_for_date(peak_date: Any) -> tuple[float, str]:
+        """Return (score, source). source == 'service' ONLY when a real
+        eligible-window overlap supplied the score; every static-fallback
+        branch (no service, query failed, no covering window) is an
+        availability state under R-6/RRV-08, not support — the caller must
+        not let it manufacture a neutral supporting contribution.
+        Covering test: R-2 S-H convention [start, end)."""
         if not eligible_windows:
-            return static_dasha_score
+            return static_dasha_score, 'static_fallback'
         best = 0.0
         for ew in eligible_windows:
-            if ew.start_date <= peak_date <= ew.end_date:
+            if ew.start_date <= peak_date < ew.end_date:   # R-2 S-H: [start, end)
                 best = max(best, ew.eligibility_score)
-        return best if best > 0.0 else static_dasha_score
+        if best > 0.0:
+            return best, 'service'
+        return static_dasha_score, 'static_fallback'
 
     # Transit trigger params — per-signature resolver (§4.6); no hardcoded fallback
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+
+    # R-1 (RR-03): refuse the old silent Aries-point default. A trigger is
+    # unresolvable if it carries neither an explicit target_longitude_deg key
+    # nor writer-stamped provenance against L1 chart_facts.
+    has_target_lon = 'target_longitude_deg' in transit_trig
+    if not has_target_lon and not _has_target_provenance(transit_trig):
+        logger.warning(
+            "mode_a_search: unresolvable transit trigger target for signal_id=%s "
+            "(no target_longitude_deg and no target provenance); returning no windows",
+            signal_id,
+        )
+        return []
+    target_lon = float(transit_trig.get('target_longitude_deg', 0.0)) if has_target_lon else 0.0
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
 
@@ -1173,7 +1492,7 @@ def mode_a_search(
         peak_dt = _jd_to_date(ev.event_jd)
 
         # CF.L3.6: real per-event dasha score
-        dasha_score = _dasha_score_for_date(peak_dt)
+        dasha_score, dasha_source = _dasha_score_for_date(peak_dt)
 
         # CF.L3.4: real rarity from planet period + aspect
         aspect_used = float(ev.extra.get('aspect_deg', 0))
@@ -1193,7 +1512,7 @@ def mode_a_search(
 
         transit_sign = int(ev.exact_longitude_deg // 30) + 1 if hasattr(ev, 'exact_longitude_deg') else None
 
-        c7  = _c7_ashtakavarga_potency(planet, transit_sign, ctx)
+        c7_verdict  = _c7_ashtakavarga_verdict(planet, transit_sign, ctx)
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
@@ -1210,6 +1529,12 @@ def mode_a_search(
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
+        # E4: typed natal/clock conditions (lineage data, never veto)
+        speed_at_peak = getattr(ev, 'speed_at_event_dps', None)
+        typed_conditions = _e4_typed_conditions(planet, transit_sign, speed_at_peak, ctx)
+        tajika_available = c12 is not None
+        typed_conditions['tajika_covering'] = tajika_available
+
         # ── Newly wired currents (formerly 0.0) ──────────────────────────────
         c_cross   = _c_cross_dasha_agreement(peak_dt, eligible_windows)
         c_dristi  = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
@@ -1221,10 +1546,10 @@ def mode_a_search(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    float(dasha_score),
-            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
+            # E2: own-BAV is a verdict, NOT BAV/8 in the supporting product.
             **({'cross_dasha_agreement': c_cross} if c_cross is not None else {}),
-            'benefic_dristi':               c_dristi,
-            'transit_to_transit':           c9,
+            # R-4 (RR-06): benefic_dristi and transit_to_transit are WITHDRAWN from
+            # the scored product; weights stay declared/dormant in SUPPORTING_WEIGHTS.
             # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
             # ABSENT key already means "contributes nothing" — which is the correct behaviour for
             # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
@@ -1239,12 +1564,49 @@ def mode_a_search(
         }
         cscore = convergence_score(necessary, supporting)
 
+        # ── R-6 kernel (RR-05/M-7; RRV-03/RRV-08) ────────────────────────────
+        # The legacy composite above is UNCHANGED (dignity still inside the
+        # necessary product). The new kernel: dignity leaves necessity (it
+        # becomes valence), and any term whose input was unavailable is
+        # OMITTED, not scored — RRV-08: the static daśā fallback is an
+        # availability state, never manufactured neutral support; an
+        # unevaluated C11 vedha is recorded unavailable, not folded into a
+        # silent 1.0.
+        vedha_available = bool(ctx.vedha_rules) and peak_dt is not None
+        kernel_supporting = dict(supporting)
+        if dasha_source != 'service':
+            kernel_supporting.pop('constituent_lord_transit', None)
+        kernel = separate_kernel(
+            dignity_score,
+            [orb_s] + ([vedha_factor] if vedha_available else []),
+            kernel_supporting,
+            availability={
+                'dasha': 'computed' if dasha_source == 'service' else 'unavailable',
+                'vedha': 'computed' if vedha_available else 'unavailable',
+                'transit_search': 'computed',
+                'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
+                'ashtakavarga': 'computed' if c7_verdict is not None else 'unavailable',
+                'tajika': 'computed' if tajika_available else 'unavailable',
+            },
+            applicability={
+                **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
+                'vedha_cancellation': vedha_available,
+                'orb_presence': True,  # event found above the orb threshold
+                'ashtakavarga_verdict': c7_verdict is not None,
+                'tajika_annual_reinforcement': tajika_available,
+            },
+            c7_verdict=c7_verdict,
+        )
+
         windows.append({
             'mode': 'A',
             'window_start': ws,
             'window_end': we,
             'peak_date': peak_dt,
             'convergence_score': round(cscore, 4),
+            **kernel,
+            'comparability_class': f'ka_sangam/{sig_class}',
+            'kernel_version': KERNEL_VERSION_SEPARATED,
             'orb_strength': round(orb_s, 4),
             'rarity_years': rarity,
             'constituent_factors': {
@@ -1256,13 +1618,23 @@ def mode_a_search(
                 'dasha_score': dasha_score,
                 'dignity_score': dignity_score,
                 'signature_class': sig_class,
+                # E4: typed natal/clock conditions (lineage, never veto)
+                'typed_conditions': typed_conditions,
+                # R-1 (RR-03): carry target provenance as data.
+                **({'target_provenance': _target_provenance_dict(transit_trig)}
+                   if _has_target_provenance(transit_trig) else {}),
                 # U3 per-current breakdown (§3.5 — explainability)
-                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
-                   {'c7_ashtakavarga_potency_unavailable':
-                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
-                    'term dropped, NOT scored zero (L3-W3)'}),
+                **({'c7_ashtakavarga_verdict': c7_verdict} if c7_verdict is not None else
+                   {'c7_ashtakavarga_verdict_unavailable':
+                    'planet not in computed-planets receipt, or sign-keyed BAV missing — '
+                    'term dropped, NOT scored zero (E2)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
+                'c9_transit_to_transit_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic 0/60/90/120/180 '
+                    'outer-planet angle set currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
@@ -1275,10 +1647,24 @@ def mode_a_search(
                     'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 # Newly wired currents
                 **({'c_cross_dasha_agreement': round(c_cross, 4)} if c_cross is not None else
-                   {'c_cross_dasha_agreement_unavailable':
-                    'no eligible dasha window (dasha-eligible AND cross-system-agreeing) covers '
-                    'this peak_date — term dropped, NOT scored zero (L3-W3)'}),
+                   ({'c_cross_dasha_agreement_unavailable':
+                     'dasha eligibility service query FAILED — R-2 unavailable state; '
+                     'never merged with evaluated-empty'}
+                    if dasha_query_state == 'failed' else
+                    {'c_cross_dasha_agreement_evaluated_empty':
+                     'query succeeded but no eligible dasha window covers this peak_date — '
+                     'R-2 evaluated-empty state, distinct from service failure; term dropped, '
+                     'NOT scored zero (L3-W3)'}
+                    if dasha_query_state == 'ok' else
+                    {'c_cross_dasha_agreement_unavailable':
+                     'no dasha eligibility service / no constituent lords — term dropped, '
+                     'NOT scored zero (L3-W3)'})),
                 'c_benefic_dristi': round(c_dristi, 4),
+                'c_benefic_dristi_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic angular-weight '
+                    'benefic-dṛṣṭi curve currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 # L3-W3: the key is present ONLY when the term was actually evaluated. Its
                 # absence is read downstream as "not consulted"; a 0.0 would be read as
                 # "consulted, and unsupportive" — which was false on every row.
@@ -1294,9 +1680,12 @@ def mode_a_search(
                 'current_stances': {
                     'constituent_lord_transit':     _current_stance(dasha_score),
                     'ashtakavarga_transit_potency': _current_stance(
-                        c7, 'graha-vocabulary mismatch AND an unresolved '
-                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
-                    'cross_dasha_agreement':        _current_stance(c_cross),
+                        c7_verdict.get('value') if c7_verdict else None,
+                        'planet not in computed-planets receipt, or sign-keyed BAV missing '
+                        '(E2); own-BAV verdict is support|indeterminate|obstruct, never a score'),
+                    'cross_dasha_agreement':        _current_stance(
+                        c_cross, 'R-2: dasha query failed (unavailable) or evaluated-empty — '
+                                 'see c_cross_dasha_agreement_* reason key'),
                     'benefic_dristi':                _current_stance(c_dristi),
                     'transit_to_transit':            _current_stance(c9),
                     'panchanga_quality':             _current_stance(
@@ -1322,8 +1711,9 @@ def mode_a_search(
             'signal_id': signal_id,
         })
 
-    # Sort by convergence_score desc
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
@@ -1358,6 +1748,17 @@ def mode_b_sweep(
     caller from chart_facts. No native default; never falls back to another
     chart's value.
 
+    R-1 (RR-03): a trigger is unresolvable when transit_trigger_jsonb lacks
+    both 'target_longitude_deg' and explicit sourced point-target provenance.
+    In that case the function logs a warning naming signal_id and returns [].
+    See mode_a_search's docstring for the full provenance/availability rule.
+
+    R-4 (RR-06): C9 transit_to_transit and C4 benefic_dristi are WITHDRAWN
+    from the scored supporting product (both legacy and R-6 kernel). Their
+    measured values still appear in constituent_factors as lineage data, with
+    '_withdrawn' reason keys. SUPPORTING_WEIGHTS is intentionally not
+    renormalised.
+
     Returns windows with is_off_dasha_discovery=True and mode='B'.
     """
     from pipeline.transit_search import search_long_horizon
@@ -1374,7 +1775,17 @@ def mode_b_sweep(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+
+    # R-1 (RR-03): refuse the old silent Aries-point default.
+    has_target_lon = 'target_longitude_deg' in transit_trig
+    if not has_target_lon and not _has_target_provenance(transit_trig):
+        logger.warning(
+            "mode_b_sweep: unresolvable transit trigger target for signal_id=%s "
+            "(no target_longitude_deg and no target provenance); returning no windows",
+            signal_id,
+        )
+        return []
+    target_lon = float(transit_trig.get('target_longitude_deg', 0.0)) if has_target_lon else 0.0
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
 
@@ -1419,7 +1830,7 @@ def mode_b_sweep(
 
         transit_sign = int(ev.exact_longitude_deg // 30) + 1 if hasattr(ev, 'exact_longitude_deg') else None
 
-        c7  = _c7_ashtakavarga_potency(planet, transit_sign, ctx)
+        c7_verdict = _c7_ashtakavarga_verdict(planet, transit_sign, ctx)
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
@@ -1433,6 +1844,12 @@ def mode_b_sweep(
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
+        # E4: typed natal/clock conditions (lineage data, never veto)
+        speed_at_peak = getattr(ev, 'speed_at_event_dps', None)
+        typed_conditions = _e4_typed_conditions(planet, transit_sign, speed_at_peak, ctx)
+        tajika_available = c12 is not None
+        typed_conditions['tajika_covering'] = tajika_available
+
         # Newly wired currents (mode B: cross_dasha = 0.0 — no dasha prior in un-gated sweep)
         c_dristi = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
         c_pancha = _c_panchanga_quality(peak_dt, muhurta_service, native_location)
@@ -1442,14 +1859,10 @@ def mode_b_sweep(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    0.0,   # mode B has no dasha prior
-            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             'cross_dasha_agreement':        0.0,  # no dasha context in mode B
-            'benefic_dristi':               c_dristi,
-            'transit_to_transit':           c9,
-            # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
-            # ABSENT key already means "contributes nothing" — which is the correct behaviour for
-            # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
-            # from a real zero score.
+            # R-4 (RR-06): benefic_dristi and transit_to_transit are WITHDRAWN from
+            # the scored product; weights stay declared/dormant in SUPPORTING_WEIGHTS.
+            # The measured values still appear in constituent_factors as lineage data.
             **({'panchanga_quality': c_pancha} if c_pancha is not None else {}),
             'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
@@ -1460,12 +1873,46 @@ def mode_b_sweep(
         }
         cscore = convergence_score(necessary, supporting)
 
+        # ── R-6 kernel (RR-05/M-7; RRV-03/RRV-08) ────────────────────────────
+        # Mode B is un-gated BY DESIGN: the structural 0.0 entries for
+        # constituent_lord_transit / cross_dasha_agreement are availability
+        # states (absent from the kernel supporting dict), never manufactured
+        # support. Same vedha-availability rule as mode A.
+        vedha_available = bool(ctx.vedha_rules) and peak_dt is not None
+        kernel_supporting = dict(supporting)
+        kernel_supporting.pop('constituent_lord_transit', None)
+        kernel_supporting.pop('cross_dasha_agreement', None)
+        kernel = separate_kernel(
+            dignity_score,
+            [orb_s] + ([vedha_factor] if vedha_available else []),
+            kernel_supporting,
+            availability={
+                'dasha': 'unavailable',  # structural: un-gated sweep, no daśā prior
+                'vedha': 'computed' if vedha_available else 'unavailable',
+                'transit_search': 'computed',
+                'target': 'computed' if _has_target_provenance(transit_trig) else 'unavailable',
+                'ashtakavarga': 'computed' if c7_verdict is not None else 'unavailable',
+                'tajika': 'computed' if tajika_available else 'unavailable',
+            },
+            applicability={
+                **{k: (k in kernel_supporting) for k in SUPPORTING_WEIGHTS},
+                'vedha_cancellation': vedha_available,
+                'orb_presence': True,
+                'ashtakavarga_verdict': c7_verdict is not None,
+                'tajika_annual_reinforcement': tajika_available,
+            },
+            c7_verdict=c7_verdict,
+        )
+
         windows.append({
             'mode': 'B',
             'window_start': ws,
             'window_end': we,
             'peak_date': peak_dt,
             'convergence_score': round(cscore, 4),
+            **kernel,
+            'comparability_class': f'ka_sangam/{sig_class}',
+            'kernel_version': KERNEL_VERSION_SEPARATED,
             'orb_strength': round(orb_s, 4),
             'rarity_years': rarity,
             'constituent_factors': {
@@ -1477,12 +1924,22 @@ def mode_b_sweep(
                 'dignity_score': dignity_score,
                 'magnitude': round(magnitude, 4),
                 'signature_class': sig_class,
-                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
-                   {'c7_ashtakavarga_potency_unavailable':
-                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
-                    'term dropped, NOT scored zero (L3-W3)'}),
+                # E4: typed natal/clock conditions (lineage, never veto)
+                'typed_conditions': typed_conditions,
+                # R-1 (RR-03): carry target provenance as data.
+                **({'target_provenance': _target_provenance_dict(transit_trig)}
+                   if _has_target_provenance(transit_trig) else {}),
+                **({'c7_ashtakavarga_verdict': c7_verdict} if c7_verdict is not None else
+                   {'c7_ashtakavarga_verdict_unavailable':
+                    'planet not in computed-planets receipt, or sign-keyed BAV missing — '
+                    'term dropped, NOT scored zero (E2)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
+                'c9_transit_to_transit_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic 0/60/90/120/180 '
+                    'outer-planet angle set currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
@@ -1494,6 +1951,11 @@ def mode_b_sweep(
                     'no U4 school-consensus data yet AND signature_class is a signal-type '
                     'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
+                'c_benefic_dristi_withdrawn': (
+                    'R-4/RR-06: no qualified classical method binds the generic angular-weight '
+                    'benefic-dṛṣṭi curve currently used — term computed for lineage only, '
+                    'omitted from legacy and R-6 supporting products.'
+                ),
                 # L3-W3: the key is present ONLY when the term was actually evaluated. Its
                 # absence is read downstream as "not consulted"; a 0.0 would be read as
                 # "consulted, and unsupportive" — which was false on every row.
@@ -1511,8 +1973,9 @@ def mode_b_sweep(
                         'empty_reason': 'mode B has no dasha prior — structural, not per-window',
                     },
                     'ashtakavarga_transit_potency': _current_stance(
-                        c7, 'graha-vocabulary mismatch AND an unresolved '
-                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                        c7_verdict.get('value') if c7_verdict else None,
+                        'planet not in computed-planets receipt, or sign-keyed BAV missing '
+                        '(E2); own-BAV verdict is support|indeterminate|obstruct, never a score'),
                     'cross_dasha_agreement': {
                         'state': 'honest_empty',
                         'empty_reason': 'no dasha context in mode B — structural, not per-window',
@@ -1542,7 +2005,9 @@ def mode_b_sweep(
             'signal_id': signal_id,
         })
 
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
@@ -1635,12 +2100,26 @@ def mode_c_subsystem_period(
                 we = _jd_to_date(ingress_ev.event_jd + period_days)
                 severity = severity_map.get(sign, 0.70)
                 cscore   = round(dignity_score * severity, 4)
+                # R-6: sign-level route — severity is the non-dignity activity;
+                # dignity becomes valence (legacy composite above unchanged).
+                transit_sign_num = _LAGNA_SIGN_NUM.get(sign)
+                typed_conditions = _e4_typed_conditions(
+                    trigger_planet, transit_sign_num, None, ctx
+                )
+                kernel = separate_kernel_sign_level(
+                    dignity_score, severity,
+                    availability={'dasha': 'unavailable'},  # not consulted on this route
+                    applicability={'subsystem_period': True, 'sign_level_route': True},
+                )
                 windows.append({
                     'mode': 'C',
                     'window_start': ws,
                     'window_end':   we,
                     'peak_date':    ws,
                     'convergence_score': cscore,
+                    **kernel,
+                    'comparability_class': f'ka_sangam/{sig_class}',
+                    'kernel_version': KERNEL_VERSION_SEPARATED,
                     'orb_strength': 1.0,
                     'rarity_years': _rarity_years(trigger_planet, 30.0),
                     'constituent_factors': {
@@ -1650,6 +2129,8 @@ def mode_c_subsystem_period(
                         'dignity_score': dignity_score,
                         'severity_score': severity,
                         'signature_class': sig_class,
+                        # E4: typed natal/clock conditions (lineage, never veto)
+                        'typed_conditions': typed_conditions,
                         'mode': 'C',
                     },
                     'source_citation': (
@@ -1661,7 +2142,9 @@ def mode_c_subsystem_period(
         except Exception as exc:
             logger.debug("mode_c_subsystem: %s/%s/%s failed: %s", subsystem, trigger_planet, sign, exc)
 
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
 
 
@@ -1671,6 +2154,11 @@ def mode_c_subsystem_period(
 # activation window (Phaladeepika Ch.26; BPHS Ch.66 Gochara-Ashtakavarga).
 # SAV per sign ranges 0-56 (7 classical planets × 8 bindus each); 28 = midpoint.
 _SAV_STRONG_THRESHOLD: int = 28
+# E2 scan prefilter: BPHS 72.3-5 treats SAV ≥ 25 as "not adverse" (adverse only
+# when < 25). Mode D therefore emits windows for SAV 25-30 as indeterminate,
+# records the BPHS/Phaladīpikā verdict in constituent_factors, and lets the
+# caller decide how to weigh the indeterminate band.
+_SAV_SCAN_THRESHOLD: int = 25
 
 # Sign names indexed 1–12 (Aries … Pisces)
 _SIGN_NAMES: dict[int, str] = {
@@ -1689,15 +2177,17 @@ def mode_d_av_bindhu(
     horizon_end_jd: float,
     gochara_service: Any,
     enrichment_context: Optional[EnrichmentContext] = None,
-    sav_threshold: int = _SAV_STRONG_THRESHOLD,
+    sav_threshold: int = _SAV_SCAN_THRESHOLD,
 ) -> list[dict]:
     """
     Mode D: Sarva-Ashtakavarga (SAV) bindhu convergence sub-mode.
 
     Classical basis: Phaladeepika Ch.26 + BPHS Ch.66.  A planet transiting a
-    sign with SAV ≥ threshold bindhu (default 28) is a strong activation window.
-    Only Jupiter, Saturn, and Mars are scanned — fast planets (Sun/Moon/Mercury/
-    Venus) produce too many events to be meaningful timing discriminants.
+    sign with SAV ≥ threshold bindhu (default 25, BPHS "not adverse") is an
+    activation window; the BPHS verdict (>30 support, 25-30 indeterminate,
+    <25 obstruct) is recorded per window. Only Jupiter, Saturn, and Mars are
+    scanned — fast planets (Sun/Moon/Mercury/Venus) produce too many events to
+    be meaningful timing discriminants.
 
     Algorithm:
       1. Read SAV per sign from EnrichmentContext.ashtakavarga_bindu['SARVA'].
@@ -1706,6 +2196,7 @@ def mode_d_av_bindhu(
       3. Emit one window per ingress, spanning the planet's sign-transit duration.
       4. Convergence score = (sav / 56.0) × dignity_score.  Orb_strength = 1.0
          (sign-level: no angular orb — the window is the full sign transit).
+      5. Record the structured SAV verdict in constituent_factors.
 
     Returns windows with mode='D' and is_off_dasha_discovery=False.
     Requires gochara_service; returns [] if unavailable.
@@ -1758,6 +2249,25 @@ def mode_d_av_bindhu(
                 sav_score  = min(1.0, sav / 56.0)
                 cscore     = round(dignity_score * sav_score, 4)
                 rarity     = _rarity_years(planet, 30.0)   # sign-ingress ≈ 30° transit
+                sav_verdict = _sav_verdict(sign_num, ctx)
+                # E4: typed natal/clock conditions for the sign-level AV-bindhu route.
+                typed_conditions = _e4_typed_conditions(planet, sign_num, None, ctx)
+                # R-6: sign-level route — SAV fraction is the non-dignity
+                # activity; dignity becomes valence (legacy composite unchanged).
+                kernel = separate_kernel_sign_level(
+                    dignity_score, sav_score,
+                    availability={
+                        'dasha': 'unavailable',
+                        'sav_bindhu': 'computed',
+                        'sav_verdict': sav_verdict['verdict'] if sav_verdict else 'unavailable',
+                    },
+                    applicability={
+                        'av_bindhu_route': bool(sav >= sav_threshold),
+                        'sav_support': sav_verdict is not None and sav_verdict['verdict'] == 'support',
+                        'sav_indeterminate': sav_verdict is not None and sav_verdict['verdict'] == 'indeterminate',
+                        'sav_obstruct': sav_verdict is not None and sav_verdict['verdict'] == 'obstruct',
+                    },
+                )
 
                 windows.append({
                     'mode': 'D',
@@ -1765,6 +2275,9 @@ def mode_d_av_bindhu(
                     'window_end':   we,
                     'peak_date':    ws,
                     'convergence_score': cscore,
+                    **kernel,
+                    'comparability_class': f'ka_sangam/{sig_class}',
+                    'kernel_version': KERNEL_VERSION_SEPARATED,
                     'orb_strength': 1.0,   # sign-level: no angular orb
                     'rarity_years': rarity,
                     'constituent_factors': {
@@ -1774,8 +2287,11 @@ def mode_d_av_bindhu(
                         'sav_bindhu': sav,
                         'sav_threshold': sav_threshold,
                         'sav_score': round(sav_score, 4),
+                        'sav_verdict': sav_verdict,
                         'dignity_score': dignity_score,
                         'signature_class': sig_class,
+                        # E4: typed natal/clock conditions (lineage, never veto)
+                        'typed_conditions': typed_conditions,
                         'mode': 'D',
                     },
                     'source_citation': (
@@ -1785,15 +2301,318 @@ def mode_d_av_bindhu(
                     'signal_id': signal_id,
                 })
 
-    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    # RRV-03: serve by the declared within-class ordering key
+    # (activity DESC, contact instant ASC) — never by pooling valence.
+    windows.sort(key=ordering_key)
     return windows
+
+
+# ── E5 station-loop episode grouping ─────────────────────────────────────────
+
+# Deterministic namespace for episode UUIDv5 generation.  A fixed project
+# namespace is sufficient because the episode name already includes chart_id,
+# signal_id and loop bounds.
+_EPISODE_UUID_NAMESPACE = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
+
+
+def _extract_target_fact_id(w: dict) -> Optional[str]:
+    """Return the L1 target fact_id from a window's target provenance (R-1)."""
+    tp = (w.get('constituent_factors') or {}).get('target_provenance')
+    if isinstance(tp, dict):
+        return tp.get('target_fact_id')
+    return None
+
+
+def _station_loops_for_planet(
+    gochara_service: Any,
+    planet: str,
+    horizon_start_jd: float,
+    horizon_end_jd: float,
+) -> list[dict]:
+    """Fetch retrograde/direct stations and pair them into loops.
+
+    Returns a list of loops, each dict with:
+      - 'sr_jd', 'sd_jd': station-retrograde and station-direct Julian days
+      - 'sr_date', 'sd_date': corresponding Python dates
+      - 'truncated_start', 'truncated_end': booleans
+    Horizon-truncated halves are included so contacts near the boundary are not
+    silently dropped from episode grouping.
+    """
+    loops: list[dict] = []
+    if gochara_service is None:
+        return loops
+    try:
+        events = gochara_service.find_stations(planet, horizon_start_jd, horizon_end_jd)
+    except Exception as exc:
+        logger.debug("E5: station search failed for %s: %s", planet, exc)
+        return loops
+
+    # Sort by JD and build a clean sequence of station markers.
+    markers: list[tuple[float, str]] = []
+    for ev in events:
+        st = (ev.extra or {}).get('station_type') if hasattr(ev, 'extra') else None
+        if st not in ('retrograde', 'direct'):
+            continue
+        markers.append((float(ev.event_jd), st))
+    markers.sort(key=lambda x: x[0])
+
+    # Pair retrograde -> direct.  Include truncated opening/closing halves so
+    # contacts before the first SR or after the last SD still belong to an
+    # episode when multiple contacts exist in that horizon-truncated loop.
+    i = 0
+    while i < len(markers):
+        jd, st = markers[i]
+        if st == 'retrograde':
+            sr_jd = jd
+            # Look for the matching direct station.
+            sd_jd = None
+            for j in range(i + 1, len(markers)):
+                if markers[j][1] == 'direct':
+                    sd_jd = markers[j][0]
+                    i = j + 1
+                    break
+            if sd_jd is None:
+                # Horizon-truncated loop: no SD within horizon.
+                loops.append({
+                    'sr_jd': sr_jd,
+                    'sd_jd': horizon_end_jd,
+                    'sr_date': _jd_to_date(sr_jd),
+                    'sd_date': _jd_to_date(horizon_end_jd),
+                    'truncated_start': False,
+                    'truncated_end': True,
+                })
+                break
+            loops.append({
+                'sr_jd': sr_jd,
+                'sd_jd': sd_jd,
+                'sr_date': _jd_to_date(sr_jd),
+                'sd_date': _jd_to_date(sd_jd),
+                'truncated_start': False,
+                'truncated_end': False,
+            })
+        elif st == 'direct':
+            # Horizon-truncated opening: this direct station closes a loop whose
+            # SR fell before the horizon start.
+            loops.append({
+                'sr_jd': horizon_start_jd,
+                'sd_jd': jd,
+                'sr_date': _jd_to_date(horizon_start_jd),
+                'sd_date': _jd_to_date(jd),
+                'truncated_start': True,
+                'truncated_end': False,
+            })
+            i += 1
+        else:
+            i += 1
+
+    # If the sequence ended on an unmatched retrograde, it was handled above.
+    return loops
+
+
+def _loop_for_contact(window_start: date, window_end: date, loops: list[dict]) -> Optional[dict]:
+    """Return the station loop whose span overlaps this contact's interval.
+
+    E5: an episode groups contacts linked by a station loop.  A contact whose
+    interval overlaps the loop belongs to it even if its peak falls just before
+    the retrograde station (aborted approach).
+    """
+    for loop in loops:
+        if window_start <= loop['sd_date'] and window_end >= loop['sr_date']:
+            return loop
+    return None
+
+
+def _episode_contract_key(w: dict) -> tuple:
+    """Canonical contract key for grouping contacts into episodes.
+
+    Episode linkage is by (graha, target, directed angle, frame/method).
+    signal_id captures the predicate/method/frame discriminator; target_fact_id
+    captures the L1 provenance of the target.
+    """
+    cf = w.get('constituent_factors') or {}
+    return (
+        str(cf.get('planet') or ''),
+        str(_extract_target_fact_id(w) or ''),
+        str(cf.get('aspect_deg') or ''),
+        str(w.get('signal_id') or ''),
+    )
+
+
+def group_station_loop_episodes(
+    windows: list[dict],
+    gochara_service: Any,
+    horizon_start_jd: float,
+    horizon_end_jd: float,
+    chart_id: str = '',
+) -> list[dict]:
+    """Group contacts that fall inside the same planet's station loop into episodes.
+
+    E5 ruling (M-5 / RRV-05 / RRV-06): an episode links contacts of one
+    (graha, target, directed angle, frame, method) by a station loop.  Child
+    intervals are retained; the hull is the search envelope; occupied time is
+    the union of child intervals; there is no default peak date.  Singletons
+    pass through unchanged; horizon-truncated loops are not forced to a template.
+
+    Returns a new list where child rows that belong to an episode with >=2
+    members are replaced by a single episode row.  The episode row carries:
+      - is_episode = True
+      - episode_uuid = deterministic UUIDv5
+      - episode_children = JSONB-serializable list of child summaries
+      - episode_hull = {'window_start': ..., 'window_end': ...}
+      - perfected = True iff the loop is complete (both SR and SD inside horizon)
+      - peak_date = None
+      - window_start/window_end = hull envelope
+      - convergence_score = max child score
+    """
+    if not windows or gochara_service is None:
+        return windows
+
+    # Group windows by planet so we fetch station events once per planet.
+    by_planet: dict[str, list[dict]] = {}
+    for w in windows:
+        cf = w.get('constituent_factors') or {}
+        planet = str(cf.get('planet') or '')
+        if planet:
+            by_planet.setdefault(planet, []).append(w)
+
+    # For each planet, build loops and bucket contacts by contract + loop.
+    out: list[dict] = []
+    for planet, pwindows in by_planet.items():
+        loops = _station_loops_for_planet(
+            gochara_service, planet, horizon_start_jd, horizon_end_jd
+        )
+        if not loops:
+            out.extend(pwindows)
+            continue
+
+        # bucket[contract_key][loop_index] -> list of windows
+        buckets: dict[tuple, dict[int, list[dict]]] = {}
+        for w in pwindows:
+            ws = w.get('window_start')
+            we = w.get('window_end')
+            if ws is None or we is None:
+                out.append(w)
+                continue
+            loop = _loop_for_contact(ws, we, loops)
+            if loop is None:
+                out.append(w)
+                continue
+            key = _episode_contract_key(w)
+            loop_idx = loops.index(loop)
+            buckets.setdefault(key, {}).setdefault(loop_idx, []).append(w)
+
+        for key, loop_buckets in buckets.items():
+            for loop_idx, members in loop_buckets.items():
+                loop = loops[loop_idx]
+                if len(members) < 2:
+                    out.extend(members)
+                    continue
+
+                # Build the episode row.
+                members_sorted = sorted(
+                    members,
+                    key=lambda w: (w.get('window_start') or date.min,
+                                   w.get('window_end') or date.min)
+                )
+                hull_start = min(
+                    (w.get('window_start') for w in members_sorted if w.get('window_start')),
+                    default=None,
+                )
+                hull_end = max(
+                    (w.get('window_end') for w in members_sorted if w.get('window_end')),
+                    default=None,
+                )
+                if hull_start is None or hull_end is None:
+                    out.extend(members)
+                    continue
+
+                max_score = max(
+                    float(w.get('convergence_score') or 0.0) for w in members_sorted
+                )
+
+                # Deterministic episode identity: UUIDv5 over canonical name.
+                child_keys = sorted(
+                    f"{w.get('peak_date')}:{w.get('window_start')}:{w.get('window_end')}"
+                    for w in members_sorted
+                )
+                name = (
+                    f"episode:{chart_id}:{key[0]}:{key[1]}:{key[2]}:{key[3]}:"
+                    f"{loop['sr_jd']}:{loop['sd_jd']}:" + "|".join(child_keys)
+                )
+                episode_uuid = uuid.uuid5(_EPISODE_UUID_NAMESPACE, name)
+
+                children = []
+                for w in members_sorted:
+                    peak = w.get('peak_date')
+                    phase = 'unknown'
+                    approached = None
+                    if peak is not None:
+                        if peak < loop['sr_date']:
+                            phase = 'approach'
+                            approached = not loop['truncated_start']
+                        elif peak > loop['sd_date']:
+                            phase = 'direct'
+                            approached = False
+                        else:
+                            phase = 'retrograde'
+                            approached = False
+                    child = {
+                        'window_start': str(w.get('window_start')) if w.get('window_start') else None,
+                        'window_end': str(w.get('window_end')) if w.get('window_end') else None,
+                        'peak_date': str(peak) if peak else None,
+                        'convergence_score': float(w.get('convergence_score') or 0.0),
+                        'orb_strength': w.get('orb_strength'),
+                        'loop_phase': phase,
+                        'approached_never_perfected': approached,
+                    }
+                    children.append(child)
+
+                representative = members_sorted[0]
+                rep_cf = dict(representative.get('constituent_factors') or {})
+                # Stamp episode metadata into the representative's factors.
+                rep_cf['episode_uuid'] = str(episode_uuid)
+                rep_cf['episode_member_count'] = len(members_sorted)
+                rep_cf['episode_loop_truncated_start'] = loop['truncated_start']
+                rep_cf['episode_loop_truncated_end'] = loop['truncated_end']
+
+                episode_row = {
+                    **representative,
+                    'mode': representative.get('mode', 'A'),
+                    'window_start': hull_start,
+                    'window_end': hull_end,
+                    'peak_date': None,
+                    'convergence_score': round(max_score, 4),
+                    'is_episode': True,
+                    'episode_uuid': episode_uuid,
+                    'episode_children': children,
+                    'episode_hull': {
+                        'window_start': str(hull_start),
+                        'window_end': str(hull_end),
+                    },
+                    'perfected': not (loop['truncated_start'] or loop['truncated_end']),
+                    'constituent_factors': rep_cf,
+                }
+                out.append(episode_row)
+
+    # Preserve any windows whose planet was empty (should not happen, but be safe).
+    seen_ids = {id(w) for group in by_planet.values() for w in group}
+    for w in windows:
+        if id(w) not in seen_ids:
+            out.append(w)
+
+    return out
 
 
 __all__ = [
     'SUPPORTING_WEIGHTS',
     'HIGH_CONFIDENCE_ORB_THRESHOLD',
+    'KERNEL_VERSION_SEPARATED',
+    'KERNEL_VERSION_LEGACY',
     'EnrichmentContext',
     'convergence_score',
+    'separate_kernel',
+    'separate_kernel_sign_level',
+    'ordering_key',
     'orb_strength_score',
     'confidence_label',
     'independent_current_count',
@@ -1807,6 +2626,8 @@ __all__ = [
     '_PLANET_PERIOD_YR',
     '_resolve_transit_planet',
     '_SAV_STRONG_THRESHOLD',
+    '_SAV_SCAN_THRESHOLD',
     '_AV_SCAN_PLANETS',
     '_SIGN_NAMES',
+    'group_station_loop_episodes',
 ]

@@ -12,3 +12,11 @@ S10_mode_a_necessary_terms.py|0|1
 S11_dignity_zero_erases_activity.py|0|1
 S12_lagna_default_aries.py|0|1
 S13_trigger_composition_post_engine.py|0|1
+r5_harness/S14_r5_preservation_harness.py|0|1
+S15_r6_kernel_adverse_visible.py|0|1
+S16_r1_r4_post_fix.py|0|1
+S17_r2_intersection_oracle.py|0|1
+S18_e5_station_loop_episodes.py|0|1
+S19_e4_typed_conditions_and_tajika_gate.py|0|1
+S20_e6_exposure_and_gates.py|0|1
+S21_kernel_fields_persisted.py|0|1

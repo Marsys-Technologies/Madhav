@@ -2311,7 +2311,13 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Runtime-derived from dasha + transit cluster analysis; count depends on alignment density',
-    depends_on: ['ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva', 'bo_laksana', 'ga_dashas', 'ga_strength', 'ga_positions', 'ga_tajaka', 'bg_transit_rules'],
+    // Synergy audit #7: `ka_vedha_gochara` is read at ka_sangam.py C11 (kala_vedha_gochara
+    // windows, the 0.3 dampener) and was undeclared. Declared here so the DAG matches the reads.
+    // NOTE: supabase/migrations/224_l2_l5_id_underscore_rename.sql:85 sets this asset's
+    // depends_on to ARRAY['ka_kalasutra'] while ka_kalasutra depends on ka_sangam — a CYCLE in a
+    // second source. Not live (this seed wins; the active DAG walks acyclic), but only re-seeding
+    // keeps the acyclic version current. Retire or supersede 224:85 with this change.
+    depends_on: ['ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva', 'bo_laksana', 'ga_dashas', 'ga_strength', 'ga_positions', 'ga_tajaka', 'bg_transit_rules', 'ka_vedha_gochara'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact',
   },

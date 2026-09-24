@@ -41648,3 +41648,392 @@ was released and remotely verified at `80d47c44d38d2f903c844dc674714faa679c2478`
 pre-authorized metadata-only successor. Fresh exact-head CI and independent terminal review are now
 required; no later source mutation is permitted. PR #2605 remains open and unmerged, and all external
 actions remain `NOT_RUN` under `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.
+
+---
+
+## Session — L3 Saṅgam (`ka_sangam`): residual rulings closed, E6 gate re-set, synergy engineering
+**Closed 2026-09-24T12:28:23+05:30 · Claude Code · branch `sangam/stage3` @ `b7128b657` · 18 commits**
+
+The native closed the four residual Saṅgam decisions by delegation. Two of them — N-7 (the directed-event
+producer path) and N-14 (node dṛṣṭi) — were found **already ruled by the native on the Gochara sheet**
+(`50b5e1822`) and were **adopted, not re-ruled**: N-7's kernel path released Saṅgam's E1/E3 from their
+gate, and N-14 extended "no node dṛṣṭi" instrument-wide, resolving DIS.031. B-2 was moot; B-3 (aborted
+approaches in E6's frequency numerator) was decided by the author under delegation — **included, as
+`perfected: false`, with `perfected` a mandatory reported covariate**, on numerator/denominator
+consistency with E5's occupancy union. A correction against this campaign's own record: its claim that
+"N-7 status: UNRULED (verified by full-text search of the campaign tree)" had searched the executor's
+own branch while the ruling sat on `l3/gochara-elevation`, hours older.
+
+The native then instructed that the E6 evaluation gate be brought down "considerably and reasonably".
+Re-set from 35/100 to **20 per stratum (crit ≥8, α=0.0321) and 50 instrument-level (crit ≥16, α=0.0308)**.
+The false-pass rate is unchanged; what moved is the smallest lift the gate can see — per-stratum from a
+doubling to 2.5×, instrument-wide from 1.6× to 2×. Code, tests and evidence moved in the same commit as
+the prose. The exact binomial tails are stored to ten decimals after a 4-dp constant, rounded down, made
+the gate reject its own design case.
+
+Three engineering passes closed **8 of the 10** findings from the cross-asset synergy audit. R-6's
+kernel separation and R-5's contact identity both reached the table for the first time (migrations 1085,
+1086): the separation had been computed and discarded, and identity had lived and died in the harness
+because `contact_uuid` is defined over R-3's convention frame, which was emitted nowhere — recorded as
+new finding #10. The production identity is byte-identical to the harness function, so Phase 1's
+seven-attack qualification transfers. The frame is emitted honestly, with two of six components
+declaring gaps (`ephemeris_backend: unasserted`, `house_frame: unavailable`) and `node_convention`
+recording what the scanner does rather than what M-1 ruled — which makes the mismatch queryable per row
+and closed #8 without the manual stamp it asked for. Also closed: a leap-day crash in the horizon, a
+timezone offset taken at run time instead of the birth instant, an undeclared registry edge, witness
+independence between rows, and scan coverage so an empty result is no longer indistinguishable from a
+failure.
+
+Earlier in the session an independent Kimi K3 reconciliation (NOT_JUSTIFIED_REVERT) established that the
+stage-3 executor had edited a **sealed L1 writer** against its own binding disposition, and that the edit
+was **build-fatal** — a `NameError` producing 9 test errors. It was reverted; the evidence script that
+had been *pinning the breach in place* by grepping the L1 source was rewritten as a behavioural detector.
+
+**Honest limits.** The evidence suite closes at **20/21 + 1 NOT_RUN**, not SUITE-PASS: the Swiss
+ephemeris files are absent from this host and S8 refuses to act as an oracle on Moshier. The manifest was
+deliberately not relaxed to accept that exit. Migrations 1085/1086 are **authored and unapplied** — both
+database endpoints refused throughout, and no Saṅgam row has ever been produced in production. **No PR
+was opened**: D-K makes a fresh-session merge-gate review a precondition, and this session authored the
+plan. The three engineering passes were written by that same author session — the packet's separation
+bent at the native's instruction — and the reviewer is directed to scrutinise those commits specifically.
+
+```yaml
+session_close:
+  session_id: L3_SANGAM_RULINGS_CLOSE_AND_SYNERGY_ENGINEERING
+  closed_at: 2026-09-24T12:26:24+05:30
+  tool: "Claude Code"
+  branch: sangam/stage3
+  head: b7128b657d6ae9cb1a81ea7ae3b47ed8d02838b6
+  commits_this_session: 18
+  files_touched:
+    - path: 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+      mutation_type: modified
+      sha256_before: fc5ca1d15fd45403b7f3bb319555383ce83c8c226659b376284bcc5136d633b1
+      sha256_after: e517423efacba6014d7effeb32a0d95954f39eadc882cfa918ec3815e5a80fa7
+      justification: "Session work recorded in SANGAM_STAGE3_STATE.md"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/EVENTS.jsonl
+      mutation_type: modified
+      sha256_before: 5ea6d6fbc5edcd7c1e7d0e1f29347b1fa3416d7a52a16af6a14949a1fd329332
+      sha256_after: 3c05f8460d5b39606922d48d51efc6701604f31d66ac47a0f060fc143f8e4763
+      justification: "Append-only session event log"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/SANGAM_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md
+      mutation_type: modified
+      sha256_before: bc08f52da22b2083e9ae1f7ee631c1e115c94e65f2949fd782cd92d500fcbdd4
+      sha256_after: c7d04c208533e9488d1e52e4f5e3ddd7d14a383d8144a926e92d16115b87e182
+      justification: "status EXECUTED; fresh-worktree requirement added (root cause of the worktree collision); N-7 gate released"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/SANGAM_STAGE3_STATE.md
+      mutation_type: modified
+      sha256_before: 19f85f28ac42fd87133f3bee1b190e7f24754c9ac94919280fdd920779a8f9bd
+      sha256_after: 8c5a0fff925998b69c011ef0767a5c20a0dc46679de707f173d8e2e7dbf3f8e2
+      justification: "Campaign record: worktree collision, S-2 interface (attributed), synergy audit dispositions, three engineering passes, undelivered Gochara request"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/KIMI_K3_RECONCILE_SANGAM_L1EDIT_v1_0.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 847072ae2074738e3ca197bb6662d1582c5c3aed0005e2e3456d62ea90fa673d
+      justification: "Kimi K3 reconciliation packet and verbatim output (NOT_JUSTIFIED_REVERT)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/KIMI_RECONCILE_PACKET_SANGAM_L1EDIT_v1_0.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 4c44d1f1831e602f154f26440300dfdd51365c64824a7e0c2c9f890fc2638582
+      justification: "Kimi K3 reconciliation packet and verbatim output (NOT_JUSTIFIED_REVERT)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/SANGAM_ALGORITHM_ELEVATION_PLAN_v1_0.md
+      mutation_type: modified
+      sha256_before: 9050adbf2f9fc2e09d307efe91bfa746b98c50784b71490a0881e4b1d0bd5109
+      sha256_after: f38ea7fb118f0235919ef19e6bd890d2ea026fe8ce40f62ad67087297a6e61c0
+      justification: "§0R: N-7 gate released, RRV-06 ruled, E6 gate numbers re-set"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/SANGAM_ELEVATION_BRIEF_v1_0.md
+      mutation_type: modified
+      sha256_before: 8da55a87db27e505d7482a03d793c3dd0c367b17a925e861099b6dda284b8052
+      sha256_after: 0b1579f4d8094917fd6b662c599723994917ce39343eb5cc45ee79535c5a319c
+      justification: "Changelog: E6 gate numbers corrected then re-set"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/SANGAM_ELEVATION_FINAL_v1_0.md
+      mutation_type: modified
+      sha256_before: 077ce1b69d5bcdbe06935f7df6d9ef4ea02847ad1242cc645662ed1b51d73d29
+      sha256_after: 295ca1e8b877d1c8511bd55832e09bbc9454b06c84aed068cbdcfa7b254b66a8
+      justification: "Index: E6 headline re-set"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/SANGAM_RULING_SHEET_v1_0.md
+      mutation_type: modified
+      sha256_before: ea2e48f585d71a43686c995f7210ebd8535d9e2360aad5996ec043bb55e0754e
+      sha256_after: 51289d7b8df0a232822317abafc1b0aeb82372c216c55cc7591397d2f490bf98
+      justification: "Residual rulings closed under the native's second delegation (§Residual); D-1 heading drift corrected; E6 gate re-set 20/50 on the native's instruction"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/MANIFEST.txt
+      mutation_type: modified
+      sha256_before: 5f5fd3fbbe8b9e4392bfa6355e3d2db7f8c86487ddfa13919def375e03bce64b
+      sha256_after: 992a5114ea2a759dec5c0b102d623c55ed08aca65d5b2341101b65ab42949891
+      justification: "S21 registered"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-23T213835.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 400d14fd2e1733509d577aee494c955a26f0770063ee6fd5d4b49c374356d1bb
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-23T221325.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: a779863fe34f6b2757b3d6b78f7f7ce5255a01dd18ea8e8d86151eccbd073ebf
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T005407.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: e8df351c0a7c93357447c48f4777f38990aa9e7e9e3a1cac4f4b747ce8faced8
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T005457.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: f29be28340894cba5b94208a6efd88e5998d0a215fbd9fd66c5ee32414fd0320
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T005519.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: f29be28340894cba5b94208a6efd88e5998d0a215fbd9fd66c5ee32414fd0320
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T005557.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 3ab69ae08002da09cce3079e71e749d8446b73f1a80d6b9e5a1d8f1ca36263c6
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T112426.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 4f912a3c0bd1e27c896dafccb9f5882e30773ca43ce11d10fe48a154330b5d86
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T114152.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 6da226c334f7c3daf6ba95b2af2f6f6c40242285360d0bfe52c33ebe5ede4d09
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T122252.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 963d61484d7e00d75d4e415ed3cc0e00fde837001269d2fe53799a9da1b7cd49
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/OUTPUT_2026-09-24T122327.txt
+      mutation_type: created
+      sha256_before: null
+      sha256_after: c4af6907e7a1bfe5d5a1134148385cee0c9b5e47aa1a668d6f14de5acf9745ac
+      justification: "Evidence suite run records (failing runs retained per the suite's own rule)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/S20_e6_exposure_and_gates.py
+      mutation_type: modified
+      sha256_before: c2af24d0785c9802362e2ab8c21838105d413ecdeee06ebc383047f51f513bac
+      sha256_after: c27649633cea6fc0e94c42379682e93d47597a4d8c298a4134ed2e981c8c1ddf
+      justification: "De-pinned from exact expressions; gate constants updated"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/S21_kernel_fields_persisted.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: bf0089acee7ef5ce1446d613a38b124f6d676eb21a9c63c9e03d8dc80717def7
+      justification: "NEW evidence script for the synergy fixes"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_sangam/S3_ashtakavarga_producer_vs_reader.py
+      mutation_type: modified
+      sha256_before: 03c605fb8b6a3f6902925180040c96933d91c53a2395ea6706b6dec02f82a796
+      sha256_after: 36c7fd7691fa2339519a2cf93f54aea21ebc7e93a854a10495dfa25e29aebf2b
+      justification: "Rewritten as a behavioural detector; NEG made sincere (RC-04)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/ga_writers/ga_strength_writer.py
+      mutation_type: modified
+      sha256_before: 1c9dc038ca1db8d790a997056580280e9759ef9d16af67ea79b02acf11480c7b
+      sha256_after: 4cfa54e0d7592423d7c87a52d2b64680ae5266271ae7f275b336c2a1fad5815d
+      justification: "REVERT of an unauthorized, build-fatal L1 edit made by the stage-3 executor"
+      within_declared_scope: true
+    - path: platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py
+      mutation_type: modified
+      sha256_before: bb614abe14c02b479d38b581b12a06b9b73b26ba77427b0330665bca2bb2244c
+      sha256_after: 8c73b279ec7dc9835f8daa49a8a1d2021a252a1b3a0db8f4262352a302541b22
+      justification: "Kernel fields + R-5 identity + R-3 frame persisted; 29-Feb crash; tz offset at birth instant; scan coverage in notes"
+      within_declared_scope: true
+    - path: platform/python-sidecar/services/ka_sangam/exposure.py
+      mutation_type: modified
+      sha256_before: 4e6511bc7615b1b7d274f4e8ac566bb190874c508f3d37a46e4a1e71302dbfdc
+      sha256_after: f22dbec71d108e26a94362364cb2724f11235bc0ee5592e9579fa326a6e8204b
+      justification: "E6 gate constants re-set to 20/50 with exact binomial tails; ScanCoverage added (synergy #4)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/services/ka_sangam/identity.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 8c4ee8cf9aa7ec0eda64afd1789465594b28423120f593d6b2b4839172575c04
+      justification: "NEW: R-5 contact identity + R-3 convention frame, ported to production (synergy #6/#10)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/tests/l3/test_ka_sangam_e6_exposure.py
+      mutation_type: modified
+      sha256_before: a4ef9c3f4d125ac5273072fd42de437e45b6144f85ca132cd01c65dcfc8744da
+      sha256_after: e607cb43858ae3e50044e7dae91503ca55b3f7b8f673d1edb2ee55b12822c527
+      justification: "E6 gate constants re-set to 20/50 with exact binomial tails; ScanCoverage added (synergy #4)"
+      within_declared_scope: true
+    - path: platform/python-sidecar/tests/l3/test_ka_sangam_synergy_fixes.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: e8d84b6d05d6a651d1c6ccfc24fc193e07040e2e55df262ccf41798ae232feb3
+      justification: "NEW: detectors for synergy #1/#3/#4/#5/#6/#7/#10"
+      within_declared_scope: true
+    - path: platform/scripts/seed/asset_registry_seed.ts
+      mutation_type: modified
+      sha256_before: b5077bc2219ee5a34b50fe80fac2c5c87e59ee9abd3eb3710bcd5df342379ed7
+      sha256_after: adcc87dc2135e1a9f2e274183f15e0c042eae1a54dbaa0b826497a87eab07143
+      justification: "ka_vedha_gochara declared in ka_sangam.depends_on (synergy #7); migration-224 cycle noted"
+      within_declared_scope: true
+    - path: platform/supabase/migrations/1085_kala_convergence_kernel_fields.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 5fd399f15f999d49f6956a43282c7b90367e72d7bae757b3303972a2a58b21c1
+      justification: "NEW migration: R-6 kernel fields reach the table (additive)"
+      within_declared_scope: true
+    - path: platform/supabase/migrations/1086_kala_convergence_r5_identity.sql
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 05fcc1564406708ea6f732ca45d58eb5470be1d3669cc9c70c3f4c3c586576ac
+      justification: "NEW migration: R-5 contact identity + R-3 convention frame (additive)"
+      within_declared_scope: true
+
+  # ------------------------------------------------------------------
+  # Scope (GA.20 / protocol §F)
+  # ------------------------------------------------------------------
+  may_touch_actual:
+    - "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/**"
+    - "platform/python-sidecar/services/ka_sangam/**"
+    - "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+    - "platform/python-sidecar/tests/l3/test_ka_sangam_*"
+    - "platform/supabase/migrations/1085_*, 1086_*"
+    - "platform/scripts/seed/asset_registry_seed.ts (ka_sangam.depends_on row only)"
+    - "platform/python-sidecar/ga_writers/ga_strength_writer.py (REVERT ONLY)"
+  must_not_touch_respected: true
+  must_not_touch_evidence: >
+    No Kṣetra (ka_kshetra / KSHETRA_*), Gochara (gochara_*, w30_*, ka_gochara_*) or orchestrator
+    (asset_runner, WriterBase) file was modified; every staged commit was screened for `kshetra`
+    before commit. ka_gochara_v3_century_materialize was never triggered. The single L1 writer touch
+    was a REVERT to its prior state, verified by an empty net diff across the whole branch range.
+
+  registry_updates_made:
+    file_registry:
+      - row_before: "n/a"
+        row_after: "no FILE_REGISTRY row required — CAPABILITY_MANIFEST.json is the authoritative
+          catalogue since 2026-04-27, and no canonical-artifact path or version changed this session"
+        version_of_registry: "manifest-mode"
+    governance_stack:
+      - section: "DISAGREEMENT_REGISTER DIS.031"
+        entry_excerpt: "Node dṛṣṭi divergence RESOLVED on the native's N-14 ruling; this session
+          supplied the pointer and corrected two premises, the register is the strategic session's file"
+    canonical_artifacts:
+      - canonical_id: none
+        change: none
+        details: "No canonical artifact's path, version or fingerprint changed; all work is campaign
+          artifacts under briefs/nirmana/l3_autonomous/ plus ka_sangam source"
+    asset_registry:
+      - asset_id: ka_sangam
+        change: depends_on_row_amended
+        details: "ka_vedha_gochara declared (10 → 11 edges), closing synergy audit #7; the
+          migration-224 ka_sangam↔ka_kalasutra cycle recorded at the point of change. SEED ONLY —
+          NOT APPLIED to any database."
+
+  # ------------------------------------------------------------------
+  # Governance checks
+  # ------------------------------------------------------------------
+  drift_detector_run:
+    exit_code: null
+    ran: false
+    rationale: >
+      NOT RUN, stated rather than implied. The governance frontmatter gate does not reach
+      00_ARCHITECTURE/briefs/** (strategic-session finding G18: the architecture_governance glob is
+      single-level), so drift_detector has no rows for this campaign's artifacts. In its place this
+      session ran the gate's OWN matcher by hand — byte-0 anchored re.match plus strict
+      yaml.safe_load — over every Saṅgam artifact after each mutation; it caught a real
+      colon-in-value break earlier in the campaign.
+  schema_validator_run:
+    exit_code: 0
+    ran: true
+    rationale: >
+      This block validated with --close-checklist. A separate repo-wide scan reports the inherited
+      42-violation ceiling recorded in SESSION_LOG for Wave 7; none of those rows belongs to this
+      session's files.
+  red_team_pass:
+    due: false
+    discharged: true
+    evidence: >
+      Not due by the §M cadence; the function was discharged in substance regardless. Two
+      independent adversarial reviews ran against this packet: Kimi K3 (effort=max) on the closed
+      packet — ACCEPT_WITH_CONDITIONS, findings K2-01…K2-12, all applied; and a Kimi K3
+      reconciliation of the L1 writer breach — NOT_JUSTIFIED_REVERT, RC-01…RC-07. Every MAJOR was a
+      defect in this session's own work, and each was reproduced at source before acceptance.
+
+  known_residuals: []
+
+  # ------------------------------------------------------------------
+  # Verification (§N.8 — claims with detectors behind them)
+  # ------------------------------------------------------------------
+  verification:
+    evidence_suite: "20/21 PASS + 1 NOT_RUN"
+    evidence_suite_honest_note: >
+      NOT 'SUITE-PASS'. S8_saturn_loop_oracle exits 3 (NOT_RUN) because the Swiss .se1 files are
+      absent from this host (/tmp/se1 cleared; _resolve_ephe_path() → None; live calc_ut retflag
+      65860, SWIEPH bit clear). S8 refuses to act as an oracle on Moshier — correct behaviour. The
+      MANIFEST was deliberately NOT relaxed to accept exit 3; that would convert an honest 'cannot
+      verify' into a green suite.
+    negative_controls: "every other script fails under NEG=1; hand-verified for all new scripts"
+    pytest_targeted: "307 passed (ka_sangam surface + L1 av-completion)"
+    pytest_broader_l3: "1047 passed, 7 skipped (tests/l3 -k 'not ka_kshetra')"
+    known_flake: "test_transit_search_cache::test_cached_call_matches_direct_swe_calc_ut — pre-existing, file untouched, passed on the final run"
+
+  cross_tool_sync:
+    work_order_outcome_recorded: true
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    ccd_entries_appended: []
+    note: >
+      No Codex coordination lease was held by this session; the three flags record that no lease
+      remained open and no cross-tool work order was left unrecorded. All coordination happened with
+      peer Claude Code sessions (strategic, Gochara, Kṣetra) by message, and every decision adopted
+      from them was re-verified at source before acceptance. Those peer sessions have since ended;
+      the one undelivered request (Gochara's comparable_with enum) is recorded in
+      SANGAM_STAGE3_STATE.md rather than left in a lost message.
+
+  close_criteria_met: true
+
+  unblocks:
+    - "Stage-3 merge gate (D-K): a fresh-context session plus an isolated Kimi K3 pass may now review
+       the build on sangam/stage3 against the ruled plan and its own §10 dispositions."
+    - "E1/E3 are released from the N-7 gate (ruled kernel path) and buildable against the S-2
+       protocol once the Gochara branch is pushed."
+    - "L5 calibration binding: contact_uuid gives mi_adhilepa a rebuild-stable key instead of a
+       BIGSERIAL reissued every rebuild."
+
+  handoff_notes:
+    - "NO PR to main. D-K makes the fresh-session merge-gate review a precondition, and this session
+       is the plan's author and cannot discharge it."
+    - "Migrations 1085 and 1086 are AUTHORED AND UNAPPLIED. Both database endpoints refused all
+       session; no Saṅgam row has ever been produced in production, and Mode A/B's C7 has never
+       returned a value there."
+    - "The author wrote the three engineering passes. The packet's separation (author designs,
+       another session builds) was bent at the native's instruction; the merge-gate reviewer must
+       scrutinise commits da36301f4, 6e16d4f0b and 4ff37343d specifically."
+    - "Synergy audit: 8 of 10 findings closed. Open — #2 (comparable_with rename; Gochara's enum is
+       on an unpushed branch and this session will not implement against an unread enum) and #9
+       (confidence_score/confidence_label removal; five readers plus a serving layer, four-step
+       sequence recorded, steps i-iii touch other assets' writers)."
+    - "Swiss .se1 files are absent from this host. Any oracle assuming SWIEPH here runs on Moshier;
+       restore them before trusting a green evidence suite."
+    - "Root CLAUDECODE_BRIEF.md deliberately left status: ACTIVE — it governs the whole 22-asset L3
+       Kāla campaign, not Saṅgam alone."
+
+  current_state_updated: true
+  session_log_appended: true
+```

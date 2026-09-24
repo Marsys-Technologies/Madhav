@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ELEVATION_BLUEPRINT
 canonical_id: KALA_ELEVATION_BLUEPRINT
-version: "2.0"
+version: "3.4"
 status: PROPOSED_FOR_NATIVE_RULING
 date: 2026-09-22
 position: >
@@ -15,6 +15,20 @@ position: >
   document is wrong.
 does_not_authorize: any build, migration, grant, evidence event, deployment or code change.
 changelog:
+  - "3.4 (2026-09-23): §11.28 — Saṅgam CLOSED at 3f62f3468. Delegation recorded verbatim and author decisions D-1…D-8 kept separate, which is the discipline the M-1…M-7 episode was missing. D-8 discloses that plan v0.4, which v1.0 is built from, has never been reviewed; the third Astra review is now a stage-3 ENTRY gate."
+  - "3.3 (2026-09-23): the governance rule sharpened to its final form (madhav-d9) — mutual checking among sessions that share a premise is agreement, not verification; a peer's confirmation counts for nothing the reviewer has not itself queried. Proposed for doctrine."
+  - "3.2 (2026-09-23): PG332 correction — it is the 28-asterism RING chakra for the Sun-vedha rule at śl. 26-27, NOT a second SBC page. My 'two grid pages' framing would have spliced two instruments. Verified against PG331/PG333. Fifth correction of the day."
+  - "3.1 (2026-09-23): §11.27 — Sade-Sati, a live serving factor consuming 4,492 verified facts on the canonical chart, has ZERO primary-text attestation: all 5 corpus rows are in one MEDIUM-provenance modern nāḍī text. Highest-severity item of the day. Kota confirmed 0 rows."
+  - "3.0 (2026-09-23): my own OCR caveat corrected — PG346-352 is a COMPLETE, legible primary construction of the Sarvatobhadra chakra; only the diagram page is degraded, and the prose rules make it unnecessary. G10 re-graded again, to BUILDABLE. §11.25 closes the day with the W0 corpus re-audit task."
+  - "2.9 (2026-09-23): the wrong corpus list is HARDCODED IN PRODUCTION CODE with a verification claim behind it (ka_vedha_gochara/logic.py). And the Sarvatobhadra grid IS in the corpus at phaladeepika PG345/PG332 — G10 re-graded from unsourceable to OCR-blocked. New §11.24."
+  - "2.8 (2026-09-23): §11.18 mechanism corrected — a lock is not a configuration; the 0.314″ origin is v3_spline_accuracy.py, decorated but unconfigured. New §11.22: M-1's 'no node dṛṣṭi' would flip a LIVE multiplicative term in the served λ (gochara_v3, not ka_sangam) and invalidate every stored λ. Six-rule ledger consolidated."
+  - "2.7 (2026-09-23): §11.15 CITATION STRIKE RETRACTED IN ITS CENTRAL CLAIM. Phaladeepika IS in the served corpus (564 chunks, 17 vedha rows, the actual Adhyāya XXVI vedha + laṭṭā doctrine at PG322/323/339). My admitted-corpus list was a SOURCE_DATA directory listing, not the corpus. Ruling 8 rests on this. New §11.21."
+  - "2.6 (2026-09-23): G4 RETRACTED (the .se1 files are on this host and the production resolver finds them). New §11.18: the ephemeris backend is process-global and unowned — w2g, which owns the 0.314″ figure, never sets it, and panchang_engine forces Moshier. New §11.19: the century writer is live-active and DELETEs production in its staging transaction while declaring only the staging table. M-1..M-7 now recorded in writing."
+  - "2.5 (2026-09-23): RETRACTION — my ScannerError diagnosis of PR #2722's file was my own naive splitter, not the gate. The file had no byte-0 frontmatter at all. §11.17 rewritten; new rule: a naive parser is not the gate. G18 item 1 (scope) and the constructed in-scope parse-blindness finding both survive."
+  - "2.4 (2026-09-23): new G18 + §11.17 — the governance frontmatter gate is blind to the entire briefs tree (0 files matched by any governed glob) AND, for files it does govern, a YAML parse failure produces zero violations. Measured, not read."
+  - "2.3 (2026-09-23): §11.5 stale-brief warning now points at PR #2722 (supersedes in place, v4.3). New §11.16: a `set -e` chain is not a detector — recorded against this session's own rails, not only a peer's."
+  - "2.2 (2026-09-23): §11.15 — the BPHS Ch.29 strike propagates: 39 of 41 vedha-bearing transit rules cite that non-existent gochara chapter, the other 2 cite Phaladīpikā which is not in the admitted corpus, so ZERO vedha rules are corpus-verifiable and the layer has no source-qualified ordinary reference today. Added to §9 as D8."
+  - "2.1 (2026-09-23): §11.14 — three defects from the Kshetra packet, all verified here: a wrong classical citation inside an INDEPENDENTLY ACCEPTED W0 record; a coverage gap declaring a table absent that holds 8 live rows; and the stored field being chart-wide where its contract says route-scoped."
   - "2.0 (2026-09-23): §9 rewritten as the native's actual decision queue — it predated every finding of 23 Sep. Adds D6 (node frame + its paired disposition + the two sibling conventions), D7 (M-3 producer shape and owner), and the two items that are cheap and unblock others. The 65.3″ bound is now reproduced by three sessions independently."
   - "1.9 (2026-09-23): the Moshier node bound is 65.3″ over the full 55,152-knot domain — both earlier sparse samples under-reported it (mine by half). Natal-pāda safety is 2.7×, not 'well under'. New rule: a sample is not a bound."
   - "1.8 (2026-09-23): the 14.82″ method gap IS nutation in longitude — verified identical; so the three sessions' figures were one value under two ayanāṃśa conventions, both giving pāda 4. Moshier's true-node error measured at ≤32.5″ (1950–2100), retiring 'unbounded' — and that bound is what makes the natal pāda reportable and the stored-knot pāda not. §11.7 gains two counterexamples."
@@ -267,13 +281,14 @@ plan resolver with upstream closure.
 | G7 | **No admissible receipts** for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | Headline cannot move past `DATA_ACCEPTED` | native decision 2; a `z.enum` member + payload contract, no migration | BLOCKS the headline |
 | G8 | **No retrieval capability over `kala_field*`** | The largest asset is unreadable by the product | Kshetra brief → L3-U11 packet → Pūrṇa | BLOCKS Kshetra value |
 | G9 | **Unowned capabilities** — cross-clock disagreement; provenance-aware de-correlation | Two L3-Qs unanswerable | synergy contracts 2 + 4 (§3.3) | BLOCKS Q05 |
-| G10 | **Source qualification** — tithi-praveśa `not_in_corpus`; Sarvatobhadra unqualified | Cannot reach `DATA_ACCEPTED` without it (F23) | native decision 4; source steward | BLOCKS those assets |
+| G10 | **Source qualification — RE-GRADED (§11.24).** Sarvatobhadra is **not** unsourceable: the chakra is in the corpus at `phaladeepika:PG345:C1` ("I shall now describe the Sarvatobhadrachakra"), with grid pages at PG332/PG345, same Adhyāya XXVI as the vedha rules. The blocker is **OCR quality, not absence**. Tithi-praveśa qualification is unchanged | The disposition changes from "cannot be built, do not try" to "re-OCR two known pages" — a bounded task with a named target | re-OCR PG332 + PG345 from source images; then transcribe with a checkable partition invariant | DEGRADES → bounded task |
 | G11 | **No determinism gate** (`date.today()`; naive-timezone persistence) | "Wipe and rebuild" is unsafe | temporal contract + CI build-twice-diff | BLOCKS rebuild-freely |
 | G12 | **Serving is Pūrṇa's** — `kala_views` collides if L3 edits it; `dissent: []` ×7; mortality exclusion on 2 of 9 tools | The last inch fails silently; a binding-boundary gap on live surfaces | L3-U04/U11 interface packets + a priority request to Codex for the safety gap | DEGRADES / safety |
 | G13 | **Independent-verifier capacity** — every packet needs a reviewer who is not its author | Builders certifying themselves | one verifier lane reserved per wave (Brief §4) | DEGRADES |
 | G14 | **Native decision latency** — five gating decisions + Q1–Q8 | The campaign idles on rulings | the decision sheet with recommendations; rule in one sitting | DEGRADES |
 | G15 | **Session isolation** — three brief sessions found writing into foreign worktrees; two drafts leaked to `main` | Shared-write collisions; unattributed publication | one worktree per session, enforced in every prompt | DEGRADES |
 | G16 | **Layer-level tracker projection** — the campaign tracker is phase-first; no per-asset L3 lifecycle view per swarm §11 | The native cannot see, at a glance, each asset's state on both ladders | extend the tracker's projection; never `lit` as done; no % without a denominator | NICE-TO-HAVE → DEGRADES at W2+ |
+| G18 | **The governance frontmatter gate cannot see this campaign's artifacts** — no governed glob reaches `00_ARCHITECTURE/briefs/**` (0 files matched), and for a file it *does* govern a YAML parse failure yields zero violations (§11.17) | Every brief, ruling sheet and packet we are producing is ungoverned; a passing CI run is not evidence the frontmatter is well-formed | extend `artifact_schemas.yaml` to the briefs tree; make a parse failure its own violation | DEGRADES governance |
 | G17 | **Ordinary-period fixtures** absent | Product §9 untestable | Phase 0 baseline adds one; briefs add per asset | DEGRADES proof |
 
 ---
@@ -416,7 +431,8 @@ unblocks, not by when it was raised.
 | **D7** | **M-3** — the directed contact-event producer: **shape** (Path A, a bounded `transit_search` amendment; or Path B, the Gochara kernel) **and owner** (§11.3) | Saṅgam E1/E3 | Shape is yours; the owner must be named either way. Path B is gated on that brief's own N-5/N-7, so E1/E3 is not unblocked by a proposal |
 | **D2** | Receipts for `CONSUMER_INTEGRATED` / `VALUE_EVALUATED` | The headline metric past `DATA_ACCEPTED` | Add the enum member; **no migration needed** |
 | **D3** | The three protected classes | Safe rebuild semantics | Confirm: sweep snapshot, issued claims/observations, retained outcomes |
-| **D4** | Tithi-praveśa source qualification | That asset's `DATA_ACCEPTED` | Needs a source steward; its own citation reads `not_in_corpus` |
+| **D8** | **Corpus admission** — admit Phaladīpikā (± Sārāvalī / Jātaka Pārijāta), or re-grade every gochara-vedha row as cited-outside-admitted-corpus (§11.15) | Any vedha reaching `applied` in **all three** consumers; the vedha half of transit qualification | Rule the uniform `corpus_verifiable` stamp either way — the three streams have already converged on the mechanism, so this is one ruling, not three |
+| **D4** | Tithi-praveśa source qualification — **and note this is the path to the layer's FIRST source-qualified ordinary reference**, not one asset's paperwork (§11.15) | That asset's `DATA_ACCEPTED`; the layer's qualification story | Needs a source steward; its own citation reads `not_in_corpus` |
 | **D5** | Baseline authority | Proof discipline | L3-Q01–Q13 + the §14 proving set + one ordinary period |
 
 Plus Q1–Q8 of the elevation plan and each brief's own list. Full evidence and options:
@@ -773,3 +789,603 @@ at the instant; a stored knot is an interpolation input, never an answer.** It i
 knife-edge finding must not be cited against the natal figure (§11.10): the knot's 6″ margin is
 smaller than any backend's error, while the instant's 177″ margin is five times larger than the
 measured 32.5″ worst case. One is reportable, the other never will be.
+
+### 11.14 Three defects from the Kshetra packet — verified here, one of them governance-level
+
+**(a) A wrong classical citation, carrying an acceptance stamp.** `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md:207`
+states the source-qualified reference is *"the BPHS Ch.29 Sun third-from-Moon favourable transit and
+paired ninth-house Vedha case."* Checked in the corpus: **BPHS Volume 1 Chapter 29 is titled
+"Bhava Padas"** (`00_ARCHITECTURE/SOURCE_DATA/classical_texts/BPHS/bphs_vol1_rsanthanam_djvu.txt`),
+and the whole of Volume 1 contains **2** occurrences of "gochara". There is no gochara chapter there.
+Line 39 of that same record lists *"source-qualified Vedha case"* as **INDEPENDENTLY ACCEPTED**.
+
+So a citation naming the wrong text carries an acceptance stamp in a W0 record that the whole
+campaign treats as settled. The admitted chain is `bg_phaladeepika_vedha` — **Phaladīpikā** PG353,
+ADJUDICATION-11 — a different work entirely. This is the source-qualification discipline failing at
+the one place it is supposed to be strongest, and it propagated: the Kshetra session inherited the
+phrase verbatim into two documents before catching it. **Routed to the W0 record's owner.** No L3
+session edits an accepted W0 record.
+
+**(b) A coverage gap that declares a table absent while it holds live rows.** `stage1_symbolization.py`'s
+`latta_coverage()` returns `"not_in_corpus"` with *"No classical latta-kick rule table found in this
+codebase."* Live: **`bg_phaladeepika_latta` holds 8 rows.** An unearned signal in the *opposite*
+direction from the usual — declaring absence where there is presence — and it suppresses a source
+the layer has already admitted. Fix belongs with the comment's owner; the coverage detector should
+query rather than assert (the §11.12 pattern again).
+
+**(c) The stored field is chart-wide; its contract says route-scoped.** Verified: `layer0.py:200-201`
+states plainly *"Store ALL chart-level vighna instances. Per-class SM-R-7 filtering is Layer 1's
+responsibility"*, and the SM-R-7 filter lives in `layer1.py` — a projection that never writes
+`kala_field`. The field path passes `obstructions=self.envelopes.obstructions_at(t)` unfiltered
+(`stage4_field.py:866-873`), and the null path does the same. So field and null are **mutually
+consistent and chart-wide**, and the documented route-scoped contract is what no stored row honours.
+
+Note what the Kshetra session did *not* claim: its reviewer inferred a further consequence — that
+`null_p` is biased low by a field/null split — and that session **rejected it** after checking the
+fourth site, because there is no split. Contract ≠ behaviour, not field ≠ null. Rejecting a
+reviewer's consequence while accepting the finding is the right discipline and worth recording as
+such. The native's decision is which semantics governs, gated on a byte-equality test
+`field ≡ null ≡ projection` before any `null_p` is served.
+
+### 11.15 The citation strike propagates: the layer has no corpus-verifiable vedha source
+
+Consequence of §11.14(a), raised by the Kshetra session, cross-checked by the Gochara session,
+measured independently here against `bg_transit_rules` where `vedha_house IS NOT NULL`:
+
+| Citation | Rules |
+|---|---|
+| `BPHS Ch.29 (Gochara Phala — Transit Results)` | **39** |
+| `Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)` | **2** |
+
+BPHS Volume 1 Chapter 29 is *Bhāva Padas* (§11.14a) — so **39 of 41 vedha rules, 95% of the set,
+cite a gochara chapter that does not exist.** The remaining 2 name the right work; the admitted
+corpus holds `BPHS · Jaimini_Sutram · KP · KP_Reader` and **no Phaladīpikā** (0 matches under
+`SOURCE_DATA`). So after the strike **zero vedha rules are corpus-verifiable.**
+
+Two consequences the native should see plainly:
+
+1. **`FOUNDATION_SAFETY §5:207-209`'s claim does not hold as written.** It names "the existing
+   source-qualified ordinary reference" and the thing it names is the wrong chapter. That record's
+   41 passing tests (`test_ka_vedha_gochara*.py`) prove geometry and interval behaviour — which is
+   **computational correctness, not source qualification** (F24 keeps those tiers separate). A
+   correction note belongs on that record; no L3 session edits it silently.
+2. **The layer currently has no source-qualified ordinary reference at all.** Not just vedha:
+   `ka_tithi_pravesha`'s own citation reads `not_in_corpus`, and Sarvatobhadra is an acknowledged
+   approximation. So D4 (tithi-praveśa qualification) is not one asset's paperwork — it is the path
+   to the layer's **first** honest source-qualified reference, which changes its priority.
+
+**The three streams have already converged on the mechanism**, which is why this needs ruling once
+rather than three times. The producer stamps every `ka_vedha_gochara` row with
+`source_qualification ∈ {verse_cited, algorithmic_approximation, unsourced}`, `precision_regime ∈
+{date_grain, instant_grain}` and **`corpus_verifiable`** (is the cited text actually in the admitted
+corpus). Consumer admission is then uniform and mechanical: **F06 `applied` iff `corpus_verifiable`
+AND the Vedha geometry conjuncts pass; otherwise `unqualified`.** Today that admits nothing —
+house-vedha, sarvatobhadra and laṭṭā all enter unqualified in all three consumers — and the policy
+lifts row by row as the stamp flips, with no plan needing re-ruling. This also corrects an
+inconsistency the Gochara session caught in Kshetra's earlier draft, where house-vedha was applied
+and laṭṭā unqualified on one stated ground.
+
+**The fix is a corpus/L0 decision, not an L3 one** (Gochara's G-9): admit Phaladīpikā — and
+Sārāvalī / Jātaka Pārijāta if the non-vedha rows citing them are to stay verse-cited — or re-grade
+every gochara-vedha row uniformly as *cited-outside-admitted-corpus*. Routed to the corpus owner.
+
+### 11.16 `set -e` is not a detector either — recorded against this session's own rails
+
+The Kshetra session reported that a commit chain pushed a file whose frontmatter did not parse,
+because `set -e` did not halt the chain. That is worth recording here rather than in one packet,
+because **this session has been running the same shape all day**: a heredoc Python step that
+validates or rewrites an artifact, followed by `git add`/`commit`/`push` in the same compound
+command. `set -e` does not abort when the failing command sits inside a pipeline, a command
+substitution, or a construct the shell treats as tested — so a validation step can fail silently and
+the commit still lands.
+
+It is the §11.1 pattern one layer down, in our own tooling: **a check that cannot fail the thing it
+guards is not a detector.** Migration 624 asserted a node frame it never measured; a `set -e` chain
+asserts a validation it does not enforce. Verification steps should assert explicitly and gate the
+commit on their own exit status, not lean on shell semantics.
+
+Concrete instance found while checking PR #2722: one file, `KIMI_K3_REVIEW_KSHETRA_v1_0.md`, was
+missing frontmatter entirely rather than carrying a broken block — see §11.17 for the retraction of
+my first diagnosis of it. Both files now carry real byte-0 frontmatter (`29bddaa2b`), and that
+session's commit chain now runs its parse gate as its own step with an explicit `|| exit 1` rather
+than trusting `set -e`.
+
+### 11.17 The governance frontmatter gate is blind in scope — and my first diagnosis of PR #2722 was wrong
+
+Two findings here, one of which is a retraction of my own.
+
+**RETRACTED — the ScannerError I reported was mine, not the gate's.** I told the Kshetra session its
+file failed to parse at "frontmatter line 5, column 4," a `**bold**` prose line inside the fences.
+That was an artifact of my own checker, which split on the first `---` *anywhere* in the file. The
+real file, at `c83309a00`, had **no frontmatter block at all** — it opened with `#`. My splitter had
+seized on an interior horizontal rule and called the prose beneath it a frontmatter block. The gate's
+own `_FRONTMATTER_RE` is used with `.match()`, which is anchored at byte 0, so it would have read
+that file as *missing* frontmatter, a different violation class from the one I named. The Kshetra
+session caught this and was right. Both files now carry real byte-0 frontmatter at `29bddaa2b`.
+
+**Rule earned, alongside "a date is not an epoch" / "a flag is not a backend" / "a sparse sample is
+not a bound": a naive parser is not the gate.** When reporting what a gate will do, run the gate's
+own matcher, not a reimplementation of it. Mine differed from the real one in exactly the way that
+produced a confident, specific, wrong line number — the most credible-looking kind of error.
+
+**STANDS — scope.** Independently measured and unaffected by the above: expanding all eleven
+class/glob pairs in `schemas/artifact_schemas.yaml` against the repo matches **zero files under
+`00_ARCHITECTURE/briefs/`**. The class that would cover us, `architecture_governance`, globs
+`00_ARCHITECTURE/*.md` — single-level, does not descend. Every artifact this campaign has produced
+is ungoverned. The Kshetra session reached the same conclusion independently and noted that Saṅgam's
+two identically-shaped Kimi files are already on `main` unchallenged, which corroborates it.
+
+**STANDS, as a constructed finding — the gate does not fail on a malformed block it *does* reach.**
+For a file that is in scope and does open with `---` at byte 0, a `yaml.safe_load` failure raises no
+violation: `validate_frontmatter_for_class` sets a `__loose_yaml__` marker and falls back to a
+line-start regex scan for the required keys at severity `LOW`. I tested this with a constructed
+byte-0 block containing broken interior YAML: all three required keys were still found by the regex,
+so the file produced **zero violations, exit 0**. Even a `LOW` returns exit 3, the band
+`ONGOING_HYGIENE_POLICIES` keeps a `known_residuals` whitelist for. This was never PR #2722's
+situation — it is a latent hole, found while chasing a defect that turned out to be mine.
+
+**Net, for W0.** A clean CI run on a briefs-tree artifact is not evidence its frontmatter is
+well-formed; nothing looked. Two small fixes belong in W0: extend the campaign-artifact class to
+`briefs/**`, and make a YAML parse failure a violation in its own right instead of a silent
+downgrade to a regex scan. The second matters more — widening the reach of a gate that cannot fail
+only spreads a green light nothing earned. That is §N.8 read against our own tooling: *what code
+path would have to run, and fail, for this signal to correctly read false?*
+
+### 11.18 The ephemeris backend is process-global and unowned — G4 retracted, replaced by something worse
+
+**RETRACTION of G4.** I recorded that this host has no `.se1` files and that every local benchmark
+therefore ran on Moshier. That is wrong as of 2026-09-22 17:20. All five files — `sepl_18.se1`,
+`semo_18.se1`, `seas_18.se1`, `sefstars.txt`, `seleapsec.txt` — are at `/private/tmp/se1`, and the
+*production* resolver `brahmagyan.l0_ephemeris._resolve_ephe_path()` returns `/tmp/se1`, its own
+third candidate. The Saṅgam session established this; I reproduced it directly rather than accept it.
+
+With the path set I reproduce, at L1's own birth instant (jd 2445735.717361 = 1984-02-05 05:13 UT =
+10:43 IST), `retflag` carrying the SWIEPH bit and no Moshier bit:
+
+| quantity | sidereal Lahiri |
+|---|---|
+| TRUE node | 50.049248° → Rohiṇī pāda 4 |
+| MEAN node | 49.033044° → Rohiṇī pāda 3 |
+
+Both figures match the Saṅgam sheet to six decimals, and the MEAN value matches L1's stored
+`RAH_MEAN` fact, which is what pins the instant.
+
+**What replaces G4 is sharper.** The files being present does not mean a computation uses them.
+`swe.set_ephe_path` sets *process-global* state, and the components disagree about who owns it:
+
+- **The 0.314″ figure's actual origin is `services/w2g_validations/v3_spline_accuracy.py`** (the
+  Gochara session located it precisely; I had said "w2g", which is the consumer, not the producer).
+  It imports `serialized_swiss_state` at line 42, decorates `_swe_longitude` at 111, and calls with
+  `swe.FLG_SWIEPH | swe.FLG_SPEED` at 118 — **and never calls `set_ephe_path` at all.** Requesting
+  the SWIEPH flag does not load the files; `calc_ut` falls back silently.
+- **The mechanism is sharper than "nobody sets it": a lock is not a configuration.**
+  `serialized_swiss_state` (`panchang_engine/swiss_state.py`) takes `SWISS_STATE_LOCK` and calls the
+  function. That is all it does. A decorated function is *serialized*, not *configured* — and the
+  decorator's presence reads, at a glance, like the Swiss state has been handled. `transit_search.py`
+  is decorated **and** sets the path at 249-250, so the contact path is genuinely configured; the
+  spline validator is decorated and is not. Same decorator, opposite guarantees.
+- `ka_gochara_v3_century_materialize.py` imports `swisseph` directly at line 2022 and **never sets
+  it**.
+- `panchang_engine/__init__.py` calls `swe.set_ephe_path(None)` **four** times, and
+  `l0_ephemeris.py` twice more, each forcing Moshier. (I first reported two, from a grep I had piped
+  through `head`. There are **23** non-test `set_ephe_path` call sites in the sidecar. Truncating my
+  own greps is now the single most frequent mechanism behind my errors this session — see §11.8.)
+- `bg_cohort.py`, `bg_sky_calendar.py`, `transit_search.py`, `routers/pyhora.py` and
+  `service_probes.py` each set it themselves.
+
+So the backend a given computation receives depends on which unrelated component last touched a
+global in that process. `bg_sky_calendar.py:234` documents the trap in its own docstring: setting
+the path does not fail when files are missing, and `calc_ut` falls back silently.
+
+**This closes the question the Gochara session routed to me.** It asked whether the V3 runner sets
+the path, because if the 0.314″ validation ran without it, it compared a spline against a reference
+two orders of magnitude coarser than its own claim — the Moshier true-node error is bounded at
+65.3″ over the full 1950–2100 domain, roughly 200× the 0.314″ figure. **Answer: neither the V3
+runner nor w2g sets it.** The figure cannot anchor any gate until its owner asserts its own
+`retflag` on every call. This is §N.8 again: a precision claim with no detector for the backend that
+produced it.
+
+**One caution for whoever picks this up.** The string `0.314` appears in this corpus as two
+unrelated quantities: the w2g worst-case spline error in **arcseconds**, and a CPU sample of
+0.314605 **seconds** in the W0 benchmark baseline. Same digits, different units, different subject.
+That is the "a filename is not a table" family, which the Gochara session and its reviewer both hit
+independently this week.
+
+### 11.19 The century hold is procedural only, and the registry understates the blast radius
+
+The Gochara session reported that the held century writer is still registered and active and deletes
+production in the same transaction as its staging write. I verified it, and the live registry makes
+it worse than reported.
+
+Source: `ka_gochara_v3_century_materialize.py` carries `@register(ASSET_ID)` at line 1717. In one
+`conn` — the orchestrator's transaction, which a writer must never commit or close — it executes
+two deletes back to back: `DELETE FROM kala_gochara_windows_v2` (staging, generation `g3_utkarsha`)
+at line 2247, then `DELETE FROM kala_gochara_windows … generation = '3.0'` (**production**) at line
+2257.
+
+Live registry, read just now:
+
+| asset_id | is_active | target_table | clear_tables |
+|---|---|---|---|
+| `ka_gochara_v3_century_materialize` | **true** | `kala_gochara_windows_v2` | NULL |
+| `ka_gochara` | true | `kala_gochara_windows` | NULL |
+
+Two things follow that the source alone does not show. First, the asset **declares only the staging
+table**, so every registry-driven view of what it touches — the Atlas display, any clear-scope
+reasoning, any blast-radius estimate — omits the production table it deletes from. Second,
+`clear_tables` is NULL, so there is no second declaration to catch it. The asset's declared reach
+understates its real reach by exactly one production table, and that table is `ka_gochara`'s own
+declared target. Two active assets write the same production table; one declares it, one does not.
+
+The "hold" on the century writer is a note in a document. Nothing in code, registry or database
+prevents it running and wiping production generation `3.0` for a chart. It is G19, and it blocks
+unattended build until the native sets it inactive.
+
+### 11.20 M-1 through M-7 are now recorded in writing
+
+The gap I escalated is closed, by the Saṅgam session and correctly. `SANGAM_RULING_SHEET_v1_0.md`
+is on this branch at `101046052`, status `RULED`, with the rulings verbatim, attribution to the
+native by name, and a timestamp of 2026-09-23T02:42:50+05:30. I confirmed the file and read the
+block rather than accept the report.
+
+Two qualifications, both of which that session stated **on the sheet itself** rather than leaving
+me to find:
+
+1. The seven lines are character-for-character its own *example* answer lines, which the native
+   adopted by pasting them back. That is recorded as what happened, not dressed up as independent
+   drafting. A reader should weigh it accordingly, and the session says any line meant differently
+   is corrected on request.
+2. M-6's minimum-n is a literal unfilled placeholder, `<your number>`, recorded as **OPEN**, not
+   closed. A placeholder cannot be a ruling. The E6 evaluation gate stays shut until the native
+   supplies the number.
+
+**The one ruling that changes chart facts is M-1: node = mean.** Read against §11.1 and §11.18 that
+is a decision with teeth, not a formality. `ephemeris_daily` stores the **true** node under a
+contract declaring mean; L1 serves `RAH_MEAN` and no `RAH_TRUE`; and at this native's birth instant
+the two frames fall on **opposite sides of a pāda boundary** — true 50.049° is Rohiṇī pāda 4, mean
+49.033° is pāda 3. Ruling "mean" makes pāda 3 the answer and makes the stored knots a derivation
+input rather than a servable value. It does not by itself repair the undeclared contract on
+`ephemeris_daily`, which remains the §N.8 finding of §11.1.
+
+### 11.21 The citation strike was wrong where it mattered — Phaladīpikā IS in the corpus
+
+**This retracts the central claim of §11.15 and it bears directly on ruling 8, which the native has
+already ruled. It should be read before stage 3 proceeds.**
+
+**What I published.** That the admitted corpus is (BPHS, Jaimini_Sutram, KP, KP_Reader); that 39 of
+41 vedha rules cite "BPHS Ch.29" which is actually *Bhāva Padas*; that the remaining 2 cite
+Phaladīpikā, "which is not in the admitted corpus"; and therefore that **zero vedha rules are
+corpus-verifiable**. The Gochara session reached a compatible conclusion, and ruling 8 turns on it.
+
+**What is true, read from the live corpus table rather than from a file listing:**
+
+| text_id | chunks | rows containing "vedha" |
+|---|---|---|
+| `phaladeepika` | 564 | **17** |
+| `bphs` | 1459 | 2 |
+| `hora_sara` | 460 | 0 |
+| `saravali` | 471 | 0 |
+| `brihat_jataka` | 607 | 0 |
+
+The served corpus holds **fifteen populated texts**, not four. Phaladīpikā is one of them, and it is
+the single **richest** source of vedha material in the entire corpus. The doctrine itself is there,
+in Adhyāya XXVI: the Sun's vedha pairs at `PG322:C1` (auspicious in the 11th, 3rd, 10th, 6th,
+provided the corresponding 5th, 9th, 4th and 12th are unmarred, Saturn excepted), Mercury's at
+`PG323:C1`, and the laṭṭā rules at `PG339:C1` (the 9th from Rāhu, the 22nd from the Moon). That is
+precisely the material the 41 rules need.
+
+**Where my error came from.** `Jaimini_Sutram` and `KP_Reader` are **directory names** under
+`00_ARCHITECTURE/SOURCE_DATA/classical_texts/`. I read a source-data folder listing and published it
+as the admitted corpus. It is the same family as every other error I have made today, and it now has
+its own line: **a source directory is not the corpus.** Note also that `jaimini_sutram` exists as a
+text_id with `chunk_count: 0` — admitted in name, empty in substance, which is a separate §N.8
+finding worth its own row.
+
+**What survives, and it still matters.** The BPHS Ch.29 mis-citation is real: 39 rules cite a
+chapter that is *Bhāva Padas*, and BPHS itself carries only 2 vedha rows. So the rules do cite the
+wrong text. But the conclusion inverts. It is **not** "nothing is verifiable, admit nothing." It is
+**"the citations point at the wrong source, and the right source is in the corpus."** Those call for
+opposite remedies: the first would have us drop or permanently flag 41 rules; the second is a
+re-citation against Phaladīpikā Adhyāya XXVI, after which they are verifiable.
+
+**One honest limit on the remedy.** Phaladīpikā's chunks are heavily OCR-degraded and their
+`verse_ref` is **page-based** (`PG322:C1`), not chapter-and-śloka. So a citation of the form
+"Phaladīpikā 23.11" — which the Saṅgam ruling sheet's M-2 relies on — cannot be resolved against
+this corpus as written. Precise verse citation needs either a chapter/śloka index or a
+page-anchored convention. Hard to cite precisely is a real cost; it is not the same as absent.
+
+**And the retrieval layer cannot be trusted for absence claims.** Two measured demonstrations:
+`find_verses_about` returned **zero** results for a Phaladīpikā gochara/vedha topic that has 17
+matching rows in the table; and a Rāhu/Ketu aspect query returned five rows, **all** from a
+MEDIUM-provenance grey-upload nadi text, three of them near-identical table headers, with nothing
+from BPHS, Hora Sāra, Phaladīpikā or Bṛhat Jātaka. The Saṅgam session was right to report its
+node-aspect finding as "unverified so far" rather than "absent," and this is the concrete
+counterexample that justifies the caution. **A hybrid search returning nothing is not evidence of
+absence in this corpus.** Absence claims must be made against the table, with a `count(*)`, not
+against the search tool.
+
+**Consequence for ruling 8.** The native ruled on a premise that two sessions supplied and that was
+wrong in its central term. The ruling may still be the right call on other grounds, but it should be
+re-put with the corrected premise while the sheet is reversible. I am not asking for it to be
+reversed; I am saying it should not stand on a fact I got wrong.
+
+### 11.22 "No node dṛṣṭi" is a formula change, not a record trim — and the engine is not the one named
+
+M-1's closing clause, "no graha-dṛṣṭi for Rāhu/Ketu," reads like a scoping decision about which rows
+ship. It is not. The Gochara session flagged this and I verified it, with one correction: the code
+is in **`services/gochara_v3/engine.py`**, not `services/ka_sangam/engine.py`. Two files named
+`engine.py`; the finding is right and the address was wrong. That is the "a filename is not a table"
+family again, and it caught a session that had just caught three of mine — which is the argument for
+the rule rather than against anyone.
+
+Verified at `services/gochara_v3/engine.py`:
+
+- `_W30_NODAL_DRISHTI_ENABLED: bool = True` at line 107. **Live, not dormant.**
+- Line 628: `_w30.compute(context, t_jd, swe=swe, enabled=_W30_NODAL_DRISHTI_ENABLED)`.
+- Line 632: `raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates`.
+- Lines 668 and 778 emit `w30_modifier` into the stored output.
+
+So `w30_modifier` is a **live multiplicative factor in the served λ**. Setting the toggle to False
+does not remove records; it changes the formula, and every stored λ computed with the factor becomes
+incomparable to every λ computed without it. The codebase already says so in its own comment at line
+132: removing the term "automatically invalidates every stored" score.
+
+**Two things follow for the native's ruling.** First, if "no node dṛṣṭi" extends to this mechanism,
+it implies a full gochara_v3 rebuild, and that cost belongs in the ruling rather than being
+discovered afterwards. Second, the mechanism is declared a **CANDIDATE** in its own module docstring
+(`w30_nodal_drishti.py:4`) while running enabled in the served path — a candidate that is live is
+not a candidate, and that gap deserves its own line whatever the node ruling says.
+
+**One thing here is genuinely well-built, and it is worth saying.** `scoring_signature.py` exists
+specifically to detect toggle and constant changes in these mechanisms and to invalidate stored
+scores when they move. Unlike most of what §N.8 has turned up this session, this signal has a real
+detector behind it. It is the model the rest of the layer should copy.
+
+### 11.23 The rule ledger, consolidated
+
+Six instances of one failure mode, found in a single day across four sessions. Each is the same
+move: reading something adjacent to the thing being described, then publishing the result with more
+precision than the method earned.
+
+| rule | what was mistaken for what | whose |
+|---|---|---|
+| a date is not an epoch | midnight differenced against noon-UT knots | mine |
+| a flag is not a backend | `FLG_SWIEPH` requested without the files loaded | shared |
+| a sparse sample is not a bound | 16 dates reported as a 150-year bound (32.5″ vs the true 65.3″) | mine |
+| a filename is not a table | `gochara_*` basenames; two files named `engine.py` | Gochara's, and its reviewer's |
+| a naive parser is not the gate | my splitter vs the gate's byte-0 `.match()` | mine |
+| **a source directory is not the corpus** | `SOURCE_DATA/classical_texts/` folders read as the admitted corpus | **mine, then inherited by two other sessions** |
+| a lock is not a configuration | `serialized_swiss_state` read as having handled Swiss state | shared |
+
+The last one in the table is the one that did the most damage, because it was not caught by
+disagreement: three sessions held it simultaneously, and it took reading the corpus table directly
+to break it. **Convergence between sessions is not independent confirmation when the sessions share
+a premise.** That is the governance lesson of this day, and it is worth more than any individual
+finding above.
+
+A recurring mechanism worth naming separately: three of my errors trace to piping a `grep` through
+`head`, which silently truncated the evidence I then reasoned from. The fix is procedural, not
+intellectual — count first, then read.
+
+### 11.24 The wrong corpus list is in production code, with a verification claim behind it — and the Sarvatobhadra grid was there all along
+
+Two findings, and the second one recovers an asset we had written off.
+
+**The error was not only mine. It is hardcoded, and it is asserted as verified.**
+`platform/python-sidecar/services/ka_vedha_gochara/logic.py` states in its own docstring:
+
+> "The ingested classical-text corpus (`00_ARCHITECTURE/SOURCE_DATA/classical_texts/`) was checked
+> this session: it holds BPHS, Jaimini Sutram, KP, and KP_Reader material only — NO Muhurta
+> Chintamani or Jyotish Sara Sangraha text … Tier (i) (ingested-corpus citation) is therefore
+> UNAVAILABLE for this specific table, **confirmed by direct search, not assumed**."
+
+Every load-bearing part of that is false, and the parenthetical is the whole defect: it equates the
+**ingested corpus** with a **source-data folder**. Measured against the live table:
+
+| the docstring's claim | the table |
+|---|---|
+| corpus holds four texts | **15 populated texts** |
+| no Muhurta Chintamani | `muhurta_chintamani`, **274 chunks** |
+| `kp` / `kp_reader` are corpus texts | **zero** such text_ids exist |
+| tier (i) unavailable for SBC | **false — see below** |
+
+This is §N.8 in its purest form, and worse than the usual case because the signal *says* it has a
+detector. "Confirmed by direct search, not assumed" is exactly the sentence that stops the next
+reader checking. I did not check it. Two other sessions did not check it. The claim propagated from
+a docstring into three independent analyses and into a native ruling within one day. **A verification
+claim in prose is not a detector; it is a sentence.** The Saṅgam session found the same list copied
+into a migration.
+
+**And the Sarvatobhadra chakra is in the corpus.** The docstring's conclusion sent us to write the
+asset off as unsourceable, and it worried at length about having to fabricate a grid layout from
+memory because regional traditions disagree. That worry is unnecessary:
+
+- `phaladeepika:PG345:C1` — *"I shall now describe the (Sarvatobhadrachakra) which has become
+  famous"*, followed by a grid with `NORTH` and nakshatra cells.
+- `phaladeepika:PG332:C1` — **NOT a second SBC page. Corrected below (§11.25).** It is the
+  28-asterism *ring* chakra belonging to the Sun-vedha rule at śl. 26-27 — a different instrument
+  that happens to share the Kṛttikā start.
+
+Same Adhyāya XXVI as the vedha rules and the laṭṭā rules. There are **ten** rows corpus-wide matching
+`sarvato`; nobody had looked, because a docstring said not to.
+
+**My first OCR caveat here was itself over-stated, and I am correcting it (see §11.25).** I wrote
+that the pages are severely degraded and need a re-OCR against source images. That is true of
+**`PG345:C1` alone**, which is the diagram page — a figure, so of course it OCRs as scattered
+tokens. I generalized from it to the whole span without reading the rest. The Saṅgam session read
+further and was right: **`PG346:C1`–`PG352:C1` is a complete primary construction in legible
+prose**, ~1,400 characters per page, and I have now read all eight.
+
+**The governance point, which outlives all of this.** Three sessions converged on a wrong answer
+because all three inherited it from the same docstring. Convergence is not confirmation when the
+premise is shared. The only thing that broke it was reading the table with `count(*)`. Whenever an
+artifact claims a corpus fact — present, absent, admitted, unqualified — the check is a query
+against `classical_text_chunks`, not a search tool and not another document's assurance.
+
+### 11.25 The Sarvatobhadra construction is complete and legible — G10 re-graded again, to buildable
+
+I read `PG345:C1`–`PG352:C1` in full rather than infer from the first page. The construction is
+there, in prose, and the degraded diagram page is not needed to build it:
+
+- **`PG346:C1`** — the grid, stated as an instruction: *"Draw ten lines vertically and another ten
+  lines crosswise over the same. You will have 81 squares. Write in the regular order the 16 vowels
+  from onwards in the corner squares commencing…"* This is the 9×9 layout the
+  `ka_vedha_gochara` docstring said could not be recovered without fabricating one.
+- **`PG347:C1`** — weekday/tithi groups; the malefic set (Saturn, Sun, Rāhu, Ketu, Mars), Mercury
+  conditionally malefic in malefic association, the waning Moon likewise.
+- **`PG348:C1`** — the motion-dependent vedha direction rule: *"In the case of Rahu and Ketu, which
+  are always retrograde, the Vedha will be on the right, and in the case of the Sun and the Moon
+  which move direct … the Vedha will be on the left."*
+- **`PG349:C1`** — the five-fold effect scale: agitation, fear, loss, disease, death.
+- **`PG350:C1`–`PG351:C1`** — effects by motion, own-weekday vedha, directional/quarter effects.
+- **`PG352:C1`** — the sensitive-star set: Janmabha/Janmarkṣa, the 10th as Karmabha, the 19th, etc.
+
+**So G10 moves a second time: from "unsourceable" to "OCR-blocked" to buildable.** The SBC grid
+tables are empty because nobody populated them, not because no source exists. That is now an
+ordinary build task against a cited primary, and the checkable partition invariant the docstring
+proposed can be applied to a transcription rather than to an invention.
+
+**My own error here is the sparse-sample rule again**, one day after I named it. I read the first
+page of an eight-page span, found it illegible, and published a caveat about the span. The Saṅgam
+session read the rest. **A sparse sample is not a bound, and page one is not a chapter.**
+
+**A fifth correction of mine, and the most dangerous one had it shipped.** I described `PG332:C1`
+as "a second grid page" of the Sarvatobhadra chakra. It is not. The Saṅgam session placed it
+correctly and I verified the placement: `PG331:C1` is śloka 24 (Rāhu's transit effects through the
+12th from the Janmarāśi) and `PG333:C1` is śloka 27 (the three asterisms, Janmanakṣatra, the Sun
+associated with a malefic). PG332 sits between them, so it is the **28-asterism ring chakra for the
+Sun-vedha rule at śl. 26-27**. The Sarvatobhadra proper is śloka **48**, at PG345-346. Both use a
+Kṛttikā start, which is exactly what makes the confusion plausible and the consequence severe: **a
+transcriber handed "PG332 and PG345 are the two grid pages" would have spliced two different
+instruments into one table** and produced a chakra that exists in no text. This is the worst error I
+made today, because unlike the others it would have survived into data rather than into prose.
+
+**Two refinements adopted from the other sessions, both table-verified by them:**
+
+1. Adhyāya XXVI carries **two distinct 1-5 vedha-count scales**, at `PG349` and `PG353`.
+   `bg_vedha_malefic_scale` cites the PG353 one and should say which it cites — two scales in one
+   chapter is precisely where an unpinned citation drifts.
+2. The retrieval layer ranked the load-bearing Adhyāya XXVI chunk **7th of 12** on a vedha query,
+   behind nāḍī and muhūrta noise. So a `top_k=5` search "proves" absence of the very text that
+   answers the question. That is the mechanism behind every absence error in this chain.
+
+### 11.26 W0 task: re-audit every corpus-absence claim in the codebase
+
+Every "no source in the corpus" claim any of us relied on was made against a **directory listing**,
+not the table, and the three that have been checked are all false: Phaladīpikā is admitted; the SBC
+is sourced; `kp`/`kp_reader` do not exist as texts at all. The claims live in production code and
+migrations, not only in our documents — `ka_vedha_gochara/logic.py`, and (per the Saṅgam and Kṣetra
+sessions) migrations 526 and 528.
+
+**Re-opened pending a `count(*)`, none of them yet checked:** Kota, kakṣyā, muntha, sade-sati
+("KP Reader only" — and KP is not in the corpus), the sandhi band, and the tithi-praveśa
+`not_in_corpus` disposition. Each may well survive the check. None of them has had one.
+
+**The method rule, which all four sessions converged on independently and which belongs in doctrine
+rather than in four packets:** an absence claim about the corpus is made by a `count(*)` against
+`classical_text_chunks` naming the predicate. Never a directory listing. Never a search tool, whose
+ranking demonstrably buries the answer. And never another artifact's assurance that it already
+checked — "confirmed by direct search, not assumed" was the sentence that propagated this error into
+three analyses and a native ruling inside one day.
+
+**The governance finding this day produced, which outranks any individual defect above.** The first
+statement was: convergence between independent sessions is not independent confirmation when they
+inherit a shared premise. The Saṅgam session sharpened it against this day's own record, and its
+version is the one that should stand:
+
+> Four sessions checked each other. I checked their claims, they checked mine, and two more checked
+> both. All four were still wrong together for a day — because every check ran against *another
+> session* and the shared premise, never against the object. **Mutual checking among sessions that
+> share a premise is agreement, not verification.** Only a query against the object broke it, and
+> the moment one session ran one, the whole chain corrected itself in under two hours.
+
+**The operational form, for any independent reviewer:** a peer's confirmation counts for nothing the
+reviewer has not itself queried. The reviewer's own `count(*)`, or its own read of the file, is the
+detector. *"Session X also found this"* is evidence only that session X read the same sentence.
+
+This is §N.8 turned on our own review process: **what would have to be true for cross-session
+agreement to correctly read false?** Nothing, as long as the sessions are talking to each other. So
+the signal is null, and the count is the detector. I am proposing this for doctrine rather than
+leaving it in four packets, because it is the one finding today that generalizes past Kāla.
+
+### 11.27 Sade-Sati: 4,492 served facts, zero primary attestation
+
+The Gochara session ran the `count(*)` rule against its own remaining absence claims rather than
+leave them, which is the right instinct and produced the most serious finding of the day. I verified
+it and the severity holds.
+
+| quantity | measured |
+|---|---|
+| Sade-Sati facts on the canonical chart | **4,492** |
+| corpus rows mentioning it, any spelling | **5** |
+| of those, in a primary text | **0** |
+| Kota chakra rows, corpus-wide | **0** |
+| kakṣyā rows (none in BPHS proper) | 14 |
+
+All five rows are in `nadi_navamsa_patel`, the MEDIUM-provenance grey upload that our retrieval layer
+has been over-ranking all day. Worse, of the five, only `PG1334:C1` states the doctrine at all
+(*"the transit of Saturn through the 12th, 1st and 2nd houses from the Moon"*). The other four are a
+modern author's **empirical observation** correlating outcomes with bindu counts across two example
+charts. That is a twentieth-century claim about charts, not a classical rule.
+
+So a serving factor that consumes 4,492 facts for this native rests on one paragraph in one
+medium-provenance modern text. Under F23 that cannot reach `DATA_ACCEPTED` on its current citation,
+and under §N.7's honest-null discipline it should not be narrating with unqualified confidence in
+the meantime.
+
+**The caveat that keeps this from becoming a fifth over-claim, and it is important.** I searched for
+a **name**, not a **doctrine**. "Sade-sati" is a late vernacular term — the rows themselves note the
+southern "elarata" and the popular "7½-year Panoti" framing. Saturn's transit results reckoned from
+the Moon may well be attested in the primaries under entirely different wording, inside the gochara
+chapters we have already been reading. **What is established is that the name and its 7½-year
+framing have no primary attestation. Whether the underlying transit doctrine does is a separate
+question that nobody has asked.** Asking it is a bounded task and it belongs in the W0 re-audit of
+§11.26 — and it must be asked by predicate, not by term, or it will produce exactly the class of
+false absence this whole chain was made of.
+
+**Kota chakra is the counter-example worth noting**: zero rows corpus-wide, established the way the
+rule requires. That is a real absence, honestly reached, and it supports keeping Kota at
+proposed-use rather than promoting it. The rule does not only demote things.
+
+### 11.28 Saṅgam closed — and the one disclosure in it that should not close quietly
+
+Saṅgam is CLOSED at `3f62f3468`. Sheet CLOSED, plan v1.0 `APPROVED_FOR_EXECUTION_STAGE_3`, brief
+v1.5. For the L3 row and CURRENT_STATE.
+
+**The delegation is recorded the way the earlier episode was not, and that is worth marking.** When
+M-1…M-7 were first reported to me as ruled, nothing in the repository recorded them and I refused
+the report. The close does it properly: `delegation_recorded` carries a timestamp
+(2026-09-23T03:39:33+05:30) and names the delegated scope; the delegation is quoted verbatim in the
+CLOSE block; and D-1…D-8 are marked, typographically and in the frontmatter, as **the author's
+decisions under delegation, not the native's words**, each with reasoning so any can be reversed in
+one line. That is the correct shape for a session deciding under delegation, and it is a direct
+improvement on the same day's earlier practice.
+
+**The limit that remains, stated plainly.** I can verify that the sheet *records* a delegation. I
+cannot verify the delegation itself — no session can verify a claim about what the native said
+outside the repository. Everything a session can do here has been done; the last step is the
+native's alone. This is the standing residue of §11.23: a peer's account of an off-repository
+exchange is not something a peer can confirm.
+
+**D-8 is the disclosure that matters, and it nearly closed quietly.** The sheet states that **plan
+v0.4 — the text v1.0 is built from — has never been reviewed by anyone.** v0.1 returned REWORK on 19
+findings and v0.3 on 10; v0.4 is the text that answered the second round, and no reviewer has seen
+it. Rather than let an `APPROVED_FOR_EXECUTION` label paper over that, the session made the third
+Astra review a **stage-3 entry gate**: it runs before any code is written, by the independent
+reviewer, and is explicitly not discharged by the author. That is the right call, and it is §N.8
+applied to an approval label — *what would have to run and fail for "approved" to correctly read
+false?* Until that review runs, the honest answer was "nothing," and now it is the gate.
+
+**D-1 deserves note for the same reason.** The E6 evaluation gate is set at n=30 per
+`(domain × route × method_version)` and n=100 for a pooled instrument-level claim, with
+`method_version` never pooled and anything short reporting `PROVISIONAL_INSUFFICIENT_N` **with its
+actual n**. The numbers are stated as functions of the measured base rate and recompute at equal
+power if it moves off 0.20. That is a threshold with a detector behind it rather than a convention,
+which is the distinction this whole campaign has been about.
+
+**D-7** adopts the successor condition: the legacy scan is withdrawn only when the R-5 preservation
+manifest shows every dependent claim has an authorized successor — a state, not a date.
+
+**What Saṅgam still depends on, all owned elsewhere:** the Gochara N-7 ruling (gates E1/E3), the
+`ephemeris_daily` undeclared-contract finding (§11.1), and the house-vedha re-citation under
+F-23/G-8.
