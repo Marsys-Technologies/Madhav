@@ -1,7 +1,7 @@
 ---
 artifact: KALA_SYNERGY_AUDIT
 canonical_id: KALA_SYNERGY_AUDIT
-version: "1.8"
+version: "1.9"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-fc), at the native's request"
@@ -108,6 +108,23 @@ construction" claim to *unverified*, consistent with this audit's third correcti
 `origin/l3/gochara-autonomous-wp0-7` adds all three stamps to the vedha and mūrti rows with writers
 populating them. The finding is **code-complete pending merge of PR #2731**; it closes on merge, not
 before.
+
+## 6b. A writer inventing a citation — found after the L0 repair, the §N.7 class exactly
+
+The L0 repair verified the L0 rows. It did not reach the L3 writer that stamps them. That writer,
+`services/ka_vedha_gochara/writer.py`, had been stamping **every** `house_vedha` row
+`uncited_extension = False` and `source_qualification = 'verse_cited'` — including the six node rows
+whose citation begins `UNSOURCED` — and, when a rule carried no citation at all, **substituting a
+Phaladīpikā citation of its own**. That is CLAUDE.md §N.7 item 6 in its purest form: an invented
+judgment standing in for a null. Fixed at `4d8f83050` on `l3/gochara-autonomous-wp0-7`: a
+`NULL`/empty citation is unsourced by definition and can never be stamped verse-cited; every stamp
+now derives from the rule's own citation. The Gochara stream found and fixed it; this audit records
+it because it is the layer below the one the repair certified, and nobody had looked there.
+
+Two consequences carried forward. `corpus_verifiable` is a marker test, so the one page-grain
+Mercury row still reads `true`; the strict cover is 35, as §6 states. And the staleness detector
+that landed with it (`bb7644ee4`) reaches only the vedha writer — **the mūrti writer, the other
+consumer §4 found silently stale, still has no fingerprint and no detector.**
 
 ## 7. Disposition
 
