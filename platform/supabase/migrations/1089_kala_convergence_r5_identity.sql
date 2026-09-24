@@ -1,4 +1,11 @@
--- Migration 1086 — R-5 contact identity and R-3 convention frame reach the table
+-- Migration 1089 — R-5 contact identity and R-3 convention frame reach the table
+--
+-- RENUMBERED 2026-09-24 (was 1086). The L0 repair branch claimed 1086 first
+-- (verified first-commit times: theirs 08:54/11:21 IST, mine 11:25/11:42), and neither
+-- side had applied. Under the rule the Gochara stream proposed and this stream accepts —
+-- an applied migration keeps its number, otherwise first claim holds — they keep 1086.
+-- Safe to renumber precisely because this file is UNAPPLIED; a migration is never
+-- renumbered after it has been applied.
 -- (synergy audit #6 and #10; additive only)
 --
 -- #6 said: `convergence_id` is a BIGSERIAL reissued on every rebuild, so nothing

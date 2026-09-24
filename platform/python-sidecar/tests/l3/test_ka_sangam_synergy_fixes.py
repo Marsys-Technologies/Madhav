@@ -252,7 +252,7 @@ class TestComparableWithRelation:
 
     def test_column_and_check_constraint_use_the_four_layer_values(self):
         mig = (Path(__file__).resolve().parents[3] / 'supabase' / 'migrations'
-               / '1087_kala_convergence_comparable_with.sql').read_text()
+               / '1090_kala_convergence_comparable_with.sql').read_text()
         for v in self.ENUM:
             assert f"'{v}'" in mig, f"enum value {v} missing from the CHECK constraint"
         assert 'comparability_class' in mig, \

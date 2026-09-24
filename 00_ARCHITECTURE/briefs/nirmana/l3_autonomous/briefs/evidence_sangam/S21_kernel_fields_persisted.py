@@ -58,8 +58,8 @@ vals = [v.strip() for v in _split_top_level(
     values_part[values_part.index('(') + 1:values_part.rindex(')')]) if v.strip()]
 
 _root = __file__.rsplit('/00_ARCHITECTURE/', 1)[0]
-mig = open(_root + '/platform/supabase/migrations/1085_kala_convergence_kernel_fields.sql').read()
-mig86 = open(_root + '/platform/supabase/migrations/1086_kala_convergence_r5_identity.sql').read()
+mig = open(_root + '/platform/supabase/migrations/1088_kala_convergence_kernel_fields.sql').read()
+mig86 = open(_root + '/platform/supabase/migrations/1089_kala_convergence_r5_identity.sql').read()
 
 sys.path.insert(0, _root + '/platform/python-sidecar')
 from services.ka_sangam.identity import (  # noqa: E402
@@ -88,7 +88,7 @@ _cov_none = _bsc(_h0, _h1, 5, 9, 4).empty_reason
 # CALL sites only: the def line matches a bare-name search, which made this
 # detector read 3 and fail correct code on its first run.
 _cov_in_notes = writer_src.count('notes=_notes_with_coverage(')
-_mig87 = open(_root + '/platform/supabase/migrations/1087_kala_convergence_comparable_with.sql').read()
+_mig87 = open(_root + '/platform/supabase/migrations/1090_kala_convergence_comparable_with.sql').read()
 _cw_derived = 'node_convention' in writer_src[writer_src.index('_comparable_with'):
                                               writer_src.index('_comparable_with') + 400]
 _cw_both = 'comparability_class' in cols and 'comparable_with' in cols

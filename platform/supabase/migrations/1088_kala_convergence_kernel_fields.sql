@@ -1,4 +1,11 @@
--- Migration 1085 — R-6 kernel fields reach the table (synergy audit #1)
+-- Migration 1088 — R-6 kernel fields reach the table (synergy audit #1)
+--
+-- RENUMBERED 2026-09-24 (was 1085). The L0 repair branch claimed 1085 first
+-- (verified first-commit times: theirs 08:54/11:21 IST, mine 11:25/11:42), and neither
+-- side had applied. Under the rule the Gochara stream proposed and this stream accepts —
+-- an applied migration keeps its number, otherwise first claim holds — they keep 1085.
+-- Safe to renumber precisely because this file is UNAPPLIED; a migration is never
+-- renumbered after it has been applied.
 --
 -- separate_kernel() has returned {activity, valence, applicability, availability}
 -- since Phase 2a, and comparability_class / kernel_version have been set on every

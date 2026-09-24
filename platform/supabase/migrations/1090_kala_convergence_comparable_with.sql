@@ -1,4 +1,11 @@
--- Migration 1087 — `comparable_with` relation vocabulary (synergy audit #2, #8 interim)
+-- Migration 1090 — `comparable_with` relation vocabulary (synergy audit #2, #8 interim)
+--
+-- RENUMBERED 2026-09-24 (was 1087). The L0 repair branch claimed 1087 first
+-- (verified first-commit times: theirs 08:54/11:21 IST, mine 11:25/11:42), and neither
+-- side had applied. Under the rule the Gochara stream proposed and this stream accepts —
+-- an applied migration keeps its number, otherwise first claim holds — they keep 1087.
+-- Safe to renumber precisely because this file is UNAPPLIED; a migration is never
+-- renumbered after it has been applied.
 --
 -- Adopts the layer's one comparability vocabulary, pinned at
 -- gochara_wp0_7/WP1_CONTRACTS.md §6 and read AT SOURCE from

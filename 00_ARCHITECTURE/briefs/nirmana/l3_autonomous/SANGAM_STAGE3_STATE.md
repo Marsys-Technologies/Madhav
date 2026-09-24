@@ -744,3 +744,42 @@ whether 1086 discharges B-4's receipt specifically. Both are reads for the next 
 **Verification for this addendum:** 28 synergy tests; suite **20/21 + 1 NOT_RUN** (S8 unchanged — the
 Swiss `.se1` files are still absent from this host); broader `tests/l3 -k 'not ka_kshetra'`
 **1051 passed, 7 skipped**, no failures.
+
+
+## Migration renumber — this stream yields 1085/1086/1087 (2026-09-24T12:46:27+05:30)
+
+The Gochara session corrected its own earlier relay and asked a direct question: **are ka_sangam's
+migrations applied?** Answer, and the reason it is unambiguous: **no.** Both database endpoints
+(127.0.0.1:5433 and :5434) refused for this entire session; nothing this campaign wrote has touched a
+database, which the session-close record already states.
+
+**Their times verified independently, not taken on trust** (`git log --diff-filter=A` per file):
+their `1085_nirmana_l0_bg_transit_rules_vedha_repair` 08:54 IST vs this stream's
+`1085_kala_convergence_kernel_fields` 11:25; their `1086_nirmana_l0_gochara_g10_…` 11:21 vs this
+stream's `1086_kala_convergence_r5_identity` 11:42. **Theirs first on both.**
+
+**Rule accepted as proposed** — an applied migration keeps its number; otherwise first claim holds —
+and applied in the direction that costs this stream, which is the only way a reciprocal rule means
+anything. **This stream renumbers: 1085 → 1088, 1086 → 1089, 1087 → 1090.** Each file carries the
+reason in its own header, including that renumbering is safe *precisely because* these are unapplied:
+a migration is never renumbered after it has been applied.
+
+**Urgent for Kṣetra, and this stream caused it.** The Gochara relay told Kṣetra that **1087** was the
+next free number. It was — until this stream took it for `comparable_with` at `293d4988d`, roughly
+twenty minutes before that message. Releasing it in this renumber is therefore not just courtesy: it
+restores the number Kṣetra was told to use. **After this change the claimed range is 1085–1086 (L0),
+1088–1090 (Saṅgam), and 1087 is free again.** Nobody should trust that figure either, including as
+written here — re-scan every `origin/*` head across **both** `platform/migrations/` and
+`platform/supabase/migrations/`, since the runner treats them as one sequence.
+
+**Standing note, unchanged:** the collision was never a *tracker* defect — the runner keys on filename,
+and 41 numbers already duplicate across the two directories on `main`. This renumber is hygiene and
+good-neighbourliness, not a bug fix.
+
+**Also corrected from their message:** `day_grade` is a read-alias for `date_grain` **until Saṅgam
+D-7's successor condition is met** — every dependent claim has an authorized successor — and explicitly
+**not** "for one generation". That matters here because D-7 is this stream's own ruling; the earlier
+phrasing would have let the alias lapse on a generation count rather than on evidence.
+
+**Verification after the renumber:** 28 synergy tests pass; S21 positive 0 / negative 1; every
+reference updated in the migrations, the test and the evidence script.
