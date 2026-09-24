@@ -1236,7 +1236,12 @@ def test_admission_refuses_a_candidate_whose_membership_disagrees_with_carried_b
 # ── The L0-repair successors themselves (PR #2727) ────────────────────────────
 
 REPAIR_DECISION = "NATIVE-2026-09-24-L0-REPAIR-REPIN"
-REPAIR_SOURCE = "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+# The approval identity and the pinned source commit are DIFFERENT commits, on purpose
+# (see L0_REPAIR_ANALYSIS_REPIN_DECISION_ADDENDUM_v1_0.md): the inventory at the approved
+# state was stale, so the source is the commit that regenerates it, with writer sources
+# byte-identical to the approved state.
+REPAIR_APPROVED_STATE = "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+REPAIR_SOURCE = "7d40f8c706406ee8187eadb5c3930553800a1a4a"
 REPAIR_INTENTIONAL = {
     "bg_transit_rules", "bg_transit_engine", "bg_vedha_malefic_scale",
     "bg_phaladeepika_latta", "bg_ephemeris",
@@ -1276,9 +1281,11 @@ def test_repair_successor_is_append_only_and_names_its_exact_predecessor(layer: 
 def test_repair_successor_records_the_approved_decision_and_source(layer: str) -> None:
     admission = LIVE_PINS["layers"][layer]["admission"]
     assert admission["authority_decision"] == REPAIR_DECISION
-    # what was approved and what is pinned are the same commit
-    assert admission["authority_commit"] == REPAIR_SOURCE
+    # the approval is anchored to the approved state; the pinned source is the commit
+    # that carries a true inventory for it
+    assert admission["authority_commit"] == REPAIR_APPROVED_STATE
     assert admission["source_commit"] == REPAIR_SOURCE
+    assert REPAIR_APPROVED_STATE != REPAIR_SOURCE
     assert LIVE_PINS["layers"][layer]["convergence_commit"] == REPAIR_SOURCE
     assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS[layer]
     assert "source_acceptance" not in admission
@@ -1325,9 +1332,9 @@ def test_repair_only_l0_l2_l3_are_authorised_for_the_decision() -> None:
 
 def test_repair_authority_chain_binds_the_recorded_decision_document() -> None:
     binding = pins_module.AUTHORITY_BINDINGS[REPAIR_DECISION]
-    assert binding["authority_commit"] == REPAIR_SOURCE
-    assert binding["authority_identity_binding"] == f"`{REPAIR_SOURCE}`"
+    assert binding["authority_commit"] == REPAIR_APPROVED_STATE
+    assert binding["authority_identity_binding"] == f"`{REPAIR_APPROVED_STATE}`"
     assert binding["decision_binding"] == "status: L0_REPAIR_REPIN_APPROVED"
-    pins_module.validate_authority_binding(REPAIR_DECISION, REPAIR_SOURCE)
+    pins_module.validate_authority_binding(REPAIR_DECISION, REPAIR_APPROVED_STATE)
     with pytest.raises(SystemExit, match="is not bound to"):
         pins_module.validate_authority_binding(REPAIR_DECISION, "0" * 40)

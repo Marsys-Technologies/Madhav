@@ -124,11 +124,15 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
 
   it('admits the L0-repair successors for exactly L0, L2 and L3, append-only', () => {
     const decision = 'NATIVE-2026-09-24-L0-REPAIR-REPIN'
-    const source = '101171f76517fa3c6b0b44fa9d1cc46358612eee'
+    // approval identity vs pinned source are different commits on purpose: the inventory at
+    // the approved state was stale, so the source is the commit that regenerates it
+    // (L0_REPAIR_ANALYSIS_REPIN_DECISION_ADDENDUM_v1_0.md)
+    const approved = '101171f76517fa3c6b0b44fa9d1cc46358612eee'
+    const source = '7d40f8c706406ee8187eadb5c3930553800a1a4a'
     const expected = {
-      L0: { generation: 'l0:101171f76517:15cf0d0da5be', supersedes: 'l0:d2369b888e76:3dda261170ee', changed: 9, history: 2 },
-      L2: { generation: 'l2:101171f76517:2efc6f529849', supersedes: 'l2:149f8479ac4e:51d3164426ac', changed: 23, history: 3 },
-      L3: { generation: 'l3:101171f76517:dfcf30d8b3d2', supersedes: 'l3:87cc8c9baf89:002a118b218e', changed: 6, history: 4 },
+      L0: { generation: 'l0:7d40f8c70640:64b8859fe692', supersedes: 'l0:d2369b888e76:3dda261170ee', changed: 9, history: 2 },
+      L2: { generation: 'l2:7d40f8c70640:dbbbb24c09cb', supersedes: 'l2:149f8479ac4e:51d3164426ac', changed: 23, history: 3 },
+      L3: { generation: 'l3:7d40f8c70640:dfcf30d8b3d2', supersedes: 'l3:87cc8c9baf89:002a118b218e', changed: 6, history: 4 },
     } as const
     for (const layer of ['L0', 'L2', 'L3'] as const) {
       const pin = layerPinRecord.layers[layer]
@@ -137,7 +141,7 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       expect(pin.supersedes_generation_id).toBe(want.supersedes)
       expect(pin.convergence_commit).toBe(source)
       expect(pin.admission?.authority_decision).toBe(decision)
-      expect(pin.admission?.authority_commit).toBe(source)
+      expect(pin.admission?.authority_commit).toBe(approved)
       expect(pin.admission?.source_commit).toBe(source)
       expect(pin.admission?.changed_assets).toHaveLength(want.changed)
       expect(Object.keys(pin.admission?.delta_classifications ?? {})).toEqual(pin.admission?.changed_assets)

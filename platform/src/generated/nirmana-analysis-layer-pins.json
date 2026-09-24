@@ -90,7 +90,7 @@
       },
       {
         "generation_id": "l0:d2369b888e76:3dda261170ee",
-        "historical_snapshot_commit": "954d6c119a0d95725ea9c2ead1a9a4ff5cf8a7a0",
+        "historical_snapshot_commit": "0dcf28d6d8617a270660efd7799176e73e07a859",
         "pin": {
           "admission": {
             "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
@@ -138,7 +138,7 @@
           "supersedes_generation_id": "l0:49bb5c98b864:5125cccb6871",
           "writer_inventory_sha256": "3dda261170ee0dc879071d43d8e266e5cbf5c715775f94d2a27edaeee1c9e146"
         },
-        "superseded_by_generation_id": "l0:101171f76517:15cf0d0da5be",
+        "superseded_by_generation_id": "l0:7d40f8c70640:64b8859fe692",
         "writer_digests": {
           "bg_class_lifetime_counts": "3f19ed97443e3adb4c0b6edfc4c06b664b3cdfa97cd678a2c103a5a5e8ad89dc",
           "bg_class_priors": "902a427cce3c7f1a34476e0868a9e071b1377076942f957b5bfb6c2a4975b9ea",
@@ -454,7 +454,7 @@
       },
       {
         "generation_id": "l2:149f8479ac4e:51d3164426ac",
-        "historical_snapshot_commit": "954d6c119a0d95725ea9c2ead1a9a4ff5cf8a7a0",
+        "historical_snapshot_commit": "0dcf28d6d8617a270660efd7799176e73e07a859",
         "pin": {
           "admission": {
             "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
@@ -612,7 +612,7 @@
           "supersedes_generation_id": "l2:d2369b888e76:ad143c22bd8d",
           "writer_inventory_sha256": "51d3164426ac4fcefd8a5e9444b38b0e6e2ceddf382505250c5288129f45a9d2"
         },
-        "superseded_by_generation_id": "l2:101171f76517:2efc6f529849",
+        "superseded_by_generation_id": "l2:7d40f8c70640:dbbbb24c09cb",
         "writer_digests": {
           "bo_anveshana": "ff3d8e83881c002ad74f6dd319cac1af6021ec27ddbad84b92eca32be653948c",
           "bo_arudha": "625655bbdac7ff6b4a27909477be7a6fa6b5a0572b60f36cf097118b42b5a9c1",
@@ -820,7 +820,7 @@
       },
       {
         "generation_id": "l3:87cc8c9baf89:002a118b218e",
-        "historical_snapshot_commit": "954d6c119a0d95725ea9c2ead1a9a4ff5cf8a7a0",
+        "historical_snapshot_commit": "0dcf28d6d8617a270660efd7799176e73e07a859",
         "pin": {
           "admission": {
             "authority_commit": "16590cc49f720e4200a8d9b6cad3f52b68e21792",
@@ -886,7 +886,7 @@
           "supersedes_generation_id": "l3:64facb9763d1:f86cf07a0a75",
           "writer_inventory_sha256": "002a118b218e97c0f053d489933763a70eba911b0ecfcaf13640445157a0b81d"
         },
-        "superseded_by_generation_id": "l3:101171f76517:dfcf30d8b3d2",
+        "superseded_by_generation_id": "l3:7d40f8c70640:dfcf30d8b3d2",
         "writer_digests": {
           "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
           "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
@@ -977,11 +977,11 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+        "source_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a"
       },
       "asset_prefix": "bg_",
-      "convergence_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee",
-      "generation_id": "l0:101171f76517:15cf0d0da5be",
+      "convergence_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a",
+      "generation_id": "l0:7d40f8c70640:64b8859fe692",
       "non_writer_assets": [
         "bg_ephemeris_engine",
         "bg_gochara_citation_resolution",
@@ -990,7 +990,7 @@
       ],
       "receipt_count": 40,
       "supersedes_generation_id": "l0:d2369b888e76:3dda261170ee",
-      "writer_inventory_sha256": "15cf0d0da5bed0efbfbe2b1e4da46d3c2fad9c19fdd55e9051d47699fc9d9178"
+      "writer_inventory_sha256": "64b8859fe6925c178719f6da8b130de73cd29ffe03dcf4bdc19bd0981a0ffff1"
     },
     "L1": {
       "admission": {
@@ -1219,15 +1219,15 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+        "source_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a"
       },
       "asset_prefix": "bo_",
-      "convergence_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee",
-      "generation_id": "l2:101171f76517:2efc6f529849",
+      "convergence_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a",
+      "generation_id": "l2:7d40f8c70640:dbbbb24c09cb",
       "non_writer_assets": [],
       "receipt_count": 22,
       "supersedes_generation_id": "l2:149f8479ac4e:51d3164426ac",
-      "writer_inventory_sha256": "2efc6f5298492f1f53ecc5cec512c1b14a06b7a4b30b42d0c3e00f3f6ecf46c4"
+      "writer_inventory_sha256": "dbbbb24c09cbe2e0e41860d1f965a646eb2fc9251ff01dddba6ffbf9882424cb"
     },
     "L3": {
       "admission": {
@@ -1259,11 +1259,11 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee"
+        "source_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a"
       },
       "asset_prefix": "ka_",
-      "convergence_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee",
-      "generation_id": "l3:101171f76517:dfcf30d8b3d2",
+      "convergence_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a",
+      "generation_id": "l3:7d40f8c70640:dfcf30d8b3d2",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
