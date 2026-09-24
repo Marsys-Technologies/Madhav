@@ -431,3 +431,16 @@ is stale everywhere.
   knowingly (any legitimate `'3.0'`/`'v1'` write needs the release-authority override; a deliberate narrow reversal of the 2026-08-23 instruction);
   and/or (b) set `is_active: false` on the century entry in the seed, which is the seed owner's file. Recommendation: (a). It is the only one
   that survives a re-seed without anyone remembering to.
+
+**E-014 addendum 2 — has a re-seed already re-armed the writer? (strategic session, read-only production; ATTRIBUTED, not run by the L3 session)**
+
+- **No re-seed has touched this registry since 2026-09-23 21:07.** Evidence: `health_probe` is in the seed's `ON CONFLICT` set list, and the seed file does not contain
+  `expected_mean_node_rahu_longitude_deg`; live carries it (`49.033044`, tolerance `10`), added by migration 1075 at 21:07 on 09-23, and a re-seed would have wiped it.
+  Corroborated by `asset_kind`, also seed-overwritten, being omitted from the `ka_avadhi` and `ka_taranga` seed entries yet present live. **There is no registry history
+  table, so nothing says whether a re-seed fired before 09-23 21:07.** Re-arming is therefore a real mechanism that has not fired in the observable window.
+- **A rejected test, recorded so it is not reused:** live `target_floor` 914 against the seed's 0 looks like proof of a re-seed and is not, because `target_floor` is not
+  in the `ON CONFLICT` set list. It was caught before being sent as evidence.
+- **Third option put to the native (seed owner's file; neither session edits it unilaterally):** `is_active: false` on the century entry in
+  `asset_registry_seed.ts`. It survives both a re-seed and a build, and refuses no legitimate writes, unlike the trigger. Options are now: trigger half of step 3 (durable, refuses
+  `'3.0'`/`'v1'` writes without the override), the seed edit (durable, refuses nothing, but is the seed owner's file), or both. The L3 recommendation of the trigger stands
+  for the reason that it protects the rows even if the writer is re-activated by some path other than the seed; the seed edit protects only against the seed.
