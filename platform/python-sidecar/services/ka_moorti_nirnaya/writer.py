@@ -39,6 +39,7 @@ Scope note (single ayanamsha, 8-of-9 grahas): see logic.py module docstring.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, timedelta
 from typing import Any
@@ -53,6 +54,7 @@ from services.ka_moorti_nirnaya.logic import (
     detect_sign_runs,
     moorti_corpus_verifiable,
     moorti_source_qualification,
+    moorti_upstream_fingerprint,
     nakshatra_offset_from_janma,
 )
 
@@ -107,14 +109,16 @@ INSERT INTO kala_moorti_nirnaya (
     moorti_computed, moon_nakshatra_idx_at_ingress, moon_nakshatra_name_at_ingress,
     janma_nakshatra_idx, janma_nakshatra_fact_id, nakshatra_offset,
     moorti_name, quality_tier, phala_brief, moorti_classical_citation,
-    source_qualification, precision_regime, corpus_verifiable, formula_version
+    source_qualification, precision_regime, corpus_verifiable, formula_version,
+    upstream_fingerprint
 ) VALUES (
     %(chart_id)s, %(ayanamsha_id)s, %(graha)s, %(target_sign_idx)s, %(target_sign_name)s,
     %(window_start)s, %(window_end)s, %(start_truncated)s, %(end_truncated)s,
     %(moorti_computed)s, %(moon_nakshatra_idx_at_ingress)s, %(moon_nakshatra_name_at_ingress)s,
     %(janma_nakshatra_idx)s, %(janma_nakshatra_fact_id)s, %(nakshatra_offset)s,
     %(moorti_name)s, %(quality_tier)s, %(phala_brief)s, %(moorti_classical_citation)s,
-    %(source_qualification)s, %(precision_regime)s, %(corpus_verifiable)s, %(formula_version)s
+    %(source_qualification)s, %(precision_regime)s, %(corpus_verifiable)s, %(formula_version)s,
+    %(upstream_fingerprint)s::jsonb
 )
 ON CONFLICT (chart_id, ayanamsha_id, graha, window_start) DO NOTHING
 """
@@ -277,6 +281,9 @@ class KaMoortiNirnayaWriter(WriterBase):
         janma_nak_idx, janma_fact_id = janma
 
         moorti_table = _fetch_moorti_table(conn)
+        # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
+        # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
+        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(moorti_table))
         if not moorti_table:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -360,6 +367,7 @@ class KaMoortiNirnayaWriter(WriterBase):
                     "quality_tier": None,
                     "phala_brief": None,
                     "moorti_classical_citation": None,
+                    "upstream_fingerprint": upstream_fp_json,
                     # WP9 overlay stamps (migration 1082). Verse-cited + corpus-
                     # verifiable exactly when the moorti restates bg_transit_moorti
                     # (moorti_computed); unsourced otherwise. precision_regime is

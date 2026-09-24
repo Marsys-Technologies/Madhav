@@ -70,6 +70,7 @@ EXPECTED_COLUMNS = [
     ("kala_vedha_gochara", "precision_regime"),
     ("kala_moorti_nirnaya", "source_qualification"),
     ("kala_moorti_nirnaya", "precision_regime"),
+    ("kala_moorti_nirnaya", "upstream_fingerprint"),
     ("brahma_prospective_ledger", "contact_id"),
     ("mimamsa_predictions", "contact_id"),
 ]

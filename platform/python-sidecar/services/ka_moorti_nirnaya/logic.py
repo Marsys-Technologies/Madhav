@@ -164,4 +164,35 @@ __all__ = [
     "detect_sign_runs",
     "run_containing_date",
     "nakshatra_offset_from_janma",
+    "moorti_upstream_fingerprint",
 ]
+
+
+# ── §12.9 upstream fingerprint ───────────────────────────────────────────────
+# A kala_moorti_nirnaya row restates a `bg_transit_moorti` row verbatim (name, tier, phala,
+# citation). Nothing on the row said WHICH version of that table it was built from, so an
+# upstream change left built rows silently stale (CLAUDE.md §N.8). This digests exactly the
+# rows a build consumed — the same in-memory objects the writer holds — so comparing it to a
+# fresh read answers "was this built from what the table says now?".
+# `ephemeris_daily` is deliberately NOT fingerprinted here: it is a bulk substrate whose
+# input identity is its own substrate_version, recorded in the publication's input
+# generation vector (plan §5.5), not a citation-bearing reference table.
+from services.gochara_kernel.fingerprint import FINGERPRINT_ALGORITHM, canonical_digest
+
+
+def moorti_upstream_fingerprint(moorti_table: dict) -> dict:
+    """Digest of the `bg_transit_moorti` rows one build consumed.
+
+    `moorti_table` is `{nakshatra_offset: row}` — what the writer's `_fetch_moorti_table`
+    returns. Order-independent; sensitive to every consumed field. JSON-safe, so it
+    round-trips through a jsonb column.
+    """
+    rows = sorted(
+        ([int(k), {f: v for f, v in sorted(dict(row).items())}] for k, row in moorti_table.items()),
+        key=lambda x: x[0],
+    )
+    return {
+        "algorithm": FINGERPRINT_ALGORITHM,
+        "bg_transit_moorti": canonical_digest(rows),
+        "n_moorti_rows": len(rows),
+    }

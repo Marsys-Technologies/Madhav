@@ -36,8 +36,8 @@ Usage:
 
 Exit codes: 0 built; 3 cannot proceed; 4 production refusal; 6 publish refused
 (published generation — a rebuild after publication is a NEW label, plan §4.7);
-7 refused: the chart's house_vedha rows are not FRESH against bg_transit_rules /
-bg_vedha_malefic_scale (§12.9 — a candidate must not be built on rows carrying
+7 refused: the chart's house_vedha or mūrti rows are not FRESH against bg_transit_rules /
+bg_vedha_malefic_scale / bg_transit_moorti (§12.9 — a candidate must not be built on rows carrying
 refuted citations). Skipped, and recorded as NOT_RUN, under --rehearse-synthetic.
 """
 from __future__ import annotations
@@ -180,14 +180,17 @@ def main() -> int:
         if str(SIDECAR) not in sys.path:  # this file runs as a standalone script
             sys.path.insert(0, str(SIDECAR))
         from services.ka_vedha_gochara.freshness import (
-            check_house_vedha_freshness, gate_allows_build)
-        freshness = check_house_vedha_freshness(conn, args.chart_id)
-        conn.rollback()  # the check only reads; leave no open transaction
-        vector["vedha_upstream_freshness"] = freshness.state
-        vector["vedha_upstream_fingerprint"] = freshness.current
-        if not gate_allows_build(freshness):
-            print(f"REFUSED (§12.9): {freshness.summary()}. A candidate must not be built "
-                  "on stale vedha rows — rebuild ka_vedha_gochara first.", file=sys.stderr)
+            check_overlay_freshness, gate_allows_overlays)
+        reports = check_overlay_freshness(conn, args.chart_id)
+        conn.rollback()  # the checks only read; leave no open transaction
+        vector["vedha_upstream_freshness"] = reports["house_vedha"].state
+        vector["moorti_upstream_freshness"] = reports["moorti"].state
+        vector["vedha_upstream_fingerprint"] = reports["house_vedha"].current
+        vector["moorti_upstream_fingerprint"] = reports["moorti"].current
+        if not gate_allows_overlays(reports):
+            detail = "; ".join(f"{name}: {r.summary()}" for name, r in reports.items())
+            print(f"REFUSED (§12.9): {detail}. A candidate must not be built on stale overlay rows "
+                  "— rebuild ka_vedha_gochara and ka_moorti_nirnaya first.", file=sys.stderr)
             conn.close()
             return 7
     build_id = f"wp10-step6-{int(time.time())}"

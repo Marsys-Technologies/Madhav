@@ -252,15 +252,7 @@ def vipareeta_cancellation(
 # rows a build ACTUALLY CONSUMED — the same objects the writer holds in memory — so
 # comparing it to a fresh read of the tables answers "was this row built from what
 # the tables say now?" and can only be wrong if the digest is.
-FINGERPRINT_ALGORITHM = "sha256/canonical-json/v1"
-
-
-def _digest(obj) -> str:
-    import hashlib
-    import json
-
-    blob = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+from services.gochara_kernel.fingerprint import FINGERPRINT_ALGORITHM, canonical_digest as _digest
 
 
 def upstream_fingerprint(vedha_rules: dict, malefic_scale: dict) -> dict:

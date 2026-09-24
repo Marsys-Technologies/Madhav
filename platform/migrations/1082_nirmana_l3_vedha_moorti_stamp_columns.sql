@@ -55,7 +55,8 @@
 --   ALTER TABLE kala_moorti_nirnaya
 --     DROP COLUMN IF EXISTS source_qualification,
 --     DROP COLUMN IF EXISTS precision_regime,
---     DROP COLUMN IF EXISTS corpus_verifiable;
+--     DROP COLUMN IF EXISTS corpus_verifiable,
+--     DROP COLUMN IF EXISTS upstream_fingerprint;
 --   ALTER TABLE kala_vedha_gochara
 --     DROP COLUMN IF EXISTS source_qualification,
 --     DROP COLUMN IF EXISTS precision_regime,
@@ -88,7 +89,11 @@ ALTER TABLE kala_moorti_nirnaya
     CHECK (source_qualification IN ('verse_cited', 'algorithmic_approximation', 'unsourced')),
   ADD COLUMN IF NOT EXISTS precision_regime TEXT
     CHECK (precision_regime IN ('date_grain', 'instant_grain')),
-  ADD COLUMN IF NOT EXISTS corpus_verifiable BOOLEAN;
+  ADD COLUMN IF NOT EXISTS corpus_verifiable BOOLEAN,
+  ADD COLUMN IF NOT EXISTS upstream_fingerprint JSONB;
+
+COMMENT ON COLUMN kala_moorti_nirnaya.upstream_fingerprint IS
+  '§12.9: digest of the bg_transit_moorti rows this build consumed (services.ka_moorti_nirnaya.logic.moorti_upstream_fingerprint). NULL means the row was built before the fingerprint existed, so its provenance is unknown and it reads STALE, never fresh.';
 
 COMMENT ON COLUMN kala_moorti_nirnaya.source_qualification IS
   'WP9 overlay stamp: verse_cited when moorti_computed (bg_transit_moorti, '

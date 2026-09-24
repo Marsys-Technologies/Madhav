@@ -27,6 +27,7 @@ from types import SimpleNamespace
 import psycopg
 import pytest
 
+from services.ka_moorti_nirnaya.logic import moorti_upstream_fingerprint
 from services.ka_vedha_gochara.logic import upstream_fingerprint
 
 from .test_wp9_stamp_columns import (
@@ -223,3 +224,108 @@ def test_step06_refuses_to_build_on_stale_vedha_rows(db, tmp_path, monkeypatch, 
     rc = step06.main()
     assert rc == 7, f"expected refusal (7), got {rc}"
     assert "stale" in capsys.readouterr().err.lower()
+
+
+# ══ mūrti: the same defect class on the second writer (kala_moorti_nirnaya) ═══
+MOORTI = {0: {"moorti_name": "Suvarna", "quality_tier": "good", "phala_brief": "gain",
+              "classical_citation": "Phaladipika Ch.26"}}
+
+
+def test_moorti_fingerprint_is_deterministic_and_order_independent():
+    a = moorti_upstream_fingerprint({0: MOORTI[0], 1: dict(MOORTI[0], moorti_name="Rajata")})
+    b = moorti_upstream_fingerprint({1: dict(MOORTI[0], moorti_name="Rajata"), 0: MOORTI[0]})
+    assert a == b and a["n_moorti_rows"] == 2
+
+
+@pytest.mark.parametrize("field,new", [
+    ("classical_citation", "BPHS Ch.28"), ("phala_brief", "loss"),
+    ("quality_tier", "bad"), ("moorti_name", "Loha"),
+])
+def test_moorti_fingerprint_changes_when_any_consumed_field_changes(field, new):
+    base = moorti_upstream_fingerprint(MOORTI)
+    assert base["bg_transit_moorti"] != moorti_upstream_fingerprint({0: dict(MOORTI[0], **{field: new})})["bg_transit_moorti"]
+
+
+def _build_moorti():
+    import services.ka_moorti_nirnaya.writer as mw
+
+    conn = psycopg.connect(WP6_DSN)
+    ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
+    orig = mw._compute_ayanamsha_offset
+    mw._compute_ayanamsha_offset = lambda _d: 0.0
+    try:
+        mw.KaMoortiNirnayaWriter().run(ctx)
+        conn.commit()
+    finally:
+        mw._compute_ayanamsha_offset = orig
+        conn.close()
+
+
+def _check_moorti():
+    from services.ka_vedha_gochara.freshness import check_moorti_freshness
+
+    with psycopg.connect(WP6_DSN, autocommit=True) as c:
+        return check_moorti_freshness(c, CHART_ID)
+
+
+def test_moorti_rebuild_stamps_fingerprint_and_reads_fresh(db):
+    _build_moorti()
+    with psycopg.connect(WP6_DSN, autocommit=True) as c:
+        n, n_fp = c.execute("SELECT count(*), count(upstream_fingerprint) FROM kala_moorti_nirnaya").fetchone()
+    assert n > 0, "vacuous: the fixture produced no moorti rows"
+    assert n_fp == n, f"{n - n_fp} moorti rows carry no upstream fingerprint"
+    r = _check_moorti()
+    assert r.state == "fresh" and (r.total, r.missing, r.mismatched) == (n, 0, 0), r
+
+
+def test_moorti_upstream_recitation_makes_rows_stale(db):
+    _build_moorti()
+    assert _check_moorti().state == "fresh"
+    _exec("UPDATE bg_transit_moorti SET classical_citation = 'Re-cited upstream' "
+          "WHERE nakshatra_offset = (SELECT min(nakshatra_offset) FROM bg_transit_moorti)")
+    r = _check_moorti()
+    assert r.state == "stale" and r.mismatched == r.total > 0 and r.missing == 0, r
+
+
+def test_moorti_rows_with_no_fingerprint_read_stale(db):
+    """The 143-row situation: built before fingerprints existed."""
+    _build_moorti()
+    _exec("UPDATE kala_moorti_nirnaya SET upstream_fingerprint = NULL")
+    r = _check_moorti()
+    assert r.state == "stale" and r.missing == r.total > 0 and r.mismatched == 0, r
+
+
+def test_moorti_rebuild_after_change_restores_fresh(db):
+    _build_moorti()
+    _exec("UPDATE bg_transit_moorti SET phala_brief = 'changed upstream'")
+    assert _check_moorti().state == "stale"
+    _build_moorti()
+    assert _check_moorti().state == "fresh"
+
+
+def test_moorti_no_rows_and_absent_table_are_not_fresh(db):
+    from services.ka_vedha_gochara.freshness import check_moorti_freshness
+
+    _exec("DELETE FROM kala_moorti_nirnaya")
+    assert _check_moorti().state == "no_rows"
+    with psycopg.connect(WP6_DSN, autocommit=True) as c:
+        c.execute("DROP TABLE IF EXISTS kala_moorti_nirnaya")
+        assert check_moorti_freshness(c, CHART_ID).state == "table_absent"
+
+
+def test_step06_refuses_when_vedha_is_fresh_but_moorti_is_stale(db, tmp_path, monkeypatch, capsys):
+    """The gate covers BOTH overlay writers: one fresh writer must not mask a stale one."""
+    _build()
+    _build_moorti()
+    assert _check().state == "fresh" and _check_moorti().state == "fresh"
+    _exec("UPDATE kala_moorti_nirnaya SET upstream_fingerprint = NULL")
+    (tmp_path / "e.json").write_text("[]")
+    (tmp_path / "c.json").write_text("[]")
+    step06 = _load_step06()
+    monkeypatch.setattr(sys, "argv", [
+        "step06", "--dsn", WP6_DSN, "--chart-id", CHART_ID,
+        "--episodes-json", str(tmp_path / "e.json"), "--coverage-json", str(tmp_path / "c.json"),
+    ])
+    assert step06.main() == 7
+    err = capsys.readouterr().err.lower()
+    assert "moorti" in err and "stale" in err

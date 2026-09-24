@@ -1,4 +1,4 @@
-"""§12.9 — is a chart's house_vedha output built from what the reference tables say NOW?
+"""§12.9 — are a chart's overlay rows (house_vedha AND mūrti) built from what the reference tables say NOW?
 
 The detector the L0 re-citation exposed the absence of (CLAUDE.md §N.8). A house_vedha
 row carries `detail.upstream_fingerprint`, the digest of the `bg_transit_rules` and
@@ -22,6 +22,8 @@ from typing import Any, Optional
 
 import psycopg.rows
 
+from services.ka_moorti_nirnaya.logic import moorti_upstream_fingerprint
+from services.ka_moorti_nirnaya.writer import _fetch_moorti_table
 from services.ka_vedha_gochara.logic import upstream_fingerprint
 from services.ka_vedha_gochara.writer import _fetch_malefic_scale, _fetch_vedha_rules
 
@@ -69,3 +71,53 @@ def check_house_vedha_freshness(conn: Any, chart_id: str) -> FreshnessReport:
 def gate_allows_build(report: FreshnessReport) -> bool:
     """Only a FRESH report admits a candidate build. Every other state blocks."""
     return report.state == FRESH
+
+
+# ── mūrti: the same defect class on the second overlay writer ────────────────
+def current_moorti_fingerprint(conn: Any) -> dict:
+    """The fingerprint a mūrti rebuild would stamp right now (same fetch path as the writer)."""
+    return moorti_upstream_fingerprint(_fetch_moorti_table(conn))
+
+
+def check_moorti_freshness(conn: Any, chart_id: str) -> FreshnessReport:
+    """Same contract as check_house_vedha_freshness, for kala_moorti_nirnaya.
+
+    A NULL fingerprint is a row built before fingerprints existed: unknown provenance, STALE.
+    Counts only; returns no row content.
+    """
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute("SELECT to_regclass('kala_moorti_nirnaya') AS t")
+        if cur.fetchone()["t"] is None:
+            return FreshnessReport(TABLE_ABSENT, 0, 0, 0, None)
+        cur.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'kala_moorti_nirnaya' AND column_name = 'upstream_fingerprint'"
+        )
+        has_col = cur.fetchone() is not None
+        if not has_col:
+            # Migration 1082 not applied: every existing row is unfingerprinted by definition.
+            cur.execute("SELECT count(*) AS n FROM kala_moorti_nirnaya WHERE chart_id = %s", (chart_id,))
+            n = cur.fetchone()["n"]
+            return FreshnessReport(STALE if n else NO_ROWS, n, n, 0, None)
+        cur.execute("SELECT upstream_fingerprint AS fp FROM kala_moorti_nirnaya WHERE chart_id = %s", (chart_id,))
+        stored = [r["fp"] for r in cur.fetchall()]
+    if not stored:
+        return FreshnessReport(NO_ROWS, 0, 0, 0, None)
+    current = current_moorti_fingerprint(conn)
+    missing = sum(1 for fp in stored if fp is None)
+    mismatched = sum(1 for fp in stored if fp is not None and fp != current)
+    state = FRESH if missing == 0 and mismatched == 0 else STALE
+    return FreshnessReport(state, len(stored), missing, mismatched, current)
+
+
+def check_overlay_freshness(conn: Any, chart_id: str) -> dict:
+    """Both overlay writers, keyed by name. One fresh writer must not mask a stale one."""
+    return {
+        "house_vedha": check_house_vedha_freshness(conn, chart_id),
+        "moorti": check_moorti_freshness(conn, chart_id),
+    }
+
+
+def gate_allows_overlays(reports: dict) -> bool:
+    """Admit a candidate build only if EVERY overlay writer reads fresh."""
+    return all(gate_allows_build(r) for r in reports.values())
