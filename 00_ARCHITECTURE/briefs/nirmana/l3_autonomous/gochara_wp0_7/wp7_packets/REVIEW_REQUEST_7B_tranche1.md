@@ -70,3 +70,29 @@ filter and EXPLICIT_CLEAR_OPS; the failed gate stopped the tranche; evidence was
 before each next step. Nothing marked REVIEWED. The cloud-sql-proxy on 5433 was left
 running for the native (`cloud-sql-proxy madhav-astrology:asia-south1:amjis-postgres
 --port=5433`).
+
+---
+
+## v2.1 addendum (2026-09-24, second session) — tranche 1 COMPLETE, GREEN
+
+The native ruled on every open point (verbatim, 2026-09-24T11:39:01Z:
+**"Approved on point number two. Go ahead to everything."** — recorded in
+ESCALATIONS.md). Outcomes under that ruling:
+
+- **Step 5 RESUMED → GREEN** (`3fcf6a586`): grant re-established, corrected 1091
+  applied as `amjis_app` (clean: snapshot ×2, 3 UPDATEs, DO probe, COMMIT), all
+  gates pass — conjunct (j) holds, new count executes (0 for both authority
+  charts, EXPECTED pre-step-6), rehearsal Clear-proof 16/16 on a fresh
+  disposable DB, production integrity contract evaluates `integrity_passed=t`.
+  Grant revoked and verified (`=f`). **E-017 RESOLVED.**
+- **E-016 RESOLVED** (`5ee6280bd`): full committed APPLY_SET applied —
+  1082/1083/1084/1087 now live; 1084 as committed (`ka_kshetra → ka_gochara`
+  edge verified absent); information_schema diff empty; generations
+  v1=38287/3.0=1830 and both '3.0' authorities untouched.
+
+Reviewer items still open from v2.0: (3) conjunct-(j)/1072 merge-time interplay
+(1072 remains unapplied — the note now describes a live production state);
+(4) grant posture (revoked; standing-grant question still the native's);
+(5) the secret-echo disclosure; plus the step-5 harness fix
+(`test_wp10_cutover.py:137` `clear_tables TEXT` → `text[]`).
+Nothing marked REVIEWED.
