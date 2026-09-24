@@ -50,6 +50,8 @@ from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.ka_moorti_nirnaya.logic import (
     MOORTI_GRAHAS,
     detect_sign_runs,
+    moorti_corpus_verifiable,
+    moorti_source_qualification,
     nakshatra_offset_from_janma,
 )
 
@@ -92,13 +94,15 @@ INSERT INTO kala_moorti_nirnaya (
     window_start, window_end, start_truncated, end_truncated,
     moorti_computed, moon_nakshatra_idx_at_ingress, moon_nakshatra_name_at_ingress,
     janma_nakshatra_idx, janma_nakshatra_fact_id, nakshatra_offset,
-    moorti_name, quality_tier, phala_brief, moorti_classical_citation, formula_version
+    moorti_name, quality_tier, phala_brief, moorti_classical_citation,
+    source_qualification, precision_regime, corpus_verifiable, formula_version
 ) VALUES (
     %(chart_id)s, %(ayanamsha_id)s, %(graha)s, %(target_sign_idx)s, %(target_sign_name)s,
     %(window_start)s, %(window_end)s, %(start_truncated)s, %(end_truncated)s,
     %(moorti_computed)s, %(moon_nakshatra_idx_at_ingress)s, %(moon_nakshatra_name_at_ingress)s,
     %(janma_nakshatra_idx)s, %(janma_nakshatra_fact_id)s, %(nakshatra_offset)s,
-    %(moorti_name)s, %(quality_tier)s, %(phala_brief)s, %(moorti_classical_citation)s, %(formula_version)s
+    %(moorti_name)s, %(quality_tier)s, %(phala_brief)s, %(moorti_classical_citation)s,
+    %(source_qualification)s, %(precision_regime)s, %(corpus_verifiable)s, %(formula_version)s
 )
 ON CONFLICT (chart_id, ayanamsha_id, graha, window_start) DO NOTHING
 """
@@ -261,6 +265,13 @@ class KaMoortiNirnayaWriter(WriterBase):
                     "quality_tier": None,
                     "phala_brief": None,
                     "moorti_classical_citation": None,
+                    # WP9 overlay stamps (migration 1082). Verse-cited + corpus-
+                    # verifiable exactly when the moorti restates bg_transit_moorti
+                    # (moorti_computed); unsourced otherwise. Date-grain until the
+                    # kernel-graded instant path (WP9 5.3) lands.
+                    "source_qualification": moorti_source_qualification(moorti_computed),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": moorti_corpus_verifiable(moorti_computed),
                     "formula_version": FORMULA_VERSION,
                 }
 
@@ -294,6 +305,10 @@ class KaMoortiNirnayaWriter(WriterBase):
                         # ephemeris_daily) — honest gap, not guessed.
                         row["moorti_computed"] = False
 
+                # Stamps follow the FINAL moorti_computed (the defensive paths
+                # above can flip it after row creation).
+                row["source_qualification"] = moorti_source_qualification(row["moorti_computed"])
+                row["corpus_verifiable"] = moorti_corpus_verifiable(row["moorti_computed"])
                 all_rows.append(row)
 
         if not all_rows:

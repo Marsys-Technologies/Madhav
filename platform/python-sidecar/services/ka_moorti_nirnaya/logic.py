@@ -65,6 +65,26 @@ MOORTI_GRAHAS: tuple[str, ...] = (
     "Sun", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu",
 )
 
+# ── WP9 overlay stamps (GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §5.4; migration
+# 1082) ──────────────────────────────────────────────────────────────────────
+# A moorti-computed row restates bg_transit_moorti verbatim (migration 401,
+# REAL cited: Phaladeepika Ch.26; BPHS Ch.28) → 'verse_cited', corpus-
+# verifiable. A row whose moorti could NOT be computed (truncated run /
+# ephemeris gap — moorti_computed=False) has no sourced value → 'unsourced',
+# not corpus-verifiable. precision_regime is 'date_grain' for the day-grade
+# ingress date and 'instant_grain' only when the grade was taken at a true
+# kernel sign-ingress instant (WP9 5.3).
+SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximation", "unsourced")
+PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
+
+
+def moorti_source_qualification(moorti_computed: bool) -> str:
+    return "verse_cited" if moorti_computed else "unsourced"
+
+
+def moorti_corpus_verifiable(moorti_computed: bool) -> bool:
+    return bool(moorti_computed)
+
 
 class SignRun(TypedDict):
     sign_idx: int
@@ -136,6 +156,10 @@ def nakshatra_offset_from_janma(moon_nak_idx_at_ingress: int, janma_nak_idx: int
 
 __all__ = [
     "MOORTI_GRAHAS",
+    "SOURCE_QUALIFICATIONS",
+    "PRECISION_REGIMES",
+    "moorti_source_qualification",
+    "moorti_corpus_verifiable",
     "SignRun",
     "detect_sign_runs",
     "run_containing_date",

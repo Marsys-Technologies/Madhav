@@ -158,6 +158,50 @@ VEDHA_KINDS: tuple[str, ...] = (HOUSE_VEDHA, SARVATOBHADRA, LATTA)
 # not invented for this writer.
 NATURAL_MALEFICS: frozenset[str] = frozenset({"Sun", "Mars", "Saturn", "Rahu", "Ketu"})
 
+# ── WP9 overlay stamps (GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §5.4) ─────────────
+# Every served row carries three machine-readable stamps (migration 1082).
+# `source_qualification` names HOW the row's served value was sourced;
+# `precision_regime` names the time grain the window was computed at;
+# `corpus_verifiable` records whether the row's citation chain is verifiable
+# against the ingested corpus today (39 of 41 favourable+vedha bg_transit_rules
+# cite the struck "BPHS Ch.29" string — only the Rāhu/Ketu 11th-house rules
+# cite Phaladīpikā XXVI — so house_vedha rows are corpus_verifiable=False
+# until the G-9 re-citation lands).
+SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximation", "unsourced")
+PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
+STRUCK_BPHS_CH29_MARKER = "BPHS Ch.29"
+
+
+def source_qualification_for(vedha_kind: str, grid_basis: Optional[str]) -> str:
+    """The WP9 `source_qualification` stamp. Sarvatobhadra is
+    'algorithmic_approximation' exactly when the served pairing came from the
+    disclosed algorithmic opposition approximation (grid_basis=
+    'algorithmic_approximation'); a DB-sourced grid (school-tagged or
+    l1_sarvatobhadra_vedha) is 'verse_cited'. house_vedha (bg_transit_rules)
+    and latta (bg_phaladeepika_latta) are always verse-cited rules."""
+    if vedha_kind == SARVATOBHADRA:
+        return "algorithmic_approximation" if grid_basis == "algorithmic_approximation" else "verse_cited"
+    if vedha_kind in (HOUSE_VEDHA, LATTA):
+        return "verse_cited"
+    raise ValueError(f"unknown vedha_kind {vedha_kind!r}")
+
+
+def corpus_verifiable_for(vedha_kind: str, *, grid_basis: Optional[str] = None,
+                          classical_citation: Optional[str] = None) -> bool:
+    """The WP9 `corpus_verifiable` stamp. house_vedha: False while the rule's
+    citation carries the struck 'BPHS Ch.29' marker (39 of 41 rules; G-9
+    re-citation pending), True for the Phaladīpikā-XXVI-cited rules.
+    sarvatobhadra: False while grid_basis is the algorithmic approximation.
+    latta: True (Phaladīpikā PG338-339, REAL cited; Ketu rows are never
+    emitted, so the Ketu gap never surfaces as a False stamp)."""
+    if vedha_kind == HOUSE_VEDHA:
+        return STRUCK_BPHS_CH29_MARKER not in (classical_citation or "")
+    if vedha_kind == SARVATOBHADRA:
+        return grid_basis != "algorithmic_approximation"
+    if vedha_kind == LATTA:
+        return True
+    raise ValueError(f"unknown vedha_kind {vedha_kind!r}")
+
 
 class SignRun(TypedDict):
     sign_idx: int
@@ -282,4 +326,9 @@ __all__ = [
     "overlap_window",
     "latta_nakshatra_idx",
     "malefic_count_grade",
+    "SOURCE_QUALIFICATIONS",
+    "PRECISION_REGIMES",
+    "STRUCK_BPHS_CH29_MARKER",
+    "source_qualification_for",
+    "corpus_verifiable_for",
 ]

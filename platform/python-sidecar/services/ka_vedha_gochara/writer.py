@@ -63,12 +63,14 @@ from services.ka_vedha_gochara.logic import (
     LATTA,
     NATURAL_MALEFICS,
     SARVATOBHADRA,
+    corpus_verifiable_for,
     detect_sign_runs,
     house_from_moon,
     latta_nakshatra_idx,
     malefic_count_grade,
     overlap_window,
     sign_from_house,
+    source_qualification_for,
 )
 from services.gochara_grammar.sarvatobhadra import _vedha_pairs_from_db, opposite_nakshatra_id
 from services.gochara_grammar import citations as C
@@ -136,12 +138,14 @@ INSERT INTO kala_vedha_gochara (
     window_start, window_end, start_truncated, end_truncated,
     janma_reference_fact_id, classical_citation, uncited_extension,
     grid_basis, grid_school_tag,
+    source_qualification, precision_regime, corpus_verifiable,
     detail, formula_version
 ) VALUES (
     %(chart_id)s, %(ayanamsha_id)s, %(vedha_kind)s, %(graha)s,
     %(window_start)s, %(window_end)s, %(start_truncated)s, %(end_truncated)s,
     %(janma_reference_fact_id)s, %(classical_citation)s, %(uncited_extension)s,
     %(grid_basis)s, %(grid_school_tag)s,
+    %(source_qualification)s, %(precision_regime)s, %(corpus_verifiable)s,
     %(detail)s::jsonb, %(formula_version)s
 )
 ON CONFLICT (chart_id, ayanamsha_id, vedha_kind, graha, window_start) DO NOTHING
@@ -441,6 +445,17 @@ class KaVedhaGocharaWriter(WriterBase):
                     # grid_school_tag must be NULL for non-sarvatobhadra rows.
                     "grid_basis": None,
                     "grid_school_tag": None,
+                    # WP9 overlay stamps (migration 1082). house_vedha restates a
+                    # verse-cited bg_transit_rules row; corpus_verifiable=False
+                    # while the citation carries the struck 'BPHS Ch.29' marker
+                    # (39 of 41 rules — G-9 re-citation pending). Date-grain
+                    # until kernel ingress instants land.
+                    "source_qualification": source_qualification_for(HOUSE_VEDHA, None),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": corpus_verifiable_for(
+                        HOUSE_VEDHA,
+                        classical_citation=rule.get("classical_citation") or C.PHALADEEPIKA_VEDHA_26,
+                    ),
                     "detail": {
                         "primary_house": house,
                         "primary_sign_idx": run["sign_idx"],
@@ -499,6 +514,13 @@ class KaVedhaGocharaWriter(WriterBase):
                     # only-populated state for the algorithmic approximation).
                     "grid_basis": grid_basis,
                     "grid_school_tag": grid_school_tag,
+                    # WP9 overlay stamps (migration 1082): qualification mirrors
+                    # grid_basis exactly (algorithmic approximation ⟺ the R-19
+                    # approximation serves the pairing); not corpus-verifiable
+                    # while that approximation is what is served.
+                    "source_qualification": source_qualification_for(SARVATOBHADRA, grid_basis),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": corpus_verifiable_for(SARVATOBHADRA, grid_basis=grid_basis),
                     "detail": {
                         "target_nakshatra_idx": janma_moon_nak_idx,
                         "target_nakshatra_name": NAKSHATRAS[janma_moon_nak_idx],
@@ -547,6 +569,12 @@ class KaVedhaGocharaWriter(WriterBase):
                     # grid_school_tag must be NULL for non-sarvatobhadra rows.
                     "grid_basis": None,
                     "grid_school_tag": None,
+                    # WP9 overlay stamps (migration 1082): latta restates
+                    # bg_phaladeepika_latta verbatim (Phaladīpikā PG338-339,
+                    # REAL cited) — verse-cited and corpus-verifiable today.
+                    "source_qualification": source_qualification_for(LATTA, None),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": corpus_verifiable_for(LATTA),
                     "detail": {
                         "count_from_graha": int(rule["count_from_graha"]),
                         "direction": rule["direction"],
