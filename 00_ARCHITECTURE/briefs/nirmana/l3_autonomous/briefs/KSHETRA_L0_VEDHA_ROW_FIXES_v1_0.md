@@ -1,7 +1,7 @@
 ---
 artifact: KSHETRA_L0_VEDHA_ROW_FIXES
 canonical_id: KSHETRA_L0_VEDHA_ROW_FIXES
-version: "1.4"
+version: "1.5"
 status: APPLIED_IN_PRODUCTION  # verified live 2026-09-24 via ref_transit_rules_get: §2 Venus 35/44/45 → 1/5/11 (page-cited PG323:C1); §3 Mercury 8→1 as id 569; §4 exceptions declared in rule_notes as a precision limit; §5 node rows stamped UNSOURCED and retained (B.10, N-14). Applied by the L0 repair (PR #2727, open at the time of writing). Nineteen non-vedha rows outside this spec's predicate still carry the refuted citation — correctly untouched. §6 (producer stamp columns) remains Gochara WP9
 date: 2026-09-23
 routed_to: >
@@ -97,3 +97,12 @@ Kshetra's S1-ingestion packet can admit any vedha row as `applied`; until it lan
   is a detector that provably cannot fail (§N.8); the L0 work adds expected mean-node longitude 49.033° ±
   arcseconds at JD 2445735.717361.
 - The sarvatobhadra grid — **attempted by the L0 repair (PR #2727 item 4) and conclusively BLOCKED**: PG345–354 read verbatim; 3/28 asterisms worked; traversal direction never stated; letter glyphs garbled; PG353's 112-letter table mangled; the schema cannot hold the 9-point vedha set. This spec's earlier "vedha-pair partitions transcribable today" is withdrawn; the grid stays empty and the kind stays `unqualified` (ADJUDICATION-11).
+
+## §8 — Post-apply measurement (2026-09-24, served table, predicate-cited)
+`rule_type='favourable' AND vedha_house IS NOT NULL` → **42** (was 41; the §3 INSERT added id 569). Venus favourable
+vedha rows → 9, pairs (1,8)(2,7)(3,1)(4,10)(5,9)(8,5)(9,11)(11,3)(12,6) — §2's verify-after holds. Mercury → 6 —
+§3's verify-after holds. Citations: 36 rows `Phaladipika Adh. XXVI, Sloka n — phaladeepika:PG322:C1/PG323:C1`; 6
+rows `UNSOURCED …` (§5). Caveat first recorded by O-3's independent re-count: **Mercury 2→5 (id 21) is page-grain
+only** — the served śloka-6 chunk gives its vedha house as the OCR token `Bill`, not a number — so a strict
+`corpus_verifiable` stamp covers 35 rows, not 36; the L0 owner may record the datum as `verse_cited` with an
+OCR-repair note, or leave it `algorithmic_approximation`. Kshetra consumes whichever is stamped.

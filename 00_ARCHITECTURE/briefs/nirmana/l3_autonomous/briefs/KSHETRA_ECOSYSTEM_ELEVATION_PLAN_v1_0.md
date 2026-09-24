@@ -1,10 +1,11 @@
 ---
 artifact: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
 canonical_id: KSHETRA_ECOSYSTEM_ELEVATION_PLAN
-version: "1.15"
+version: "1.16"
 status: APPROVED_FOR_EXECUTION  # amended 2026-09-23: three refinements from a second independent review (Kimi K3 desktop, see KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md) folded in; no ruling re-opened. CLOSED 2026-09-23: native delegation ("Go ahead and do it.") discharged via KSHETRA_RULING_SHEET_v1_0.md v1.3; rulings 1-7,9,10 affirmed as written (7,9 with independent-review corrections); ruling 8 corrected in place above (32/41 house-vedha applied, 3 Venus deferred, 6 Rahu/Ketu unqualified)
 independent_review: "Kimi K3 effort=max — KIMI_K3_REVIEW_KSHETRA_v1_0.md; reconciled in KIMI_RECONCILIATION_KSHETRA_v1_0.md (every load-bearing claim re-verified at source)"
 changelog:
+  - "1.16 (2026-09-24) — §7.8 figures corrected to post-repair (42: 36/0/6; Mercury 2→5 page-grain) on O-3's re-count, reproduced from the served table."
   - "1.15 (2026-09-24) — inbound reconciliation: ruling 7's L0 side recorded DONE as implemented (no mean derivation; S0 frame decision); sarvatobhadra \"populatable today\" withdrawn on the L0 attempt; PG349/PG353 scale question; §8 gains the native questions and W7-scope notes; refuted claims pointed to KSHETRA_INBOUND_RECONCILIATION_v1_0.md §5."
   - "1.14 (2026-09-24) — NEW RANK 0 above G3, §2 item 00: the field's time axis mixes J2000 knots with birth-relative clip/horizon/decade constants; measured live on the canonical chart (field spans 2000-01-01 … 2100-01-01, not birth … birth+100y; first sixteen years absent). Found by the strategic session's synergy audit (63b5fb429), scoped up and measured here. Fix and detector routed to stage-3 Phase 1 item zero. No ruling changed."
   - "1.13 (2026-09-24) — §7.8: the L0 repair is live in production (verified via the served rules); stamp columns are the sole remaining gate to applied. Stage 3 authorized by native record; stage 4 not opened."
@@ -438,11 +439,11 @@ hard to cite precisely is a real cost, not absence.
    Gochara WP9 — now the only reason: the re-citation and row repairs, routed as staged under madhav-fc D-B @
    8a9734a32, are APPLIED in production, verified live 2026-09-24 — Venus 35/44/45 → 1/5/11, Mercury 8→1 as
    id 569, six node rows stamped UNSOURCED; L0 repair PR #2727) and whose outcome
-   **once those land**, corrected by independent review, is: **`applied` for 32 of 41 house-vedha rows on the L0 re-citation at page grain (F-23/G-8);
-   `deferred` for 3 Venus rows (ids 35, 44, 45 — `vedha_house` UPDATE to 1/5/11, never a delete: 35 and 44 are column-swap
-   transpositions of rows 179/33 by origin, but their `primary_house` is the text's; the 1.9 "dedup" wording
-   is withdrawn — spec `KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md`) pending the L0 owner; `unqualified` for 6
-   Rāhu/Ketu rows (ids 187,188,189,196,197,198), genuinely unsourced for this mechanism; `applied` for laṭṭā and the
+   **once those land**, corrected by independent review, is (post-repair, O-3 re-count reproduced 2026-09-24 — the pre-repair 32/3/6 was published here in the wrong
+   tense): **42 rows by predicate — `applied` for 36 house-vedha rows cited to Phaladīpikā at page grain and
+   matching (32 original + Venus 35/44/45 repaired to 1/5/11 + Mercury 8→1 inserted as id 569), of which
+   Mercury 2→5 (id 21) is page-grain only (the served chunk reads the OCR token `Bill` for its vedha house);
+   `unqualified` for 6 Rāhu/Ketu rows (ids 187,188,189,196,197,198), stamped UNSOURCED;** deferred: none; `applied` for laṭṭā and the
    malefic scale; `unqualified` for sarvatobhadra** (NOT buildable from prose — the L0 attempt was blocked on primary-source grounds; no prose-only remedy; the malefic scale served is PG353's battle-context scale, distinct from PG349's transit scale — which one a transit covariate reads is put to the native in the S1 packet). G-9 is moot (Phaladīpikā is in the served corpus). Rule it once with Gochara.
 9. **G3 — which suppression semantics is the contract:** route-scoped SM-R-7 Option B (the
    documented contract; the reviewer's and this plan's recommendation) or chart-wide (the live

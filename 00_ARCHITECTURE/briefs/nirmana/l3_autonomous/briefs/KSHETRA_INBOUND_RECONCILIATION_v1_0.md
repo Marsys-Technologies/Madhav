@@ -1,7 +1,7 @@
 ---
 artifact: KSHETRA_INBOUND_RECONCILIATION
 canonical_id: KSHETRA_INBOUND_RECONCILIATION
-version: "1.0"
+version: "1.1"
 status: RECONCILED_FOR_STAGE_3
 date: 2026-09-24
 purpose: >
@@ -17,6 +17,8 @@ method: >
   author then verified at source every item that would change the executor's work — by grep, by
   reading the L0 repair's diff and PR record, and by SELECT-only queries against production through
   the project's read-only proxy — before folding it. Presence alone was never treated as capture.
+changelog:
+  - "1.1 (2026-09-24) — ruling 8 post-repair arithmetic corrected on O-3's independent re-count (42/36/0/6; Mercury 2→5 page-grain); recorded in §3 and §5."
 sweeps: 2026-09-24, main @ 0dcf28d6d; readiness @ 5c05a0e2f+; gochara wp0-7 @ e93112eb0; sangam/stage3 @ 8ad8e0b52
 ---
 
@@ -76,6 +78,7 @@ Legend: **C** captured before this pass · **F** folded now (this PR) · **N** n
 | Ruling 7 L0 side: `ephemeris_daily.node_mode='true'` / `epoch_convention='noon_ut'` on all 183,352 node rows, `noon_ut` on all 641,732 others (migration 1076) — **done, applied**; **no mean-node column derived**; mean consumers compute live (`routers/ephemeris.py`) | S6, verified live | F | same |
 | Consequence: Kshetra S0 node contacts are TRUE-transit vs MEAN-natal — a mixed frame; the packet's "derive mean in the L0 service" wording superseded by N-4a as implemented | S6, S4 N-4a | F | prompt Phase 2 pins + S0 decision; sheet row 7; plan §7.7 |
 | Ruling 8 L0 side: 35 rows re-cited; Venus 35/44/45 → 1/5/11; Mercury 8→1 = id 569; 6 node rows `UNSOURCED`; exceptions in `rule_notes` — **applied** | S6, verified live | C | sheet row 8; L0 spec 1.3 |
+| Ruling 8 arithmetic in the post-repair tense: **42 rows by predicate = 36 matching / 0 deferred / 6 unsourced**; Mercury 2→5 page-grain only (`Bill`); counts to live in a predicate-cited query, not prose. O-3's re-count (Gochara branch @ 030896ced) certifies ruling 8's arithmetic **only** — not 7 or 9 | S4 O-3 recount; reproduced from the served table | F | sheet row 8 (1.12); plan §7.8 (1.16); L0 spec §8 (1.5) |
 | Sarvatobhadra population: **attempted and BLOCKED** on primary-source grounds (3/28 asterisms; letter glyphs garbled; traversal direction unstated; schema cannot hold the 9-point vedha set); this packet's "vedha-pair partitions transcribable today" claim **withdrawn** | S6 PR #2727 item 4; D-E item 4 | F + R | sheet row 8; plan §2/§7.8; L0 spec §7; independent review §Ruling 8 |
 | Malefic scale pinned as the **PG353 battle-context** scale, distinct from PG349's general-transit scale; which one Kshetra's transit covariate should read is a doctrinal choice for the S1 packet | S6 item 5, migration 1077 | F | prompt Phase 4 S1; plan §7.8 |
 | `ka_vedha_gochara/logic.py` corpus docstring corrected (item 8) — packet's citation of `logic.py:13,105` as mis-cited is now historical | S6 | F | brief §2.4 note |
@@ -145,6 +148,7 @@ exclusion — Kshetra's own suite is its proof, not Sangam's.
 | "`fact_category='lagna'` read-dead" (open) | L3_STATE M1; depends-on audit §4.5 | `writer.py:1794-1796`: measured and corrected to `lagna_position` in current code | Already fixed. |
 | "`load_class_lifetime_count` has no tiebreaker" (open) | W2_DETERMINISM_PRECHECK §5 | `stage4_field.py:1141-1164`: all four predicates pinned, total `ORDER BY` | Already fixed; PK-P4's second prior set is safe on this read. |
 | "F-78 awaiting review, unexecuted" | F-78 SPEC frontmatter | `writer.py:227 built_event_classes`; disclosure test present | Executed on the writer; spec status stale. |
+| "Post-repair outcome is 32 applied / 3 deferred / 6 unqualified" | this packet (sheet 1.8–1.11; plan 1.13–1.15) | served table 2026-09-24: 42 rows, 36 matching, 0 deferred, 6 unsourced | Tense error: a pre-repair measurement published as a post-repair prediction. Corrected; the recount's point that the figure belongs in a query, not prose, adopted. |
 
 ## §6 — What this pass did not do
 No code, migration, build, grant or deployment. No ruling re-opened. The stage-3 prompt remains

@@ -1,12 +1,13 @@
 ---
 artifact: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
 canonical_id: KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT
-version: "1.5"
+version: "1.6"
 status: AUTHORIZED_STAGE_3_ONLY  # native record 2026-09-24 (see authorized_by); stage 4 explicitly NOT opened; executor not yet started
 layer: L3
 asset: ka_kshetra
 campaign_id: kshetra-stage3
 changelog:
+  - "1.6 (2026-09-24) — migration facts refreshed (1080–1086 Gochara, 1088–1090 Saṅgam, 1087 and 1091+ free; re-scan at claim time). Nothing else changed."
   - "1.5 (2026-09-24) — inbound reconciliation folded (KSHETRA_INBOUND_RECONCILIATION_v1_0.md): ruling 7 L0 side recorded as DONE (declaration + degree anchor, no mean derivation) with the S0 node-frame decision it leaves; stages 0–3 substeps; K-1 (generation,id) pinning and the evaluation-role ka_gochara edge; resume-fingerprint content; binding B1/B2/B4/B5 columns named; CG-1 both halves; backend assert; F-78 already present; timeline non-conflation; stamp columns not in production; stale consumer rows (C3); M-8 semantics; D-S5 handle; murti instant grade; PG349/PG353 choice; SBC \"buildable from prose\" withdrawn; registry metadata + tiling invariant at the Phase 5 exit. Authorization unchanged; executor not started."
   - "1.4 (2026-09-24) — binding 2.0 (5c05a0e2f) folded in: precision_regime rename REVERSED (ruled column; re-value day_grade→date_grain, aliased per D-7); the kala_gochara_windows read declared as an evaluation-role table edge, not a depends_on on the RETIRED sweep (migration 569 / SAMPŪRTI R0); find_contact_episodes unruled (B8-6) — evaluation-only until ruled; retirement explicitly per ruling 4; the L2 key is a demand via L3-U01 — id_basis column + unqualified identity + NOT_RUN self, no fifth comparable_with value (Gochara D-S6). Nothing else changed; executor not started."
   - "1.3 (2026-09-24) — Phase 1 item zero added ABOVE G3: the time-axis defect (J2000 knots under birth-relative clip/horizon constants), measured live; detector-first fix. Phase 0 gains check (g) reproducing the measurement. Phase 2 gains the six synergy-binding items from the strategic session's audit, spot-verified. Nothing else changed; authorization unchanged; executor not started."
@@ -64,7 +65,7 @@ blocker beat six phases with a flag nothing checks.
 You may, without asking: read anything; write code, tests, evidence scripts and **at most one
 migration** for `ka_kshetra` (brief `may_touch`: `services/ka_kshetra/{hazard,layer1,writer,
 stage2_promise,stage3_clocks,uncertainty}.py`; `dhara_null.py` docstring only;
-`platform/python-sidecar/tests/l3/**`; ONE migration — **allocate its number by listing BOTH migration directories across EVERY `origin/*` head** (`git ls-tree -r --name-only origin/<branch> -- platform/migrations platform/supabase/migrations`), never from the working tree alone: as of 2026-09-24 03:50 IST (Gochara's sweep of every remote and local head, relayed by the strategic session): 1071–1074 claimed by unmerged branches, 1075–1079 APPLIED to production by the L0 repair (PR #2727), 1080/1081 taken by Gochara — **next free 1082; verify before claiming**, the collision this rule exists to prevent; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
+`platform/python-sidecar/tests/l3/**`; ONE migration — **allocate its number by listing BOTH migration directories across EVERY `origin/*` head** (`git ls-tree -r --name-only origin/<branch> -- platform/migrations platform/supabase/migrations`), never from the working tree alone: as of 2026-09-24 (this author's scan of every origin head plus local, agreeing with Gochara's): 1071–1074 claimed by unmerged branches, 1075–1079 APPLIED to production by the L0 repair (PR #2727), **1080–1086 Gochara** (unmerged), **1088–1090 Saṅgam** (unmerged), **1087 free, 1091+ free** — take the lowest free number **after re-scanning at the moment you claim it, including against this sentence**; the collision this rule exists to prevent; FIELD_CONTRACT_REGISTER deltas per brief §2.3); run read-only queries;
 commit and push to **`l3/kshetra-stage3`** (the packet is on `main`; this branch was cut from it);
 open PRs to `main` through CI and the merge queue. You may decide implementation detail the plan
 leaves open, and record the choice.
