@@ -16,6 +16,7 @@ role: >
 independent_review: NOT YET. This template has not been reviewed by a fresh-context session. Its first
   test is the L0 instance; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "1.0 (elevated in place, 2026-09-25, third change): three repairs from the first instance's independent review. (a) §5.4 gains a three-verdict scale — ACCEPT / ACCEPT_WITH_CORRECTIONS / REJECT — with the distinction that makes the middle tier safe: a finding about the DOCUMENT is fixed in the document and never deferred, a finding about the LAYER that the document correctly records is a work packet, and two guards so the middle tier cannot rot (every correction names the gate it blocks; ACCEPT_WITH_CORRECTIONS becomes ACCEPT only by re-verification). (b) `measured_by:` must name the POPULATION, not only the instrument, with the corollary that a join is not measured until its keys are — three of the first instance's nine wrong figures came from exactly this gap. (c) §5.2's 32 criteria must be mapped to §4.4's inheritance list before an instance is called ready; the review found six criteria with no feeding section. Also §1.5: the synergistic fraction is recorded only where a harness exists to produce it."
   - "1.0 (elevated in place, 2026-09-25, second change): reference-layer clause in §1.2, §1.5 and §5.1 — a layer whose assets are knowledge authorities measures its individual term by fidelity, is never retirement-scored by ablation, and receives ablation only cross-layer to verify consumers. The first case where the template's definition of value had to be layer-appropriate rather than uniform; raised by the native against the L0 instance."
   - "1.0 (elevated in place, 2026-09-25): §2.6 Vocabulary conformance added, inheriting the data plane's controlled-vocabulary principle (§4.1); the per-asset checklist gains a 32nd criterion, T4 `Vocab`; the adaptation table now says L0 OWNS the vocabulary and every other layer CONFORMS. Found missing by the L0 instance and repaired here, per this template's own rule."
   - "1.0 (2026-09-24): first version. Built on the native's two reframings: (1) a layer's definition begins from the value it contributes to the customer, and every later section either traces to that value or is struck; (2) a layer is the sum of its assets and services, so its value decomposes into individual, synergistic and cross-layer terms, each measurable by ablation, and the shortfall between that sum and the objective IS the elevation delta. Carries forward the earlier design decisions: definition / strategy / evaluation kept as separate parts because they change at different rates; traceability structural via `inherits:` on every section; baseline measured by a named instrument, never inherited; certification per criterion, not per definition revision, so a scale revision costs one re-test and not a re-freeze."
@@ -48,6 +49,18 @@ traces_to:  <the Part 0 item this section serves; a section that cannot name one
 The `inherits` line is what makes the instance derivable. The `measured_by` line is what stops an
 inferred number being written where a measured one belongs. The `traces_to` line is the alignment test
 the native set: **anything not aligned to the layer's value is extraneous.**
+
+**`measured_by:` must name the POPULATION, not only the instrument.** "grep over the codebase" is not
+an instrument; "grep over `platform/python-sidecar/**/*.py`, excluding tests, migrations and scripts,
+at commit X" is. A count must say what it counted *over*: which rows, which partition, which
+directory, at which revision. This is not pedantry — in the first instance of this template, three of
+its nine wrong figures came from exactly this gap: a regex whose scope was never stated matched a
+neighbouring block; a count over a shared table was compared against a registry figure for one
+partition of it; a join was reported without checking that its right-hand key was unique. An
+instrument without a population cannot be re-run, and a figure that cannot be re-run is not measured.
+
+**Corollary — a join is not measured until its keys are.** If a join reports more rows than its
+left-hand table holds, the right-hand key is not unique, and *that* is the finding.
 
 **Two words used in exactly one sense throughout**, inherited from the product definition:
 *qualified* — the method's sources, conventions, prerequisites and exceptions are on record before it is
@@ -206,8 +219,9 @@ traces_to:   0.2
   not apply to a reference layer:** there, an asset is retired only for failed fidelity (inauthentic,
   unsourced, wrongly identified, superseded by a corrected authority), never for lack of a reader.
 - Any asset with a large individual term and no synergistic term is a candidate for **I** (integrate).
-- Record the synergistic term as a fraction of the total. That fraction is the layer's
-  department-ness, and the tracker carries it.
+- Record the synergistic term as a fraction of the total **only where an ablation harness exists to
+  produce it**. Where none does, record the seam-by-seam measurement as the value and say the harness
+  is a packet. Do not invent a fraction to fill the field.
 
 ---
 
@@ -448,6 +462,12 @@ signal · narration fidelity · serving density · honest null · **vocabulary c
 
 **T5 · Two ladders** — data-plane ladder position · campaign ladder position
 
+**Each criterion must be fed by a section of this instance.** Before an instance is called ready, map
+all 32 criteria to the §4.4 inheritance list: for each criterion, the section a brief author reads to
+answer it. A criterion with no feeding section is a hole in the instance, not a gap in the brief —
+the brief author would have to invent it. Record the map; it is the derivability test in tabular
+form.
+
 ### 5.3 · Certification is per criterion, not per definition revision
 
 ```
@@ -477,8 +497,39 @@ Before an instance is called ready:
 3. **Measured, not inherited.** Every figure names its `measured_by:`; a reviewer rejects any that
    cannot be re-run.
 4. **Presentation parity** holds for the layer's served surface.
-5. **Independent review**, fresh context, verdict ACCEPT or REJECT, findings folded, before the
-   instance is cited by anything below it.
+5. **Independent review**, fresh context, findings folded, before the instance is cited by anything
+   below it. Three verdicts:
+
+| verdict | meaning | may the tier below inherit from it? |
+|---|---|---|
+| **ACCEPT** | derivable with zero inventions; every re-run figure reproduced; no parent contradiction; no correction outstanding | yes |
+| **ACCEPT_WITH_CORRECTIONS** | the direction and the method are sound; named corrections remain, **each bound to the gate it must close before** | yes, and the corrections are tracked as blocking that named gate |
+| **REJECT** | the direction or the method is wrong; the instance is reworked before anything inherits from it | no |
+
+**The distinction that makes the middle tier safe — a finding is about the DOCUMENT or about the
+LAYER, and they are not the same thing:**
+
+- A finding **about the document** — a figure that does not reproduce, a section that contradicts a
+  parent, an inheritance a brief author cannot follow — is a defect *in the instance*. It is fixed in
+  the document. It is never deferred to implementation, because a wrong number does not become right
+  by being built on.
+- A finding **about the layer** that the document *correctly records* — a duplicate identifier, a
+  missing alias set, an unlinked rule corpus — is not a defect in the instance at all. It is the
+  instance doing its job. It becomes a work packet with a detector, and it is fixed during
+  implementation.
+
+An instance is ACCEPT_WITH_CORRECTIONS when its document-level findings are closed and its
+layer-level findings are packets. An instance with open document-level findings is REJECT, however
+sound its direction.
+
+**Two guards, because a middle tier is where things rot:**
+
+1. **A correction with no named gate is not a correction.** Every correction names the gate it blocks
+   — the next instance, the first asset brief, the first build, the layer's certification. A
+   correction recorded without one defaults to blocking the *next* gate, never to none.
+2. **ACCEPT_WITH_CORRECTIONS does not decay into ACCEPT.** It becomes ACCEPT only by re-verifying
+   each correction closed, recorded per §5.3. It never becomes ACCEPT by the passage of time or by
+   assertion that the corrections were handled.
 
 ---
 

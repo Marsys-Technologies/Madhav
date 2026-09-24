@@ -1,8 +1,18 @@
 ---
 artifact: MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY
 canonical_id: MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY
-version: "2.0"
-status: DRAFT_FOR_INDEPENDENT_REVIEW
+version: "2.1"
+status: ACCEPT_WITH_CORRECTIONS
+review_record: 00_ARCHITECTURE/briefs/reviews/REVIEW_L0_STRATEGY_v2_0.md  # verdict REJECT on v2.0; 2 BLOCKER + 12 MAJOR + 7 MINOR, all folded into v2.1
+verdict_basis: >
+  Under the template's three-verdict scale, the review's findings split in two. The DOCUMENT-level
+  findings — nine figures that did not reproduce, three obligation sets where there should be one,
+  fourteen assets untraced in Part 0, six checklist criteria with no feeding section — are defects in
+  this instance and are FIXED here, not deferred: a wrong number does not become right by being built
+  on. The LAYER-level findings this document correctly records — 11 duplicate canonical ids, 79 doṣas
+  without aliases, 3,002 rules without executable scope — are not defects in the instance at all;
+  they are the instance doing its job, and each is a packet with a detector. Corrections outstanding
+  and their gates are listed in §7.
 produced_on: 2026-09-25
 decision_owner: Native
 template: 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md   # first instance; template defects found here are fixed THERE
@@ -23,6 +33,13 @@ not_measured: "consumer-perturbation deltas (the cross-layer harness, W-L0-7, do
 ---
 
 # L0 Brahmagyan — definition, strategy and evaluation (template instance 1)
+
+**v2.1 folds every finding of the independent review of v2.0.** Nine figures in v2.0 did not reproduce
+when re-run at source; all nine are corrected below and the corrections are visible, not silent. Two
+blockers — a seed-vs-registry disagreement that was an extraction artefact, and eleven duplicate
+canonical ids that v2.0 printed in its own join counts and did not see — are closed. Where a finding
+was about the *layer* rather than about this document, it is recorded as a packet rather than repaired
+in prose.
 
 This is the first instance of the layer template. Where the template proved insufficient, that is
 recorded in §6 for repair in the template, not worked around here.
@@ -46,9 +63,9 @@ kinds of necessity, kept apart:
 
 | P / V | the distinction that disappears without this layer |
 |---|---|
-| P22 · V08 "Let me read the texts themselves" | There is no text. `bg_texts` (10,651 chunks, 14 texts), `bg_compendium_index`, `bg_text_index` are the whole corpus. |
+| P22 · V08 "Let me read the texts themselves" | There is no text. `bg_texts` (10,651 chunks, 15 distinct `text_id`s), `bg_compendium_index`, `bg_text_index` are the whole corpus. |
 | P15 · V08 "What supports this, where do schools disagree?" | No source witness, no attribution, no school. `bg_concordance`, `classical_attributions`, the `school` column on the yoga/doṣa/daśā catalogs. |
-| P16 · V09 "Give me this exact fact" | The `ref_*` surface — 49 capability files — is L0's direct answer to a reference question. Without it a lookup becomes an interpretation. |
+| P16 · V09 "Give me this exact fact" | The `ref_*` surface — 46 capability files — is L0's direct answer to a reference question. Without it a lookup becomes an interpretation. |
 | P21 · V05 "What does this day mean in context?" | `bg_panchanga` (service), `bg_sky_calendar`, `bg_muhurta_lattice`. General calendar context is L0's; personal relevance is L3's. |
 | P11 · V05 "Which practices can I explore?" | `bg_remedies` (341), `bg_parihara_rules` (60). The attributed catalog of practices is L0. |
 | P07 · V12 "What does the tradition say about wellbeing?" | `bg_medical_mappings`, `bg_nakshatra_medical`, `bg_sign_medical` — the tradition's own correspondences, served as testimony. |
@@ -64,6 +81,16 @@ kinds of necessity, kept apart:
 | the sky — `bg_ephemeris` (~824,543 rows), `bg_ephemeris_engine`, `bg_gochara_arcs` (~33,933) | every timed need: P09, P10, P21, P24, and every forecast | `ephemeris_daily` read by 28 writer files + 14 serving; registered: 5 |
 | the event vocabulary — `bg_ghatana` (27) | P10, P12, P24, and all of L4/L5 | `brahma_event_ontology` read by 31 writer files + 21 serving; registered: 5 |
 | the rule and formation vocabulary — `bg_rules` (3,002), `bg_yogas`, `bg_doshas`, `bg_transit_rules` (76) | P09, P10, P15 and every L2 mechanism | `bg_transit_rules` read by 26 writer files + 9 serving; registered: 6 |
+| the Kāla method substrates — `bg_transit_engine`, `bg_vedha_malefic_scale`, `bg_phaladeepika_latta`, `bg_kota_chakra_rings`, `bg_sarvatobhadra_grid` | P09, P10, P24 — every L3 clock reads a reference scale or a geometry | 6 `ka_*` registered consumers |
+| nakshatra geometry — `bg_nakshatra`, `bg_kp_sublord_division` | P09, P21, and every KP reading | `ga_nakshatra` registered; 8 + 6 writer files |
+| the investigation floors — `bg_vidhi_primitives`, `bg_vidhi_floors` | P17, P18 — the omission check and the question compass (DP11) | 1 writer + 3 serving files each |
+| horary method — `bg_prashna_rules` | P20 method selection, and the Praśna horizon (product §15) | `ga_prashna` registered |
+| research capital, served to no P directly — `bg_class_priors`, `bg_class_lifetime_counts`, `bg_cohort` | engineering baselines for `ka_kshetra` and `mi_kula`; **H** by design | 3 registered consumers |
+| citation resolution and spatial doctrine — `bg_gochara_citation_resolution` (P15), `bg_vastu_directions` (P08, as testimony) | — | 4 / 5 serving files |
+
+**All 40 assets are traced.** A brief author narrowing §4.4 for any asset finds its P-needs in one of
+these rows or in the directly-served table above; an asset appearing in neither would have no reason
+to exist in this layer, which is the alignment test applied to assets rather than to sections.
 
 The second table is L0's real value, and it is almost entirely **cross-layer handoff** (§1.4). The
 first is what a customer can see.
@@ -92,12 +119,19 @@ Inherited verbatim, not restated:
 - **Must not claim:** personal fate, raw private biography as global truth, source count as probability.
 - **Product responsibility** (Product §11): qualified vocabulary, sources, rules, constants, reference
   systems, ephemeris and calendar foundations.
-- **Scored on** (Product §11 → §14): **Source and domain fidelity** — canonical identity, source
-  fidelity, method boundaries. This instance adds **computational correctness** for the astronomical
-  substrate (`bg_ephemeris`, `bg_ephemeris_engine`, `bg_gochara_arcs`, `bg_sky_calendar`,
-  `bg_muhurta_lattice`), which is computed, not transcribed, and **delivery fidelity** for the 49-file
-  served surface. Reasoning: the product row names the obligation that dominates; the ablation in §5.1
-  cannot score a computed table on source fidelity alone.
+- **Scored on — the definitive list for this layer; §3.1, §5.1 and §5.3 use exactly these four and
+  no others:**
+
+  | obligation | why L0 is scored on it | scope |
+  |---|---|---|
+  | **Source and domain fidelity** (primary; product §11 L0 row) | canonical identity, source fidelity, method boundaries | all 40 |
+  | **Computational correctness** | the astronomical substrate is computed, not transcribed | `bg_ephemeris`, `bg_ephemeris_engine`, `bg_gochara_arcs`, `bg_sky_calendar`, `bg_muhurta_lattice` |
+  | **Delivery fidelity** | L0 has a directly-served surface (§0.1) | the 46 L0 capabilities |
+  | **Operational honesty** | the registry, the descriptions and the declared counts are L0's own claims about itself | all 40 |
+
+  Not scored: concept and relationship completeness, interpretive fidelity, distinctive understanding,
+  consumer understanding, temporal integrity, predictive performance — these are scored at the layers
+  that interpret, time and predict. L0 supplies the vocabulary they are expressed in.
 
 ### 0.3 · Its place in the wheel
 
@@ -124,19 +158,23 @@ inputs is part of L0's own job (edition, rights, engine version, node frame).
 **The three dependency sources disagree**, and the template's demand to state all three is what
 surfaced it:
 
-- **Registry vs actual reads.** 21 of 40 L0 assets have **zero registered downstream consumers**;
-  **40 of 40 are read by code**. `brahma_ontology` — the identity authority — has 0 registered
-  consumers and 18 reading files. The declared dependency graph is a small fraction of the real one.
-  Consequence: a change to `bg_ontology` stales *nothing* through the orchestrator, because nothing
-  declares it. This is the DP01 risk ("local representations cannot diverge in meaning") in its exact
-  mechanical form.
-- **Seed vs registry.** The seed gives `target_table: None` for `bg_ephemeris`, `bg_rules`,
-  `bg_concordance` (live: `ephemeris_daily`, `sutravali_rules`, `classical_attributions`); gives
-  `bg_ephemeris_engine` a target of `reference_nakshatra` (it is a service; live: NULL); gives
-  `bg_prashna_rules` a target of `bg_vastu_directions` (live: NULL — it is a five-table asset whose
-  `count_sql` sums `bg_prashna_lagna_methods`, `_tajik_yogas`, `_significators`,
-  `_fructification_rules`, `_special_techniques`). Live carries edges the seed lacks: `bg_rules` (3 vs
-  0), `bg_concordance` (4 vs 0).
+- **Registry vs actual reads.** 21 of 40 L0 assets have **zero registered downstream consumers
+  outside L0**; **40 of 40 are read by code**. `brahma_ontology` — the identity authority — has four
+  declared consumers, all inside L0, and 18 reading files spanning every layer. The declared dependency graph is a small fraction of the real one.
+  Consequence, stated precisely: `bg_ontology` **is** declared by four intra-L0 consumers —
+  `bg_reference`, `bg_yogas`, `bg_doshas`, `bg_dasha_systems` — and `bg_texts` by eight. What no
+  asset declares is a **cross-layer** dependency on them: no `ga_*`, `bo_*`, `ka_*`, `ph_*` or `mi_*`
+  asset declares `bg_ontology`, while 18 files read it. So an ontology change propagates within L0 and
+  stops at the layer boundary. That is the DP01 risk in its exact mechanical form, and the "21 of 40
+  with zero registered consumers" figure above is measured over **cross-layer** consumers only —
+  the population, stated, because the unqualified version of this sentence was wrong.
+- **Seed vs registry: they agree.** A v2.0 draft of this section claimed five disagreements; every
+  one was an artefact of the extraction regex, which matched `upstream_asset_id:` in the neighbouring
+  volume-coefficient block rather than the asset's own `target_table`. Re-measured at
+  `85bf8f14e:platform/scripts/seed/asset_registry_seed.ts`, parsing each asset's own object: the seed
+  matches live on `target_table` and `depends_on` for every named asset. The claim is withdrawn.
+  `bg_prashna_rules` remains a genuine registry defect on its own terms (see below): it is a
+  five-table asset carrying `target_table: NULL`, in both sources.
 - **Pin.** No migration-governed dependency pin exists for L0 (the parity test that pins L3 does not
   cover `bg_*`). So the "third source" the template requires is *absent*, not merely different.
 
@@ -212,18 +250,24 @@ writer: `bg_transit_engine` on `bg_transit_rules`; `bg_nakshatra_medical`, `bg_s
 | `bg_nakshatra_medical` | bg_nakshatra_medical | 27 | 6 | classical_citation | ✓ | **0** | 5 / 4 |
 | `bg_sign_medical` | bg_sign_medical | 12 | 7 | classical_citation | ✓ | **0** | 2 / 6 |
 | `bg_vidhi_primitives` | vidhi_primitives | 60 | 11 | version | ✓ | **0** | 1 / 3 |
-| `bg_vidhi_floors` | vidhi_floor_items | 409 | 7 | **none** | ✓ | **0** | 1 / 3 |
+| `bg_vidhi_floors` | vidhi_intent_floors + vidhi_floor_items | 14 + 409 | — | **none, on either** | ✓ | **0** | 1 / 3 |
 
 **Registry defects, measured:** `bg_prashna_rules.target_table` NULL while `storage_type =
 postgres_table` (it is five tables); `bg_vidhi_floors` is `DRAFT` — the only non-CURRENT of 40, while
 its dependency is CURRENT; `sort_order` collides at 68 (`bg_formula_constants`, `bg_vidhi_primitives`)
-and 69 (`bg_sky_calendar`, `bg_vidhi_floors`); duplicate `@register` decorations for `bg_reference`
-(in `__init__.py`) and `bg_gochara_arcs` (twice in its own file) — last-registration-wins behaviour
-unverified; the legacy `reference_nakshatras` table (closure §7 deferred drop, three steps) is **still
+and 69 (`bg_sky_calendar`, `bg_vidhi_floors`) — recorded as an observation, not a defect: no Part 0
+item and no obligation depends on `sort_order`, which the orchestrator does not use for ordering; the legacy `reference_nakshatras` table (closure §7 deferred drop, three steps) is **still
 present** in production. Two shared-table pairs are partitions, not duplicates: `bg_class_priors` /
 `bg_class_lifetime_counts` partition `brahma_class_priors` by `prior_version`; `bg_texts` /
 `bg_text_index` share `classical_text_chunks`, the second being an enrichment (embedding + topic_tag)
 of the first's rows.
+
+**One built L0 artifact the registry does not know about.** v1.0's first producer slice was built and
+is on disk — `brahmagyan/l0_resource_config_slice_v1.json`, `l0_resource_config_slice.py`,
+`tests/test_l0_resource_config_slice.py` — and it is registered nowhere, absent from this inventory
+until now, and absent from §2.6's release inventory although it is a **second release-shaped artifact
+beside `l0_semantic_release_v1.json`**. Two release-shaped files, one registry that knows of neither,
+is the same defect class as seam 6 one level down. Disposition and registration: **W-L0-1**.
 
 **Current code vs deployed:** for L0 they coincide. The L0 repair (PR #2727, migrations 1075–1079)
 is on `origin/main` and applied to production; no L0 migration is pending on any live head. This is
@@ -251,8 +295,26 @@ Fidelity per asset, from the measurements already in §1.1 and §1.3:
 | **Source present and qualified** — a witness column, populated | catalogs (`classical_citations`, `source_chunk_ids`, `school`); texts; attributions; `bg_dignity_reference`; `bg_parihara_rules`; `bg_kp_sublord_division`; `bg_sarvatobhadra_grid` (schema only) | `sutravali_rules` (text, no school); `bg_transit_rules` (per-row citation, no school; provenance not table-wide per 1079); `vidhi_floor_items` (**no provenance column**); `vidhi_primitives` (version only) | provenance probe, §1.1 |
 | **Method boundary stated** — the asset says what it may and may not qualify | `bg_gochara_citation_resolution` ("resolution does not qualify a rule"); `bg_transit_engine` (mean motion, distinct from precise observation); `bg_cohort` (synthetic, labelled) | `bg_rules` — 3,002 extractions with `confidence` but no executable-scope statement per rule (v1.0 L0-C04's "executable status" is not a column) | §2.4 |
 | **Integrity detector present** | 37 of 40 | services (probes instead), `bg_sarvatobhadra_grid` (empty) — all three honest | registry |
-| **Declared count truthful** | most | `bg_class_priors` — 171 / 165 / 164 declared vs 177 live; `brahma_formula_constants` 18 declared vs 17 live | W2 MUST-3; exact counts |
+| **Declared count truthful** | `bg_class_priors` — registry `count_sql` (`WHERE prior_version='1.0'`) = **171**, seed floor 171, live 171: the registry is right | two stale *comments* in the writer (165, 164) | exact count over the asset's own partition |
 | **Alias set present** (the vocabulary half of identity) | 662 of 741 entities | all 79 doṣas | §2.6 |
+
+**Per-asset verdicts.** The dimensions above are scored per asset, not by example. Assets not named
+below pass all six dimensions on the §1.1 measurement (provenance column present, integrity detector
+present, identity resolving, count truthful, alias set present where the class has one):
+
+| asset | dimension | verdict | evidence |
+|---|---|---|---|
+| `bg_ontology` | identity correct | **FAIL** | 741 rows, 730 distinct ids — 11 duplicates across entity classes (§1.3 seam 1). The identity owner does not satisfy its own rule 1. |
+| `bg_ontology` | alias set present | **PARTIAL** | 662 of 741; all 79 doṣas empty |
+| `bg_ontology` | source, method boundary, integrity, count | PASS | |
+| `bg_rules` | method boundary | **FAIL** | 3,002 extractions carry `confidence` but no executable-scope state; DP §4.3's five rule states are absent (finding 10) |
+| `bg_rules` | source present | **PARTIAL** | `text_id` on all 3,002; no `school` |
+| `bg_remedies` | identity correct | **PARTIAL** | 289 of 341 `source_canonical_id` values fail on spelling (§1.3 seam 3) |
+| `bg_transit_rules` | source present | **PARTIAL** | per-row `classical_citation`, no `school`; provenance is not table-wide (migration 1079) |
+| `bg_parihara_rules` | source present | **PARTIAL** | source text and chapter, no `school` |
+| `bg_vidhi_floors` | source present | **FAIL** | no provenance column on either of its two tables |
+| `bg_vidhi_primitives` | source present | **FAIL** | `version` only |
+| `bg_sarvatobhadra_grid` | source present | **UNRESOLVED** | schema carries `school_tag`; 0 rows pending the school ruling |
 
 **What this term says:** L0's knowledge is largely faithful where it is *catalogued* — the yoga /
 doṣa / daśā / text core is identified, sourced and schooled — and thin where it is *extracted or
@@ -280,12 +342,35 @@ L0's synergy is the question *is the shared vocabulary actually shared?* Three s
 
 | join | rows | orphans |
 |---|---|---|
-| `brahma_yoga_catalog.canonical_id` → `brahma_ontology` | 237 | **0** |
-| `brahma_dosha_catalog.canonical_id` → `brahma_ontology` | 84 | **0** |
-| `brahma_dasha_systems.canonical_id` → `brahma_ontology` | 22 | **0** |
-| `bg_parihara_rules.dosha_canonical_id` → `brahma_dosha_catalog` | 60 | **0** |
+| join | left rows | joined rows | orphans | reading |
+|---|---|---|---|---|
+| `brahma_yoga_catalog.canonical_id` → `brahma_ontology` | 233 | **237** | 0 | +4 — right key not unique |
+| `brahma_dosha_catalog.canonical_id` → `brahma_ontology` | 79 | **84** | 0 | +5 |
+| `brahma_dasha_systems.canonical_id` → `brahma_ontology` | 20 | **22** | 0 | +2 |
+| `bg_parihara_rules.dosha_canonical_id` → `brahma_dosha_catalog` | 60 | 60 | 0 | clean |
 
-The yoga/doṣa/daśā/parihāra family speaks one identity. This is real synergy and it is complete.
+**Every catalog resolves — and three of the four joins return more rows than they started with.** A
+join that grows has a non-unique key on the right. Measured directly:
+`count(*) = 741`, `count(DISTINCT canonical_id) = 730` — **`brahma_ontology` holds 11 duplicate
+canonical ids**, each the same identifier in two entity classes:
+
+```
+ashtakavarga [concept+school]      kemadruma [dosha+yoga]        sade_sati [concept+dosha]
+balarishta [concept+dosha]         kp [dasha_system+school]      sthira_dasha [concept+dasha_system]
+daridra [dosha+yoga]               phaladeepika [school+text]    vyatipata [upagraha+yoga]
+dhaiya [concept+dosha]             neecha_bhanga_raja_yoga [concept+yoga]
+```
+
+This is **data plane §4.1 rule 1 — one canonical id per thing — failing inside the asset that owns
+the rule**, and it is a fidelity FAIL for `bg_ontology` on "identity correct" (§1.2). A consumer
+resolving `kemadruma` gets two rows and must pick; nothing in the schema tells it which. Whether the
+correct repair is a class-qualified key, a merge, or a declared legitimate polysemy is a design
+question, not a cleanup — packet **W-L0-9**.
+
+So the seam reads: **membership is complete — no catalog entry is unknown to the ontology — but
+identity is not unique.** The first half was real synergy and remains so; the second half this
+document printed and did not see for one draft, which is why the template now requires that a join be
+key-checked before it is reported.
 
 **Seam 2 — rules → concepts: NOT LINKED.** `sutravali_rules` has 3,002 rules, **3,002** with a
 `text_id` (source-linked, 14 distinct texts) and **17** with a `yoga_canonical_id` (concept-linked).
@@ -294,21 +379,29 @@ asks for "a usable rule graph, not just more text"; measured, it is text. A reas
 a rule's passage but cannot, from the rule row, reach the yoga it qualifies — the link exists for
 0.6 % of rules.
 
-**Seam 3 — remedies → identity: TWO MEANINGS OF ONE COLUMN.** `brahma_remedy_corpus.source_canonical_id`
-has 345 non-null values of which **289 do not resolve to `brahma_ontology`**. They resolve to nothing
-there because they are *source-work names* — `BPHS` (193), `classical_tradition` (80),
-`Phaladeepika` (11), `Tajaka` (3) — not entity identities. The column is named as if it were the
-entity vocabulary and holds the source vocabulary. Whether those names resolve to a texts registry is
-**not measured**. The finding stands regardless: `canonical_id` carries two identity spaces across
-L0's tables, which is the exact "local representations diverge in meaning" DP01 forbids.
+**Seam 3 — remedies → identity: ONE SPACE, SPELLING DRIFT.** `brahma_remedy_corpus.source_canonical_id`
+is non-null on all **341** rows; **289 do not resolve to `brahma_ontology`**. A v2.0 draft read this
+as two identity spaces — entity ids in one column, source-work names in another. It is not. The 52
+that *do* resolve are also source-work names — `brihat_samhita` 17, `bphs` 7, `hora_sara` 6,
+`muhurta_chintamani` 5 — and they resolve because **`text` and `school` are themselves ontology
+classes**. The column has one meaning throughout: the work a remedy comes from. The 289 fail on
+**spelling**, not on space: `BPHS` (193) against the ontology's `bphs`, `Phaladeepika` (11) against
+`phaladeepika`, plus `classical_tradition` (80), which names no work at all.
+
+That is a controlled-vocabulary violation of the ordinary kind — an unlisted spelling accepted rather
+than raised (§4.1 rule 2) — fixed by normalization plus an alias entry, not by a redesign. It is also
+the exact failure the native named: a thing missed because it was written differently.
 
 **Seam 4 — declared dependency: LARGELY UNDECLARED.** 19 of 40 assets have ≥1 registered downstream
 consumer; 40 of 40 are read. The orchestrator's staleness propagation runs on the declared graph.
 
-**Seam 5 — served surface contract: ABSENT.** 49 capability files under
+**Seam 5 — served surface contract: ABSENT.** 46 capability files (non-test, excluding `index.ts`) under
 `platform/src/lib/retrieval/registry/layers/L0_brahmagyan`; **0** declare a `density_contract`
-(§N.6). The `bg_muhurta_lattice` capability's `FACTOR_FAMILIES` allowlist covers 4 of 9 families the
-writer produces — ~72,580 of ~165K rows unreachable by explicit filter (W2 MUST-1, still open).
+(§N.6). The one served-surface defect this document previously carried here — the `bg_muhurta_lattice`
+`FACTOR_FAMILIES` allowlist at 4 of 9 families — **was closed on 2026-09-04 (#1705)**: at
+`85bf8f14e` the allowlist lists all nine, and production holds exactly those nine families across
+**173,219** rows (exact count; §1.1's `~172,330` estimate is superseded by it). W2 MUST-1 is
+discharged, not open.
 
 **Seam 6 — the vocabulary itself: THREE AUTHORITIES.** The DB ontology (741 entities, `synonyms
 text[]`), the Python writer-side release `l0.semantic.2026-09-13.1` (12 entities, graha only), and the
@@ -464,15 +557,16 @@ L0 owns the *meaning* half of every coverage obligation. State per obligation, u
 | Graha contextual roles | `bg_ontology`, `bg_reference` | **applied** — identity complete; role vocabulary on `reference_planets` |
 | Rāśi/bhāva/lord/kāraka | `bg_ontology`, `bg_reference` | applied |
 | Bala/dignity/avasthā | `bg_dignity_reference` (variants), `bg_formula_constants` | applied — variants named, not unified |
-| Sambandha (typed relations) | rule vocabulary in `bg_rules` | **unqualified** — relations are typed in L2 code, not in an L0 vocabulary table |
-| Bhāvat Bhāvam | no L0 owner | **unavailable** — no rule scope object exists; v1.0's L0-Q05 stands unanswered |
-| Varga and reference perspectives | `bg_formula_constants` (construction), `bg_kp_sublord_division` | applied for KP; varga construction conventions **not carried as data** — they live in L1 code |
+| Sambandha (typed relations) | rule vocabulary in `bg_rules` | **unqualified → decided here:** the *relation type vocabulary* (aspect, conjunction, exchange, dispositor, nakshatra-link, argalā, virodha) is **L0 data**, because DP §4.2 puts "role vocabulary" and DP §4.1 puts every named thing in the controlled set, and a relation type is a named thing L2 and L3 both cite. The *detection* of a relation in a chart stays L2 code. Packet: add the class to `bg_ontology` under W-L0-9. |
+| Bhāvat Bhāvam | no L0 owner | **unavailable → decided here:** the *scope object* — which derived frames are qualified, under which method, with which prerequisites and exceptions — is **L0 data**, for the same reason: it is a qualified rule, and DP02 makes rule qualification L0's. Its *application* to a chart is L2. Packet: W-L0-5, beside the other rule-qualification work. |
+| Varga and reference perspectives | `bg_formula_constants` (construction), `bg_kp_sublord_division` | applied for KP; **decided here:** varga *construction conventions* are a calculation convention, which DP §4.2 assigns to L0 explicitly ("varga construction" is named in its Calculation-convention row) — so they are **L0 data** and currently live in L1 code. This is a real relocation, not a new asset; packet W-L0-5, and it is the one decision here with a migration cost, so it is flagged to the native as a *consequence*, not a question. |
 | Yoga/doṣa/bhaṅga | `bg_yogas`, `bg_doshas`, `bg_rules` | applied for catalogs; **unqualified** for rules (seam 2) |
 | Nakshatra/KP | `bg_nakshatra`, `bg_kp_sublord_division` | applied |
 | Kāla methods | `bg_dasha_systems`, `bg_transit_rules`, `bg_vedha_malefic_scale`, `bg_phaladeepika_latta`, `bg_kota_chakra_rings`, `bg_sarvatobhadra_grid` | applied except `bg_sarvatobhadra_grid` — **unresolved** (ADJUDICATION-11 school ruling) |
 | Praśna/Muhūrta/calendar | `bg_prashna_rules`, `bg_muhurta_lattice`, `bg_panchanga`, `bg_sky_calendar` | applied as data; Praśna *facility* dormant — native decision open |
 | Āyurdāya and constitution | `bg_dasha_systems`, `bg_formula_constants` (method); medical mappings (constitution testimony) | applied as method; computation is L1 |
-| Practices and wider tradition | `bg_remedies`, `bg_parihara_rules` | applied; identity space mismatched (seam 3) |
+| Practices and wider tradition | `bg_remedies`, `bg_parihara_rules` | applied; source spellings unnormalized (seam 3) |
+| Present interval (P24) | no L0 half | **inapplicable with reason** — the row's data is L3's interval set and L4's expression; L0 supplies only the clock vocabulary, already covered under Kāla |
 
 ### 2.6 · Vocabulary conformance — inverted: L0 owns the controlled vocabulary
 
@@ -490,8 +584,8 @@ plane §4.1 are scored against L0 as owner. Measured 2026-09-25:
 | 1 · one id, one closed alias set, per thing | **PARTIAL** | `brahma_ontology`: 741 entities, 16 classes, `synonyms text[]`; **662 populated, 79 empty — and all 79 are the entire `dosha` class.** Venus = `{shukra, sukra, Venus, Bhargava, usana, VEN, VENUS}`. |
 | 2 · the set is the only permitted surface; unlisted names are raised | **PARTIAL** | A fail-closed adapter exists — `UnknownGrahaIdentity`, `AmbiguousGrahaIdentity` in `l0_semantic_release.py` — **for graha, in Python**. The serving resolver `resolve_entity.ts` reads DB `synonyms` + names live. Meanwhile **130 Python files and 42 TypeScript files** carry Venus-variant string literals (`"Venus"` ×952, `'Venus'` ×38, `"VENUS"` ×5, `"Shukra"` ×4 …); the top carriers are L1 writers (`ga_structural_writer` 44, `ga_sensitive_writer` 29) and one L0 writer (`bg_dignity_reference` 21). |
 | 3 · deterministic, one-directional, normalization declared, ambiguity explicit | **YES for graha; two normalizations overall** | The release declares `unicode_nfc_trim_casefold` and an `ambiguous_aliases` list. The DB resolver uses `$1 = ANY(synonyms) OR lower(name)` — a *different* normalization (no NFC, no diacritic fold). `śukra` resolves in Python and not in the TS resolver unless spelled as stored. |
-| 4 · code-side snapshots generated, pinned, parity-tested | **PARTIAL, and it is the central defect** | Release `l0.semantic.2026-09-13.1` carries `content_sha256`, `generation_id`, `supersedes_release_id` and names `bg_ontology` as `identity_owner` — the *shape* is right. But **no test joins the release to `brahma_ontology`**; its `release_status` is `PRODUCER_READY_CANDIDATE`, `admission_status` **`LOCAL_EXECUTION_ONLY`**; it covers **12 entities** (graha) with six near-empty catalogues (concepts 3, roles 2, domains 1, outcomes 2, methods 1, operator_scopes 1). `graha_labels.ts` is hand-extracted from `address_resolver.ts` and pins the release id — pinned, not generated. The **domain** vocabulary is the one place rule 4 fully holds: `domain_vocabulary.py` ↔ `domain_vocabulary.ts` with a member-for-member test — but it holds between two *code* files, and neither derives from the DB's 45 `domain` entities. |
-| 5 · external inputs typed to the set | **NO** | Across the retrieval registry and MCP: **2 enum-typed** planet/graha parameters, **32 free-string**. Whether each free-string parameter is resolver-validated before comparison is unverified per tool; `gochara_intensity/enrichment.py`'s own docstring records the failure mode — `fact_subject = 'Venus'` compared raw, mismatching — which it has since fixed by importing the SSoT. |
+| 4 · code-side snapshots generated, pinned, parity-tested | **PARTIAL, and it is the central defect** | Release `l0.semantic.2026-09-13.1` carries `content_sha256`, `generation_id`, `supersedes_release_id` and names `bg_ontology` as `identity_owner` — the *shape* is right. But **no test joins the release to `brahma_ontology`**; its `release_status` is `PRODUCER_READY_CANDIDATE`, `admission_status` **`LOCAL_EXECUTION_ONLY`**; it covers **12 entities** (graha) with six near-empty catalogues (concepts 3, roles 2, domains 1, outcomes 2, methods 1, operator_scopes 1). `graha_labels.ts` **is** generated from the release: it imports `l0_semantic_release_v1.json` and builds `RELEASED_IDENTITY_BY_ID` from `semanticRelease.entities` under the release's own `NFC` normalization. Rule 4 holds here. The gap is one level up — the release itself has no parity test against `brahma_ontology`, so a correctly-generated snapshot can still be generated from a stale authority. The **domain** vocabulary is the one place rule 4 fully holds: `domain_vocabulary.py` ↔ `domain_vocabulary.ts` with a member-for-member test — but it holds between two *code* files, and neither derives from the DB's 45 `domain` entities. |
+| 5 · external inputs typed to the set | **NO** | Across the retrieval registry and MCP: **2 enum-typed** planet/graha parameters, **32 free-string**. Whether each free-string parameter is resolver-validated before comparison is unverified per tool; `gochara_intensity/enrichment.py`'s own docstring records the failure mode — `fact_subject = 'Venus'` compared raw, mismatching — which it has partly fixed by importing the SSoT — a literal graha set remains at `enrichment.py:93`. |
 | 6 · independent maps censused, one per class | **graha only** | `test_graha_vocabulary_census.py` (ADHIṢṬHĀNA A2) reduced 46 independent graha maps to 1 and fails above it — a real detector. It censuses *maps*; two name *tuples* escape it (`panchang_engine/planets.py`, `brahmagyan/ganita/l1_positions.py`, 0 imports of the SSoT). **Fifteen of sixteen entity classes have no census at all.** |
 
 **Where the plane actually stands:** the controlled vocabulary exists end-to-end for **eleven planets on
@@ -542,10 +636,10 @@ traces_to:   0.2
 
 | obligation (Product §14) | where L0 stands, measured | what closes the gap |
 |---|---|---|
-| **Source and domain fidelity** (primary) | Catalog identity complete. Rules text-anchored, 0.6 % concept-linked. Remedy identity space mismatched. `bg_transit_rules` provenance per-row, registry description corrected (1079) but no standing detector. `bg_sarvatobhadra_grid` empty pending ruling. **The controlled vocabulary is three authorities: DB 741 / release 12 / domains 13, disagreeing on Venus (7 vs 10) and on domains (45 / 13 / 1); the `dosha` class has no alias set at all; 32 of 34 external planet parameters are free strings.** | Rule→concept linkage (W-L0-3); identity-space separation (W-L0-3); **one vocabulary authority with parity to every snapshot, all 16 classes, typed interfaces (W-L0-8)**; a description-vs-table detector (W-L0-5); the school ruling (W-L0-6). |
+| **Source and domain fidelity** (primary) | Catalog identity complete. Rules text-anchored, 0.6 % concept-linked. Remedy identity space mismatched. `bg_transit_rules` provenance per-row, registry description corrected (1079) but no standing detector. `bg_sarvatobhadra_grid` empty pending ruling. **The controlled vocabulary is three authorities: DB 741 / release 12 / domains 13, disagreeing on Venus (7 vs 10) and on domains (45 / 13 / 1); the `dosha` class has no alias set at all; 32 of 34 external planet parameters are free strings; and the identity owner itself holds 11 duplicate canonical ids.** | Rule→concept linkage (W-L0-3); identity-space separation (W-L0-3); **one vocabulary authority with parity to every snapshot, all 16 classes, typed interfaces (W-L0-8)**; a description-vs-table detector (W-L0-5); the school ruling (W-L0-6). |
 | **Computational correctness** (substrate) | Node frame and epoch declared on `ephemeris_daily` (1076); engine probe degree-anchored (1075); `.se1` file-presence finding from another session not re-verified. | Re-verify the ephemeris file resolver in production (W-L0-1); nothing else measured as wrong. |
 | **Concept and relationship completeness** | No L0 object for sambandha typing or Bhāvat Bhāvam scope; varga construction conventions live in L1 code, not L0 data. | Decide whether these are L0 data or remain L1/L2 code — a native/strategy call, recorded in §4.2 as W-L0-6, not assumed. |
-| **Delivery fidelity** (served surface) | 49 capability files, 0 `density_contract`; `bg_muhurta_lattice` allowlist 4/9 families; `bg_reference` unserved. | `density_contract` on all 49; allowlist 9/9; a `ref_` capability for graha reference (W-L0-4). |
+| **Delivery fidelity** (served surface) | 46 capability files, 0 `density_contract`; `bg_muhurta_lattice` allowlist 4/9 families; `bg_reference` unserved. | `density_contract` on all 49; allowlist 9/9; a `ref_` capability for graha reference (W-L0-4). |
 | **Operational honesty** | Three disagreeing `bg_class_priors` counts (171/165/164 vs live 177); `bg_vidhi_floors` DRAFT; `bg_prashna_rules` NULL target; sort_order collisions; duplicate `@register`; legacy table not dropped; seed disagrees with registry in five places. | Registry truth pass (W-L0-1). |
 
 ### 3.2 · Per asset — disposition
@@ -587,7 +681,12 @@ Compact; the asset brief's "exact delta" inherits from here.
   extended from graha to all sixteen classes.**
 - `bg_reference`: a served capability; declared consumers.
 - `bg_rules`: a concept link (`yoga_canonical_id` / `dasha_system_id` / a doṣa key) on every rule
-  that qualifies a catalogued concept, or an explicit `unlinked_reason`; a `school` column.
+  that qualifies a catalogued concept, or an explicit `unlinked_reason`; a `school` column; and **a
+  qualification state per rule** — DP §4.3 requires rules distinguished as supported /
+  readable-but-not-executable / disputed / unsupported / method-inapplicable, and v1.0 carried this
+  vocabulary (`READABLE_NOT_EXECUTABLE`, `QUALIFIED_EXECUTABLE`, `UNQUALIFIED_SOURCE`,
+  `UNSUPPORTED_SCOPE`, `METHOD_INAPPLICABLE`). It is a parent obligation, it exists in code, and it
+  was dropped from this document's must-add list; restored here.
 - `bg_remedies`: `source_canonical_id` renamed to what it is (`source_work_id`) or re-keyed to the
   entity space; the unresolved 289 characterised, not forced.
 - `bg_transit_rules`, `bg_parihara_rules`: `school`.
@@ -658,14 +757,15 @@ traces_to:   3.x — each closes named delta items
 | **W-L0-1 Registry truth** | 3.1 operational honesty: `bg_prashna_rules` target; sort_order 68/69; `bg_vidhi_floors` status *decision recorded*; `bg_class_priors` one count; duplicate `@register`; seed reconciled to live; legacy `reference_nakshatras` dropped; the "no subject column on any bg_ table" check run; the `.se1` resolver re-verified | a registry-parity test for L0 (the L3 parity test extended to `bg_*`); `to_regclass('reference_nakshatras') IS NULL` |
 | **W-L0-2 Declared dependencies and declared use** | seam 4; 2.3 both halves | every code read of a `bg_*` table is either a registered `depends_on` edge or a documented serve-time read with a declared use type; detector: the reader grep in §1.1 re-run yields no undeclared writer-side reads |
 | **W-L0-3 One identity, linked rules** | seam 2, seam 3; 3.2 for `bg_ontology`, `bg_rules`, `bg_remedies` | `source_canonical_id` no longer joined against `brahma_ontology` by name (renamed or re-keyed); rule→concept coverage reported as a number with an `unlinked_reason` on the remainder — the 0.6 % becomes a measured figure with a stated ceiling, not a target |
-| **W-L0-4 Served-surface contract** | seam 5; 3.1 delivery fidelity | `density_contract` present on 49/49 (grep = 49); lattice allowlist 9/9 with a test that fails on 8; `ref_graha_reference_get` (or equivalent) exists and is exercised |
+| **W-L0-4 Served-surface contract** | seam 5; 3.1 delivery fidelity | every exported `CapabilityDescriptor` in the L0 registry declares one (the proof counts descriptors, not files); lattice allowlist 9/9 with a test that fails on 8; `ref_graha_reference_get` (or equivalent) exists and is exercised |
 | **W-L0-5 Provenance completion and truthfulness** | 2.2 partial/absent rows; 2.1 description-vs-table gap | `school` on `sutravali_rules`, `bg_transit_rules`, `bg_parihara_rules`; provenance columns on `vidhi_floor_items`; a standing check that a registry `english_description` provenance claim is supported by the table (the 1079 defect class, generalised) |
-| **W-L0-6 Native rulings** | `bg_sarvatobhadra_grid` school; `bg_prashna_rules` facility; `bg_vidhi_floors` status; whether sambandha typing / Bhāvat Bhāvam scope / varga construction become L0 data or stay L1/L2 code; whether the remedy identity space merges into the ontology or stays a separate, honestly-named source registry | rulings recorded in `KALA_DELEGATED_DECISIONS` or its L0 equivalent; each packet above that depends on one names it |
+| **W-L0-6 Native rulings — two, not five** | `bg_sarvatobhadra_grid`'s school (ADJUDICATION-11: a doctrinal choice with no in-repo answer); `bg_prashna_rules`' facility (a product-scope and disclosure decision). **Withdrawn as native rulings:** `bg_vidhi_floors`' status — the live registry description already answers it ("catalog_status=DRAFT is intentional, not stale: 12/14 intent floors are writer-tagged [MANDATORY] … re-verify against the writer source before flipping"), so this is a verification task, not a ruling; the remedy identity question — it dissolved when the column turned out to be one space with spelling drift (§1.3 seam 3); and whether sambandha typing / Bhāvat Bhāvam scope / varga construction become L0 data — **data plane §4.1–4.2 assigns that decision to this document**, and pushing it up was this author avoiding a call that was his. It is taken in §2.4 below. | rulings recorded in `KALA_DELEGATED_DECISIONS` or its L0 equivalent; each packet above that depends on one names it |
+| **W-L0-9 Identity uniqueness and the missing classes** | §1.3 seam 1 (11 duplicate canonical ids); §2.4's two decisions (relation-type vocabulary, Bhāvat Bhāvam scope as L0 data) | `SELECT count(*) - count(DISTINCT canonical_id) FROM brahma_ontology` = 0, by whichever repair the design review chooses — class-qualified key, merge, or a declared and *enforced* polysemy rule that tells a consumer which row to take. Plus: the relation-type class exists in the ontology and `bg_rules`/L2 cite it rather than typing relations locally. Must precede W-L0-8, since a vocabulary cannot be controlled while its identity owner has ambiguous keys. |
 | **W-L0-8 Controlled vocabulary, end to end** | §2.6 rules 1–6; seam 6; seam 3 (the remedy column is a vocabulary violation instance) | (1) `SELECT count(*) FROM brahma_ontology WHERE cardinality(synonyms)=0` = 0; (2) a parity test joins `l0_semantic_release_v1.json` to `brahma_ontology` and fails on any alias-set difference — Venus 10 ≟ 7 is the first failure it must report; (3) the `domain` class has one authority, with DB↔Python↔TypeScript parity, and the count is one number, not 45/13/1; (4) the serving resolver and the release share one declared normalization (`śukra` resolves in both); (5) the graha census is generalised to a per-class census over all sixteen classes, permitted count one, and the two escaping name-tuple modules import the SSoT; (6) the interface-parameter census reports 0 free-string planet/graha parameters (enum or resolver-validated); (7) the release's `admission_status` leaves `LOCAL_EXECUTION_ONLY` by a recorded native decision, not by drift. Depends on W-L0-1 (a registry it can trust) and pairs with W-L0-3 (the identity-space decision). |
 | **W-L0-7 The consumer-perturbation harness** | 1.4 "traceably transformed" and "value evaluated" — for L0's *consumers* | a shared instrument, not an L0 judgement: on a disposable snapshot, perturb a named L0 fact (a rule row, an alias, a constant) and run a fixed set of L1–L3 readings; the detector is that the consuming reading **moves**, and moves in the way the fact predicts. A consumer that does not move has not consumed. Findings land in L1–L5's plans. Detector for the packet itself: the harness exists, runs in CI, and shows at least one L2 reading moving when `bg_yogas` is perturbed. |
 
 W-L0-7 is the packet without which §1.4 stays at "consumed" and never reaches "value evaluated" — for
-L0's consumers, not for L0. It It is named last because it depends
+L0's consumers, not for L0. It is named last because it depends
 on W-L0-1 (a registry it can trust) and W-L0-2 (dependencies it can follow), not because it matters
 least.
 
@@ -736,7 +836,7 @@ measured_by: the tracker — which today lists only the 22 L3 assets; extending 
 traces_to:   4.4
 ```
 
-The 31 criteria apply unchanged. Two are structurally different for L0 and the template should say
+The 32 criteria apply unchanged. Two are structurally different for L0 and the template should say
 so (§6): **T1-E consumers** is measured by code reads, not by served readings, for a root layer; and
 **T5's campaign ladder** position is `ANALYZED` for all 40 (W1 analyses exist) with `FROZEN` only
 under a superseded revision — which under §5.3 is *not frozen*.
@@ -769,6 +869,21 @@ to either criterion re-opens that record only.
 
 ---
 
+## §7 · Corrections outstanding, and the gate each blocks
+
+Required by the template's first middle-tier guard: a correction with no named gate defaults to
+blocking the next gate. None of these is a document defect — all were fixed above. These are the
+verification and design items this instance leaves open.
+
+| # | correction | gate it blocks |
+|---|---|---|
+| C-1 | The per-asset fidelity verdicts in §1.2 are scored from §1.1's measurements; the five **PARTIAL/FAIL** rows have not been re-verified by a second party | L0 layer certification (§5.3), not the asset briefs |
+| C-2 | `bg_vidhi_floors`' DRAFT status: the registry description says re-verify against the writer source before flipping. Not done here | the `bg_vidhi_floors` asset brief |
+| C-3 | The varga-construction relocation (§2.4) has a migration cost that is stated but not sized | the first L1 instance — it moves a convention out of L1 code |
+| C-4 | §5.2's 32 criteria are not yet mapped to §4.4's inheritance list; the review found six with no feeding section | the first `bg_*` asset brief |
+| C-5 | `l0_resource_config_slice_v1.json` is on disk, registered nowhere, and undispositioned | W-L0-1, and the registry-parity detector it builds |
+| C-6 | Presentation parity (§2.2) has not been run for any L0 capability | the first served-surface packet, W-L0-4 |
+
 ## §6 · What this instance found in the template
 
 Recorded here for repair in `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`, not worked around:
@@ -785,13 +900,24 @@ Recorded here for repair in `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`, no
 5. **The "synergistic term as a fraction" instruction cannot be honestly met without ablation.** The
    template should accept a seam-by-seam measurement as the recorded value until a harness exists,
    rather than invite a number.
-7. **Ablation was the wrong individual measure for a reference layer**, and the template applied it
+6. **Ablation was the wrong individual measure for a reference layer**, and the template applied it
    uniformly. Raised by the native: perennial knowledge judged by today's readers would be retired one
    unread chunk at a time. Repaired 2026-09-25 in the template (§1.2 reference-layer clause, §1.5
    exemption, §5.1) and in the data plane (§12.2 carve-out). This instance's §1.2 was rewritten from a
    reachability proxy to a fidelity score, and W-L0-7 re-aimed from judging L0 assets to verifying
    their consumers. The second finding that propagated upward.
-6. **Vocabulary conformance was missing from the template entirely** until this instance's
+8. **`measured_by:` named an instrument but never a population**, and three of this instance's nine
+   wrong figures came from exactly that gap — a regex whose scope was unstated, a count over a shared
+   table compared against one partition's registry figure, and a join reported without checking its
+   right-hand key was unique. Repaired 2026-09-25: `measured_by:` must name the population, with the
+   corollary that a join is not measured until its keys are.
+9. **§5.2's 32 criteria were never mapped to §4.4's inheritance list**, so a brief author could reach
+   a criterion no section feeds — the review found six. Repaired: the map is now required before an
+   instance is called ready.
+10. **The verdict scale was binary**, which forces REJECT on an instance whose direction is sound and
+   whose corrections are real. Repaired with a three-verdict scale and the document/layer distinction
+   that keeps the middle tier from rotting (template §5.4).
+7. **Vocabulary conformance was missing from the template entirely** until this instance's
    measurement surfaced three disagreeing authorities. Repaired 2026-09-25 in the template (§2.6, T4
    `Vocab`) and in the data plane (§4.1 raised to a governing principle) — the first defect this
    instance found that propagated *upward* rather than down.
