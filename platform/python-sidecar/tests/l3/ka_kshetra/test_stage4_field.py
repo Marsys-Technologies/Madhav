@@ -870,15 +870,16 @@ class TestClassLifetimeCountSelection:
 
 
 class TestLoadLegacyCrosscheck:
-    """PG-31 (UTK post-close audit): load_legacy_crosscheck must be
-    generation-aware so that it reads only the authoritative generation's rows
-    from kala_gochara_windows when v1 and 3.0 rows coexist.
+    """PG-31 + WP7 N-10: load_legacy_crosscheck must be generation-aware so it
+    reads only the authoritative generation's rows from kala_gochara_windows
+    when v1 and 3.0 rows coexist, and must read NOTHING when the chart is
+    unpublished.
 
-    The fix: a correlated COALESCE sub-select against kala_gochara_authority —
-    the same seam contract the MCP serving layer uses
-    (register_gochara_windows.ts AUTHORITATIVE_GENERATION_FILTER).  When the
-    authority table has no row for this chart, 'v1' is the default (migration
-    527: an ABSENT row means v1 authoritative by definition).
+    WP7 packet K-1 supersedes the earlier COALESCE seam (PG-31's
+    'absent row → v1 by definition', migration 527): an absent
+    kala_gochara_authority row means the chart is UNPUBLISHED, so the
+    correlated sub-select must NOT carry a COALESCE fallback — absent
+    authority yields zero rows, exactly like the serving layer.
     """
 
     def test_sql_filters_by_authoritative_generation(self):
@@ -894,19 +895,29 @@ class TestLoadLegacyCrosscheck:
             'the authoritative generation; generation-blind reads produce '
             'double-counted provenance edges when v1+3.0 rows coexist')
         assert 'authoritative_generation' in sql
-        assert 'COALESCE' in sql, (
-            "default to 'v1' via COALESCE so charts without an authority row "
-            'remain functional (migration 527: absent row → v1 authoritative)')
+        assert 'COALESCE' not in sql, (
+            "WP7 N-10: absent authority row means UNPUBLISHED — no COALESCE "
+            "fallback to 'v1'; an unpublished chart must yield zero rows")
 
-    def test_default_generation_fallback_is_v1(self):
-        # The COALESCE fallback must be the string literal 'v1' — the same
-        # default the serving layer and migration 527 specify.
+    def test_absent_authority_yields_no_rows_not_a_v1_fallback(self):
+        # The old default (literal 'v1') must be gone: with no authority row
+        # the correlated sub-select is NULL and the predicate matches nothing.
         conn = _RecordingConn([])
         S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
         sql, _ = conn.log[0]
-        assert "'v1'" in sql, (
-            "COALESCE fallback must be literal 'v1' to match the authority "
-            "table's documented default (migration 527 COMMENT ON TABLE)")
+        assert "'v1'" not in sql, (
+            "no literal 'v1' fallback: absent kala_gochara_authority row ⇒ "
+            'unpublished ⇒ zero crosscheck rows (WP7 K-1)')
+
+    def test_generation_column_selected_for_edge_pinning(self):
+        # WP7 K-1: writer pins the generation into the xref provenance edge
+        # (term_key and source_pk), so the loader must return it.
+        conn = _RecordingConn([])
+        S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
+        sql, _ = conn.log[0]
+        assert 'generation' in sql.split('FROM')[0], (
+            'the SELECT list must include generation so writer.py can pin it '
+            'into gate:legacy_sweep_xref edges')
 
     def test_generation_predicate_is_not_hardcoded(self):
         # Must NOT hardcode generation='v1' — that would never flip to 3.0 even
@@ -915,9 +926,9 @@ class TestLoadLegacyCrosscheck:
         S4.load_legacy_crosscheck(conn, 'chart-abc', 'career_advancement')
         sql, _ = conn.log[0]
         assert "generation = 'v1'" not in sql, (
-            "generation must not be hardcoded: use COALESCE against "
-            "kala_gochara_authority so the predicate flips automatically when "
-            "the authority row is updated to '3.0'")
+            'generation must not be hardcoded: use the correlated sub-select '
+            "against kala_gochara_authority so the predicate flips "
+            "automatically when the authority row is updated to '3.0'")
 
     def test_params_are_chart_id_and_event_class_only(self):
         # The correlated sub-select uses kala_gochara_windows.chart_id as a

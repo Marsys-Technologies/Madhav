@@ -947,9 +947,12 @@ class KaKshetraWriter(WriterBase):
             ))
         for row in legacy:
             agreement = 'agree' if self._legacy_overlaps(row, w) else 'diverge'
+            gen = row.get('generation') or 'unknown'
             edges.append(hazard.identity_edge(
-                'gate', f'gate:legacy_sweep_xref:{row["id"]}:{agreement}', 'l3_row',
-                source_table='kala_gochara_windows', source_pk=str(row['id']),
+                'gate', f'gate:legacy_sweep_xref:{gen}:{row["id"]}:{agreement}',
+                'l3_row',
+                source_table='kala_gochara_windows',
+                source_pk=f'{gen}:{row["id"]}',
             ))
         S4.assert_provenance_reconciles(edges, w.lambda_peak, target_id=wid)
 
@@ -1058,9 +1061,12 @@ class KaKshetraWriter(WriterBase):
                 ))
             for row in legacy:
                 agreement = 'agree' if self._legacy_overlaps(row, w) else 'diverge'
+                gen = row.get('generation') or 'unknown'
                 edges.append(hazard.identity_edge(
-                    'gate', f'gate:legacy_sweep_xref:{row["id"]}:{agreement}', 'l3_row',
-                    source_table='kala_gochara_windows', source_pk=str(row['id']),
+                    'gate', f'gate:legacy_sweep_xref:{gen}:{row["id"]}:{agreement}',
+                    'l3_row',
+                    source_table='kala_gochara_windows',
+                    source_pk=f'{gen}:{row["id"]}',
                 ))
             S4.assert_provenance_reconciles(edges, w.lambda_peak, target_id=wid)
 
@@ -2321,13 +2327,13 @@ class KaKshetraWriter(WriterBase):
         so the field hash still changes if any component later becomes available —
         never a blank that two distinct corpus states would share.
         """
-        generation = 'v1'
+        generation = 'unpublished'
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT COALESCE("
-                    "  (SELECT authoritative_generation FROM kala_gochara_authority"
-                    "   WHERE chart_id = %s), 'v1') AS gen",
+                    "SELECT authoritative_generation AS gen"
+                    " FROM kala_gochara_authority"
+                    " WHERE chart_id = %s",
                     (chart_id,),
                 )
                 rows = S4._rows(cur)
