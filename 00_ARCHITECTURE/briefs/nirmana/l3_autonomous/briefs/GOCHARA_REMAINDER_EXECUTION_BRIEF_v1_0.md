@@ -395,3 +395,33 @@ production. Anyone changing hashed content must ship a reseal computed against *
 
 **Unchanged and reinforced: do not apply 1085 to any shared database.** It is file-only by §8.4, and it
 is now known to be wrong against the applied state rather than merely unverified.
+
+### 12.11 COORDINATION — what the native's L3 session has already done in this worktree (read before starting §12.3 or §12.9)
+
+The L3 session was asked to execute this delta directly and found, at 13:34, that this run is live in the same
+worktree. To avoid collisions, ownership is split. **Do not redo, revert or re-derive the DONE items.**
+
+| item | state | owner | commit / where |
+|---|---|---|---|
+| 12.10b writer honesty (UNSOURCED rows stamped cited) | **DONE** | L3 session | `4d8f83050` — also fixed `source_qualification` and the silent citation substitution; 18 tests |
+| 12.5 test isolation | **DONE, two separate findings** | both | the L3 session added `assert_real_ephemeris()` (`eec8912e3`); this run independently found and fixed the cutover fixture dropping the WP6 ledger tables (`40ea32c7e`). The mean-node failure itself does **not reproduce**; its cause is recorded as unknown |
+| 12.10a rewrite 1085 as a delta | **DONE — by RETIRING it, not rewriting** | L3 session | `7b86b8a08`, reasoning in `gochara_wp0_7/G9_DISPOSITION_v1_0.md`, escalation E-010. **1085 no longer exists. Do not restore it, and do not re-add 1085 or 1086 to step 4's `APPLY_SET`** — `assert_no_refused_migrations()` will exit 3 |
+| 12.9d rename 1086 to an `l1_` basename | **DONE** | L3 session | `7b86b8a08` |
+| **12.9a/b/c upstream fingerprint, detector, candidate-build gate** | **IN PROGRESS — CLAIMED by the L3 session** | L3 session | **Skip 12.9.** It lives in `services/ka_vedha_gochara/` and `scripts/kala_gochara_cutover/step06_candidate_build.py` |
+| 12.3 tasks 4.13a–i | **OPEN — yours** | this run | the L3 session will not touch `engine.py`, `ledger.py`, `episodes.py`, `interval_solver.py`, `resolution_hierarchy.py`, `WP1_CONTRACTS.md` or migration 1081 |
+| 12.4 binding B1–B7 adoption | **OPEN — yours** | this run | |
+| 12.10c merge-order hygiene | **OPEN — yours**, at PR merge time | this run | |
+
+**Migration numbers.** The L3 session's 12.9 needs **no migration** (the fingerprint rides the existing `detail`
+jsonb). §12.3 needs one: take the lowest free number **after a fresh scan of every `origin/*` head across
+both directories and a run of the MIG-1 guard** (`cd platform && npm run guard:migration-numbers`), not from
+this file.
+
+**Two facts the L3 session verified that change your plan:**
+1. **Tranche 1 step 4 now applies 1080–1084 only.** Sheet A-2's literal step 4 names two migrations; 1082,
+   1083 and 1084 exceed it and are flagged in E-010 as the native's to confirm. Treat step 4 as authorised
+   for 1080/1081 until the native says otherwise, and apply the rest through the normal deploy pipeline.
+2. **§12.10b is a hard precondition of step 6.** It is now satisfied by `4d8f83050`, but step 6 must also pass
+   the 12.9 staleness gate, which the L3 session is adding.
+
+Push order: fetch first; both writers commit by explicit path, never `git add -A`.
