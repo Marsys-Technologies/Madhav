@@ -783,3 +783,52 @@ phrasing would have let the alias lapse on a generation count rather than on evi
 
 **Verification after the renumber:** 28 synergy tests pass; S21 positive 0 / negative 1; every
 reference updated in the migrations, the test and the evidence script.
+
+
+## S-2 interface — blockers answered and VERIFIED at source (2026-09-24T12:52:12+05:30)
+
+The Gochara session answered both blockers. Its branch is pushed, so this is no longer attributed:
+every claim below was read at `origin/l3/gochara-autonomous-wp0-7`. **This supersedes the earlier
+"ATTRIBUTED, not verified" grade on the S-2 interface section.** For the next Saṅgam session, this is
+the adoption contract.
+
+**⚠ THE TRAP — two different functions share the name `find_episodes`. Confirmed at source.**
+- **ADOPT:** `services/ka_gochara/service.py:278` — the interface. Its dataclass carries
+  `contact_id: str | None` (`:106`), `independence_group` (`:107`), `claim_grain` (`:120`),
+  `partition_kind ∈ {body_target, event_class, moon_on_demand}` (`:127`), `unsearched_reason`
+  (`:137`) and `coverage: list` (`:143`). Unpublished chart ⇒ empty episodes **plus** a full coverage
+  object (`:297`); zero contacts ⇒ empty list **with** coverage, never a bare `[]`; N-14-excluded
+  node-dṛṣṭi rows are counted in the coverage note, not silently dropped.
+- **DO NOT ADOPT:** `services/gochara_v3/engine.py:1709` — engine-internal, and its non-Moon branch
+  is literally `return {"episodes": sentences, "coverage": None}` at **`:1756`**. That is the D-S1
+  defect the native ruled for fix, **not yet fixed**. Binding to it would import the exact
+  empty-≡-failure ambiguity synergy #4 just closed on this side.
+
+**`window_ref` resolution — verified, not described.** `kala_gochara_contacts` PRIMARY KEY is
+`(chart_id, generation, contact_id)` at **migration 1081:197**, with `chart_id UUID` (`:143`),
+`generation TEXT` (`:144`, values `'4.0'`, `'4.1'`, never `g4_*`) and `contact_id TEXT` of the form
+`sha256:<hex>` (`:145`). So `{asset_id: 'ka_gochara', generation, id}` resolves as: `asset_id`
+selects the relation, then `WHERE chart_id = $1 AND generation = ref.generation AND contact_id =
+ref.id`. Served episodes already carry `contact_id` and `independence_group` (read from the ledger at
+`service.py:448`), so the round-trip needs no re-derivation.
+
+**A rename is coming that the adoption must not bind ahead of.** Native ruling D-S4 renames their
+`claim_grain` to the layer-ruled **`precision_regime`** (values unchanged: `instant_grain`,
+`date_grain`). It is on the served episode **today** at `service.py:120/:451/:502`. Bind to
+`precision_regime`, or bind late — not to `claim_grain`.
+
+**ATTRIBUTED, NOT VERIFIED — and it may retire one of this campaign's findings.** Gochara reports an
+independent re-count showing `bg_transit_rules` is **already re-cited in production**: 42 vedha rules,
+42 citing Phaladīpikā, **0** citing BPHS Ch.29. If so, the house-vedha re-citation this campaign
+recorded as *holder-without-authority* is **already done upstream**, and this sheet's grade —
+house-vedha `unqualified` *as cited* until re-citation lands — would be **stale in this stream's
+favour**. **This session cannot verify it: both database endpoints refused all session.** It is
+recorded as their claim, not as fact, and the next session's first read should be the count itself:
+`SELECT classical_citation, count(*) FROM bg_transit_rules WHERE rule_type='favourable' AND
+vedha_house IS NOT NULL GROUP BY 1`. Their own consequence is noted too — their migration 1085 may be
+redundant or wrong against live state, and they are applying nothing until it is diffed.
+
+**Migration map, their verified version:** theirs 1080–1086, this stream's 1088–1090, **1087 free**,
+1091+ free, maximum anywhere 1090. They also re-counted the cross-directory duplicate prefixes on
+`main` at **55**, not the 41 this session measured — so this campaign's own figure was **understated**,
+and the "collision is benign" conclusion it supported is if anything better founded than argued.
