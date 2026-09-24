@@ -605,6 +605,15 @@ semantics:
 Anything not in this table (free text, NULL, "mostly comparable") is a schema
 violation, not a value.
 
+### 6.0 Declined extensions (D-S6, 4.13i)
+
+- **`unstable_key` comparability value — DECLINED.** It names a property of one
+  row's identity, not a relation between two rows, and would let a row assert a
+  comparability class while itself being unfindable across rebuilds. Kṣetra's
+  interim state is therefore recorded as `NOT_RUN` with reason `unstable_key` and
+  `completeness_state='unqualified'` (F06) until a content-addressed key lands —
+  not as a `comparable_with` value.
+
 ### 6.1 Vocabulary note — N-21 standing rule (nāḍī attestation)
 
 **Nāḍī attestation ⇒ `testimony`, never weight, without primary corroboration.**
