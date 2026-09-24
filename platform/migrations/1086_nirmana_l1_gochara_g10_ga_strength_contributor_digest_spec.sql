@@ -1,4 +1,4 @@
--- 1086_nirmana_l0_gochara_g10_ga_strength_contributor_digest_spec.sql
+-- 1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql
 --
 -- Gochara G-10 (ruling sheet v2.0, row M-7): ga_strength_writer now emits the
 -- per-contributor BAV matrix as chart_facts category

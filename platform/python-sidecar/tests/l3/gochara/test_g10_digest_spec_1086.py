@@ -24,7 +24,7 @@ from pipeline.orchestrator.output_digest import _validate_spec  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[4]
 MIGRATION_1086 = (
-    ROOT / "migrations/1086_nirmana_l0_gochara_g10_ga_strength_contributor_digest_spec.sql"
+    ROOT / "migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql"
 )
 
 OLD_SHA = "3743484c996bf41a9b957224fd5c54cf04f1f1de27ef91116726b60b483bb07a"

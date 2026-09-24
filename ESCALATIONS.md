@@ -277,3 +277,20 @@ what a human needs to decide.
 - **Evidence:** `git ls-tree -r --name-only <each ref> -- platform/migrations
   platform/supabase/migrations` over all `refs/remotes/origin/*` and
   `refs/heads/*`, max prefix 1084.
+
+## E-010 — Migration 1085 retired; step 4 apply set corrected; 1086 renamed to its layer (L3 session, 2026-09-24 13:40)
+
+- **What:** `1085_nirmana_l0_bg_transit_rules_vedha_repair.sql` and `tests/l3/gochara/test_g9_vedha_row_repair.py`
+  are **removed**. Step 4 of the cutover kit no longer applies 1085 or 1086, and refuses to (a `REFUSED` set,
+  checked by `assert_no_refused_migrations()`, exits 3). `1086_nirmana_l0_…` is renamed
+  `1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql` (it is an L1 change).
+- **Why:** 1085 aborts against production (19 rows still cite the struck source) and its repair is already
+  applied by the L0 session. Applying 1086 is an L1 governed-digest revision that sheet A-2 does not authorise
+  for tranche 1. Full reasoning: `gochara_wp0_7/G9_DISPOSITION_v1_0.md`.
+- **Decision needed from the native:** none for the removals. **One scope question is open and is the native's:**
+  sheet A-2's literal step 4 names exactly the two Gochara migrations (now 1080/1081). Step 4's apply set also
+  contains 1082, 1083 and 1084, which the executor added: 1082 is additive stamp columns on this family's own
+  L3 tables; 1083 is a nullable `contact_id` on two L5 tables (packet P-3); 1084 is registry edges (packet
+  K-1/V-1). They are benign and additive, but they exceed A-2's literal text and were not separately ruled.
+  Until the native confirms, tranche 1 step 4 should be treated as authorised for 1080/1081 and the other three
+  applied through the normal deploy pipeline with their own verification.
