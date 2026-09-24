@@ -244,6 +244,51 @@ def vipareeta_cancellation(
     return best
 
 
+# ── §12.9 upstream fingerprint ───────────────────────────────────────────────
+# A house_vedha row restates a `bg_transit_rules` row and (nested) a
+# `bg_vedha_malefic_scale` grade. Neither the rules nor the scale is versioned by
+# anything the row could carry, so when L0 re-cited the rules the built rows went
+# stale with no code path able to notice (§N.8). The fingerprint is a digest of the
+# rows a build ACTUALLY CONSUMED — the same objects the writer holds in memory — so
+# comparing it to a fresh read of the tables answers "was this row built from what
+# the tables say now?" and can only be wrong if the digest is.
+FINGERPRINT_ALGORITHM = "sha256/canonical-json/v1"
+
+
+def _digest(obj) -> str:
+    import hashlib
+    import json
+
+    blob = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def upstream_fingerprint(vedha_rules: dict, malefic_scale: dict) -> dict:
+    """Digest of the reference rows one house_vedha build consumed.
+
+    `vedha_rules` is `{(graha, primary_house): row}` and `malefic_scale` is
+    `{malefic_count: row}` — exactly what the writer's fetch functions return.
+    Order-independent; sensitive to every consumed field (citation, phala,
+    vedha_house, grade). JSON-safe, so it round-trips through a jsonb column.
+    """
+    rules = sorted(
+        ([str(k[0]), int(k[1]), {f: v for f, v in sorted(dict(row).items())}]
+         for k, row in vedha_rules.items()),
+        key=lambda x: (x[0], x[1]),
+    )
+    scale = sorted(
+        ([int(k), {f: v for f, v in sorted(dict(row).items())}] for k, row in malefic_scale.items()),
+        key=lambda x: x[0],
+    )
+    return {
+        "algorithm": FINGERPRINT_ALGORITHM,
+        "bg_transit_rules": _digest(rules),
+        "n_transit_rules": len(rules),
+        "bg_vedha_malefic_scale": _digest(scale),
+        "n_malefic_scale_rows": len(scale),
+    }
+
+
 def source_qualification_for(vedha_kind: str, grid_basis: Optional[str], *,
                              classical_citation: Optional[str] = None) -> str:
     """The WP9 `source_qualification` stamp. Sarvatobhadra is
@@ -413,6 +458,8 @@ __all__ = [
     "SOURCE_QUALIFICATIONS",
     "PRECISION_REGIMES",
     "STRUCK_BPHS_CH29_MARKER",
+    "FINGERPRINT_ALGORITHM",
+    "upstream_fingerprint",
     "UNSOURCED_CITATION_PREFIX",
     "is_unsourced_citation",
     "house_vedha_uncited_extension",

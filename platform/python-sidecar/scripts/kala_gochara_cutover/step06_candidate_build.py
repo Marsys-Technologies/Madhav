@@ -35,7 +35,10 @@ Usage:
         [--orb-deg 5.0] [--delta-report path] [--evidence]
 
 Exit codes: 0 built; 3 cannot proceed; 4 production refusal; 6 publish refused
-(published generation — a rebuild after publication is a NEW label, plan §4.7).
+(published generation — a rebuild after publication is a NEW label, plan §4.7);
+7 refused: the chart's house_vedha rows are not FRESH against bg_transit_rules /
+bg_vedha_malefic_scale (§12.9 — a candidate must not be built on rows carrying
+refuted citations). Skipped, and recorded as NOT_RUN, under --rehearse-synthetic.
 """
 from __future__ import annotations
 
@@ -168,6 +171,25 @@ def main() -> int:
 
     ledger = _load_ledger()
     conn = connect(args.dsn, step=6, autocommit=False)
+
+    # §12.9 gate — BEFORE any ledger write. Refuses a candidate built on vedha rows
+    # whose upstream fingerprint is missing or no longer matches the reference tables.
+    if args.rehearse_synthetic:
+        vector["vedha_upstream_freshness"] = "NOT_RUN: --rehearse-synthetic"
+    else:
+        if str(SIDECAR) not in sys.path:  # this file runs as a standalone script
+            sys.path.insert(0, str(SIDECAR))
+        from services.ka_vedha_gochara.freshness import (
+            check_house_vedha_freshness, gate_allows_build)
+        freshness = check_house_vedha_freshness(conn, args.chart_id)
+        conn.rollback()  # the check only reads; leave no open transaction
+        vector["vedha_upstream_freshness"] = freshness.state
+        vector["vedha_upstream_fingerprint"] = freshness.current
+        if not gate_allows_build(freshness):
+            print(f"REFUSED (§12.9): {freshness.summary()}. A candidate must not be built "
+                  "on stale vedha rows — rebuild ka_vedha_gochara first.", file=sys.stderr)
+            conn.close()
+            return 7
     build_id = f"wp10-step6-{int(time.time())}"
     try:
         cid = ledger.register_convention(conn, CONVENTION_VECTOR,

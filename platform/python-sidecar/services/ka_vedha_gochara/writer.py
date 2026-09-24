@@ -73,6 +73,7 @@ from services.ka_vedha_gochara.logic import (
     overlap_window,
     sign_from_house,
     source_qualification_for,
+    upstream_fingerprint,
     vipareeta_cancellation,
 )
 from services.gochara_grammar.sarvatobhadra import _vedha_pairs_from_db, opposite_nakshatra_id
@@ -357,6 +358,9 @@ class KaVedhaGocharaWriter(WriterBase):
         # serve honestly; only the malefic-count grading / latta kind are
         # skipped, each with its own coverage note (never silently degraded).
         malefic_scale = _fetch_malefic_scale(conn)
+        # §12.9: digest of exactly the reference rows this build consumes, stamped on
+        # every house_vedha row so a later re-citation upstream is DETECTABLE.
+        upstream_fp = upstream_fingerprint(vedha_rules, malefic_scale)
         latta_rules = _fetch_latta_rules(conn)
 
         today = date.today()
@@ -591,6 +595,7 @@ class KaVedhaGocharaWriter(WriterBase):
                         classical_citation=rule.get("classical_citation"),
                     ),
                     "detail": {
+                        "upstream_fingerprint": upstream_fp,
                         "primary_house": house,
                         "primary_sign_idx": run["sign_idx"],
                         "primary_sign_name": SIGNS[run["sign_idx"]],
