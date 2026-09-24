@@ -871,3 +871,41 @@ layer amendment item 1 on merge**; audit 1.7 records it.
 **Note for the merge-gate reviewer:** two upstream documents now rest on this stream's reading of its
 own columns. If that reading is wrong, the binding is wrong with it — re-derive it rather than
 inherit it.
+
+
+## CORRECTION AGAINST THIS CAMPAIGN'S OWN ANALYSIS — the migration collision was NOT benign (2026-09-24T13:01:57+05:30)
+
+Twice this session published the conclusion that a shared migration prefix is *hygiene, not a
+defect*, reasoning from `migrate.ts`: it keys `_migrations_applied` on the **filename**, so two files
+sharing a number coexist, and ~30 numbers already duplicate across the two directories on `main`.
+**That reasoning was correct about the RUNNER and wrong about the GATE, and the gate is what decides
+a merge.**
+
+**`.github/workflows/ci.yml` runs `MIG-1 — migration number guard (cross-directory duplicate)`
+(`npm run guard:migration-numbers` → `platform/scripts/ci/migration_number_guard.ts`), BEFORE
+`npm test`, and its rule **E2** is a hard failure: a duplicate number — same leading integer,
+different filenames — **not present in the frozen baseline** fails the PR. Detected **across both
+directories and within each**. Its header documents the precedent: number 467 was claimed by two
+branches at once and untangled only by a manual renumber.
+
+**The ~30 duplicates on `main` survive only because they are BASELINED.**
+`platform/scripts/ci/migration_number_guard.ts`'s companion
+`migration_number_legacy_duplicates.json` freezes **8 groups** by exact file list, and rule **E3**
+exists precisely so "a legacy collision cannot be used as cover for a new one". **Verified: none of
+1085–1090 appears in that baseline.**
+
+**Consequences, stated plainly.**
+1. **The renumber was necessary, not courteous.** Had this stream kept 1085/1086, the PR would have
+   **failed CI at MIG-1** the moment both branches met. This session yielded the numbers for the
+   right outcome on partly wrong grounds, and the record should not keep the wrong grounds.
+2. **Every "benign" statement this session made on the subject is withdrawn** — including the one
+   sent to the Gochara stream, which is proceeding on the same understanding and has been told.
+3. **Verified clean now:** 1088, 1089 and 1090 each occur exactly once across both directories on
+   this branch; 1085–1087 occur zero times here. MIG-1 should pass on that basis — **not run
+   locally** (`tsx` is not installed on this host), so this is a read of the guard's rules against a
+   measured file census, not an execution of it. **The next session must actually run it.**
+
+**Method note worth keeping:** the error was reasoning from the *mechanism* (how the runner applies
+files) without checking the *gate* (what CI refuses to merge). Both were knowable; only one was
+looked at. That is the same shape as the night's other misses — checking a proxy rather than the
+object that decides.
