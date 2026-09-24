@@ -45,14 +45,16 @@ MIGRATION_DIRS = [
     Path(__file__).resolve().parents[3] / "supabase" / "migrations",
 ]
 
-# The migrations this cutover applies, in order. 1080-1084 only — see the module
-# docstring for why 1085 (retired) and 1086 (L1 lane) are absent.
+# The migrations this cutover applies, in order. 1080-1084 + 1087 — see the module
+# docstring for why 1085 (retired) and 1086 (L1 lane) are absent. 1087 (E-011,
+# §12.3) carries the contacts stamp columns the step06 writer now populates.
 APPLY_SET = [
     "1080_nirmana_l3_gochara_resonance_target_resolution_state.sql",
     "1081_nirmana_l3_gochara_ledger_coverage_publication.sql",
     "1082_nirmana_l3_vedha_moorti_stamp_columns.sql",
     "1083_l5_ledger_contact_id.sql",
     "1084_wp7_k1_v1_registry_edges.sql",
+    "1087_nirmana_l3_gochara_contacts_inclusivity_completeness_tier_basis.sql",
 ]
 
 # Numbers that must never be applied by this script, whatever a re-scan finds.

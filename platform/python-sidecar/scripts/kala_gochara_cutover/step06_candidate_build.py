@@ -108,7 +108,7 @@ def _synthetic_episodes() -> list[dict]:
         "orb_max_deg": None,  # filled from --orb-deg below
         "orb_source": "orb_conj_slow",
         "epistemic_class": "observed_event",
-        "completeness_state": "complete_resolved",
+        "completeness_state": "applied",
         "operator_role": "kernel", "precision_regime": "instant_grain",
         "time_basis": "event_time_utc",
         "comparable_with": "same_convention_same_inputs",
