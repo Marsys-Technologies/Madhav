@@ -242,3 +242,41 @@ class TestScanCoverage:
             "near and lifetime substeps must both carry coverage"
         assert "'scan_coverage'" in src and "'exposure_manifest'" in src, \
             "coverage must not silently replace the exposure manifest in notes"
+
+
+class TestComparableWithRelation:
+    """Synergy audit #2/#8 — the layer's comparability vocabulary, read at source."""
+
+    ENUM = ('self', 'same_convention_same_inputs',
+            'same_convention_newer_inputs', 'different_convention')
+
+    def test_column_and_check_constraint_use_the_four_layer_values(self):
+        mig = (Path(__file__).resolve().parents[3] / 'supabase' / 'migrations'
+               / '1087_kala_convergence_comparable_with.sql').read_text()
+        for v in self.ENUM:
+            assert f"'{v}'" in mig, f"enum value {v} missing from the CHECK constraint"
+        assert 'comparability_class' in mig, \
+            "the migration must record that comparable_with does NOT replace the grouping key"
+
+    def test_value_is_derived_from_the_frame_not_defaulted(self):
+        """§N.8: the value needs a detector behind it. It must read the row's own
+        node convention, so it changes when the convention does rather than when
+        somebody remembers to update a literal."""
+        src = WRITER.read_text()
+        i = src.index('_comparable_with')
+        block = src[i:i + 400]
+        assert 'node_convention' in block, "comparable_with must be derived from the frame"
+        assert "'different_convention'" in block and "'same_convention_same_inputs'" in block
+
+    def test_true_node_scanner_yields_different_convention(self):
+        """Today's honest answer: the layer ruled mean, the scanner gives true_node,
+        so per WP1 §6 the cross-convention comparison is NOT_RUN."""
+        from services.ka_sangam.identity import frame_dict, frame_vector
+        assert frame_dict(frame_vector('lahiri_chitrapaksha'))['node_convention'] == 'true_node'
+
+    def test_grouping_key_survives_alongside_the_relation(self):
+        """The layer binding proposed renaming comparability_class INTO
+        comparable_with. They are different objects — a grouping key and a
+        relation — and the rename would have destroyed the grouping."""
+        block = _insert_block()
+        assert 'comparability_class' in block and 'comparable_with' in block

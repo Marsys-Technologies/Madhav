@@ -1105,6 +1105,18 @@ class KaSangamWriter(WriterBase):
                 # rows, so seven named readers could double-count the same testimony.
                 _indep_group = _independence_group(w.get('signal_id'), _graha, _tfid)
 
+                # Synergy audit #2/#8: the layer's comparability RELATION
+                # (WP1_CONTRACTS.md §6, read at source). DERIVED, never defaulted:
+                # the layer ruled mean node; while this row's own frame says the
+                # scanner gave true_node, the convention_id differs and WP1 §6
+                # makes the comparison NOT_RUN. It flips automatically when the
+                # node convention unifies — nothing has to remember to change it.
+                _comparable_with = (
+                    'same_convention_same_inputs'
+                    if _frame_dict(_fv).get('node_convention') == 'mean'
+                    else 'different_convention'
+                )
+
                 cur.execute(
                     """
                     INSERT INTO kala_convergence (
@@ -1119,7 +1131,8 @@ class KaSangamWriter(WriterBase):
                         is_episode, episode_uuid, episode_children, episode_hull, perfected,
                         activity, valence, applicability, comparability_class,
                         kernel_version, independence_group,
-                        contact_uuid, convention_frame, identity_state
+                        contact_uuid, convention_frame, identity_state,
+                        comparable_with
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -1132,7 +1145,8 @@ class KaSangamWriter(WriterBase):
                         %s, %s, %s::jsonb, %s::jsonb, %s,
                         %s, %s, %s::jsonb, %s,
                         %s, %s,
-                        %s, %s::jsonb, %s
+                        %s, %s::jsonb, %s,
+                        %s
                     )
                     """,
                     (
@@ -1173,6 +1187,7 @@ class KaSangamWriter(WriterBase):
                         _cuuid,
                         json.dumps(_frame_dict(_fv)),
                         _identity_state,
+                        _comparable_with,
                     ),
                 )
                 rows_inserted += 1

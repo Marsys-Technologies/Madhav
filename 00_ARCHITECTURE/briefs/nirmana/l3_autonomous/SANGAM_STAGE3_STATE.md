@@ -685,3 +685,62 @@ than what M-1 ruled, which flips to `'mean'` when the N-7 producer replaces the 
 (`/tmp/se1` cleared). `_resolve_ephe_path()` returns `None` and a live `swe.calc_ut` returns retflag
 65860 — SWIEPH bit clear, i.e. Moshier. Any oracle that assumes SWIEPH here is running on the
 fallback; Saṅgam's S8 exits NOT_RUN rather than pass on it.
+
+
+## Post-close addendum — Gochara's instruction received; #2 and the #8 interim closed (2026-09-24T12:44:25+05:30)
+
+**This session was closed at `1529a9a69`.** A new Gochara session (`madhav-3e`) then issued a
+native-authorized instruction for this stream. The addendum below is post-close work, recorded as such;
+the close record's "#2 blocked / #8 interim outstanding" lines are superseded by it.
+
+**Everything verified at source before acting** — `origin/l3/gochara-autonomous-wp0-7` @ `e93112eb0`
+(the branch was *unpushed* when the synergy audit raised #2, which is exactly why this session declined
+to implement then): all three named files present; `GOCHARA_NATIVE_RULINGS_2026-09-24_v1_0.md` is
+`NATIVE_AUTHORIZED` and quotes the native's delegation verbatim. **Scope check: the instruction does not
+claim authority over this stream.** Its authority line rests on *this sheet's own* M-1 (mean node), and
+it states plainly that the other audit items "are all yours and none of them are ours to instruct."
+Correct, and accepted on that basis.
+
+**#2 CLOSED — and the layer binding is corrected in the process.** The four `comparable_with` values are
+now readable at source (`gochara_wp0_7/WP1_CONTRACTS.md` §6): `self`,
+`same_convention_same_inputs`, `same_convention_newer_inputs`, `different_convention`. **The binding
+proposed this as a RENAME of `comparability_class`. It must not be one.** `comparability_class`
+(`ka_sangam/<signature_class>`) is a **grouping key** — §4.5's "a projection may rank only within one
+class"; `comparable_with` is a **relation to a reference row** — WP1 §6's table of whether and how two
+rows may be compared. Renaming one into the other would have silently destroyed the grouping. **Migration
+1087 adds `comparable_with` as a new column with the four-value CHECK; both columns coexist and neither
+replaces the other.** Recorded as a correction to the binding, not a deviation from it.
+
+**#8's interim stamp CLOSED, and derived rather than stamped.** The instruction asks for
+`comparable_with = 'different_convention'` on every Saṅgam row against every Kṣetra row until the node
+convention unifies. Implemented as a **derivation from the row's own `convention_frame.node_convention`**,
+not a literal: while the frame says `true_node` the value is `different_convention` (WP1 §6 — across
+conventions the comparison is NOT_RUN and no tolerance may be quoted); it becomes a comparable relation
+**automatically** when the convention unifies. §N.8 — the value has a detector behind it, and nothing has
+to remember to change it.
+
+**ACCEPTED BUT NOT DONE — adopt `GocharaTransitService.find_episodes`.** This is the instruction's one
+real ask and it is a substantial engineering change (replacing the scanner path, `window_ref` citation,
+joining their coverage). **It is not being done in a post-close addendum by the plan's author**, with D-K's
+merge gate already pending on author-written work. It is the first item for the next Saṅgam session, and
+the interface is now readable at source rather than attributed.
+
+**Migration-number collision — re-checked, benign, and the reason is worth keeping.** `1085` and `1086`
+are now claimed twice: mine in `platform/supabase/migrations/` (`kala_convergence_kernel_fields`,
+`kala_convergence_r5_identity`) and the L0 repair's in `platform/migrations/`
+(`nirmana_l0_bg_transit_rules_vedha_repair`, `nirmana_l0_gochara_g10_ga_strength_contributor_digest_spec`).
+Different directories, different filenames, no dependency between them; the runner keys on **filename**,
+and 41 numbers already duplicate across the two directories on `main`. Mine stay at 1085/1086; the new
+one is **1087**, chosen by scanning every remote branch and both directories.
+
+**Two of this campaign's "unowned" items have moved, and the record should say so.** L0 migration
+`1085_nirmana_l0_bg_transit_rules_vedha_repair` **executes the house-vedha row repair** — the 39
+mis-cited rules (F-23/G-8) plus Kṣetra's three Venus corrections and the missing Mercury pair — and
+`1086_nirmana_l0_gochara_g10_…` revises `ga_strength`'s digest contract for the contributor BAV family,
+which is adjacent to this campaign's **B-4**. The L0 lane that D-B recorded as *holder-without-authority*
+has an executing owner. **Not verified by this session:** whether those migrations are applied, and
+whether 1086 discharges B-4's receipt specifically. Both are reads for the next session, not claims here.
+
+**Verification for this addendum:** 28 synergy tests; suite **20/21 + 1 NOT_RUN** (S8 unchanged — the
+Swiss `.se1` files are still absent from this host); broader `tests/l3 -k 'not ka_kshetra'`
+**1051 passed, 7 skipped**, no failures.

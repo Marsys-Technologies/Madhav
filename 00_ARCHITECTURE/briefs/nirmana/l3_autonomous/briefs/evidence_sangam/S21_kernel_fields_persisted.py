@@ -28,6 +28,8 @@ head("S21 — R-6 kernel fields persisted; horizon, tz and vedha edge (synergy a
 KERNEL_COLUMNS = ['activity', 'valence', 'applicability',
                   'comparability_class', 'kernel_version', 'independence_group']
 IDENTITY_COLUMNS = ['contact_uuid', 'convention_frame', 'identity_state']
+LAYER_ENUM = ('self', 'same_convention_same_inputs',
+              'same_convention_newer_inputs', 'different_convention')
 
 writer_src = "\n".join(src('pipeline/orchestrator/writers/ka_sangam.py'))
 i = writer_src.index('INSERT INTO kala_convergence')
@@ -86,6 +88,10 @@ _cov_none = _bsc(_h0, _h1, 5, 9, 4).empty_reason
 # CALL sites only: the def line matches a bare-name search, which made this
 # detector read 3 and fail correct code on its first run.
 _cov_in_notes = writer_src.count('notes=_notes_with_coverage(')
+_mig87 = open(_root + '/platform/supabase/migrations/1087_kala_convergence_comparable_with.sql').read()
+_cw_derived = 'node_convention' in writer_src[writer_src.index('_comparable_with'):
+                                              writer_src.index('_comparable_with') + 400]
+_cw_both = 'comparability_class' in cols and 'comparable_with' in cols
 
 seed = open(__file__.rsplit('/00_ARCHITECTURE/', 1)[0]
             + '/platform/scripts/seed/asset_registry_seed.ts').read()
@@ -108,6 +114,9 @@ if NEG:  # noqa: F405
     _cov_reasons = [None, None, None]
     _cov_none = 'invented_reason'
     _cov_in_notes = 0
+    _mig87 = _mig87.replace("'different_convention'", "'mostly_comparable'")
+    _cw_derived = False
+    _cw_both = False
 
 missing = [c for c in KERNEL_COLUMNS if c not in cols]
 prop("(a) all six R-6 kernel columns persisted in the INSERT", not missing, f"missing={missing}")  # noqa: F405
@@ -149,5 +158,12 @@ prop("(k) no empty_reason when windows were emitted", _cov_none is None)  # noqa
 prop("(k) both substeps carry coverage AND the exposure manifest in notes",  # noqa: F405
      _cov_in_notes == 2 and "'scan_coverage'" in writer_src and "'exposure_manifest'" in writer_src,
      f"{_cov_in_notes} call sites")
+
+# --- #2/#8: the layer comparability relation, read at source ---
+prop("(l) CHECK carries exactly the four layer values (WP1_CONTRACTS §6)",  # noqa: F405
+     all(f"'{v}'" in _mig87 for v in LAYER_ENUM))
+prop("(l) comparable_with is DERIVED from the frame, never defaulted", _cw_derived)  # noqa: F405
+prop("(l) grouping key and relation coexist — the rename would have lost the grouping",  # noqa: F405
+     _cw_both)
 
 done(kind="POST-FIX BEHAVIOUR")  # noqa: F405
