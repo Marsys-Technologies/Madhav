@@ -1,7 +1,7 @@
 ---
 artifact: KALA_ENVIRONMENT_READINESS
 canonical_id: KALA_ENVIRONMENT_READINESS
-version: "1.0"
+version: "1.1"
 status: CURRENT
 date: 2026-09-24
 author: "L3 Kāla strategic session (madhav-a6), at the native's request"
@@ -152,11 +152,37 @@ generated files every time.**
 
 ---
 
+## G2. Serving — 16 of the outputs reach a person; the largest does not
+
+Better than the blueprint implied. **Reachable today:** activation, activation_predicates,
+convergence, obstruction, darshana, jīvana_parva, bhaviṣya, avadhi, taraṅga, kota_chakra,
+sudarśana_varṣa, mūrti_nirṇaya, vedha_gochara, tithi_praveśa, gochara_windows,
+gochara_resonance_map — sixteen.
+
+**Not reachable:** `kala_field` — the layer's largest asset, 8,570,075 rows on the native's chart —
+has **no read path anywhere**, and the codebase says so itself
+(`platform-mcp/src/lib/kala_ritual_resonance.ts:494`: *"no serving capability exists over any
+`kala_field*` table"*). `kala_field_windows` is read only behind a flag that is **off by default**,
+and only for a provenance string. `kala_field_snapshots` / `_skill` sit on a raw-door whitelist with
+no capability, and the snapshots table is empty. `kala_gochara_windows_v2` appears only in
+migrations. `kala_field_salience` reaches a person as five averaged scalars.
+
+| # | activity | evidence |
+|---|---|---|
+| **E23** | **Give `kala_field` a read path.** The best-elevated asset in the layer is invisible to the product; an elevation the person cannot reach is not one | code comment + zero capability |
+| **E24** | **Publish the six orphaned capabilities.** `kota_chakra`, `sudarshana_varsha`, `moorti_nirnaya`, `vedha_gochara`, `tithi_pravesha`, `paddhati_profile` are **registered but have no public `kala_*` alias** in `tool_name_bridge.ts`. Registered is not reachable | bridge |
+| **E25** | **Declare `density_contract` and `empty_reason` on the L3 capabilities.** **Zero of 15** declare a density contract; `empty_reason` is implemented in **one of 15**. The budget trimmer protects `empty_reason` as an immune honesty field — immunity helps only a field that is emitted, so today L3 fields can be silently dropped | `types.ts:207`; grep |
+| **E26** | **Build the served-evidence sentinel.** Two briefs assign it to L3 explicitly. The one L3 sentinel that exists mocks the database and stops at the capability handler — no ranking, no trimmer, no synthesis. **L3 can prove a field leaves SQL; it cannot prove it reaches a reader** | `consumer_sentinel_dp_sd_017.test.ts` |
+| **E27** | **Make the ownership boundary mechanical.** "L3 never edits `kala_views/`" is prose in four documents and **there is no `CODEOWNERS` file in the repository**. Nothing prevents a crossing | verified absent |
+
+---
+
 ## G. Process hygiene — three collisions in one day, with the cure already written
 
 | # | activity |
 |---|---|
 | **E19** | **Wire `reserve_migration_number.py`.** A purpose-built migration-number allocator exists at `platform/scripts/governance/reserve_migration_number.py`, written 2026-09-23, and is **invoked by nothing** — not CI, not `package.json`. Three number collisions occurred across three streams in the following 24 hours. This is the cheapest item on the list |
+| **E28** | **Pins hygiene, not a blocker — and a claim to stop repeating.** 54 of the 57 commits pinned in main's `nirmana-analysis-layer-pins.json` are **not ancestors of main**, several unreachable entirely, and a bare local `--check` fails. A peer concluded from this that *"every PR entering the merge queue fails the pins test."* **That is false:** `governance-gates` is SUCCESS on PRs #2724, #2725 and #2726 — all merged today — and passes on the open #2727. The CI event path validates a narrower set than a local run. Worth cleaning; worth not "fixing" a gate that is not broken |
 | **E20** | **Publish a merge order.** Four branches carry unmerged Kāla work with interdependent migrations and a shared generated-digest file; `l3/kala-elevation-readiness` and `sangam/stage3` have diverged. Decide what merges first and in what order |
 | **E21** | **One worktree per lane, asserted at first action.** Already earned the hard way: a shared checkout tangled four sessions' commits, and the root cause was a prompt naming an existing directory |
 | **E22** | **Measure the cost.** The registry claims 24 minutes per chart; ≥7.5 hours was measured. No build time can be promised, and E1's rebuild cannot be scheduled, until one real measurement exists |
