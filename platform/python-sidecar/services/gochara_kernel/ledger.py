@@ -262,6 +262,16 @@ def _normalize_episode(ep: dict, chart_id: str, generation: str,
             "completeness_state='unqualified' (WP1_CONTRACTS.md §3.1)"
         )
     merged.pop("station_unresolved", None)
+    # B1 (KALA_SYNERGY_BINDING v2.3): served instants are timestamptz UTC, never
+    # naive — "a row ... with a naive instant is rejected at write".
+    for _key in ("t_in", "t_exact", "t_out"):
+        _v = merged.get(_key)
+        if isinstance(_v, datetime) and _v.tzinfo is None:
+            raise ValueError(
+                f"episode {_key} is a naive datetime; served instants must be "
+                "tz-aware (B1: never a naive date as the served value — rejected "
+                "at write)"
+            )
     contact_id = compute_contact_id(
         chart_id=chart_id,
         convention_id=convention_id,
