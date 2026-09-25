@@ -123,8 +123,12 @@ def _producer_tables(reg: dict, real_tables: set[str]) -> dict[str, set[str]]:
         if r["scope"] != "per_chart":
             continue
         tables: set[str] = set()
-        if r["target_table"] and r["target_table"].lower() in real_tables:
-            tables.add(r["target_table"].lower())
+        # target_table may declare a comma-separated multi-table set (e.g.
+        # bg_prashna_rules' five peer tables) — each member counts separately.
+        for t in (r["target_table"] or "").split(","):
+            t = t.strip().lower()
+            if t and t in real_tables:
+                tables.add(t)
         if r["count_sql"]:
             tables.update(t.lower() for t in _FROM_IN_SQL_RE.findall(_strip_sql_comments(r["count_sql"]))
                           if t.lower() in real_tables)

@@ -71,6 +71,21 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: "DELETE FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga'" },
   ],
 
+  // ── L0 Brahmagyan — global multi-table static catalogs ─────────────────────
+  // bg_prashna_rules owns FIVE peer tables (declared as a comma-separated
+  // multi-table set in its registry target_table). Its count_sql is a compound
+  // sum that deriveDeleteSqlFromCountSql() correctly refuses, and the shared
+  // target_table fallback cannot express five tables. Global scope — no chart
+  // filter; the writer (l0_prashna.seed_prashna_rules) re-seeds the full static
+  // catalog on rebuild.
+  bg_prashna_rules: [
+    { sql: 'DELETE FROM bg_prashna_lagna_methods' },
+    { sql: 'DELETE FROM bg_prashna_tajik_yogas' },
+    { sql: 'DELETE FROM bg_prashna_significators' },
+    { sql: 'DELETE FROM bg_prashna_fructification_rules' },
+    { sql: 'DELETE FROM bg_prashna_special_techniques' },
+  ],
+
   // ── L2 Bodha — multi-table writers ────────────────────────────────────────
   // Each of these writers emits MORE than one table, but the asset's single
   // target_table + un-derivable compound count_sql meant the clear deleted only

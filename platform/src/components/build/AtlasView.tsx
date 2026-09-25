@@ -33,7 +33,8 @@ const LAYER_ORDER = ['brahmagyan', 'ganita', 'bodha', 'kala', 'phala', 'mimamsa'
 // Extract all physical tables for display: clear_tables > target_table > count_sql parse
 function getDisplayTables(asset: AtlasAsset): string[] {
   if (asset.clear_tables && asset.clear_tables.length > 0) return asset.clear_tables
-  if (asset.target_table) return [asset.target_table]
+  // target_table may declare a comma-separated multi-table set (e.g. bg_prashna_rules).
+  if (asset.target_table) return asset.target_table.split(',').map(t => t.trim()).filter(Boolean)
   if (asset.count_sql) {
     const m = asset.count_sql.match(/FROM\s+(\w+)/i)
     if (m?.[1]) return [`${m[1]} (partitioned)`]

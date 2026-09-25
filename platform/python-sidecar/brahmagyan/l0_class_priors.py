@@ -2,7 +2,7 @@
 brahmagyan.l0_class_priors — bg_class_priors L0 global seed.
 
 Populates brahma_class_priors with 171 rows across 5 prior axes:
-  · 17 signal_type_class rows
+  · 24 signal_type_class rows
   · 12 source_subsystem rows
   · 6 signal_tradition rows
   · 30 varga base weight rows (with domain overlay JSONB)

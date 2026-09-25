@@ -502,9 +502,12 @@ async function bootstrapMaps(): Promise<void> {
     `SELECT target_table, asset_id FROM asset_registry WHERE target_table IS NOT NULL ORDER BY asset_id`
   )
   for (const a of assets) {
-    const t = a.target_table as string
-    if (!TABLE_ASSETS.has(t)) TABLE_ASSETS.set(t, [])
-    TABLE_ASSETS.get(t)!.push(a.asset_id)
+    // target_table may declare a comma-separated multi-table set (e.g.
+    // bg_prashna_rules' five peer tables) — map every member to the owning asset.
+    for (const t of (a.target_table as string).split(',').map(s => s.trim()).filter(Boolean)) {
+      if (!TABLE_ASSETS.has(t)) TABLE_ASSETS.set(t, [])
+      TABLE_ASSETS.get(t)!.push(a.asset_id)
+    }
   }
 }
 
