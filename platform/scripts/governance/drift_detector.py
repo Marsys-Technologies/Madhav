@@ -10,9 +10,12 @@ Runs the eight cross-surface drift checks declared in protocol §H.3:
   H.3.2 — CANONICAL_ARTIFACTS ↔ filesystem fingerprint match
   H.3.3 — MACRO_PLAN ↔ PHASE_B_PLAN alignment
   H.3.4 — STEP_LEDGER internal consistency (rebuild era only)
-  H.3.5 — CAPABILITY_MANIFEST ↔ CANONICAL_ARTIFACTS_v1_0.md agreement (RC-1 repoint,
-          2026-08-22 — was FILE_REGISTRY ↔ CANONICAL_ARTIFACTS; FILE_REGISTRY_v1_14.md's
-          own frontmatter reads SUPERSEDED, see check_file_registry_agreement docstring)
+  H.3.5 — RETIRED 2026-09-25. Was a two-registry agreement check; the 2026-04-27
+          cutover left one registry, so it had nothing to check and produced 83
+          permanently-unclearable findings against a SUPERSEDED document. Replaced by
+          a single falsifiable assertion of the premise the retirement rests on —
+          that CANONICAL_ARTIFACTS still declares itself SUPERSEDED. Full reasoning,
+          including the successor check measured and rejected, in the function docstring.
   H.3.6 — GOVERNANCE_STACK ↔ CANONICAL_ARTIFACTS agreement
   H.3.7 — Phantom-reference scan (live pointers to files that do not exist on disk)
   H.3.8 — Unreferenced canonical-artifact scan (RC-1 repoint, 2026-08-22 — comparison
@@ -416,66 +419,99 @@ def check_step_ledger_consistency(repo_root: pathlib.Path) -> List[Finding]:
 
 
 def check_file_registry_agreement(repo_root: pathlib.Path, ca) -> List[Finding]:
-    """§H.3.5 — CAPABILITY_MANIFEST vs CANONICAL_ARTIFACTS_v1_0.md agreement on CURRENT rows.
+    """§H.3.5 — RETIRED 2026-09-25. The defect class was dissolved, not suppressed.
 
-    RC-1 (2026-08-22, PARISESA-V4): repointed from FILE_REGISTRY_v1_14.md. That
-    file's own frontmatter reads `status: "SUPERSEDED (2026-04-27 — content
-    absorbed into CAPABILITY_MANIFEST.json; retained in place for historical
-    audit)"` -- comparing the live manifest against a document that has declared
-    itself superseded produced 84 of 128 manifest entries failing for that reason
-    alone (F94_GOVERNANCE_DRIFT_RECONCILIATION_PLAN_v1_0.md §4.1/§7.1). CLAUDE.md
-    §D already names CANONICAL_ARTIFACTS_v1_0.md as the tie-breaker surface for
-    canonical-path conflicts, so that is what this check now compares against
-    instead (Option (a) "Repoint" of the four options costed in the plan's §7.1).
+    WHAT THIS CHECKED, AND WHY IT NO LONGER HAS ANYTHING TO CHECK.
 
-    F-163 (same PR, same hunk -- ruled to land together, never as a separate PR):
-    the docstring here always said "agreement on CURRENT rows" but the loop had
-    no status filter, so e.g. PREDECESSOR rows (which are SUPPOSED to be absent
-    from a CURRENT registry) were flagged as a defect. Filtered via _is_current().
+    This was a two-registry agreement check: it asserted that every CURRENT row of
+    one canonical-path registry was named by the other, catching the GA.1 failure
+    mode "the registries disagree". The 2026-04-27 Phase 1B cutover eliminated the
+    second registry. CAPABILITY_MANIFEST.json is now the sole canonical-path
+    catalog (CLAUDE.md §C item 2: "new single source of truth ... Replaces the dual
+    FILE_REGISTRY + CANONICAL_ARTIFACTS registries ... governance tooling now reads
+    from the manifest"). A check that two registries agree, in a world with one
+    registry, is not a guard -- it is an assertion about a document's contents that
+    nothing keeps true.
 
-    Retired in this same change: the prior `row.get("status") in ("LIVE",
-    "LIVING") and cid in ("SESSION_LOG",)` carve-out. It is provably dead code
-    under the default manifest-mode configuration this check runs in in
-    production -- CAPABILITY_MANIFEST.json has no "SESSION_LOG" entry at all
-    (confirmed 2026-08-22) -- and would in any case now be fully subsumed by the
-    _is_current() status filter. Removed rather than left as a second,
-    overlapping filter.
+    WHY REPOINTING IT AGAIN WOULD BE THE THIRD ROUND OF THE SAME MISTAKE.
+
+    RC-1 (2026-08-22, PARISESA-V4) repointed this check FROM FILE_REGISTRY_v1_14.md
+    -- on the stated grounds that its frontmatter read SUPERSEDED and comparing a
+    live manifest against a self-declared-superseded document produced 84 of 128
+    entries failing for that reason alone -- TO CANONICAL_ARTIFACTS_v1_0.md, whose
+    frontmatter has read `status: "SUPERSEDED (2026-04-27 ...)"` since four months
+    BEFORE that repoint. The repair moved the check from one superseded document to
+    another, and by 2026-09-25 it produced 83 findings for precisely the reason the
+    repoint was meant to cure -- growing by one per new governance document, none
+    whitelisted, permanently blocking exit 0.
+
+    Note the same PR got it right one check over: §H.3.8 was repointed to
+    CAPABILITY_MANIFEST.json, "the doctrine-named single source of truth (CLAUDE.md
+    §C item 2)". §H.3.5 and §H.3.8 were repointed in one change to two different
+    surfaces. §H.3.8 chose correctly.
+
+    The repoint cited CLAUDE.md §D ("Any disagreement between this file and
+    CANONICAL_ARTIFACTS resolves in favor of CANONICAL_ARTIFACTS"). That sentence
+    governs precedence between PROSE DECLARATIONS in two governance documents. It
+    was read as naming a comparison target for a detector, which it does not; §C
+    item 2 and §D's own table row ("SUPERSEDED by CAPABILITY_MANIFEST.json for
+    tooling") both say tooling reads the manifest. SURFACED, NOT EDITED: that §D
+    sentence is the root cause and still reads as it did; amending CLAUDE.md is
+    reserved to the native under §L.
+
+    WHAT REPLACES IT (CLAUDE.md §N.8 -- a retirement must not become a silent green).
+
+    The retirement rests on one premise: there is only one registry. That premise is
+    falsifiable, so it is now the check. If CANONICAL_ARTIFACTS_v1_0.md ever stops
+    declaring itself SUPERSEDED, the two-registry world is back, this retirement's
+    grounds are void, and the finding below says so. That is the whole successor --
+    one assertion with a real detector, in place of 83 findings that could never be
+    cleared.
+
+    NOT ADOPTED, and why (measured 2026-09-25, before choosing): the tempting
+    successor was the inverse scan -- a governance document on disk that the
+    manifest does not name, which is the "structurally invisible artifact" risk the
+    L0 review actually hit (l0_resource_config_slice_v1.json, on disk, registered
+    nowhere). Measured first: 654 unnamed files at 00_ARCHITECTURE top level, 3,532
+    across all levels, against 106 manifest paths. The manifest is a CURATED
+    catalogue of governing artifacts, not an index of every markdown file, and no
+    definition of "governing document" exists to filter on. Adopting it would have
+    traded 83 noise findings for 654. The real risk is live and remains uncovered;
+    it needs that definition first, and is recorded here rather than papered over
+    with a check that would be ignored within a week.
     """
     findings: List[Finding] = []
     ca_path = repo_root / CANONICAL_PATH
     if not ca_path.exists():
+        # Absence is fine post-cutover -- the manifest is the registry. Nothing to assert.
+        return findings
+    # Parse the document's OWN status field, not the word "SUPERSEDED" anywhere in the
+    # header -- CANONICAL_ARTIFACTS lists many artifacts whose status is SUPERSEDED, so a
+    # substring scan reports clean no matter what the file itself declares. That proxy was
+    # written here first and caught by mutation-testing it (CLAUDE.md §N.8: ask what code
+    # path would have to run, and fail, for the signal to correctly read false).
+    text = ca_path.read_text(encoding="utf-8")
+    m = re.search(r"^status:\s*(.+)$", text, re.M)
+    own_status = m.group(1).strip().strip('"').strip("'") if m else ""
+    if not own_status.upper().startswith("SUPERSEDED"):
         findings.append(Finding(
             cls="registry_disagreement",
-            severity="CRITICAL",
+            severity="HIGH",
             canonical_id="CANONICAL_ARTIFACTS",
-            surfaces_involved=[CANONICAL_PATH],
-            evidence="No CANONICAL_ARTIFACTS_v1_0.md found",
-            suggested_remediation="Restore CANONICAL_ARTIFACTS_v1_0.md per protocol §E",
+            surfaces_involved=[CANONICAL_PATH, "CAPABILITY_MANIFEST"],
+            evidence=(
+                f"CANONICAL_ARTIFACTS_v1_0.md declares status={own_status!r}, not SUPERSEDED. "
+                "§H.3.5 was retired on the premise that CAPABILITY_MANIFEST.json is the "
+                "sole canonical-path registry (CLAUDE.md §C item 2, cutover 2026-04-27); "
+                "a second CURRENT registry voids that premise and restores the GA.1 "
+                "two-registry disagreement risk."
+            ),
+            suggested_remediation=(
+                "Either restore the SUPERSEDED status, or -- if a second registry is "
+                "intended -- reinstate a two-registry agreement check against the "
+                "surface that is actually authoritative, and amend CLAUDE.md §C item 2."
+            ),
         ))
-        return findings
-    ca_text = ca_path.read_text(encoding="utf-8")
-    for cid, row in ca.artifacts.items():
-        if not _is_current(row):
-            continue
-        path_rel = row.get("path", "")
-        if not path_rel:
-            continue
-        basename = pathlib.Path(path_rel).name
-        # A minimal heuristic: if the manifest names a file as a currently-governing
-        # artifact, its basename must appear in CANONICAL_ARTIFACTS_v1_0.md. We
-        # don't try to parse its §1 table; we check basename presence.
-        if basename not in ca_text:
-            findings.append(Finding(
-                cls="registry_disagreement",
-                severity="MEDIUM",
-                canonical_id=cid,
-                surfaces_involved=[str(ca_path.relative_to(repo_root)), "CAPABILITY_MANIFEST"],
-                evidence=f"CANONICAL_ARTIFACTS_v1_0.md does not name '{basename}'",
-                suggested_remediation=(
-                    f"Register {basename} in CANONICAL_ARTIFACTS_v1_0.md §1 "
-                    "(or correct its CAPABILITY_MANIFEST entry)"
-                ),
-            ))
     return findings
 
 
