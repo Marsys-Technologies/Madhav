@@ -1,12 +1,12 @@
 ---
 artifact: NATIVE_DECISIONS_2026-09-25
 canonical_id: NATIVE_DECISIONS_2026_09_25
-version: "1.5"
+version: "1.6"
 status: RULED
 date: 2026-09-25
 decision_owner: Native
 recorded_by: L3 strategy session (madhav-e3)
-role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; six further native-initiated authorizations added at v1.1-v1.5 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named, #13 tiers 1-3 sealed, #14 the A3 materialized-view expectation, decided under delegation), plus the resolution of decision 5 and the chart_facts verification-status investigation, both GOVERNING FACTS rather than answers to a question this session asked."
+role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; seven further native-initiated authorizations added at v1.1-v1.6 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named, #13 tiers 1-3 sealed, #14 the A3 materialized-view expectation, #15 the 1071/1072 migration-number collision — both decided under delegation), plus the resolution of decision 5 and the chart_facts verification-status investigation, both GOVERNING FACTS rather than answers to a question this session asked."
 ---
 
 # Native decisions, 2026-09-25
@@ -433,3 +433,54 @@ The eight, each referenced by 4–8 files and all holding rows today: `mv_chart_
 
 **Result:** the drift detector reports **0 CRITICAL, 0 HIGH, 0 MEDIUM** against production. The single
 remaining LOW is the soft, by-design one (73 schema categories whose writers are added incrementally).
+
+---
+
+# v1.6 — decision 15
+
+## 15 — The 1071/1072 migration-number collision is resolved by renumber
+
+**Native instruction:** do points 1-3 of the wrap-up. This is point 2's second half; the first half
+(the ledger gap) was resolved under decision 5 above.
+
+**The collision.** `migration_number_guard.ts` is a cross-directory duplicate detector, and two
+unmerged branches each claimed 1071 and 1072 for different migrations:
+
+| number | this campaign (Saṅgam/convergence) | Gochara branch |
+|---|---|---|
+| 1071 | `platform/supabase/migrations/1071_kala_convergence_target_provenance.sql` | `platform/migrations/1071_kala_gochara_windows_generation_guard.sql` |
+| 1072 | `platform/supabase/migrations/1072_kala_convergence_episodes.sql` | `platform/migrations/1072_kala_b1_registry_truth_and_sweep_protection.sql` |
+
+Whichever merged second would hard-fail the guard with `E2 NEW-COLLISION`.
+
+**Measured before choosing a side.** Neither pair is applied in production: `kala_convergence_episodes`
+absent, `kala_convergence.target_provenance` absent, and the Gochara pair's guard function and its
+trigger equally absent. That decides the mechanism — the protocol's own remedy (renumber to max+1 across
+BOTH directories) applies, and the `disclosed_additions` exception does **not**, because
+`migration_number_guard.ts` reserves it for collisions whose files are already applied and therefore
+immutable (the 484 and 588 entries). Using an exception where a fix is available is how a baseline rots.
+`migration_renumber_disclosed.json` is likewise not touched: it is for migrations applied under an old
+name, and it says of itself that it is empty by design and not a backlog.
+
+**Which side moved, and why this one.** The **convergence pair moved: 1071 → 1092, 1072 → 1093**, SQL
+bodies unchanged, headers annotated with the reason. The Gochara pair keeps 1071/1072 because:
+
+1. Its numeric neighbours 1080–1091 are **already applied** in production, so its sequence is anchored.
+2. Its 1072 is an `asset_registry` truth-and-sweep UPDATE. Moving it above 1091 — the registry re-pin —
+   would let it re-assert a pre-1091 registry state. That is a live ordering hazard, and the convergence
+   pair has none.
+3. The convergence pair is order-neutral, verified rather than assumed: 1088/1089/1090 reference neither
+   `kala_convergence_episodes` nor `target_provenance`, and nothing anywhere references the objects
+   either pair creates.
+
+**One thing left, and it is a merge-order note, not an open decision.** The identical files still exist
+as 1071/1072 on `consolidation/merge-sangam-stage3`, byte-identical to the renamed copies (sha256
+verified both sides). A merge that takes this rename is clean. If that branch merges *after* this one,
+its 1071/1072 must be **dropped in favour of 1092/1093, not re-added** — otherwise the same SQL lands
+under two numbers and no guard catches it, because an unapplied file has no ledger row to compare
+against. Recorded in `SANGAM_STAGE3_STATE.md` at the paragraph that first flagged the collision, so
+whoever performs that merge meets the note where they will be looking.
+
+**Not touched:** the append-only history that mentions the old filenames — `kala_elevation_ledger.jsonl`,
+`l3_autonomous/EVENTS.jsonl` and four `REVIEW_KA_*` records. Those are records of what was true when
+they were written; rewriting them would be falsifying a log to tidy a rename.

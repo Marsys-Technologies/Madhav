@@ -1,4 +1,8 @@
--- Migration 1072 — E5 station-loop episodes with child contact intervals
+-- Migration 1093 — E5 station-loop episodes with child contact intervals
+-- RENUMBERED 1072 -> 1093 on 2026-09-25 (native decision 15), with its sibling 1071 -> 1092. The
+-- Gochara branch claimed 1072 for a different migration; neither file was applied, so the remedy is
+-- a renumber to max+1 across BOTH migration directories rather than a disclosed exception.
+-- The SQL body is unchanged; only the number and this note moved.
 
 ALTER TABLE kala_convergence
     ADD COLUMN IF NOT EXISTS is_episode BOOLEAN DEFAULT FALSE,

@@ -64,7 +64,7 @@ this file were false and are corrected below.
 - `perfected` is `True` only when both the SR and SD of the loop lie inside the horizon; truncated-start or truncated-end loops are `perfected=False`.
 - `pipeline/orchestrator/writers/ka_sangam.py` **[wording corrected 2026-09-23 — not "already": this campaign wired it, same commit `4a383846c`]** calls `group_station_loop_episodes` after window generation and persists the episode columns.
 - `pipeline/orchestrator/writers/ka_taranga.py` **[wording corrected 2026-09-23 — not "already": this campaign wired it, same commit `4a383846c`; +146 lines to `ka_taranga.py`, an executor scope extension with plan §3 basis, recorded here rather than left unflagged]** consumes `episode_children` for occupancy union in the chart's birth timezone.
-- Migration `1072_kala_convergence_episodes.sql` adds `is_episode`, `episode_uuid`, `episode_children`, `episode_hull`, `perfected` (additive-only, no existing column/table touched).
+- Migration `1093_kala_convergence_episodes.sql` (renumbered from 1072 on 2026-09-25, decision 15) adds `is_episode`, `episode_uuid`, `episode_children`, `episode_hull`, `perfected` (additive-only, no existing column/table touched).
 
 **Qualification:**
 - `tests/l3/test_ka_sangam_e5_episodes.py` (new, 11 tests): single-loop multi-contact grouping; singleton pass-through; horizon-truncated loop marks `perfected=False`; no-service pass-through; different `signal_id` contracts do not group; aborted-approach child labelled `approach` + `approached_never_perfected=True`; taranga birth-timezone occupancy helpers.
@@ -194,7 +194,7 @@ Frozen orchestrator · delete-then-insert per chart × natural key · cascade pr
 - Writer (`pipeline/orchestrator/writers/ka_sangam.py`) is now the ONLY place target defaulting is allowed: `_fetch_target_fact_cache` reads L1 `chart_facts` (graha_position/longitude_sidereal + bhava_cusps/sripati_madhya, ayanamsha `lahiri_chitrapaksha`); `_enrich_predicate_target` stamps each predicate's `transit_trigger_jsonb` with sourced `target_longitude_deg` + provenance (`target_fact_id`, `target_type`, `frame`, `ayanamsha_id`, `derivation`). Coverage: DIGNITY → the graha's own natal sidereal longitude; DISPOSITOR_RELATIONAL → the house cusp longitude (new `house_num` enrichment field); YOGA → first resolvable constituent lord (declared partial target). All other classes return None — the engine then refuses the scan.
 - Engine (`services/ka_sangam/engine.py`): a trigger with NEITHER `target_longitude_deg` (key presence) NOR writer-stamped provenance is unresolvable — `mode_a_search`/`mode_b_sweep` log a warning naming signal_id and return `[]` (no Aries-point default scan). A present key with value 0.0 remains valid (sourced 0°). Sourced provenance is copied into each window's `constituent_factors['target_provenance']` and `availability['target']='computed'`; otherwise `'unavailable'`.
 - Writer TRIGGER suppression (`apply_trigger_suppression`) now takes `target_lon=None` when unresolved and is skipped — no silent 0.0 mechanism longitude.
-- Persistence: additive-only migration `1071_kala_convergence_target_provenance.sql` adds `kala_convergence.target_provenance JSONB` + `kala_convergence.availability JSONB` (IF NOT EXISTS, comments only — no existing column/table touched).
+- Persistence: additive-only migration `1092_kala_convergence_target_provenance.sql` (renumbered from 1071 on 2026-09-25, decision 15) adds `kala_convergence.target_provenance JSONB` + `kala_convergence.availability JSONB` (IF NOT EXISTS, comments only — no existing column/table touched).
 
 **R-3(b) (CR-87 lagna read):** `_build_house_lord_map` is fail-loud — any missing lagna row (query now also pins `ayanamsha_id='lahiri_chitrapaksha'`) or unrecognised sign name raises RuntimeError; the `lagna_sign = 'Aries'` default assignment and its fallback docstring are removed.
 
@@ -329,8 +329,27 @@ needs the native's A-1; (3) real contact rows for a real chart only at WP10 step
 candidate on the canonical chart), P-class, needs A-3. **Consequence for this campaign:** E1/E3 move
 from *blocked* to *buildable-now / live-later*; build against the protocol, not the production rows.
 
-**⚠ Migration-number collision, verified on this side:** the Gochara ledger is described as
-**migration 1072**; this campaign already shipped `1072_kala_convergence_episodes.sql` (and 1071).
-Two different migrations, one number, two unmerged branches — whichever merges second collides.
-Flagged to the Gochara stream 2026-09-23; resolve before either PR opens (their renumber or mine — theirs is
-unpushed, so cheaper there).
+**✅ Migration-number collision — RESOLVED 2026-09-25 (native decision 15), on this side.** The
+Gochara branch claimed 1071 and 1072 for two different migrations; this campaign held
+`1071_kala_convergence_target_provenance.sql` and `1072_kala_convergence_episodes.sql`. Two files, one
+number each, two unmerged branches — whichever merged second would have hard-failed
+`migration_number_guard` (E2 NEW-COLLISION).
+
+Verified before choosing a side: **neither pair is applied** in production (`kala_convergence_episodes`
+absent, `kala_convergence.target_provenance` absent, and the Gochara pair's guard function and trigger
+equally absent). Because nothing is applied, the protocol's own remedy applies — renumber to max+1
+across both migration directories — rather than a disclosed exception, which
+`migration_number_guard.ts` reserves for collisions whose files are already applied (the 484/588 class).
+
+**This campaign's pair moved:** `1071 → 1092`, `1072 → 1093`, SQL bodies unchanged, headers annotated.
+The Gochara pair keeps 1071/1072, deliberately: its numeric neighbours 1080–1091 are already applied,
+and its 1072 is an `asset_registry` truth-and-sweep UPDATE whose effect could contradict 1091's registry
+re-pin if it were reordered above it. Moving the unapplied, order-neutral pair was the cheaper and safer
+side — verified order-neutral: 1088/1089/1090 make no reference to `kala_convergence_episodes` or
+`target_provenance`, and no other migration references the objects either pair creates.
+
+**⚠ Merge-order note, the one thing left:** the identical files still exist as 1071/1072 on
+`consolidation/merge-sangam-stage3`. They are byte-identical to the renamed copies (sha256 verified), so
+a merge that takes this rename is clean. If that branch merges *after* this one, its 1071/1072 must be
+dropped in favour of 1092/1093 rather than re-added — otherwise the same SQL lands under two numbers and
+no guard catches it, because an unapplied file has no ledger row to compare against.
