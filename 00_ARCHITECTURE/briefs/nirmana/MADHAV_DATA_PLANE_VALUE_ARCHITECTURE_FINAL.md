@@ -54,6 +54,14 @@ on record before it is applied. An unqualified method may be named and explained
 finding. Every "qualified rule", "qualified fact", "qualified relationship" and "qualified manifestation"
 below means that and nothing more.
 
+**This is one plane among three.** Product §1.3 names the data plane, the **retrieval plane**
+(discovery, hydration, capability contracts, coverage, the omission challenge) and the **conversation
+plane** (Paripraśna and the managed MCP door). This document governs the data plane only. Its value
+composes by the identity in product §1.3 — `plane = Σ layers + Σ synergies between them` — and the
+synergy term between planes belongs to the product definition, not here. Where this document says
+"the plane", it means the data plane; obligations that cross into retrieval or conversation are
+DEMANDS on those planes, stated as such.
+
 ### 1.1 What the person should gain
 
 The person should be able to understand:
@@ -524,6 +532,7 @@ correctly, and is never grounds to disposition the asset itself.
 |---|---|
 | Qualification/source | Clause supports actual operator and scope; competing witness retained; unsupported timing or manifestation not borrowed from a formation rule. |
 | Numeric/context | Reproducible fact, unit/frame/varga/time precision and real verification scope; cross-chart/build mismatch rejected or isolated; the sentence that grades or labels the number is verified separately from the arithmetic that produced it. |
+| Domain correctness | The four autonomous checks of product §14: the encoded rule and its cited passage agree; two admitted witnesses agree or their disagreement is recorded as school disagreement; a classical quantity re-derived from different inputs matches; and seeded counterexamples do NOT fire the rule. No human verification step exists or is implied. |
 | Presentation parity | Both renderings produced from the consumed reading package without recomputation; identical finding, confidence and uncertainty; the acharya rendering exposes every §3.4 field its layer owns. |
 | Vocabulary conformance | Every name the component emits or accepts resolves through the controlled set (§4.1); an unlisted name is raised; the independent-map census for each entity class it touches is one; every code-side snapshot it relies on is generated, pinned and parity-tested against the authority. |
 | Relevant perturbation | Change a qualifying condition/cancellation and observe the declared consequence while unrelated geometry remains stable. |

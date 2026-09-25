@@ -67,7 +67,8 @@ TIERS = {
    ("Idem","idempotency",r"idempoten"),("Earn","earned signal",r"§N\.8|earned[- ]signal|real detector|detector that (can |could )?(return|report)"),
    ("Narr","narration fidelity",r"§N\.7|narration"),("Dens","serving density",r"§N\.6|densit|catalog_only|hardFloor"),
    ("Null","honest null",r"honest null|honest absence|honest(ly)? (empty|zero|tier)|null rather than|NO DETECTOR"),
-   ("Vocab","vocabulary conformance",r"controlled vocabulary|vocabulary conformance|closed alias|synonyms|semantic_release|resolve_entity|norm_graha|independent[- ]map")]),
+   ("Vocab","vocabulary conformance",r"controlled vocabulary|vocabulary conformance|closed alias|synonyms|semantic_release|resolve_entity|norm_graha|independent[- ]map"),
+   ("Dom","domain correctness",r"domain correctness|source correspondence|cross-witness|cross witness|re-derivation|negative case|counterexample|school disagreement")]),
  "T5":("Two ladders",[
    ("DPL","data-plane ladder",r"PLAN_REVIEWED|PRODUCER_READY|DATA_ACCEPTED"),
    ("CmL","campaign ladder",r"ANALYZED|ENRICHED|QUALIFIED|FROZEN")]),

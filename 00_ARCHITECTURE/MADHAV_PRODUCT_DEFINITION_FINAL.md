@@ -16,6 +16,7 @@ supersedes: "MADHAV_PRODUCT_DEFINITION_v3_0.md (CURRENT 2026-09-13 → SUPERSEDE
 role: "Target product definition. Governing reference for data-plane and layer planning. Not a certification of implemented or deployed capability."
 does_not_authorize: "Implementation, data changes, production deployment, merge or push."
 changelog:
+  - "FINAL (elevated in place, 2026-09-25, native-directed): §1.3 added — the compositional identity (layer = Σ assets + Σ synergies; plane = Σ layers + Σ synergies; product = Σ planes + Σ synergies) with the synergy term named as the thing that makes each level more than its parts, and the three planes named as first-class: data, retrieval, conversation. The data plane is ONE plane, not the middle of the product, and the other two are recorded as not yet elevated to its standard. §14 gains a DOMAIN CORRECTNESS obligation — the astrology being right rather than merely well-sourced — verified by four autonomous checks (source correspondence, cross-witness agreement, independent re-derivation, negative cases). Autonomous by native ruling: no human or acharya review is part of this system, so the check is the four detectors or it does not exist."
   - "FINAL (2026-09-24): review REVIEW_PRODUCT_DEFINITION_v3_1.md returned ACCEPT with 11 MAJOR and 14 MINOR findings; all folded. Native-directed before review: §1 differentiator restated against existing software rather than against a human (conventional Jyotish software computes each element on demand and presents it; Madhav computes the whole estate and the relationships between its parts, and no existing Jyotish software applies AI across that depth); §2 one voice with the acharya presentation carrying more technical machinery and the layperson less, with identical finding, confidence and uncertainty; learning output restored. From the review: `qualified` defined once as a four-part predicate; `permitted` replaced by `earned` where the cleanse left it without a referent; ablation named as the per-asset scoring method for the ten obligations; the §11 layer proof column joined to the §14 obligations; life-event switch state added to the forecast emission record; Delivery fidelity extended to test both presentation modes; named temporal instruments restored to §3.10; narration-vs-arithmetic verification restored; chronology-reset and reporter-hindsight leaks restored; out-of-scope research moved from §4.1 to a §13 boundary; four phrasings of the nearest-versus-better-supported obligation unified; governance residue, the duplicated rectification bullet and the mandatory-pass-count negation removed. P24 added as a NEW present-tense need, appended rather than renumbered."
   - "3.1 (2026-09-24, native-directed cleanse): §1 rewritten to lead with the differentiator. §2 primary audience corrected to serious layperson AND advanced acharya. Lifespan restored. Life Event Log placed behind a single switch. REMOVED: cross-subject hypothesis testing and the research observatory; lost-knowledge recovery and reconstruction; expert-panel assessment; the four-pathway life-event table; voluntary-practice/coercion/monetized-fear clauses; third-party, minors and consent-enforcement clauses; the death, illness and fertility exclusions; the scholarly-laboratory and research-workbench horizons. RETAINED deliberately: the prohibition on invented computation, source, detector, confidence or score, and ablation testing."
 declined:
@@ -75,6 +76,35 @@ concept coverage and predictive usefulness. Effort follows the question and the 
 The unit of value is something the person can now understand, discriminate, prepare for or test that
 a competent simpler answer did not provide. More assets, obscurer techniques, higher agreement counts
 or longer output are not intrinsically more value. Every addition must show what it contributes.
+
+### 1.3 How the value composes — and the one term that is not additive
+
+The product's value is not a pile of parts. It composes, and the same identity holds at every level:
+
+```
+    layer value  =  Σ its assets and services  +  Σ the synergies between them
+    plane value  =  Σ its layers               +  Σ the synergies between them
+  product value  =  Σ its planes               +  Σ the synergies between them
+```
+
+At each level the **synergy term is what makes the level a thing rather than a collection.** A layer
+whose synergy term is near zero is several assets sharing a prefix; a product whose synergy term is
+near zero is several planes sold together. The term is measurable — it is what remains when the parts
+are summed and the whole is measured — and where it cannot yet be measured, that is recorded as an
+absent instrument, never as a number.
+
+**The planes.** The data plane is one plane, not the whole middle of the product:
+
+| plane | what it owns | governing artefact |
+|---|---|---|
+| **Data plane** | the connected, qualified astrological basis — L0 Brahmagyan through L5 Mīmāṃsā | `MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL` |
+| **Retrieval plane** | discovery, hydration, capability contracts, coverage and the omission challenge — turning a question into the exact evidence that answers it | `RETRIEVAL_STRATEGY_v1_0` (CURRENT) |
+| **Conversation plane** | Paripraśna and the managed MCP door — the surfaces a person or an external orchestrator actually meets, with their parity, continuity and delivery obligations | §10, §10.1; Paripraśna architecture |
+
+Each plane decomposes into layers, each layer into assets and services, by the identity above.
+A plane that has no governing artefact of its own is a gap in this definition, not an omission from
+the product: **the retrieval and conversation planes are named here as first-class and are not yet
+elevated to the standard the data plane now holds.**
 
 ## 2. Who the product serves
 
@@ -540,6 +570,7 @@ A balanced scorecard; one high score cannot conceal failure elsewhere.
 | Obligation | Required evidence |
 |---|---|
 | Source and domain fidelity | Correct source and context, method identity, applicability, exceptions, and genuine source-to-rule-to-application correspondence. |
+| **Domain correctness** | The astrology is *right*, not merely well-sourced. Verified autonomously and only autonomously, by four checks that can each return false: (a) **source correspondence** — the encoded rule and the passage it cites are compared and must agree, including its prerequisites and exceptions; (b) **cross-witness agreement** — where two admitted sources define the same configuration, the encodings agree, or the disagreement is recorded as school disagreement and never silently resolved; (c) **independent re-derivation** — a classical quantity computed a second way from different inputs must match; (d) **negative cases** — the rule must NOT fire where the tradition says it does not, tested on seeded counterexamples. A component may be structurally immaculate and astrologically wrong; nothing else in this table would catch it. |
 | Computational correctness | Authoritative inputs, reproducible calculations, units and conventions, sensitivity, independent verification where required. |
 | Concept and relationship completeness | Seeded and novel omission cases; detect a missing Bhāvat Bhāvam application, a lost cancellation, a severed chain or an unsupported generalization. |
 | Interpretive fidelity | Material rivals, qualified manifestation bridge, counter-evidence, dependence accounting, and no unsupported prose added after synthesis. |

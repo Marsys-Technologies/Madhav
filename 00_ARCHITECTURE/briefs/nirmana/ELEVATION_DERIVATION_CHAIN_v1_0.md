@@ -17,6 +17,29 @@ changelog:
 
 # The elevation derivation chain
 
+## What composes into what
+
+The chain of documents exists to serve a compositional identity that holds at every level
+(product §1.3):
+
+```
+     layer value  =  Σ its assets and services  +  Σ synergies between them
+     plane value  =  Σ its layers               +  Σ synergies between them
+   product value  =  Σ its planes               +  Σ synergies between them
+```
+
+The **synergy term** is what makes each level a thing rather than a collection, and it is the term
+elevation exists to grow. The document chain below mirrors this: one document per level, each
+measuring its own sum and its own synergy term.
+
+**Three planes, not one.** The data plane is one plane among three named in product §1.3 — the
+**data plane** (L0–L5, the astrological basis), the **retrieval plane** (discovery, hydration,
+capability contracts, coverage, the omission challenge) and the **conversation plane** (Paripraśna
+and the managed MCP door). Only the data plane is elevated to the standard this chain describes.
+`RETRIEVAL_STRATEGY_v1_0` is CURRENT but predates the chain; the conversation plane has no governing
+artefact of its own. **Both are gaps in the chain, recorded here rather than left implicit — the
+tier-2 row below describes one of three planes.**
+
 ## The shape, in one picture
 
 ```
@@ -85,7 +108,13 @@ below it inherits from it.
 6. **Three verdicts.** ACCEPT / ACCEPT_WITH_CORRECTIONS / REJECT. A finding about the *document* is
    fixed in the document; a finding about the *thing it describes*, correctly recorded, is a gap with
    a detector. One independent review discharges the gate (native ruling, 2026-09-25).
-7. **Certification is per criterion, never per revision.** A revised criterion re-opens only its own
+7. **Domain correctness is verified autonomously or not at all.** Whether the astrology is *right* —
+   as distinct from well-sourced, well-identified or well-served — is checked by four detectors that
+   can each return false: source correspondence against the cited passage, cross-witness agreement or
+   a recorded school disagreement, independent re-derivation from different inputs, and seeded
+   negative cases that must not fire. **No human, acharya or expert review exists in this system.**
+   A check that cannot be automated does not exist; it does not wait for a person.
+8. **Certification is per criterion, never per revision.** A revised criterion re-opens only its own
    records. This is what lets the scale improve without wiping earned work.
 
 ## Current state of the chain

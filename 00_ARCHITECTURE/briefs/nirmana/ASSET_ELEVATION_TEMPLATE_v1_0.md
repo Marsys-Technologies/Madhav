@@ -25,6 +25,7 @@ role: >
   every criterion its layer requires carries a current passing record — never by assertion.
 independent_review: NOT YET. First test is one L0 instance; defects found there are fixed HERE.
 changelog:
+  - "1.0 (elevated in place, 2026-09-25, native-directed): 33rd criterion added — T4 `Dom`, domain correctness: is the astrology right, as distinct from well-sourced. Four autonomous detectors from product §14; NO DETECTOR on `Dom` blocks certification outright. Recorded explicitly: no human or acharya review exists in this system, so a check that cannot be automated does not exist rather than waiting for a person. An earlier draft of this dimension proposed a human verifier and was wrong on a decision the native had already taken."
   - "1.0 (2026-09-25): first version, derived from the L0 layer instance rather than invented. Three refinements the native's framing required and this template adopts: (1) BRIEF COMPLETENESS and ASSET CONFORMANCE are two different measurements and only the second certifies — a brief that mentions idempotency is not an asset that is idempotent; (2) the 32 criteria are evaluated against the ASSET, with a named detector per criterion, not by marker-detection over the brief's prose; (3) the layer-appropriate clause carries down — a reference-layer asset is scored on fidelity and is never retired for lack of a reader. Gap register and certification ledger are the two machine-read surfaces the tracker consumes."
 ---
 
@@ -143,7 +144,7 @@ synergy obligations · consumer walkthrough · knowledge-time discipline
 upstream/downstream · serving contract
 
 **T4 · Discipline gates** — facts/interpretation · derivation ledger · idempotency · earned signal ·
-narration fidelity · serving density · honest null · vocabulary conformance
+narration fidelity · serving density · honest null · vocabulary conformance · **domain correctness**
 
 **T5 · Two ladders** — data-plane ladder position · campaign ladder position
 
@@ -179,6 +180,15 @@ verdict is **NO DETECTOR** — which is a gap (§5), never a pass.
   is stated, not implied.
 - **NO DETECTOR** — nothing exists that could distinguish pass from fail. **Never recorded as PASS.**
 - **N/A** — the criterion does not apply to this asset kind, *with the reason*. A bare N/A is a gap.
+
+**Domain correctness (`Dom`) is the criterion this template exists to stop anyone skipping.** It asks
+whether the astrology this asset carries is *right*, not whether it is well-sourced, well-identified
+or well-served. Its detector is one or more of the four autonomous checks in product §14 — source
+correspondence against the cited passage; cross-witness agreement or a recorded school disagreement;
+independent re-derivation from different inputs; seeded negative cases that must not fire. **No human
+or acharya review exists in this system.** An asset with `NO DETECTOR` on `Dom` is not certifiable,
+however many of the other 32 it passes: a component can be structurally immaculate and astrologically
+wrong, and nothing else here would notice.
 
 **Scoring-mode clause.** Where `scoring_mode: fidelity`, criteria that measure contribution
 (consumers, efficiency, value extraction) are evaluated as *reachability and correctness of handoff*,

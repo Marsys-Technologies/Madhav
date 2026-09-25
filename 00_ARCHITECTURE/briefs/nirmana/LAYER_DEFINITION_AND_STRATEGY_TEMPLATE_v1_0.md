@@ -20,6 +20,7 @@ role: >
 independent_review: NOT YET. This template has not been reviewed by a fresh-context session. Its first
   test is the L0 instance; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "1.0 (elevated in place, 2026-09-25, fourth change): §2.7 Domain correctness added — is the astrology RIGHT, as distinct from §2.4's is the obligation APPLIED. Four autonomous checks (source correspondence, cross-witness agreement, independent re-derivation, negative cases), each able to return false; NO DETECTOR is never a pass. Verified autonomously and only autonomously: no human or acharya review exists in this system, by native ruling. The per-asset checklist reaches 33 criteria. §1.5 now states the layer identity as one instance of the compositional identity that holds at plane and product level too."
   - "1.0 (elevated in place, 2026-09-25, third change): three repairs from the first instance's independent review. (a) §5.4 gains a three-verdict scale — ACCEPT / ACCEPT_WITH_CORRECTIONS / REJECT — with the distinction that makes the middle tier safe: a finding about the DOCUMENT is fixed in the document and never deferred, a finding about the LAYER that the document correctly records is a work packet, and two guards so the middle tier cannot rot (every correction names the gate it blocks; ACCEPT_WITH_CORRECTIONS becomes ACCEPT only by re-verification). (b) `measured_by:` must name the POPULATION, not only the instrument, with the corollary that a join is not measured until its keys are — three of the first instance's nine wrong figures came from exactly this gap. (c) §5.2's 32 criteria must be mapped to §4.4's inheritance list before an instance is called ready; the review found six criteria with no feeding section. Also §1.5: the synergistic fraction is recorded only where a harness exists to produce it."
   - "1.0 (elevated in place, 2026-09-25, second change): reference-layer clause in §1.2, §1.5 and §5.1 — a layer whose assets are knowledge authorities measures its individual term by fidelity, is never retirement-scored by ablation, and receives ablation only cross-layer to verify consumers. The first case where the template's definition of value had to be layer-appropriate rather than uniform; raised by the native against the L0 instance."
   - "1.0 (elevated in place, 2026-09-25): §2.6 Vocabulary conformance added, inheriting the data plane's controlled-vocabulary principle (§4.1); the per-asset checklist gains a 32nd criterion, T4 `Vocab`; the adaptation table now says L0 OWNS the vocabulary and every other layer CONFORMS. Found missing by the L0 instance and repaired here, per this template's own rule."
@@ -216,6 +217,10 @@ traces_to:   0.2
 
 > **layer value = Σ individual + Σ synergistic + Σ cross-layer handoff**
 
+This is the layer-level instance of the identity in product §1.3, which holds at every level:
+`plane = Σ layers + Σ synergies`, `product = Σ planes + Σ synergies`. The synergy term is what makes
+a level a thing rather than a collection, and it is the term this layer's elevation must grow.
+
 - Compare the sum against the objective in 0.2. **The shortfall is the elevation delta**; Part 3
   itemises it.
 - Any asset ≈ 0 on all three terms is a candidate for disposition **R** or **H** in Part 3 — a
@@ -303,6 +308,36 @@ from the authority, pinned by release id and digest, and joined to it by a parit
 **For L0 the section inverts:** L0 does not conform to the vocabulary; it **owns** it. Its 2.6 states
 the authority, its releases, the classes covered, the classes not yet covered, and the detectors
 that stand between the authority and every consumer.
+
+### 2.7 · Domain correctness — is the astrology right?
+
+```
+inherits:    Product §14 (Domain correctness), §3 (the twelve coverage obligations); Data plane §5
+measured_by: the four autonomous checks below, each named per obligation this layer owns
+traces_to:   0.1 — a layer whose astrology is wrong serves no P-need, however well it is engineered
+```
+
+§2.4 asks whether a coverage obligation is **applied**. This section asks whether it is **right**.
+They are different questions and a layer can pass the first while failing the second: a catalogue can
+carry perfect provenance, unique identifiers, complete alias sets and a detector on every claim, and
+still encode the configuration wrongly. Nothing else in this template would catch it.
+
+**Verified autonomously, and only autonomously.** No human, acharya or expert review is part of this
+system. The check is these four detectors or it does not exist:
+
+| # | check | what it compares | fails when |
+|---|---|---|---|
+| a | **source correspondence** | the encoded rule against the passage it cites — including prerequisites, exceptions and cancellations, not only the headline claim | the encoding says more, less or other than its own cited source |
+| b | **cross-witness agreement** | two admitted sources defining the same configuration | the encodings disagree and the disagreement is not recorded as school disagreement |
+| c | **independent re-derivation** | a classical quantity computed a second way, from different inputs | the two results differ beyond a declared tolerance |
+| d | **negative cases** | seeded counterexamples the tradition says do NOT satisfy the rule | the rule fires on one |
+
+For each obligation the layer owns (§2.4), state which of a–d applies, the detector, and its current
+result — `PASS` / `FAIL` / `PARTIAL` / **`NO DETECTOR`**. `NO DETECTOR` is never a pass; it is a gap.
+
+**A reference layer is where this matters most.** L0 holds the tradition itself, so an error here
+propagates into every reading built on it and is invisible at every later layer — each of which will
+faithfully compute the wrong thing.
 
 ### 2.5 · Edges and order
 
@@ -441,7 +476,7 @@ correctness · concept and relationship completeness · interpretive fidelity ·
 understanding · consumer understanding · temporal integrity · predictive performance · delivery
 fidelity · operational honesty. A layer scores on the subset its 0.2 row names.
 
-### 5.2 · The per-asset checklist — five tiers, thirty-two criteria
+### 5.2 · The per-asset checklist — five tiers, thirty-three criteria
 
 ```
 inherits:    kala_brief_tracker.py TIERS (as run); Product §14; CLAUDE.md §N.6-N.8
@@ -462,7 +497,8 @@ synergy obligations · consumer walkthrough · knowledge-time discipline
 upstream/downstream · serving contract
 
 **T4 · Discipline gates** — facts/interpretation separation · derivation ledger · idempotency · earned
-signal · narration fidelity · serving density · honest null · **vocabulary conformance**
+signal · narration fidelity · serving density · honest null · **vocabulary conformance** ·
+**domain correctness**
 
 **T5 · Two ladders** — data-plane ladder position · campaign ladder position
 
