@@ -7,7 +7,7 @@ assembled from four sources, each named per column so a figure can be re-run:
   registry      live asset_registry (read-only)      — identity, target_table, depends_on, status
   production    information_schema + exact count(*)  — does it exist, how big, which contract columns
   brief         the tier-4 instance, if one exists   — brief SHAPE scan, presence only (§2)
-  ledgers       asset_gaps.jsonl / asset_certs.jsonl — open gaps and per-GATE certification (§5, §7)
+  ledgers       asset_gaps.jsonl (the DELTA LEDGER, kind=gap|opportunity) / asset_certs.jsonl — per-GATE certification (§5, §7, §9)
 
 CERTIFICATION IS THE ONLY THING THAT MAKES AN ASSET ELEVATED, and it is read from the certification
 ledger alone. The brief scan is completeness, never conformance: a brief that mentions idempotency is
@@ -26,7 +26,7 @@ CERTS = os.path.join(CTRL,"asset_certs.jsonl")
 
 LAYERS = {
  "L0":{"prefix":"bg_","name":"Brahmagyan","registry_layer":"brahmagyan","scoring":"fidelity",
-       "instance":"00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md",
+       "instance":"00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v3_0.md",  # v3.0 DRAFT_PENDING_ACCEPTANCE — briefs derived from it are pilots (tier-4 §0)
        "briefs":"00_ARCHITECTURE/briefs/nirmana/l0_assets"},
  "L1":{"prefix":"ga_","name":"Gaṇita","registry_layer":"ganita","scoring":"contribution",
        "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l1_assets"},
@@ -55,20 +55,24 @@ GATES = [
  ("Earn","earned signal",          "always",      "every status/grade/PASS has a detector measuring that specific claim (§N.8)"),
  ("Null","honest null",            "always",      "an underivable value is emitted as null, not as a plausible default (§N.7.6)"),
  ("Vocab","vocabulary conformance","always",      "one canonical id per thing, one closed alias set, no free-text synonym"),
- ("Dom","domain correctness",      "always",      "ONE applicable detector from DOMAIN_MENU, run — not four, and not none"),
+ ("Carr","source carriage",        "always",      "what the asset restates from a source matches it; what it computes reproduces a second way; a witness disagreement is carried, not settled — ONE applicable check from CARRIAGE_MENU, run"),
  ("Narr","narration fidelity",     "emits prose", "prose restates cited facts and does not re-derive them (§N.7)"),
  ("Dens","serving density",        "is served",   "confirmed vs catalog-only counted separately; dense layer survives a trim (§N.6)"),
 ]
 
-# Pick the ONE that fits what the asset actually asserts. Running four where one applies is theatre;
-# running none is an unearned signal. Where none applies, the Dom record is NO DETECTOR with a
+# Pick the ONE that fits what the asset actually does. Running three where one applies is theatre;
+# running none is an unearned signal. Where none applies, the Carr record is NO_DETECTOR with a
 # reason — an honest null, never a pass.
-DOMAIN_MENU = [
- ("D1","source correspondence",   "the asset restates a cited classical source",      "the restatement against the source text"),
- ("D2","cross-witness agreement", "two independent authorities cover the same claim", "they agree; disagreement is recorded, not averaged"),
- ("D3","independent re-derivation","the value is computable a second way",            "compute it that way and compare"),
- ("D4","seeded negative case",    "the asset classifies or fires",                    "feed a case that must not fire; check it doesn't"),
+# RENAMED from DOMAIN_MENU 2026-09-26 (native ruling 11): `Carr` asks whether the asset TRANSMITTED
+# faithfully, not whether the astrology is right — that verdict is formed above the data plane. The
+# former D4 (seeded negative case — a case the tradition says must NOT fire) is removed: deciding what
+# must not fire is a doctrinal act and belongs to the reasoning layer's own artefact.
+CARRIAGE_MENU = [
+ ("D1","source correspondence",   "the asset restates a cited classical source",      "the restatement against the passage — prerequisites, exceptions, cancellations included"),
+ ("D2","witness carriage",        "two admitted authorities cover the same claim",    "the disagreement is carried forward as school disagreement, never averaged or silently resolved"),
+ ("D3","independent re-derivation","the value is computable a second way",            "compute it that way and compare within a declared tolerance"),
 ]
+DOMAIN_MENU = CARRIAGE_MENU  # backward-compatible alias for any reader of the JSON key "domain_menu"
 
 # Brief SHAPE — scanned for presence, reported as one boolean per brief, never certified.
 # These were T1/T2's sixteen lenses; they describe what a brief CONTAINS, which is not a claim about
@@ -180,7 +184,10 @@ def scan_brief(path):
 
 def lifecycle(reg, brief, gaps, certs, required):
     """ELEVATED requires certification, never a brief. Nothing else may claim it."""
-    open_gaps=[g for g in gaps if g.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]
+    # kind=opportunity rows (tier-4 §9) NEVER withhold ELEVATED: "conforms" and "could be better" are two
+    # different words. Rows without `kind` are pre-2026-09-26 and read as gaps.
+    open_gaps=[g for g in gaps if g.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")
+               and str(g.get("kind","gap")).lower()!="opportunity"]
     passing={c["criterion"] for c in certs if str(c.get("verdict","")).upper() in PASSING_VERDICTS}
     # An unrecognised verdict string is NOT silently treated as failing -- it is reported, because a
     # typo'd verdict and an honest FAIL are different facts and the closed set exists to keep them so.
@@ -214,7 +221,10 @@ def scan(layer_keys, env_file):
             g=gap_by.get(aid,[]); c=cert_by.get(aid,[])
             state,why=lifecycle(r,b,g,c,required)
             assets.append(dict(id=aid,layer=lk,scoring=cfg["scoring"],registry=r,brief=b,
-                gaps_open=len([x for x in g if x.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]),
+                gaps_open=len([x for x in g if x.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")
+                               and str(x.get("kind","gap")).lower()!="opportunity"]),
+                opps_open=len([x for x in g if x.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")
+                               and str(x.get("kind","gap")).lower()=="opportunity"]),
                 gaps_total=len(g),
                 certified=len({x["criterion"] for x in c if str(x.get("verdict","")) in PASSING_VERDICTS}),
                 certs_total=len(c),required=len(required),state=state,why=why))
@@ -244,6 +254,7 @@ def main():
                   +", ".join(f"{s}={n}" for s,n in sorted(st.items())))
             elev=sum(1 for x in L["assets"] if x["state"]=="ELEVATED")
             print(f'      ELEVATED {elev}/{L["n_assets"]} | open gaps {sum(x["gaps_open"] for x in L["assets"])}'
+                  f' | open opportunities {sum(x["opps_open"] for x in L["assets"])}'
                   f' | gates certified {sum(x["certified"] for x in L["assets"])}/{L["n_assets"]*len(d["gates"])}')
         if d["ledger_bad_lines"]: print(f'  !! {d["ledger_bad_lines"]} malformed ledger line(s)')
         if not a.watch: break
