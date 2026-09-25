@@ -1,6 +1,6 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.3
+version: 1.4
 status: BASELINE_COMPLETE_GATE_MAPPING_HELD
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
@@ -29,6 +29,19 @@ amendments: >
   produced production's own chart_facts). Seeding design finalised around both:
   chart_facts seeded pre-trigger + synthesized capture-snapshot rows; ga_yoga's
   generation REAL via the R1 baseline (ordering constraint R1 before R3).
+  v1.4 (2026-09-26) — two corrections to v1.3, found while deriving the builder:
+  (1) the L2 bind builds its pg_temp shadows from `l1_data_plane_row_snapshots`
+  (1036:861-877), NOT `l1_data_plane_fact_snapshots` — v1.3 named the wrong
+  snapshot table; the synthesized capture artifacts target row_snapshots (with
+  fact_snapshots dual-written for fidelity, as the real capture does).
+  (2) The handoff summary's claim of a prior 1.06 GB JSONL fixture-data export
+  is a confabulation — no such export exists on disk; the fixture builder
+  produces all reference-data exports fresh. Also established: synthesized
+  completed generations are guard-respecting by construction (INSERT in empty
+  'building' state → declare partition_contexts → insert generation_partitions
+  → UPDATE to 'complete' → insert head; the guard permits exactly this path,
+  1035:383-440), and `l1_data_plane_generation_partitions` carries an FK to
+  `l1_data_plane_partition_contexts` (declaration precedes receipt).
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -358,9 +371,15 @@ NOT route around it by adding ownership rows — that would change the system un
   `base_context_jsonb`).
 - *`chart_facts` seeded directly BEFORE 1035/1036 install their triggers* (the guards never
   see the seed inserts — admitted-context seeding is impossible under F-W-L0-7-2), followed
-  by direct `l1_data_plane_fact_snapshots` rows for those facts, attached to the
-  synthesized generations below and mimicking `l1_data_plane_capture_row`'s emitted shape
-  (26-column snapshot schema probed). Disclosed as **synthesized capture artifacts**,
+  by direct `l1_data_plane_row_snapshots` rows for those facts (corrected v1.4 — the L2
+  bind shadows from row_snapshots, not fact_snapshots), attached to the synthesized
+  generations below and carrying the capture-equivalent derived fields
+  (`l1_data_plane_capture_row`'s formulas: context_id, calculation_context_jsonb,
+  grain_jsonb, source_dependencies_jsonb, epistemic_class, missingness_state,
+  verification_class, unit, semantic_payload_jsonb, source_row_jsonb, semantic_digest;
+  1035:722-940), with `l1_data_plane_fact_snapshots` dual-written for fidelity exactly as
+  the real capture dual-writes (1035:923-952). Disclosed as **synthesized capture
+  artifacts**,
   standing in for the capture the blocked admitted path cannot perform; without them the
   L2 bind's pg_temp `chart_facts` shadow would be empty and R3's pre-registered mechanism
   (v1.2: shadowed citations survive the perturbation) could not run.
