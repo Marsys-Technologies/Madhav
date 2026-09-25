@@ -9,6 +9,8 @@
  *   5. Source-of-truth files use FILE_COUNT().
  *
  * Pre-flight: for each row, SELECT to_regclass(target_table) in prod.
+ *   A comma-separated value declares a multi-table set (e.g. bg_prashna_rules'
+ *   five peer tables) — every member is checked.
  *   Returns NULL → mark is_active=false; continue.
  * More than 5 absent target_tables → hard stop before any INSERT.
  *
@@ -577,9 +579,11 @@ export const ASSETS: AssetDef[] = [
     // Global L0, after the event/activity ontology it classifies, super-admin-triggered only (brief §2.5.2).
     //
     // `count_sql` counts the ROWS AT THE RESERVED COORDINATE, not the whole table:
-    // brahma_class_priors also holds 164 signal-salience priors from
-    // bg_class_priors, and a bare COUNT(*) would report this asset as "164 rows
-    // built" the moment migration 522 lands and BEFORE a single N_e row exists —
+    // brahma_class_priors also holds 171 signal-salience priors from
+    // bg_class_priors (prior_version='1.0': 24 class + 12 subsystem + 6 tradition
+    // + 30 varga + 99 graha×domain rows), and a bare COUNT(*) would report this
+    // asset as "171 rows built" the moment migration 522 lands and BEFORE a
+    // single N_e row exists —
     // a cockpit-truth violation (§N.4) and an §N.8 signal that cannot read false.
     //
     // The achieved floor is six sourced rows. It is not a target for filling the
@@ -626,9 +630,17 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'CURRENT',
     sanskrit_name: 'Praśna-sūtrāvalī',
     english_name: 'Prashna Horary Rules',
-    english_description: 'Static horary astrology rules — Prashna lagna methods, Tajik yogas, significators, fructification rules, and special techniques.',
+    english_description:
+      'Static horary astrology rules — Prashna lagna methods, Tajik yogas, ' +
+      'significators, fructification rules, and special techniques. Five peer ' +
+      'tables (declared multi-table set, comma-separated): bg_prashna_lagna_methods, ' +
+      'bg_prashna_tajik_yogas, bg_prashna_significators, ' +
+      'bg_prashna_fructification_rules, bg_prashna_special_techniques — seeded ' +
+      'together by l0_prashna.seed_prashna_rules; no single one is the primary table.',
     storage_type: 'postgres_table',
-    target_table: null,
+    target_table:
+      'bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,' +
+      'bg_prashna_fructification_rules,bg_prashna_special_techniques',
     count_sql: 'SELECT (SELECT COUNT(*) FROM bg_prashna_lagna_methods) + (SELECT COUNT(*) FROM bg_prashna_tajik_yogas) + (SELECT COUNT(*) FROM bg_prashna_significators) + (SELECT COUNT(*) FROM bg_prashna_fructification_rules) + (SELECT COUNT(*) FROM bg_prashna_special_techniques) AS count',
     size_sql: null,
     target_floor: 41,
@@ -809,7 +821,7 @@ export const ASSETS: AssetDef[] = [
     catalog_status: 'DRAFT',
     sanskrit_name: 'Vidhi Mārga',
     english_name: 'Vidhi Registry — Intent Floors',
-    english_description: 'Per-intent-class acharya floor + machine band header + ordered floor items — the compiled scope_tuple->contract input (D-2 Lane V-1).',
+    english_description: 'Per-intent-class acharya floor + machine band header + ordered floor items — the compiled scope_tuple->contract input (D-2 Lane V-1). catalog_status=DRAFT is intentional, not stale: per the writer source, 1/14 intent floors is writer-tagged [MANDATORY] (spirituality_deepdive), 2/14 are writer-tagged [CANDIDATE] (education_deepdive, progeny_deepdive — VIDHI-PURNATA P-2, not yet fully ratified), and 11/14 carry no writer tag. Re-verify against the writer source before flipping to CURRENT.',
     storage_type: 'postgres_table',
     target_table: 'vidhi_floor_items',
     count_sql: `SELECT
@@ -1263,7 +1275,8 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: '67 * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Per-graha sensitive-degree check rows — count depends on classical rule applicability per chart.',
-    depends_on: ['ga_positions'],
+    // W-L0-2 (2026-09-25): +bg_nakshatra — ga_sensitive_degree_writer._load_yogi_nakshatra_lords reads reference_nakshatra (l0_declared_use_register_v1.json).
+    depends_on: ['ga_positions', 'bg_nakshatra'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1411,7 +1424,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts — floor 77,821 post-Phase-2 rebuild (2026-06-18). All 14 depth categories active: sambandha_grade(180), nakshatra_dispositor_chain(45), dispositor_tree(50), bhava_significance_link(180), karaka_bhava_concordance(150), net_argala(60), nway_configuration(5), chart_center_of_gravity(10), graha_centrality(45), chart_cluster(45), convergence_count(105), contradiction_pair(1810), dispositor_cycle(0 — no cycles), varga_provenance_meta(0 — no issues).',
-    depends_on: ['ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sensitive', 'ga_strength', 'ga_vargas'],
+    // W-L0-2 (2026-09-25): +bg_yogas, bg_doshas — ga_structural_writer label passes read both catalogs (l0_declared_use_register_v1.json).
+    depends_on: ['ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sensitive', 'ga_strength', 'ga_vargas', 'bg_yogas', 'bg_doshas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
@@ -1497,7 +1511,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null, // non-parametric — floor 2,880 measured prod (migration 310, 2026-06-18)
     expected_volume_inputs: null,
     volume_explanation: 'ga_condition combined: 45 D1 composite + 2,835 per-varga avastha chart_facts = 2,880 total. Measured on prod chart 482012f1 (2026-06-18). graha_kala_bala_per_varga floored (NULL fact_value_num).',
-    depends_on: ['ga_positions', 'ga_vargas', 'ga_dashas'],
+    // W-L0-2 (2026-09-25): +bg_dignity_reference — ga_condition_writer._load_dignity_ref full-table load (l0_declared_use_register_v1.json).
+    depends_on: ['ga_positions', 'ga_vargas', 'ga_dashas', 'bg_dignity_reference'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1519,7 +1534,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'YOGAS_IN_CATALOG * AYANAMSHAS_COUNT',
     expected_volume_inputs: null,
     volume_explanation: 'Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga × 5 ayanamshas).',
-    depends_on: ['ga_structural', 'ga_dashas'],
+    // W-L0-2 (2026-09-25): +bg_yogas — ga_yoga_writer loads brahma_yoga_catalog to evaluate per-chart firings (l0_declared_use_register_v1.json).
+    depends_on: ['ga_structural', 'ga_dashas', 'bg_yogas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1558,7 +1574,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '9 grahas × 5 ayanamshas = 45 indication rows per chart.',
-    depends_on: ['ga_condition', 'ga_positions'],
+    // W-L0-2 (2026-09-25): +bg_medical_mappings, bg_nakshatra_medical — ga_medical_writer loads both mapping tables (l0_declared_use_register_v1.json).
+    depends_on: ['ga_condition', 'ga_positions', 'bg_medical_mappings', 'bg_nakshatra_medical'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1620,7 +1637,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).',
-    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara'],
+    // W-L0-2 (2026-09-25): +bg_texts, bg_yogas, bg_doshas, bg_class_priors — bo_laksana validates chunk ids and canonical ids, activates class priors (l0_declared_use_register_v1.json).
+    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara', 'bg_texts', 'bg_yogas', 'bg_doshas', 'bg_class_priors'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1666,7 +1684,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'EVENT_CLASSES * AYANAMSHAS',
     expected_volume_inputs: { EVENT_CLASSES: 22, AYANAMSHAS: 5 },
     volume_explanation: '22 event classes (brahma_event_ontology) × 5 canonical ayanamshas = 110 rows per chart.',
-    depends_on: ['bo_laksana', 'bo_sangati'],
+    // W-L0-2 (2026-09-25): +bg_reference — chart_reader_v4 / bo_pratijna_v4_engine read reference_planets dignity rows (l0_declared_use_register_v1.json).
+    depends_on: ['bo_laksana', 'bo_sangati', 'bg_reference'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1822,7 +1841,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ga_dashas (chart_dashas), bo_cgm_motifs (bodha_cgm_motifs) — bo_upaya now reads all
     // three for real resonance_score_v1 inputs (dispositor_chain_weakness,
     // dasha_proximity_activation_score, cgm_motifs_weakest_node).
-    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs'],
+    // W-L0-2 (2026-09-25): +bg_remedies — bo_upaya grounds remedy prescriptions in brahma_remedy_corpus (l0_declared_use_register_v1.json).
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs', 'bg_remedies'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2090,9 +2110,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_inputs: null,
     volume_explanation: 'One grounding row per fired ga_yoga_firings row plus one per bodha_msr_signals row (v1 target_kinds); both sources are already per-(chart, ayanamsha), so expected volume is their live per-chart sum at build time.',
     depends_on: [
+      // W-L0-2 (2026-09-25): +bg_rules — _fetch_sutravali_rules loads the rule corpus for MSR grounding (l0_declared_use_register_v1.json).
       'ga_yoga', 'bo_laksana', 'bo_sudarshana',
       'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
-      'bo_vargottama_dhana',
+      'bo_vargottama_dhana', 'bg_rules',
     ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -2130,7 +2151,11 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Per-chart gochara materialization (generation=3.0), counted from the production surface (kala_gochara_windows) per the W5.4 UTK-R1 repoint — not the g3_utkarsha calibration copy in kala_gochara_windows_v2.',
-    depends_on: ['bg_gochara_arcs', 'ka_gochara_resonance'],
+    // W-L0-2 (2026-09-25): seed reconciled to live (bg_ephemeris, bg_transit_rules,
+    // ka_vedha_gochara, ka_moorti_nirnaya, ga_positions, ga_dashas, ga_yoga were
+    // migration-governed live without seed backfill); bg_gochara_arcs was seed-only
+    // and is carried into live by the W-L0-2 sync migration (l0_declared_use_register_v1.json).
+    depends_on: ['bg_gochara_arcs', 'ka_gochara_resonance', 'bg_ephemeris', 'bg_transit_rules', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ga_positions', 'ga_dashas', 'ga_yoga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -2154,7 +2179,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Per-chart resonance target rows — count depends on event-class cardinality and chart structure.',
-    depends_on: ['bg_transit_rules'],
+    // W-L0-2 (2026-09-25): +bg_ghatana — resonance writer reads brahma_event_ontology signature_model/citations (l0_declared_use_register_v1.json).
+    depends_on: ['bg_transit_rules', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -2224,6 +2250,13 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
       'ka_kota_chakra',
       'ka_tithi_pravesha',
       'bg_sky_calendar',
+      // W-L0-2 (2026-09-25): +bg_ghatana (writer + gochara_grammar/gochara_intensity
+      // engines read brahma_event_ontology), +bg_vedha_malefic_scale (context.py
+      // W1.3 prefetch), +bg_transit_rules (gochara_grammar vedha-pair rules)
+      // (l0_declared_use_register_v1.json).
+      'bg_ghatana',
+      'bg_vedha_malefic_scale',
+      'bg_transit_rules',
     ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -2621,7 +2654,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per predictive anchor; count depends on convergence density and multi-axis derivation',
-    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana'],
+    // W-L0-2 (2026-09-25): ph_nimitta writer reads bg_ghatana (brahma_event_ontology).
+    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2765,7 +2799,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per (candidate offset × ayanamsha): 37 offsets × 5 ayanamshas = 185 rows; plus one staged-best row in phala_rectification_best',
-    depends_on: ['ph_nimitta'],
+    // W-L0-2 (2026-09-25): ph_rectification reads bg_formula_constants (brahma_formula_constants).
+    depends_on: ['ph_nimitta', 'bg_formula_constants'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2967,7 +3002,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One insight unit per promoted/supported discovery + calibration stratum + grammar cell with evidence',
-    depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana', 'bo_pratijna'],
+    // W-L0-2 (2026-09-25): mi_darshana reads bg_ghatana (brahma_event_ontology).
+    depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana', 'bo_pratijna', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -3082,10 +3118,14 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
       'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
     // Eight real edges per live DB (migration 494 + migration 522; migration 569 drops ka_gochara_sweep per SAMPŪRTI R0).
     // All eight are now represented by seed rows in this file (W0.1, 2026-08-10).
+    // W-L0-2 (2026-09-25): writer reads of L0 reference tables declared; live DB also carries
+    // ka_vedha_gochara (seed/live divergence reconciled to the union below).
     depends_on: [
       'ka_dasha_kala', 'ka_gochara_resonance',
       'ga_panchanga', 'bo_pratijna', 'bo_sangati', 'bo_upaya',
       'bg_cohort', 'bg_class_lifetime_counts',
+      'ka_vedha_gochara',
+      'bg_ghatana', 'bg_ephemeris', 'bg_kp_sublord_division', 'bg_transit_rules',
     ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     layer_name: 'Kāla', layer_index: 'L3', catalog_status: 'DRAFT', asset_kind: 'data',
@@ -3447,14 +3487,21 @@ async function main(): Promise<void> {
       console.log(`  – ${asset.asset_id}: no target_table (intentional — preserving is_active=${asset.is_active})`)
       continue
     }
-    const { rows } = await client.query<{ to_regclass: string | null }>(
-      'SELECT to_regclass($1) AS to_regclass',
-      [asset.target_table],
-    )
-    if (!rows[0]?.to_regclass) {
-      console.log(`  ✗ ${asset.asset_id}: target_table '${asset.target_table}' absent in prod — marking is_active=false`)
+    // A comma-separated target_table declares a multi-table set (e.g.
+    // bg_prashna_rules' five peer tables) — every member must exist in prod.
+    const declaredTables = asset.target_table.split(',').map(t => t.trim()).filter(Boolean)
+    const missing: string[] = []
+    for (const tableName of declaredTables) {
+      const { rows } = await client.query<{ to_regclass: string | null }>(
+        'SELECT to_regclass($1) AS to_regclass',
+        [tableName],
+      )
+      if (!rows[0]?.to_regclass) missing.push(tableName)
+    }
+    if (missing.length > 0) {
+      console.log(`  ✗ ${asset.asset_id}: target_table ${missing.map(t => `'${t}'`).join(', ')} absent in prod — marking is_active=false`)
       asset.is_active = false
-      absentAssets.push(`${asset.asset_id} (target_table '${asset.target_table}' not found)`)
+      absentAssets.push(`${asset.asset_id} (target_table ${missing.map(t => `'${t}'`).join(', ')} not found)`)
     } else {
       console.log(`  ✓ ${asset.asset_id}: ${asset.target_table}`)
     }

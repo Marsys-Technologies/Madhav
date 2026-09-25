@@ -11,7 +11,12 @@ import {
 // Production at migration 615 plus the deterministic dependency rewrites in
 // migrations 619, 626, and 1030. These are the 28 rows whose dependency sets
 // are pinned here (migration 1030 supersedes bo_sangati's earlier two-edge
-// entry without changing this denominator).
+// entry without changing this denominator). W-L0-2 (2026-09-25) updated four
+// entries in place — bo_laksana, bo_pratijna, bo_grounding, ph_nimitta — to
+// declare the writer-side L0 (bg_*) reads census-recorded in
+// python-sidecar/brahmagyan/l0_declared_use_register_v1.json; the denominator
+// stays 28 and the live-DB sync is migration 1122 (held: migration ledger
+// unreconciled).
 const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   ga_strength: ['ga_positions', 'ga_vargas'],
   ga_sade_sati: [
@@ -23,6 +28,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive',
     'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra',
     'ga_condition', 'ga_vargas', 'ga_vichara',
+    'bg_texts', 'bg_yogas', 'bg_doshas', 'bg_class_priors',
   ],
   bo_bimba: [
     'bo_laksana', 'bo_sudarshana', 'bo_nakshatra_semantic',
@@ -33,7 +39,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
     'bo_vargottama_dhana',
   ],
-  bo_pratijna: ['bo_laksana', 'bo_sangati'],
+  bo_pratijna: ['bo_laksana', 'bo_sangati', 'bg_reference'],
   bo_samskara: [
     'bo_arudha', 'bo_laksana', 'bo_nakshatra_semantic',
     'bo_special_lagna', 'bo_sudarshana', 'bo_vargottama_dhana',
@@ -58,7 +64,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   bo_grounding: [
     'ga_yoga', 'bo_laksana', 'bo_sudarshana',
     'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
-    'bo_vargottama_dhana',
+    'bo_vargottama_dhana', 'bg_rules',
   ],
   bo_laksana_rerank: [
     'bo_laksana', 'bo_karanajala', 'bo_sudarshana',
@@ -87,7 +93,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   ph_nimitta: [
     'ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara',
     'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths',
-    'bo_laksana',
+    'bo_laksana', 'bg_ghatana',
   ],
   ph_muhurta: [
     'ph_nimitta', 'ka_kalasutra', 'ga_panchanga', 'ka_vighnakara',
@@ -155,7 +161,7 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
   it('pins the canonical order for the set-equal ga_structural dependencies', () => {
     expect(assetsById.get('ga_structural')?.depends_on).toEqual([
       'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',
-      'ga_sensitive', 'ga_strength', 'ga_vargas',
+      'ga_sensitive', 'ga_strength', 'ga_vargas', 'bg_yogas', 'bg_doshas',
     ])
   })
 
@@ -193,7 +199,7 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
       'bo_special_lagna', 'bo_sudarshana', 'bo_vargottama_dhana',
     ])
     expect(grounding?.depends_on).toEqual([
-      'ga_yoga', ...insertProducers,
+      'ga_yoga', ...insertProducers, 'bg_rules',
     ])
     expect(karanajala?.depends_on).toEqual([
       'bo_laksana', 'bo_bimba', 'ga_positions', 'bo_sudarshana',

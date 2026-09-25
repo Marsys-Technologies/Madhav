@@ -32,7 +32,12 @@ describe('migration 616 — Prashna producer integrity contract', () => {
     for (const hash of HASHES) expect(migration).toContain(hash)
     expect(ASSETS.find(asset => asset.asset_id === 'bg_prashna_rules')).toMatchObject({
       sort_order: 55,
-      target_table: null,
+      // W-L0-1 (2026-09-25, migration 1120): the NULL target_table was made
+      // honest — the asset is a declared five-table set, seeded together by
+      // l0_prashna.seed_prashna_rules. Pin updated to the governed value.
+      target_table:
+        'bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,'
+        + 'bg_prashna_fructification_rules,bg_prashna_special_techniques',
       target_floor: 41,
       volume_explanation: canonicalExplanation,
       depends_on: [],
