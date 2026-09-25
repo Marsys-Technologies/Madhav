@@ -5,7 +5,7 @@ tier: 3
 kind: template          # fixes shape; never cited as authority for content
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["one layer instance per L0-L5"]
-version: "1.0"
+version: "1.1"
 status: READY_FOR_USE
 produced_on: 2026-09-24
 decision_owner: Native

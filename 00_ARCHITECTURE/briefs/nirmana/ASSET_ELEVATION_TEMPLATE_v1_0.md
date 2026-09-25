@@ -1,7 +1,7 @@
 ---
 artifact: ASSET_ELEVATION_TEMPLATE
 canonical_id: ASSET_ELEVATION_TEMPLATE
-version: "1.0"
+version: "1.1"
 status: READY_FOR_USE
 produced_on: 2026-09-25
 decision_owner: Native

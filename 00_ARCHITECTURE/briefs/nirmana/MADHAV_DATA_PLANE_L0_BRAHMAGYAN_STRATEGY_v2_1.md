@@ -5,7 +5,7 @@ tier: 3
 kind: instance
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["40 bg_* asset instances — via §4.4, which ASSET_ELEVATION_TEMPLATE §0.1 receives row for row"]
-version: "2.1"
+version: "2.2"
 status: REVISED_PENDING_REVIEW
 assigned_verdict: null            # no reviewer has assigned a verdict to v2.1
 last_reviewer_verdict: REJECT     # assigned by the independent review OF v2.0, below
@@ -29,6 +29,21 @@ verdict_basis_argued_by_author: >
   they are the instance doing its job, and each is a packet with a detector. Corrections outstanding
   and their gates are listed in §7.
 produced_on: 2026-09-25
+changelog:
+  - "2.2 (2026-09-25): §5.2 rewritten against layer template v1.1 — eight gates, not 33 criteria; Dom
+    names D1/D2 as L0's usual menu items and records the sarvatobhadra school question as a D2
+    disagreement to be RECORDED, not averaged; Dens is N-A for most of L0; ladder position demoted
+    from criterion to status field. Two figures corrected after independent re-measurement against
+    production: `all 40 are lit` -> 39 (`bg_gochara_citation_resolution` has no asset_throughput row
+    at all), and the freeze figure stated as assets (90 of 98 ever-frozen lost their freeze at the t3
+    re-freeze) with the 103-event count named separately, because assets and events are different
+    populations. C-4 re-scoped from a 33-row map to the eight-row gate map, which is now a hard
+    readiness test. Status corrected from a self-stamped ACCEPT_WITH_CORRECTIONS to
+    REVISED_PENDING_REVIEW — see verdict_correction. Version advances past the filename, as
+    LIFE_EVENT_LOG and CLAUDE.md already do at this repo."
+  - "2.1 (2026-09-25): the v2.0 independent review's REJECT folded — nine non-reproducing figures
+    fixed, one obligation set instead of three, per-asset fidelity verdicts added, ten template
+    defects recorded in §6."
 decision_owner: Native
 template: 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md   # first instance; template defects found here are fixed THERE
 inherits:

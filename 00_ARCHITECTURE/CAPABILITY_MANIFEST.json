@@ -1,1976 +1,1988 @@
 {
- "generated_at": "2026-09-25T12:01:26+05:30",
- "generator_version": "1.0",
- "entry_count": 136,
- "fingerprint": "e5fe13bf7c1d8ba1",
- "entries": [
-  {
-   "canonical_id": "CGP_AUDIT_v1_0",
-   "path": "01_FACTS_LAYER/CGP_AUDIT_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "223f04bb9b3e755298cd0d2759a028d336f89793860c57952c6deb367f8f35cf",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
-   "path": "01_FACTS_LAYER/EXTERNAL_COMPUTATION_SPEC_v2_0.md",
-   "version": "2",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "3db9b40bbbfe695f3e17cc4450c6bde0a11b34f2adf73d0375e7468cd3f109aa",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
-   "path": "01_FACTS_LAYER/JH_EXPORT_SCHEDULE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "1aa95969cc1a9f27ff1cc17dd284242bf7146df265d6567e797a95acac3ed10d",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LEL_HELD_OUT_PARTITION",
-   "path": "01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "53e9424d398fe5ab2da8fd9a7916639ce43944ff4a6c4d729860440114404179",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LEL_FACTS_ONLY",
-   "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md",
-   "version": "unknown",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6352754e7deb7dc54083c90cd1861be6cacf206fb5ead1fc63f330f7d23b4000",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LEL",
-   "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
-   "version": "1.7",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "8221b3cb92c1ca4a206435d5c3647610a5840e8ae6bfcba8ecdc4dbd949c410e",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "factual",
-    "temporal",
-    "retrodictive"
-   ],
-   "cost_weight": 0.8
-  },
-  {
-   "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
-   "path": "01_FACTS_LAYER/PPL_RETROACTIVE_PROTOCOL_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "9429905ee94f1a26133691926e042c009815d1b04907aa215c39239598a08e70",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "SADE_SATI_CYCLES_ALL",
-   "path": "01_FACTS_LAYER/SADE_SATI_CYCLES_ALL.md",
-   "version": "unknown",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "716bcb8c8830324e1f6d8cd36e0682ca0b39e1df0840380c37746359e16ad808",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "EVENT_CHART_STATES_v1_0",
-   "path": "01_FACTS_LAYER/SOURCES/EVENT_CHART_STATES_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "957e58bbd523d981ac08a6c9a525987b787d3cca066ec78104e8e703fbd1c343",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
-   "path": "01_FACTS_LAYER/SOURCES/JHORA_TRANSCRIPTION_v8_0_SOURCE.md",
-   "version": "8.0-source",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "29dd7839ff5fbbbebd704e8703e26fb75db94c31317587c0a3b1516ed23668ba",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CDLM",
-   "path": "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md",
-   "version": "1.3",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "614e2be87cd9cebb46aa975421af549cfa20cc4e8de4b5c7ee457f7483c40b72",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "cross_domain",
-    "discovery"
-   ],
-   "cost_weight": 0.7
-  },
-  {
-   "canonical_id": "CGM",
-   "path": "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md",
-   "version": "9.1",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "1122d9d2f1beb7a71ccc36cbfce1565f3c7c6f519ca4e6ae504be2cb9dc3b45a",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "cross_domain",
-    "holistic"
-   ],
-   "cost_weight": 1,
-   "always_required": true
-  },
-  {
-   "canonical_id": "MSR",
-   "path": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
-   "version": "5.1",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6984c65c70decdf4ea70aa1485c3fa76fb50496ea2c01cfa944b5390ff55b71c",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "factual",
-    "interpretive",
-    "cross_domain"
-   ],
-   "cost_weight": 0.9
-  },
-  {
-   "canonical_id": "RM",
-   "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
-   "version": "2.2",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "d64408e16856e10c7c1c3c28ed304ee2f58377ba9ebd68fad69f1e15097595c6",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "resonance",
-    "cross_domain"
-   ],
-   "cost_weight": 0.6
-  },
-  {
-   "canonical_id": "UCN",
-   "path": "025_HOLISTIC_SYNTHESIS/UCN_v4_0.md",
-   "version": "4.1",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "397cb6d488c411053f3ad0640f1eb9a7efc7d8149246d542ffb07929b38ea3f7",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "cross_domain",
-    "holistic"
-   ],
-   "cost_weight": 0.8
-  },
-  {
-   "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
-   "path": "03_DOMAIN_REPORTS/CROSS_REPORT_COHERENCE_AUDIT_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "f05867f4a868bf11b352d8296a90977d4e823de3071838b88bea85ce13ac3a95",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RED_TEAM_L3_v1_0",
-   "path": "03_DOMAIN_REPORTS/RED_TEAM_L3_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "edeb13c2c56efb8b0b9ec2fd763187893ea4382b3b96fc405c384ac1f5856b65",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_CAREER_DHARMA_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_CAREER_DHARMA_v1_0.md",
-   "version": "1.0.1",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "647d9a17581894ddd07a384c511e510682d66cff694fa7e2b337d16d101dc706",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_CAREER_DHARMA_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "cdf52ee4041791753cd6d931890fdb213004b00d31e722d04256740d79e564ef",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "career",
-    "domain_specific"
-   ],
-   "cost_weight": 0.7
-  },
-  {
-   "canonical_id": "REPORT_CHILDREN_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_CHILDREN_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "17b651aa36a1539c496eaaa75623140dde71b36af9ff4905cdf1a7efe38a1301",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_CHILDREN_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_CHILDREN_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "d47d8f5ddd16c22d7ea7bce83653a588411aa778d967bc358e332e1e0e62299c",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_FINANCIAL_v2_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_0.md",
-   "version": "2",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "c2218ec25cb7637b35b327a6602ea17b3d9864fb9778f895ec1749769f13d75d",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_FINANCIAL_v2_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md",
-   "version": "2.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "215e54b7394d2bbfb8dc4b4a1660660dc16511d81225f25f8f9442f667afc39c",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "financial",
-    "domain_specific"
-   ],
-   "cost_weight": 0.7
-  },
-  {
-   "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "b6fa182c4bcde906a218796328a81c5f227852d9dcb2cf3ca2c851b8a5b7bbc6",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_1.md",
-   "version": "1.2",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "c722d9f2a0305e687814b8db398815a15ca1f2e85d3e4abbf0829a88e94e2623",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "health",
-    "domain_specific"
-   ],
-   "cost_weight": 0.7
-  },
-  {
-   "canonical_id": "REPORT_PARENTS_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_0.md",
-   "version": "1.0.1",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "3e18ccb5a39d49d2b7d04072c50a2f7cdf933e86147cf47c515896f918d7f523",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_PARENTS_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "06f938f059c0c971c03b70fb64cbaf91b25509dd90e66c73437fd122598b3478",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_PSYCHOLOGY_MIND_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "36d60c229c0e4e8cde85d483eb42977bc6ebd0a6e564762592b662f60dd7954f",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_PSYCHOLOGY_MIND_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "053d414ef88f719a0514eab372ee1b83c424666b01ebcd48652c0f4e896dd871",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "c86effd31f547660b28706e046a08d613b67d826797ad795e55193168d2747ab",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "97d285b3562b76c61772afaa88742ec315e61fee8edcb84f5e113078a9a77c34",
-   "native_id": "abhisek",
-   "preferred_for": [
-    "interpretive",
-    "relationships",
-    "domain_specific"
-   ],
-   "cost_weight": 0.7
-  },
-  {
-   "canonical_id": "REPORT_SPIRITUAL_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_SPIRITUAL_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6a0505ff8923d5ab73f6ad7a4853fd1be3db12a723dc33c4e93c235b4ab0c683",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_SPIRITUAL_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_SPIRITUAL_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "103edbb5927c9cd874f30c9b7daa9bbaf20c6aaab7d0eff21857db659013da27",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_TRAVEL_v1_0",
-   "path": "03_DOMAIN_REPORTS/REPORT_TRAVEL_v1_0.md",
-   "version": "1.0.1",
-   "status": "PREDECESSOR",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "2652762e82ab9ae772983f3dc6aeef8d76edd3f2c51e79ea1596226559568cd2",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REPORT_TRAVEL_v1_1",
-   "path": "03_DOMAIN_REPORTS/REPORT_TRAVEL_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "964a1951ce70b550065c9e83d73d8bf80f32dff8554a3aecb6f81636a59620be",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
-   "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/DECISION_SUPPORT_PLAYBOOK_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5ca2c1cac4b0932ef230d70613d72c3514ab41a0fb69d3809d33ac0f8ff704ce",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
-   "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/QUERY_PROMPT_LIBRARY_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7da8bb2bc252f3b4e056bec545b3c5e9705f6019297e65491bac3f37f920a545",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
-   "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7a86a7abf83a9ee84a803bb8d90283cb6119be265d1bfa87f2bac9b72aa4c6c0",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "plans_v1_0",
-   "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/plans_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "56605639e0441e2bfade2d8308bb4f9b40593df391cb689889373a54738afd01",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CLUSTER_ATLAS_v1_0",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "d3d406cc5f18d7d3673d35b133be6af3cd71aba0e012ecb8f4cdd33923605a27",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CLUSTER_ATLAS_v1_1",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "56b141a8a3c82688356e17e07d82ee416913a7c78ae5b2ca24fb2c200749c142",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CONTRADICTION_REGISTER_v1_0",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "bf438daf50ef8a600dfc20660936b7ddba31b729d7b75a08a5e92a508e5a46cf",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CONTRADICTION_REGISTER_v1_1",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "01f50f9b6602832db1d68f4321cb792e9dab0266ae4d055b778cc1f05ac0db13",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "PATTERN_REGISTER_v1_0",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "8161302972d47ad349b013e2953f5bcdf1bd51110b218cfce3e2026b94fd1469",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "PATTERN_REGISTER_v1_1",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "3354d4c628bfd209c19ff7cb9e6dadeade9d20916c87640d09247948761f2064",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RESONANCE_REGISTER_v1_0",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_0.md",
-   "version": "1",
-   "status": "PREDECESSOR",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "499ba93f83f0242b7fad32ca2fef6974039e33bd27c72c7a1c8a5b8dcac71b41",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RESONANCE_REGISTER_v1_1",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6e6530a56ebfc8f480327ce27c49f6d7eb861ca7dd77f01f5c24fc40fcf9387c",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "SCHEMAS/chunker_spec_v1_0",
-   "path": "035_DISCOVERY_LAYER/SCHEMAS/chunker_spec_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "1fee971c9f607b7f81691639da69e5796b880f488cad8bd95cfdf2746d070453",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
-   "path": "06_LEARNING_LAYER/L1_TRUTH_INDEX_REPORT_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "ad747fc87da4316fd56b9009b262b8ac45bdeede1a454e0cc4f80101efcc4af6",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "M4_CLOSE",
-   "path": "06_LEARNING_LAYER/M4_CLOSE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "1378f4f9d3a85a1893fd4e95df02f6c2efa4cc6fb10675f9b9ebdad57dbd3f11",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "M5_CLOSE",
-   "path": "06_LEARNING_LAYER/M5_CLOSE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5b8a7d4729cd20437bfa72b51b472c14b3234523265587b22fcc88393c2386f0",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CI_REPORTING_POLICY",
-   "path": "06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "2ccb6ad248b8748042d63769b4108f3e03ca4dd572b6ed338aabd8885b5260f1",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
-   "path": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0.md",
-   "version": "1.0.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "4e3512c83012d1d93b10d1d57a0a5d8d1caef1d95f27b0deff05c8186ebf2292",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "93eb7d2b3bb6e0e7f9724ecd729408adc1fec92fa5ba559ddea81bbde65c5157",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5f3f5f37eb5a7e01998bccb9aa6ec23b7ee9d5b04eff4321c6b0ef91e925b348",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "406c95be36e88dc85a0952cfb16ff87d19a35c0ed8c92f6695cb5f198721bb90",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "e7b3f2ccc200f45942bf28794fb0633685279429b6f0a3fc9adcd4cd5a57efd6",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "8a52703b570e6daf8e07d6d12c8a683fe5b4f7134dc70cc790e382452b8f2195",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "0a19c2bb18c7215cf03aaf7c75be551000fa016c4c194f820481a3c45f43de22",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "abdc78d968a7c7da7e307463c8537342824fe0b52c98e1c8107bb6fb2c81c9f2",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "19c6fbb7a314caad30f9d92c3b296c9e5012a2d37f80fc32f8a719e60f6ef4fa",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "M4_B_CLOSE",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/M4_B_CLOSE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6c29ad0f05861f13ccd780b5c773254b72ae90fd0cf2688276d7876be268e0c1",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "M4_C_CLOSE",
-   "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/M4_C_CLOSE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "89317368115eb91ca6004d5fb74e00cc6e12ccb0adc8a01d4be6611b77861adf",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "DBN_TOPOLOGY",
-   "path": "06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "907b05f7e9abc6bada10736122243e930369c02d304a77948582e0d076fd9b7f",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "M5_C_CLOSE",
-   "path": "06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "c1abb1d045591c4132df6bcdae8f1386bf45112d93d01149c4df13ef74c34db8",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "M5_D_CLOSE",
-   "path": "06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "94721418675d7121fc0b4dfedc64da8b6304bad46d06af2b872fe44c74f7c53e",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "PRIOR_SPEC",
-   "path": "06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "dcacbfa8edffa82c2f7e8a6975955ef7a47d0d2ea675dfc07865cd835b17b807",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
-   "path": "06_LEARNING_LAYER/dbn/embedding_refit/LL8_EMBEDDING_REFIT_SPEC_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "3278e27df12ca7f4181e818a95622da8e0a761aaa351036e755cd86ae662ee3c",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "REFIT_GATE",
-   "path": "06_LEARNING_LAYER/dbn/embedding_refit/REFIT_GATE_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "025c9785f783e7b90d97b4ccc2080b9c04796e1c18ea9acd8b6bbb464f94996f",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "refit_procedure",
-   "path": "06_LEARNING_LAYER/dbn/embedding_refit/refit_procedure.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5466dadc4a25284da7fc02d9c294a243781ea71caff03e4710c01264d545e9a7",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "stability_report",
-   "path": "06_LEARNING_LAYER/dbn/embedding_refit/stability_report.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "59efdf6a6a9379bdf56b0d28e4a65c6057e4bc8a8f69f54dc525f34bc7a822a6",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "ll2_promotion_campaign_v1_0",
-   "path": "06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "479d807f199e85913d0431a3ba662bf152771dde275f0b84dafe023a89811b81",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LL8_SPEC",
-   "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "f3877f50c2fb7517a3908989b14376e407a7a219483b77a89d7b79a6509a8c0d",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "LL9_SPEC",
-   "path": "06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md",
-   "version": "1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "8226eeafeb135eb5fad8d7a4459001c05cfec3796606e10e05abfea30671c4a8",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "PATTERN_SCHEMA_v0_1",
-   "path": "06_LEARNING_LAYER/SCHEMAS/pattern_schema_v0_1.json",
-   "version": "0.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "55c23858f1bcca725dcc1bc4dd33100ebaed2c157ef203a94e7671635a184d7b",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "PREDICTION_SCHEMA_v0_1",
-   "path": "06_LEARNING_LAYER/SCHEMAS/prediction_schema_v0_1.json",
-   "version": "0.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "bf1189997a5d8e80798a7dde27d69f39d2f1d24bf845a64e768783b0328f9654",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
-   "path": "06_LEARNING_LAYER/SCHEMAS/two_pass_events_schema_v0_1.json",
-   "version": "0.1",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "e7003c5911edd8f74b4fb0a7d7fd46add4812fe8c46254e5f54513be366f8e36",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "PROMPT_REGISTRY_INDEX",
-   "path": "06_LEARNING_LAYER/PROMPT_REGISTRY/INDEX.json",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "ee986600a0eecf33e2b61645056a7b76dea88019981280980b7aa2d5d87c846b",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "PREDICTION_LEDGER_JSONL",
-   "path": "06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L6",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "ac8a87cc55bbbe6d9d14ef4dd2229e701189507b01d6ecbffa51bcd5e41c701f",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "PATTERN_REGISTER_JSON",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_0.json",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "11ed5d57d48c23a4e3f9795df6107c9497cc6d988da2239ab3e5866cafd851fc",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "RESONANCE_REGISTER_JSON",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_0.json",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "92a6cde8cb869ff0b525477667a423852917573f0f1ffe9af3223fea1250e6ef",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "CONTRADICTION_REGISTER_JSON",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_0.json",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "11c551afab85e6272d9f5569551ed5425f893edc44ee52852774caad5710857f",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "CLUSTER_ATLAS_JSON",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.json",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "fa1dbd13991f06f6980e54ce586d1f1b40dbe969517ba0c5e6101de60e9a18d4",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "DISCOVERY_REGISTERS_INDEX",
-   "path": "035_DISCOVERY_LAYER/REGISTERS/INDEX.json",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "dd3eb54f70c2adb10ef91bca41b0ede2eeb955de1329b87e3f4dca38c832ad4e",
-   "native_id": "abhisek",
-   "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-   "last_verified_on": "2026-06-28"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_msr_sql",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "b002f6ae74cfa0d8122a1abbf8156b82d25d1ade65cdbeb6bf018a9bbca1f1e0",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_pattern_register",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5ad6cd5cf93c9cc04160f06e0b4abb7cefdc6658ebc2d2aef7a29c5aee3d7500",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_resonance_register",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "a8578286c5b7139fd91ffea004b2bfa77059f184018338118da095ef424bed6f",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_cluster_atlas",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "f1403db17e54f4c1c41d7506f4113361aed620f31941119827988083661ce37c",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_contradiction_register",
-   "status": "CURRENT",
-   "layer": "L3.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5479895b7e1a619eaeec2637ac69fdf5965425e11a473fc908110b699b4a5f19",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_temporal",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "da24a147aab45febeff564287353acb1618d63a536c33f7be02d433936969112",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_msr_aggregate",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "23d3422f686a9d2e63fff24956a21d438952c31dcb5ef6cc1871b05dc7aa6499",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_cgm_graph_walk",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "8d0e6b83d83ddb9b25e44f0acaf0205a4980af58dfba622c388a9545558fce7a",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_manifest_query",
-   "status": "CURRENT",
-   "layer": "L0",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "4a6dc22707d99e6ad63f0ce95d5772393de3d50ef7c9b170d9b0e231b51b10a2",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_vector_search",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "a4ed9e132f82434a6426b647dd3bc020a4d333875765b2181f7ccb4174f52859",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_kp_query",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "11afe90cb9c12aff20ae94b4978e375b864d41c0b8c7f36ccff6ddd425a5f74b",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_saham_query",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "d17069074123ea8b109a20cf5b18a5625655a7890333213efd482359bee1dc57",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_divisional_query",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7805580461065d91a6cc4065b2b7d6ec665e67e5969fe662a6671027c50aac23",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_chart_facts_query",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "5f7e09ad03a878fa149c6bc53fbd2b09d59c7ff3e927b24188a7bdb14ca6934d",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_cross_varga_dignity_query",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "bf18c97752fea9d86ad37e562f4dc46d38d889d6d06585f9788902ae7d21177e",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_domain_report_query",
-   "status": "CURRENT",
-   "layer": "L3",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "cf9bfde7aa74864b965c758ab0aee92f6e727434cf68c32a4ac78d1b77355c28",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_remedial_codex_query",
-   "status": "CURRENT",
-   "layer": "L4",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "715f1b40b5521653eda1c1d5f86e14790e346717bb6fbc7d1772e02c2e95ffca",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_timeline_query",
-   "status": "CURRENT",
-   "layer": "L5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7117a4c055feb5dcb14d9098af825fdc406d6057b112d34438a082d6460c57c8",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_signal_state",
-   "status": "CURRENT",
-   "layer": "L2.5",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "346ff5f37a993c05f599ac1639544be2ada7a90011efa1a1ec9a9457124c5cbe",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_kp_ruling_planets",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "295003dae2cb1d23ce7b28382359412937d0d170b8f9877d537aa8ae043ad5e8",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_varshaphala",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "82b231a899057cf727ffdc576a958a1151fc924f1702001e88c529595792c243",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_ephemeris",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "f9964e4750b34a5ea4a143047ff0e020fd2f7e0657f9f058523dc94ee70c3ef5",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_panchanga",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "00c72ae207a1d3ed180cfff1a8b8a64582471f703225c21d8f70b80ee0b96049",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_transit_event",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "a9cb5f1576a7498835d8d411d6273726b3d3e473d2d32073b54c2cfe9414f126",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_dasha_periods",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "9f7bd5d0161ecf06d51518b929aefbf099e760f83420dbfc74492708db0d1f92",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_muhurat",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "50f9546f0bce1f1561d113b6a2cd6e739b3adc9463e331fb1fd1845ceb29aaf9",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_jaimini_drishti",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6a13c0adbbdf87003800e7e3f4c6324ea1b6f33832415950e5733ccc619bbc3e",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_query_v7_additions",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6d1280149c5a078f34bc1edee66fa85dc1378cf5c5af7dd590b1a657a2149c43",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "L2_BODHA_CAMPAIGN_HANDOFF",
-   "path": "00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md",
-   "version": "1.1",
-   "status": "CURRENT",
-   "layer": "L2",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_prashna_ask",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "ac18ad9c4de0ee88caf7c9de4b9a4bf7bbd136f4734364feb4951bb19b49a17e",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
-   "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
-   "version": "1.0",
-   "status": "LIVING",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "fb35d3abcd9336dc749d49ba459288316af0b1d0adb500177c950cdb435143dc",
-   "native_id": "project",
-   "last_verified_session": "MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915",
-   "last_verified_on": "2026-09-15"
-  },
-  {
-   "canonical_id": "RETRIEVAL_TOOL_prashna_status",
-   "status": "CURRENT",
-   "layer": "L1",
-   "expose_to_chat": true,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "af5368cc9a708101aef051c717ec60a4652a7ceb7ed3768f9470edf04636a748",
-   "native_id": "abhisek"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_ARCHITECTURE",
-   "path": "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "e5d0ab3e2f4bc19d2809d4c64d33725333edcfad64b2d98d31e5852adedbae00",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
-   "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
-   "version": "1.3",
-   "status": "LIVING",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "b30bc39e3135de3a3e7d5d4cd3a3a5843c0a485972a0af95295bf87a661a4e84",
-   "native_id": "project",
-   "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
-   "path": "00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md",
-   "version": "1.0",
-   "status": "LIVING",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "9b6994d95cf74b2fc0c53e8ff24b387a75b67034b43c44864c3769721b78dafd",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_VERIFICATION_MATRIX",
-   "path": "00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md",
-   "version": "1.0",
-   "status": "LIVING",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_PARISESA_COLLISION_INCIDENT",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_SWARM_KICKOFF_V1",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md",
-   "version": "1.0",
-   "status": "SUPERSEDED",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "b1a7b6a869e934cdc6ef1ca9f9dade7e4990f256c35c9decedb25b79e3ec1cad",
-   "native_id": "project",
-   "supplements_parent": "PARIPRASHNA_SWARM_KICKOFF"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_SWARM_KICKOFF",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md",
-   "version": "2.0",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "d7b0c0da03f27c0da0337de1cd4a2801655125e22fc43d77e4ff32635ffddf14",
-   "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
-   "last_verified_on": "2026-08-19",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_IMPLEMENTATION_ROADMAP",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md",
-   "version": "1.0",
-   "status": "PROPOSAL",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "f1c45daffe402bdb196324c0963dcc1186be3ecd07548cf0bb431f3dafcbd0d8",
-   "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
-   "last_verified_on": "2026-08-19",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_SWARM_IMPLEMENTATION_PLAN",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md",
-   "version": "1.0",
-   "status": "PROPOSAL",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "bd8f590c3b01a6ca769cbe28871676a15cf435a3d388fff92962efcd4fb9ff59",
-   "native_id": "project",
-   "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21",
-   "last_verified_on": "2026-08-21"
-  },
-  {
-   "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md",
-   "version": "1.1",
-   "status": "CURRENT-FOR-EXECUTION",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "fb9b47dcc5d1267b63700d271dab980e02b743da3f3c4a04eb8ff740f0b4cd31",
-   "last_verified_session": "PARIPRASHNA-V3-CLOSEOUT-FOLLOWUPS-2026-08-30",
-   "last_verified_on": "2026-08-30",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "RESUME_BRIEFS_BOTH_CAMPAIGNS",
-   "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md",
-   "version": "1.0",
-   "status": "READY",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69",
-   "native_id": "project"
-  },
-  {
-   "canonical_id": "PARISESA_V4_CLOSURE_FACTORY_PLAN",
-   "path": "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md",
-   "version": "1.0",
-   "status": "CURRENT-FOR-EXECUTION",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
-   "native_id": "project",
-   "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
-  },
-  {
-   "canonical_id": "NIRMANA_ELEVATION_PLAN",
-   "path": "00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v6_0.md",
-   "version": "6.0",
-   "status": "CURRENT-FROZEN-FOR-EXECUTION",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7",
-   "native_id": "project",
-   "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
-   "last_verified_on": "2026-08-25"
-  },
-  {
-   "canonical_id": "NIRMANA_ELEVATION_AUTONOMY_CHARTER",
-   "path": "00_ARCHITECTURE/autonomy/CHARTER_v2_0.md",
-   "version": "2.0",
-   "status": "CURRENT-FROZEN-FOR-EXECUTION",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab",
-   "native_id": "project",
-   "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
-   "last_verified_on": "2026-08-25"
-  },
-  {
-   "canonical_id": "MADHAV_PRODUCT_DEFINITION",
-   "path": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md",
-   "version": "FINAL",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "2d7c94e0a168f504096474365568871bcc82fca6c4969ce8a8d485c800f40549",
-   "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260924",
-   "last_verified_on": "2026-09-25",
-   "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
-   "tier": 1
-  },
-  {
-   "canonical_id": "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE",
-   "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md",
-   "version": "FINAL",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7ed1d346b98ad7ab69066d4dbe6d6b02a8f3ca55a15ac4a1e91a9c96661e8e5a",
-   "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260924",
-   "last_verified_on": "2026-09-25",
-   "parent": "MADHAV_PRODUCT_DEFINITION",
-   "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
-   "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs.",
-   "tier": 2
-  },
-  {
-   "canonical_id": "ELEVATION_DERIVATION_CHAIN",
-   "path": "00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "8a90a164fab01bd0985ef96276ef6c10465c95d44b78890c32c488e69cdc0463",
-   "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260925",
-   "last_verified_on": "2026-09-25",
-   "tier": 0,
-   "note": "index of the elevation document system"
-  },
-  {
-   "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
-   "path": "00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "e1d4c3e3727634f4ddcfdcf5340c639a955945b2b698858de429bc2cfe1d4f58",
-   "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260925",
-   "last_verified_on": "2026-09-25",
-   "tier": 3,
-   "note": "tier-3 template; produces one instance per layer"
-  },
-  {
-   "canonical_id": "ASSET_ELEVATION_TEMPLATE",
-   "path": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md",
-   "version": "1.0",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "7bb907c721ddb4106ab2b16e8156ee4f4e498bcbbc7f801acbe2368b97644660",
-   "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260925",
-   "last_verified_on": "2026-09-25",
-   "tier": 4,
-   "note": "tier-4 template; produces one instance per asset"
-  },
-  {
-   "canonical_id": "MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY",
-   "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md",
-   "version": "2.1",
-   "status": "CURRENT",
-   "layer": "governance",
-   "expose_to_chat": false,
-   "representations": [
-    "file"
-   ],
-   "interface_version": "1.0",
-   "fingerprint": "08643f20b7bf658f2809e3d6a52a196ac4bae5bb61e35a27efb37a0222884d6d",
-   "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260925",
-   "last_verified_on": "2026-09-25",
-   "tier": 3,
-   "note": "tier-3 instance for L0; ACCEPT_WITH_CORRECTIONS"
-  }
- ]
+  "generated_at": "2026-09-25T13:55:06+05:30",
+  "generator_version": "1.0",
+  "entry_count": 136,
+  "fingerprint": "78653297f354b808",
+  "entries": [
+    {
+      "canonical_id": "CGP_AUDIT_v1_0",
+      "path": "01_FACTS_LAYER/CGP_AUDIT_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "223f04bb9b3e755298cd0d2759a028d336f89793860c57952c6deb367f8f35cf",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
+      "path": "01_FACTS_LAYER/EXTERNAL_COMPUTATION_SPEC_v2_0.md",
+      "version": "2",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3db9b40bbbfe695f3e17cc4450c6bde0a11b34f2adf73d0375e7468cd3f109aa",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
+      "path": "01_FACTS_LAYER/JH_EXPORT_SCHEDULE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1aa95969cc1a9f27ff1cc17dd284242bf7146df265d6567e797a95acac3ed10d",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LEL_HELD_OUT_PARTITION",
+      "path": "01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "53e9424d398fe5ab2da8fd9a7916639ce43944ff4a6c4d729860440114404179",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LEL_FACTS_ONLY",
+      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md",
+      "version": "unknown",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6352754e7deb7dc54083c90cd1861be6cacf206fb5ead1fc63f330f7d23b4000",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LEL",
+      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
+      "version": "1.7",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8221b3cb92c1ca4a206435d5c3647610a5840e8ae6bfcba8ecdc4dbd949c410e",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "factual",
+        "temporal",
+        "retrodictive"
+      ],
+      "cost_weight": 0.8
+    },
+    {
+      "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
+      "path": "01_FACTS_LAYER/PPL_RETROACTIVE_PROTOCOL_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "9429905ee94f1a26133691926e042c009815d1b04907aa215c39239598a08e70",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "SADE_SATI_CYCLES_ALL",
+      "path": "01_FACTS_LAYER/SADE_SATI_CYCLES_ALL.md",
+      "version": "unknown",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "716bcb8c8830324e1f6d8cd36e0682ca0b39e1df0840380c37746359e16ad808",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "EVENT_CHART_STATES_v1_0",
+      "path": "01_FACTS_LAYER/SOURCES/EVENT_CHART_STATES_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "957e58bbd523d981ac08a6c9a525987b787d3cca066ec78104e8e703fbd1c343",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
+      "path": "01_FACTS_LAYER/SOURCES/JHORA_TRANSCRIPTION_v8_0_SOURCE.md",
+      "version": "8.0-source",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "29dd7839ff5fbbbebd704e8703e26fb75db94c31317587c0a3b1516ed23668ba",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CDLM",
+      "path": "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md",
+      "version": "1.3",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "614e2be87cd9cebb46aa975421af549cfa20cc4e8de4b5c7ee457f7483c40b72",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "cross_domain",
+        "discovery"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "CGM",
+      "path": "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md",
+      "version": "9.1",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1122d9d2f1beb7a71ccc36cbfce1565f3c7c6f519ca4e6ae504be2cb9dc3b45a",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "cross_domain",
+        "holistic"
+      ],
+      "cost_weight": 1,
+      "always_required": true
+    },
+    {
+      "canonical_id": "MSR",
+      "path": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
+      "version": "5.1",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6984c65c70decdf4ea70aa1485c3fa76fb50496ea2c01cfa944b5390ff55b71c",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "factual",
+        "interpretive",
+        "cross_domain"
+      ],
+      "cost_weight": 0.9
+    },
+    {
+      "canonical_id": "RM",
+      "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
+      "version": "2.2",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d64408e16856e10c7c1c3c28ed304ee2f58377ba9ebd68fad69f1e15097595c6",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "resonance",
+        "cross_domain"
+      ],
+      "cost_weight": 0.6
+    },
+    {
+      "canonical_id": "UCN",
+      "path": "025_HOLISTIC_SYNTHESIS/UCN_v4_0.md",
+      "version": "4.1",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "397cb6d488c411053f3ad0640f1eb9a7efc7d8149246d542ffb07929b38ea3f7",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "cross_domain",
+        "holistic"
+      ],
+      "cost_weight": 0.8
+    },
+    {
+      "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
+      "path": "03_DOMAIN_REPORTS/CROSS_REPORT_COHERENCE_AUDIT_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f05867f4a868bf11b352d8296a90977d4e823de3071838b88bea85ce13ac3a95",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RED_TEAM_L3_v1_0",
+      "path": "03_DOMAIN_REPORTS/RED_TEAM_L3_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "edeb13c2c56efb8b0b9ec2fd763187893ea4382b3b96fc405c384ac1f5856b65",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_CAREER_DHARMA_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_CAREER_DHARMA_v1_0.md",
+      "version": "1.0.1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "647d9a17581894ddd07a384c511e510682d66cff694fa7e2b337d16d101dc706",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_CAREER_DHARMA_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "cdf52ee4041791753cd6d931890fdb213004b00d31e722d04256740d79e564ef",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "career",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_CHILDREN_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_CHILDREN_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "17b651aa36a1539c496eaaa75623140dde71b36af9ff4905cdf1a7efe38a1301",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_CHILDREN_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_CHILDREN_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d47d8f5ddd16c22d7ea7bce83653a588411aa778d967bc358e332e1e0e62299c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_FINANCIAL_v2_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_0.md",
+      "version": "2",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c2218ec25cb7637b35b327a6602ea17b3d9864fb9778f895ec1749769f13d75d",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_FINANCIAL_v2_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md",
+      "version": "2.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "215e54b7394d2bbfb8dc4b4a1660660dc16511d81225f25f8f9442f667afc39c",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "financial",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b6fa182c4bcde906a218796328a81c5f227852d9dcb2cf3ca2c851b8a5b7bbc6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_1.md",
+      "version": "1.2",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c722d9f2a0305e687814b8db398815a15ca1f2e85d3e4abbf0829a88e94e2623",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "health",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_PARENTS_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_0.md",
+      "version": "1.0.1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3e18ccb5a39d49d2b7d04072c50a2f7cdf933e86147cf47c515896f918d7f523",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_PARENTS_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "06f938f059c0c971c03b70fb64cbaf91b25509dd90e66c73437fd122598b3478",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_PSYCHOLOGY_MIND_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "36d60c229c0e4e8cde85d483eb42977bc6ebd0a6e564762592b662f60dd7954f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_PSYCHOLOGY_MIND_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "053d414ef88f719a0514eab372ee1b83c424666b01ebcd48652c0f4e896dd871",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c86effd31f547660b28706e046a08d613b67d826797ad795e55193168d2747ab",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "97d285b3562b76c61772afaa88742ec315e61fee8edcb84f5e113078a9a77c34",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "relationships",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_SPIRITUAL_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_SPIRITUAL_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6a0505ff8923d5ab73f6ad7a4853fd1be3db12a723dc33c4e93c235b4ab0c683",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_SPIRITUAL_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_SPIRITUAL_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "103edbb5927c9cd874f30c9b7daa9bbaf20c6aaab7d0eff21857db659013da27",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_TRAVEL_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_TRAVEL_v1_0.md",
+      "version": "1.0.1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "2652762e82ab9ae772983f3dc6aeef8d76edd3f2c51e79ea1596226559568cd2",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_TRAVEL_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_TRAVEL_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "964a1951ce70b550065c9e83d73d8bf80f32dff8554a3aecb6f81636a59620be",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/DECISION_SUPPORT_PLAYBOOK_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5ca2c1cac4b0932ef230d70613d72c3514ab41a0fb69d3809d33ac0f8ff704ce",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/QUERY_PROMPT_LIBRARY_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7da8bb2bc252f3b4e056bec545b3c5e9705f6019297e65491bac3f37f920a545",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7a86a7abf83a9ee84a803bb8d90283cb6119be265d1bfa87f2bac9b72aa4c6c0",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "plans_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/plans_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "56605639e0441e2bfade2d8308bb4f9b40593df391cb689889373a54738afd01",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CLUSTER_ATLAS_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d3d406cc5f18d7d3673d35b133be6af3cd71aba0e012ecb8f4cdd33923605a27",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CLUSTER_ATLAS_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "56b141a8a3c82688356e17e07d82ee416913a7c78ae5b2ca24fb2c200749c142",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CONTRADICTION_REGISTER_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bf438daf50ef8a600dfc20660936b7ddba31b729d7b75a08a5e92a508e5a46cf",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CONTRADICTION_REGISTER_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "01f50f9b6602832db1d68f4321cb792e9dab0266ae4d055b778cc1f05ac0db13",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PATTERN_REGISTER_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8161302972d47ad349b013e2953f5bcdf1bd51110b218cfce3e2026b94fd1469",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PATTERN_REGISTER_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3354d4c628bfd209c19ff7cb9e6dadeade9d20916c87640d09247948761f2064",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RESONANCE_REGISTER_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "499ba93f83f0242b7fad32ca2fef6974039e33bd27c72c7a1c8a5b8dcac71b41",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RESONANCE_REGISTER_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6e6530a56ebfc8f480327ce27c49f6d7eb861ca7dd77f01f5c24fc40fcf9387c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "SCHEMAS/chunker_spec_v1_0",
+      "path": "035_DISCOVERY_LAYER/SCHEMAS/chunker_spec_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1fee971c9f607b7f81691639da69e5796b880f488cad8bd95cfdf2746d070453",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
+      "path": "06_LEARNING_LAYER/L1_TRUTH_INDEX_REPORT_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ad747fc87da4316fd56b9009b262b8ac45bdeede1a454e0cc4f80101efcc4af6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M4_CLOSE",
+      "path": "06_LEARNING_LAYER/M4_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1378f4f9d3a85a1893fd4e95df02f6c2efa4cc6fb10675f9b9ebdad57dbd3f11",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M5_CLOSE",
+      "path": "06_LEARNING_LAYER/M5_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5b8a7d4729cd20437bfa72b51b472c14b3234523265587b22fcc88393c2386f0",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CI_REPORTING_POLICY",
+      "path": "06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "2ccb6ad248b8748042d63769b4108f3e03ca4dd572b6ed338aabd8885b5260f1",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
+      "path": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0.md",
+      "version": "1.0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "4e3512c83012d1d93b10d1d57a0a5d8d1caef1d95f27b0deff05c8186ebf2292",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "93eb7d2b3bb6e0e7f9724ecd729408adc1fec92fa5ba559ddea81bbde65c5157",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5f3f5f37eb5a7e01998bccb9aa6ec23b7ee9d5b04eff4321c6b0ef91e925b348",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "406c95be36e88dc85a0952cfb16ff87d19a35c0ed8c92f6695cb5f198721bb90",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e7b3f2ccc200f45942bf28794fb0633685279429b6f0a3fc9adcd4cd5a57efd6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8a52703b570e6daf8e07d6d12c8a683fe5b4f7134dc70cc790e382452b8f2195",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "0a19c2bb18c7215cf03aaf7c75be551000fa016c4c194f820481a3c45f43de22",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "abdc78d968a7c7da7e307463c8537342824fe0b52c98e1c8107bb6fb2c81c9f2",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "19c6fbb7a314caad30f9d92c3b296c9e5012a2d37f80fc32f8a719e60f6ef4fa",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M4_B_CLOSE",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/M4_B_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6c29ad0f05861f13ccd780b5c773254b72ae90fd0cf2688276d7876be268e0c1",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M4_C_CLOSE",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/M4_C_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "89317368115eb91ca6004d5fb74e00cc6e12ccb0adc8a01d4be6611b77861adf",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "DBN_TOPOLOGY",
+      "path": "06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "907b05f7e9abc6bada10736122243e930369c02d304a77948582e0d076fd9b7f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M5_C_CLOSE",
+      "path": "06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c1abb1d045591c4132df6bcdae8f1386bf45112d93d01149c4df13ef74c34db8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M5_D_CLOSE",
+      "path": "06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "94721418675d7121fc0b4dfedc64da8b6304bad46d06af2b872fe44c74f7c53e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PRIOR_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "dcacbfa8edffa82c2f7e8a6975955ef7a47d0d2ea675dfc07865cd835b17b807",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/LL8_EMBEDDING_REFIT_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3278e27df12ca7f4181e818a95622da8e0a761aaa351036e755cd86ae662ee3c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REFIT_GATE",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/REFIT_GATE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "025c9785f783e7b90d97b4ccc2080b9c04796e1c18ea9acd8b6bbb464f94996f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "refit_procedure",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/refit_procedure.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5466dadc4a25284da7fc02d9c294a243781ea71caff03e4710c01264d545e9a7",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "stability_report",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/stability_report.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "59efdf6a6a9379bdf56b0d28e4a65c6057e4bc8a8f69f54dc525f34bc7a822a6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "ll2_promotion_campaign_v1_0",
+      "path": "06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "479d807f199e85913d0431a3ba662bf152771dde275f0b84dafe023a89811b81",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL8_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f3877f50c2fb7517a3908989b14376e407a7a219483b77a89d7b79a6509a8c0d",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL9_SPEC",
+      "path": "06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8226eeafeb135eb5fad8d7a4459001c05cfec3796606e10e05abfea30671c4a8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PATTERN_SCHEMA_v0_1",
+      "path": "06_LEARNING_LAYER/SCHEMAS/pattern_schema_v0_1.json",
+      "version": "0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "55c23858f1bcca725dcc1bc4dd33100ebaed2c157ef203a94e7671635a184d7b",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "PREDICTION_SCHEMA_v0_1",
+      "path": "06_LEARNING_LAYER/SCHEMAS/prediction_schema_v0_1.json",
+      "version": "0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bf1189997a5d8e80798a7dde27d69f39d2f1d24bf845a64e768783b0328f9654",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
+      "path": "06_LEARNING_LAYER/SCHEMAS/two_pass_events_schema_v0_1.json",
+      "version": "0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e7003c5911edd8f74b4fb0a7d7fd46add4812fe8c46254e5f54513be366f8e36",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "PROMPT_REGISTRY_INDEX",
+      "path": "06_LEARNING_LAYER/PROMPT_REGISTRY/INDEX.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ee986600a0eecf33e2b61645056a7b76dea88019981280980b7aa2d5d87c846b",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "PREDICTION_LEDGER_JSONL",
+      "path": "06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ac8a87cc55bbbe6d9d14ef4dd2229e701189507b01d6ecbffa51bcd5e41c701f",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "PATTERN_REGISTER_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_0.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "11ed5d57d48c23a4e3f9795df6107c9497cc6d988da2239ab3e5866cafd851fc",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "RESONANCE_REGISTER_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_0.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "92a6cde8cb869ff0b525477667a423852917573f0f1ffe9af3223fea1250e6ef",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "CONTRADICTION_REGISTER_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_0.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "11c551afab85e6272d9f5569551ed5425f893edc44ee52852774caad5710857f",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "CLUSTER_ATLAS_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "fa1dbd13991f06f6980e54ce586d1f1b40dbe969517ba0c5e6101de60e9a18d4",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "DISCOVERY_REGISTERS_INDEX",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/INDEX.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "dd3eb54f70c2adb10ef91bca41b0ede2eeb955de1329b87e3f4dca38c832ad4e",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_msr_sql",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b002f6ae74cfa0d8122a1abbf8156b82d25d1ade65cdbeb6bf018a9bbca1f1e0",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_pattern_register",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5ad6cd5cf93c9cc04160f06e0b4abb7cefdc6658ebc2d2aef7a29c5aee3d7500",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_resonance_register",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "a8578286c5b7139fd91ffea004b2bfa77059f184018338118da095ef424bed6f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_cluster_atlas",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f1403db17e54f4c1c41d7506f4113361aed620f31941119827988083661ce37c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_contradiction_register",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5479895b7e1a619eaeec2637ac69fdf5965425e11a473fc908110b699b4a5f19",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_temporal",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "da24a147aab45febeff564287353acb1618d63a536c33f7be02d433936969112",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_msr_aggregate",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "23d3422f686a9d2e63fff24956a21d438952c31dcb5ef6cc1871b05dc7aa6499",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_cgm_graph_walk",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8d0e6b83d83ddb9b25e44f0acaf0205a4980af58dfba622c388a9545558fce7a",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_manifest_query",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "4a6dc22707d99e6ad63f0ce95d5772393de3d50ef7c9b170d9b0e231b51b10a2",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_vector_search",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "a4ed9e132f82434a6426b647dd3bc020a4d333875765b2181f7ccb4174f52859",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_kp_query",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "11afe90cb9c12aff20ae94b4978e375b864d41c0b8c7f36ccff6ddd425a5f74b",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_saham_query",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d17069074123ea8b109a20cf5b18a5625655a7890333213efd482359bee1dc57",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_divisional_query",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7805580461065d91a6cc4065b2b7d6ec665e67e5969fe662a6671027c50aac23",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_chart_facts_query",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5f7e09ad03a878fa149c6bc53fbd2b09d59c7ff3e927b24188a7bdb14ca6934d",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_cross_varga_dignity_query",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bf18c97752fea9d86ad37e562f4dc46d38d889d6d06585f9788902ae7d21177e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_domain_report_query",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "cf9bfde7aa74864b965c758ab0aee92f6e727434cf68c32a4ac78d1b77355c28",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_remedial_codex_query",
+      "status": "CURRENT",
+      "layer": "L4",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "715f1b40b5521653eda1c1d5f86e14790e346717bb6fbc7d1772e02c2e95ffca",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_timeline_query",
+      "status": "CURRENT",
+      "layer": "L5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7117a4c055feb5dcb14d9098af825fdc406d6057b112d34438a082d6460c57c8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_signal_state",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "346ff5f37a993c05f599ac1639544be2ada7a90011efa1a1ec9a9457124c5cbe",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_kp_ruling_planets",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "295003dae2cb1d23ce7b28382359412937d0d170b8f9877d537aa8ae043ad5e8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_varshaphala",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "82b231a899057cf727ffdc576a958a1151fc924f1702001e88c529595792c243",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_ephemeris",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f9964e4750b34a5ea4a143047ff0e020fd2f7e0657f9f058523dc94ee70c3ef5",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_panchanga",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "00c72ae207a1d3ed180cfff1a8b8a64582471f703225c21d8f70b80ee0b96049",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_transit_event",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "a9cb5f1576a7498835d8d411d6273726b3d3e473d2d32073b54c2cfe9414f126",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_dasha_periods",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "9f7bd5d0161ecf06d51518b929aefbf099e760f83420dbfc74492708db0d1f92",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_muhurat",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "50f9546f0bce1f1561d113b6a2cd6e739b3adc9463e331fb1fd1845ceb29aaf9",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_jaimini_drishti",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6a13c0adbbdf87003800e7e3f4c6324ea1b6f33832415950e5733ccc619bbc3e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_v7_additions",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6d1280149c5a078f34bc1edee66fa85dc1378cf5c5af7dd590b1a657a2149c43",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "L2_BODHA_CAMPAIGN_HANDOFF",
+      "path": "00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L2",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_prashna_ask",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ac18ad9c4de0ee88caf7c9de4b9a4bf7bbd136f4734364feb4951bb19b49a17e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+      "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "fb35d3abcd9336dc749d49ba459288316af0b1d0adb500177c950cdb435143dc",
+      "native_id": "project",
+      "last_verified_session": "MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915",
+      "last_verified_on": "2026-09-15"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_prashna_status",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "af5368cc9a708101aef051c717ec60a4652a7ceb7ed3768f9470edf04636a748",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_ARCHITECTURE",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e5d0ab3e2f4bc19d2809d4c64d33725333edcfad64b2d98d31e5852adedbae00",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
+      "version": "1.3",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b30bc39e3135de3a3e7d5d4cd3a3a5843c0a485972a0af95295bf87a661a4e84",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "9b6994d95cf74b2fc0c53e8ff24b387a75b67034b43c44864c3769721b78dafd",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_VERIFICATION_MATRIX",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_PARISESA_COLLISION_INCIDENT",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_KICKOFF_V1",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md",
+      "version": "1.0",
+      "status": "SUPERSEDED",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b1a7b6a869e934cdc6ef1ca9f9dade7e4990f256c35c9decedb25b79e3ec1cad",
+      "native_id": "project",
+      "supplements_parent": "PARIPRASHNA_SWARM_KICKOFF"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_KICKOFF",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md",
+      "version": "2.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d7b0c0da03f27c0da0337de1cd4a2801655125e22fc43d77e4ff32635ffddf14",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
+      "last_verified_on": "2026-08-19",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_IMPLEMENTATION_ROADMAP",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md",
+      "version": "1.0",
+      "status": "PROPOSAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f1c45daffe402bdb196324c0963dcc1186be3ecd07548cf0bb431f3dafcbd0d8",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
+      "last_verified_on": "2026-08-19",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_IMPLEMENTATION_PLAN",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "PROPOSAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bd8f590c3b01a6ca769cbe28871676a15cf435a3d388fff92962efcd4fb9ff59",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21",
+      "last_verified_on": "2026-08-21"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "fb9b47dcc5d1267b63700d271dab980e02b743da3f3c4a04eb8ff740f0b4cd31",
+      "last_verified_session": "PARIPRASHNA-V3-CLOSEOUT-FOLLOWUPS-2026-08-30",
+      "last_verified_on": "2026-08-30",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "RESUME_BRIEFS_BOTH_CAMPAIGNS",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md",
+      "version": "1.0",
+      "status": "READY",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARISESA_V4_CLOSURE_FACTORY_PLAN",
+      "path": "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
+      "native_id": "project",
+      "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
+    },
+    {
+      "canonical_id": "NIRMANA_ELEVATION_PLAN",
+      "path": "00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v6_0.md",
+      "version": "6.0",
+      "status": "CURRENT-FROZEN-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7",
+      "native_id": "project",
+      "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
+      "last_verified_on": "2026-08-25"
+    },
+    {
+      "canonical_id": "NIRMANA_ELEVATION_AUTONOMY_CHARTER",
+      "path": "00_ARCHITECTURE/autonomy/CHARTER_v2_0.md",
+      "version": "2.0",
+      "status": "CURRENT-FROZEN-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab",
+      "native_id": "project",
+      "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
+      "last_verified_on": "2026-08-25"
+    },
+    {
+      "canonical_id": "MADHAV_PRODUCT_DEFINITION",
+      "path": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md",
+      "version": "FINAL",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c36bd0b215be3ef08417100796e06de7e172e3f073f5a30aaeeef040680c7383",
+      "native_id": "project",
+      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_on": "2026-09-25",
+      "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+      "tier": 1,
+      "fingerprint_sha256": "c36bd0b215be3ef08417100796e06de7e172e3f073f5a30aaeeef040680c7383",
+      "doc_status": "CURRENT"
+    },
+    {
+      "canonical_id": "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE",
+      "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md",
+      "version": "FINAL",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "236b6c72a32ac29a110009a2009fd3c866c04745485ab4ff2995c44befedc94b",
+      "native_id": "project",
+      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_on": "2026-09-25",
+      "parent": "MADHAV_PRODUCT_DEFINITION",
+      "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+      "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs.",
+      "tier": 2,
+      "fingerprint_sha256": "236b6c72a32ac29a110009a2009fd3c866c04745485ab4ff2995c44befedc94b",
+      "doc_status": "CURRENT"
+    },
+    {
+      "canonical_id": "ELEVATION_DERIVATION_CHAIN",
+      "path": "00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "39af35d83e2a901ce03143842c8b0c01fb11bf4e2f172324086f3233a12b738b",
+      "native_id": "project",
+      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_on": "2026-09-25",
+      "tier": 0,
+      "note": "index of the elevation document system",
+      "fingerprint_sha256": "39af35d83e2a901ce03143842c8b0c01fb11bf4e2f172324086f3233a12b738b",
+      "doc_status": "CURRENT"
+    },
+    {
+      "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
+      "path": "00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1594f9924945ea2d2e0ca4cdb54c14a3c7cfde79bc3c0bbbe84ec41676ef6c9c",
+      "native_id": "project",
+      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_on": "2026-09-25",
+      "tier": 3,
+      "note": "tier-3 template; produces one instance per layer",
+      "fingerprint_sha256": "1594f9924945ea2d2e0ca4cdb54c14a3c7cfde79bc3c0bbbe84ec41676ef6c9c",
+      "doc_status": "READY_FOR_USE"
+    },
+    {
+      "canonical_id": "ASSET_ELEVATION_TEMPLATE",
+      "path": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "390309fc123de5269eaf6a76f906bc1e4cd5e8a8cee582b88df505176a8763cb",
+      "native_id": "project",
+      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_on": "2026-09-25",
+      "tier": 4,
+      "note": "tier-4 template; produces one instance per asset",
+      "fingerprint_sha256": "390309fc123de5269eaf6a76f906bc1e4cd5e8a8cee582b88df505176a8763cb",
+      "doc_status": "READY_FOR_USE"
+    },
+    {
+      "canonical_id": "MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY",
+      "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md",
+      "version": "2.2",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "33bc1b0adeefc1417128684d14b94c2446aa5b2b0fd753d8308e031c2dee08eb",
+      "native_id": "project",
+      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_on": "2026-09-25",
+      "tier": 3,
+      "note": "tier-3 instance for L0; ACCEPT_WITH_CORRECTIONS",
+      "fingerprint_sha256": "33bc1b0adeefc1417128684d14b94c2446aa5b2b0fd753d8308e031c2dee08eb",
+      "doc_status": "REVISED_PENDING_REVIEW"
+    }
+  ]
 }

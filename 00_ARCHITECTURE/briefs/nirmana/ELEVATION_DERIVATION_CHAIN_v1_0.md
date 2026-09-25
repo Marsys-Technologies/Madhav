@@ -1,7 +1,7 @@
 ---
 artifact: ELEVATION_DERIVATION_CHAIN
 canonical_id: ELEVATION_DERIVATION_CHAIN
-version: "1.0"
+version: "1.1"
 status: CURRENT
 tier: 0
 produced_on: 2026-09-25
@@ -12,6 +12,7 @@ role: >
   chain, not a member of it — it governs no content and settles no astrology.
 produces: [LAYER_DEFINITION_AND_STRATEGY_TEMPLATE, ASSET_ELEVATION_TEMPLATE]
 changelog:
+  - "1.1 (2026-09-25): rules 9 and 10 added — only a falsifiable claim is certified (eight gates; shape, inheritance and ladder position are not scores), and the reviewer assigns the verdict, not the author. Rule 7 rewritten: ONE applicable domain detector from the menu, not four. State table corrected: the L0 instance's ACCEPT_WITH_CORRECTIONS was self-stamped and is withdrawn (its reviewer's verdict on v2.0 was REJECT); the layer template now carries K3's independent ACCEPT_WITH_CORRECTIONS; asset cells 4,128 -> 1,032, and the old figure was itself wrong (129 x 32, when the criteria count had already reached 33)."
   - "1.0 (2026-09-25): written at the native's direction to log the process after the chain was built. Records one correction found while writing it: an ASSET INSTANCE inherits from FOUR sources, not three — the asset template supplies its shape, and its own layer's instance supplies its content, alongside the data plane and the product definition. The asset template declared only three, naming the layer TEMPLATE where it should also name the layer INSTANCE."
 ---
 
