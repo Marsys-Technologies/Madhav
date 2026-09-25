@@ -78,6 +78,9 @@ import { toolSearchCapability } from './tool_search'
 import { queryMuhurtaLatticeCapability } from './query_muhurta_lattice'
 import { queryPariharaGraphCapability } from './query_parihara_graph'
 import { querySkyCalendarCapability } from './query_sky_calendar'
+// W-L0-4 served-surface contract: reference_planets (bg_reference) had no served
+// path at all — this is it (strategy §3.1 delivery fidelity / §4.2 W-L0-4).
+import { refGrahaReferenceGetCapability } from './ref_graha_reference_get'
 
 export const L0_CAPABILITIES = [
   // Stream A: foundation + ontology
@@ -136,6 +139,8 @@ export const L0_CAPABILITIES = [
   queryPariharaGraphCapability,
   // Nirmana L0-W2 NOW item 14: sky-event diary reader
   querySkyCalendarCapability,
+  // W-L0-4: bg_reference (reference_planets) served path
+  refGrahaReferenceGetCapability,
 ] as const
 
 export function registerL0Capabilities(): void {
@@ -201,4 +206,5 @@ export {
   queryMuhurtaLatticeCapability,
   queryPariharaGraphCapability,
   querySkyCalendarCapability,
+  refGrahaReferenceGetCapability,
 }

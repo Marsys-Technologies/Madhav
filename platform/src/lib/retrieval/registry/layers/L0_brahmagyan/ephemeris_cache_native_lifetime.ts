@@ -34,6 +34,16 @@ const NATIVE_LIFETIME_START = '1984-01-01'
 const NATIVE_LIFETIME_END = '2070-12-31'
 
 export const ephemerisCacheNativeLifetimeCapability: ResourceCapability = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 4096,
+    max_digest_bytes: 16384,
+    paginated: false,
+    facets: [],
+    empty_reason: false,
+  },
   uri: 'marsys://resource/ephemeris-cache/native-lifetime',
   primitive_type: 'resource',
   layer: 'L0',

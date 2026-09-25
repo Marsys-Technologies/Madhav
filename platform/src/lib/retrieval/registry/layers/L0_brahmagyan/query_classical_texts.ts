@@ -280,6 +280,16 @@ function validateSnapshot(snapshot: PageSnapshot | undefined, cursor: ClassicalP
 }
 
 export const queryClassicalTextsCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 5120,
+    max_digest_bytes: 20480,
+    paginated: true,
+    facets: ['query_text', 'query', 'topic', 'keyword', 'text_source', 'page_cursor'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/query_classical_texts', type: 'tool', layer: 'L0', name: 'query_classical_texts',
   description: 'Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.',
   input_schema: {

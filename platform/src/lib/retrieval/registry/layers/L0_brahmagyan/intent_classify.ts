@@ -31,6 +31,16 @@ Respond with ONLY valid JSON:
 {"primary_intent": "<intent>", "confidence": <0.0-1.0>, "reasoning": "<one sentence>"}`
 
 export const intentClassifyCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 4096,
+    max_digest_bytes: 16384,
+    paginated: false,
+    facets: ['query'],
+    empty_reason: false,
+  },
   uri: 'marsys://prompt/intent-classify',
   type: 'prompt',
   layer: 'L0',

@@ -41,6 +41,16 @@ const VALID_ENTITY_CLASSES = ['planet', 'sign', 'house', 'nakshatra', 'upagraha'
 const UNBACKED_CLASSES = new Set(['yoga', 'karana'])
 
 export const listEntitiesCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 4096,
+    max_digest_bytes: 16384,
+    paginated: true,
+    facets: ['entity_class'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/list_entities',
   type: 'tool',
   layer: 'L0',

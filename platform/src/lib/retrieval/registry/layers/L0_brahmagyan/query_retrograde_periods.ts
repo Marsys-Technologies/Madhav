@@ -29,6 +29,16 @@ function sidecarHeaders(): Record<string, string> {
 
 
 export const queryRetrogradePeriodsCapability: ToolCapability = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 3072,
+    max_digest_bytes: 12288,
+    paginated: false,
+    facets: ['planet', 'start_date', 'end_date'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/query_retrograde_periods',
   primitive_type: 'tool',
   layer: 'L0',

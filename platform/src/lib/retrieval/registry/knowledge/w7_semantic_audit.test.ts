@@ -43,7 +43,8 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
     ]))
     let sourceRefsChecked = 0
 
-    expect(snapshot.scus).toHaveLength(182)
+    // 183 = 182 + ref_graha_reference_get (W-L0-4, 2026-09-25)
+    expect(snapshot.scus).toHaveLength(183)
     for (const scu of snapshot.scus) {
       expect(scu.editorial).toBe(true)
       expect(scu.description.trim().length).toBeGreaterThan(0)
@@ -69,7 +70,8 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
       expect(scuIds.has(edge.to_scu_id)).toBe(true)
       expect(edge.source_ref?.length).toBeGreaterThan(0)
     }
-    expect(sourceRefsChecked).toBe(355)
+    // 357 = 355 + 2 refs from scu.catalog.ref_graha_reference_get (W-L0-4, 2026-09-25)
+    expect(sourceRefsChecked).toBe(357)
   })
 
   it('preserves the declared four-item historical manual sample in every layer', () => {

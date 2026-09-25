@@ -51,6 +51,16 @@ import { query } from '@/lib/db/client'
 export const LIFETIME_COUNT_FACT_KIND = 'lifetime_count_per_100y'
 
 export const queryClassPriorsCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 1024,
+    max_digest_bytes: 4096,
+    paginated: false,
+    facets: ['prior_version', 'signal_type_class', 'source_subsystem'],
+    empty_reason: true,
+  },
   uri:   'marsys://tool/L0/query_class_priors',
   type:  'tool',
   layer: 'L0',

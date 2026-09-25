@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-20T01:38:35.408Z",
+  "generated_at": "2026-09-25T16:36:15.200Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 186,
+  "total": 187,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -2207,6 +2207,37 @@
       ],
       "short_label": "Read Sutravali Rule",
       "one_line": "Fetch a single sutravali rule by its UUID rule_id.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L0/ref_graha_reference_get",
+      "type": "tool",
+      "layer": "L0",
+      "name": "ref_graha_reference_get",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [],
+      "input_param_count": 1,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Ref Graha Reference Get",
+      "one_line": "Get the graha reference row(s) from reference_planets (11 rows — the nine grahas plus ascendant and midheaven; BPHS Ch.3 citations per row).",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -6253,7 +6284,7 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 67,
+      "L0": 68,
       "L2": 32,
       "L3": 21,
       "L1": 40,
@@ -6263,15 +6294,15 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 180
+      "tool": 181
     },
     "by_scope": {
-      "global": 73,
+      "global": 74,
       "per_chart": 113
     },
     "by_archetype": {
       "orientation_digest": 11,
-      "flat_fact": 82,
+      "flat_fact": 83,
       "calibration": 22,
       "rich_relational": 21,
       "cross_domain": 9,
@@ -6281,7 +6312,7 @@
     },
     "by_tool_role": {
       "umbrella": 21,
-      "leaf": 89,
+      "leaf": 90,
       "quality": 22,
       "drill": 19,
       "synthesizer": 4,
@@ -6290,13 +6321,13 @@
       "graph": 4
     },
     "by_data_source": {
-      "stored": 164,
+      "stored": 165,
       "computed": 21,
       "hybrid": 1
     },
     "by_projection_tag": {
       "chat": 98,
-      "mcp_full": 184,
+      "mcp_full": 185,
       "mcp_compact": 97,
       "mcp_consult": 15
     },

@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-20T01:38:35.408Z",
-  "catalog_total": 186,
+  "generated_at": "2026-09-25T16:36:15.200Z",
+  "catalog_total": 187,
   "catalog_by_type": {
-    "tool": 180,
+    "tool": 181,
     "resource": 5,
     "prompt": 1
   },
@@ -113,7 +113,7 @@
     ]
   },
   "mcp_projection": {
-    "generated_count": 178,
+    "generated_count": 179,
     "excluded_non_tool_count": 6,
     "registry_bridge_block_count": 26,
     "registry_bridge_source": "platform-mcp/src/tools/registry_bridge.ts",
@@ -308,6 +308,7 @@
       "read_chapter",
       "read_remedy",
       "read_sutravali_rule",
+      "ref_graha_reference_get",
       "resolve_entity",
       "route",
       "synergy_cross_layer",
@@ -350,7 +351,7 @@
       "marsys://tool/L3/query_temporal_activation"
     ],
     "catalog_uris_reachable_via_registry_bridge_count": 24,
-    "catalog_uris_unreachable_via_registry_bridge_count": 162,
+    "catalog_uris_unreachable_via_registry_bridge_count": 163,
     "registry_bridge_uris_not_found_in_live_catalog": []
   }
 }

@@ -28,6 +28,16 @@ const COMPACT_COLUMNS = [
 ].join(', ')
 
 export const queryRemedyCorpusCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 5120,
+    max_digest_bytes: 20480,
+    paginated: true,
+    facets: ['planet', 'graha', 'domain', 'category', 'fields'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/query_remedy_corpus',
   type: 'tool',
   layer: 'L0',

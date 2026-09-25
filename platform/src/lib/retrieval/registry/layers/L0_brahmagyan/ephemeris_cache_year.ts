@@ -30,6 +30,16 @@ function sidecarHeaders(): Record<string, string> {
 
 
 export const ephemerisCacheYearCapability: ResourceCapability = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 1024,
+    max_digest_bytes: 4096,
+    paginated: false,
+    facets: [],
+    empty_reason: true,
+  },
   uri: 'marsys://resource/ephemeris-cache/year/{yyyy}',
   primitive_type: 'resource',
   layer: 'L0',

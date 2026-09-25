@@ -18,7 +18,8 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
-    expect(snapshot.census.executable_bindings).toBe(186)
+    // 187 = 186 + ref_graha_reference_get (W-L0-4, 2026-09-25)
+    expect(snapshot.census.executable_bindings).toBe(187)
     expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.schema_version).toBe('2.3.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
@@ -37,18 +38,19 @@ describe('planner capability knowledge', () => {
   })
 
   it('joins every registry binding to the reviewed full-profile route authority', () => {
+    // 187 routes / 116 nonpublic = 186 / 115 + ref_graha_reference_get (W-L0-4, 2026-09-25; reviewed_not_exposed)
     const routes = estateCensus.details.descriptor_route_contracts
-    expect(routes).toHaveLength(186)
+    expect(routes).toHaveLength(187)
     expect(routes.filter((route) => route.public_route_disposition === 'reviewed_exposed')).toHaveLength(71)
-    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_not_exposed')).toHaveLength(115)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_not_exposed')).toHaveLength(116)
     expect(snapshot.census).toMatchObject({
-      reviewed_route_descriptors: 186,
+      reviewed_route_descriptors: 187,
       reviewed_public_descriptors: 71,
-      reviewed_nonpublic_descriptors: 115,
+      reviewed_nonpublic_descriptors: 116,
     })
     const bindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     const bindingByUri = new Map(bindings.map((binding) => [binding.capability_uri, binding]))
-    expect(bindingByUri.size).toBe(182)
+    expect(bindingByUri.size).toBe(183)
     expect(routes.filter((route) => !bindingByUri.has(route.capability_uri)).map((route) => route.capability_uri).sort())
       .toEqual(snapshot.census.exclusions.map((item) => item.capability_uri).sort())
     for (const route of routes.filter((candidate) => bindingByUri.has(candidate.capability_uri))) {
@@ -66,7 +68,8 @@ describe('planner capability knowledge', () => {
     expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(5)
     expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(91)
     expect(snapshot.census).toMatchObject({
-      reviewed_pagination_dispositions: 186,
+      // 187 = 186 + ref_graha_reference_get (W-L0-4, 2026-09-25; not paginated, so the 96/5/91 denominators stand)
+      reviewed_pagination_dispositions: 187,
       reviewed_paginated_descriptors: 96,
       exhaustible_reviewed_descriptors: 5,
       non_exhaustible_descriptors: 91,
@@ -192,7 +195,8 @@ describe('planner capability knowledge', () => {
         editorial_sources?: readonly { source_ref: string; source_fields: readonly string[] }[]
       })[]
     }
-    expect(enriched.census.editorial_scus).toBe(182)
+    // 183 = 182 + ref_graha_reference_get (W-L0-4, 2026-09-25)
+    expect(enriched.census.editorial_scus).toBe(183)
     expect(enriched.census.derived_scus).toBe(0)
     expect(enriched.scus.every((scu) => scu.editorial)).toBe(true)
     expect(enriched.scus.every((scu) => ['authored_declaration', 'descriptor_metadata_review'].includes(scu.editorial_method ?? ''))).toBe(true)
@@ -299,7 +303,8 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(173)
+    // 174 = 173 + ref_graha_reference_get (W-L0-4, 2026-09-25; descriptor_metadata_review via planetary_state family)
+    expect(reviewed).toHaveLength(174)
     expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(9)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!

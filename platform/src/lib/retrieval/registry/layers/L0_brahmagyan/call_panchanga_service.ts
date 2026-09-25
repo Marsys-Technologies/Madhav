@@ -50,6 +50,16 @@ const DEFAULT_LON = 85.84
 const DEFAULT_TZ_OFFSET_MINUTES = 330 // IST
 
 export const callPanchangaServiceCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 3072,
+    max_digest_bytes: 12288,
+    paginated: false,
+    facets: ['mode', 'date', 'date_from', 'date_to', 'lat', 'lon', 'tz_offset_minutes'],
+    empty_reason: true,
+  },
   uri:   'marsys://tool/L0/call_panchanga_service',
   type:  'tool',
   layer: 'L0',

@@ -1,11 +1,11 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-24T08:29:13.000Z",
-  "content_hash": "sha256:0a2a675d0098390453d77ba0119b87fad865728e908290eaee6cc84fc465bc36",
-  "source_catalog_fingerprint": "sha256:166473fa82082610fea7427fdc61051fca303a9f44998a2b9ce3af2b9645ad9b",
-  "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
-  "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
+  "generated_at": "2026-09-25T16:38:17.000Z",
+  "content_hash": "sha256:74f17924c27cf8c29db72de3b6b0a1e369dcd0afb67cf6314b7e9d4d6240a531",
+  "source_catalog_fingerprint": "sha256:99c4f0a884f37a8b97b435b3debf7d9daeb10054f370b7159de595ae0a9d13f2",
+  "semantic_review_fingerprint": "sha256:6308242e9a158311a9156c2e8be5203fe1a4a88ffb5209e46658b0b1646c776d",
+  "producer_contract_fingerprint": "sha256:63bdbc8bd9297dbcb57b36d0575b97be353a46adc39e484bcd48c50666c14133",
   "scus": [
     {
       "version": 1,
@@ -31673,6 +31673,158 @@
       }
     },
     {
+      "scu_id": "scu.catalog.ref_graha_reference_get",
+      "version": 1,
+      "label": "Ref Graha Reference Get",
+      "description": "Get the graha reference row(s) from reference_planets (11 rows — the nine grahas plus ascendant and midheaven; BPHS Ch.3 citations per row). Each row carries canonical_name_en / canonical_name_sa, exaltation sign+degree, debilitation sign, mooltrikona sign, own signs, natural_benefic, karak_domains, dasha_years, and the source_citation. Filter by planet_id (e.g. \"venus\", \"ascendant\"). NULL dignity fields are returned as null — angles carry no dignity; debated values (Rahu/Ketu exaltation) stay visible in the citation. Global classical reference — no chart_id needed; returns the stored RULE row only, not any chart's computed dignity. Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "kind": "datum",
+      "domains": [
+        "planetary_state"
+      ],
+      "concepts": [
+        "astronomical_reference",
+        "celestial_state",
+        "planetary_position",
+        "ref_graha_reference_get"
+      ],
+      "intents": [
+        "retrieve",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "natal"
+      ],
+      "scope": "global",
+      "inputs": [
+        "planet_id"
+      ],
+      "outputs": [
+        "computation_provenance",
+        "planetary_state_evidence"
+      ],
+      "primary_binding_uri": "marsys://tool/L0/ref_graha_reference_get",
+      "edges": [],
+      "provenance_requirements": [
+        "chart_id_when_chart_scoped",
+        "build_id",
+        "formula_or_writer_version"
+      ],
+      "freshness_policy": "Must resolve against the active compatible chart build.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Read-only evidence surface; planner must not interpret returned chart facts."
+      ],
+      "known_gaps": [],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L0/ref_graha_reference_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L0/ref_graha_reference_get",
+          "input_contract": {
+            "planet_id": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/ref_graha_reference_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "pagination_review": {
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/ref_graha_reference_get"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L0/ref_graha_reference_get"
+      ],
+      "editorial_method": "descriptor_metadata_review",
+      "editorial_sources": [
+        {
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get",
+          "source_fields": [
+            "family_id",
+            "domains",
+            "concepts",
+            "intents",
+            "outputs",
+            "horizons",
+            "kind",
+            "evidence_use",
+            "member_name"
+          ]
+        },
+        {
+          "source_ref": "CapabilityDescriptor:marsys://tool/L0/ref_graha_reference_get",
+          "source_fields": [
+            "name",
+            "description",
+            "display",
+            "archetype",
+            "traversal_level",
+            "tool_role",
+            "scope",
+            "input_schema",
+            "required_inputs",
+            "output_schema",
+            "emits_references",
+            "projection_tags",
+            "drill_children",
+            "data_source",
+            "density_contract",
+            "mutation"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "astronomical_reference",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
+        },
+        {
+          "concept_id": "celestial_state",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
+        },
+        {
+          "concept_id": "planetary_position",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
+        },
+        {
+          "concept_id": "ref_graha_reference_get",
+          "concept_type": "capability",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
+        }
+      ],
+      "gap_dispositions": [],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "CapabilityDescriptor:marsys://tool/L0/ref_graha_reference_get",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "CapabilityDescriptor:marsys://tool/L0/ref_graha_reference_get",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
+        ]
+      }
+    },
+    {
       "scu_id": "scu.catalog.resolve_entity",
       "version": 1,
       "label": "Resolve Entity",
@@ -34386,7 +34538,8 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_motion_state_thresholds",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
       ]
     },
     {
@@ -34554,7 +34707,8 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_motion_state_thresholds",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
       ]
     },
     {
@@ -35621,7 +35775,8 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_motion_state_thresholds",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_planet_position",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:query_shashtiamsha_deities",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
       ]
     },
     {
@@ -36637,6 +36792,15 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:read_sutravali_rule"
+      ]
+    },
+    {
+      "concept_id": "ref_graha_reference_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ref_graha_reference_get"
       ]
     },
     {
@@ -38456,30 +38620,30 @@
     }
   ],
   "census": {
-    "runtime_descriptors": 186,
-    "addressable_descriptors": 182,
+    "runtime_descriptors": 187,
+    "addressable_descriptors": 183,
     "excluded_descriptors": 4,
-    "semantic_capabilities": 182,
-    "editorial_scus": 182,
+    "semantic_capabilities": 183,
+    "editorial_scus": 183,
     "derived_scus": 0,
-    "executable_bindings": 186,
+    "executable_bindings": 187,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 72,
     "reviewed_pagination_bindings": 5,
-    "reviewed_pagination_dispositions": 186,
+    "reviewed_pagination_dispositions": 187,
     "reviewed_paginated_descriptors": 96,
     "exhaustible_reviewed_descriptors": 5,
     "non_exhaustible_descriptors": 91,
-    "reviewed_route_descriptors": 186,
+    "reviewed_route_descriptors": 187,
     "reviewed_public_descriptors": 71,
-    "reviewed_nonpublic_descriptors": 115,
+    "reviewed_nonpublic_descriptors": 116,
     "producer_output_claims": 15,
     "reviewed_output_claims": 14,
-    "typed_concepts": 259,
+    "typed_concepts": 260,
     "unbound_concepts": 0,
-    "isolated_scus": 156,
-    "graph_components": 157,
-    "dispositioned_isolated_scus": 156,
+    "isolated_scus": 157,
+    "graph_components": 158,
+    "dispositioned_isolated_scus": 157,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 128,
     "directly_served_producer_outputs": 127,

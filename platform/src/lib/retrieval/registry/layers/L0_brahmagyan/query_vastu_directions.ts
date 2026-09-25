@@ -15,6 +15,16 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
 export const queryVastuDirectionsCapability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 1024,
+    max_digest_bytes: 4096,
+    paginated: false,
+    facets: ['direction', 'ruling_graha'],
+    empty_reason: true,
+  },
   uri:   'marsys://tool/L0/query_vastu_directions',
   type:  'tool',
   layer: 'L0',

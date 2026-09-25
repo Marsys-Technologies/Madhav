@@ -602,6 +602,20 @@ interface D1Fields {
   dispatch_units?: number
   data_source?: 'stored' | 'computed' | 'hybrid'
   semantic_capabilities?: readonly import('./knowledge/types').SemanticCapabilityDeclaration[]
+  /**
+   * Mirror of `CapabilityDescriptorBase.density_contract` (Lane 5, §N.6 (iv)) for the
+   * narrowed Stream B shapes. NOT a D1 amendment — the field already exists on the
+   * authoritative descriptor; this only lets ToolCapability/ResourceCapability carry
+   * the same OPTIONAL declaration. L0 W-L0-4 (2026-09-25): the five L0 ephemeris
+   * tools + two ephemeris-cache resources declare it explicitly.
+   */
+  density_contract?: {
+    max_verdict_bytes?: number
+    max_digest_bytes?: number
+    paginated: boolean
+    facets: string[]
+    empty_reason: boolean
+  }
 }
 
 /** Narrowed descriptor for capabilities with primitive_type = 'tool' */

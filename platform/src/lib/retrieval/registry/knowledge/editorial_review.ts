@@ -407,7 +407,7 @@ const MEMBERS: Readonly<Record<keyof typeof FAMILIES, readonly string[]>> = {
     'get_sensitive_degrees', 'get_sensitive_points', 'graha_portrait',
     'query_aspects_at_time', 'query_combustion_orbs', 'query_graha_dik',
     'query_motion_state_thresholds', 'query_planet', 'query_planet_position',
-    'query_shashtiamsha_deities',
+    'query_shashtiamsha_deities', 'ref_graha_reference_get',
   ],
   planetary_condition: [
     'get_ashtakavarga', 'get_av_transit_gating', 'get_avasthas', 'get_bhava_bala',

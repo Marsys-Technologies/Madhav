@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-20T01:38:35.408Z",
+  "generated_at": "2026-09-25T16:36:15.200Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities filtered by projection_tags (mcp_full/mcp_compact/mcp_consult), ranked by demand_ranking (bearing_first, family_rank, static_salience) for the compact cap",
   "compact_max_tools": 20,
@@ -3280,7 +3280,8 @@
         "query_vastu_directions",
         "query_vedha_gochara",
         "query_vichara_constants",
-        "read_sutravali_rule"
+        "read_sutravali_rule",
+        "ref_graha_reference_get"
       ],
       "internal_name_mismatches": {
         "query_yoga_catalog": "ref_yogas_get",

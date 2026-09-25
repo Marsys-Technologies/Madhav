@@ -26,6 +26,16 @@ function coerceBool(v: unknown): boolean | undefined {
 }
 
 export const assetRegistryL0Capability: CapabilityDescriptor = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 4096,
+    max_digest_bytes: 16384,
+    paginated: true,
+    facets: ['asset_type', 'catalog_status', 'scope', 'is_active', 'has_writer'],
+    empty_reason: false,
+  },
   uri: 'marsys://resource/asset-registry/L0',
   type: 'resource',
   layer: 'L0',

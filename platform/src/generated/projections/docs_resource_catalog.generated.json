@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-09-20T01:38:35.408Z",
-  "total": 186,
+  "generated_at": "2026-09-25T16:36:15.200Z",
+  "total": 187,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -1009,6 +1009,20 @@
       "name": "read_sutravali_rule",
       "short_label": "Read Sutravali Rule",
       "one_line": "Fetch a single sutravali rule by its UUID rule_id.",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L0/ref_graha_reference_get",
+      "type": "tool",
+      "layer": "L0",
+      "name": "ref_graha_reference_get",
+      "short_label": "Ref Graha Reference Get",
+      "one_line": "Get the graha reference row(s) from reference_planets (11 rows — the nine grahas plus ascendant and midheaven; BPHS Ch.3 citations per row).",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -2817,7 +2831,7 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 67,
+      "L0": 68,
       "L2": 32,
       "L3": 21,
       "L1": 40,
@@ -2827,7 +2841,7 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 180
+      "tool": 181
     }
   }
 }

@@ -1,0 +1,2254 @@
+{
+ "register": "l0_declared_use_register",
+ "version": "1.0",
+ "packet": "W-L0-2",
+ "generated": "2026-09-25",
+ "purpose": "Declared dependencies and declared use for the L0 Brahmagyan layer. Every code read of an L0 (bg_*) table is either (a) a registered depends_on edge on the consuming asset (writer-side), or (b) a documented serve-time read with a declared use type. Census scope mirrors strategy §1.1: platform/python-sidecar/**/*.py (excluding tests, migrations, scripts) + platform/src/**/*.ts (excluding tests, generated) + platform-mcp/src/**/*.ts (excluding tests, generated).",
+ "use_type_vocabulary": [
+  "calculation",
+  "applicability",
+  "counter-evidence",
+  "uncertainty",
+  "interpretation",
+  "exclusion",
+  "navigation",
+  "evaluation"
+ ],
+ "edge_values": {
+  "pre_existing": "depends_on edge already present in asset_registry_seed.ts before W-L0-2",
+  "declared_this_packet": "depends_on edge added to asset_registry_seed.ts by W-L0-2 (2026-09-25); live DB sync via held migration 1122 (migration-ledger unreconciled)"
+ },
+ "writer_side_reads": [
+  {
+   "consumer_asset": "bg_reference",
+   "table": "brahma_ontology",
+   "producer_asset": "bg_ontology",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_reference.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "FK validation of canonical_ids before seeding reference tables"
+  },
+  {
+   "consumer_asset": "bg_kp_sublord_division",
+   "table": "reference_nakshatra",
+   "producer_asset": "bg_nakshatra",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "verify_star_lords_against_reference cross-check"
+  },
+  {
+   "consumer_asset": "ga_nakshatra",
+   "table": "reference_nakshatra",
+   "producer_asset": "bg_nakshatra",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "nakshatra attribute rows + COUNT>=27 halt guard"
+  },
+  {
+   "consumer_asset": "ga_nakshatra",
+   "table": "bg_kp_sublord_division",
+   "producer_asset": "bg_kp_sublord_division",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "load_kp_divisions before KP-significator pass"
+  },
+  {
+   "consumer_asset": "bg_compendium_index",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "build compendium projection from all chunks"
+  },
+  {
+   "consumer_asset": "bg_concordance",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "topic_tag/text_id chunk aggregates for concordance"
+  },
+  {
+   "consumer_asset": "bg_text_index",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "enrichment partition: topic_tag UPDATE over embedded chunks"
+  },
+  {
+   "consumer_asset": "bg_rules",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_rules.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "regex sutravali rule extraction source"
+  },
+  {
+   "consumer_asset": "bg_yogas",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_yogas.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "yoga-keyword chunk verse extraction"
+  },
+  {
+   "consumer_asset": "bg_remedies",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "remedy-marker keyword ILIKE sweep"
+  },
+  {
+   "consumer_asset": "bg_concordance",
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "attribute concordance rule_ids"
+  },
+  {
+   "consumer_asset": "bo_laksana",
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "fact-subject validation (yoga_canonical_id, rule_id)"
+  },
+  {
+   "consumer_asset": "bg_rules",
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_rules.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "FK validation of yoga canonical_ids"
+  },
+  {
+   "consumer_asset": "bg_rules",
+   "table": "brahma_dasha_systems",
+   "producer_asset": "bg_dasha_systems",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_rules.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "FK validation of dasha-system canonical_ids"
+  },
+  {
+   "consumer_asset": "bg_parihara_rules",
+   "table": "brahma_dosha_catalog",
+   "producer_asset": "bg_doshas",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "cancellation_conditions for parihara graph build"
+  },
+  {
+   "consumer_asset": "ka_avadhi",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "JOIN beo USING(event_class_id)"
+  },
+  {
+   "consumer_asset": "ka_taranga",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "JOIN beo"
+  },
+  {
+   "consumer_asset": "ka_yojaka",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "JOINs beo"
+  },
+  {
+   "consumer_asset": "bg_class_lifetime_counts",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "seeded-class coverage check"
+  },
+  {
+   "consumer_asset": "mi_kula",
+   "table": "brahma_class_priors",
+   "producer_asset": "bg_class_priors",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "prior weights per family"
+  },
+  {
+   "consumer_asset": "ka_kshetra",
+   "table": "brahma_class_priors",
+   "producer_asset": "bg_class_lifetime_counts",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kshetra/stage4_field.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "load_class_lifetime_count at ne_v01 coordinate"
+  },
+  {
+   "consumer_asset": "ka_kshetra",
+   "table": "bg_synthetic_cohort",
+   "producer_asset": "bg_cohort",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kshetra/cohort_client.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "cohort_base_rate aggregates + cohort-version pin"
+  },
+  {
+   "consumer_asset": "mi_pramana",
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "scoring weights"
+  },
+  {
+   "consumer_asset": "mi_gunanaka",
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "shrinkage_k, divergence_cap"
+  },
+  {
+   "consumer_asset": "mi_pariksha",
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "attribution dimension weights"
+  },
+  {
+   "consumer_asset": "ka_vedha_gochara",
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "transiting positions over horizon for vedha grid"
+  },
+  {
+   "consumer_asset": "ka_kota_chakra",
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kota_chakra/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "transiting positions for kota chakra"
+  },
+  {
+   "consumer_asset": "ka_moorti_nirnaya",
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_moorti_nirnaya/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "transiting Moon positions"
+  },
+  {
+   "consumer_asset": "bg_gochara_arcs",
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py",
+    "platform/python-sidecar/services/w2g/db_source.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "bulk body series + arc-boundary knots for arc build"
+  },
+  {
+   "consumer_asset": "ka_gochara",
+   "table": "bg_gochara_arcs",
+   "producer_asset": "bg_gochara_arcs",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+    "platform/python-sidecar/services/w2g/db_source.py",
+    "platform/python-sidecar/services/w2g/materialize.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "monotone arcs + boundary knots; contact stream via ArcSource"
+  },
+  {
+   "consumer_asset": "ka_vedha_gochara",
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "favourable + vedha_house rule rows"
+  },
+  {
+   "consumer_asset": "ka_gochara_resonance",
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_gochara_resonance/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "mechanism-node rule rows for resonance map"
+  },
+  {
+   "consumer_asset": "ka_vedha_gochara",
+   "table": "bg_vedha_malefic_scale",
+   "producer_asset": "bg_vedha_malefic_scale",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "malefic-count to effect-grade scale"
+  },
+  {
+   "consumer_asset": "ka_vedha_gochara",
+   "table": "bg_phaladeepika_latta",
+   "producer_asset": "bg_phaladeepika_latta",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "latta nakshatra-count rules"
+  },
+  {
+   "consumer_asset": "ka_vedha_gochara",
+   "table": "bg_sarvatobhadra_grid",
+   "producer_asset": "bg_sarvatobhadra_grid",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "school-tagged vedha-pair grid lookup before constants fallback"
+  },
+  {
+   "consumer_asset": "ka_kota_chakra",
+   "table": "bg_kota_chakra_rings",
+   "producer_asset": "bg_kota_chakra_rings",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kota_chakra/writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "27-position ring partition at latest table_version"
+  },
+  {
+   "consumer_asset": "ga_prashna",
+   "table": "bg_prashna_significators",
+   "producer_asset": "bg_prashna_rules",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_prashna_writer.py"
+   ],
+   "edge": "pre_existing",
+   "purpose": "querent/quesited significator planets per question_class"
+  },
+  {
+   "consumer_asset": "bo_pratijna",
+   "table": "reference_planets",
+   "producer_asset": "bg_reference",
+   "evidence_files": [
+    "platform/python-sidecar/brahmagyan/chart_reader_v4.py",
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "graha dignity/static reference rows for v4 rubric scoring"
+  },
+  {
+   "consumer_asset": "bo_laksana",
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "chunk-id existence validation"
+  },
+  {
+   "consumer_asset": "bo_laksana",
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "canonical_id validation"
+  },
+  {
+   "consumer_asset": "bo_laksana",
+   "table": "brahma_dosha_catalog",
+   "producer_asset": "bg_doshas",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "canonical_id validation"
+  },
+  {
+   "consumer_asset": "bo_laksana",
+   "table": "brahma_class_priors",
+   "producer_asset": "bg_class_priors",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "activates class_prior from priors table"
+  },
+  {
+   "consumer_asset": "bo_grounding",
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "full rule corpus load for MSR grounding match"
+  },
+  {
+   "consumer_asset": "bo_upaya",
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "remedy prescription grounding per planet"
+  },
+  {
+   "consumer_asset": "ga_sensitive_degree",
+   "table": "reference_nakshatra",
+   "producer_asset": "bg_nakshatra",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "yogi nakshatra vimshottari_lord rows"
+  },
+  {
+   "consumer_asset": "ga_yoga",
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_yoga_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "catalog rows for per-chart yoga firings"
+  },
+  {
+   "consumer_asset": "ga_structural",
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "yoga label pass"
+  },
+  {
+   "consumer_asset": "ga_structural",
+   "table": "brahma_dosha_catalog",
+   "producer_asset": "bg_doshas",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "dosha label pass with cancellation logic"
+  },
+  {
+   "consumer_asset": "ga_condition",
+   "table": "bg_dignity_reference",
+   "producer_asset": "bg_dignity_reference",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_condition_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "_load_dignity_ref full-table load with constant fallback"
+  },
+  {
+   "consumer_asset": "ga_medical",
+   "table": "bg_medical_mappings",
+   "producer_asset": "bg_medical_mappings",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_medical_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "_load_medical_mappings"
+  },
+  {
+   "consumer_asset": "ga_medical",
+   "table": "bg_nakshatra_medical",
+   "producer_asset": "bg_nakshatra_medical",
+   "evidence_files": [
+    "platform/python-sidecar/ga_writers/ga_medical_writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "body_part per nakshatra_name"
+  },
+  {
+   "consumer_asset": "ka_gochara",
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+    "platform/python-sidecar/services/w2g/db_source.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "ephemeris knots at arc boundaries (DbArcSource); live registry already carried this edge — seed/live union reconciliation"
+  },
+  {
+   "consumer_asset": "ka_gochara",
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "rule rows consulted in contact materialization; live registry already carried this edge — seed/live union reconciliation"
+  },
+  {
+   "consumer_asset": "ka_gochara_resonance",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_gochara_resonance/writer.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "signature_model/citations per event class for resonance rows"
+  },
+  {
+   "consumer_asset": "ka_gochara_v3_century_materialize",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py",
+    "platform/python-sidecar/services/gochara_grammar/event_class_scope.py",
+    "platform/python-sidecar/services/gochara_v3/threshold.py",
+    "platform/python-sidecar/services/gochara_intensity/engine.py",
+    "platform/python-sidecar/services/gochara_intensity/valence.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "temporal_shape, domain, base_rate_by_age reads via writer + shared gochara engines"
+  },
+  {
+   "consumer_asset": "ka_gochara_v3_century_materialize",
+   "table": "bg_vedha_malefic_scale",
+   "producer_asset": "bg_vedha_malefic_scale",
+   "evidence_files": [
+    "platform/python-sidecar/services/gochara_v3/context.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "malefic scale pre-fetch for suppression grading"
+  },
+  {
+   "consumer_asset": "ka_gochara_v3_century_materialize",
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "evidence_files": [
+    "platform/python-sidecar/services/gochara_grammar/primitives.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "vedha-pair rule rows for gochara_vedha_pair primitive"
+  },
+  {
+   "consumer_asset": "ka_kshetra",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kshetra/writer.py",
+    "platform/python-sidecar/services/ka_kshetra/stage4_field.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "per-class ontology lookup + temporal_shape"
+  },
+  {
+   "consumer_asset": "ka_kshetra",
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "Hermite spline daily knots"
+  },
+  {
+   "consumer_asset": "ka_kshetra",
+   "table": "bg_kp_sublord_division",
+   "producer_asset": "bg_kp_sublord_division",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kshetra/stage3_clocks.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "sublord boundary longitudes for dasha clocks"
+  },
+  {
+   "consumer_asset": "ka_kshetra",
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "evidence_files": [
+    "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "orb_deg fetch (column absent; always falls back — declared for the read that exists)"
+  },
+  {
+   "consumer_asset": "mi_darshana",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "JOIN beo in insight-unit composition"
+  },
+  {
+   "consumer_asset": "ph_nimitta",
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "event_class_id, domain, base_rate_by_age"
+  },
+  {
+   "consumer_asset": "ph_rectification",
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "evidence_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py"
+   ],
+   "edge": "declared_this_packet",
+   "purpose": "calibrated-state threshold"
+  }
+ ],
+ "excluded_reads": [
+  {
+   "consumer_asset": "ga_sensitive",
+   "table": "reference_nakshatras",
+   "files": [
+    "platform/python-sidecar/ga_writers/ga_sensitive_writer.py"
+   ],
+   "reason": "legacy plural table retired (superseded authority, W-L0-1); L1-writer repoint recorded as L1 handover, not an L0 edge"
+  },
+  {
+   "consumer_asset": "ga_dashas",
+   "table": "reference_nakshatras",
+   "files": [
+    "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+    "platform/python-sidecar/ga_writers/_vimshottari_independent_verifier.py"
+   ],
+   "reason": "legacy plural table retired (superseded authority, W-L0-1); L1-writer repoint recorded as L1 handover, not an L0 edge"
+  },
+  {
+   "consumer_asset": "ka_gochara_sweep",
+   "table": "brahma_event_ontology",
+   "files": [
+    "platform/python-sidecar/services/ka_gochara_sweep/sweep.py"
+   ],
+   "reason": "consumer asset RETIRED (migration 569); no edge declared on a retired asset"
+  },
+  {
+   "consumer_asset": "mi_jivanaghatana",
+   "table": "brahma_event_ontology",
+   "files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_jivanaghatana.py"
+   ],
+   "reason": "beo lookup deliberately inert (del conn; return None) — no live read"
+  },
+  {
+   "consumer_asset": null,
+   "table": "classical_text_chunks",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_sutravali_extractor.py"
+   ],
+   "reason": "unregistered standalone tooling; no @register, no in-scope production importer"
+  },
+  {
+   "consumer_asset": null,
+   "table": "sutravali_rules",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_sutravali_extractor.py"
+   ],
+   "reason": "same unregistered extractor's INSERT/SELECT helpers over sutravali_rules; no production importer"
+  },
+  {
+   "consumer_asset": null,
+   "table": "reference_nakshatras",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_reference.py"
+   ],
+   "reason": "dead INSERT block under `if False:` (superseded by bg_nakshatra writer); no live access — recorded because the grep still matches the source text"
+  },
+  {
+   "consumer_asset": null,
+   "table": "classical_text_chunks",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_remedy_yaml_scaffolder.py"
+   ],
+   "reason": "one-off YAML stub scaffolding tool, not a pipeline reader"
+  },
+  {
+   "consumer_asset": null,
+   "table": "classical_text_chunks",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_text_index.py"
+   ],
+   "reason": "hybrid FTS module with no production importer (tests only) — unregistered tooling"
+  },
+  {
+   "consumer_asset": null,
+   "table": "ephemeris_daily",
+   "files": [
+    "platform/python-sidecar/pipeline/brahma_pipeline.py"
+   ],
+   "reason": "pipeline bootstrap diagnostic row-count check, not an asset reader"
+  },
+  {
+   "consumer_asset": null,
+   "table": "classical_text_chunks",
+   "files": [
+    "platform/python-sidecar/services/ka_vedha_gochara/logic.py"
+   ],
+   "reason": "docstring narrative only — the L0-repair-item-8 correction text (b6690928f, landed on main after the W-L0-2 census) recounts a one-off gcloud-authenticated probe that session ran; the module executes no SQL against classical_text_chunks. Recorded because the grep still matches the source text"
+  }
+ ],
+ "producer_internal": [
+  {
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "files": [
+    "platform/python-sidecar/brahmagyan/ocr_cleanup.py",
+    "platform/python-sidecar/brahmagyan/l0_embed_runner.py",
+    "platform/python-sidecar/brahmagyan/l0_text_embedder.py",
+    "platform/python-sidecar/brahmagyan/l0_rechunk_phase2.py",
+    "platform/python-sidecar/brahmagyan/l0_run_phase2.py",
+    "platform/python-sidecar/brahmagyan/l0_text_ingest.py",
+    "platform/python-sidecar/brahmagyan/l0_text_ingest_phase2.py",
+    "platform/python-sidecar/brahmagyan/l0_texts.py",
+    "platform/python-sidecar/brahmagyan/l0_text_chunker.py"
+   ],
+   "note": "producer's own ingest/backfill/re-chunk machinery — reads of its own table, not consumer reads"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
+    "platform/python-sidecar/services/w2g_validations/v2_ephemeris_coverage.py",
+    "platform/python-sidecar/services/w2g_validations/v3_spline_accuracy.py",
+    "platform/python-sidecar/services/w2g_validations/v4_transition_sizing.py"
+   ],
+   "note": "l0_ephemeris is dual-role (build + serve queries); w2g_validations are bind-time validations of the w2g stack over the producer's substrate"
+  },
+  {
+   "table": "bg_kp_sublord_division",
+   "producer_asset": "bg_kp_sublord_division",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py"
+   ],
+   "note": "payload module seeding + reading its own table"
+  },
+  {
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_rules.py"
+   ],
+   "note": "payload module seeding + reading its own table (cross-table reads declared separately above)"
+  },
+  {
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "files": [
+    "platform/python-sidecar/brahmagyan/l0_transit.py"
+   ],
+   "note": "payload module INSERT/DELETE/SELECT-reconcile on its own tables (bg_transit_rules + bg_transit_engine)"
+  }
+ ],
+ "serve_time_reads": [
+  {
+   "table": "brahma_ontology",
+   "producer_asset": "bg_ontology",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts",
+   "access": "direct",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "list-entities primitive (SELECT + COUNT)"
+  },
+  {
+   "table": "brahma_ontology",
+   "producer_asset": "bg_ontology",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts",
+   "access": "direct",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "synonym/name resolution query"
+  },
+  {
+   "table": "brahma_ontology",
+   "producer_asset": "bg_ontology",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "read-only availability probe SQL executed by overlay_loader"
+  },
+  {
+   "table": "brahma_ontology",
+   "producer_asset": "bg_ontology",
+   "file": "platform-mcp/src/tools/l0_brahmagyan.ts",
+   "access": "indirect",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "MCP tools via /api/mcp/primitives resolve_entity + list_entities"
+  },
+  {
+   "table": "brahma_ontology",
+   "producer_asset": "bg_ontology",
+   "file": "platform-mcp/src/lib/kala_sky_pattern.ts",
+   "access": "indirect",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "resolveGrahaName via resolve_entity primitive"
+  },
+  {
+   "table": "reference_nakshatra",
+   "producer_asset": "bg_nakshatra",
+   "file": "platform/src/app/api/mcp/db/query/route.ts",
+   "access": "transport",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "read-only SELECT-proxy whitelist entry"
+  },
+  {
+   "table": "reference_nakshatra",
+   "producer_asset": "bg_nakshatra",
+   "file": "platform-mcp/src/tools/register_p1_reference.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "ref_nakshatra_get catalog query"
+  },
+  {
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "hybrid vector+keyword search capability"
+  },
+  {
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "file": "platform/src/lib/tools/classical_text_search.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "Tool 25 pgvector + tsvector semantic/FTS search"
+  },
+  {
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "file": "platform/src/lib/tools/classical_text_tools.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "read_chapter / list texts / verse lookup"
+  },
+  {
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe mirroring handler queries"
+  },
+  {
+   "table": "classical_text_chunks",
+   "producer_asset": "bg_texts",
+   "file": "platform-mcp/src/tools/read_classical_text.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "MCP read_classical_text via platform /api/retrieval/classical-text"
+  },
+  {
+   "table": "brahma_compendium_index",
+   "producer_asset": "bg_compendium_index",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
+   "access": "direct",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "compendium projection lookup capability"
+  },
+  {
+   "table": "brahma_compendium_index",
+   "producer_asset": "bg_compendium_index",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "file": "platform/python-sidecar/routers/sutravali.py",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "6 FastAPI query endpoints"
+  },
+  {
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "file": "platform/src/lib/retrieve/sutravali_tools.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "4 retrieval tools via sidecar HTTP"
+  },
+  {
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "D7 channel tools incl. read_sutravali_rule"
+  },
+  {
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe for read-sutravali-rule contract"
+  },
+  {
+   "table": "sutravali_rules",
+   "producer_asset": "bg_rules",
+   "file": "platform-mcp/src/resources/sutravali_resource.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "MCP resources sutravali by-planet/by-house"
+  },
+  {
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "paginated yoga catalog query"
+  },
+  {
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "catalog_classical_citations LEFT JOIN"
+  },
+  {
+   "table": "brahma_yoga_catalog",
+   "producer_asset": "bg_yogas",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probes incl. get-yoga-firings join contract"
+  },
+  {
+   "table": "brahma_dosha_catalog",
+   "producer_asset": "bg_doshas",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "paginated dosha catalog query"
+  },
+  {
+   "table": "brahma_dosha_catalog",
+   "producer_asset": "bg_doshas",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "gap-disclosure query over dosha rows"
+  },
+  {
+   "table": "brahma_dosha_catalog",
+   "producer_asset": "bg_doshas",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probes"
+  },
+  {
+   "table": "brahma_dasha_systems",
+   "producer_asset": "bg_dasha_systems",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "dasha-system definitions query"
+  },
+  {
+   "table": "brahma_dasha_systems",
+   "producer_asset": "bg_dasha_systems",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "brahma_dasha_systems",
+   "producer_asset": "bg_dasha_systems",
+   "file": "platform-mcp/src/tools/register_p1_reference.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "ref_dasha_systems_get via query_dasha_systems capability"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/lib/retrieve/remedy_tools.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "7 remedy retrieval tools (direct SQL)"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "D7 channel remedy tools"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "paginated remedy corpus query"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probes"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/app/api/cockpit/runs/route.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "L0-built precondition count"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/app/api/cockpit/plan/route.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "L0-built precondition count"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/tools/retrieval/remedy_tools.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "7 MCP remedy tools via platform primitives"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "BPHS-cited mitigation pairing (via db/query proxy)"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "ref_remedies_get / ref_remedies_chart_get aliases"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/lib/kala_upaya_diagnosis.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "upaya diagnosis corpus leg"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/lib/kala_ritual_resonance.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "graha→deity→rite resonance leg"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/tools/kala_views/upaya.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "kala_upaya MCP view"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform-mcp/src/tools/kala_views/ritual.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "kala_ritual MCP view"
+  },
+  {
+   "table": "brahma_remedy_corpus",
+   "producer_asset": "bg_remedies",
+   "file": "platform/src/app/api/mcp/db/query/route.ts",
+   "access": "transport",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "read-only SELECT-proxy whitelist entry"
+  },
+  {
+   "table": "bg_parihara_rules",
+   "producer_asset": "bg_parihara_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "parihara graph/activity-rules/census query"
+  },
+  {
+   "table": "bg_parihara_rules",
+   "producer_asset": "bg_parihara_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_parihara_rules",
+   "producer_asset": "bg_parihara_rules",
+   "file": "platform-mcp/src/lib/kala_lattice_query.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "lattice substrate fetch for muhurta-scope adjudication"
+  },
+  {
+   "table": "bg_parihara_rules",
+   "producer_asset": "bg_parihara_rules",
+   "file": "platform-mcp/src/tools/kala_views/elect.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "kala_elect muhurta election view"
+  },
+  {
+   "table": "bg_parihara_rules",
+   "producer_asset": "bg_parihara_rules",
+   "file": "platform-mcp/src/tools/kala_views/ritual.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "ritual view lattice substrate"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/lel/event_ontology_shapes.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "getEventClassOntology for LEL filing"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/mcp/lel_event_writer.ts",
+   "access": "direct",
+   "use_types": [
+    "exclusion"
+   ],
+   "purpose": "validates event_class_id exists before write"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "LEFT JOIN beo for ontology_domain"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "JOINs beo for window domain"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "full taxonomy SELECT"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "domain/lel_category lookups"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/app/api/mcp/db/query/route.ts",
+   "access": "transport",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "read-only SELECT-proxy whitelist entry"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe with JOIN beo"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform-mcp/src/lib/ahead_autofile.ts",
+   "access": "direct",
+   "use_types": [
+    "exclusion"
+   ],
+   "purpose": "SELECT 1 existence check before autofile"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform-mcp/src/lib/intervention_filing.ts",
+   "access": "direct",
+   "use_types": [
+    "exclusion"
+   ],
+   "purpose": "withhold-predicate SELECT"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "JOIN/EXISTS/domain-list SELECTs"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "producer_asset": "bg_ghatana",
+   "file": "platform/python-sidecar/routers/permission_curve.py",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "permission-curve computation via gochara_intensity engine ontology read"
+  },
+  {
+   "table": "brahma_class_priors",
+   "producer_asset": "bg_class_priors",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "serves salience priors (excludes lifetime-count rows)"
+  },
+  {
+   "table": "brahma_class_priors",
+   "producer_asset": "bg_class_priors",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "file": "platform/src/lib/build/recalibrationEnqueue.ts",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "recalibration quiet-window seconds"
+  },
+  {
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "serves constants registry"
+  },
+  {
+   "table": "brahma_formula_constants",
+   "producer_asset": "bg_formula_constants",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_dignity_reference",
+   "producer_asset": "bg_dignity_reference",
+   "file": "platform-mcp/src/tools/register_p1_reference.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "ref_dignity_reference_get per-graha SELECT"
+  },
+  {
+   "table": "bg_dignity_reference",
+   "producer_asset": "bg_dignity_reference",
+   "file": "platform-mcp/src/tools/kala_views/ahead.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "fetchDignityReference via db/query proxy"
+  },
+  {
+   "table": "bg_dignity_reference",
+   "producer_asset": "bg_dignity_reference",
+   "file": "platform-mcp/src/tools/kala_views/now.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "per-graha dignity SELECT for now-view"
+  },
+  {
+   "table": "bg_dignity_reference",
+   "producer_asset": "bg_dignity_reference",
+   "file": "platform/src/app/api/mcp/db/query/route.ts",
+   "access": "transport",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "read-only SELECT-proxy whitelist entry"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "FastAPI /brahmagyan/ephemeris/* endpoints"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/python-sidecar/brahmagyan/kala/timeline.py",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "top-N transit events for kala timeline"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/python-sidecar/brahmagyan/kala/temporal.py",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "Saturn sign-ingress events for Sade Sati derivation"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/python-sidecar/services/ka_graha_sancara/engine.py",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "PATH-A day-grade tropical read, multi-ayanamsha derive"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "muhurta window scoring via ka_graha_sancara engine"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "graha-yuddha overlay at birth date"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe JOIN on birth_date"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "via sidecar /brahmagyan/ephemeris/planet_position"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "via sidecar /planet_transit"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "via sidecar /aspects"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "via sidecar /retrograde_periods"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "tropical series via /planet_transit"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform-mcp/src/tools/l0_ephemeris.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "MCP ephemeris tools via sidecar"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform-mcp/src/tools/kala_timeline.ts",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "kala timeline via platform primitive"
+  },
+  {
+   "table": "ephemeris_daily",
+   "producer_asset": "bg_ephemeris",
+   "file": "platform-mcp/src/tools/muhurta_finder.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "muhurat compute via sidecar"
+  },
+  {
+   "table": "bg_sky_calendar",
+   "producer_asset": "bg_sky_calendar",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "sky-event diary query capability"
+  },
+  {
+   "table": "bg_sky_calendar",
+   "producer_asset": "bg_sky_calendar",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_sky_calendar",
+   "producer_asset": "bg_sky_calendar",
+   "file": "platform/python-sidecar/services/gochara_v3/mechanisms/w26_real_eclipses.py",
+   "access": "indirect",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "consumes pre-fetched eclipse rows from context"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts",
+   "access": "direct",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "nine-family lattice query capability"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform-mcp/src/lib/kala_lattice_query.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "lattice fetch via platform primitive"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform-mcp/src/lib/kala_sky_pattern.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "fetchLatticeSubstrate"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform-mcp/src/lib/kala_ritual_resonance.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "adjudication via kala_lattice_query"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform-mcp/src/tools/kala_views/elect.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "kala_elect election engine"
+  },
+  {
+   "table": "bg_muhurta_lattice",
+   "producer_asset": "bg_muhurta_lattice",
+   "file": "platform-mcp/src/lib/agnivasa_convention_b_voice.ts",
+   "access": "indirect",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "voices Convention B off already-read agnivasa atoms"
+  },
+  {
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+   "access": "direct",
+   "use_types": [
+    "applicability"
+   ],
+   "purpose": "grades graha transit houses for muhurta scoring"
+  },
+  {
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "file": "platform/src/app/api/mcp/db/query/route.ts",
+   "access": "transport",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "read-only SELECT-proxy whitelist entry"
+  },
+  {
+   "table": "bg_transit_rules",
+   "producer_asset": "bg_transit_rules",
+   "file": "platform-mcp/src/tools/register_p1_reference.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "ref_transit_rules_get rules by graha/house"
+  },
+  {
+   "table": "bg_transit_engine",
+   "producer_asset": "bg_transit_engine",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts",
+   "access": "direct",
+   "use_types": [
+    "calculation"
+   ],
+   "purpose": "per-graha average-motion reference (BPHS Ch.22)"
+  },
+  {
+   "table": "bg_transit_engine",
+   "producer_asset": "bg_transit_engine",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_gochara_citation_resolution",
+   "producer_asset": "bg_gochara_citation_resolution",
+   "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "fetchVerseRefs citation string resolution"
+  },
+  {
+   "table": "bg_gochara_citation_resolution",
+   "producer_asset": "bg_gochara_citation_resolution",
+   "file": "platform/src/app/api/mcp/db/query/route.ts",
+   "access": "transport",
+   "use_types": [
+    "navigation"
+   ],
+   "purpose": "read-only SELECT-proxy whitelist entry (MR-25)"
+  },
+  {
+   "table": "bg_prashna_fructification_rules",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_prashna_fructification_rules",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_prashna_lagna_methods",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_prashna_lagna_methods",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_prashna_significators",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_prashna_significators",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_prashna_special_techniques",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_prashna_special_techniques",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_prashna_tajik_yogas",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_prashna_tajik_yogas",
+   "producer_asset": "bg_prashna_rules",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_vastu_directions",
+   "producer_asset": "bg_vastu_directions",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_vastu_directions",
+   "producer_asset": "bg_vastu_directions",
+   "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+   "access": "direct",
+   "use_types": [
+    "evaluation"
+   ],
+   "purpose": "availability probe"
+  },
+  {
+   "table": "bg_medical_mappings",
+   "producer_asset": "bg_medical_mappings",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_nakshatra_medical",
+   "producer_asset": "bg_nakshatra_medical",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_sign_medical",
+   "producer_asset": "bg_sign_medical",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "L0 capability handler"
+  },
+  {
+   "table": "bg_sign_medical",
+   "producer_asset": "bg_sign_medical",
+   "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+   "access": "indirect",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "ref_sign_medical_get alias to query_sign_medical capability"
+  },
+  {
+   "table": "reference_planets",
+   "producer_asset": "bg_reference",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ref_graha_reference_get.ts",
+   "access": "direct",
+   "use_types": [
+    "interpretation"
+   ],
+   "purpose": "graha static reference (dignities, karaka domains, dasha years) served lookup — W-L0-4 ref_graha_reference_get"
+  }
+ ],
+ "tables_without_readers": [
+  {
+   "table": "classical_attributions",
+   "producer_asset": "bg_concordance",
+   "note": "zero code readers in scope; TS hits are retired-stub/comment mentions only. L0 is a reference layer — an asset is never retired for lack of a reader."
+  },
+  {
+   "table": "vidhi_primitives",
+   "producer_asset": "bg_vidhi_primitives",
+   "note": "zero code readers in scope; platform/src/lib/vidhi/registry_data.ts is a compiler-facing content mirror with a V-2/V-3 note to replace with real DB reads."
+  },
+  {
+   "table": "vidhi_intent_floors",
+   "producer_asset": "bg_vidhi_floors",
+   "note": "zero code readers in scope (content mirror only)."
+  },
+  {
+   "table": "vidhi_floor_items",
+   "producer_asset": "bg_vidhi_floors",
+   "note": "zero code readers in scope (content mirror only)."
+  }
+ ],
+ "writer_only_tables": [
+  {
+   "table": "bg_gochara_arcs",
+   "producer_asset": "bg_gochara_arcs",
+   "note": "no serve-time reader anywhere in scope; consumed writer-side only (ka_gochara)."
+  },
+  {
+   "table": "bg_synthetic_cohort",
+   "producer_asset": "bg_cohort",
+   "note": "serve-time explicitly unwired (platform-mcp kala_ritual_resonance records not_computed); consumed writer-side only (ka_kshetra)."
+  }
+ ],
+ "producer_files": {
+  "bg_ontology": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py",
+   "platform/python-sidecar/brahmagyan/l0_ontology.py",
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py",
+   "platform/python-sidecar/brahmagyan/l0_yogas.py",
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py",
+   "platform/python-sidecar/brahmagyan/l0_doshas.py",
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py",
+   "platform/python-sidecar/brahmagyan/l0_dasha_systems.py"
+  ],
+  "bg_reference": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py",
+   "platform/python-sidecar/brahmagyan/l0_reference.py"
+  ],
+  "bg_nakshatra": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_nakshatra.py",
+   "platform/python-sidecar/brahmagyan/l0_nakshatra.py"
+  ],
+  "bg_texts": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py",
+   "platform/python-sidecar/brahmagyan/l0_texts.py",
+   "platform/python-sidecar/brahmagyan/l0_text_chunker.py"
+  ],
+  "bg_text_index": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py"
+  ],
+  "bg_compendium_index": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py"
+  ],
+  "bg_concordance": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py"
+  ],
+  "bg_rules": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_rules.py",
+   "platform/python-sidecar/brahmagyan/l0_rules.py"
+  ],
+  "bg_yogas": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py",
+   "platform/python-sidecar/brahmagyan/l0_yogas.py"
+  ],
+  "bg_doshas": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py",
+   "platform/python-sidecar/brahmagyan/l0_doshas.py"
+  ],
+  "bg_dasha_systems": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py",
+   "platform/python-sidecar/brahmagyan/l0_dasha_systems.py"
+  ],
+  "bg_remedies": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_remedies.py",
+   "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py",
+   "platform/python-sidecar/brahmagyan/l0_remedy_loader.py"
+  ],
+  "bg_parihara_rules": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py"
+  ],
+  "bg_ghatana": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_ghatana.py",
+   "platform/python-sidecar/brahmagyan/l0_ghatana.py"
+  ],
+  "bg_class_priors": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py",
+   "platform/python-sidecar/brahmagyan/l0_class_priors.py"
+  ],
+  "bg_class_lifetime_counts": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_lifetime_counts.py",
+   "platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py"
+  ],
+  "bg_cohort": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py"
+  ],
+  "bg_formula_constants": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_formula_constants.py",
+   "platform/python-sidecar/brahmagyan/l0_formula_constants.py"
+  ],
+  "bg_dignity_reference": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py",
+   "platform/python-sidecar/brahmagyan/l0_dignity_reference.py"
+  ],
+  "bg_kp_sublord_division": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_kp_sublord_division.py",
+   "platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py"
+  ],
+  "bg_ephemeris": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py",
+   "platform/python-sidecar/brahmagyan/l0_ephemeris.py"
+  ],
+  "bg_gochara_arcs": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py"
+  ],
+  "bg_sky_calendar": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py"
+  ],
+  "bg_muhurta_lattice": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py"
+  ],
+  "bg_transit_rules": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py",
+   "platform/python-sidecar/brahmagyan/l0_transit.py"
+  ],
+  "bg_transit_engine": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py",
+   "platform/python-sidecar/brahmagyan/l0_transit.py"
+  ],
+  "bg_vedha_malefic_scale": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_phaladeepika_vedha.py",
+   "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py"
+  ],
+  "bg_phaladeepika_latta": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_phaladeepika_vedha.py",
+   "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py"
+  ],
+  "bg_sarvatobhadra_grid": [],
+  "bg_kota_chakra_rings": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_kota_chakra_rings.py",
+   "platform/python-sidecar/brahmagyan/l0_kota_chakra_rings.py"
+  ],
+  "bg_gochara_citation_resolution": [],
+  "bg_prashna_rules": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py",
+   "platform/python-sidecar/brahmagyan/l0_prashna.py"
+  ],
+  "bg_vastu_directions": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py",
+   "platform/python-sidecar/brahmagyan/l0_vastu_directions.py"
+  ],
+  "bg_medical_mappings": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py",
+   "platform/python-sidecar/brahmagyan/l0_medical.py"
+  ],
+  "bg_nakshatra_medical": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py",
+   "platform/python-sidecar/brahmagyan/l0_medical.py"
+  ],
+  "bg_sign_medical": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py",
+   "platform/python-sidecar/brahmagyan/l0_medical.py"
+  ],
+  "bg_vidhi_primitives": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py"
+  ],
+  "bg_vidhi_floors": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py"
+  ]
+ },
+ "mention_only": [
+  {
+   "table": "brahma_class_priors",
+   "file": "platform/python-sidecar/bodha_writers/formulas.py",
+   "note": "field comment '# from brahma_class_priors' documenting the value's origin; no SQL in file"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "file": "platform/python-sidecar/brahmagyan/lel_event_class_resolver.py",
+   "note": "comment citing event_class_id provenance; no SQL in file"
+  },
+  {
+   "table": "reference_nakshatra",
+   "file": "platform/python-sidecar/ga_writers/ga_nakshatra_emitters.py",
+   "note": "docstring + source_calculation citation strings; consumes rows fetched by ga_nakshatra.py, no own SQL"
+  },
+  {
+   "table": "classical_text_chunks",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py",
+   "note": "module docstring describing the payload's extraction source; the read lives in brahmagyan/l0_yogas.py (declared writer-side)"
+  },
+  {
+   "table": "bg_vedha_malefic_scale",
+   "file": "platform/python-sidecar/services/gochara_v3/engine.py",
+   "note": "suppression-schedule comment citing effect_grade provenance; no SQL in file"
+  },
+  {
+   "table": "brahma_event_ontology",
+   "file": "platform/python-sidecar/services/gochara_v3/engine.py",
+   "note": "docstring citing valence provenance; the read lives in context.py/threshold.py (declared under ka_gochara_v3_century_materialize)"
+  },
+  {
+   "table": "bg_transit_rules",
+   "file": "platform/python-sidecar/services/gochara_v3/mechanisms/w29_citation_resolution.py",
+   "note": "static catalog of citation strings quoting bg_transit_rules.classical_citation; zero DB calls"
+  },
+  {
+   "table": "ephemeris_daily",
+   "file": "platform/python-sidecar/services/ka_graha_sancara/__init__.py",
+   "note": "package docstring describing engine behavior; the read lives in engine.py (declared serve-time)"
+  },
+  {
+   "table": "brahma_formula_constants",
+   "file": "platform/python-sidecar/services/mimamsa/lel_calibration.py",
+   "note": "docstring documenting the caller-passed threshold's origin; no SQL in file"
+  },
+  {
+   "table": "classical_text_chunks",
+   "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
+   "note": "field-description string literal 'chunk_ids[] (link into classical_text_chunks)'; SQL targets brahma_compendium_index (declared serve-time)"
+  },
+  {
+   "table": "bg_transit_rules",
+   "file": "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts",
+   "note": "header doc citing vedha mechanism provenance; SQL targets the ka_vedha_gochara output table"
+  }
+ ],
+ "write_only_access": [
+  {
+   "table": "bg_prashna_fructification_rules",
+   "file": "platform/src/lib/cockpit/assetClearSpec.ts",
+   "note": "DELETE via cockpit clear API routes — write access, not a read; recorded for completeness."
+  },
+  {
+   "table": "bg_prashna_lagna_methods",
+   "file": "platform/src/lib/cockpit/assetClearSpec.ts",
+   "note": "DELETE via cockpit clear API routes — write access, not a read."
+  },
+  {
+   "table": "bg_prashna_significators",
+   "file": "platform/src/lib/cockpit/assetClearSpec.ts",
+   "note": "DELETE via cockpit clear API routes — write access, not a read."
+  },
+  {
+   "table": "bg_prashna_special_techniques",
+   "file": "platform/src/lib/cockpit/assetClearSpec.ts",
+   "note": "DELETE via cockpit clear API routes — write access, not a read."
+  },
+  {
+   "table": "bg_prashna_tajik_yogas",
+   "file": "platform/src/lib/cockpit/assetClearSpec.ts",
+   "note": "DELETE via cockpit clear API routes — write access, not a read."
+  }
+ ]
+}

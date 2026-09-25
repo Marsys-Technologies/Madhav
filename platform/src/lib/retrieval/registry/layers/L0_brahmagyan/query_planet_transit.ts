@@ -32,6 +32,16 @@ const SIDECAR_URL = process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8000'
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 
 export const queryPlanetTransitCapability: ToolCapability = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 3072,
+    max_digest_bytes: 12288,
+    paginated: false,
+    facets: ['planet', 'start_date', 'end_date', 'sign_number'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/query_planet_transit',
   primitive_type: 'tool',
   layer: 'L0',

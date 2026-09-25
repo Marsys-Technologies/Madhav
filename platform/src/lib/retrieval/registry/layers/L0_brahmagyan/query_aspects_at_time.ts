@@ -30,6 +30,16 @@ function sidecarHeaders(): Record<string, string> {
 
 
 export const queryAspectsAtTimeCapability: ToolCapability = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 3072,
+    max_digest_bytes: 12288,
+    paginated: false,
+    facets: ['date', 'orb_degrees'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/query_aspects_at_time',
   primitive_type: 'tool',
   layer: 'L0',

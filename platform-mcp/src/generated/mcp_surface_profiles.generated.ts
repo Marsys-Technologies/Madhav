@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-09-20T01:38:35.408Z
+ * generated_at: 2026-09-25T16:36:15.200Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-09-20T01:38:35.408Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-09-25T16:36:15.200Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -3332,7 +3332,8 @@ export const MCP_SURFACE_PROFILES: {
       "query_vastu_directions",
       "query_vedha_gochara",
       "query_vichara_constants",
-      "read_sutravali_rule"
+      "read_sutravali_rule",
+      "ref_graha_reference_get"
     ],
     "internal_name_mismatches": {
       "query_yoga_catalog": "ref_yogas_get",

@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-20T01:38:35.408Z",
+  "generated_at": "2026-09-25T16:36:15.200Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
-  "total": 178,
+  "total": 179,
   "tool_registrations": [
     {
       "tool_name": "assess_career",
@@ -7232,6 +7232,29 @@
       "name_valid": true,
       "annotations": {
         "title": "Read Sutravali Rule",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "ref_graha_reference_get",
+      "description": "Get the graha reference row(s) from reference_planets (11 rows — the nine grahas plus ascendant and midheaven; BPHS Ch.3 citations per row). Each row carries canonical_name_en / canonical_name_sa, exaltation sign+degree, debilitation sign, mooltrikona sign, own signs, natural_benefic, karak_domains, dasha_years, and the source_citation. Filter by planet_id (e.g. \"venus\", \"ascendant\"). NULL dignity fields are returned as null — angles carry no dignity; debated values (Rahu/Ketu exaltation) stay visible in the citation. Global classical reference — no chart_id needed; returns the stored RULE row only, not any chart's computed dignity.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "planet_id": {
+            "type": "string",
+            "description": "Filter by planet_id (case-insensitive, e.g. \"venus\"). Omit for all 11."
+          }
+        }
+      },
+      "uri": "marsys://tool/L0/ref_graha_reference_get",
+      "layer": "L0",
+      "name_valid": true,
+      "annotations": {
+        "title": "Ref Graha Reference Get",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,

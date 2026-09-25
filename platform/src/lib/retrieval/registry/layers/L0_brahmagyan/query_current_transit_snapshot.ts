@@ -38,6 +38,16 @@ function validatesScalarIdentity(result: Record<string, unknown>, planet: string
 }
 
 export const queryCurrentTransitSnapshotCapability: ToolCapability = {
+  // W-L0-4 served-surface contract: explicit declaration (detector:
+  // __tests__/l0_density_contract.test.ts — do not remove; values follow the
+  // deriveDensityContract evidence rules in ../../descriptor_defaults.ts).
+  density_contract: {
+    max_verdict_bytes: 3072,
+    max_digest_bytes: 12288,
+    paginated: false,
+    facets: ['as_of_date'],
+    empty_reason: true,
+  },
   uri: 'marsys://tool/L0/query_current_transit_snapshot',
   primitive_type: 'tool',
   layer: 'L0',
