@@ -1,6 +1,6 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.2
+version: 1.3
 status: BASELINE_COMPLETE_GATE_MAPPING_HELD
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
@@ -19,6 +19,16 @@ amendments: >
   it does NOT — the fact's own citations survive; only catalog_ids and rule_ids empty
   out. Fixture-construction disclosure added (schema source, synthesized yoga_label
   facts, catalog seed source, 1123 patch-apply oracle).
+  v1.3 (2026-09-26) — guarded-contract discovery, disclosed before fixture build:
+  migrations 1035/1036's mutation guards and capture triggers probed LIVE in
+  production; production has never admitted a data-plane generation (the fixture is
+  the first execution of the decorated path). Two findings handed up unfixed:
+  F-W-L0-7-1 (L2 open-before-bind order; harness primes one bind per R3 run),
+  F-W-L0-7-2 (fact_category_ownership gap — graha_position/yoga_label and 11 more
+  production categories unowned; the guarded path cannot admit the writes that
+  produced production's own chart_facts). Seeding design finalised around both:
+  chart_facts seeded pre-trigger + synthesized capture-snapshot rows; ga_yoga's
+  generation REAL via the R1 baseline (ordering constraint R1 before R3).
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -280,6 +290,108 @@ Local PG for rehearsal: Homebrew PostgreSQL 17.10, `localhost:55433`, superuser 
 extensions `vector`/`pgcrypto`/`uuid-ossp` present; throwaway database `madhav_l0w7`,
 dropped when the lane closes.
 
+## Guarded-contract discovery — disclosed (v1.3, 2026-09-26)
+
+Machinery mapping for the fixture surfaced a fact class v1.2 did not know: the reads and
+writes this harness exercises sit behind the data-plane contract machinery (migrations
+1035/1036), and that machinery has never run in production. Everything below was verified
+by structural probe on 2026-09-26 (pg_trigger / pg_proc / information_schema), never from
+`_migrations_applied`. Methodological note for future probes: `information_schema.triggers`
+is privilege-filtered — a SELECT-only role sees only `asset_registry`'s trigger; structural
+trigger probes must use `pg_trigger`.
+
+**Guards are LIVE.** `l1_data_plane_mutation_guard` + `l1_data_plane_capture` on
+`chart_facts`, `chart_vichara`, `ga_yoga_firings` (and 9 more L1 tables);
+`l1_data_plane_mutation_guard` on `chart_dashas`; `l2_data_plane_mutation_guard` +
+`l2_data_plane_capture` on `bodha_msr_signals`; `nirmana_registry_receipt_invalidation` on
+`asset_registry` — all `tgenabled='O'`. `brahma_yoga_catalog` and `sutravali_rules` are
+trigger-free: the perturbation DELETE itself needs no machinery. The L1 guard admits
+chart_facts writes only for 11 assets with a matching `fact_category_ownership` row, inside
+a fully admitted generation (GUCs + `l1_data_plane_partition_contexts` + generation
+`status='building'` + `build_runs.state='running'` + `build_run_assets.state='building'`),
+as `session_user='data_plane_builder'`; every other mutation raises.
+
+**Production has never admitted a generation.** `l1_data_plane_generations` = 0,
+`l2_data_plane_run_intents` = 0, `data_plane_l2_producer_generations` = 0 — against
+chart_facts = 421,096 rows, ga_yoga_firings = 202, bodha_msr_signals = 150,724, all
+predating the machinery. Consequence, disclosed prominently: **the fixture is the first
+environment where the decorated contract path executes end-to-end.** The harness may
+therefore surface defects in the contract path itself (open/complete/grants/guard
+allowlists), not only consumer movement. Those are findings for the owning layer's plan
+(L1/L2 data plane), recorded and handed up — never repaired in this lane, under the same
+rule as consumer findings.
+
+**F-W-L0-7-1 — L2 open-before-bind order (finding, handed up unfixed).** Production
+`open_l2_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,jsonb,jsonb,text)`
+requires `pg_temp.l2_data_plane_bind_receipt` to pre-exist (live function definition probed;
+it raises `requires an exact-input bind receipt`), but the bo_laksana decorator calls open
+BEFORE bind. The integration test
+`platform/tests/integration/data_plane_protected_roles.db.test.ts:278-287` proves the
+canonical order is bind-then-open. **Decision:** the harness primes ONE
+`bind_l2_exact_inputs(chart_id, vector)` call per R3 run before invoking the writer —
+behaviour-neutral (the decorator's own bind drops and recreates identical temp shadows from
+the same vector), disclosed here, and flagged to the L2 plan as a decorator/migration
+ordering defect candidate. Not fixed here.
+
+**F-W-L0-7-2 — fact_category_ownership gap (finding, handed up unfixed).** The live guard
+requires an `fact_category_ownership(fact_category, owning_asset_id)` row for every
+chart_facts INSERT. The ownership table holds 69 rows and covers NONE of the position/yoga
+categories production actually carries: `graha_position` (1,290 rows), `yoga_label` (125),
+`saham_position` (8,400), `karaka_chara_position` (1,575), `special_lagna` (735),
+`upagraha_position` (630), `aprakasha_position` (525), `swamsa_position` (360),
+`karakamsa_position` (45), `esoteric_point_sri_yantra_position` (45), `upapada_lagna` (40),
+`panchanga_yoga` (12), `panchanga_special_yoga_combinations` (15) — all present in
+chart_facts, all unowned. Consequence: the guarded path as deployed cannot admit the writes
+that produced production's own chart_facts contents for these categories — consistent with
+zero admitted generations ever. Handed to the L1/data-plane plan, unfixed. The fixture does
+NOT route around it by adding ownership rows — that would change the system under test.
+
+**Seeding design — final, shaped by both findings.**
+
+- *Unprotected tables seeded directly* (no guards): the v1.2 reference/catalog/registry
+  set plus `asset_registry` (with production's integrity-contract rows, so the L0 pins
+  `open_l1_data_plane_generation` checks — release `l0.semantic.2026-09-13.1` and the
+  contract digests — resolve exactly as in production). The 1123 patch-apply oracle
+  (v1.2 item 4) is unchanged.
+- *`charts` seeded directly* (trigger-free; `open_l1_data_plane_generation` reads the row —
+  birth_date/time/lat/lng/timezone_id/house_system NOT NULL — to build
+  `base_context_jsonb`).
+- *`chart_facts` seeded directly BEFORE 1035/1036 install their triggers* (the guards never
+  see the seed inserts — admitted-context seeding is impossible under F-W-L0-7-2), followed
+  by direct `l1_data_plane_fact_snapshots` rows for those facts, attached to the
+  synthesized generations below and mimicking `l1_data_plane_capture_row`'s emitted shape
+  (26-column snapshot schema probed). Disclosed as **synthesized capture artifacts**,
+  standing in for the capture the blocked admitted path cannot perform; without them the
+  L2 bind's pg_temp `chart_facts` shadow would be empty and R3's pre-registered mechanism
+  (v1.2: shadowed citations survive the perturbation) could not run.
+- *11 synthesized completed L1 generations* — the bo_laksana upstream closure
+  (`asset_registry.depends_on`, probed: ga_condition, ga_dashas, ga_nakshatra, ga_panchanga,
+  ga_positions, ga_sade_sati, ga_sensitive, ga_strength, ga_structural, ga_vargas,
+  ga_vichara — 12 with ga_yoga) minus ga_yoga — each `status='complete'` with a mutually
+  consistent `base_context_jsonb` and a synthetic, disclosed 64-hex
+  `semantic_output_digest`, plus `l1_data_plane_generation_heads` rows.
+- *The 12th generation, ga_yoga, is NOT synthesized.* R1's baseline run produces it through
+  the real decorated path (`GaYogaWriter`, ga_yoga.py:33-65, `@register("ga_yoga")` +
+  `@l1_producer_contract`, real psycopg, `dry_run=False`, as `data_plane_builder`), which
+  also yields honest capture snapshots of `ga_yoga_firings`. **Ordering constraint: R1
+  baseline runs before R3 baseline**, so the ga_yoga head exists when the L2 bind resolves
+  the upstream vector.
+- *`build_runs` + `build_run_assets` seeded per run* (integration-test precedent; DDL
+  extracted from `supabase/migrations/171_build_runs.sql`).
+- *Fixture schema additions beyond v1.2's 16 tables:* `charts`, `fact_category_ownership`
+  (seeded with production's 69 rows verbatim — the gap preserved, not repaired), and the 9
+  empty probe-derived L1 tables 1035's static triggers require (`chart_dashas`,
+  `chart_divisionals`, `ga_condition_composite`, `ga_transit_anchors`,
+  `l1_tajik_varsha_year_lords`, `ga_medical`, `ga_vastu_planet_direction_map`,
+  `ga_prashna_lagna`, `ga_prashna_judgment`). Roles created before applying 1035/1036:
+  `data_plane_builder`, `data_plane_verifier`, `data_plane_migrator`,
+  `data_plane_l1_owner`, `data_plane_l2_owner`, `amjis_app`. Migrations 1035 + 1036 + 596
+  applied verbatim — 1036's capture installer skips missing tables, 1035 does not, hence
+  the 9 tables.
+- *R1/R3 are invoked through the decorated adapters, unchanged* (`BoLaksanaWriter`,
+  bo_laksana.py:3355-3357, `@l2_producer("bo_laksana")`). No consumer code is modified;
+  no guard, trigger, or contract function is altered in the fixture.
+
 ## Certification-template position (v1.1 §4, read 2026-09-26)
 
 This packet certifies under the 8-gate template. Anticipated conditional disposals, to be
@@ -292,6 +404,9 @@ claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
 - No gate mapping, no `Dom`-coverage claim, no certification verdict (HELD, strategy
   ruling pending).
 - No consumer repairs — consumer findings belong to L1–L5's plans.
+- No repair of F-W-L0-7-1 (L2 open-before-bind) or F-W-L0-7-2 (ownership-registry gap) —
+  both handed to the L1/L2 data-plane plan; the fixture preserves the ownership gap
+  verbatim rather than routing around it.
 - No live perturbation run yet: the predictions above are pre-registered from code and
   read-only production probes; the measured before/after lands with the harness run.
 
@@ -299,7 +414,10 @@ claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
 
 **Baseline measurement: COMPLETE** (reading set frozen, perturbation identified, movement
 pre-registered against state B, state pin declared, re-measure gate set).
-**Construction: AUTHORIZED** (2026-09-26) — harness, fixture, CI vehicle.
+**Machinery mapping: COMPLETE** (v1.3 — guards probed live, zero-generation disclosure,
+seeding design final, F-W-L0-7-1 / F-W-L0-7-2 handed up).
+**Construction: AUTHORIZED** (2026-09-26) — harness, fixture, CI vehicle; fixture builder
+next.
 **Gate mapping: HELD** (strategy ruling: `Dom` vs Decision 11).
 
 Open rulings, restated as OPEN — none inferred here:
