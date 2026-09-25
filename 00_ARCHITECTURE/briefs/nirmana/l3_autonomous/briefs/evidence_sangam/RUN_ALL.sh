@@ -3,8 +3,7 @@
 # (its negative control), or the suite FAILS. Writes a NEW timestamped OUTPUT file; never truncates a prior one.
 # Read-only otherwise; no DB. Exit status of this runner is the suite verdict.
 cd "$(dirname "$0")"
-ROOT=$(cd ../../../../../.. && pwd)
-PY=$ROOT/platform/python-sidecar/.venv/bin/python
+PY=/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/venv/bin/python
 OUT="OUTPUT_$(date +%FT%H%M%S).txt"; [ -e "$OUT" ] && { echo "refusing to overwrite $OUT"; exit 2; }
 fail=0; n=0
 while IFS='|' read -r script want_pos want_neg; do

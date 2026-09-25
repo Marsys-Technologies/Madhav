@@ -1,15 +1,3 @@
----
-title: "KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0"
-version: "1.0"
-status: COMPLETED_EXTERNAL_REVIEWER_OUTPUT
-role: reviewer_output
-owner: "L3 Saṅgam design session (madhav-d9)"
-layer: L3
-asset: ka_sangam
-description: "Verbatim Kimi K3 output; not authored by this session. Frontmatter prepended for gate parity only; body unchanged. Author verification of its claims is in SANGAM_RULING_SHEET_v1_0.md."
-frontmatter_added: "2026-09-23 — prepended for governance-gate parity (madhav-fc G18 finding: briefs tree is outside the frontmatter gate); body byte-identical to the prior commit"
----
-
 # Kimi K3 (effort=max) recommendations — Saṅgam decisions M-1…M-7
 # generated 2026-09-23T00:05:34+05:30 via: kimi -m kimi-code/k3 -p <KIMI_DECISION_PACKET_SANGAM_v1_0.md>; k3 default_effort=max, thinking.effort=max
 

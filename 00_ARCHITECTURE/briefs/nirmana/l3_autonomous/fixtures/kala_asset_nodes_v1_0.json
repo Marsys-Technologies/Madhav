@@ -1,0 +1,615 @@
+{
+  "artifact": "kala_asset_nodes",
+  "version": "1.0",
+  "status": "MEASURED",
+  "date": "2026-09-22",
+  "canonical_chart": "482012f1-710e-4a25-994a-93821f5871aa",
+  "measurement_basis": "live read-only psql against production, 2026-09-22; registry columns quoted verbatim from asset_registry",
+  "node_count": 32,
+  "nodes": [
+    {
+      "id": "ka_graha_sancara",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": null,
+      "is_active": true,
+      "scope": "global",
+      "asset_kind": "service",
+      "rows_canonical_chart": 0,
+      "rows_note": "service probe; no materialized table",
+      "throughput_state": null,
+      "throughput_note": "no asset_throughput row for the canonical chart (global scope)",
+      "depends_on": [
+        "bg_ephemeris"
+      ]
+    },
+    {
+      "id": "ka_dasha_kala",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": null,
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "service",
+      "rows_canonical_chart": 0,
+      "rows_note": "service probe over L1 chart_dashas",
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=0",
+      "depends_on": [
+        "ga_dashas"
+      ]
+    },
+    {
+      "id": "ka_muhurta_seva",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": null,
+      "is_active": true,
+      "scope": "global",
+      "asset_kind": "service",
+      "rows_canonical_chart": 0,
+      "rows_note": "panchanga/election service probe",
+      "throughput_state": null,
+      "throughput_note": "no asset_throughput row for the canonical chart (global scope)",
+      "depends_on": []
+    },
+    {
+      "id": "ka_tulana",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": null,
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "service",
+      "rows_canonical_chart": 0,
+      "rows_note": "pure WindowInput ranking service",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=0",
+      "depends_on": [
+        "ka_sangam",
+        "ka_vighnakara",
+        "ka_kala_darshana"
+      ]
+    },
+    {
+      "id": "ka_gochara_resonance",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "gochara_resonance_map",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 765,
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=765",
+      "depends_on": [
+        "bg_transit_rules"
+      ]
+    },
+    {
+      "id": "ka_moorti_nirnaya",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_moorti_nirnaya",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 71,
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=71",
+      "depends_on": [
+        "ga_positions",
+        "bg_ephemeris",
+        "bg_transit_rules"
+      ]
+    },
+    {
+      "id": "ka_kota_chakra",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_kota_chakra",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 585,
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=585",
+      "depends_on": [
+        "ga_positions",
+        "bg_ephemeris",
+        "bg_kota_chakra_rings"
+      ]
+    },
+    {
+      "id": "ka_vedha_gochara",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_vedha_gochara",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 177,
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=177",
+      "depends_on": [
+        "ga_positions",
+        "bg_ephemeris",
+        "bg_transit_rules",
+        "bg_sarvatobhadra_grid",
+        "bg_vedha_malefic_scale",
+        "bg_phaladeepika_latta"
+      ]
+    },
+    {
+      "id": "ka_tithi_pravesha",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_tithi_pravesha",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 120,
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=120",
+      "depends_on": [
+        "ga_positions"
+      ]
+    },
+    {
+      "id": "ka_sudarshana_varsha",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_sudarshana_varsha",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 120,
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=120",
+      "depends_on": [
+        "ga_positions"
+      ]
+    },
+    {
+      "id": "ka_yojaka",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_activation_predicates",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 50678,
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=50678",
+      "depends_on": [
+        "bo_laksana",
+        "bg_transit_rules",
+        "ga_dashas",
+        "bo_bimba",
+        "bo_sangati",
+        "bo_pratijna",
+        "bg_ghatana"
+      ]
+    },
+    {
+      "id": "ka_avadhi",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_avadhi",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 1169,
+      "throughput_state": "error",
+      "throughput_note": "rows_written=1169, last_built 2026-09-10",
+      "depends_on": [
+        "ga_dashas",
+        "bo_pratijna",
+        "bg_ghatana"
+      ]
+    },
+    {
+      "id": "ka_gochara",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_gochara_windows",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 87,
+      "rows_note": "MEASURED against the table the writer actually writes: kala_gochara_windows_v2 generation='2.0' = 87. The registry's target_table says kala_gochara_windows (17,211 rows for this chart, of which 16,297 are the RETIRED sweep's generation='v1' and 914 are ka_gochara_v3's generation='3.0'). count_sql is correct; target_table is not.",
+      "throughput_state": "lit",
+      "throughput_note": "rows_written=87",
+      "depends_on": [
+        "bg_gochara_arcs",
+        "ka_gochara_resonance"
+      ]
+    },
+    {
+      "id": "ka_gochara_v3_century_materialize",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_gochara_windows_v2",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 914,
+      "rows_note": "914 staging rows in kala_gochara_windows_v2 generation='g3_utkarsha' PLUS 914 production rows in kala_gochara_windows generation='3.0' (PROD_TABLE, ka_gochara_v3_century_materialize.py:487). Two output surfaces, one registry target_table.",
+      "throughput_state": "error",
+      "throughput_note": "rows_written=914, last_built 2026-08-21",
+      "depends_on": [
+        "ka_gochara_resonance",
+        "ka_vedha_gochara",
+        "ka_moorti_nirnaya",
+        "ka_kota_chakra",
+        "ka_tithi_pravesha",
+        "bg_sky_calendar"
+      ]
+    },
+    {
+      "id": "ka_sangam",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_convergence",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 0,
+      "rows_note": "ZERO \u2014 destroyed by the bodha_msr_signals ON DELETE CASCADE; asset_throughput still records rows_written=14868 from 2026-08-13",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=14868 (contradicted by live count 0)",
+      "depends_on": [
+        "ka_yojaka",
+        "ka_dasha_kala",
+        "ka_gochara",
+        "ka_muhurta_seva",
+        "bo_laksana",
+        "ga_dashas",
+        "ga_strength",
+        "ga_positions",
+        "ga_tajaka",
+        "bg_transit_rules"
+      ]
+    },
+    {
+      "id": "ka_kalasutra",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_activation",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 0,
+      "rows_note": "ZERO \u2014 cascade victim; asset_throughput still records rows_written=335403",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=335403 (contradicted by live count 0)",
+      "depends_on": [
+        "ka_yojaka",
+        "ka_sangam",
+        "bo_laksana"
+      ]
+    },
+    {
+      "id": "ka_vighnakara",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_obstruction",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 0,
+      "rows_note": "ZERO \u2014 cascade victim; asset_throughput still records rows_written=536",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=536 (contradicted by live count 0)",
+      "depends_on": [
+        "ka_sangam",
+        "ka_muhurta_seva",
+        "ga_positions",
+        "bg_dignity_reference",
+        "ka_yojaka"
+      ]
+    },
+    {
+      "id": "ka_taranga",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_taranga",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 92412,
+      "rows_note": "SURVIVED the cascade (no FK to bodha_msr_signals) but 36,282 of its rows embed transit evidence read from kala_convergence rows that no longer exist",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=92412",
+      "depends_on": [
+        "ka_avadhi",
+        "bo_pratijna",
+        "ka_sangam",
+        "ga_dashas",
+        "bg_ghatana"
+      ]
+    },
+    {
+      "id": "ka_kala_darshana",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_darshana",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 0,
+      "rows_note": "ZERO \u2014 cascade victim; asset_throughput still records rows_written=750",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=750 (contradicted by live count 0)",
+      "depends_on": [
+        "ka_sangam",
+        "ka_vighnakara",
+        "ka_kalasutra"
+      ]
+    },
+    {
+      "id": "ka_jivana_parva",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_jivana_parva",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 100,
+      "rows_note": "SURVIVED (no signal_id FK) but was built from kala_convergence/kala_darshana rows that no longer exist",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=100",
+      "depends_on": [
+        "ka_kala_darshana",
+        "ka_dasha_kala",
+        "ka_sangam",
+        "ka_yojaka",
+        "ga_dashas"
+      ]
+    },
+    {
+      "id": "ka_bhavishya_lekha",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_bhavishya",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "artifact",
+      "rows_canonical_chart": 0,
+      "rows_note": "ZERO \u2014 cascade victim (signal_id CASCADE); asset_throughput still records rows_written=100",
+      "throughput_state": "stale",
+      "throughput_note": "rows_written=100 (contradicted by live count 0)",
+      "depends_on": [
+        "ka_kala_darshana",
+        "ka_vighnakara",
+        "ka_sangam",
+        "bo_laksana"
+      ]
+    },
+    {
+      "id": "ka_kshetra",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_field",
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 8570075,
+      "rows_note": "kala_field only; the asset owns 14 further kala_field_* tables \u2014 see the S0..S8 sub-nodes",
+      "throughput_state": "error",
+      "throughput_note": "rows_written=1183134, last_built 2026-09-11",
+      "depends_on": [
+        "ka_dasha_kala",
+        "ka_gochara_resonance",
+        "ga_panchanga",
+        "bo_pratijna",
+        "bo_sangati",
+        "bo_upaya",
+        "bg_cohort",
+        "bg_class_lifetime_counts"
+      ]
+    },
+    {
+      "id": "ka_gochara_sweep",
+      "kind": "asset",
+      "layer": "L3",
+      "target_table": "kala_gochara_windows",
+      "is_active": false,
+      "scope": "per_chart",
+      "asset_kind": "data",
+      "rows_canonical_chart": 16297,
+      "rows_note": "generation='v1' rows in kala_gochara_windows; RETIRED, catalog_status=RETIRED, data_disposition=RETAINED_AS_CAPITAL, protected by a DB trigger",
+      "throughput_state": "error",
+      "throughput_note": "rows_written=0, last_built 2026-08-12",
+      "depends_on": [
+        "ka_gochara_resonance"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S0",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "kinematics",
+      "target_table": [
+        "kala_field_kinematics"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 120118,
+      "rows_note": null,
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": []
+    },
+    {
+      "id": "ka_kshetra:S2",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "structure / promise nodes, edges, routes",
+      "target_table": [
+        "kala_field_promise_nodes",
+        "kala_field_promise_edges",
+        "kala_field_routes"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 293,
+      "rows_note": "88 nodes + 114 edges + 91 routes",
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": []
+    },
+    {
+      "id": "ka_kshetra:S3",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "clocks and boundaries",
+      "target_table": [
+        "kala_field_clocks",
+        "kala_field_boundaries"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 262006,
+      "rows_note": "8 clocks + 261,998 boundaries",
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S2"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S1",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "primitives / symbolization",
+      "target_table": [
+        "kala_field_primitives"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 165082,
+      "rows_note": null,
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S0",
+        "ka_kshetra:S3"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S4",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "field integration",
+      "target_table": [
+        "kala_field"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 8570075,
+      "rows_note": null,
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S0",
+        "ka_kshetra:S1",
+        "ka_kshetra:S2",
+        "ka_kshetra:S3"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S5",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "null / windows / provenance",
+      "target_table": [
+        "kala_field_null",
+        "kala_field_windows",
+        "kala_field_provenance"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 976710,
+      "rows_note": "150 null + 17,528 windows + 959,032 provenance",
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S4"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S6",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "salience",
+      "target_table": [
+        "kala_field_salience"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 0,
+      "rows_note": "EMPTY \u2014 the pipeline terminates after S5 on this chart",
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S5"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S6.5",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "insights",
+      "target_table": [
+        "kala_insights"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 0,
+      "rows_note": "EMPTY",
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S6"
+      ]
+    },
+    {
+      "id": "ka_kshetra:S8",
+      "kind": "kshetra_stage",
+      "layer": "L3",
+      "parent_asset": "ka_kshetra",
+      "label": "timeline spec + snapshot",
+      "target_table": [
+        "kala_timeline_spec",
+        "kala_field_snapshots"
+      ],
+      "is_active": true,
+      "scope": "per_chart",
+      "asset_kind": "stage",
+      "rows_canonical_chart": 0,
+      "rows_note": "EMPTY (both tables)",
+      "throughput_state": null,
+      "throughput_note": "stages are not asset_throughput rows; only stage4 and stage5dhara appear in build_substep_progress",
+      "depends_on": [
+        "ka_kshetra:S6.5"
+      ]
+    }
+  ]
+}

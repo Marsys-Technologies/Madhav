@@ -125,7 +125,7 @@ function transitProbeAnchor(): OverlayQueryRow {
         registry_fingerprint_sha256: 'a'.repeat(64),
         analysis_digest: 'b'.repeat(64),
         response_digest: 'c'.repeat(64),
-        probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+        probe_contract_sha256: 'd36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1',
         detector_observation: {
           probe_type: 'ephemeris_engine',
           runner_revision: 'first-slice-test',

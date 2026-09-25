@@ -1,11 +1,11 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T01:38:00.000Z",
-  "content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
-  "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
+  "generated_at": "2026-09-24T08:29:13.000Z",
+  "content_hash": "sha256:0a2a675d0098390453d77ba0119b87fad865728e908290eaee6cc84fc465bc36",
+  "source_catalog_fingerprint": "sha256:166473fa82082610fea7427fdc61051fca303a9f44998a2b9ce3af2b9645ad9b",
   "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
-  "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
+  "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
       "version": 1,
@@ -3542,7 +3542,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -3706,7 +3706,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -13440,7 +13440,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -22022,7 +22022,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -22229,7 +22229,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -25582,7 +25582,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }

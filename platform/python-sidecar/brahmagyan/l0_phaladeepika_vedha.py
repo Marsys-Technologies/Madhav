@@ -88,13 +88,33 @@ AFFLICTION_CONDITION = (
     "come as the Latta star, there will be sickness and anguish."
 )
 
-# (malefic_count, effect_grade, effect_description) — verbatim from PG353.
+# (malefic_count, effect_grade, effect_description).
+# HONEST SCOPE OF "verbatim" (corrected after independent review of PR #2727):
+# effect_grade and the FIRST sentence of effect_description are verbatim PG353.
+# The parenthetical suffix appended below is NOT verbatim — it is this project's
+# own editorial disambiguation, added by L0 repair item 5 because the native's
+# instruction was that the ROW itself must say which scale it carries and why.
+# Anything reading this column as pure source text must strip the parenthetical;
+# `source_citation` and `verse_ref` remain the machine-readable pins for PG353.
+# Disambiguated against the OTHER 1-5 malefic-count scale
+# Adhyaya XXVI also carries, at PG349:C1 (agitation, fear, loss, disease, death —
+# a different, general-transit context, NOT seeded by this module). Both scales
+# share the 1-5 malefic-count shape, so a reader must not assume this row (or
+# its effect_grade alone) is "the" vedha scale without checking which page it
+# is pinned to; the disambiguation is carried on the ROW, not only the
+# migration/table COMMENT, so it survives being read out of context.
+_PG349_DISAMBIGUATION = (
+    " (This is the PG353 scale — explicitly a battle/muhurta-context vedha "
+    "scale — distinct from the OTHER 1-5 malefic-count scale Adh. XXVI also "
+    "carries, at PG349:C1: agitation, fear, loss, disease, death, a "
+    "general-transit context. bg_vedha_malefic_scale seeds PG353 only.)"
+)
 MALEFIC_SCALE_ROWS: list[tuple[int, str, str]] = [
-    (1, "fear",     "Vedha caused by one malefic: fear."),
-    (2, "failure",  "Vedha caused by two malefics: failure."),
-    (3, "killing",  "Vedha caused by three malefics: killing (blood-shed)."),
-    (4, "death",    "Vedha caused by four malefics: death."),
-    (5, "ignominy", "Vedha caused by five malefics: ignominy."),
+    (1, "fear",     "Vedha caused by one malefic: fear." + _PG349_DISAMBIGUATION),
+    (2, "failure",  "Vedha caused by two malefics: failure." + _PG349_DISAMBIGUATION),
+    (3, "killing",  "Vedha caused by three malefics: killing (blood-shed)." + _PG349_DISAMBIGUATION),
+    (4, "death",    "Vedha caused by four malefics: death." + _PG349_DISAMBIGUATION),
+    (5, "ignominy", "Vedha caused by five malefics: ignominy." + _PG349_DISAMBIGUATION),
 ]
 
 # (graha, count_from_graha, direction, effect_description) — verbatim from

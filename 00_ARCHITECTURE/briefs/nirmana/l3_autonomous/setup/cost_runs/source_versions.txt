@@ -1,0 +1,58 @@
+=== SOURCE VERSION (worktree /Users/Dev/madhav-l3/setup) ===
+branch: l3/kala-setup-phase01
+HEAD:   5ff0030f398dd1ef97ffc381005c8a1f2e600329
+HEAD short: 5ff0030f3
+HEAD date:  2026-09-22T10:27:33Z
+dirty files (tracked): 0
+
+=== ka_* writer source hashes (the exact code measured) ===
+2a84c159c0477912  ka_avadhi.py
+c92e77b4f5189cea  ka_bhavishya_lekha.py
+2bb428c7d8fc0894  ka_dasha_kala.py
+761da4418679d83b  ka_gochara.py
+c7cbd383e920e3b8  ka_gochara_resonance.py
+df0e01f25394edd9  ka_gochara_sweep.py
+ff2fcc5df31b933f  ka_gochara_v3_century_materialize.py
+cbe876af0a6d96c1  ka_graha_sancara.py
+c9ae21a5bbb86ae9  ka_jivana_parva.py
+3fbb4933e2cbe94c  ka_kala_darshana.py
+1d2e8e79efe65ad7  ka_kalasutra.py
+3bf51760f36621d6  ka_kota_chakra.py
+e50f71fb73c16212  ka_kshetra.py
+472a7fe86d64758d  ka_moorti_nirnaya.py
+1b98dd5caf74dc8b  ka_muhurta_seva.py
+5ecc438b319ce51a  ka_sangam.py
+6218ea05d5d63621  ka_sudarshana_varsha.py
+16eef01868b758b8  ka_taranga.py
+6c9aef5eaedb7b90  ka_tithi_pravesha.py
+8eaa65bb8772391b  ka_tulana.py
+c8765e921a67a0cb  ka_vedha_gochara.py
+f08d4c59a3cc138b  ka_vighnakara.py
+992676e8b5df3bd4  ka_yojaka.py
+
+=== ka_* service package hashes ===
+d51d68100087506f  ka_dasha_kala (5 .py files)
+1b1a8efea6294db6  ka_gochara (2 .py files)
+2d7b2c94c0824a68  ka_gochara_resonance (5 .py files)
+8d3e42e1a9d5ff59  ka_gochara_sweep (4 .py files)
+679e272351d424e2  ka_graha_sancara (2 .py files)
+52183d55b6a9ff2c  ka_kota_chakra (3 .py files)
+f08cc07d40fb7857  ka_kshetra (40 .py files)
+a942f2ecf1afc50f  ka_moorti_nirnaya (3 .py files)
+27293721271d4ac5  ka_muhurta_seva (3 .py files)
+5994bfa5eec1452a  ka_sangam (2 .py files)
+eb03e32ee04a8bf0  ka_sudarshana_varsha (3 .py files)
+6ea79dede072da3f  ka_temporal (2 .py files)
+703e4467a766327e  ka_tithi_pravesha (3 .py files)
+423136c7f7e37387  ka_tulana (3 .py files)
+50e6ceb7cca32e70  ka_vedha_gochara (3 .py files)
+700d84656b5886cc  ka_yojaka (3 .py files)
+
+=== orchestrator core hashes ===
+9729959af04d20a3  platform/python-sidecar/pipeline/orchestrator/__init__.py
+bd62217fdec9659b  platform/python-sidecar/pipeline/orchestrator/asset_runner.py
+ebaeee262016b43a  platform/python-sidecar/pipeline/orchestrator/runner.py
+4cf8ebc761a61102  platform/python-sidecar/pipeline/orchestrator/db.py
+e1a3cf85f718c90a  platform/python-sidecar/pipeline/orchestrator/birth_params.py
+7bdd87cd1b78c490  platform/python-sidecar/pipeline/orchestrator/writers/__init__.py
+29fa7562352d6658  platform/python-sidecar/pipeline/transit_search.py

@@ -1,15 +1,3 @@
----
-title: "ASTRA_REVIEW_REQUEST_SANGAM_ALGO_v0_4"
-version: "0.4"
-status: CURRENT
-role: review_request
-owner: "L3 Saṅgam design session (madhav-d9)"
-layer: L3
-asset: ka_sangam
-description: "Author-written packet for the third Astra review; to be re-pointed at plan v1.0 (ruled) before the stage-3 gate review."
-frontmatter_added: "2026-09-23 — prepended for governance-gate parity (madhav-fc G18 finding: briefs tree is outside the frontmatter gate); body byte-identical to the prior commit"
----
-
 # Review request — Saṅgam algorithm elevation plan v0.4 (third review — after two REWORKs)
 
 You are the independent reviewer (Astra). Your job is to break this plan before the native rules on

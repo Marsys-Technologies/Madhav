@@ -2,7 +2,7 @@
 artifact: SANGAM_ELEVATION_FINAL
 canonical_id: SANGAM_ELEVATION_FINAL
 version: "1.0"
-status: CLOSED_APPROVED_FOR_STAGE_3   # 2026-09-23: native rulings confirmed + author decisions D-1…D-8 under delegation (sheet §CLOSE); plan v1.0 + brief v1.5; third Astra review = stage-3 entry gate; E1/E3 wait on Gochara N-7
+status: FINAL_PACKET_PENDING_NATIVE_RULINGS   # becomes APPROVED_FOR_EXECUTION only by the native's record of M-1…M-7
 date: 2026-09-23
 asset: ka_sangam (Saṅgam — the L3 Kāla convergence engine; seven downstream consumers; rebuild reaches sealed L4)
 this_is: the single pointer every other session uses. When the complete L3 elevation runs, THIS packet governs Saṅgam.
@@ -16,52 +16,14 @@ does_not_authorize: any code, migration, build, L4 rebuild, L5 consumption, or d
 
 # Saṅgam elevation — the final packet
 
-## 0b. Post-close independent review — Kimi K3 (effort=max), 2026-09-23
-
-**ACCEPT_WITH_CONDITIONS**, 12 findings (4 MAJOR, 5 MINOR, 3 NOTE), no BLOCKER, no re-ruling. First
-independent confirmation that **plan v0.4 closes the v0.3 REWORK (RR-01…RR-10)**. Every MAJOR was a
-defect in the *author's* delegated decisions — corrected α arithmetic, an i.i.d. assumption the plan's
-own §4 disclaims, a D-2/M-6 contradiction on the denominator, a falsifier with no detector (§N.8), and
-Simpson-vulnerable pooling — each reproduced at source before acceptance and all applied. Full record:
-`KIMI_K3_REVIEW_SANGAM_CLOSED_v1_0.md` + ruling sheet §Post-close. **Two items not discharged:** D-6's
-entry in `DISAGREEMENT_REGISTER_v1_0.md` (referred to the governance owner) and **D-8**, the third
-Astra review, which remains the stage-3 entry gate — this review is a second independent read, not a
-substitute for it.
-
-## 0a. CLOSED — 2026-09-23T03:39:33+05:30
-
-All seven rulings are closed. The native confirmed M-1…M-7 as delivered and delegated the residual
-open items to the author; **D-1…D-8** (`SANGAM_RULING_SHEET_v1_0.md §CLOSE`) decide them with
-reasoning, recorded as the author's decisions under delegation, not as native words. Headlines:
-E6 gate = **n 35 per `(domain × route × method_version)` (crit ≥12, α=0.0344, power 0.805) / 100
-instrument-level pooled (crit ≥28, α=0.0342, power 0.833)** via a stratified CMH-type estimand, never
-pooled across versions, figures declared as first-order approximations on a two-chart population;
-`ambiguous` excluded from n but binding at the reported rate's adverse end, with a 10%/20% censoring
-gradient; evaluation limited to consenting charts; **D30 held as a labelled non-scoring secondary**
-with a falsifier that must exist and pass before the first D30 row ships; **mean convention governs
-the pāda reading (Rohiṇī pāda 3)**; **no node dṛṣṭi is instrument-level**, Gochara owning execution
-as a same-generation λ regeneration; legacy scan withdrawn only on the R-5 successor manifest; the
-**third Astra review is a stage-3 entry gate** (plan v0.4 has never been reviewed — v0.1 and v0.3
-both returned REWORK). Remaining items are dependencies owned elsewhere: Gochara N-7 (E1/E3),
-`ephemeris_daily` §11.1, house-vedha re-citation (F-23/G-8).
-
-## 0. Rulings — recorded 2026-09-23T02:42:50+05:30
-
-The native ruled all seven in writing (`SANGAM_RULING_SHEET_v1_0.md §RULINGS`, verbatim). Plan
-**v1.0** and brief **v1.4** carry `APPROVED_FOR_EXECUTION_STAGE_3` on that record, with three
-standing conditions: **M-6's minimum count is OPEN** (placeholder unfilled — the E6 evaluation gate
-waits on it); **E1/E3 are gated on the Gochara brief's N-7 ruling** (owner = Gochara stream, kernel
-path if approved, else the bounded amendment); **D30-for-DOSHA is held**. Next: third Astra review
-on v1.0, then a separate stage-3 execution session with an independent reviewer.
-
 ## 1. What is in the packet, and which document governs what
 
 | Document | Governs | Status |
 |---|---|---|
 | `SANGAM_ELEVATION_BRIEF_v1_0.md` **v1.3** | the **output contract** — contract §1–§8: typed testimony (independence groups, per-method F06 states, route, coverage, comparability), four grains/one key, bidirectional generation binding, cascade to sealed L4, the two registry edges | PROPOSED_FOR_NATIVE_RULING; amended v1.3 to match the plan (§7 of the plan) |
-| `SANGAM_ALGORITHM_ELEVATION_PLAN_v1_0.md` (= v0.4 + §0R rulings) | the **method** — six repairs (R-1…R-6) before six elevations (E1…E6); falsifier per item; inputs-consumed contract (18 rows); 7×6 consumer matrix; preservation spec | PROPOSAL_FOR_NATIVE_RULING after two independent REWORKs, both fully dispositioned |
-| `SANGAM_RULING_SHEET_v1_0.md` | the **seven decisions** M-1/M-1a, M-2, M-3, M-7, M-4, M-5, M-6 — Kimi K3 (max) recommendation, author verification, author position, Astra constraint, the question with options — plus §RULINGS (native) and §CLOSE D-1…D-8 (author, under delegation) | CLOSED |
-| `evidence_sangam/` (v2) | **13 assertion-based falsifiers** with negative controls; manifest-checked, non-truncating runner; `OUTPUT_2026-09-23T012041.txt` SUITE-PASS (S8 on SWIEPH with .se1 checksums; re-pointed 2026-09-23 per K2-05 — the earlier 2026-09-22T2342 run had S8 passing as an oracle on Moshier, which S8 v2.1 now refuses); the failing run retained | runnable read-only, no DB |
+| `SANGAM_ALGORITHM_ELEVATION_PLAN_v0_4.md` | the **method** — six repairs (R-1…R-6) before six elevations (E1…E6); falsifier per item; inputs-consumed contract (18 rows); 7×6 consumer matrix; preservation spec | PROPOSAL_FOR_NATIVE_RULING after two independent REWORKs, both fully dispositioned |
+| `SANGAM_RULING_SHEET_v1_0.md` | the **seven decisions** M-1/M-1a, M-2, M-3, M-7, M-4, M-5, M-6 — Kimi K3 (max) recommendation, author verification, author position, Astra constraint, the question with options | AWAITING_NATIVE_RULING |
+| `evidence_sangam/` (v2) | **13 assertion-based falsifiers** with negative controls; manifest-checked, non-truncating runner; `OUTPUT_2026-09-22T234243.txt` SUITE-PASS; the failing run retained | runnable read-only, no DB |
 | `ASTRA_REVIEW_SANGAM_ALGO_PLAN_v0_1.md`, `_v0_3.md` | the two independent adversarial reviews (Codex gpt-6-astra, xhigh) — F-01…F-19, RR-01…RR-10 | immutable |
 | `KIMI_K3_RECOMMENDATIONS_SANGAM_DECISIONS_v1_0.md` | second independent opinion on the seven rulings (Kimi K3, effort max) — every BPHS citation re-verified at the corpus by the author | immutable |
 | `ASTRA_REVIEW_REQUEST_SANGAM_ALGO_v0_4.md` | ready-to-run third review request — to be run on **v1.0 after the rulings**, not before | ready |
@@ -95,7 +57,7 @@ on v1.0, then a separate stage-3 execution session with an independent reviewer.
 
 - **Gochara family** — M-3 makes the *directed contact-event producer* an upstream obligation. `transit_search.py` is shared with Kshetra, the Gochara family and frozen L0 `bg_sky_calendar`; Saṅgam may not edit it. The Gochara stream must own the bounded amendment (frame/ayanāṃśa/node arguments; directed special-aspect search) or a new bounded service must be chartered. **Until an owner is named, E1 and E3 cannot start.** (Kshetra session confirmed 2026-09-23 it is not theirs — Kshetra consumes no directed contact events; routed to the strategic / Gochara sessions.)
 - **Kshetra** — **corrected 2026-09-23 after the Kshetra session verified against `main@c58e86662`; author re-verified at source:** Kshetra does **not** consume `transit_search`'s scanner — S0 reads all nine bodies incl. Rāhu/Ketu from `ephemeris_daily` (`stage0_kinematics.py:50-52`), whose probe contract pins `node_mode="mean"` (migration 624:30); its only import from `transit_search` is the `MEAN_MOTIONS` constant table for dwell normalisation (`:746`). So a scanner-signature amendment does **not** touch Kshetra, and the node ruling (M-1 d) is a repair for **Saṅgam's scanner path and `bg_ephemeris`**, not for Kshetra (**withdrawn 2026-09-23:** Kshetra's *contract* says mean, but `ephemeris_daily`'s stored knots are **true** — `l0_ephemeris.py:290` uses body 11 = TRUE_NODE under a "mean" comment; see ruling sheet M-1d for the four-surface picture and the paired disposition). Note for anyone citing the Kshetra brief: `origin/main` carries `KSHETRA_ELEVATION_BRIEF_v1_0.md` at its **stale v1.0** (swept into `bd1a12e03`, three findings since withdrawn); the current v4.0 lives on `l3/kshetra-elevation` (`/Users/Dev/madhav-l3/kshetra`) per the Kshetra session. What Kshetra **does** share with Saṅgam: the **retired `ka_gochara_sweep` corpus** (`writer.py:2330-2347`, generation from `kala_gochara_authority`, `COALESCE … 'v1'`) — any change to that corpus, the authority row, or the still-open Clear-guard (Lane C F1) lands in both. **The guard is not live** (Gochara session, DB-verified): `build_protected_assets` = 0 rows, zero non-internal triggers on any `kala_*` table, migration 588 applied 2026-08-23; the century's stored "BUILD-PROTECTED" error predates the drop and is a residue. R-5/§6.3 must not assume it; Phase 0/1 B1 is closing it.
-- **Two alignment points with Kshetra (new):** (i) **one AV verdict per instant** — Kshetra's `av_kaksha_gate` covariate is a declared `not_in_corpus` gap (`stage1_symbolization.py:346`); whichever aṣṭakavarga source the native admits under M-2 (E2's signed testimony or `ganita_av_transit_gating` directly), Kshetra S1 must consume the **same** one. (ii) **one vedha verdict per instant** — Saṅgam consumes `kala_vedha_gochara` (C11, `ka_sangam.py:1037-1045`); Kshetra re-derives vedha and moorti internally and reads none of `ka_vedha_gochara` / `ka_moorti_nirnaya` / kota / sudarśana / tithi-praveśa (0 hits). Two vedha verdicts for one instant is a layer-level duplicate-support hazard (U02) — raised as a shared decision, owner: the native via the strategic session. **Kshetra's proposal (2026-09-23), which Saṅgam endorses:** both streams consume `ka_vedha_gochara` (the registered, W0-accepted producer; three mechanisms keyed `(chart_id, ayanamsha_id, vedha_kind, graha, window_start)` with `classical_citation`, `uncited_extension`, `janma_reference_fact_id`, truncation flags); Kshetra's internal `build_vedha_primitive` (house-vedha only, `l0_reference`, no citation/ayanāṃśa/truncation — a strict subset) runs one generation as an `evaluation`-role cross-check, disagreements recorded as counterexamples, then `RETIRE_AFTER_MIGRATION`. Same pattern for moorti → `ka_moorti_nirnaya`. **Saṅgam's C11 edge does not flip** — it is already on the right source; it declares the edge (brief §5.4) and mirrors the two conditions: a **uniform admission rule** — F06 `applied` iff the producer's `corpus_verifiable = true` and geometry passes, else `unqualified`; ~~today `unqualified` for every gochara-vedha row (house_vedha, sarvatobhadra, laṭṭā alike), because Phaladīpikā Ch.26 — the only vedha citation surviving the BPHS Ch.29 strike — is not in the admitted corpus; lifts per row under Gochara G-9 — and the DATE-grain seam stamped as `precision_regime`.~~ **[SUPERSEDED 2026-09-23: premise false — Phaladīpikā IS in the 15-text corpus (564 chunks; no KP text exists in it). Outcome per `vedha_kind`: laṭṭā + malefic scale verifiable now (PG338-339, PG353) → `applied`; house-vedha's 41 rules are 39× mis-cited to BPHS Ch.29 over content verbatim at Phaladīpikā XXVI PG322-323 → `applied` on L0 re-citation; SBC has a primary source (XXVI śl. 48, PG345-346) but the grid is unpopulated → `unqualified` for now. Full record: SANGAM_RULING_SHEET §Corrections.]** Saṅgam's C11 edge is source-unqualified on the same ground today (sheet M-3).
+- **Two alignment points with Kshetra (new):** (i) **one AV verdict per instant** — Kshetra's `av_kaksha_gate` covariate is a declared `not_in_corpus` gap (`stage1_symbolization.py:346`); whichever aṣṭakavarga source the native admits under M-2 (E2's signed testimony or `ganita_av_transit_gating` directly), Kshetra S1 must consume the **same** one. (ii) **one vedha verdict per instant** — Saṅgam consumes `kala_vedha_gochara` (C11, `ka_sangam.py:1037-1045`); Kshetra re-derives vedha and moorti internally and reads none of `ka_vedha_gochara` / `ka_moorti_nirnaya` / kota / sudarśana / tithi-praveśa (0 hits). Two vedha verdicts for one instant is a layer-level duplicate-support hazard (U02) — raised as a shared decision, owner: the native via the strategic session. **Kshetra's proposal (2026-09-23), which Saṅgam endorses:** both streams consume `ka_vedha_gochara` (the registered, W0-accepted producer; three mechanisms keyed `(chart_id, ayanamsha_id, vedha_kind, graha, window_start)` with `classical_citation`, `uncited_extension`, `janma_reference_fact_id`, truncation flags); Kshetra's internal `build_vedha_primitive` (house-vedha only, `l0_reference`, no citation/ayanāṃśa/truncation — a strict subset) runs one generation as an `evaluation`-role cross-check, disagreements recorded as counterexamples, then `RETIRE_AFTER_MIGRATION`. Same pattern for moorti → `ka_moorti_nirnaya`. **Saṅgam's C11 edge does not flip** — it is already on the right source; it declares the edge (brief §5.4) and mirrors the two conditions: qualification per `vedha_kind` (`house_vedha` applied; `sarvatobhadra`/`latta` unqualified until source-qualified) and the DATE-grain seam stamped as `precision_regime`.
 - **Pūrṇa (serving)** — `query_convergence_windows.ts` and `kala_views/*` change only via an L3-U04/U11 interface packet with a material-field sentinel; `priority.ts`'s ranking SQL does not read `kala_convergence` (declare non-consumption or an authorized route). (Plan §6.2)
 - **L4 (sealed)** — downward binding to the natural key instead of `convergence_id` is an **L3-U07 packet**; a Saṅgam rebuild on a chart with L4 rows must be paired with authorized L4 regeneration or not run. (Brief §5.2)
 - **L5** — consumption opens under M-6's preconditions; evaluation authority is separate. (Plan E6)

@@ -158,7 +158,7 @@ describe('transit availability contract', () => {
       asset_id: 'bg_ephemeris_engine',
       probe_id: 'ephemeris_engine',
       endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      probe_contract_sha256: 'd36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1',
       max_age_seconds: 900,
       source_ref: expect.stringContaining('/internal/nirmana/probe'),
     })
@@ -178,7 +178,7 @@ describe('transit availability contract', () => {
     expect(requirement).toEqual(expect.objectContaining({
       kind: 'service_probe', asset_id: 'bg_ephemeris_engine', probe_id: 'ephemeris_engine',
       endpoint_identity: 'nirmana-elevation:health-probe:bg_ephemeris_engine',
-      probe_contract_sha256: 'e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4',
+      probe_contract_sha256: 'd36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1',
       max_age_seconds: 900,
     }))
   })

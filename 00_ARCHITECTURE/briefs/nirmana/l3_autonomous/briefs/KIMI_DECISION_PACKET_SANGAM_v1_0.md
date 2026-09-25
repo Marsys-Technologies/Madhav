@@ -1,15 +1,3 @@
----
-title: "KIMI_DECISION_PACKET_SANGAM_v1_0"
-version: "1.0"
-status: COMPLETED
-role: review_request
-owner: "L3 Saṅgam design session (madhav-d9)"
-layer: L3
-asset: ka_sangam
-description: "Author-written decision packet sent to Kimi K3 (max effort, Kimi CLI) for recommendations on the seven decisions."
-frontmatter_added: "2026-09-23 — prepended for governance-gate parity (madhav-fc G18 finding: briefs tree is outside the frontmatter gate); body byte-identical to the prior commit"
----
-
 # Decision packet — Saṅgam (ka_sangam) algorithm elevation: seven method rulings
 
 You are Kimi K3, asked for **recommendations** on seven decisions that the native (Abhisek Mohanty,

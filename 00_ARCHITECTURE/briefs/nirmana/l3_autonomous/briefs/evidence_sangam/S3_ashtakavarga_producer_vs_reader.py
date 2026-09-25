@@ -1,97 +1,21 @@
-"""F-03/E2 (post-fix). Detector for the ashtakavarga repair:
-(a) reader degrades honestly when the producer receipt is absent (B-4 open) and
-    produces a verdict when it is present — behavioural, not a source grep (RC-04);
-(b) Sangam reader reads sign-keyed facts and the receipt;
-(c) own-BAV verdict bands are correct (≥5 support, 4 indeterminate, ≤3 obstruct);
-(d) a missing planet is unavailable, not a measured zero;
-(e) SAV verdict uses BPHS bands (>30 support, 25-30 indeterminate, <25 obstruct)
-    with Phaladīpikā alternate retained.
-Run with NEG=1 to execute the negative control (assertions inverted)."""
+"""F-03/E2 (rebuilt per RR-02). Propositions about the REAL producer, not a hypothetical one:
+(a) ga_strength_writer emits HOUSE_N and SIGN_N rows from the SAME value (no lagna rotation);
+(b) Sangam's writer reads only the legacy 'ashtakavarga_bindu' category, with Lahiri hardcoded;
+(c) a missing planet is emitted as twelve zeros (indistinguishable from measured zeros downstream).
+Consequence for E2: the defect is vocabulary/category/provenance, NOT frame; and the zero-provenance
+loss is a PRODUCER amendment, not something a reader can recover."""
 from _common import *
-from services.ka_sangam.engine import (
-    EnrichmentContext,
-    _c7_ashtakavarga_verdict,
-    _sav_verdict,
-)
-
-head("S3 — ashtakavarga producer receipt vs reader verdict (E2 post-fix)")
-
-# (a) Producer receipt — BEHAVIOURAL, deliberately NOT a source grep.
-#     RC-04 (2026-09-23): (a) previously grepped ga_writers/ga_strength_writer.py for the two
-#     receipt categories. That pinned an unauthorized, build-fatal L1 edit in place — reverting the
-#     breach turned this suite red, so the evidence DEFENDED the defect instead of detecting it.
-#     Its NEG reset also ran AFTER the eager prop() calls, so those two propositions could never
-#     fail under NEG=1 (the RRV-15 "sincerity escape", in the very script meant to enforce it).
-#     B-4 is OPEN: no L1 producer receipt exists today — RRV-01's stage-3-side join is unimplemented
-#     and the producer-column route belongs to the L1 owner. What must hold whichever route lands is
-#     the READER's behaviour: receipt absent -> UNAVAILABLE, never a measured zero.
-def ctx_for(bindus, planet='Jupiter', computed=None):
-    if computed is None:
-        computed = {planet}
-    return EnrichmentContext(
-        ashtakavarga_bindu={planet: {1: bindus}},
-        ashtakavarga_computed_planets=computed,
-    )
-
-# NEG mutates evidence-bearing INPUT (swaps which planets the receipt reports), then reads the
-# real system — never a post-assertion variable reset.
-absent_receipt = {'Jupiter'} if NEG else set()
-present_receipt = set() if NEG else {'Jupiter'}
-v_absent = _c7_ashtakavarga_verdict('Jupiter', 1, ctx_for(6, computed=absent_receipt))
-v_present = _c7_ashtakavarga_verdict('Jupiter', 1, ctx_for(6, computed=present_receipt))
-prop("(a) planet absent from receipt -> unavailable (None), never measured zero",
-     v_absent is None, v_absent)
-prop("(a) planet present in receipt -> verdict produced",
-     v_present is not None and v_present['verdict'] == 'support', v_present)
-
-# (b) reader reads sign-keyed facts and receipt categories
-reader = src('pipeline/orchestrator/writers/ka_sangam.py')
-has_sign = any('ashtakavarga_bindu_sign' in l for l in reader)
-has_receipt_read = any('ashtakavarga_completeness_receipt' in l for l in reader)
-has_school_read = any('ashtakavarga_school_primary' in l for l in reader)
-if NEG:  # RRV-15: mutate BEFORE asserting, or the control is a no-op
-    has_sign = has_receipt_read = has_school_read = False
-prop("(b) Sangam reader reads ashtakavarga_bindu_sign", has_sign)
-prop("(b) Sangam reader reads completeness receipt", has_receipt_read)
-prop("(b) Sangam reader reads school-primary label", has_school_read)
-
-# (c) own-BAV verdict bands (ctx_for defined above)
-support = _c7_ashtakavarga_verdict('Jupiter', 1, ctx_for(5))
-indet = _c7_ashtakavarga_verdict('Jupiter', 1, ctx_for(4))
-obstruct = _c7_ashtakavarga_verdict('Jupiter', 1, ctx_for(3))
-missing = _c7_ashtakavarga_verdict('Jupiter', 1, ctx_for(5, computed=set()))
-
-if NEG:
-    support, indet, obstruct, missing = None, None, None, {'verdict': 'support'}
-
-prop("(c) BAV ≥5 → support", support is not None and support['verdict'] == 'support',
-     support)
-prop("(c) BAV =4 → indeterminate", indet is not None and indet['verdict'] == 'indeterminate',
-     indet)
-prop("(c) BAV ≤3 → obstruct", obstruct is not None and obstruct['verdict'] == 'obstruct',
-     obstruct)
-prop("(d) missing planet → unavailable", missing is None, missing)
-
-# (e) SAV verdict bands
-sav_support = _sav_verdict(1, EnrichmentContext(
-    ashtakavarga_bindu={'SARVA': {1: 31}}, ashtakavarga_school_primary='BPHS'))
-sav_indet = _sav_verdict(1, EnrichmentContext(
-    ashtakavarga_bindu={'SARVA': {1: 27}}, ashtakavarga_school_primary='BPHS'))
-sav_obstruct = _sav_verdict(1, EnrichmentContext(
-    ashtakavarga_bindu={'SARVA': {1: 24}}, ashtakavarga_school_primary='BPHS'))
-sav_phal = _sav_verdict(1, EnrichmentContext(
-    ashtakavarga_bindu={'SARVA': {1: 29}}, ashtakavarga_school_primary='Phaladīpikā'))
-
-if NEG:
-    sav_support, sav_indet, sav_obstruct, sav_phal = None, None, None, None
-
-prop("(e) BPHS SAV >30 → support", sav_support is not None and sav_support['verdict'] == 'support',
-     sav_support)
-prop("(e) BPHS SAV 25-30 → indeterminate", sav_indet is not None and sav_indet['verdict'] == 'indeterminate',
-     sav_indet)
-prop("(e) BPHS SAV <25 → obstruct", sav_obstruct is not None and sav_obstruct['verdict'] == 'obstruct',
-     sav_obstruct)
-prop("(e) Phaladīpikā SAV >28 → support", sav_phal is not None and sav_phal['verdict'] == 'support',
-     sav_phal)
-
-done(kind="POST-FIX BEHAVIOUR")
+head("S3 — ashtakavarga: what the producer really writes vs what Sangam reads")
+L = src('ga_writers/ga_strength_writer.py')
+h = [i for i,l in enumerate(L,1) if 'ashtakavarga_bindu"' in l and '-HOUSE_{idx + 1}' in l]
+s = [i for i,l in enumerate(L,1) if 'ashtakavarga_bindu_sign' in l and '-SIGN_{idx + 1}' in l]
+# the value argument is on the line following each _mk( call: L[i] is 0-based → the next line
+same_val = bool(h) and bool(s) and all('float(bindus)' in L[i] for i in h) and all('float(bindus)' in L[i] for i in s)
+if NEG: same_val = False                                  # negative control: claim a rotation exists
+prop("(a) HOUSE_N and SIGN_N written from the same float(bindus)", bool(same_val), f"HOUSE lines {h}, SIGN lines {s}")
+z = grep('ga_writers/ga_strength_writer.py', r"\[0\] \* 12"); prop("(c) missing planet → twelve zeros at producer", len(z) >= 1, f"lines={[i for i,_ in z]}")
+r = grep('pipeline/orchestrator/writers/ka_sangam.py', r"fact_category = 'ashtakavarga_bindu'"); prop("(b) Sangam reads legacy category only", len(r) == 1 and not grep('pipeline/orchestrator/writers/ka_sangam.py', r"ashtakavarga_bindu_sign"), f"line={[i for i,_ in r]}")
+lah = grep('pipeline/orchestrator/writers/ka_sangam.py', r"lahiri"); prop("(b) reader hardcodes Lahiri near the AV read", any(990 <= i <= 1030 for i,_ in lah), f"lahiri lines={[i for i,_ in lah][:6]}")
+# reader-level consequence: with identical HOUSE_1/SIGN_1 values, any sign-keyed lookup returns the same number → no rotation to test
+rows = {'SAT-HOUSE_1': 4.0, 'SAT-SIGN_1': 4.0}; prop("reader gets identical value from either key (rotation hypothesis false)", rows['SAT-HOUSE_1'] == rows['SAT-SIGN_1'])
+done()

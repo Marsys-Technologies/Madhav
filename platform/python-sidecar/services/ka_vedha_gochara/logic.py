@@ -51,13 +51,76 @@ found:
     this session): no INSERT statements exist in that migration or its
     follow-on (`_archive/144_vedha_extended.sql`), and no other file in this
     repository populates them.
-  - The ingested classical-text corpus (`00_ARCHITECTURE/SOURCE_DATA/
-    classical_texts/`) was checked this session: it holds BPHS, Jaimini
-    Sutram, KP, and KP_Reader material only — NO Muhurta Chintamani or
-    Jyotish Sara Sangraha text, the two sources migration 140's own table
-    comments cite for the SBC grid. Tier (i) (ingested-corpus citation) is
-    therefore UNAVAILABLE for this specific table, confirmed by direct
-    search, not assumed.
+  - CORRECTED (L0 repair item 8, 2026-09; the paragraph below is what this
+    docstring said until then, and every load-bearing part of it was false).
+    The prior text checked `00_ARCHITECTURE/SOURCE_DATA/classical_texts/` — a
+    source-data FOLDER of raw procurement files — and reported that as "the
+    ingested classical-text corpus." It is not: the ingested corpus this
+    writer actually reads at runtime is the `classical_text_chunks` DB table.
+    This session independently re-ran the real check via a live Cloud SQL
+    connection (`gcloud`-authenticated Cloud SQL Auth Proxy against
+    `amjis-postgres`, role `amjis_app`) rather than trusting a directory
+    listing or a prior session's report: `SELECT text_id, count(*) FROM
+    classical_text_chunks GROUP BY text_id` returns exactly 15 populated
+    `text_id`s (not "BPHS, Jaimini Sutram, KP, and KP_Reader material only" —
+    that four-text list was itself wrong); `muhurta_chintamani` alone holds
+    274 rows; `count(*) WHERE text_id IN ('kp','kp_reader')` returns 0 — there
+    is no KP text in this corpus at all. These figures match, and now
+    independently confirm, `KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md`'s earlier
+    finding ("15 texts; phaladeepika = 564 chunks; no KP text").
+    `phaladeepika` itself holds 564 chunks, including the full run
+    `phaladeepika_pg0345_c01` through `_pg0354_c01` (Adh. XXVI's
+    Sarvatobhadra Chakra material) — so tier (i) citation is NOT
+    categorically unavailable for the SBC grid the way the prior paragraph
+    claimed.
+  - L0 repair item 4's actual, DB-verified disposition: `bg_sarvatobhadra_grid`
+    remains EMPTY, not because the pages are unreachable (this session read
+    every one of them, `phaladeepika_pg0345_c01` through `_pg0354_c01`,
+    verbatim) but because the construction genuinely cannot be transcribed
+    into this table's schema without fabricating structure the text does not
+    give:
+      (a) PG345 (the diagram page) is 592 chars of OCR noise — confirmed
+          illegible, as every prior review already found.
+      (b) The non-nakshatra cell content (16 vowels, 4 sets of consonant
+          clusters per side) is specified only by RULE ("commencing from the
+          outmost corner in the North-east... filling up in rotation") — the
+          literal glyphs are OCR garbage throughout PG346-348 and PG350
+          ("a*, q, |r and ^" etc. — not recoverable Devanagari).
+      (c) The text gives the FULL 9-point Vedha set (nakshatra + rasi +
+          tithi-group + vowel + consonant, per PG347's own words: "the Vedha
+          may be with a star, a consonant, a Rasi or a vowel and not with
+          others") for only 3 of the 28 asterisms as worked examples
+          (Krittika, Rohini, Mrigasiras) — "similarly"/"in the same way" for
+          the rest, never spelled out. This is not a `vedha_pair`
+          (nakshatra-to-nakshatra) table at all; it is a richer multi-type
+          network this table's schema (`cell_kind IN ('nakshatra_position',
+          'vedha_pair')`) cannot represent without either dropping most of
+          the doctrine or extending the schema (neither authorized by this
+          item).
+      (d) PG353's own attempt at a reference table (the "112 letters... one
+          per Nakshatra pada" grid) is itself OCR-mangled beyond recovery,
+          and Adhyaya XXVI ends at PG354 with no further SBC content —
+          confirming the diagram is the only place the exact cell
+          arrangement was ever recorded, and it did not survive OCR.
+      (e) The 28-asterism OUTER RING partition (Krittika first, 7 per side)
+          and the malefic-planet set (PG347: Saturn/Sun/Rahu/Ketu/Mars, plus
+          conditional Mercury/waning-Moon) ARE clean and fully specified —
+          but assigning them a `cell_index` still requires a traversal
+          direction and starting corner the text does not state (only "the
+          outermost corner in the North-east" as the START, never the turn
+          direction) — filling this in would be exactly the "interpretive,
+          school-selecting act" ADJUDICATION-11 Part 1 already ruled this
+          table must never seat as an unqualified L0 fact. So even this
+          clean fragment stays out, honestly, rather than half-populate the
+          table under an invented indexing convention.
+    Populating this table for real needs one of: a legible source for the
+    PG345 diagram (a different scan/edition, or a manual transcription
+    against a physical copy), or a native ruling on a specific school's
+    reconstructed layout (per ADJUDICATION-11's own framing — a
+    `kala_paddhati_profile` decision, not this table's). Neither happened
+    this session. `bg_sarvatobhadra_grid`'s `bg_sarvatobhadra_grid`-first
+    lookup, described below, activates with zero code change once either
+    lands.
   - Unlike `ka_kota_chakra`'s ring table (which had a single, internally
     consistent tier-(iii) secondary description this session could transcribe
     with a checkable partition invariant — see that writer's own docstring),
