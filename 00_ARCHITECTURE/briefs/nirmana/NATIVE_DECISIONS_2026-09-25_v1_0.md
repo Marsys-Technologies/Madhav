@@ -1,12 +1,12 @@
 ---
 artifact: NATIVE_DECISIONS_2026-09-25
 canonical_id: NATIVE_DECISIONS_2026_09_25
-version: "1.0"
+version: "1.3"
 status: RULED
 date: 2026-09-25
 decision_owner: Native
 recorded_by: L3 strategy session (madhav-e3)
-role: "Eight decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks."
+role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; four further native-initiated authorizations added at v1.1-v1.3 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named), plus the resolution of decision 5, both GOVERNING FACTS rather than answers to a question this session asked."
 ---
 
 # Native decisions, 2026-09-25
@@ -64,3 +64,238 @@ against the deploy's own report.**
 **Not established:** who applied them, by what path, and whether the bodies applied match the
 committed files. Those are execution-session questions; this session measured the divergence and
 stopped.
+
+---
+
+# v1.1 — two native-initiated authorizations, 2026-09-25
+
+These two were not put by a session. The native raised them and authorized them directly, and both are
+recorded as **governing facts**: they bind every later document, layer plan, asset brief and review in
+this chain until the native changes them.
+
+## 9 — Signature authority on a reviewed governing document
+
+**Ruling, native, verbatim in effect:** "The reviewer doesn't have to be the one who signs this
+document. It can be the reviewer. Or the native, that is me, or you — it just needs to have been
+reviewed, that's it."
+
+**The rule.** A governing document's verdict may be signed by **any** of: the reviewer, the native, or
+the Claude session. Who signs is not constrained. The one hard requirement is that **a review actually
+happened** before the signature.
+
+**What stays closed.** The defect that produced the older, stricter rule remains a defect: a verdict
+stamped with **no review behind it at all**, or with its acceptance tests still pending, is void. The
+original K3 finding was about a document carrying a verdict nobody had reviewed — not about which of the
+three signs it. Review is mandatory; reviewer-identity for the signature is not.
+
+**What this amends.** `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md` §5.4 and its changelog carry
+"THE REVIEWER ASSIGNS THE VERDICT, NOT THE AUTHOR" as an absolute. Under this ruling that line becomes:
+"A verdict requires a completed review. The reviewer, the native or the session may sign it; a verdict
+with no review behind it, or with acceptance tests pending, is void." The template must be brought into
+line; until it is, this ruling governs and the template's stricter sentence is superseded in place.
+
+**What it unblocks.** Nothing waits on a third party to countersign. A document that has been reviewed
+can be signed and moved forward in the same session as its review, which is the normal case in this
+campaign.
+
+## 10 — The medical and mortality exclusions stay removed (governing fact)
+
+**Ruling, native:** the medical/mortality exclusions are to be removed and to stay removed.
+
+**The rule.** Āyurdāya (lifespan), constitution, vitality and vulnerability are **in scope** for this
+product and for every layer of the data plane. They are served as the tradition serves them: the
+applicable method and school, its required inputs, the cancellations each school applies, the
+disagreement between authorities and the genuine uncertainty at every step — and **never as a bare
+date**. No document, layer plan, asset brief, writer, serving surface or intermediary may re-impose an
+exclusion on these subjects, and none may gate them behind an extra permission an ordinary domain
+question does not need.
+
+**Current state of the corpus under this ruling — already correct:**
+
+| artefact | state |
+|---|---|
+| `MADHAV_PRODUCT_DEFINITION_FINAL` P23 (L165) | lifespan in scope as the classical discipline — correct |
+| its changelog 3.1 | "REMOVED: the death, illness and fertility exclusions" — correct |
+| `MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL` V12 (L106) | serves āyurdāya with method, cancellations, disagreement, uncertainty — correct |
+| same, §5 Ayurdaya row (L277) | the L0→L1→L2→L3→L4 hop chain with the tradition's caveats preserved — correct |
+| same, §12.1 (L510) | "answered as V12 requires … never a bare date" — correct |
+
+**The one residue that must go.** Data plane §5 L278 still reads "Horizon qualification cannot bypass
+exclusions." The exclusions that sentence refers to no longer exist, which makes it the only remaining
+hook by which the removed exclusion could re-enter a later document by reference. Delete it; the row's
+surviving sentence ("Attributed guidance only; source testimony is not demonstrated remedial efficacy")
+is the whole of what that row needs to say. This was raised as finding 12 of `REVIEW_DATA_PLANE_v3_0`
+and again as finding 13 of `REVIEW_DATA_PLANE_FINAL_v1_0`; under this ruling it is no longer a tidiness
+MINOR but the closing act of a governing fact.
+
+**What it does not change.** The product still makes no medical diagnosis, prescribes no treatment and
+gives no fertility guarantee — those were never exclusions of the *subject*, they are limits on the
+*kind of claim* any domain may make, and they stand under the parent's §13 boundaries.
+
+## 11 — "Is the astrology right" is not a data-plane obligation (governing fact)
+
+**Ruling, native:** "I was the one who introduced that idea, but later I realized it is not the
+responsibility of the data plane. Regarding astrology, the data plane basically is data engineering,
+mathematical calculations, which is going to feed the layers above, and the last thing is astrology with
+the LLM."
+
+**The rule.** The data plane's job is faithful computation and faithful carriage: compute correctly,
+hold the tradition's own testimony without corrupting it, and hand everything upward with its
+conventions, prerequisites, exceptions and uncertainty intact. **The astrological verdict — whether a
+reading is astrologically right — is formed above the data plane, in the reasoning layer.** The data
+plane is therefore scored on **ten** of the product definition's eleven §14 obligations. Domain
+correctness is the one it is not scored on, and that is a deliberate exclusion, not an omission.
+
+**Raised and placed by the same person.** The native introduced Domain correctness into the product
+definition on 2026-09-25 and, on review the same day, placed it at the correct altitude. The idea is
+kept; its owner changes.
+
+**What the data plane still owes, so nothing is lost by the move.** These are data checks, not
+astrological verdicts, and they stay:
+
+| check | where it lives now | why it is not "astrological judgment" |
+|---|---|---|
+| the stored rule is authentic, sourced, correctly identified and inside its method boundary | L0's existing **Source and domain fidelity** obligation (product §11) | it compares a record against its own cited source — a provenance check |
+| a computed classical quantity reproduces when derived a second way | L1's existing **Computational correctness** obligation; the two-pass verification tiers already do this | it is arithmetic agreement, not interpretation |
+| where two admitted sources disagree, the disagreement is **carried**, never silently resolved | DP02 "unresolved alternatives"; §4.3; §5's method-before-comparison rule | carrying a disagreement is transmission; settling it is judgment |
+
+**What leaves the data plane:** the verdict itself, the seeded-counterexample suite, and any adjudication
+between schools. Those belong to the reasoning layer and, when that layer is elevated to a governing
+artefact of its own, they are its obligations to name.
+
+**Consequences, in order:**
+
+1. `MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL` §13.3's "**ten** proof obligations" is **correct** and
+   must not be "fixed" to eleven. It must, however, state *why* it is ten — one sentence naming this
+   ruling — or a future session will read the parent's eleven rows and correct it back.
+2. §12.2's **Domain correctness test row** comes out of the data plane's test table. If anything replaces
+   it, it is a carriage test: the cited passage, the witness set and its recorded disagreement, and the
+   second derivation are all *present and handed onward*, unjudged.
+3. `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md` §2.7 and the `Dom` gate in its §5.2 instrument stop
+   asking about doctrinal correctness. **Executed as a rescope rather than a deletion**, which is the
+   faithful reading of this ruling as it was put: the native agreed in the same exchange that the
+   *mechanical* checks stay inside the data plane, and two of the four were mechanical. §2.7 is now
+   "Source carriage and reproduction — did we transmit it faithfully?", keeping source correspondence,
+   witness carriage (the disagreement is carried, never averaged or silently settled) and independent
+   re-derivation; the gate is renamed `Dom` → `Carr`; the verdict framing and the fourth check — seeding a
+   case the tradition says must NOT fire, which is a doctrinal act — are removed and recorded as belonging
+   to the reasoning layer's own artefact when that plane is elevated. `NO DETECTOR` is kept as an honest
+   null. If the native prefers outright deletion of the section, say so and it goes.
+4. The L0 instance (v2.1) never absorbed §2.7 — checked, no occurrence — so nothing is unwound there.
+5. `MADHAV_PRODUCT_DEFINITION_FINAL` §14 keeps the Domain correctness row: the *product* must not be
+   astrologically wrong, and deleting the row would lose a correct idea. It gains one line naming its
+   owner — discharged above the data plane, in the reasoning layer. **Recorded as the recommendation and
+   the default action unless the native rules otherwise.**
+
+**Review bookkeeping.** This ruling supersedes finding 1 of `REVIEW_DATA_PLANE_FINAL_v1_0` (which
+prescribed the opposite fix — adding the eleventh obligation) and withdraws its finding 12 (the
+reference-layer fidelity list is correct as written, because fidelity is exactly the data plane's half of
+the question). Both are re-stated in place there, with this ruling as the reason. The two remaining
+blockers of that review — the unmarked cross-plane obligations and the unassigned synergy term — are
+untouched by this ruling and still stand.
+
+---
+
+# v1.3 — decision 5 resolved, and decision 12
+
+## Resolution of decision 5 — the ledger gap needs no production write
+
+**Native ruling:** "I will go with your recommendation" — reconcile the ledger, then add the
+automatic check. Both discharged below, and the reconciliation turned out to need no hand-written
+write at all.
+
+**Step 1 — every one of the seven re-verified live, read-only, 2026-09-25 by this session.** Not
+inherited from the earlier measurement; re-run against production:
+
+| migration | effect asserted | verified in production |
+|---|---|---|
+| 1080 | `gochara_resonance_map.target_resolution_state` + `target_qualifier` | 2/2 columns LIVE |
+| 1081 | `kala_gochara_convention` / `_publication` / `_contacts` / `_coverage` | 4/4 tables LIVE |
+| 1082 | `kala_vedha_gochara` + `kala_moorti_nirnaya` stamp columns | 6/6 columns LIVE |
+| 1083 | `contact_id` on `brahma_prospective_ledger` + `mimamsa_predictions` | 2/2 columns LIVE |
+| 1084 | `ka_kshetra` + `ka_sangam` carry `ka_vedha_gochara` in `depends_on` | 2/2 rows LIVE |
+| 1087 | `kala_gochara_contacts` inclusivity / completeness_state / tier_basis / comparable_with | 4/4 columns LIVE |
+| 1091 | `ka_gochara` `count_sql` pinned to generation 4.0 with 8 `depends_on` edges | 1/1 row LIVE |
+
+`SELECT count(*) FROM _migrations_applied WHERE filename ~ '^(108[0-9]|109[0-5])_'` = **0**. The
+ledger's highest numbered row is **1079** (applied 2026-09-22); 869 rows total.
+
+**Step 2 — the boundary that changes the plan: all seven are re-runnable.** Read at
+`l3/gochara-autonomous-wp0-7:platform/migrations/`: 1080, 1081, 1082, 1083 and 1087 are
+`IF NOT EXISTS` DDL throughout; 1084's two `UPDATE`s are guarded by
+`AND NOT (depends_on @> ARRAY[...])` and the file documents itself as idempotent; 1091 is
+`CREATE TABLE IF NOT EXISTS` + `INSERT ... ON CONFLICT (asset_id) DO NOTHING` + absolute `SET`
+assignments.
+
+**Therefore no row should be hand-inserted into production.** The deploy runner will apply each one
+(no-op, or convergent to the state already there) and **write the ledger row itself**, with the
+sha256 and `sql_identity` it computes from the committed file — which is the identity the runner will
+later re-verify. A hand-written row would assert a hash for a body nobody watched execute; letting
+the runner do it is the same reconciliation through the sanctioned path, and it is strictly better
+evidence. This supersedes the earlier session's prepared-but-unexecuted INSERT of seven rows: that
+statement should be discarded, not run.
+
+Two caveats, stated rather than buried:
+- **1091 re-applied would overwrite later edits** to `ka_gochara`'s `count_sql` / `clear_tables` /
+  `depends_on`, because its `SET` is absolute. Verified 2026-09-25: production already holds exactly
+  what 1091 sets, so re-running is a literal no-op **today**. If anything edits those three fields
+  before the deploy, re-check before merging.
+- **These files carry their own `BEGIN`/`COMMIT`,** so under the runner's outer transaction the inner
+  `COMMIT` ends it early and the ledger INSERT lands in its own statement. The two are therefore not
+  atomic with each other. That is a pre-existing property of every migration in this repository that
+  wraps itself, not something these seven introduce, and it does not change the outcome.
+
+**What still blocks the deploy** — unchanged by this resolution and still decision 4/7 territory:
+`migration_number_guard` hard-fails on **1071/1072 existing twice** (Saṅgam and B1). Note for
+completeness: 1071/1072's effects are **not** live (`kala_convergence_episodes` absent,
+`kala_convergence.target_provenance` absent), so those two are genuinely unapplied — "unrecorded" and
+"unapplied" are different states, and conflating them is what made the original report misleading.
+
+**Step 3 — the detector, written and proven:**
+`platform/scripts/governance/check_migration_ledger_vs_production.py`. For every migration file with
+no ledger row it extracts the objects the file asserts (tables, added columns, indexes, functions —
+comments stripped first, so a rollback recipe in a comment block is never read as an assertion) and
+asks the catalog whether they already exist. All present → `applied_but_unrecorded` (HIGH). Some
+present → `partially_applied_unrecorded` (HIGH, worse). None → genuinely pending, clean. No
+introspectable object → `indeterminate` (LOW), never clean. **Unreachable database exits 4 UNKNOWN
+and reports nothing clean** — §N.8 applied to the check itself.
+
+Proven, not asserted: run against the seven files it reports six as `applied_but_unrecorded` (2/2,
+11/11, 7/7, 2/2, 2/2, 1/1 objects live) and 1084 as `indeterminate` — correct, since 1084 is a pure
+`UPDATE` with no object to introspect. Run against this branch's own migration set it reports 1071
+and 1072 as genuinely pending, which matches the live check above. Unreachable-DB path tested: exit 4.
+
+## 12 — `bg_sarvatobhadra_grid`: the school is named (delegated pick)
+
+**Native ruling:** "I will let you make the pick. Think through this, do some research and go with the
+most popular among the options."
+
+**Pick: `muhurta_chintamani`** (Rāma Daivajña's Muhūrta Cintāmaṇi) as the first `school_tag`.
+
+**Why, on the evidence rather than on taste:**
+
+1. **Most current of the three recorded candidates.** `bg_gochara_citation_resolution` (migration 565)
+   names three, all `status='unresolved'`: Muhūrta Cintāmaṇi and Jyotiṣa Sāra Saṅgraha for the
+   28-nakshatra 9×9 grid, and Praśna Mārga for the rekha/kona/vīthi vedha geometry. Muhūrta Cintāmaṇi
+   is the standard muhūrta authority in practice — the one routinely cited for Sarvatobhadra vedha in
+   muhūrta work; Jyotiṣa Sāra Saṅgraha is a compilation with far less currency; Praśna Mārga is a
+   praśna classic whose vedha construction is a *different* geometry, not a variant of the same grid.
+2. **It is the only one we hold any of.** `classical_text_chunks` carries 15 texts;
+   `muhurta_chintamani` is one of them (274 chunks). Jyotiṣa Sāra Saṅgraha and Praśna Mārga are absent
+   entirely — Praśna Mārga is not even present as a `text_id`. So this pick extends an existing
+   ingestion and its rights position rather than opening a new one.
+3. **It forecloses nothing.** `school_tag` is designed to hold competing variants side by side; Praśna
+   Mārga's geometry can be seated later under its own tag without disturbing this one.
+
+**What the pick does NOT do, measured before claiming it:** it does not populate the table. The 274
+chunks we hold contain **zero** occurrences of "sarvatobhadra" and one of "vedha" — the chapter
+carrying the chakra is not in the portion ingested. (Checked the obvious alternative too: Brihat
+Samhita's four "sarvatobhadra" hits are OCR noise from an index of scents and from temple-architecture
+verses, not the nakshatra chakra.) So the pick converts an open ruling into **one bounded task**:
+ingest and verify the Muhūrta Cintāmaṇi chapter that carries the grid, then seat the rows under
+`school_tag='muhurta_chintamani'` with real citations.
+
+**Until then, nothing changes and nothing lies:** the table stays deliberately empty, and
+`ka_vedha_gochara` keeps serving its `algorithmic_approximation` with `uncited_extension=true` on every
+row. One populated `school_tag` row switches its DB-grid path on with no code change — the consumer is
+already wired and waiting.

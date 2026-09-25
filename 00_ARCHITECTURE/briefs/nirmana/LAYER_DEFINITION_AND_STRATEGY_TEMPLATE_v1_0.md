@@ -5,7 +5,7 @@ tier: 3
 kind: template          # fixes shape; never cited as authority for content
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["one layer instance per L0-L5"]
-version: "1.1"
+version: "1.2"
 status: READY_FOR_USE
 produced_on: 2026-09-24
 decision_owner: Native
@@ -17,9 +17,12 @@ role: >
   The tier-3 template. One instance per layer (L0-L5) produces that layer's definition, strategy
   and evaluation ladder. Every instance must be derivable from tiers 1-2 without inventing a
   criterion, and every asset brief (tier 4) must be derivable from the instance.
-independent_review: NOT YET. This template has not been reviewed by a fresh-context session. Its first
-  test is the L0 instance; a defect found there is fixed here before L1-L5 are instantiated.
+independent_review: DONE - reviews/KIMI_K3_REVIEW_LAYER_TEMPLATE_v1_0.md (external, fresh context);
+  findings folded at v1.1. Signed under native ruling 9 of NATIVE_DECISIONS_2026-09-25 (the reviewer, the
+  native or the session may sign; a review must have happened). The L0 instance remains its first
+  practical test; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "1.2 (2026-09-25, native rulings 9 and 11 of NATIVE_DECISIONS_2026-09-25 v1.2): (a) RULING 11 - `Domain correctness` is not a data-plane obligation. The astrological verdict is formed above the data plane, in the reasoning layer; this template governs data-plane layer plans only. §2.7 is therefore RESCOPED from `is the astrology right?` to SOURCE CARRIAGE AND REPRODUCTION - the three mechanical checks that are data checks and stay (the encoded restatement against its cited passage; two witnesses agreeing or their disagreement CARRIED unresolved; a computed quantity reproducing when derived a second way) - and the fourth, the seeded negative case, is removed with the verdict framing: authoring a case the tradition says must not fire is a doctrinal act and belongs to the layer above. The §5.2 gate `Dom` becomes `Carr` on the same basis, and its menu drops D4. No layer is scored on doctrinal correctness by this template. (b) RULING 9 - §5.4 item 6 no longer requires that the REVIEWER assign the verdict: the reviewer, the native or the session may sign, and the requirement is that a review actually happened. What stays void is a verdict with no review behind it, or one signed with acceptance tests still pending. (c) §3.1's `ten proof obligations` now carries its reason, so it is not `corrected` to eleven by a later reader."
   - "1.1 (2026-09-25, native-directed simplification + K3 review fold): §5.2 rewritten — 33 criteria across five tiers replaced by THREE INSTRUMENTS of which only the first certifies: (a) eight gates, each a claim with a detector that could return false; (b) brief shape, scanned for presence and producing no records; (c) inheritance and ladder position, read not scored. `Fct` folded into `Ldgr`; `Narr`/`Dens` conditional; `Dom` runs one detector from a menu rather than four. §4.4 gains the two elements K3 found missing against product §16 (preserved kernel; relevant Jyotish concepts with the domain detector each invites) — its BLOCKER 1. §5.4 gains two tests K3 found demanded-but-unenforced: the gate map must EXIST (BLOCKER 2 — a 33-row map per asset is why it was never written; an eight-row map is enforceable), and THE REVIEWER ASSIGNS THE VERDICT, NOT THE AUTHOR (K3 finding 4 — the first instance carried a verdict its own author stamped with every acceptance test pending)."
   - "1.0 (elevated in place, 2026-09-25, fourth change): §2.7 Domain correctness added — is the astrology RIGHT, as distinct from §2.4's is the obligation APPLIED. Four autonomous checks (source correspondence, cross-witness agreement, independent re-derivation, negative cases), each able to return false; NO DETECTOR is never a pass. Verified autonomously and only autonomously: no human or acharya review exists in this system, by native ruling. The per-asset checklist reaches 33 criteria. §1.5 now states the layer identity as one instance of the compositional identity that holds at plane and product level too."
   - "1.0 (elevated in place, 2026-09-25, third change): three repairs from the first instance's independent review. (a) §5.4 gains a three-verdict scale — ACCEPT / ACCEPT_WITH_CORRECTIONS / REJECT — with the distinction that makes the middle tier safe: a finding about the DOCUMENT is fixed in the document and never deferred, a finding about the LAYER that the document correctly records is a work packet, and two guards so the middle tier cannot rot (every correction names the gate it blocks; ACCEPT_WITH_CORRECTIONS becomes ACCEPT only by re-verification). (b) `measured_by:` must name the POPULATION, not only the instrument, with the corollary that a join is not measured until its keys are — three of the first instance's nine wrong figures came from exactly this gap. (c) §5.2's 32 criteria must be mapped to §4.4's inheritance list before an instance is called ready; the review found six criteria with no feeding section. Also §1.5: the synergistic fraction is recorded only where a harness exists to produce it."
@@ -310,35 +313,40 @@ from the authority, pinned by release id and digest, and joined to it by a parit
 the authority, its releases, the classes covered, the classes not yet covered, and the detectors
 that stand between the authority and every consumer.
 
-### 2.7 · Domain correctness — is the astrology right?
+### 2.7 · Source carriage and reproduction — did we transmit it faithfully?
 
 ```
-inherits:    Product §14 (Domain correctness), §3 (the twelve coverage obligations); Data plane §5
-measured_by: the four autonomous checks below, each named per obligation this layer owns
-traces_to:   0.1 — a layer whose astrology is wrong serves no P-need, however well it is engineered
+inherits:    Product §11 (L0 source-and-domain fidelity; L1 computational correctness); Data plane §12.2 (Source carriage and reproduction), §4.3, §5
+measured_by: the three checks below, each named per obligation this layer owns, each able to return false
+traces_to:   0.1 — a layer that corrupts what it carries serves no P-need, however well it is engineered
 ```
 
-§2.4 asks whether a coverage obligation is **applied**. This section asks whether it is **right**.
-They are different questions and a layer can pass the first while failing the second: a catalogue can
-carry perfect provenance, unique identifiers, complete alias sets and a detector on every claim, and
-still encode the configuration wrongly. Nothing else in this template would catch it.
+§2.4 asks whether a coverage obligation is **applied**. This section asks whether what the layer carries
+is **what its source actually says**, and whether what it computes **reproduces**. Those are data
+questions and they are this plane's to answer.
 
-**Verified autonomously, and only autonomously.** No human, acharya or expert review is part of this
-system. The check is these four detectors or it does not exist:
+**What this section is not.** Whether the astrology is *right* — the doctrinal verdict — is **not a
+data-plane obligation** (native ruling, 2026-09-25). The data plane is data engineering, mathematical
+computation and faithful carriage, feeding the layers above; the verdict is formed above it, in the
+reasoning layer. A layer plan that awards itself a doctrinal verdict has exceeded its plane. What this
+section guarantees is that the layer above is reasoning over an uncorrupted copy of the tradition and over
+numbers that reproduce.
+
+**Autonomous, and only autonomous.** No human, acharya or expert review is part of this system. The check
+is these detectors or it does not exist:
 
 | # | check | what it compares | fails when |
 |---|---|---|---|
-| a | **source correspondence** | the encoded rule against the passage it cites — including prerequisites, exceptions and cancellations, not only the headline claim | the encoding says more, less or other than its own cited source |
-| b | **cross-witness agreement** | two admitted sources defining the same configuration | the encodings disagree and the disagreement is not recorded as school disagreement |
+| a | **source correspondence** | the encoded restatement against the passage it cites — including prerequisites, exceptions and cancellations, not only the headline claim | the encoding says more, less or other than its own cited source |
+| b | **witness carriage** | two admitted sources defining the same configuration | they disagree and the disagreement is averaged, silently resolved, or dropped instead of carried forward as school disagreement |
 | c | **independent re-derivation** | a classical quantity computed a second way, from different inputs | the two results differ beyond a declared tolerance |
-| d | **negative cases** | seeded counterexamples the tradition says do NOT satisfy the rule | the rule fires on one |
 
-For each obligation the layer owns (§2.4), state which of a–d applies, the detector, and its current
+For each obligation the layer owns (§2.4), state which of a–c applies, the detector, and its current
 result — `PASS` / `FAIL` / `PARTIAL` / **`NO DETECTOR`**. `NO DETECTOR` is never a pass; it is a gap.
 
-**A reference layer is where this matters most.** L0 holds the tradition itself, so an error here
-propagates into every reading built on it and is invisible at every later layer — each of which will
-faithfully compute the wrong thing.
+**A reference layer is where this matters most.** L0 holds the tradition's own testimony, so a corrupted
+copy there propagates into every reading built on it and is invisible at every later layer — each of which
+will faithfully compute from the wrong text. Carriage is L0's half of the question; the verdict is not.
 
 ### 2.5 · Edges and order
 
@@ -366,6 +374,10 @@ traces_to:   0.2
 
 For each of the product's ten proof obligations this layer is scored on (0.2 / product §11): where
 the layer stands today, measured, and what closes the gap.
+
+**Ten, not the parent's eleven, and deliberately:** `Domain correctness` is not a data-plane obligation
+(native ruling, 2026-09-25; data plane §13.3 item 1). Do not "correct" this count upward. What a layer
+does owe is §2.7's carriage and reproduction.
 
 ### 3.2 · Per asset — disposition
 
@@ -500,22 +512,25 @@ is an honest null, never a pass.
 | **Earn** · earned signal | every status/grade/PASS the asset emits has a detector measuring that specific claim (§N.8) | — |
 | **Null** · honest null | where a value cannot be derived, the asset emits null — not a plausible default (§N.7 item 6) | — |
 | **Vocab** · vocabulary conformance | one canonical id per thing, one closed alias set, no free-text synonym | — |
-| **Dom** · domain correctness | what the asset asserts about Jyotish is checked by **one** applicable detector below | — |
+| **Carr** · source carriage | what the asset restates from a source matches that source, what it computes reproduces a second way, and a witness disagreement is carried rather than settled — **one** applicable detector below | — |
 | **Narr** · narration fidelity | prose restates cited facts and does not re-derive them (§N.7) | the asset emits prose |
 | **Dens** · serving density | confirmed and catalog-only rows are counted separately; the dense layer survives a trim (§N.6) | the asset reaches a served surface |
 
 `Ldgr` absorbs the former facts/interpretation gate: a ledger entry naming its upstream ids **is**
 the separation test, and the separate gate had no detector of its own.
 
-**The domain menu.** Name the one detector that fits what the asset actually asserts, and run it.
-Running four where one applies is theatre; running none is an unearned signal.
+**The carriage menu.** Name the one detector that fits what the asset actually does, and run it. Running
+three where one applies is theatre; running none is an unearned signal.
 
 | | applies when | the check |
 |---|---|---|
 | D1 · source correspondence | the asset restates a cited classical source | the restatement against the source text |
-| D2 · cross-witness agreement | two independent authorities cover the same claim | they agree; where they don't, the disagreement is recorded, not averaged |
+| D2 · witness carriage | two independent authorities cover the same claim | the disagreement is carried forward as school disagreement, not averaged or silently resolved |
 | D3 · independent re-derivation | the value is computable a second way | compute it that way and compare |
-| D4 · seeded negative case | the asset classifies or fires | feed a case that must not fire; check it doesn't |
+
+*(A fourth check — seeding a case the tradition says must NOT fire — was listed here at v1.0 and removed
+at v1.2: deciding what must not fire is a doctrinal judgement, which native ruling 11 places above the
+data plane. It belongs to the reasoning layer's own artefact when that plane is elevated.)*
 
 **(b) Brief shape — checked once, not certified.** The §4.4 inheritance list fixes what an asset
 brief contains. A brief either carries those sections or it is not yet a brief. The tracker reports
@@ -539,7 +554,7 @@ any row it cannot fill.
 | **Earn** | §2.4 coverage obligations and their states | which of the asset's emitted states are claims, and what would falsify each |
 | **Null** | §2.4 (the state vocabulary); §1.4 evidence states | the asset's own convention for an underivable value |
 | **Vocab** | §2.6 vocabulary conformance | the classes this asset owns or consumes, and the authority for each |
-| **Dom** | §2.7 domain correctness; §4.4's Jyotish-concepts row | the concepts the asset asserts, and which menu item each invites |
+| **Carr** | §2.7 source carriage and reproduction; §4.4's Jyotish-concepts row | what the asset restates or computes, and which menu item each invites |
 | **Narr** | §2.2 presentation fields | whether the asset emits prose, and which fields carry it |
 | **Dens** | §2.2 presentation fields; §3.4 the served boundary | whether the asset reaches a served surface, and which |
 
@@ -592,8 +607,10 @@ Before an instance is called ready:
    instance. An instance missing the map fails this test outright — the map is the derivability test
    in tabular form, and demanding it without checking for it is how it goes unwritten.
 6. **Independent review**, fresh context, findings folded, before the instance is cited by anything
-   below it. **The reviewer assigns the verdict, not the author** — an instance carrying a verdict its
-   own author stamped is unreviewed, whatever the verdict says, and nothing may inherit from it.
+   below it. **A verdict requires a completed review; who signs it does not matter** — the reviewer, the
+   native or the session may sign (native ruling 9, 2026-09-25). What is void is a verdict with **no
+   review behind it at all**, or one signed while its acceptance tests are still pending: such an
+   instance is unreviewed whatever the verdict says, and nothing may inherit from it.
    Three verdicts:
 
 | verdict | meaning | may the tier below inherit from it? |

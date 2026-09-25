@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-25T13:55:06+05:30",
+  "generated_at": "2026-09-25T22:12:05+05:30",
   "generator_version": "1.0",
   "entry_count": 136,
-  "fingerprint": "78653297f354b808",
+  "fingerprint": "fc95c6ea969fa55e",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1873,13 +1873,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "c36bd0b215be3ef08417100796e06de7e172e3f073f5a30aaeeef040680c7383",
+      "fingerprint": "0914657b4ecb145ffdfdfbfc2f45375a4f03968597d149292b33aaf6890c6ca6",
       "native_id": "project",
-      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
       "last_verified_on": "2026-09-25",
       "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
       "tier": 1,
-      "fingerprint_sha256": "c36bd0b215be3ef08417100796e06de7e172e3f073f5a30aaeeef040680c7383",
+      "fingerprint_sha256": "0914657b4ecb145ffdfdfbfc2f45375a4f03968597d149292b33aaf6890c6ca6",
       "doc_status": "CURRENT"
     },
     {
@@ -1893,15 +1893,15 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "236b6c72a32ac29a110009a2009fd3c866c04745485ab4ff2995c44befedc94b",
+      "fingerprint": "ee3ca4e0536d905e8887fe561fd7777ad7b60d72dcee559998ce2ba33f0b957f",
       "native_id": "project",
-      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
       "last_verified_on": "2026-09-25",
       "parent": "MADHAV_PRODUCT_DEFINITION",
-      "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+      "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v3_0.md",
       "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs.",
       "tier": 2,
-      "fingerprint_sha256": "236b6c72a32ac29a110009a2009fd3c866c04745485ab4ff2995c44befedc94b",
+      "fingerprint_sha256": "ee3ca4e0536d905e8887fe561fd7777ad7b60d72dcee559998ce2ba33f0b957f",
       "doc_status": "CURRENT"
     },
     {
@@ -1927,7 +1927,7 @@
     {
       "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
       "path": "00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md",
-      "version": "1.1",
+      "version": "1.2",
       "status": "CURRENT",
       "layer": "governance",
       "expose_to_chat": false,
@@ -1935,13 +1935,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "1594f9924945ea2d2e0ca4cdb54c14a3c7cfde79bc3c0bbbe84ec41676ef6c9c",
+      "fingerprint": "d34f1086953e0b635edfd4907b639df3652962f352b58c13f2a9bc422e219148",
       "native_id": "project",
-      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
       "last_verified_on": "2026-09-25",
       "tier": 3,
       "note": "tier-3 template; produces one instance per layer",
-      "fingerprint_sha256": "1594f9924945ea2d2e0ca4cdb54c14a3c7cfde79bc3c0bbbe84ec41676ef6c9c",
+      "fingerprint_sha256": "d34f1086953e0b635edfd4907b639df3652962f352b58c13f2a9bc422e219148",
       "doc_status": "READY_FOR_USE"
     },
     {
@@ -1955,13 +1955,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "390309fc123de5269eaf6a76f906bc1e4cd5e8a8cee582b88df505176a8763cb",
+      "fingerprint": "d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7",
       "native_id": "project",
-      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
       "last_verified_on": "2026-09-25",
       "tier": 4,
       "note": "tier-4 template; produces one instance per asset",
-      "fingerprint_sha256": "390309fc123de5269eaf6a76f906bc1e4cd5e8a8cee582b88df505176a8763cb",
+      "fingerprint_sha256": "d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7",
       "doc_status": "READY_FOR_USE"
     },
     {
@@ -1975,13 +1975,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "33bc1b0adeefc1417128684d14b94c2446aa5b2b0fd753d8308e031c2dee08eb",
+      "fingerprint": "b1b26355a7854a7df4f677830e83216ef017d1e59852c3d9e1924fc527538b64",
       "native_id": "project",
-      "last_verified_session": "L3-STRATEGY-20260925",
+      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
       "last_verified_on": "2026-09-25",
       "tier": 3,
-      "note": "tier-3 instance for L0; ACCEPT_WITH_CORRECTIONS",
-      "fingerprint_sha256": "33bc1b0adeefc1417128684d14b94c2446aa5b2b0fd753d8308e031c2dee08eb",
+      "note": "tier-3 instance for L0; ACCEPT_WITH_CORRECTIONS. doc_status mirrors the document's own frontmatter (REVISED_PENDING_REVIEW as of 2026-09-25); status=CURRENT means only that this is the current artefact at this path, not that its review has closed.",
+      "fingerprint_sha256": "b1b26355a7854a7df4f677830e83216ef017d1e59852c3d9e1924fc527538b64",
       "doc_status": "REVISED_PENDING_REVIEW"
     }
   ]
