@@ -1,8 +1,8 @@
 {
- "generated_at": "2026-09-24T22:03:29+05:30",
+ "generated_at": "2026-09-25T12:01:26+05:30",
  "generator_version": "1.0",
- "entry_count": 132,
- "fingerprint": "633cac67ebcfc9c7",
+ "entry_count": 136,
+ "fingerprint": "e5fe13bf7c1d8ba1",
  "entries": [
   {
    "canonical_id": "CGP_AUDIT_v1_0",
@@ -1873,11 +1873,12 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "8fc0efc932884e96d4338ab9910986e12de1727218d8147dafaeb88da296fc44",
+   "fingerprint": "2d7c94e0a168f504096474365568871bcc82fca6c4969ce8a8d485c800f40549",
    "native_id": "project",
    "last_verified_session": "L3-STRATEGY-20260924",
-   "last_verified_on": "2026-09-24",
-   "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md"
+   "last_verified_on": "2026-09-25",
+   "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+   "tier": 1
   },
   {
    "canonical_id": "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE",
@@ -1890,13 +1891,86 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "a95976dcf0cd5e5bd285552ea55602e05bbc604f30af46fbbc23c038be1a2306",
+   "fingerprint": "7ed1d346b98ad7ab69066d4dbe6d6b02a8f3ca55a15ac4a1e91a9c96661e8e5a",
    "native_id": "project",
    "last_verified_session": "L3-STRATEGY-20260924",
-   "last_verified_on": "2026-09-24",
+   "last_verified_on": "2026-09-25",
    "parent": "MADHAV_PRODUCT_DEFINITION",
    "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
-   "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs."
+   "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs.",
+   "tier": 2
+  },
+  {
+   "canonical_id": "ELEVATION_DERIVATION_CHAIN",
+   "path": "00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md",
+   "version": "1.0",
+   "status": "CURRENT",
+   "layer": "governance",
+   "expose_to_chat": false,
+   "representations": [
+    "file"
+   ],
+   "interface_version": "1.0",
+   "fingerprint": "8a90a164fab01bd0985ef96276ef6c10465c95d44b78890c32c488e69cdc0463",
+   "native_id": "project",
+   "last_verified_session": "L3-STRATEGY-20260925",
+   "last_verified_on": "2026-09-25",
+   "tier": 0,
+   "note": "index of the elevation document system"
+  },
+  {
+   "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
+   "path": "00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md",
+   "version": "1.0",
+   "status": "CURRENT",
+   "layer": "governance",
+   "expose_to_chat": false,
+   "representations": [
+    "file"
+   ],
+   "interface_version": "1.0",
+   "fingerprint": "e1d4c3e3727634f4ddcfdcf5340c639a955945b2b698858de429bc2cfe1d4f58",
+   "native_id": "project",
+   "last_verified_session": "L3-STRATEGY-20260925",
+   "last_verified_on": "2026-09-25",
+   "tier": 3,
+   "note": "tier-3 template; produces one instance per layer"
+  },
+  {
+   "canonical_id": "ASSET_ELEVATION_TEMPLATE",
+   "path": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md",
+   "version": "1.0",
+   "status": "CURRENT",
+   "layer": "governance",
+   "expose_to_chat": false,
+   "representations": [
+    "file"
+   ],
+   "interface_version": "1.0",
+   "fingerprint": "7bb907c721ddb4106ab2b16e8156ee4f4e498bcbbc7f801acbe2368b97644660",
+   "native_id": "project",
+   "last_verified_session": "L3-STRATEGY-20260925",
+   "last_verified_on": "2026-09-25",
+   "tier": 4,
+   "note": "tier-4 template; produces one instance per asset"
+  },
+  {
+   "canonical_id": "MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY",
+   "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md",
+   "version": "2.1",
+   "status": "CURRENT",
+   "layer": "governance",
+   "expose_to_chat": false,
+   "representations": [
+    "file"
+   ],
+   "interface_version": "1.0",
+   "fingerprint": "08643f20b7bf658f2809e3d6a52a196ac4bae5bb61e35a27efb37a0222884d6d",
+   "native_id": "project",
+   "last_verified_session": "L3-STRATEGY-20260925",
+   "last_verified_on": "2026-09-25",
+   "tier": 3,
+   "note": "tier-3 instance for L0; ACCEPT_WITH_CORRECTIONS"
   }
  ]
 }

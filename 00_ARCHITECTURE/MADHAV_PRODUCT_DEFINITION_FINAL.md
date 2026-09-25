@@ -1,6 +1,11 @@
 ---
 artifact: MADHAV_PRODUCT_DEFINITION_FINAL.md
 canonical_id: MADHAV_PRODUCT_DEFINITION
+tier: 1
+kind: instance
+chain: 00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md
+inherits: []          # the root of the chain
+produces: [MADHAV_DATA_PLANE_VALUE_ARCHITECTURE]
 version: "FINAL"
 status: CURRENT
 produced_on: 2026-09-24

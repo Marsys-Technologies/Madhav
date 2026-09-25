@@ -1,6 +1,10 @@
 ---
 artifact: MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY
 canonical_id: MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY
+tier: 3
+kind: instance
+chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
+produces: ["40 bg_* asset instances — via §4.4, which ASSET_ELEVATION_TEMPLATE §0.1 receives row for row"]
 version: "2.1"
 status: ACCEPT_WITH_CORRECTIONS
 review_record: 00_ARCHITECTURE/briefs/reviews/REVIEW_L0_STRATEGY_v2_0.md  # verdict REJECT on v2.0; 2 BLOCKER + 12 MAJOR + 7 MINOR, all folded into v2.1

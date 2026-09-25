@@ -6766,6 +6766,36 @@ block (post-rebuild era), and proceeds.
 >
 > **D-1.5a CLOSED 2026-07-15** (13/15 gate assertions green; final proof achieved live — `judgment_query(482012f1, wealth)` composite moved `convergent_moderate`/1.15 → `convergent_strong`/~2.79, `bearing_yogas` carries the Dhana Yoga naming Venus+Jupiter). 6 hotfix cycles beyond the original 4-lane scope (PRs #563–#568 + migration 437) were required and independently verified; full detail in `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/REPORT_D-1.5a.md`. 2 items PARKED (documented, bounded, pre-existing, non-blocking): assertion #4 (5 residual `keyword_heuristic_v1` rows) and A7 (a `ganita_structural_get` serving-layer gap unrelated to this wave's writer-level fix, which is independently verified correct) — both carried forward as D-1.5b's open agenda, alongside a pre-existing `ka_vighnakara` ForeignKeyViolation discovered but out of scope to fix there (since RESOLVED in D-1.5b — see banner above). Live wave state ledger (CLOSED): `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/STATE_D-1.5a.md`. Gate: register §K.2 (12 assertions) + A5/A7, executable via `platform/scripts/audit/doctrine_harness/run.ts` — the harness's assertion definitions are the canonical copy of the gate per protocol §8.8(v). The banners this replaces (BRAHMA re-architecture SEALED 2026-06-02; "M6 INCOMING" / `OPERATOR_ACTIONS_PENDING.md` gate, 2026-05-31) are superseded — the BRAHMA rebuild and the M-series macro-phase banners are historical; the project's active-work framing since 2026-07-13 is the doctrine-waves campaign, not the M-series macro-phase arc. See SESSION_LOG.md Night-1 (2026-07-14), doctrine-waves campaign brief pack, and D-1.5a conductor-close (SESSION_LOG 2026-07-15) entries for full provenance.
 
+### §2.0a — The elevation derivation chain, declared and registered (2026-09-25)
+
+The four-tier chain is now declared in each document's own frontmatter (`tier`, `kind`, `inherits`,
+`produces`) and registered in `CAPABILITY_MANIFEST.json`, with the map at
+`00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md`.
+
+| tier | document | kind | status |
+|---|---|---|---|
+| 0 | `ELEVATION_DERIVATION_CHAIN_v1_0.md` | index | CURRENT |
+| 1 | `MADHAV_PRODUCT_DEFINITION_FINAL.md` | instance | FINAL, reviewed ACCEPT |
+| 2 | `MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md` | instance | FINAL, reviewed REJECT→folded |
+| 3 | `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md` | **template** | READY_FOR_USE, unreviewed |
+| 3 | `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md` | instance | ACCEPT_WITH_CORRECTIONS |
+| 3 | L1–L5 instances | instance | not written (native: L0 wraps first) |
+| 4 | `ASSET_ELEVATION_TEMPLATE_v1_0.md` | **template** | READY_FOR_USE, unreviewed, no instance |
+| 4 | 129 asset instances | instance | none; 0 of 4,128 criterion cells certified |
+
+**An asset instance inherits from FOUR sources, not three** — the asset template for shape, and *its
+own layer's instance* for content, on top of the data plane and the product definition. This was
+missing when the asset template was first written and is corrected: the hook is layer instance §4.4 →
+asset template §0.1, matched row for row.
+
+Three recording defects found and fixed while verifying: no document below tier 2 declared its tier;
+the data plane carried **no `canonical_id` at all**; and the layer template still pointed at the
+superseded `kala_brief_tracker.py`.
+
+Tracker: `00_ARCHITECTURE/control/asset_elevation_tracker.py`, with append-only
+`asset_gaps.jsonl` and `asset_certs.jsonl`. It reads production structure, never the migration
+ledger, which was measured on 2026-09-25 to disagree with production.
+
 ### §2.0 — Strategy stack ratified (2026-09-24)
 
 Both top tiers of the four-tier chain — product definition → data-plane value architecture → L0–L5

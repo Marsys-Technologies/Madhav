@@ -1,5 +1,11 @@
 ---
 artifact: MADHAV_DATA_PLANE_VALUE_ARCHITECTURE
+canonical_id: MADHAV_DATA_PLANE_VALUE_ARCHITECTURE
+tier: 2
+kind: instance
+chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
+inherits: [00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md]
+produces: [LAYER_DEFINITION_AND_STRATEGY_TEMPLATE, "six layer instances L0-L5"]
 version: "FINAL"
 status: CURRENT
 produced_on: 2026-09-24  # v3.0 realignment; v2.0 was 2026-09-13

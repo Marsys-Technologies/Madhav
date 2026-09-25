@@ -1,6 +1,10 @@
 ---
 artifact: LAYER_DEFINITION_AND_STRATEGY_TEMPLATE
 canonical_id: LAYER_DEFINITION_AND_STRATEGY_TEMPLATE
+tier: 3
+kind: template          # fixes shape; never cited as authority for content
+chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
+produces: ["one layer instance per L0-L5"]
 version: "1.0"
 status: READY_FOR_USE
 produced_on: 2026-09-24
@@ -8,7 +12,7 @@ decision_owner: Native
 inherits:
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md            # tier 1
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md   # tier 2
-  - 00_ARCHITECTURE/control/kala_brief_tracker.py                  # the five-tier asset criteria, as run
+  - 00_ARCHITECTURE/control/asset_elevation_tracker.py             # the 32 criteria, as run (supersedes kala_brief_tracker.py)
 role: >
   The tier-3 template. One instance per layer (L0-L5) produces that layer's definition, strategy
   and evaluation ladder. Every instance must be derivable from tiers 1-2 without inventing a

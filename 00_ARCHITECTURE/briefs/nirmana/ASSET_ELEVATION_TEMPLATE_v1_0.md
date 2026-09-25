@@ -6,10 +6,18 @@ status: READY_FOR_USE
 produced_on: 2026-09-25
 decision_owner: Native
 tier: 4
-inherits:
-  - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md   # tier 3 — §4.4 is the hook this hangs on
+kind: template          # fixes shape; never cited as authority for content
+chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
+produces: ["one asset instance per asset or service — 129 across L0-L5"]
+inherits:                                                                           # what THIS TEMPLATE inherits
+  - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md   # tier 3 template — §4.4 is the hook §0.1 receives
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md    # tier 2
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md                              # tier 1
+instance_inherits:                                                                  # what EACH ASSET INSTANCE inherits — FOUR, not three
+  - this template                                     # shape
+  - "the layer instance of ITS OWN layer"             # content: P-needs narrowed, obligations, correctness rules, contracts, scoring mode, disposition
+  - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md
+  - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md
 role: >
   The tier-4 template. One instance per asset or service. It does not re-derive anything the layer
   instance already settled; it inherits, measures the asset, registers every gap as an executable
@@ -24,6 +32,14 @@ changelog:
 
 One instance per asset or service. **Nothing here is re-derived from tiers 1–3.** If a section cannot
 be filled from the layer instance, that is a defect in the layer instance and is raised there.
+
+**Four inputs, not three.** This template fixes the *shape*. Each asset instance takes its *content*
+from **the layer instance of its own layer** — the P-needs narrowed to that layer, the obligations it
+is scored on, its correctness rules, its contracts, its scoring mode and this asset's disposition —
+on top of the data plane and the product definition. The layer instance is what makes an asset brief
+specific rather than generic; without it the brief would re-derive the layer, which is the invention
+the chain exists to prevent. The hook is **layer instance §4.4 → this template §0.1**, written to
+match row for row.
 
 ## Three things this template insists on, and why
 
