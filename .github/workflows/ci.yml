@@ -1252,7 +1252,35 @@ jobs:
           # class — see the PR body for the full triage and category breakdown.
           # Prior: 216 → 165 on 2026-08-21 (F-94 narrow repair). Lower freely;
           # raise only by ruling.
-          DRIFT_BASELINE_MAX: '79'
+          # Ratcheted DOWN 79 → 2 on 2026-09-25 (§H.3.5 retirement, native-authorized).
+          # The 77 findings the 2026-08-22 note below called "real, triaged drift" were
+          # one finding per CURRENT manifest artifact whose basename is absent from
+          # CANONICAL_ARTIFACTS_v1_0.md §1 — a table frozen at ~33 rows since 2026-04-27
+          # by that document's own SUPERSEDED frontmatter. That note read the residual
+          # correctly and drew the wrong conclusion from it: a table that is frozen BY
+          # DECLARATION will never name a later artifact, so the count could only grow,
+          # one per new governing document, and no amount of work could ever clear it.
+          # It reached 83 by 2026-09-25 and this gate was 3 documents from failing on
+          # main (~76/79) and already over on l3/kala-layer-briefs (~82/79) — where the
+          # only "fix" available under the old design was raising the ceiling, i.e. the
+          # amnesty this ratchet exists to forbid.
+          #
+          # §H.3.5 is retired instead: it was a TWO-registry agreement check and the
+          # 2026-04-27 cutover left one registry, so the defect class is dissolved, not
+          # suppressed. Its successor asserts the single premise that retirement rests
+          # on — that CANONICAL_ARTIFACTS still declares itself SUPERSEDED — and is
+          # mutation-tested (flip that status to CURRENT and it raises HIGH/exit 2).
+          # CLAUDE.md §D, whose prose-precedence sentence the 2026-08-22 repoint cited
+          # as grounds for pointing a detector at a superseded document, was amended the
+          # same day to state precedence as two numbered rules (CLAUDE.md v7.6).
+          #
+          # Measured on the retired tree: 2 findings / exit=3, both pre-existing LOW
+          # DB-unreachable (schema_db_unreachable, a3_schema_db_unreachable — this
+          # sandbox has no live DB, unchanged by any of the above). A ceiling of 2 is
+          # therefore the true floor here; it drops to 0 if CI ever gets a live DB, and
+          # any NEW finding of any severity now reddens CI immediately, which is what
+          # the ratchet was always for. Lower freely; raise only by ruling.
+          DRIFT_BASELINE_MAX: '2'
         run: |
           ec=0
           out=$(python platform/scripts/governance/drift_detector.py) || ec=$?

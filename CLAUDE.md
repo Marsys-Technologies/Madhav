@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "7.3"
+version: "7.6"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -144,9 +144,30 @@ Every Claude session, at open, reads the following in order before any substanti
 
 ## §D — Canonical artifacts (import)
 
-Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md`. Do not duplicate declarations here. Any disagreement between this file and CANONICAL_ARTIFACTS resolves in favor of CANONICAL_ARTIFACTS. Governance tooling reads `CAPABILITY_MANIFEST.json` (authoritative since 2026-04-27).
+Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CAPABILITY_MANIFEST.json`, the
+sole canonical-path registry since the Phase 1B cutover (2026-04-27). Do not duplicate declarations
+here.
 
-**Cached snapshot — informational only; authoritative is CAPABILITY_MANIFEST.json / CANONICAL_ARTIFACTS §1.**
+**Precedence, stated once so no tool has to infer it (amended 2026-09-25, native-authorized):**
+
+1. **`CAPABILITY_MANIFEST.json` is authoritative** for every artifact's canonical path, version and
+   status — for prose and for tooling alike. Any disagreement between this file and the manifest
+   resolves in favor of the manifest.
+2. **`CANONICAL_ARTIFACTS_v1_0.md` is a SUPERSEDED historical record** (its own frontmatter has said
+   so since 2026-04-27) and is read for audit trail only. **No governance tool compares a live
+   surface against it.** It is not a tie-breaker, not a comparison target, and not a registry.
+
+*Why this paragraph was rewritten.* It previously read "Any disagreement between this file and
+CANONICAL_ARTIFACTS resolves in favor of CANONICAL_ARTIFACTS" — a precedence rule about two prose
+documents, which `drift_detector.py`'s §H.3.5 check read as naming a comparison target for a
+detector. That check was pointed at CANONICAL_ARTIFACTS on 2026-08-22, in a repair whose own stated
+grounds were that its previous target (`FILE_REGISTRY_v1_14.md`) had declared itself SUPERSEDED —
+moving it onto a document that had declared itself SUPERSEDED four months earlier. By 2026-09-25 it
+produced 83 permanently-unclearable findings, one per governing artifact, growing with every new
+document. §H.3.5 is retired; this sentence is the root cause it grew from, and rule 2 above is
+written to stop a third round.
+
+**Cached snapshot — informational only; authoritative is CAPABILITY_MANIFEST.json.**
 
 | canonical_id | path | version | status |
 |---|---|---|---|
@@ -174,7 +195,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 7.5 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 7.6 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -372,6 +393,27 @@ If no such code path exists, or it checks a proxy rather than the claim, the sig
 usually true" or "nothing has broken yet" is not a substitute for a real detector.
 
 ---
+
+*End of CLAUDE.md v7.6 (2026-09-25, governance-simplification arc, native-authorized) — §D's
+precedence paragraph rewritten. It said "Any disagreement between this file and CANONICAL_ARTIFACTS
+resolves in favor of CANONICAL_ARTIFACTS"; `drift_detector.py` §H.3.5 read that prose-precedence rule
+as naming a comparison target, was repointed onto CANONICAL_ARTIFACTS on 2026-08-22 (in a repair
+whose own grounds were that its PREVIOUS target had declared itself SUPERSEDED — onto a document
+SUPERSEDED four months earlier), and by 2026-09-25 produced 83 permanently-unclearable findings,
+one per governing artifact, growing with every new document. §D now states precedence as two numbered
+rules: the manifest is authoritative for prose AND tooling; CANONICAL_ARTIFACTS is a SUPERSEDED
+historical record that no governance tool compares a live surface against. §H.3.5 retired the same
+day, replaced by one mutation-tested assertion of the premise the retirement rests on (that
+CANONICAL_ARTIFACTS still declares itself SUPERSEDED). Drift detector: 91 findings/exit=2 → 2/exit=3,
+both remaining LOW and environmental. **Frontmatter version corrected 7.3 → 7.6**: it had stayed at
+7.3 through the v7.4 and v7.5 bumps while the footer and the §D self-row advanced — the same GA.1
+registry-disagreement class §B.8 exists to forbid, sitting in the file that mandates the rule. Also
+this arc, no doctrine changed by it: the asset-certification burden cut from 33 scored criteria to 8
+falsifiable gates (129 assets × 8 = 1,032 cells, down from 4,257) across
+`LAYER_DEFINITION_AND_STRATEGY_TEMPLATE` v1.1, `ASSET_ELEVATION_TEMPLATE` v1.1,
+`ELEVATION_DERIVATION_CHAIN` v1.1 and `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY` v2.2, whose
+self-stamped ACCEPT_WITH_CORRECTIONS was withdrawn — its reviewer's verdict on v2.0 was REJECT and no
+reviewer has graded v2.1/v2.2. Prior: v7.5.*
 
 *End of CLAUDE.md v7.5 (2026-09-20, L3 Kāla autonomous data-plane conductor, Packet B3, DP-SD-021
 native-authorized) — §C item 5 rewritten to name the two parallel data-plane elevation campaigns
