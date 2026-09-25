@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.79
+version: 6.80
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.80 (2026-09-25, NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921, batched close W-L0-1/2/4/5/9):
+    New top banner records the L0 Brahmagyan execution lane's first governed close: five packets
+    committed and pushed on l0/brahmagyan-exec, migrations 1120-1124 committed HELD (1124 gated on
+    the bg_transit_rules 76-vs-75 reconciliation), W-L0-3 packet report owed, merge gate on the
+    sangam-stage3 carriage, native rulings OPEN for W-L0-9 identity and W-L0-6 Sarvatobhadra.
+    last_session_id and last_session_drift_verdict updated accordingly. The prior top banner
+    (v6.79, dual data-plane split) is retained below, not overwritten.
   - v6.79 (2026-09-20, L3 KĀLA AUTONOMOUS CONDUCTOR, Packet B3, DP-SD-021): New top banner records
     the native-authorized platform split — L3 Kāla data-plane elevation moves to Claude Code
     (integration branch codex/madhav-l3-claude-code) while Pūrṇa Anveṣaṇa remains in Codex — with a
@@ -5939,6 +5946,20 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟣 **NIRMĀṆA L0 BRAHMAGYAN EXECUTION — BATCHED CLOSE W-L0-1/2/4/5/9 (2026-09-25).** The L0
+> execution lane (`l0/brahmagyan-exec`, worktree-owned by the execution session; plan owned by the
+> strategy session on `l3/kala-layer-briefs`) closed five of nine strategy packets per
+> `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md` §4.2: W-L0-1 registry truth, W-L0-2 declared
+> dependencies/use, W-L0-4 served-surface density contracts (47/47 L0 descriptors), W-L0-5
+> provenance completion (migrations 1120–1124 committed but HELD — 1124 gated on the
+> `bg_transit_rules` 76-vs-75 row reconciliation), W-L0-9 identity-uniqueness design proposal
+> (native ruling OPEN). W-L0-3 code landed, its packet report is still owed. Next executable
+> packet: W-L0-7 consumer-perturbation harness. W-L0-8/W-L0-6 blocked on native rulings. **Merge
+> gate:** the branch does not merge to `main` until the unmerged sangam-stage3 carriage it carries
+> is resolved. Packet reports under `00_ARCHITECTURE/briefs/nirmana/L0_W_L0_*.md` are
+> authoritative for per-packet detector before/after; the batched SESSION_CLOSE is in
+> `SESSION_LOG.md`. This banner is a pointer only.
+
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
 > three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
@@ -9445,9 +9466,9 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
+  last_session_id: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 is at a metadata-only final source candidate. CI and review refutations for stale census, post-release sequencing, weighted starvation, nested pagination and log schema are repaired. Exact pre-release head b32974cbe is approved with no HIGH/MEDIUM findings; corrective lease released at 80d47c44d. Fresh exact-head CI and independent final reviews remain, with no later source mutation. No merge, deployment, shared migration, production, user or empirical acceptance claim."
+  last_session_drift_verdict: "Batched L0 close (W-L0-1/2/4/5/9) validated: --close-checklist 0 violations. Drift exit 3 (85 findings: 83 MEDIUM, 2 LOW) and schema corpus exit 3 (42 violations) are the inherited baseline class booked under known_residuals; zero findings name this session's touched files. Five HIGH fingerprint mismatches on canonical planning docs were resolved at close by syncing docs and manifest rows to the internally-consistent l3/kala-layer-briefs lineage state; no fingerprint invented."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md

@@ -1,7 +1,7 @@
 ---
 artifact: ASSET_ELEVATION_TEMPLATE
 canonical_id: ASSET_ELEVATION_TEMPLATE
-version: "1.0"
+version: "1.1"
 status: READY_FOR_USE
 produced_on: 2026-09-25
 decision_owner: Native
@@ -25,6 +25,7 @@ role: >
   every criterion its layer requires carries a current passing record — never by assertion.
 independent_review: NOT YET. First test is one L0 instance; defects found there are fixed HERE.
 changelog:
+  - "1.1 (2026-09-25, native-directed simplification): the certification burden cut from 33 scored criteria to EIGHT GATES. A gate earns its place by being a claim a detector could falsify; everything that was merely addressed-in-the-brief moved to §2 SHAPE, which certifies nothing. `Fct` folded into `Ldgr` (a ledger entry naming its upstream ids IS the separation test; the separate gate had no detector of its own). `Narr` and `Dens` made CONDITIONAL, disposed of with an explicit N-A and reason where they do not apply. `Dom` runs ONE applicable detector from a four-item menu, not all four — running four where one applies is theatre, running none is an unearned signal. Inheritance and ladder positions stopped being per-asset scores: inheritance is a property of the layer instance declared once in its §4.4, ladder positions are status fields read from the registry. Effect: 129 assets x 8 = 1,032 cells, down from 4,257. Nothing that ever caught a real defect was cut."
   - "1.0 (elevated in place, 2026-09-25, native-directed): 33rd criterion added — T4 `Dom`, domain correctness: is the astrology right, as distinct from well-sourced. Four autonomous detectors from product §14; NO DETECTOR on `Dom` blocks certification outright. Recorded explicitly: no human or acharya review exists in this system, so a check that cannot be automated does not exist rather than waiting for a person. An earlier draft of this dimension proposed a human verifier and was wrong on a decision the native had already taken."
   - "1.0 (2026-09-25): first version, derived from the L0 layer instance rather than invented. Three refinements the native's framing required and this template adopts: (1) BRIEF COMPLETENESS and ASSET CONFORMANCE are two different measurements and only the second certifies — a brief that mentions idempotency is not an asset that is idempotent; (2) the 32 criteria are evaluated against the ASSET, with a named detector per criterion, not by marker-detection over the brief's prose; (3) the layer-appropriate clause carries down — a reference-layer asset is scored on fidelity and is never retired for lack of a reader. Gap register and certification ledger are the two machine-read surfaces the tracker consumes."
 ---
@@ -125,28 +126,23 @@ finding.
 
 ---
 
-## §2 · Brief completeness — does this brief address the 32?
+## §2 · Brief shape — one check, no records
 
 ```
-measured_by: marker scan over this document
+measured_by: marker scan over this document (asset_elevation_tracker.py SHAPE)
 ```
 
-A tick means this brief *addresses* the criterion. It is not evidence about the asset and it does not
-certify anything. It exists to catch holes in the brief before review.
+A brief either carries these or it is not yet a brief. **This produces no certification record** — a
+present section is not a verified claim about the asset. It exists to catch holes before review.
 
-**T1 · Ten analysis lenses** — A identity · B inputs/DAG · C correctness · D data sufficiency ·
-E consumers · F AI/product · G efficiency · H reliability · I change packet · J final evidence
+identity · inputs/DAG · correctness · data sufficiency · consumers · value & target state · synergy
+obligations · knowledge-time · change packet · evidence
 
-**T2 · Six elevation lenses** — value extraction · target-state design · efficiency with quality ·
-synergy obligations · consumer walkthrough · knowledge-time discipline
-
-**T3 · Strategy alignment** — Product Definition · data-plane VA · layer strategy · synergy binding ·
-upstream/downstream · serving contract
-
-**T4 · Discipline gates** — facts/interpretation · derivation ledger · idempotency · earned signal ·
-narration fidelity · serving density · honest null · vocabulary conformance · **domain correctness**
-
-**T5 · Two ladders** — data-plane ladder position · campaign ladder position
+Two things that used to be scored here are not scored at all any more, because they are not
+per-asset facts. **Inheritance** — that this brief descends from its layer instance, the data plane
+and the product — is a property of the *layer instance*, declared once in its §4.4. **Ladder
+positions** — data-plane and campaign — are status fields read from the registry and the campaign
+events table; a status is not a verdict.
 
 ---
 
@@ -161,46 +157,70 @@ an obligation nobody can test.
 
 ---
 
-## §4 · Asset conformance — the evaluation matrix
+## §4 · Asset conformance — the eight gates
 
-**This is the section certification reads.** Each of the 32 criteria is evaluated against the asset,
-not against this brief. Every row carries a detector that could return false; where none exists, the
-verdict is **NO DETECTOR** — which is a gap (§5), never a pass.
+**This is the only section certification reads.** Each gate is evaluated against the **asset**, not
+against this brief. Every row carries a detector that could return false; where none exists, the
+verdict is **NO_DETECTOR** — which is a gap (§5), never a pass.
 
-| # | criterion | what it means for this asset | detector (query, test, or script) | verdict | evidence |
+Eight, not thirty-three. A gate earns its place by being a claim a detector could falsify. Everything
+that was merely *addressed in the brief* moved to §2, which certifies nothing.
+
+| gate | applies | what it means for this asset | detector (query, test, or script) | verdict | evidence |
 |---|---|---|---|---|---|
-| A | identity | | | PASS / FAIL / PARTIAL / NO DETECTOR / N-A | |
-| … | | | | | |
+| **Ldgr** derivation ledger | always | every derived value names the upstream `fact_id` it reads, and those ids resolve | | | |
+| **Idem** idempotency | always | a rebuild replaces its own rows; it never accretes (§N.3) | | | |
+| **Earn** earned signal | always | every status/grade/PASS has a detector measuring that specific claim (§N.8) | | | |
+| **Null** honest null | always | an underivable value is emitted as null, not a plausible default (§N.7.6) | | | |
+| **Vocab** vocabulary conformance | always | one canonical id per thing, one closed alias set, no free-text synonym | | | |
+| **Dom** domain correctness | always | ONE applicable detector from the menu below, run | | | |
+| **Narr** narration fidelity | if it emits prose | prose restates cited facts, never re-derives them (§N.7) | | | |
+| **Dens** serving density | if it reaches a served surface | confirmed vs catalog-only counted separately; the dense layer survives a trim (§N.6) | | | |
+
+`Ldgr` absorbs the former facts/interpretation gate: a ledger entry naming its upstream ids **is** the
+separation test, and the separate gate had no detector of its own.
+
+A conditional gate that does not apply is disposed of with an explicit **N/A** record and its reason —
+one line. It is never silently dropped.
 
 **Verdict vocabulary, used strictly:**
 
 - **PASS** — the detector ran and returned the passing result.
 - **FAIL** — the detector ran and returned failing.
-- **PARTIAL** — the detector ran; the criterion holds for a named subset and not the rest. The subset
-  is stated, not implied.
-- **NO DETECTOR** — nothing exists that could distinguish pass from fail. **Never recorded as PASS.**
-- **N/A** — the criterion does not apply to this asset kind, *with the reason*. A bare N/A is a gap.
+- **PARTIAL** — the detector ran; the gate holds for a named subset and not the rest. The subset is
+  stated, not implied.
+- **NO_DETECTOR** — nothing exists that could distinguish pass from fail. **Never recorded as PASS.**
+- **N/A** — the gate does not apply to this asset kind, *with the reason*. A bare N/A is a gap.
 
-**Domain correctness (`Dom`) is the criterion this template exists to stop anyone skipping.** It asks
-whether the astrology this asset carries is *right*, not whether it is well-sourced, well-identified
-or well-served. Its detector is one or more of the four autonomous checks in product §14 — source
-correspondence against the cited passage; cross-witness agreement or a recorded school disagreement;
-independent re-derivation from different inputs; seeded negative cases that must not fire. **No human
-or acharya review exists in this system.** An asset with `NO DETECTOR` on `Dom` is not certifiable,
-however many of the other 32 it passes: a component can be structurally immaculate and astrologically
-wrong, and nothing else here would notice.
+### 4.1 · The domain menu — pick one, run it
 
-**Scoring-mode clause.** Where `scoring_mode: fidelity`, criteria that measure contribution
-(consumers, efficiency, value extraction) are evaluated as *reachability and correctness of handoff*,
-and a low reading is never grounds for disposition **R**. Retirement in a reference layer happens only
-for failed fidelity — inauthentic, unsourced, wrongly identified, or superseded by a corrected
-authority.
+`Dom` asks whether the astrology this asset carries is *right*, not whether it is well-sourced,
+well-identified or well-served. **Name the one detector that fits what the asset actually asserts.**
+Running four where one applies is theatre; running none is an unearned signal.
+
+| | applies when | the check |
+|---|---|---|
+| **D1** source correspondence | the asset restates a cited classical source | the restatement against the source text |
+| **D2** cross-witness agreement | two independent authorities cover the same claim | they agree; where they don't, the disagreement is **recorded, not averaged** |
+| **D3** independent re-derivation | the value is computable a second way | compute it that way and compare |
+| **D4** seeded negative case | the asset classifies or fires | feed a case that must not fire; check it doesn't |
+
+Where none of the four applies, the record is `NO_DETECTOR` **with the reason** — an honest null.
+**No human or acharya review exists in this system**; a `Dom` row citing expert judgment is invalid.
+
+An asset with `NO_DETECTOR` on `Dom` is not certifiable however many other gates it passes: a
+component can be structurally immaculate and astrologically wrong, and nothing else here would notice.
+
+**Scoring-mode clause.** Where `scoring_mode: fidelity`, gates that measure contribution are evaluated
+as *reachability and correctness of handoff*, and a low reading is never grounds for disposition **R**.
+Retirement in a reference layer happens only for failed fidelity — inauthentic, unsourced, wrongly
+identified, or superseded by a corrected authority.
 
 ---
 
 ## §5 · Gap register — every gap is executable
 
-Each FAIL, PARTIAL and NO DETECTOR in §4, plus every must-add inherited from the layer's §3.3.
+Each FAIL, PARTIAL and NO_DETECTOR in §4, plus every must-add inherited from the layer's §3.3.
 
 | gap id | criterion | what is wrong | the change | detector that closes it | owner | gate it blocks | state |
 |---|---|---|---|---|---|---|---|
@@ -242,11 +262,14 @@ elevated.**
 
 ```
 asset · criterion · criterion_version · detector · evidence (path, query or run id) · verdict · verified_by · verified_on
+
+verdict ∈ { PASS | FAIL | PARTIAL | NO_DETECTOR | N/A }     — closed set, these spellings exactly
 ```
 
 - A revised criterion invalidates **only** its own records, across affected assets. It never re-opens
-  the rest. This is what lets the scale improve without wiping earned work — the failure that cost 73
-  freezes when a campaign definition was re-frozen.
+  the rest. This is what lets the scale improve without wiping earned work — the failure that cost 90 assets
+  their freezes when a campaign definition was re-frozen (98 ever frozen, 8 under t3; measured
+  2026-09-25 — the figure previously read 73).
 - **An asset is ELEVATED when every criterion its layer requires carries a current record with a
   passing verdict, and every gap in §5 is CLOSED.** Not before, and not by anyone's summary.
 - `verified_by` is never the party that made the change. A builder does not certify their own build.

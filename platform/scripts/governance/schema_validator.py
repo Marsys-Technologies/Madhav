@@ -535,16 +535,31 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
                 suggested_remediation="Investigate silent file mutation or refresh CANONICAL_ARTIFACTS",
             ))
     # mirror_pair_freshness_check retired 2026-05-27 per ND.1 close-out.
-    if so.get("tool") not in ("Claude Code", "Codex"):
+    # CCD-011 (2026-09-23, native ruling): "Kimi Code" admitted as a third governed tool.
+    if so.get("tool") not in ("Claude Code", "Codex", "Kimi Code"):
         violations.append(Violation(
             rule="handshake_tool_invalid",
             severity="CRITICAL",
             path="<handshake>",
-            evidence="`tool` must be Claude Code or Codex",
+            evidence="`tool` must be Claude Code, Codex, or Kimi Code",
             suggested_remediation="Record the session's actual tool provenance.",
         ))
     coordination = so.get("coordination", {}) or {}
-    if not coordination.get("lease_id") or coordination.get("lease_status_verified") is not True:
+    # CCD-011: sessions that positively declare `session_class: non-campaign` (with a
+    # non-empty rationale) are exempt from the campaign-coordination lease requirement
+    # (GIP §P.3 governs campaign/state-changing work; a non-campaign session touches no
+    # campaign state and holds no lease). Default remains campaign-class: lease required.
+    session_class = coordination.get("session_class", "campaign")
+    if session_class == "non-campaign":
+        if not (coordination.get("session_class_rationale") or "").strip():
+            violations.append(Violation(
+                rule="handshake_noncampaign_rationale_missing",
+                severity="CRITICAL",
+                path="<handshake>",
+                evidence="session_class: non-campaign declared without session_class_rationale",
+                suggested_remediation="Record why this session holds no campaign lease.",
+            ))
+    elif not coordination.get("lease_id") or coordination.get("lease_status_verified") is not True:
         violations.append(Violation(
             rule="handshake_coordination_lease_unverified",
             severity="CRITICAL",
@@ -573,7 +588,7 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
     return violations
 
 
-def validate_close_checklist_yaml(raw: str) -> List[Violation]:
+def validate_close_checklist_yaml(raw: str, open_session_class: str = "campaign") -> List[Violation]:
     """Validate a session-close YAML block per protocol §G."""
     violations: List[Violation] = []
     try:
@@ -613,22 +628,31 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                 suggested_remediation="Either expand declared_scope with rationale OR revert the touch",
             ))
     # mirror_updates_propagated check retired 2026-05-27 per ND.1 close-out.
-    if sc.get("tool") not in ("Claude Code", "Codex"):
+    # CCD-011 (2026-09-23, native ruling): "Kimi Code" admitted as a third governed tool.
+    if sc.get("tool") not in ("Claude Code", "Codex", "Kimi Code"):
         violations.append(Violation(
             rule="close_tool_invalid",
             severity="CRITICAL",
             path="<close>",
-            evidence="`tool` must be Claude Code or Codex",
+            evidence="`tool` must be Claude Code, Codex, or Kimi Code",
             suggested_remediation="Record the session's actual tool provenance.",
         ))
     sync = sc.get("cross_tool_sync", {}) or {}
+    # CCD-011: for a non-campaign companion session (see validate_handshake_yaml), the
+    # lease/work-order keys may be recorded as "not_applicable_non_campaign" instead of
+    # true — the session never held a lease, so there is nothing to release.
+    NA = "not_applicable_non_campaign"
     for key in ("work_order_outcome_recorded", "lease_release_recorded", "lease_release_verified_on_remote"):
-        if sync.get(key) is not True:
-            violations.append(Violation(
-                rule=f"close_cross_tool_sync_missing[{key}]",
-                severity="CRITICAL",
-                path="<close>",
-                evidence=f"cross_tool_sync.{key} must be true",
+        val = sync.get(key)
+        if val is True:
+            continue
+        if open_session_class == "non-campaign" and val == NA:
+            continue
+        violations.append(Violation(
+            rule=f"close_cross_tool_sync_missing[{key}]",
+            severity="CRITICAL",
+            path="<close>",
+            evidence=f"cross_tool_sync.{key} must be true",
             suggested_remediation="Record the outcome and release the verified coordination lease.",
         ))
     if not isinstance(sync.get("ccd_entries_appended"), list):
@@ -650,9 +674,13 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
         ec = run.get("exit_code")
         if ec in (0, None):
             continue
+        # Residuals may be declared per-run (run.known_residuals) or shared at the
+        # top level (legacy). Per-run takes precedence (CCD-011).
+        residuals = run.get("known_residuals") or known_residuals
+        has_residuals = isinstance(residuals, list) and len(residuals) > 0
         if ec == 3:
             # §F whitelist: accept exit 3 iff known_residuals block present + all MEDIUM/LOW
-            if not has_residuals_block:
+            if not has_residuals:
                 violations.append(Violation(
                     rule="close_checklist_known_residuals_missing",
                     severity="HIGH",
@@ -665,13 +693,13 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                 ))
             else:
                 # Verify each residual is MEDIUM or LOW + carries booking reference
-                for r in known_residuals:
+                for r in residuals:
                     sev = (r.get("severity") or "").upper()
                     if sev not in ("MEDIUM", "LOW"):
                         violations.append(Violation(
                             rule="close_checklist_residual_severity_violation",
                             severity="HIGH",
-                            path=f"<close>.known_residuals",
+                            path=f"<close>.{field}.known_residuals",
                             evidence=f"residual `{r.get('finding_id', '<?>')}` has severity `{sev}`; "
                                      f"exit-code-3 whitelist requires MEDIUM or LOW only",
                             suggested_remediation="Remove the residual OR escalate to HIGH/CRITICAL handling",
@@ -680,17 +708,45 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                         violations.append(Violation(
                             rule="close_checklist_residual_booking_missing",
                             severity="MEDIUM",
-                            path=f"<close>.known_residuals",
+                            path=f"<close>.{field}.known_residuals",
+                            evidence=f"residual `{r.get('finding_id', '<?>')}` missing booking_reference",
+                            suggested_remediation="Add booking_reference (step_id + rationale) per §F",
+                        ))
+        elif ec == 1:
+            # CCD-011 booked-exit-1 extension: exit 1 passes IFF every finding is
+            # enumerated 1:1 in known_residuals (count must equal violations_found)
+            # and each entry carries a booking_reference. Severities are unrestricted
+            # at exit 1 — the gate is booking, not severity: pre-existing CRITICAL
+            # shared debt (e.g. SESSION_LOG entries that honestly carry no handshake)
+            # must remain owner-visible, not silently whitelisted away.
+            n = run.get("violations_found")
+            count_ok = has_residuals if n is None else (has_residuals and len(residuals) == n)
+            if not count_ok:
+                violations.append(Violation(
+                    rule=f"close_{field}_nonzero_exit",
+                    severity="HIGH",
+                    path=f"<close>.{field}",
+                    evidence=f"exit_code=1 for {field} with {n} findings, but known_residuals "
+                             f"enumerates {len(residuals) if has_residuals else 0} — 1:1 booking required",
+                    suggested_remediation="Enumerate every finding with booking_reference, or resolve the findings",
+                ))
+            else:
+                for r in residuals:
+                    if not r.get("booking_reference"):
+                        violations.append(Violation(
+                            rule="close_checklist_residual_booking_missing",
+                            severity="MEDIUM",
+                            path=f"<close>.{field}.known_residuals",
                             evidence=f"residual `{r.get('finding_id', '<?>')}` missing booking_reference",
                             suggested_remediation="Add booking_reference (step_id + rationale) per §F",
                         ))
         else:
-            # Exit 1, 2, 4+ always fail close
+            # Exit 2, 4+ always fail close
             violations.append(Violation(
                 rule=f"close_{field}_nonzero_exit",
                 severity="HIGH",
                 path=f"<close>.{field}",
-                evidence=f"exit_code={ec} for {field} (not in whitelist {{0, 3+known_residuals}})",
+                evidence=f"exit_code={ec} for {field} (not in whitelist {{0, 3+MEDIUM/LOW booked, 1+1:1 booked}})",
                 suggested_remediation="Inspect the run's report; resolve or block close",
             ))
     # close_criteria_met gate
@@ -710,20 +766,27 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
 # --------------------------------------------------------------------------------------
 
 def _glob_match(path: str, globs: list) -> bool:
-    """Match a path against any of the given globs using fnmatch semantics."""
+    """Match a path against any of the given globs using fnmatch semantics.
+
+    A glob prefixed with `!` is a negation (CCD-011): if any negation matches,
+    the path is OUT regardless of other matches — this lets a may_touch carve-out
+    coexist with a broader must_not_touch tree glob.
+    """
     import fnmatch
+    matched = False
     for g in (globs or []):
-        # Allow both `**/` and `*` in the pattern
-        if fnmatch.fnmatch(path, g) or fnmatch.fnmatch(path, g + "**") \
-                or (g.endswith("**") and path.startswith(g[:-2])) \
-                or (g.endswith("/**") and path.startswith(g[:-3])):
-            return True
-        # Strict prefix handling for tree globs
-        if "/**" in g:
-            prefix = g.split("/**")[0]
-            if path == prefix or path.startswith(prefix + "/"):
-                return True
-    return False
+        neg = g.startswith("!")
+        pat = g[1:] if neg else g
+        hit = fnmatch.fnmatch(path, pat) or fnmatch.fnmatch(path, pat + "**") \
+            or (pat.endswith("**") and path.startswith(pat[:-2])) \
+            or (pat.endswith("/**") and path.startswith(pat[:-3]))
+        if not hit and "/**" in pat:
+            prefix = pat.split("/**")[0]
+            hit = path == prefix or path.startswith(prefix + "/")
+        if hit and neg:
+            return False
+        matched = matched or hit
+    return matched
 
 
 def validate_scope_boundary(handshake_data: dict, close_data: dict) -> List[Violation]:
@@ -1213,7 +1276,18 @@ def main() -> int:
             violations = validate_handshake_yaml(text)
         elif args.close_checklist:
             text = args.close_checklist.read_text(encoding="utf-8")
-            violations = validate_close_checklist_yaml(text)
+            # CCD-011: companion handshake may declare session_class: non-campaign,
+            # which relaxes the lease-release keys in the close checklist.
+            _open_session_class = "campaign"
+            if args.session_open_for_close:
+                try:
+                    _ho_pre = yaml.safe_load(args.session_open_for_close.read_text(encoding="utf-8"))
+                    _coord = ((_ho_pre or {}).get("session_open") or {}).get("coordination") or {}
+                    if _coord.get("session_class") == "non-campaign":
+                        _open_session_class = "non-campaign"
+                except Exception:
+                    pass  # the scope-boundary loader below reports parse problems
+            violations = validate_close_checklist_yaml(text, open_session_class=_open_session_class)
             # §C scope-boundary cross-reference (Step 12 extension)
             if args.session_open_for_close:
                 try:

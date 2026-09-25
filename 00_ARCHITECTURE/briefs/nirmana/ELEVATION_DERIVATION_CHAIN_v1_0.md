@@ -1,7 +1,7 @@
 ---
 artifact: ELEVATION_DERIVATION_CHAIN
 canonical_id: ELEVATION_DERIVATION_CHAIN
-version: "1.0"
+version: "1.1"
 status: CURRENT
 tier: 0
 produced_on: 2026-09-25
@@ -12,6 +12,7 @@ role: >
   chain, not a member of it — it governs no content and settles no astrology.
 produces: [LAYER_DEFINITION_AND_STRATEGY_TEMPLATE, ASSET_ELEVATION_TEMPLATE]
 changelog:
+  - "1.1 (2026-09-25): rules 9 and 10 added — only a falsifiable claim is certified (eight gates; shape, inheritance and ladder position are not scores), and the reviewer assigns the verdict, not the author. Rule 7 rewritten: ONE applicable domain detector from the menu, not four. State table corrected: the L0 instance's ACCEPT_WITH_CORRECTIONS was self-stamped and is withdrawn (its reviewer's verdict on v2.0 was REJECT); the layer template now carries K3's independent ACCEPT_WITH_CORRECTIONS; asset cells 4,128 -> 1,032, and the old figure was itself wrong (129 x 32, when the criteria count had already reached 33)."
   - "1.0 (2026-09-25): written at the native's direction to log the process after the chain was built. Records one correction found while writing it: an ASSET INSTANCE inherits from FOUR sources, not three — the asset template supplies its shape, and its own layer's instance supplies its content, alongside the data plane and the product definition. The asset template declared only three, naming the layer TEMPLATE where it should also name the layer INSTANCE."
 ---
 
@@ -109,13 +110,20 @@ below it inherits from it.
    fixed in the document; a finding about the *thing it describes*, correctly recorded, is a gap with
    a detector. One independent review discharges the gate (native ruling, 2026-09-25).
 7. **Domain correctness is verified autonomously or not at all.** Whether the astrology is *right* —
-   as distinct from well-sourced, well-identified or well-served — is checked by four detectors that
-   can each return false: source correspondence against the cited passage, cross-witness agreement or
-   a recorded school disagreement, independent re-derivation from different inputs, and seeded
-   negative cases that must not fire. **No human, acharya or expert review exists in this system.**
+   as distinct from well-sourced, well-identified or well-served — is checked by **one applicable
+   detector** from a four-item menu: source correspondence against the cited passage, cross-witness
+   agreement (a disagreement is *recorded*, never averaged), independent re-derivation from different
+   inputs, or a seeded negative case that must not fire. Running four where one applies is theatre;
+   running none is an unearned signal. **No human, acharya or expert review exists in this system.**
    A check that cannot be automated does not exist; it does not wait for a person.
 8. **Certification is per criterion, never per revision.** A revised criterion re-opens only its own
    records. This is what lets the scale improve without wiping earned work.
+9. **Only a falsifiable claim is certified.** Eight gates, each a claim a detector could return false
+   on. What a brief *contains* is checked once as shape and produces no record; inheritance is a
+   property of the layer instance declared once; ladder position is a status field. A present section
+   is not a verified claim. (2026-09-25: this replaced 33 scored criteria across five tiers.)
+10. **The reviewer assigns the verdict, not the author.** An instance carrying a verdict its own
+   author stamped is unreviewed, whatever the verdict says, and nothing may inherit from it.
 
 ## Current state of the chain
 
@@ -123,11 +131,11 @@ below it inherits from it.
 |---|---|---|
 | 1 | product definition | **FINAL**, reviewed ACCEPT, registered |
 | 2 | data plane | **FINAL**, reviewed REJECT→folded, registered |
-| 3 | layer template | READY_FOR_USE — not independently reviewed; repaired ten times by its first instance |
-| 3 | L0 Brahmagyan instance | **ACCEPT_WITH_CORRECTIONS**, six corrections with gates |
+| 3 | layer template | **v1.1** — K3 independent review: ACCEPT_WITH_CORRECTIONS (2 BLOCKER, 14 MAJOR, 6 MINOR); both blockers folded, simplification applied |
+| 3 | L0 Brahmagyan instance | **REVISED_PENDING_REVIEW** — v2.0 was reviewed REJECT; v2.1 folds it but no reviewer has assigned v2.1 a verdict. Its earlier ACCEPT_WITH_CORRECTIONS was self-stamped and is withdrawn (rule 10). |
 | 3 | L1–L5 instances | not written — the native ruled L0 is wrapped before L1 begins |
 | 4 | asset template | READY_FOR_USE — not independently reviewed, no instance yet |
-| 4 | 129 asset instances | none written; 0 of 4,128 criterion cells certified |
+| 4 | 129 asset instances | none written; 0 of **1,032** gate cells certified (129 × 8; was 4,257 at 33 criteria) |
 
 The tracker that reads tiers 3–4 is `00_ARCHITECTURE/control/asset_elevation_tracker.py`, with its two
 append-only ledgers `asset_gaps.jsonl` and `asset_certs.jsonl`.

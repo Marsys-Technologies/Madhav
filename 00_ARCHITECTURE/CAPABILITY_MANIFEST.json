@@ -1873,9 +1873,9 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "2d7c94e0a168f504096474365568871bcc82fca6c4969ce8a8d485c800f40549",
+   "fingerprint": "b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5",
    "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260924",
+   "last_verified_session": "L3-CHAIN-SEAL-20260925",
    "last_verified_on": "2026-09-25",
    "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
    "tier": 1
@@ -1891,9 +1891,9 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "7ed1d346b98ad7ab69066d4dbe6d6b02a8f3ca55a15ac4a1e91a9c96661e8e5a",
+   "fingerprint": "68b991f349edae92519935d5845b6a90f78624f631866c1cbd87a99ca874ec86",
    "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260924",
+   "last_verified_session": "L3-CHAIN-SEAL-20260925",
    "last_verified_on": "2026-09-25",
    "parent": "MADHAV_PRODUCT_DEFINITION",
    "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
@@ -1903,7 +1903,7 @@
   {
    "canonical_id": "ELEVATION_DERIVATION_CHAIN",
    "path": "00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md",
-   "version": "1.0",
+   "version": "1.1",
    "status": "CURRENT",
    "layer": "governance",
    "expose_to_chat": false,
@@ -1911,7 +1911,7 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "8a90a164fab01bd0985ef96276ef6c10465c95d44b78890c32c488e69cdc0463",
+   "fingerprint": "39af35d83e2a901ce03143842c8b0c01fb11bf4e2f172324086f3233a12b738b",
    "native_id": "project",
    "last_verified_session": "L3-STRATEGY-20260925",
    "last_verified_on": "2026-09-25",
@@ -1921,7 +1921,7 @@
   {
    "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
    "path": "00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md",
-   "version": "1.0",
+   "version": "FINAL",
    "status": "CURRENT",
    "layer": "governance",
    "expose_to_chat": false,
@@ -1929,9 +1929,9 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "e1d4c3e3727634f4ddcfdcf5340c639a955945b2b698858de429bc2cfe1d4f58",
+   "fingerprint": "bb88bee1e024b349470b74301159114aaedd6880a0e35f76e86ba74819e0ae42",
    "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260925",
+   "last_verified_session": "L3-CHAIN-SEAL-20260925",
    "last_verified_on": "2026-09-25",
    "tier": 3,
    "note": "tier-3 template; produces one instance per layer"
@@ -1939,7 +1939,7 @@
   {
    "canonical_id": "ASSET_ELEVATION_TEMPLATE",
    "path": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md",
-   "version": "1.0",
+   "version": "1.1",
    "status": "CURRENT",
    "layer": "governance",
    "expose_to_chat": false,
@@ -1947,9 +1947,9 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "7bb907c721ddb4106ab2b16e8156ee4f4e498bcbbc7f801acbe2368b97644660",
+   "fingerprint": "d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7",
    "native_id": "project",
-   "last_verified_session": "L3-STRATEGY-20260925",
+   "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
    "last_verified_on": "2026-09-25",
    "tier": 4,
    "note": "tier-4 template; produces one instance per asset"
