@@ -921,18 +921,31 @@ def check_a3_schema_compliance(conn) -> dict:
     """
     VALID_STATUS, PROHIBITED_STATUS, _vocab_err = _load_verification_vocab()
     MV_NAMES = [
-        "mv_lagna_facts",
-        "mv_planet_dignity_facts",
-        "mv_dasha_active_facts",
-        "mv_yoga_facts",
-        "mv_ashtakavarga_facts",
-        "mv_shadbala_facts",
-        "mv_divisional_facts",
-        "mv_transit_facts",
-        "mv_kp_facts",
-        "mv_upagraha_facts",
-        "mv_tajaka_facts",
-        "mv_synthesis_facts",
+        # CORRECTED 2026-09-25, native-directed. This list used to name twelve `mv_*_facts` views
+        # ("mv_lagna_facts", "mv_yoga_facts", …) and told the reader to apply migration
+        # `138_mvs.sql`. Measured: those twelve names exist in NO database, in NO code, and not
+        # even in that migration — they came from A3_CHART_FACTS_SPEC's prose, while the
+        # implementation used `mv_chart_*_summary` names. `138_mvs.sql` is ARCHIVED
+        # (platform/migrations/_archive/) and absent from the ledger. So this gate was permanently
+        # red about twelve things that never existed under those names, which cost it the one
+        # ability a gate has: telling a real absence from a legal state.
+        #
+        # What is actually true: of the twelve views that archived migration really declares, EIGHT
+        # are live, populated and consumed — each referenced by 4-8 files — and they are the eight
+        # below. Four are absent (`mv_chart_arudhas`, `mv_chart_house_summary`, `mv_chart_sahams`,
+        # `mv_chart_yogas_active_at_birth`) and are deliberately NOT asserted: no code reads any of
+        # them, they appear only in planning documents, and `mv_chart_yogas_fired_summary` exists
+        # and does the last one's job. A stored snapshot nothing reads would add a refresh cost on
+        # every build for no earned distinction (§14.1 ablation). If a consumer appears, the view is
+        # a small migration then — and this list gains a row.
+        "mv_chart_planet_summary",
+        "mv_chart_shadbala_summary",
+        "mv_chart_vargas_summary",
+        "mv_chart_ashtakavarga_summary",
+        "mv_chart_bhava_bala_summary",
+        "mv_chart_sensitive_points_summary",
+        "mv_chart_panchanga_birth_summary",
+        "mv_cross_ayanamsha_consensus",
     ]
 
     summary: dict = {
@@ -1016,18 +1029,31 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
     schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
 
     MV_NAMES = [
-        "mv_lagna_facts",
-        "mv_planet_dignity_facts",
-        "mv_dasha_active_facts",
-        "mv_yoga_facts",
-        "mv_ashtakavarga_facts",
-        "mv_shadbala_facts",
-        "mv_divisional_facts",
-        "mv_transit_facts",
-        "mv_kp_facts",
-        "mv_upagraha_facts",
-        "mv_tajaka_facts",
-        "mv_synthesis_facts",
+        # CORRECTED 2026-09-25, native-directed. This list used to name twelve `mv_*_facts` views
+        # ("mv_lagna_facts", "mv_yoga_facts", …) and told the reader to apply migration
+        # `138_mvs.sql`. Measured: those twelve names exist in NO database, in NO code, and not
+        # even in that migration — they came from A3_CHART_FACTS_SPEC's prose, while the
+        # implementation used `mv_chart_*_summary` names. `138_mvs.sql` is ARCHIVED
+        # (platform/migrations/_archive/) and absent from the ledger. So this gate was permanently
+        # red about twelve things that never existed under those names, which cost it the one
+        # ability a gate has: telling a real absence from a legal state.
+        #
+        # What is actually true: of the twelve views that archived migration really declares, EIGHT
+        # are live, populated and consumed — each referenced by 4-8 files — and they are the eight
+        # below. Four are absent (`mv_chart_arudhas`, `mv_chart_house_summary`, `mv_chart_sahams`,
+        # `mv_chart_yogas_active_at_birth`) and are deliberately NOT asserted: no code reads any of
+        # them, they appear only in planning documents, and `mv_chart_yogas_fired_summary` exists
+        # and does the last one's job. A stored snapshot nothing reads would add a refresh cost on
+        # every build for no earned distinction (§14.1 ablation). If a consumer appears, the view is
+        # a small migration then — and this list gains a row.
+        "mv_chart_planet_summary",
+        "mv_chart_shadbala_summary",
+        "mv_chart_vargas_summary",
+        "mv_chart_ashtakavarga_summary",
+        "mv_chart_bhava_bala_summary",
+        "mv_chart_sensitive_points_summary",
+        "mv_chart_panchanga_birth_summary",
+        "mv_cross_ayanamsha_consensus",
     ]
 
     if not shutil.which("psql"):
@@ -1149,9 +1175,46 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
                 severity="HIGH",
                 canonical_id=None,
                 surfaces_involved=["pg_matviews"],
-                evidence=f"Missing A3 MVs: {', '.join(missing_mvs)}",
-                suggested_remediation="Apply migration 138_mvs.sql to create the 12 A3 materialized views",
+                evidence=(
+                    f"{len(missing_mvs)} consumed materialized view(s) absent from production: "
+                    f"{', '.join(missing_mvs)}"
+                ),
+                suggested_remediation=(
+                    "Each of these is read by live code; an absent one breaks its readers. Recreate it "
+                    "from its owning migration and refresh it. This list asserts only views that have "
+                    "real consumers — see the note at MV_NAMES before adding or removing a row."
+                ),
             ))
+
+    # 2b. Present but EMPTY is its own defect: a materialized view that exists and holds nothing
+    # while chart_facts holds rows is a snapshot nobody refreshed — an answer-shaped object with no
+    # answer in it, which is the §N.8 class one layer over. Reported MEDIUM: the reader is served a
+    # confident empty result rather than an error.
+    if out is not None:
+        present_mvs = [mv for mv in MV_NAMES if mv in existing_mvs]
+        out_f, err_f = _run_query("SELECT COUNT(*) FROM chart_facts;")
+        facts_present = bool(out_f and out_f.strip().isdigit() and int(out_f.strip()) > 0)
+        if facts_present and present_mvs:
+            empty_mvs = []
+            for mv in present_mvs:
+                out_c, err_c = _run_query(f"SELECT COUNT(*) FROM {mv};")
+                if not err_c and out_c and out_c.strip().isdigit() and int(out_c.strip()) == 0:
+                    empty_mvs.append(mv)
+            if empty_mvs:
+                findings.append(Finding(
+                    cls="a3_materialized_view_never_refreshed",
+                    severity="MEDIUM",
+                    canonical_id=None,
+                    surfaces_involved=["pg_matviews", "chart_facts"],
+                    evidence=(
+                        f"{len(empty_mvs)} materialized view(s) exist but hold zero rows while "
+                        f"chart_facts is populated: {', '.join(empty_mvs)}"
+                    ),
+                    suggested_remediation=(
+                        "REFRESH MATERIALIZED VIEW (CONCURRENTLY where a unique index allows it) after "
+                        "each build, or retire the view. An empty view serves a confident wrong answer."
+                    ),
+                ))
 
     # 3. Soft check: declared categories presence (LOW)
     if schema_path.exists():

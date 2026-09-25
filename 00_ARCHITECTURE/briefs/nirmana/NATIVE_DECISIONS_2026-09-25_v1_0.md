@@ -1,12 +1,12 @@
 ---
 artifact: NATIVE_DECISIONS_2026-09-25
 canonical_id: NATIVE_DECISIONS_2026_09_25
-version: "1.4"
+version: "1.5"
 status: RULED
 date: 2026-09-25
 decision_owner: Native
 recorded_by: L3 strategy session (madhav-e3)
-role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; five further native-initiated authorizations added at v1.1-v1.4 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named, #13 tiers 1-3 sealed), plus the resolution of decision 5 and the chart_facts verification-status investigation, both GOVERNING FACTS rather than answers to a question this session asked."
+role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; six further native-initiated authorizations added at v1.1-v1.5 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named, #13 tiers 1-3 sealed, #14 the A3 materialized-view expectation, decided under delegation), plus the resolution of decision 5 and the chart_facts verification-status investigation, both GOVERNING FACTS rather than answers to a question this session asked."
 ---
 
 # Native decisions, 2026-09-25
@@ -379,3 +379,57 @@ Two honest options, native's call: **build them** (if the A3 fact-view design is
 **retire the expectation** from the check and name whatever replaced it. What should not continue is a
 gate demanding views from an archived migration — that is the same defect as the vocabulary copy, one
 layer over.
+
+---
+
+# v1.5 — decision 14, delegated
+
+## 14 — The twelve A3 materialized views: expectation corrected, three not built
+
+**Native instruction:** "I want you to decide for myself and do the needful and wrap this out."
+Decided and executed; the reasoning is recorded here so the decision can be overturned on its merits
+rather than re-litigated from scratch.
+
+**Decision: do not build the absent views. Correct the gate to assert the eight that exist and are
+read.** Done in `platform/scripts/governance/drift_detector.py`.
+
+**What was actually true, measured before deciding:**
+
+| claim the gate made | what the evidence says |
+|---|---|
+| twelve `mv_*_facts` views are missing | those twelve names exist in **no** database, **no** code, and **not even in the migration the gate names** — they came from `A3_CHART_FACTS_SPEC_v1_0.md`'s prose while the implementation used `mv_chart_*_summary` |
+| "apply migration `138_mvs.sql`" | that migration is **archived** (`platform/migrations/_archive/`) and absent from the ledger |
+| nothing of that design exists | **eight of the twelve views the archived migration really declares are live, populated and consumed** |
+
+The eight, each referenced by 4–8 files and all holding rows today: `mv_chart_planet_summary` (50),
+`mv_chart_shadbala_summary` (42), `mv_chart_vargas_summary` (1,550), `mv_chart_ashtakavarga_summary`
+(520), `mv_chart_bhava_bala_summary` (60), `mv_chart_sensitive_points_summary` (1,515),
+`mv_chart_panchanga_birth_summary` (386), `mv_cross_ayanamsha_consensus` (20,043).
+
+**Why the four absent ones are not built** — `mv_chart_arudhas`, `mv_chart_house_summary`,
+`mv_chart_sahams`, `mv_chart_yogas_active_at_birth`:
+
+1. **Nothing reads them.** They appear only in planning documents — the A3 spec, the old conductor
+   implementation plan and its session queue. Not one line of application code refers to any of them.
+2. **The fourth already has a successor.** `mv_chart_yogas_fired_summary` exists, is populated and is
+   read; it does that view's job under a truer name (fired, not merely "active at birth").
+3. **Product doctrine says not to.** A materialized view is a stored snapshot that must be refreshed on
+   every build. Building one with no consumer buys a recurring refresh cost for no earned distinction —
+   precisely what §14.1's ablation rule exists to prevent ("an asset that cannot be ablated because
+   nothing reads it has already answered the question"). The underlying facts remain fully queryable
+   from `chart_facts`; what would be added is speed no caller has asked for.
+4. **Reversible in an afternoon.** If a consumer appears — an arudha surface, a house-summary panel, a
+   Tājaka saham reader — the view is one small migration and one row in the gate's list. The note at
+   `MV_NAMES` says exactly this, so the next session does not have to rediscover it.
+
+**Two detectors came out of it, both able to fail:**
+
+- The gate now asserts the **eight consumed views**. If one disappears or is dropped, that is a real
+  HIGH finding with real consequences (live readers break) rather than noise about names nobody used.
+- New: **`a3_materialized_view_never_refreshed`** (MEDIUM). A view that exists and holds zero rows while
+  `chart_facts` is populated is a snapshot nobody refreshed — an answer-shaped object with no answer in
+  it, which is the §N.8 class one layer over, and worse than an error because the reader is served a
+  confident empty result. All eight pass today; the check would catch the day one stops being refreshed.
+
+**Result:** the drift detector reports **0 CRITICAL, 0 HIGH, 0 MEDIUM** against production. The single
+remaining LOW is the soft, by-design one (73 schema categories whose writers are added incrementally).
