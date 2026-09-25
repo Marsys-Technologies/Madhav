@@ -1,7 +1,7 @@
 ---
 artifact: NATIVE_DECISIONS_2026-09-25
 canonical_id: NATIVE_DECISIONS_2026_09_25
-version: "1.6"
+version: "1.7"
 status: RULED
 date: 2026-09-25
 decision_owner: Native
@@ -484,3 +484,28 @@ whoever performs that merge meets the note where they will be looking.
 **Not touched:** the append-only history that mentions the old filenames — `kala_elevation_ledger.jsonl`,
 `l3_autonomous/EVENTS.jsonl` and four `REVIEW_KA_*` records. Those are records of what was true when
 they were written; rewriting them would be falsifying a log to tidy a rename.
+
+## Disposition of decision 12 — the pick stands; seating is blocked on one input
+
+**Checked before claiming anything could be built.** The Muhūrta Cintāmaṇi holding is 274 chunks, and
+**neither the chunks nor the source file they came from contain a single occurrence of "sarvatobhadra" or
+"chakra"** (`platform/scripts/corpus/data/muhurta_chintamani_translations.json`, 274 entries, 0 and 0).
+Migration 529's own header reaches the same conclusion from the corpus side: 8 hits corpus-wide, all
+noise except one passing mention of the chakra's existence without its geometry.
+
+So the school is named and nothing can be seated: ADJUDICATION-11 already forbade transcribing an SBC
+grid from memory, and the chapter is not held. **Decision 12 names which source to verify first; it does
+not license writing the grid before verifying it** — those are different acts and the second one is
+blocked on a text, not on effort.
+
+What was produced instead is the execution-ready brief
+`00_ARCHITECTURE/briefs/nirmana/SARVATOBHADRA_GRID_SEATING_BRIEF_v1_0.md`: the measured blocker, the
+five things already in place (table + natural key, the named school, the zero-code-change consumer path,
+the holding-versus-preferring separation via `kala_paddhati_profile`, and the honest approximation serving
+meanwhile), the four execution steps with the exact columns and citation requirements, the verification
+that makes it count (D1 source correspondence, row-count honesty, consumer proof, `native_confirmed`
+staying false), and the five things that must not happen. When the chapter arrives this is one bounded
+pass rather than a re-investigation.
+
+**The one remaining dependency is native-side:** supply or authorise the edition of Muhūrta Cintāmaṇi
+whose chakra chapter is to be ingested.
