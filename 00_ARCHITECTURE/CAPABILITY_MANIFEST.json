@@ -1878,7 +1878,11 @@
    "last_verified_session": "L3-CHAIN-SEAL-20260925",
    "last_verified_on": "2026-09-25",
    "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
-   "tier": 1
+   "tier": 1,
+   "fingerprint_sha256": "b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5",
+   "doc_status": "SEALED",
+   "seal_state": "SEALED",
+   "sealed_on": "2026-09-25"
   },
   {
    "canonical_id": "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE",
@@ -1896,9 +1900,13 @@
    "last_verified_session": "L3-CHAIN-SEAL-20260925",
    "last_verified_on": "2026-09-25",
    "parent": "MADHAV_PRODUCT_DEFINITION",
-   "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+   "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v3_0.md",
    "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs.",
-   "tier": 2
+   "tier": 2,
+   "fingerprint_sha256": "68b991f349edae92519935d5845b6a90f78624f631866c1cbd87a99ca874ec86",
+   "doc_status": "SEALED",
+   "seal_state": "SEALED",
+   "sealed_on": "2026-09-25"
   },
   {
    "canonical_id": "ELEVATION_DERIVATION_CHAIN",
@@ -1916,7 +1924,9 @@
    "last_verified_session": "L3-STRATEGY-20260925",
    "last_verified_on": "2026-09-25",
    "tier": 0,
-   "note": "index of the elevation document system"
+   "note": "index of the elevation document system",
+   "fingerprint_sha256": "39af35d83e2a901ce03143842c8b0c01fb11bf4e2f172324086f3233a12b738b",
+   "doc_status": "CURRENT"
   },
   {
    "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
@@ -1934,7 +1944,11 @@
    "last_verified_session": "L3-CHAIN-SEAL-20260925",
    "last_verified_on": "2026-09-25",
    "tier": 3,
-   "note": "tier-3 template; produces one instance per layer"
+   "note": "tier-3 template; produces one instance per layer",
+   "fingerprint_sha256": "bb88bee1e024b349470b74301159114aaedd6880a0e35f76e86ba74819e0ae42",
+   "doc_status": "SEALED",
+   "seal_state": "SEALED",
+   "sealed_on": "2026-09-25"
   },
   {
    "canonical_id": "ASSET_ELEVATION_TEMPLATE",
@@ -1952,7 +1966,9 @@
    "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
    "last_verified_on": "2026-09-25",
    "tier": 4,
-   "note": "tier-4 template; produces one instance per asset"
+   "note": "tier-4 template; produces one instance per asset",
+   "fingerprint_sha256": "d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7",
+   "doc_status": "READY_FOR_USE"
   },
   {
    "canonical_id": "MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY",
