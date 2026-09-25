@@ -11,6 +11,7 @@
  *   - floor_items[].args_override → {} when absent
  *   - floor_items[].hard_floor    → false when absent
  *   - floors[].notes              → null when absent
+ *   - primitives[].source_ref / floors[].source_ref → null when absent (W-L0-5 provenance)
  * Floors are emitted in registry order; floor_items are emitted sorted by `order` (the order the
  * compiler consumes them within a band). Object-key order is NOT normalized here — the gate
  * deep-compares parsed JSON with recursive key-sorting, so key order is irrelevant.
@@ -30,6 +31,7 @@ interface NormalizedPrimitive {
   known_gap: string | null
   mandatory_tags: string[]
   cr27_prevents: string[]
+  source_ref: string | null
 }
 
 interface NormalizedFloorItem {
@@ -45,6 +47,7 @@ interface NormalizedFloor {
   version: number
   cr27_coverage: string[]
   notes: string | null
+  source_ref: string | null
   floor_items: NormalizedFloorItem[]
 }
 
@@ -60,6 +63,7 @@ const primitives: NormalizedPrimitive[] = [...VIDHI_PRIMITIVES]
     known_gap: p.known_gap,
     mandatory_tags: [...p.mandatory_tags],
     cr27_prevents: [...p.cr27_prevents],
+    source_ref: p.source_ref ?? null,
   }))
   .sort((a, b) => a.primitive_id.localeCompare(b.primitive_id))
 
@@ -68,6 +72,7 @@ const floors: NormalizedFloor[] = VIDHI_INTENT_FLOORS.map((f) => ({
   version: f.version,
   cr27_coverage: [...f.cr27_coverage],
   notes: f.notes ?? null,
+  source_ref: f.source_ref ?? null,
   floor_items: [...f.floor_items]
     .sort((a, b) => a.order - b.order)
     .map((i) => ({

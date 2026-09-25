@@ -197,6 +197,24 @@ _TIER1_YOGA_PATTERNS: list[tuple[str, str, re.Pattern]] = [
     for name, canonical_id_override in TIER1_YOGA_NAMES
 ]
 
+# W-L0-3 (2026-09-25): parenthetical work-citations like "(Jataka Parijata,
+# ch. 8)" name a SOURCE TEXT, not a concept the rule qualifies — a Tier-1 bare
+# name inside one ("Parijata") produced false rule→concept links. Suppress any
+# match whose span sits inside a parenthetical group carrying a citation
+# marker (chapter/verse locator word or a digit). Parenthesized concept names
+# without a marker — e.g. "(Sunapha)" naming the yoga a sloka belongs to —
+# stay eligible.
+_CITATION_PAREN_RE = re.compile(
+    r'\([^()]*(?:ch\.|chapter|adhyaya|sloka|\d)[^()]*\)', re.IGNORECASE,
+)
+
+
+def _inside_citation_paren(text: str, start: int, end: int) -> bool:
+    return any(
+        pm.start() <= start and end <= pm.end()
+        for pm in _CITATION_PAREN_RE.finditer(text)
+    )
+
 
 def detect_yoga_reference(text: str) -> dict:
     """
@@ -226,6 +244,8 @@ def detect_yoga_reference(text: str) -> dict:
     candidates: list[dict] = []
 
     for m in _YOGA_BIGRAM_RE.finditer(text):
+        if _inside_citation_paren(text, m.start(), m.end()):
+            continue
         candidates.append({
             "surface": m.group(0),
             "canonical_id": _yoga_slug(m.group(1)),
@@ -234,7 +254,7 @@ def detect_yoga_reference(text: str) -> dict:
 
     for name, canonical_id, pat in _TIER1_YOGA_PATTERNS:
         m = pat.search(text)
-        if m:
+        if m and not _inside_citation_paren(text, m.start(), m.end()):
             candidates.append({
                 "surface": m.group(0),
                 "canonical_id": canonical_id,
@@ -1408,18 +1428,45 @@ def extract_rules_from_chunk(
             # pattern's own extract_fn may already have set yoga_canonical_id
             # (none currently do) — respect that if present rather than
             # overwriting it.
+            #
+            # W-L0-3: the window is truncated at sentence boundaries ('. ')
+            # inside it, so a yoga named in a NEIGHBOURING sentence (chapter
+            # header, next verse, prior verse) can no longer be attributed to
+            # this rule. Same-sentence attribution is the defensible claim;
+            # the 40/160 raw window remains the outer bound. The link outcome
+            # is always recorded on result["unlinked_reason"]: NULL when
+            # linked, 'ambiguous_reference' when candidates collided,
+            # 'no_concept_reference_in_window' otherwise.
             if "yoga_canonical_id" not in result:
                 yoga_window_start = max(0, m.start() - 40)
                 yoga_window_end = min(len(content), m.end() + 160)
+                backward = content[yoga_window_start:m.start()]
+                bcut = backward.rfind(". ")
+                if bcut != -1:
+                    yoga_window_start += bcut + 2
+                forward = content[m.end():yoga_window_end]
+                fcut = forward.find(". ")
+                if fcut != -1:
+                    yoga_window_end = m.end() + fcut + 1
                 yoga_result = detect_yoga_reference(content[yoga_window_start:yoga_window_end])
                 result["yoga_canonical_id"] = yoga_result["yoga_canonical_id"]
                 result["_yoga_ambiguous"] = yoga_result["yoga_ambiguous"]
                 result["_yoga_candidates"] = yoga_result["yoga_candidates"]
+                if yoga_result["yoga_canonical_id"] is not None:
+                    result["unlinked_reason"] = None
+                elif yoga_result["yoga_ambiguous"]:
+                    result["unlinked_reason"] = "ambiguous_reference"
+                else:
+                    result["unlinked_reason"] = "no_concept_reference_in_window"
                 if yoga_result["yoga_ambiguous"]:
                     logger.debug(
                         "[rules] ambiguous yoga reference chunk=%s pattern=%s candidates=%s",
                         chunk_uuid, pat_name, yoga_result["yoga_candidates"],
                     )
+            else:
+                # Pattern-set link: the extract function itself attributed the
+                # yoga, so no detection was needed and no reason exists.
+                result.setdefault("unlinked_reason", None)
 
             pass_log_entry = {
                 "pattern": result["pattern"],
@@ -1447,6 +1494,7 @@ def extract_rules_from_chunk(
                 "extraction_pass_log": json.dumps([pass_log_entry]),
                 "quality_score": quality,
                 "yoga_canonical_id": result.get("yoga_canonical_id"),
+                "unlinked_reason": result.get("unlinked_reason"),
                 "dasha_system_id": result.get("dasha_system_id"),
                 "transit_marker": result.get("transit_marker", False),
                 "_quality": quality,  # ephemeral — used by caller for routing
@@ -1528,6 +1576,24 @@ def seed_rules(
         cur.execute("SELECT canonical_id FROM brahma_yoga_catalog")
         valid_yoga_ids = {r['canonical_id'] for r in cur.fetchall()}
 
+        # W-L0-5: per-rule provenance, DERIVED from classical_texts — never
+        # authored per rule:
+        #   school = classical_texts.school of the rule's text_id
+        #   qualification_state (DP §4.3 vocabulary):
+        #     QUALIFIED_EXECUTABLE     — the text's license_cleared is true AND an
+        #                                exact (text_id, verse_ref) chunk witness
+        #                                exists (always true on this path: rules
+        #                                are extracted from those very chunks)
+        #     UNQUALIFIED_SOURCE       — the text is known but license_cleared
+        #                                is not true (rights unresolved)
+        #     READABLE_NOT_EXECUTABLE  — the text_id is not in classical_texts
+        #                                at all (unidentified source)
+        #   UNSUPPORTED_SCOPE / METHOD_INAPPLICABLE are application-time
+        #   verdicts about a rule's use, not properties of the reference row,
+        #   and are never stored here.
+        cur.execute("SELECT text_id, school, license_cleared FROM classical_texts")
+        text_meta = {r['text_id']: r for r in cur.fetchall()}
+
     if dry_run:
         logger.info(
             "[rules] dry_run — would process %d chunks from %d texts",
@@ -1597,7 +1663,22 @@ def seed_rules(
                         # FK validation: yoga_canonical_id
                         yci = rule_row.get("yoga_canonical_id")
                         if yci and yci not in valid_yoga_ids:
+                            # W-L0-3: a same-sentence reference was found but
+                            # the name is not catalogued — the link is nulled,
+                            # and the reason is recorded so the NULL is
+                            # distinguishable from "no reference at all".
                             rule_row["yoga_canonical_id"] = None
+                            rule_row["unlinked_reason"] = "reference_not_in_catalog"
+
+                        # W-L0-5: derived provenance (see the text_meta load above)
+                        meta = text_meta.get(rule_row["text_id"])
+                        rule_row["school"] = meta["school"] if meta else None
+                        if meta is None:
+                            rule_row["qualification_state"] = "READABLE_NOT_EXECUTABLE"
+                        elif meta["license_cleared"]:
+                            rule_row["qualification_state"] = "QUALIFIED_EXECUTABLE"
+                        else:
+                            rule_row["qualification_state"] = "UNQUALIFIED_SOURCE"
 
                         if quality < QUALITY_THRESHOLD_LIVE:
                             rows_below_threshold += 1
@@ -1610,13 +1691,17 @@ def seed_rules(
                                 rule_id, text_id, verse_ref,
                                 antecedent_jsonb, predicate_jsonb, prediction_jsonb,
                                 confidence, extracted_by, extraction_pass_log,
-                                quality_score, yoga_canonical_id, dasha_system_id,
-                                transit_marker, created_at
+                                quality_score, yoga_canonical_id, unlinked_reason,
+                                dasha_system_id,
+                                transit_marker, created_at,
+                                school, qualification_state
                             ) VALUES (
                                 %s::uuid, %s, %s,
                                 %s::jsonb, %s::jsonb, %s::jsonb,
                                 %s, %s, %s::jsonb,
                                 %s, %s, %s,
+                                %s,
+                                %s, %s,
                                 %s, %s
                             )
                             ON CONFLICT (rule_id) DO NOTHING
@@ -1633,9 +1718,12 @@ def seed_rules(
                                 rule_row["extraction_pass_log"],
                                 rule_row["quality_score"],
                                 rule_row["yoga_canonical_id"],
+                                rule_row.get("unlinked_reason"),
                                 rule_row["dasha_system_id"],
                                 rule_row["transit_marker"],
                                 now,
+                                rule_row["school"],
+                                rule_row["qualification_state"],
                             ),
                         )
                         if insert_cur.rowcount > 0:

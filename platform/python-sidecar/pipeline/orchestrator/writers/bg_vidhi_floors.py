@@ -523,6 +523,29 @@ FLOORS = [
     ('ritual_yajna', 1, [], 'ṢAḌ-DARŚANA W5 — ritual/yajña/vrata routing floor. Headlined by ritual_read (YAJÑA-SETU Modes 1–2 ONLY — Mode 3 redirects to elect_read, never passes through, per the Mode-3 routing rule) over the Pūrṇa-Ādhāra structural minimum.', RITUAL_YAJNA_ITEMS),
 ]
 
+# W-L0-5 provenance: `source_ref` is mapped separately (not a FLOORS tuple element —
+# that would re-touch every floor literal) and joined by intent at write/dump time.
+# Floor ITEMS inherit their intent's source_ref at write time (declared derivation),
+# keeping the 409 item tuples untouched. The parity gate compares --dump-json against
+# dump_vidhi_registry.ts (which emits `f.source_ref ?? null`), so a TS-side source_ref
+# without a matching entry here fails the gate immediately.
+_FLOOR_SOURCE_REFS: dict[str, str] = {
+    "wealth_deepdive": "DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3",
+    "career_deepdive": "CR-62 (design §12 lord-placement join)",
+    "spirituality_deepdive": "VIDHI-PURNATA P-2 (brief §2 P-2 / §A)",
+    "education_deepdive": "VIDHI-PURNATA P-2 (brief §A)",
+    "progeny_deepdive": "VIDHI-PURNATA P-2 (brief §A)",
+    # ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5) — the three kala-routing floors.
+    "undertaking_election": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "biography_narrative": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "ritual_yajna": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+}
+
+# W-L0-5: every row in both vidhi floor tables is authored in the canonical TS registry;
+# the python writer is a content mirror. Recorded as a column default by migration 1124.
+_SOURCE_AUTHORITY = "src/lib/vidhi/registry_data.ts"
+
+
 @register('bg_vidhi_floors')
 class VidhiFloorsWriter(WriterBase):
     asset_id = 'bg_vidhi_floors'
@@ -551,17 +574,21 @@ class VidhiFloorsWriter(WriterBase):
                 (governed_intents,),
             )
             for (intent, version, cr27_coverage, notes, items) in FLOORS:
+                source_ref = _FLOOR_SOURCE_REFS.get(intent)
                 cur.execute(
                     """
-                    INSERT INTO vidhi_intent_floors (intent, version, cr27_coverage, notes, updated_at)
-                    VALUES (%s, %s, %s, %s, now())
+                    INSERT INTO vidhi_intent_floors
+                      (intent, version, cr27_coverage, notes, source_authority, source_ref, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, now())
                     ON CONFLICT (intent) DO UPDATE SET
                         version       = EXCLUDED.version,
                         cr27_coverage = EXCLUDED.cr27_coverage,
                         notes         = EXCLUDED.notes,
+                        source_authority = EXCLUDED.source_authority,
+                        source_ref    = EXCLUDED.source_ref,
                         updated_at    = now()
                     """,
-                    (intent, version, cr27_coverage, notes),
+                    (intent, version, cr27_coverage, notes, _SOURCE_AUTHORITY, source_ref),
                 )
                 # §N.3 delete-then-insert scoped to this intent's floor_items — a floor
                 # edit (re-ordering, adding/removing atoms) never leaves orphaned rows
@@ -571,10 +598,12 @@ class VidhiFloorsWriter(WriterBase):
                     cur.execute(
                         """
                         INSERT INTO vidhi_floor_items
-                          (intent, primitive_id, item_order, band, args_override, hard_floor)
-                        VALUES (%s, %s, %s, %s, %s::JSONB, %s)
+                          (intent, primitive_id, item_order, band, args_override, hard_floor,
+                           source_authority, source_ref)
+                        VALUES (%s, %s, %s, %s, %s::JSONB, %s, %s, %s)
                         """,
-                        (intent, primitive_id, order, band, _to_jsonb(args_override), hard_floor),
+                        (intent, primitive_id, order, band, _to_jsonb(args_override), hard_floor,
+                         _SOURCE_AUTHORITY, source_ref),
                     )
                     items_written += 1
 
@@ -638,6 +667,7 @@ def _dump_json() -> None:
             "version": version,
             "cr27_coverage": list(cr27_coverage),
             "notes": notes,
+            "source_ref": _FLOOR_SOURCE_REFS.get(intent),
             "floor_items": floor_items,
         })
     print(_json.dumps({"floors": floors}, ensure_ascii=False, sort_keys=True))

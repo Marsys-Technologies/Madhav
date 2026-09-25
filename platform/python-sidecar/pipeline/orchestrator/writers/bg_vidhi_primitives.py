@@ -53,6 +53,30 @@ logger = logging.getLogger(__name__)
 
 # Each tuple: (primitive_id, version, definition, category, live_tool, tool_args,
 #              fallback_face, known_gap, mandatory_tags, cr27_prevents)
+#
+# W-L0-5 provenance: `source_ref` is NOT a tuple element (that would re-touch all 60
+# rows); it is mapped separately below and joined by primitive_id at write/dump time.
+# The vidhi-registry parity gate compares the --dump-json output against
+# dump_vidhi_registry.ts, which emits `p.source_ref ?? null` — so any source_ref added
+# on the TS side without a matching entry here fails the gate immediately.
+_SOURCE_REFS: dict[str, str] = {
+    "medical_read": "BPHS Ch.18 / Aṣṭāṅga Hṛdayam",
+    "sensitive_degree_check": "MC-029 (Śodhana Builder T6)",
+    # ṢAḌ-DARŚANA W5 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W5) — the eight kala_* primitives.
+    "ahead_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "elect_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "explain_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "now_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "priority_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "ritual_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "story_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+    "upaya_read": "SHAD_DARSHANA_BRIEF_v2_0.md §3 W5",
+}
+
+# W-L0-5: every row in this table is authored in the canonical TS registry; the python
+# writer is a content mirror. Recorded as a column default by migration 1124.
+_SOURCE_AUTHORITY = "src/lib/vidhi/registry_data.ts"
+
 PRIMITIVE_ROWS: list[tuple] = [
     ("argala_read", 1, "Argala (intervention) + virodha-argala matrix per varga for a house/point — the natal argala_natal_matrix, virodha_argala_natal_matrix, and net_argala_per_varga (intervention structure on the bhāvas). A structural sweep, not a single-fact read.", "structural", "ganita_chart_facts_get", {"chart_id": "{chart_id}", "category": "net_argala_per_varga"}, "ganita_structural_get", None, [], []),
     ("arudha_read", 1, "Arudha-semantic read: AL conjunctions, A2/A11 placement, AL–bhāva relationships, ranked.", "signal", "ganita_condition_get", {"chart_id": "{chart_id}", "mode": "arudha"}, "bodha_signals_get(frame=arudha)", None, [], []),
@@ -140,12 +164,14 @@ class VidhiPrimitivesWriter(WriterBase):
             upserted = 0
             for (pid, version, definition, category, live_tool, tool_args,
                  fallback_face, known_gap, mandatory_tags, cr27_prevents) in PRIMITIVE_ROWS:
+                source_ref = _SOURCE_REFS.get(pid)
                 cur.execute(
                     """
                     INSERT INTO vidhi_primitives
                       (primitive_id, version, definition, category, live_tool, tool_args,
-                       fallback_face, known_gap, mandatory_tags, cr27_prevents, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s::JSONB, %s, %s, %s, %s, now())
+                       fallback_face, known_gap, mandatory_tags, cr27_prevents,
+                       source_authority, source_ref, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s::JSONB, %s, %s, %s, %s, %s, %s, now())
                     ON CONFLICT (primitive_id) DO UPDATE SET
                         version         = EXCLUDED.version,
                         definition      = EXCLUDED.definition,
@@ -156,6 +182,8 @@ class VidhiPrimitivesWriter(WriterBase):
                         known_gap       = EXCLUDED.known_gap,
                         mandatory_tags  = EXCLUDED.mandatory_tags,
                         cr27_prevents   = EXCLUDED.cr27_prevents,
+                        source_authority = EXCLUDED.source_authority,
+                        source_ref      = EXCLUDED.source_ref,
                         updated_at      = now()
                     WHERE ROW(
                         vidhi_primitives.version,
@@ -166,7 +194,9 @@ class VidhiPrimitivesWriter(WriterBase):
                         vidhi_primitives.fallback_face,
                         vidhi_primitives.known_gap,
                         vidhi_primitives.mandatory_tags,
-                        vidhi_primitives.cr27_prevents
+                        vidhi_primitives.cr27_prevents,
+                        vidhi_primitives.source_authority,
+                        vidhi_primitives.source_ref
                     ) IS DISTINCT FROM ROW(
                         EXCLUDED.version,
                         EXCLUDED.definition,
@@ -176,11 +206,14 @@ class VidhiPrimitivesWriter(WriterBase):
                         EXCLUDED.fallback_face,
                         EXCLUDED.known_gap,
                         EXCLUDED.mandatory_tags,
-                        EXCLUDED.cr27_prevents
+                        EXCLUDED.cr27_prevents,
+                        EXCLUDED.source_authority,
+                        EXCLUDED.source_ref
                     )
                     """,
                     (pid, version, definition, category, live_tool, json.dumps(tool_args),
-                     fallback_face, known_gap, mandatory_tags, cr27_prevents),
+                     fallback_face, known_gap, mandatory_tags, cr27_prevents,
+                     _SOURCE_AUTHORITY, source_ref),
                 )
                 upserted += cur.rowcount
 
@@ -216,6 +249,7 @@ def _dump_json() -> None:
             "category": category, "live_tool": live_tool, "tool_args": tool_args,
             "fallback_face": fallback_face, "known_gap": known_gap,
             "mandatory_tags": list(mandatory_tags), "cr27_prevents": list(cr27_prevents),
+            "source_ref": _SOURCE_REFS.get(pid),
         })
     prims.sort(key=lambda p: p["primitive_id"])
     print(_json.dumps({"primitives": prims}, ensure_ascii=False, sort_keys=True))

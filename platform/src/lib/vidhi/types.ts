@@ -71,6 +71,14 @@ export interface VidhiPrimitive {
   readonly mandatory_tags: readonly MandatorySurfaceTag[];
   /** CR-27 improvisation-corpus instance(s) this primitive's presence-on-a-floor prevents. */
   readonly cr27_prevents: readonly string[];
+  /**
+   * W-L0-5 provenance: human-readable pointer to the classical/design authority the
+   * primitive's definition derives from (e.g. 'BPHS Ch.18 / Aṣṭāṅga Hṛdayam',
+   * 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5'), or null when the primitive is operational
+   * machinery with no single nameable source. Mirrored to bg_vidhi_primitives.source_ref
+   * by the census dump (parity-gated).
+   */
+  readonly source_ref?: string | null;
 }
 
 export type FloorBand = 'acharya_floor' | 'machine_band';
@@ -126,6 +134,14 @@ export interface IntentFloor {
   /** CR-27 corpus instance ids this floor's item set is designed to prevent. */
   readonly cr27_coverage: readonly string[];
   readonly notes?: string;
+  /**
+   * W-L0-5 provenance: pointer to the design authority this floor's composition
+   * derives from (e.g. 'DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3',
+   * 'VIDHI-PURNATA P-2 (brief §A)'), or null when the floor has no single
+   * nameable source. Mirrored to bg_vidhi_floors.source_ref; floor items inherit
+   * their intent's value at write time (parity-gated).
+   */
+  readonly source_ref?: string | null;
 }
 
 export type ScopeWidth = 'narrow' | 'standard' | 'panoramic';

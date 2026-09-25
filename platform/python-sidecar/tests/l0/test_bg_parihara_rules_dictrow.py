@@ -33,13 +33,14 @@ _TEXT_ROWS = [("bphs", "Brihat Parasara Hora Sastra")]
 
 _DOSHA_COLS = [
     "canonical_id", "name_en", "category",
-    "cancellation_conditions", "classical_citations",
+    "cancellation_conditions", "classical_citations", "school",
 ]
 _DOSHA_ROWS = [
     (
         "manglik_dosha", "Manglik Dosha", "graha_dosha",
         {"bhanga": ["Mars in own sign", "Both partners Manglik"]},
         [{"text_id": "bphs", "chapter": 9}],
+        "parashari",
     ),
 ]
 
@@ -76,6 +77,8 @@ def test_fetch_parihara_rows_completes_under_dict_row():
     assert rows[0]["source_citation"] == "Brihat Parasara Hora Sastra (bphs), ch.9"
     assert rows[0]["source_text_id"] == "bphs"
     assert rows[0]["source_chapter"] == 9
+    # W-L0-5: school is derived from brahma_dosha_catalog, never authored
+    assert rows[0]["school"] == "parashari"
     assert rows[0]["build_id"] == "test-build-6fd72ed9"
 
 

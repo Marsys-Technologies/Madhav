@@ -318,6 +318,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null, // R-47 CLOSED — live. MC-029 CLOSED — Yogi-system added, same tool.
     mandatory_tags: ['sensitive_degree'],
     cr27_prevents: [],
+    source_ref: 'MC-029 (Śodhana Builder T6)',
   },
   {
     primitive_id: 'divisional_facts',
@@ -691,6 +692,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null, // data-backed live (P-3 probe: per-graha dosha/organ/body watch + citations).
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'BPHS Ch.18 / Aṣṭāṅga Hṛdayam',
   },
   {
     // NIRMANA L1 W3 F-E10 (2026-09-05): ga_vastu's serving surface (get_vastu_directions,
@@ -893,6 +895,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'ahead_read',
@@ -906,6 +909,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'elect_read',
@@ -919,6 +923,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'story_read',
@@ -932,6 +937,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'priority_read',
@@ -945,6 +951,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'explain_read',
@@ -958,6 +965,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'upaya_read',
@@ -971,6 +979,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     primitive_id: 'ritual_read',
@@ -984,6 +993,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     known_gap: null,
     mandatory_tags: [],
     cr27_prevents: [],
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
 ] as const;
 
@@ -1494,6 +1504,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
     floor_items: WEALTH_DEEPDIVE_ITEMS,
     cr27_coverage: ['CR-27a', 'CR-27b', 'CR-27c', 'CR-27d', 'CR-36'],
     notes: 'Flagship floor — worked example per DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3; §G master acceptance target.',
+    source_ref: 'DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3',
   },
   {
     intent: 'career_deepdive',
@@ -1501,6 +1512,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
     floor_items: CAREER_DEEPDIVE_ITEMS,
     cr27_coverage: ['CR-27c', 'CR-27d'],
     notes: 'D10/D9 multi-varga per CR-62’s wealth {D1,D2,D9,D11} / career {D1,D9,D10} map (design §12 lord-placement join).',
+    source_ref: 'CR-62 (design §12 lord-placement join)',
   },
   {
     intent: 'health_deepdive',
@@ -1523,6 +1535,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
       'VIDHI-PŪRṆATĀ P-2 [MANDATORY] — mokṣa-domain floor (brief §2 P-2 / §A). H9+H12 + lords, ' +
       'Jupiter(guru)+Ketu(mokṣa) kārakas, AK+karakāṃśa (from-karakāṃśa 12th derived answerer-side), ' +
       'D20, D1/D9/D20 ratification. Jaimini spiritual-yoga scan is DARK (CR-130 — family key absent).',
+    source_ref: 'VIDHI-PURNATA P-2 (brief §2 P-2 / §A)',
   },
   {
     intent: 'education_deepdive',
@@ -1533,6 +1546,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
       'VIDHI-PŪRṆATĀ P-2 [CANDIDATE] — D24-backed education floor (brief §A). H4+H5+H9 + 4th/5th ' +
       'lords, Mercury(buddhi)+Jupiter(jñāna) kārakas, D24 + D1/D9/D24 ratification. education-scoped ' +
       'taraṅga_curve inherits CR-66 (phala domain anchors zero) — dark, not faked.',
+    source_ref: 'VIDHI-PURNATA P-2 (brief §A)',
   },
   {
     intent: 'progeny_deepdive',
@@ -1543,6 +1557,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
       'VIDHI-PŪRṆATĀ P-2 [CANDIDATE] — D7-backed progeny floor (brief §A). Spine off H5 + Jupiter ' +
       '(putra-kāraka) + PuK REGARDLESS of the D7 spouse_karya label quirk (P-0 (e): L1 chart_divisionals ' +
       'writer mislabel, must_not_touch; D7 is corroboration only). H5(+H9 5th-from-5th), D7, D1/D9/D7 ratification.',
+    source_ref: 'VIDHI-PURNATA P-2 (brief §A)',
   },
   {
     intent: 'structure_read',
@@ -1579,6 +1594,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
       'ṢAḌ-DARŚANA W5 — "when should I…?" routing floor. Headlined by elect_read (Mode-3 ' +
       'ACTIVITY ELECTION: act-time slate + paired preparatory rite, served as one answer per ' +
       'the Mode-3 routing rule, Elevation §8) over the Pūrṇa-Ādhāra structural minimum.',
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     intent: 'biography_narrative',
@@ -1588,6 +1604,7 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
     notes:
       'ṢAḌ-DARŚANA W5 — "what has my life been?" routing floor. Headlined by story_read (the ' +
       'daśā-chaptered developmental narrative) over the Pūrṇa-Ādhāra structural minimum.',
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
   {
     intent: 'ritual_yajna',
@@ -1598,5 +1615,6 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
       'ṢAḌ-DARŚANA W5 — ritual/yajña/vrata routing floor. Headlined by ritual_read (YAJÑA-SETU ' +
       'Modes 1–2 ONLY — Mode 3 redirects to elect_read, never passes through, per the Mode-3 ' +
       'routing rule) over the Pūrṇa-Ādhāra structural minimum.',
+    source_ref: 'SHAD_DARSHANA_BRIEF_v2_0.md §3 W5',
   },
 ];

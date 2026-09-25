@@ -96,7 +96,7 @@ SAMPLING_METHOD_VERSION = "parihara_rules_dosha_activity_census_v1"
 # ── Table 1: the parihāra (doṣa-cancellation) graph ──────────────────────────
 
 _DOSHA_QUERY = """
-    SELECT canonical_id, name_en, category, cancellation_conditions, classical_citations
+    SELECT canonical_id, name_en, category, cancellation_conditions, classical_citations, school
     FROM brahma_dosha_catalog
     WHERE cancellation_conditions IS NOT NULL
       AND classical_citations IS NOT NULL
@@ -172,6 +172,7 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
                     "source_text_id": text_id,
                     "source_chapter": chapter,
                     "source_citation": citation,
+                    "school": rec["school"],
                     "build_id": build_id,
                 })
     return rows
@@ -625,12 +626,13 @@ class BgPariharaRulesWriter(WriterBase):
               (dosha_canonical_id, dosha_name_en, dosha_category,
                cancellation_index, cancellation_condition_text, net_standing,
                scope, source_text_id, source_chapter, source_citation,
-               build_id, computed_at)
+               school, build_id, computed_at)
             VALUES
               (%(dosha_canonical_id)s, %(dosha_name_en)s, %(dosha_category)s,
                %(cancellation_index)s, %(cancellation_condition_text)s,
                %(net_standing)s, %(scope)s, %(source_text_id)s,
-               %(source_chapter)s, %(source_citation)s, %(build_id)s, NOW())
+               %(source_chapter)s, %(source_citation)s, %(school)s,
+               %(build_id)s, NOW())
             ON CONFLICT (dosha_canonical_id, cancellation_index) DO UPDATE SET
               dosha_name_en = EXCLUDED.dosha_name_en,
               dosha_category = EXCLUDED.dosha_category,
@@ -638,6 +640,7 @@ class BgPariharaRulesWriter(WriterBase):
               source_text_id = EXCLUDED.source_text_id,
               source_chapter = EXCLUDED.source_chapter,
               source_citation = EXCLUDED.source_citation,
+              school = EXCLUDED.school,
               build_id = EXCLUDED.build_id,
               computed_at = NOW()
             """,

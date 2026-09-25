@@ -16,7 +16,7 @@ Sources:
   SS   = Saravali by Kalyana Varma
   UK   = Uttara Kalamrita by Kalidasa
 
-Volume: 9 engine rows + 68 writer-owned rule rows + 7 retained migration-owned
+Volume: 9 engine rows + 69 writer-owned rule rows + 7 retained migration-owned
 double-transit rule rows + 27 moorti rows.
 
 Gate: Transit/Gochara Subsystem Gate-1
@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
+from brahmagyan.l0_texts import TEXTS as _TEXT_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +87,42 @@ RAHU_KETU_HOUSE_VEDHA_UNSOURCED = (
     "silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — "
     "see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5."
 )
+
+# ── W-L0-5: derived school ─────────────────────────────────────────────────────
+# bg_transit_rules.school is DERIVED, never authored per row: the citation
+# constant maps to its text in the classical-text registry (l0_texts.TEXTS), and
+# the school is read from that registry entry. A citation with no mapping —
+# RAHU_KETU_HOUSE_VEDHA_UNSOURCED, which names no text — has no school: NULL,
+# never a guess. Composite citations (the moorti rows' "X; Y") are out of scope
+# here: they are written to bg_transit_moorti, which carries no school column.
+
+_CITATION_TEXT_ID = {
+    BPHS_CH29: "bphs",
+    BPHS_CH28: "bphs",
+    BPHS_CH22: "bphs",
+    PD_CH26: "phaladeepika",
+    PD_ADH26_S2_8_21: "phaladeepika",
+    PD_ADH26_PG322_SUN: "phaladeepika",
+    PD_ADH26_PG322_MOON: "phaladeepika",
+    PD_ADH26_PG322_MARS: "phaladeepika",
+    PD_ADH26_PG322_SATURN: "phaladeepika",
+    PD_ADH26_PG323_MERCURY: "phaladeepika",
+    PD_ADH26_PG323_JUPITER: "phaladeepika",
+    PD_ADH26_PG323_VENUS: "phaladeepika",
+    SS_CH12: "saravali",
+    UK_CH4: "uttara_kalamrita",
+}
+
+_TEXT_SCHOOL = {t["text_id"]: t["school"] for t in _TEXT_REGISTRY}
+
+
+def school_for_citation(citation: str | None) -> str | None:
+    """School of the cited text per the classical-text registry; None when the
+    citation has no mapped text (UNSOURCED rows, composite citations)."""
+    if citation is None:
+        return None
+    text_id = _CITATION_TEXT_ID.get(citation)
+    return _TEXT_SCHOOL.get(text_id) if text_id is not None else None
 
 # ── §1 — BG_TRANSIT_ENGINE: Graha average motion parameters ──────────────────
 #
@@ -1101,13 +1139,14 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
             """
             INSERT INTO bg_transit_rules
                 (rule_type, graha, primary_house, vedha_house,
-                 phala, classical_citation, rule_notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                 phala, classical_citation, rule_notes, school)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (graha, rule_type, primary_house) DO UPDATE SET
                 vedha_house        = EXCLUDED.vedha_house,
                 phala              = EXCLUDED.phala,
                 classical_citation = EXCLUDED.classical_citation,
-                rule_notes         = EXCLUDED.rule_notes
+                rule_notes         = EXCLUDED.rule_notes,
+                school             = EXCLUDED.school
             """,
             (
                 row["rule_type"],
@@ -1117,6 +1156,7 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
                 row["phala"],
                 row["classical_citation"],
                 row.get("rule_notes"),
+                school_for_citation(row["classical_citation"]),
             ),
         )
         rules_count += 1
