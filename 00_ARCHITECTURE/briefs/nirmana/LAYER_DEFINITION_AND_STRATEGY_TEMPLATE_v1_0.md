@@ -12,7 +12,7 @@ decision_owner: Native
 inherits:
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md            # tier 1
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md   # tier 2
-  - 00_ARCHITECTURE/control/asset_elevation_tracker.py             # the 32 criteria, as run (supersedes kala_brief_tracker.py)
+  - 00_ARCHITECTURE/control/asset_elevation_tracker.py             # the eight gates + brief-shape scan, as run (sole tracker; kala_brief_tracker.py is L3-only and superseded)
 role: >
   The tier-3 template. One instance per layer (L0-L5) produces that layer's definition, strategy
   and evaluation ladder. Every instance must be derivable from tiers 1-2 without inventing a
@@ -145,7 +145,7 @@ elevation delta. Nothing in this part is inherited; all of it is measured.
 
 ```
 inherits:    Data plane §13.3 item 2
-measured_by: asset_registry (live, read-only) · the registry seed · the migration-governed pin · asset_throughput · the production probe (kala_brief_tracker.py --env-file, or the layer's equivalent)
+measured_by: asset_registry (live, read-only) · the registry seed · the migration-governed pin · asset_throughput · the production probe (asset_elevation_tracker.py --layer <L> --env-file)
 traces_to:   0.3
 ```
 
@@ -527,15 +527,33 @@ instance, and this instance from the data plane and the product, is a property o
 declared once in §4.4 — not re-litigated per asset. Ladder positions (data-plane and campaign) are
 status fields read from the registry and the campaign events table; a status is not a verdict.
 
-**Each gate must be fed by a section of this instance.** Before an instance is called ready, map the
-gates to the §4.4 inheritance list: for each gate, the section a brief author reads to answer it. A
-gate with no feeding section is a hole in the instance, not a gap in the brief. Eight rows; if it
-cannot be written, the instance is not ready.
+**The gate map — fixed here, not re-derived per instance.** The gates are fixed by this template and
+the sections are fixed by this template, so the map between them is template content and is written
+once, below. An instance does not invent it; an instance **fills the right-hand column** and reports
+any row it cannot fill.
+
+| gate | the section a brief author reads to answer it | what the instance must supply there |
+|---|---|---|
+| **Ldgr** | §2.3 contracts produced and consumed, with declared use | the asset's upstream `fact_id` sources, named |
+| **Idem** | §2.5 edges and order; §4.1 order and baseline | the asset's natural key, so "replaces its own rows" is decidable |
+| **Earn** | §2.4 coverage obligations and their states | which of the asset's emitted states are claims, and what would falsify each |
+| **Null** | §2.4 (the state vocabulary); §1.4 evidence states | the asset's own convention for an underivable value |
+| **Vocab** | §2.6 vocabulary conformance | the classes this asset owns or consumes, and the authority for each |
+| **Dom** | §2.7 domain correctness; §4.4's Jyotish-concepts row | the concepts the asset asserts, and which menu item each invites |
+| **Narr** | §2.2 presentation fields | whether the asset emits prose, and which fields carry it |
+| **Dens** | §2.2 presentation fields; §3.4 the served boundary | whether the asset reaches a served surface, and which |
+
+A row an instance cannot fill is a hole in **that instance**, not a gap in the brief — the brief
+author would have to invent it. Report unfillable rows in §7 as corrections with gates.
+
+*(This table answers K3 finding 2. Its earlier form demanded a 33-row map of every instance, which
+is why no instance ever wrote one; the map is template-fixed content and had holes by construction.)*
 
 ### 5.3 · Certification is per criterion, not per definition revision
 
 ```
 inherits:    the t3 lesson — 90 assets' freezes evaporated when the campaign definition re-froze
+             asset_certs.jsonl's `_schema` line — the as-run record shape, which this section follows
              (measured 2026-09-25 over nirmana_elevation_campaign_events, event_type='asset_frozen':
               98 assets ever frozen, 8 frozen under t3, 90 not; 103 events under superseded revisions.
               Assets and events are different populations — 90 is assets.)
@@ -543,10 +561,16 @@ measured_by: the certification record itself
 traces_to:   —  (this is the property that lets the scale improve without destroying earned work)
 ```
 
-Each certification is one record:
+Each certification is one record, in the shape the ledger that stores it actually uses
+(`00_ARCHITECTURE/control/asset_certs.jsonl`, whose `_schema` line is the authority — this template
+previously specified the record WITHOUT `detector` and without a closed verdict set, i.e. worse than
+its own storage layer; K3 finding 8):
 
 ```
-asset · criterion · criterion_version · evidence (path or query) · verdict · verified_by · verified_on
+asset · criterion · criterion_version · detector · evidence (path, query or run id) · verdict ·
+verified_by · verified_on
+
+verdict ∈ { PASS | FAIL | PARTIAL | NO_DETECTOR | N/A }     — closed set, these spellings exactly
 ```
 
 A revised criterion invalidates **only** the records for that criterion, across affected assets; it

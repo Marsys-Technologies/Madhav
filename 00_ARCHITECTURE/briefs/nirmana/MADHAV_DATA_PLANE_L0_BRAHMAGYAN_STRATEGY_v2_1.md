@@ -925,7 +925,7 @@ verification and design items this instance leaves open.
 | C-1 | The per-asset fidelity verdicts in §1.2 are scored from §1.1's measurements; the five **PARTIAL/FAIL** rows have not been re-verified by a second party | L0 layer certification (§5.3), not the asset briefs |
 | C-2 | `bg_vidhi_floors`' DRAFT status: the registry description says re-verify against the writer source before flipping. Not done here | the `bg_vidhi_floors` asset brief |
 | C-3 | The varga-construction relocation (§2.4) has a migration cost that is stated but not sized | the first L1 instance — it moves a convention out of L1 code |
-| C-4 | §5.2's gate map (eight rows, gate → feeding §4.4 section) is not yet written | the first `bg_*` asset brief — and the instance is not ready without it (template §5.4 test 5) |
+| C-4 | The gate map's LEFT side is now fixed in the template (v1.1 §5.2, eight rows) — K3 finding 2's actual repair, since gates and sections are both template-fixed. What remains for this instance is the RIGHT-hand column: for each of the eight gates, what L0 supplies in the feeding section. Not yet filled | the first `bg_*` asset brief (template §5.4 test 5) |
 | C-5 | `l0_resource_config_slice_v1.json` is on disk, registered nowhere, and undispositioned | W-L0-1, and the registry-parity detector it builds |
 | C-6 | Presentation parity (§2.2) has not been run for any L0 capability | the first served-surface packet, W-L0-4 |
 

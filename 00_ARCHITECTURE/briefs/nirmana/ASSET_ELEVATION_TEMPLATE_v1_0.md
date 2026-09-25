@@ -161,7 +161,7 @@ an obligation nobody can test.
 
 **This is the only section certification reads.** Each gate is evaluated against the **asset**, not
 against this brief. Every row carries a detector that could return false; where none exists, the
-verdict is **NO DETECTOR** — which is a gap (§5), never a pass.
+verdict is **NO_DETECTOR** — which is a gap (§5), never a pass.
 
 Eight, not thirty-three. A gate earns its place by being a claim a detector could falsify. Everything
 that was merely *addressed in the brief* moved to §2, which certifies nothing.
@@ -180,7 +180,7 @@ that was merely *addressed in the brief* moved to §2, which certifies nothing.
 `Ldgr` absorbs the former facts/interpretation gate: a ledger entry naming its upstream ids **is** the
 separation test, and the separate gate had no detector of its own.
 
-A conditional gate that does not apply is disposed of with an explicit **N-A** record and its reason —
+A conditional gate that does not apply is disposed of with an explicit **N/A** record and its reason —
 one line. It is never silently dropped.
 
 **Verdict vocabulary, used strictly:**
@@ -189,8 +189,8 @@ one line. It is never silently dropped.
 - **FAIL** — the detector ran and returned failing.
 - **PARTIAL** — the detector ran; the gate holds for a named subset and not the rest. The subset is
   stated, not implied.
-- **NO DETECTOR** — nothing exists that could distinguish pass from fail. **Never recorded as PASS.**
-- **N-A** — the gate does not apply to this asset kind, *with the reason*. A bare N-A is a gap.
+- **NO_DETECTOR** — nothing exists that could distinguish pass from fail. **Never recorded as PASS.**
+- **N/A** — the gate does not apply to this asset kind, *with the reason*. A bare N/A is a gap.
 
 ### 4.1 · The domain menu — pick one, run it
 
@@ -205,10 +205,10 @@ Running four where one applies is theatre; running none is an unearned signal.
 | **D3** independent re-derivation | the value is computable a second way | compute it that way and compare |
 | **D4** seeded negative case | the asset classifies or fires | feed a case that must not fire; check it doesn't |
 
-Where none of the four applies, the record is `NO DETECTOR` **with the reason** — an honest null.
+Where none of the four applies, the record is `NO_DETECTOR` **with the reason** — an honest null.
 **No human or acharya review exists in this system**; a `Dom` row citing expert judgment is invalid.
 
-An asset with `NO DETECTOR` on `Dom` is not certifiable however many other gates it passes: a
+An asset with `NO_DETECTOR` on `Dom` is not certifiable however many other gates it passes: a
 component can be structurally immaculate and astrologically wrong, and nothing else here would notice.
 
 **Scoring-mode clause.** Where `scoring_mode: fidelity`, gates that measure contribution are evaluated
@@ -220,7 +220,7 @@ identified, or superseded by a corrected authority.
 
 ## §5 · Gap register — every gap is executable
 
-Each FAIL, PARTIAL and NO DETECTOR in §4, plus every must-add inherited from the layer's §3.3.
+Each FAIL, PARTIAL and NO_DETECTOR in §4, plus every must-add inherited from the layer's §3.3.
 
 | gap id | criterion | what is wrong | the change | detector that closes it | owner | gate it blocks | state |
 |---|---|---|---|---|---|---|---|
@@ -262,11 +262,14 @@ elevated.**
 
 ```
 asset · criterion · criterion_version · detector · evidence (path, query or run id) · verdict · verified_by · verified_on
+
+verdict ∈ { PASS | FAIL | PARTIAL | NO_DETECTOR | N/A }     — closed set, these spellings exactly
 ```
 
 - A revised criterion invalidates **only** its own records, across affected assets. It never re-opens
-  the rest. This is what lets the scale improve without wiping earned work — the failure that cost 73
-  freezes when a campaign definition was re-frozen.
+  the rest. This is what lets the scale improve without wiping earned work — the failure that cost 90 assets
+  their freezes when a campaign definition was re-frozen (98 ever frozen, 8 under t3; measured
+  2026-09-25 — the figure previously read 73).
 - **An asset is ELEVATED when every criterion its layer requires carries a current record with a
   passing verdict, and every gap in §5 is CLOSED.** Not before, and not by anyone's summary.
 - `verified_by` is never the party that made the change. A builder does not certify their own build.

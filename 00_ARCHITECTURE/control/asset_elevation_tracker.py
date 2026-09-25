@@ -87,6 +87,13 @@ SHAPE = [
  ("evidence",        r"evidence|proof|detector"),
 ]
 
+# The closed verdict vocabulary. One spelling each, matching asset_certs.jsonl's own _schema line,
+# the layer template §5.3 and the asset template §4/§7. Three surfaces previously spelled these three
+# different ways (NO DETECTOR / NO_DETECTOR, N-A / N/A / NA) -- a controlled-vocabulary failure inside
+# the machinery that certifies controlled vocabulary.
+VERDICTS = {"PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "N/A"}
+PASSING_VERDICTS = {"PASS", "N/A"}
+
 REQUIRED_GATES=[k for k,_,_,_ in GATES]
 
 def jsonl(path):
@@ -174,8 +181,12 @@ def scan_brief(path):
 def lifecycle(reg, brief, gaps, certs, required):
     """ELEVATED requires certification, never a brief. Nothing else may claim it."""
     open_gaps=[g for g in gaps if g.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]
-    passing={c["criterion"] for c in certs if str(c.get("verdict","")).upper() in ("PASS","N/A","N-A","NA")}
+    passing={c["criterion"] for c in certs if str(c.get("verdict","")).upper() in PASSING_VERDICTS}
+    # An unrecognised verdict string is NOT silently treated as failing -- it is reported, because a
+    # typo'd verdict and an honest FAIL are different facts and the closed set exists to keep them so.
+    unknown=sorted({str(c.get("verdict","")) for c in certs} - VERDICTS)
     missing=[c for c in required if c not in passing]
+    if unknown: return "LEDGER_INVALID", f"verdict(s) outside the closed set: {', '.join(unknown)}"
     if certs and not missing and not open_gaps: return "ELEVATED", "every gate certified or disposed; no open gap"
     if certs and not missing and open_gaps:    return "CERTIFIED_GAPS_OPEN", f"{len(open_gaps)} gap(s) open"
     if certs:                                  return "CERTIFYING", f"{len(required)-len(missing)}/{len(required)} gates certified"
@@ -205,7 +216,7 @@ def scan(layer_keys, env_file):
             assets.append(dict(id=aid,layer=lk,scoring=cfg["scoring"],registry=r,brief=b,
                 gaps_open=len([x for x in g if x.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]),
                 gaps_total=len(g),
-                certified=len({x["criterion"] for x in c if str(x.get("verdict","")).upper() in ("PASS","N/A","N-A","NA")}),
+                certified=len({x["criterion"] for x in c if str(x.get("verdict","")) in PASSING_VERDICTS}),
                 certs_total=len(c),required=len(required),state=state,why=why))
         out["layers"][lk]=dict(name=cfg["name"],prefix=cfg["prefix"],scoring=cfg["scoring"],
             instance=cfg["instance"],registry_reason=reason,n_assets=len(assets),assets=assets)
