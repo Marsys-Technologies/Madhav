@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-25T22:12:05+05:30",
+  "generated_at": "2026-09-25T22:41:01+05:30",
   "generator_version": "1.0",
   "entry_count": 136,
-  "fingerprint": "fc95c6ea969fa55e",
+  "fingerprint": "7b1270e65b191589",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1873,14 +1873,16 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "0914657b4ecb145ffdfdfbfc2f45375a4f03968597d149292b33aaf6890c6ca6",
+      "fingerprint": "b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5",
       "native_id": "project",
-      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
+      "last_verified_session": "L3-CHAIN-SEAL-20260925",
       "last_verified_on": "2026-09-25",
       "supersedes": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
       "tier": 1,
-      "fingerprint_sha256": "0914657b4ecb145ffdfdfbfc2f45375a4f03968597d149292b33aaf6890c6ca6",
-      "doc_status": "CURRENT"
+      "fingerprint_sha256": "b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5",
+      "doc_status": "SEALED",
+      "seal_state": "SEALED",
+      "sealed_on": "2026-09-25"
     },
     {
       "canonical_id": "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE",
@@ -1893,16 +1895,18 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "ee3ca4e0536d905e8887fe561fd7777ad7b60d72dcee559998ce2ba33f0b957f",
+      "fingerprint": "68b991f349edae92519935d5845b6a90f78624f631866c1cbd87a99ca874ec86",
       "native_id": "project",
-      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
+      "last_verified_session": "L3-CHAIN-SEAL-20260925",
       "last_verified_on": "2026-09-25",
       "parent": "MADHAV_PRODUCT_DEFINITION",
       "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v3_0.md",
       "note": "Middle tier of product definition -> data plane -> L0-L5 layer plans -> asset briefs.",
       "tier": 2,
-      "fingerprint_sha256": "ee3ca4e0536d905e8887fe561fd7777ad7b60d72dcee559998ce2ba33f0b957f",
-      "doc_status": "CURRENT"
+      "fingerprint_sha256": "68b991f349edae92519935d5845b6a90f78624f631866c1cbd87a99ca874ec86",
+      "doc_status": "SEALED",
+      "seal_state": "SEALED",
+      "sealed_on": "2026-09-25"
     },
     {
       "canonical_id": "ELEVATION_DERIVATION_CHAIN",
@@ -1927,7 +1931,7 @@
     {
       "canonical_id": "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE",
       "path": "00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md",
-      "version": "1.2",
+      "version": "FINAL",
       "status": "CURRENT",
       "layer": "governance",
       "expose_to_chat": false,
@@ -1935,14 +1939,16 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "d34f1086953e0b635edfd4907b639df3652962f352b58c13f2a9bc422e219148",
+      "fingerprint": "bb88bee1e024b349470b74301159114aaedd6880a0e35f76e86ba74819e0ae42",
       "native_id": "project",
-      "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
+      "last_verified_session": "L3-CHAIN-SEAL-20260925",
       "last_verified_on": "2026-09-25",
       "tier": 3,
       "note": "tier-3 template; produces one instance per layer",
-      "fingerprint_sha256": "d34f1086953e0b635edfd4907b639df3652962f352b58c13f2a9bc422e219148",
-      "doc_status": "READY_FOR_USE"
+      "fingerprint_sha256": "bb88bee1e024b349470b74301159114aaedd6880a0e35f76e86ba74819e0ae42",
+      "doc_status": "SEALED",
+      "seal_state": "SEALED",
+      "sealed_on": "2026-09-25"
     },
     {
       "canonical_id": "ASSET_ELEVATION_TEMPLATE",

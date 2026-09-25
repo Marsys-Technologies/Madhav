@@ -875,6 +875,37 @@ def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
     return findings
 
 
+def _load_verification_vocab(repo_root: "pathlib.Path | None" = None):
+    """Read the settled `verification_pass_status` vocabulary from its single source of truth.
+
+    Returns (all_statuses, prohibited_statuses, error). On failure both sets are empty and `error`
+    is set — a caller must then report the check as unrunnable, never as clean (§N.8).
+
+    Corrected 2026-09-25, native-directed. This file used to carry its own four-value copy of a
+    thirteen-member vocabulary, in two places, plus a third hardcoded copy inline in a query.
+    `brahmagyan/verification_vocab.py`'s own docstring already named it: "a seventh copy ...
+    deliberately NOT folded in ... currently raises a HARD violation for 56,028 live rows, of which
+    only the 5,428 `PASS` rows are the real defect. Routed as a residual."
+
+    Measured against production 2026-09-25: the `PASS` rows are GONE (zero live), and every one of the
+    32,073 rows this gate was flagging is a legitimate member — computed_extension 11,385,
+    single_pass 10,937, floored 7,095, documented_approximation 2,410, pending_w3_verification 150,
+    not_defined_for_nodes 96. The gate had become permanently red and could no longer distinguish a
+    real violation from a legal value, which is the one thing a gate exists to do. Replacing the copy
+    with a reference is the rule the vocabulary itself encodes (§4.1 rule 6, one map per class; §N.7
+    item 3, no wrapper-local constant may shadow a source value).
+    """
+    root = repo_root or pathlib.Path(__file__).resolve().parents[3]
+    sidecar = root / "platform" / "python-sidecar"
+    try:
+        if str(sidecar) not in sys.path:
+            sys.path.insert(0, str(sidecar))
+        from brahmagyan import verification_vocab as _vv  # type: ignore
+        return set(_vv.ALL_STATUSES), set(_vv.PROHIBITED_STATUSES), None
+    except Exception as exc:  # noqa: BLE001
+        return set(), set(), f"{type(exc).__name__}: {exc}"
+
+
 def check_a3_schema_compliance(conn) -> dict:
     """A3 schema compliance check.
 
@@ -888,7 +919,7 @@ def check_a3_schema_compliance(conn) -> dict:
 
     Returns a summary dict with counts.
     """
-    VALID_STATUS = {'single', 'two_pass_verified', 'classical_match', 'divergent_flagged'}
+    VALID_STATUS, PROHIBITED_STATUS, _vocab_err = _load_verification_vocab()
     MV_NAMES = [
         "mv_lagna_facts",
         "mv_planet_dignity_facts",
@@ -906,6 +937,8 @@ def check_a3_schema_compliance(conn) -> dict:
 
     summary: dict = {
         "bad_verification_status_count": 0,
+        "prohibited_verification_status_count": 0,
+        "vocab_error": _vocab_err,
         "missing_citation_ref_count": 0,
         "missing_mvs": [],
         "hard_violation": False,
@@ -914,18 +947,36 @@ def check_a3_schema_compliance(conn) -> dict:
     try:
         cur = conn.cursor()
 
-        # Check invalid verification_pass_status values
-        placeholders = ",".join(["'%s'" % s for s in VALID_STATUS])
+        # Check invalid verification_pass_status values, against the vocabulary rather than a copy.
+        # An unreadable vocabulary is a hard violation, not a pass: the check cannot run without it.
+        if _vocab_err:
+            summary["hard_violation"] = True
+            summary["error"] = f"verification vocabulary unreadable: {_vocab_err}"
+            cur.close()
+            return summary
+        placeholders = ",".join("'%s'" % s for s in sorted(VALID_STATUS))
         cur.execute(
             "SELECT COUNT(*) FROM chart_facts "
             "WHERE verification_pass_status IS NOT NULL "
-            "AND verification_pass_status NOT IN ('single','two_pass_verified','classical_match','divergent_flagged')"
+            f"AND verification_pass_status NOT IN ({placeholders})"
         )
         row = cur.fetchone()
         bad_count = row[0] if row else 0
         summary["bad_verification_status_count"] = bad_count
         if bad_count > 0:
             summary["hard_violation"] = True
+
+        # Prohibited spellings are the worse class: a bare "pass" asserts that some pass succeeded
+        # without naming which, so no reader can tell whether a detector ran (§N.8).
+        if PROHIBITED_STATUS:
+            prohibited_sql = ",".join("'%s'" % s for s in sorted(PROHIBITED_STATUS))
+            cur.execute(
+                f"SELECT COUNT(*) FROM chart_facts WHERE verification_pass_status IN ({prohibited_sql})"
+            )
+            row = cur.fetchone()
+            summary["prohibited_verification_status_count"] = row[0] if row else 0
+            if summary["prohibited_verification_status_count"] > 0:
+                summary["hard_violation"] = True
 
         # Check missing citation_ref
         cur.execute(
@@ -1010,12 +1061,27 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
         except Exception as exc:
             return None, str(exc)
 
-    # 1. Check invalid verification_pass_status
+    # 1. Check invalid verification_pass_status — against the vocabulary, not a local copy.
+    VALID_STATUS, PROHIBITED_STATUS, vocab_err = _load_verification_vocab(repo_root)
+    if vocab_err:
+        findings.append(Finding(
+            cls="a3_verification_vocab_unreadable",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["platform/python-sidecar/brahmagyan/verification_vocab.py"],
+            evidence=f"Could not import the settled verification_pass_status vocabulary: {vocab_err}",
+            suggested_remediation=(
+                "The status check cannot run without its authority and is NOT reported clean. "
+                "Restore the module or the import path."
+            ),
+        ))
+        return findings
+
+    legal_sql = ",".join(f"'{v}'" for v in sorted(VALID_STATUS))
     out, err = _run_query(
         "SELECT COUNT(*) FROM chart_facts "
         "WHERE verification_pass_status IS NOT NULL "
-        "AND verification_pass_status NOT IN "
-        "('single','two_pass_verified','classical_match','divergent_flagged');"
+        f"AND verification_pass_status NOT IN ({legal_sql});"
     )
     if err:
         findings.append(Finding(
@@ -1034,9 +1100,41 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
             severity="HIGH",
             canonical_id=None,
             surfaces_involved=["chart_facts"],
-            evidence=f"{bad_count} chart_facts row(s) have verification_pass_status outside the declared enum",
-            suggested_remediation="Fix or migrate rows to use: single, two_pass_verified, classical_match, divergent_flagged",
+            evidence=(
+                f"{bad_count} chart_facts row(s) carry a verification_pass_status that is not a member "
+                f"of the settled vocabulary ({len(VALID_STATUS)} members)"
+            ),
+            suggested_remediation=(
+                "Emit only members of brahmagyan/verification_vocab.py, via its named constants and "
+                "never a bare literal; if a genuinely new state exists, add it there and to "
+                "envelope.ts, which its own test pins member-for-member."
+            ),
         ))
+
+    # 1b. Prohibited spellings — a separate and worse class (§N.8): a bare pass/PASS claims a pass
+    # succeeded without naming which, so no reader can tell whether a detector ran at all.
+    if PROHIBITED_STATUS:
+        prohibited_sql = ",".join(f"'{v}'" for v in sorted(PROHIBITED_STATUS))
+        out_p, err_p = _run_query(
+            f"SELECT COUNT(*) FROM chart_facts WHERE verification_pass_status IN ({prohibited_sql});"
+        )
+        if not err_p:
+            prohibited_count = int(out_p.strip()) if out_p and out_p.strip().isdigit() else 0
+            if prohibited_count > 0:
+                findings.append(Finding(
+                    cls="a3_prohibited_verification_status",
+                    severity="CRITICAL",
+                    canonical_id=None,
+                    surfaces_involved=["chart_facts"],
+                    evidence=(
+                        f"{prohibited_count} chart_facts row(s) carry a PROHIBITED status "
+                        f"({', '.join(sorted(PROHIBITED_STATUS))}) — banned by assert_legal()"
+                    ),
+                    suggested_remediation=(
+                        "Replace with the status naming the pass that actually ran, or with an honest "
+                        "unverified member. A bare pass/PASS is never legal."
+                    ),
+                ))
 
     # 2. Check 12 MVs exist
     out, err = _run_query(

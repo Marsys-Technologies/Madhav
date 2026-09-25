@@ -5,8 +5,20 @@ tier: 3
 kind: template          # fixes shape; never cited as authority for content
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["one layer instance per L0-L5"]
-version: "1.2"
-status: READY_FOR_USE
+version: "FINAL"      # was 1.2; set FINAL 2026-09-25 by native instruction. The filename keeps _v1_0 so the instances and reviews that cite it do not break; the identity of record is the CAPABILITY_MANIFEST fingerprint, not this number.
+status: SEALED        # was READY_FOR_USE; sealed 2026-09-25 (native decision 13). Still the template to instantiate from — sealed means its shape no longer changes, not that it is out of use.
+seal:
+  state: SEALED
+  sealed_on: 2026-09-25
+  sealed_by: "Native — NATIVE_DECISIONS_2026-09-25_v1_0.md v1.4, decision 13"
+  signed_under: "Native ruling 9 — a review happened; the reviewer, the native or the session may sign"
+  seal_record: 00_ARCHITECTURE/briefs/nirmana/ELEVATION_CHAIN_SEAL_2026-09-25_v1_0.md
+  reopen_rule: >
+    A sealed document is not edited in place on a session's own judgement. It reopens only by native
+    ruling, and the reopen is recorded in this changelog as such, with the ruling named. Correcting a
+    typo is not a reopen; changing an obligation, a contract, a count or a scope is.
+  still_open_below_the_seal: ["layer instance (L0-L5)", "asset template", "asset instance (per-asset briefs)"]
+  review_backing: "reviews/KIMI_K3_REVIEW_LAYER_TEMPLATE_v1_0.md — external fresh-context review, findings folded at v1.1. The v1.2 delta is a transcription of native rulings 9 and 11 rather than new content, and was verified line-by-line against those rulings before sealing; that is the review this seal rests on, stated plainly rather than implied."
 produced_on: 2026-09-24
 decision_owner: Native
 inherits:
@@ -22,6 +34,7 @@ independent_review: DONE - reviews/KIMI_K3_REVIEW_LAYER_TEMPLATE_v1_0.md (extern
   native or the session may sign; a review must have happened). The L0 instance remains its first
   practical test; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "FINAL / SEALED (2026-09-25, native instruction + decision 13): version set to FINAL and the template sealed alongside tiers 1 and 2. Numbered versions stop here; the identity of record is the manifest fingerprint. What remains open below the seal is the layer instance, the asset template and the asset instance. No content changed in this entry."
   - "1.2 (2026-09-25, native rulings 9 and 11 of NATIVE_DECISIONS_2026-09-25 v1.2): (a) RULING 11 - `Domain correctness` is not a data-plane obligation. The astrological verdict is formed above the data plane, in the reasoning layer; this template governs data-plane layer plans only. §2.7 is therefore RESCOPED from `is the astrology right?` to SOURCE CARRIAGE AND REPRODUCTION - the three mechanical checks that are data checks and stay (the encoded restatement against its cited passage; two witnesses agreeing or their disagreement CARRIED unresolved; a computed quantity reproducing when derived a second way) - and the fourth, the seeded negative case, is removed with the verdict framing: authoring a case the tradition says must not fire is a doctrinal act and belongs to the layer above. The §5.2 gate `Dom` becomes `Carr` on the same basis, and its menu drops D4. No layer is scored on doctrinal correctness by this template. (b) RULING 9 - §5.4 item 6 no longer requires that the REVIEWER assign the verdict: the reviewer, the native or the session may sign, and the requirement is that a review actually happened. What stays void is a verdict with no review behind it, or one signed with acceptance tests still pending. (c) §3.1's `ten proof obligations` now carries its reason, so it is not `corrected` to eleven by a later reader."
   - "1.1 (2026-09-25, native-directed simplification + K3 review fold): §5.2 rewritten — 33 criteria across five tiers replaced by THREE INSTRUMENTS of which only the first certifies: (a) eight gates, each a claim with a detector that could return false; (b) brief shape, scanned for presence and producing no records; (c) inheritance and ladder position, read not scored. `Fct` folded into `Ldgr`; `Narr`/`Dens` conditional; `Dom` runs one detector from a menu rather than four. §4.4 gains the two elements K3 found missing against product §16 (preserved kernel; relevant Jyotish concepts with the domain detector each invites) — its BLOCKER 1. §5.4 gains two tests K3 found demanded-but-unenforced: the gate map must EXIST (BLOCKER 2 — a 33-row map per asset is why it was never written; an eight-row map is enforceable), and THE REVIEWER ASSIGNS THE VERDICT, NOT THE AUTHOR (K3 finding 4 — the first instance carried a verdict its own author stamped with every acceptance test pending)."
   - "1.0 (elevated in place, 2026-09-25, fourth change): §2.7 Domain correctness added — is the astrology RIGHT, as distinct from §2.4's is the obligation APPLIED. Four autonomous checks (source correspondence, cross-witness agreement, independent re-derivation, negative cases), each able to return false; NO DETECTOR is never a pass. Verified autonomously and only autonomously: no human or acharya review exists in this system, by native ruling. The per-asset checklist reaches 33 criteria. §1.5 now states the layer identity as one instance of the compositional identity that holds at plane and product level too."

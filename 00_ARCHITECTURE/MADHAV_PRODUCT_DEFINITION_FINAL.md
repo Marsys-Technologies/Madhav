@@ -7,7 +7,19 @@ chain: 00_ARCHITECTURE/briefs/nirmana/ELEVATION_DERIVATION_CHAIN_v1_0.md
 inherits: []          # the root of the chain
 produces: [MADHAV_DATA_PLANE_VALUE_ARCHITECTURE]
 version: "FINAL"
-status: CURRENT
+status: SEALED        # was CURRENT; sealed 2026-09-25 (native decision 13)
+seal:
+  state: SEALED
+  sealed_on: 2026-09-25
+  sealed_by: "Native — NATIVE_DECISIONS_2026-09-25_v1_0.md v1.4, decision 13"
+  signed_under: "Native ruling 9 — a review happened; the reviewer, the native or the session may sign"
+  seal_record: 00_ARCHITECTURE/briefs/nirmana/ELEVATION_CHAIN_SEAL_2026-09-25_v1_0.md
+  reopen_rule: >
+    A sealed document is not edited in place on a session's own judgement. It reopens only by native
+    ruling, and the reopen is recorded in this changelog as such, with the ruling named. Correcting a
+    typo is not a reopen; changing an obligation, a contract, a count or a scope is.
+  still_open_below_the_seal: ["layer instance (L0-L5)", "asset template", "asset instance (per-asset briefs)"]
+  review_backing: "briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md — verdict ACCEPT, 11 MAJOR + 14 MINOR folded; the two 2026-09-25 elevations (§1.3 planes and compositional identity; §14 Domain correctness with its owner named) are native-directed content, recorded in the changelog below"
 produced_on: 2026-09-24
 review_record: briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md  # verdict ACCEPT, 11 MAJOR + 14 MINOR, all folded
 p_identifier_note: "P-identifiers renumbered at v3.1: v3.0 P20 (observation briefs) removed; v3.0 P21-P24 became v3.1 P20-P23. Any lineage citation of P20-P24 refers to v3.0 numbering. P24 at FINAL is a NEW need (present-tense), appended rather than renumbered."
@@ -16,6 +28,7 @@ supersedes: "MADHAV_PRODUCT_DEFINITION_v3_0.md (CURRENT 2026-09-13 → SUPERSEDE
 role: "Target product definition. Governing reference for data-plane and layer planning. Not a certification of implemented or deployed capability."
 does_not_authorize: "Implementation, data changes, production deployment, merge or push."
 changelog:
+  - "SEALED (2026-09-25, native decision 13): tier 1 of the elevation chain is sealed. What remains open below it is the layer instance, the asset template and the asset instance. No content changed in this entry — the seal is a governance state, not an edit."
   - "FINAL (elevated in place, 2026-09-25, native-directed, second change): §14's DOMAIN CORRECTNESS row keeps its place and gains its owner. The native introduced the obligation earlier the same day and, on review, placed it at the correct altitude: it is NOT a data-plane obligation. The data plane is data engineering, mathematical calculation and faithful carriage feeding the layers above; whether the astrology is right is formed above it, in the reasoning layer. The row therefore names where it is discharged, and the data plane keeps only the mechanical half — source correspondence, witness carriage and independent re-derivation, which are provenance and arithmetic, not doctrine. The seeded negative case goes with the verdict, above the plane. Recorded as NATIVE_DECISIONS_2026-09-25 v1.2 decision 11; propagated to MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL (§13.3 item 1, §12.2) and LAYER_DEFINITION_AND_STRATEGY_TEMPLATE v1.2 (§2.7 rescoped, gate Dom -> Carr)."
   - "FINAL (elevated in place, 2026-09-25, native-directed): §1.3 added — the compositional identity (layer = Σ assets + Σ synergies; plane = Σ layers + Σ synergies; product = Σ planes + Σ synergies) with the synergy term named as the thing that makes each level more than its parts, and the three planes named as first-class: data, retrieval, conversation. The data plane is ONE plane, not the middle of the product, and the other two are recorded as not yet elevated to its standard. §14 gains a DOMAIN CORRECTNESS obligation — the astrology being right rather than merely well-sourced — verified by four autonomous checks (source correspondence, cross-witness agreement, independent re-derivation, negative cases). Autonomous by native ruling: no human or acharya review is part of this system, so the check is the four detectors or it does not exist."
   - "FINAL (2026-09-24): review REVIEW_PRODUCT_DEFINITION_v3_1.md returned ACCEPT with 11 MAJOR and 14 MINOR findings; all folded. Native-directed before review: §1 differentiator restated against existing software rather than against a human (conventional Jyotish software computes each element on demand and presents it; Madhav computes the whole estate and the relationships between its parts, and no existing Jyotish software applies AI across that depth); §2 one voice with the acharya presentation carrying more technical machinery and the layperson less, with identical finding, confidence and uncertainty; learning output restored. From the review: `qualified` defined once as a four-part predicate; `permitted` replaced by `earned` where the cleanse left it without a referent; ablation named as the per-asset scoring method for the ten obligations; the §11 layer proof column joined to the §14 obligations; life-event switch state added to the forecast emission record; Delivery fidelity extended to test both presentation modes; named temporal instruments restored to §3.10; narration-vs-arithmetic verification restored; chronology-reset and reporter-hindsight leaks restored; out-of-scope research moved from §4.1 to a §13 boundary; four phrasings of the nearest-versus-better-supported obligation unified; governance residue, the duplicated rectification bullet and the mandatory-pass-count negation removed. P24 added as a NEW present-tense need, appended rather than renumbered."

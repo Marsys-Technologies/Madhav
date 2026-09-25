@@ -1,12 +1,12 @@
 ---
 artifact: NATIVE_DECISIONS_2026-09-25
 canonical_id: NATIVE_DECISIONS_2026_09_25
-version: "1.3"
+version: "1.4"
 status: RULED
 date: 2026-09-25
 decision_owner: Native
 recorded_by: L3 strategy session (madhav-e3)
-role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; four further native-initiated authorizations added at v1.1-v1.3 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named), plus the resolution of decision 5, both GOVERNING FACTS rather than answers to a question this session asked."
+role: "Decisions put to the native on 2026-09-25 with a recommendation each; the native's rulings, verbatim in effect, and what each unblocks. Eight at v1.0; five further native-initiated authorizations added at v1.1-v1.4 (#9 signature authority, #10 mortality-exclusion removal, #11 domain correctness is not a data-plane obligation, #12 Sarvatobhadra school named, #13 tiers 1-3 sealed), plus the resolution of decision 5 and the chart_facts verification-status investigation, both GOVERNING FACTS rather than answers to a question this session asked."
 ---
 
 # Native decisions, 2026-09-25
@@ -299,3 +299,83 @@ ingest and verify the Muhūrta Cintāmaṇi chapter that carries the grid, then 
 `ka_vedha_gochara` keeps serving its `algorithmic_approximation` with `uncited_extension=true` on every
 row. One populated `school_tag` row switches its DB-grid path on with no code change — the consumer is
 already wired and waiting.
+
+---
+
+# v1.4 — decision 13, and the chart_facts investigation
+
+## 13 — Tiers 1 to 3 of the elevation chain are SEALED
+
+**Ruling, native:** "Set the template to final. Seal the product definition strategy, data plane
+definition strategy and layer template. The three things open are layer instance, asset template,
+asset instance."
+
+**Done.** The layer template's version is now `FINAL` (it was 1.2; numbered versions stop there, and the
+filename keeps `_v1_0` so the instances and reviews citing it do not break). All three documents carry
+`status: SEALED` and a `seal:` block naming the seal date, the authority, the review it rests on and the
+reopen rule. The seal record, with each document's exact sha256 at seal and the review behind each, is
+`00_ARCHITECTURE/briefs/nirmana/ELEVATION_CHAIN_SEAL_2026-09-25_v1_0.md`.
+
+**What makes the seal real rather than a word:** the same three hashes sit in `CAPABILITY_MANIFEST.json`
+per entry, and `drift_detector.py` recomputes and compares them every run. A silent edit to a sealed
+document becomes a HIGH finding on the next pass. There is no other mechanism and none is needed.
+
+**Open beneath the seal, exactly as the native named them:** the layer instance (L0 is
+`REVISED_PENDING_REVIEW`; L1–L5 unwritten and held by decision 8), the asset template
+(`ASSET_ELEVATION_TEMPLATE_v1_0.md`, v1.1, unsealed), and the asset instance (per-asset briefs).
+
+**Consequence worth stating once:** the numbers above the line are now settled — ten obligations for the
+data plane, ten layer-plan elements, eight dispositions, six evidence states, five edge types. A session
+that "corrects" one of those has broken a seal, not fixed a document.
+
+## Resolution of the chart_facts verification-status finding
+
+**Native instruction:** "Please go ahead and look at it."
+
+**It is a false positive, and the gate was the defect.** Measured against production 2026-09-25:
+
+| verification_pass_status | rows | in the settled vocabulary? |
+|---|---|---|
+| `single` | 356,286 | yes |
+| `two_pass_verified` | 32,650 | yes (the only member meaning a detector ran that could have said otherwise) |
+| `computed_extension` | 11,385 | yes |
+| `single_pass` | 10,937 | yes |
+| `floored` | 7,095 | yes |
+| `documented_approximation` | 2,410 | yes |
+| `pending_w3_verification` | 150 | yes |
+| `not_defined_for_nodes` | 96 | yes |
+| `divergent_flagged` | 45 | yes |
+| `classical_match` | 42 | yes |
+
+Ten distinct values live, every one a member of `brahmagyan/verification_vocab.py`'s thirteen. The
+drift gate was comparing against its own **four-value copy**, so the six legal members it did not know
+about summed to exactly the 32,073 rows it reported as violations — 11,385 + 10,937 + 7,095 + 2,410 +
+150 + 96 = 32,073. The arithmetic matches the complaint exactly, which is the proof.
+
+**The real defect in that class is already closed:** `pass` / `PASS` are prohibited by `assert_legal()`,
+and production carries **zero** of them today. The vocabulary's own docstring had named this situation
+and routed it as a residual — "a seventh copy … raises a HARD violation for 56,028 live rows, of which
+only the 5,428 `PASS` rows are the real defect." Those 5,428 are gone. What was left was a permanently
+red gate that could no longer tell a legal value from a violation, which is the one thing a gate is for.
+
+**Fixed, not whitelisted.** `drift_detector.py` now reads the vocabulary from its single source of truth
+(three hardcoded copies removed — two sets and one inline query list, all in the same file), fails
+**closed** if that module cannot be imported (an unreadable authority is not a clean result), and adds a
+separate **CRITICAL** check for the prohibited spellings, which the old four-value set could not
+distinguish from an unknown value. Same doctrine the day has been about: §4.1 rule 6, one map per class;
+§N.7 item 3, no wrapper-local constant may shadow a source value. Result: the HIGH finding is gone, the
+A3 unit tests pass (5/5), and 0 CRITICAL confirms no prohibited spellings exist.
+
+## Left for the native — the twelve missing materialized views
+
+The other HIGH finding is also stale, but fixing it is a design call, not a transcription, so it is
+recorded here rather than changed. `drift_detector.py` demands twelve `mv_*_facts` materialized views and
+tells the reader to "apply migration `138_mvs.sql`". That migration is **archived**
+(`platform/migrations/_archive/138_mvs.sql`), it is not in the ledger, and **none** of the twelve views
+exists — while 25 other materialized views do exist and serve. So the gate is asserting an A3 design the
+system no longer has.
+
+Two honest options, native's call: **build them** (if the A3 fact-view design is still wanted), or
+**retire the expectation** from the check and name whatever replaced it. What should not continue is a
+gate demanding views from an archived migration — that is the same defect as the vocabulary copy, one
+layer over.
