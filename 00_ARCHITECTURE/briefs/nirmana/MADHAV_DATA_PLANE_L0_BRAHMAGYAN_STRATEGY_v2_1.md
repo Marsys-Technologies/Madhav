@@ -6,9 +6,20 @@ kind: instance
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["40 bg_* asset instances — via §4.4, which ASSET_ELEVATION_TEMPLATE §0.1 receives row for row"]
 version: "2.1"
-status: ACCEPT_WITH_CORRECTIONS
+status: REVISED_PENDING_REVIEW
+assigned_verdict: null            # no reviewer has assigned a verdict to v2.1
+last_reviewer_verdict: REJECT     # assigned by the independent review OF v2.0, below
 review_record: 00_ARCHITECTURE/briefs/reviews/REVIEW_L0_STRATEGY_v2_0.md  # verdict REJECT on v2.0; 2 BLOCKER + 12 MAJOR + 7 MINOR, all folded into v2.1
-verdict_basis: >
+verdict_correction: >
+  v2.1 previously carried status ACCEPT_WITH_CORRECTIONS. No reviewer assigned it. Its author did,
+  having folded the v2.0 REJECT's findings — which is the author grading his own answer sheet, and is
+  the defect K3's independent review of the layer template named as finding 4 ("the rot the two guards
+  were built against, arriving through a door the guards do not watch"). Corrected 2026-09-25 under
+  the rule that door now carries: LAYER_DEFINITION_AND_STRATEGY_TEMPLATE §5.4 test 6 — the reviewer
+  assigns the verdict, not the author; an instance carrying a self-stamped verdict is unreviewed,
+  whatever the verdict says, and nothing may inherit from it. The paragraph below states the basis on
+  which a reviewer MIGHT reach ACCEPT_WITH_CORRECTIONS; it is the author's argument, not a verdict.
+verdict_basis_argued_by_author: >
   Under the template's three-verdict scale, the review's findings split in two. The DOCUMENT-level
   findings — nine figures that did not reproduce, three obligation sets where there should be one,
   fourteen assets untraced in Part 0, six checklist criteria with no feeding section — are defects in
@@ -210,8 +221,11 @@ traces_to:   0.3
 honest reason on the evidence ledger — `producer_covered` (rider on another asset's multi-`@register`
 writer: `bg_transit_engine` on `bg_transit_rules`; `bg_nakshatra_medical`, `bg_sign_medical` on
 `bg_medical_mappings`), `static` (`bg_gochara_citation_resolution`, migration-seeded), `empty`
-(`bg_sarvatobhadra_grid`, 0 rows by adjudication). All 40 are `lit` in `asset_throughput`. All 40 are
-`asset_frozen` under **t0 only**; **0 under the current definition t3**.
+(`bg_sarvatobhadra_grid`, 0 rows by adjudication). **39 of 40 are `lit` in `asset_throughput`** — `bg_gochara_citation_resolution` has no throughput row
+at all, which is not the same as being unlit and is the reason the earlier "all 40" reading was wrong
+(re-measured 2026-09-25: `count(distinct asset_id) where asset_id like 'bg\_%'` = 39 in
+`asset_throughput`, 40 in `asset_registry`). All 40 are `asset_frozen` under **t0 only**; **0 under
+the current definition t3**.
 
 | asset | table(s) | rows | cols | provenance columns present | integrity check | reg. downstream | code readers (writer / serving) |
 |---|---|---|---|---|---|---|---|
@@ -835,15 +849,27 @@ plans; it is never a finding against the L0 asset.
 ### 5.2 · The per-asset checklist
 
 ```
-inherits:    kala_brief_tracker.py TIERS; template §5.2
-measured_by: the tracker — which today lists only the 22 L3 assets; extending its ASSETS table to bg_* is part of W-L0-1
+inherits:    template §5.2 (eight gates, v1.1)
+measured_by: asset_elevation_tracker.py --layer L0, against the live registry (40 bg_* rows, read 2026-09-25)
 traces_to:   4.4
 ```
 
-The 32 criteria apply unchanged. Two are structurally different for L0 and the template should say
-so (§6): **T1-E consumers** is measured by code reads, not by served readings, for a root layer; and
-**T5's campaign ladder** position is `ANALYZED` for all 40 (W1 analyses exist) with `FROZEN` only
-under a superseded revision — which under §5.3 is *not frozen*.
+The eight gates apply to L0 unchanged. Two carry a root-layer reading:
+
+- **`Dom`** is where L0 does its real work. As the reference layer, almost every `bg_*` asset asserts
+  something about a classical source, so **D1 (source correspondence)** is the menu item that usually
+  applies, and **D2 (cross-witness agreement)** wherever two authorities cover the same claim — the
+  `bg_sarvatobhadra_grid` school question (ADJUDICATION-11) is a D2 disagreement that must be
+  *recorded*, not averaged, and is the reason that table is honestly at 0 rows.
+- **`Dens`** is `N-A` for most of L0 — a reference table that reaches no served surface disposes of
+  it with the reason, one line.
+
+**Ladder position is no longer a scored criterion** (template §5.2c): it is a status field. For the
+record, the campaign ladder reads `ANALYZED` for all 40 (W1 analyses exist), with `FROZEN` only under
+a superseded revision — which under §5.3 is *not frozen*. The live measurement: 98 assets have ever
+been frozen, 8 under the current definition `t3-2026-09-11-8b884eac`, so **90 assets' freezes
+evaporated** at the re-freeze (103 events under superseded revisions — assets and events are
+different populations). Of `bg_*` specifically, **0 of 40 are frozen under t3**.
 
 ### 5.3 · Certification is per criterion
 
@@ -884,7 +910,7 @@ verification and design items this instance leaves open.
 | C-1 | The per-asset fidelity verdicts in §1.2 are scored from §1.1's measurements; the five **PARTIAL/FAIL** rows have not been re-verified by a second party | L0 layer certification (§5.3), not the asset briefs |
 | C-2 | `bg_vidhi_floors`' DRAFT status: the registry description says re-verify against the writer source before flipping. Not done here | the `bg_vidhi_floors` asset brief |
 | C-3 | The varga-construction relocation (§2.4) has a migration cost that is stated but not sized | the first L1 instance — it moves a convention out of L1 code |
-| C-4 | §5.2's 32 criteria are not yet mapped to §4.4's inheritance list; the review found six with no feeding section | the first `bg_*` asset brief |
+| C-4 | §5.2's gate map (eight rows, gate → feeding §4.4 section) is not yet written | the first `bg_*` asset brief — and the instance is not ready without it (template §5.4 test 5) |
 | C-5 | `l0_resource_config_slice_v1.json` is on disk, registered nowhere, and undispositioned | W-L0-1, and the registry-parity detector it builds |
 | C-6 | Presentation parity (§2.2) has not been run for any L0 capability | the first served-surface packet, W-L0-4 |
 
@@ -915,9 +941,11 @@ Recorded here for repair in `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`, no
    table compared against one partition's registry figure, and a join reported without checking its
    right-hand key was unique. Repaired 2026-09-25: `measured_by:` must name the population, with the
    corollary that a join is not measured until its keys are.
-9. **§5.2's 32 criteria were never mapped to §4.4's inheritance list**, so a brief author could reach
-   a criterion no section feeds — the review found six. Repaired: the map is now required before an
-   instance is called ready.
+9. **§5.2's criteria were never mapped to §4.4's inheritance list**, so a brief author could reach a
+   criterion no section feeds — the review found six. Repaired twice: the map is required before an
+   instance is called ready (template §5.4 test 5, which now *checks for* the map rather than merely
+   demanding it — K3's BLOCKER 2), and the map shrank from 33 rows to 8, which is why it can be
+   written at all. A 33-row-per-asset map is the reason it went unwritten.
 10. **The verdict scale was binary**, which forces REJECT on an instance whose direction is sound and
    whose corrections are real. Repaired with a three-verdict scale and the document/layer distinction
    that keeps the middle tier from rotting (template §5.4).

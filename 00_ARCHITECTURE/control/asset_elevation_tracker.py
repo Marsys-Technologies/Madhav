@@ -6,8 +6,8 @@ assembled from four sources, each named per column so a figure can be re-run:
 
   registry      live asset_registry (read-only)      — identity, target_table, depends_on, status
   production    information_schema + exact count(*)  — does it exist, how big, which contract columns
-  brief         the tier-4 instance, if one exists   — the 32-criterion completeness scan (§2)
-  ledgers       asset_gaps.jsonl / asset_certs.jsonl — open gaps and per-criterion certification (§5, §7)
+  brief         the tier-4 instance, if one exists   — brief SHAPE scan, presence only (§2)
+  ledgers       asset_gaps.jsonl / asset_certs.jsonl — open gaps and per-GATE certification (§5, §7)
 
 CERTIFICATION IS THE ONLY THING THAT MAKES AN ASSET ELEVATED, and it is read from the certification
 ledger alone. The brief scan is completeness, never conformance: a brief that mentions idempotency is
@@ -40,40 +40,54 @@ LAYERS = {
        "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l5_assets"},
 }
 
-# The 32 criteria. Marker patterns scan a BRIEF for completeness only — never the asset.
-TIERS = {
- "T1":("Ten analysis lenses",[
-   ("A","identity",r"\bidentity\b|asset[- ]id|epistemic"),("B","inputs / DAG",r"\bDAG\b|upstream|declared input"),
-   ("C","correctness",r"invariant|correctness"),("D","data sufficiency",r"data sufficien|coverage|row count"),
-   ("E","consumers",r"consumer|downstream|reader"),("F","AI / product",r"product|AI|serving question"),
-   ("G","efficiency",r"efficienc|cost|latency|hotspot"),("H","reliability",r"reliab|idempoten|timeout|failure"),
-   ("I","change packet",r"may_touch|change packet|files"),("J","final evidence",r"evidence|proof|detector")]),
- "T2":("Six elevation lenses",[
-   ("Val","value extraction",r"latent[- ]value|value extraction"),("Tgt","target-state design",r"target[- ]state|disposition and target"),
-   ("Eff","efficiency w/ quality",r"equivalen|justified no-change|no measured hotspot|cost"),
-   ("Syn","synergy obligations",r"OFFERS|DEMANDS|synergy oblig"),
-   ("Walk","consumer walkthrough",r"walkthrough|Product §9|end[- ]to[- ]end"),
-   ("KTime","knowledge-time",r"knowledge[- ]time|F15|F17|DP15a|as_of")]),
- "T3":("Strategy alignment",[
-   ("PD","Product Definition",r"Product Definition|PD v[0-9]|Product §9|P0[0-9]|P1[0-9]|P2[0-4]"),
-   ("VA","data-plane VA",r"data[- ]plane|DP-SD-|VA §|DP0[0-9]|DP1[0-7]"),
-   ("Lyr","layer strategy",r"Strategy §|layer instance|layer contract|layer §"),
-   ("Bind","synergy binding",r"synergy_binding|SYNERGY_BINDING|binding v[0-9]"),
-   ("U/D","upstream / downstream",r"upstream|downstream|L1 authority|§N\.5"),
-   ("Srv","serving contract",r"serv(ing|ed) (contract|surface|route)|serve-time|serving path|capability")]),
- "T4":("Discipline gates",[
-   ("Fct","facts / interpretation",r"B\.1\b|facts/interpretation|epistemic_class"),
-   ("Ldgr","derivation ledger",r"DERIVATION_LEDGER|derivation ledger|constituent_facts|fact_id"),
-   ("Idem","idempotency",r"idempoten"),("Earn","earned signal",r"§N\.8|earned[- ]signal|real detector|detector that (can |could )?(return|report)"),
-   ("Narr","narration fidelity",r"§N\.7|narration"),("Dens","serving density",r"§N\.6|densit|catalog_only|hardFloor"),
-   ("Null","honest null",r"honest null|honest absence|honest(ly)? (empty|zero|tier)|null rather than|NO DETECTOR"),
-   ("Vocab","vocabulary conformance",r"controlled vocabulary|vocabulary conformance|closed alias|synonyms|semantic_release|resolve_entity|norm_graha|independent[- ]map"),
-   ("Dom","domain correctness",r"domain correctness|source correspondence|cross-witness|cross witness|re-derivation|negative case|counterexample|school disagreement")]),
- "T5":("Two ladders",[
-   ("DPL","data-plane ladder",r"PLAN_REVIEWED|PRODUCER_READY|DATA_ACCEPTED"),
-   ("CmL","campaign ladder",r"ANALYZED|ENRICHED|QUALIFIED|FROZEN")]),
-}
-ALL_CRIT=[(t,k,l) for t,(tn,items) in TIERS.items() for k,l,_ in items]
+# The certified gates. Eight, not thirty-three. A gate is a CLAIM WITH A DETECTOR THAT COULD RETURN
+# FALSE; everything that was merely "addressed in the brief" moved to SHAPE below, which produces no
+# certification record because a present section is not a verified claim. See the layer template §5.2.
+#
+# Ldgr absorbs the former facts/interpretation gate: a ledger entry naming its upstream fact_ids IS
+# the separation test, and the separate gate had no detector of its own.
+# Narr and Dens are CONDITIONAL — an asset that emits no prose / reaches no served surface disposes
+# of them with an explicit N-A record, which counts as satisfied. Disposing is one line; the gate is
+# never silently dropped.
+GATES = [
+ ("Ldgr","derivation ledger",      "always",      "every derived value names the upstream fact_id it reads, and those ids resolve"),
+ ("Idem","idempotency",            "always",      "a rebuild replaces its own rows; it never accretes (CLAUDE.md §N.3)"),
+ ("Earn","earned signal",          "always",      "every status/grade/PASS has a detector measuring that specific claim (§N.8)"),
+ ("Null","honest null",            "always",      "an underivable value is emitted as null, not as a plausible default (§N.7.6)"),
+ ("Vocab","vocabulary conformance","always",      "one canonical id per thing, one closed alias set, no free-text synonym"),
+ ("Dom","domain correctness",      "always",      "ONE applicable detector from DOMAIN_MENU, run — not four, and not none"),
+ ("Narr","narration fidelity",     "emits prose", "prose restates cited facts and does not re-derive them (§N.7)"),
+ ("Dens","serving density",        "is served",   "confirmed vs catalog-only counted separately; dense layer survives a trim (§N.6)"),
+]
+
+# Pick the ONE that fits what the asset actually asserts. Running four where one applies is theatre;
+# running none is an unearned signal. Where none applies, the Dom record is NO DETECTOR with a
+# reason — an honest null, never a pass.
+DOMAIN_MENU = [
+ ("D1","source correspondence",   "the asset restates a cited classical source",      "the restatement against the source text"),
+ ("D2","cross-witness agreement", "two independent authorities cover the same claim", "they agree; disagreement is recorded, not averaged"),
+ ("D3","independent re-derivation","the value is computable a second way",            "compute it that way and compare"),
+ ("D4","seeded negative case",    "the asset classifies or fires",                    "feed a case that must not fire; check it doesn't"),
+]
+
+# Brief SHAPE — scanned for presence, reported as one boolean per brief, never certified.
+# These were T1/T2's sixteen lenses; they describe what a brief CONTAINS, which is not a claim about
+# the asset. T3 (inheritance) is a property of the LAYER instance, declared once in its §4.4 and not
+# re-litigated per asset. T5 (ladder positions) are status fields read from the registry.
+SHAPE = [
+ ("identity",        r"\bidentity\b|asset[- ]id|epistemic"),
+ ("inputs / DAG",    r"\bDAG\b|upstream|declared input"),
+ ("correctness",     r"invariant|correctness"),
+ ("data sufficiency",r"data sufficien|coverage|row count"),
+ ("consumers",       r"consumer|downstream|reader"),
+ ("value / target",  r"latent[- ]value|value extraction|target[- ]state|disposition"),
+ ("synergy",         r"OFFERS|DEMANDS|synergy oblig"),
+ ("knowledge-time",  r"knowledge[- ]time|F15|F17|DP15a|as_of"),
+ ("change packet",   r"may_touch|change packet|files"),
+ ("evidence",        r"evidence|proof|detector"),
+]
+
+REQUIRED_GATES=[k for k,_,_,_ in GATES]
 
 def jsonl(path):
     out=[]; bad=0
@@ -149,22 +163,22 @@ def find_brief(layer_key, asset_id):
 def scan_brief(path):
     if not path or not os.path.exists(path): return None
     s=io.open(path,encoding="utf-8",errors="replace").read()
-    cells={}
-    for t,(tn,items) in TIERS.items():
-        for k,l,pat in items: cells[k]=bool(re.search(pat,s,re.I))
+    cells={lbl:bool(re.search(pat,s,re.I)) for lbl,pat in SHAPE}
     ver=(re.search(r'^version:\s*"?([^"\n]+)',s,re.M) or [None,"—"])[1].strip().strip('"')
     st =(re.search(r'^status:\s*([^\n#]+)',s,re.M) or [None,"—"])[1].strip()
-    return dict(path=os.path.relpath(path,ROOT),version=ver,status=st,cells=cells,
-                addressed=sum(cells.values()),total=len(cells))
+    return dict(path=os.path.relpath(path,ROOT),version=ver,status=st,shape=cells,
+                shape_present=sum(cells.values()),shape_total=len(cells),
+                shape_complete=all(cells.values()),
+                shape_missing=[k for k,v in cells.items() if not v])
 
 def lifecycle(reg, brief, gaps, certs, required):
     """ELEVATED requires certification, never a brief. Nothing else may claim it."""
     open_gaps=[g for g in gaps if g.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]
-    passing={c["criterion"] for c in certs if str(c.get("verdict","")).upper() in ("PASS","N/A")}
+    passing={c["criterion"] for c in certs if str(c.get("verdict","")).upper() in ("PASS","N/A","N-A","NA")}
     missing=[c for c in required if c not in passing]
-    if certs and not missing and not open_gaps: return "ELEVATED", "every required criterion certified; no open gap"
+    if certs and not missing and not open_gaps: return "ELEVATED", "every gate certified or disposed; no open gap"
     if certs and not missing and open_gaps:    return "CERTIFIED_GAPS_OPEN", f"{len(open_gaps)} gap(s) open"
-    if certs:                                  return "CERTIFYING", f"{len(required)-len(missing)}/{len(required)} criteria certified"
+    if certs:                                  return "CERTIFYING", f"{len(required)-len(missing)}/{len(required)} gates certified"
     if open_gaps:                              return "GAPS_REGISTERED", f"{len(open_gaps)} gap(s), no certification yet"
     if brief and "ACCEPT" in (brief["status"] or "").upper(): return "BRIEF_ACCEPTED", "brief accepted; execution not started"
     if brief:                                  return "BRIEF_DRAFT", brief["status"]
@@ -176,10 +190,10 @@ def scan(layer_keys, env_file):
     gap_by=collections.defaultdict(list); cert_by=collections.defaultdict(list)
     for g in gaps_all: gap_by[g.get("asset")].append(g)
     for c in certs_all: cert_by[c.get("asset")].append(c)
-    crit=[{"tier":t,"key":k,"label":l} for t,k,l in ALL_CRIT]
-    required=[k for _,k,_ in ALL_CRIT]
+    crit=[{"key":k,"label":l,"applies":a,"claim":cl} for k,l,a,cl in GATES]
+    required=list(REQUIRED_GATES)
     out={"generated":datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-         "criteria":crit,"layers":{},"ledger_bad_lines":gbad+cbad,
+         "gates":crit,"domain_menu":[{"key":k,"label":l,"applies":a,"check":c} for k,l,a,c in DOMAIN_MENU],"layers":{},"ledger_bad_lines":gbad+cbad,
          "gaps_path":os.path.relpath(GAPS,ROOT),"certs_path":os.path.relpath(CERTS,ROOT)}
     for lk in layer_keys:
         cfg=LAYERS[lk]; rows,reason=registry(env_file,lk)
@@ -191,7 +205,7 @@ def scan(layer_keys, env_file):
             assets.append(dict(id=aid,layer=lk,scoring=cfg["scoring"],registry=r,brief=b,
                 gaps_open=len([x for x in g if x.get("state","OPEN").upper() not in ("CLOSED","WITHDRAWN")]),
                 gaps_total=len(g),
-                certified=len({x["criterion"] for x in c if str(x.get("verdict","")).upper() in ("PASS","N/A")}),
+                certified=len({x["criterion"] for x in c if str(x.get("verdict","")).upper() in ("PASS","N/A","N-A","NA")}),
                 certs_total=len(c),required=len(required),state=state,why=why))
         out["layers"][lk]=dict(name=cfg["name"],prefix=cfg["prefix"],scoring=cfg["scoring"],
             instance=cfg["instance"],registry_reason=reason,n_assets=len(assets),assets=assets)
@@ -219,7 +233,7 @@ def main():
                   +", ".join(f"{s}={n}" for s,n in sorted(st.items())))
             elev=sum(1 for x in L["assets"] if x["state"]=="ELEVATED")
             print(f'      ELEVATED {elev}/{L["n_assets"]} | open gaps {sum(x["gaps_open"] for x in L["assets"])}'
-                  f' | criteria certified {sum(x["certified"] for x in L["assets"])}/{L["n_assets"]*len(d["criteria"])}')
+                  f' | gates certified {sum(x["certified"] for x in L["assets"])}/{L["n_assets"]*len(d["gates"])}')
         if d["ledger_bad_lines"]: print(f'  !! {d["ledger_bad_lines"]} malformed ledger line(s)')
         if not a.watch: break
         time.sleep(a.interval)

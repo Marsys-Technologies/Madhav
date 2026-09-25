@@ -20,6 +20,7 @@ role: >
 independent_review: NOT YET. This template has not been reviewed by a fresh-context session. Its first
   test is the L0 instance; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "1.1 (2026-09-25, native-directed simplification + K3 review fold): §5.2 rewritten — 33 criteria across five tiers replaced by THREE INSTRUMENTS of which only the first certifies: (a) eight gates, each a claim with a detector that could return false; (b) brief shape, scanned for presence and producing no records; (c) inheritance and ladder position, read not scored. `Fct` folded into `Ldgr`; `Narr`/`Dens` conditional; `Dom` runs one detector from a menu rather than four. §4.4 gains the two elements K3 found missing against product §16 (preserved kernel; relevant Jyotish concepts with the domain detector each invites) — its BLOCKER 1. §5.4 gains two tests K3 found demanded-but-unenforced: the gate map must EXIST (BLOCKER 2 — a 33-row map per asset is why it was never written; an eight-row map is enforceable), and THE REVIEWER ASSIGNS THE VERDICT, NOT THE AUTHOR (K3 finding 4 — the first instance carried a verdict its own author stamped with every acceptance test pending)."
   - "1.0 (elevated in place, 2026-09-25, fourth change): §2.7 Domain correctness added — is the astrology RIGHT, as distinct from §2.4's is the obligation APPLIED. Four autonomous checks (source correspondence, cross-witness agreement, independent re-derivation, negative cases), each able to return false; NO DETECTOR is never a pass. Verified autonomously and only autonomously: no human or acharya review exists in this system, by native ruling. The per-asset checklist reaches 33 criteria. §1.5 now states the layer identity as one instance of the compositional identity that holds at plane and product level too."
   - "1.0 (elevated in place, 2026-09-25, third change): three repairs from the first instance's independent review. (a) §5.4 gains a three-verdict scale — ACCEPT / ACCEPT_WITH_CORRECTIONS / REJECT — with the distinction that makes the middle tier safe: a finding about the DOCUMENT is fixed in the document and never deferred, a finding about the LAYER that the document correctly records is a work packet, and two guards so the middle tier cannot rot (every correction names the gate it blocks; ACCEPT_WITH_CORRECTIONS becomes ACCEPT only by re-verification). (b) `measured_by:` must name the POPULATION, not only the instrument, with the corollary that a join is not measured until its keys are — three of the first instance's nine wrong figures came from exactly this gap. (c) §5.2's 32 criteria must be mapped to §4.4's inheritance list before an instance is called ready; the review found six criteria with no feeding section. Also §1.5: the synergistic fraction is recorded only where a harness exists to produce it."
   - "1.0 (elevated in place, 2026-09-25, second change): reference-layer clause in §1.2, §1.5 and §5.1 — a layer whose assets are knowledge authorities measures its individual term by fidelity, is never retirement-scored by ablation, and receives ablation only cross-layer to verify consumers. The first case where the template's definition of value had to be layer-appropriate rather than uniform; raised by the native against the L0 instance."
@@ -447,6 +448,8 @@ derived rather than written from scratch:
 - its disposition and its "must add" list (3.2, 3.3)
 - its individual / synergistic / cross-layer contribution, measured (1.2-1.4)
 - its manifestation or temporal role
+- **the preserved kernel** — what of the asset must survive any rebuild unchanged (from 3.2)
+- **the relevant Jyotish concepts** the asset touches, named, with the domain detector each invites (2.7, 5.2's menu)
 
 A brief that has to invent any of these has found a defect in this instance, not in the brief.
 
@@ -476,42 +479,66 @@ correctness · concept and relationship completeness · interpretive fidelity ·
 understanding · consumer understanding · temporal integrity · predictive performance · delivery
 fidelity · operational honesty. A layer scores on the subset its 0.2 row names.
 
-### 5.2 · The per-asset checklist — five tiers, thirty-three criteria
+### 5.2 · What is certified, and what is merely checked
 
 ```
-inherits:    kala_brief_tracker.py TIERS (as run); Product §14; CLAUDE.md §N.6-N.8
-measured_by: the tracker's marker scan for presence; a reviewer for substance
-traces_to:   4.4 — this is what an asset brief is checked against
+inherits:    Product §14; CLAUDE.md §N.6-N.8; the t3 lesson (certification is expensive to re-earn)
+measured_by: the certification ledger (asset_certs.jsonl) for gates; the tracker's marker scan for shape
+traces_to:   4.4 — the gates are what an asset brief is certified against
 ```
 
-A tick means the criterion is **addressed**; substance is the reviewer's. This is the checklist a
-layer instance hands to every asset brief, not a parallel instrument.
+Three instruments, not one. Only the first produces certification records.
 
-**T1 · Ten analysis lenses** — A identity · B inputs/DAG · C correctness · D data sufficiency ·
-E consumers · F AI/product · G efficiency · H reliability · I change packet · J final evidence
+**(a) The gates — certified, per asset.** Six always, plus at most two that apply conditionally.
+Each is a claim with a detector that could return false; a gate without one is `NO DETECTOR`, which
+is an honest null, never a pass.
 
-**T2 · Six elevation lenses** — value extraction · target-state design · efficiency with quality ·
-synergy obligations · consumer walkthrough · knowledge-time discipline
+| gate | the claim | conditional on |
+|---|---|---|
+| **Ldgr** · derivation ledger | every derived value names the upstream `fact_id` it reads, and those ids resolve | — |
+| **Idem** · idempotency | a rebuild replaces its own rows; it never accretes (§N.3) | — |
+| **Earn** · earned signal | every status/grade/PASS the asset emits has a detector measuring that specific claim (§N.8) | — |
+| **Null** · honest null | where a value cannot be derived, the asset emits null — not a plausible default (§N.7 item 6) | — |
+| **Vocab** · vocabulary conformance | one canonical id per thing, one closed alias set, no free-text synonym | — |
+| **Dom** · domain correctness | what the asset asserts about Jyotish is checked by **one** applicable detector below | — |
+| **Narr** · narration fidelity | prose restates cited facts and does not re-derive them (§N.7) | the asset emits prose |
+| **Dens** · serving density | confirmed and catalog-only rows are counted separately; the dense layer survives a trim (§N.6) | the asset reaches a served surface |
 
-**T3 · Strategy alignment** — Product Definition · data-plane VA · layer strategy · synergy binding ·
-upstream/downstream · serving contract
+`Ldgr` absorbs the former facts/interpretation gate: a ledger entry naming its upstream ids **is**
+the separation test, and the separate gate had no detector of its own.
 
-**T4 · Discipline gates** — facts/interpretation separation · derivation ledger · idempotency · earned
-signal · narration fidelity · serving density · honest null · **vocabulary conformance** ·
-**domain correctness**
+**The domain menu.** Name the one detector that fits what the asset actually asserts, and run it.
+Running four where one applies is theatre; running none is an unearned signal.
 
-**T5 · Two ladders** — data-plane ladder position · campaign ladder position
+| | applies when | the check |
+|---|---|---|
+| D1 · source correspondence | the asset restates a cited classical source | the restatement against the source text |
+| D2 · cross-witness agreement | two independent authorities cover the same claim | they agree; where they don't, the disagreement is recorded, not averaged |
+| D3 · independent re-derivation | the value is computable a second way | compute it that way and compare |
+| D4 · seeded negative case | the asset classifies or fires | feed a case that must not fire; check it doesn't |
 
-**Each criterion must be fed by a section of this instance.** Before an instance is called ready, map
-all 32 criteria to the §4.4 inheritance list: for each criterion, the section a brief author reads to
-answer it. A criterion with no feeding section is a hole in the instance, not a gap in the brief —
-the brief author would have to invent it. Record the map; it is the derivability test in tabular
-form.
+**(b) Brief shape — checked once, not certified.** The §4.4 inheritance list fixes what an asset
+brief contains. A brief either carries those sections or it is not yet a brief. The tracker reports
+this as one boolean per brief, by marker scan. It produces no certification records, because a
+present section is not a verified claim.
+
+**(c) Inheritance and ladder position — read, not scored.** That an asset brief descends from this
+instance, and this instance from the data plane and the product, is a property of **this instance**,
+declared once in §4.4 — not re-litigated per asset. Ladder positions (data-plane and campaign) are
+status fields read from the registry and the campaign events table; a status is not a verdict.
+
+**Each gate must be fed by a section of this instance.** Before an instance is called ready, map the
+gates to the §4.4 inheritance list: for each gate, the section a brief author reads to answer it. A
+gate with no feeding section is a hole in the instance, not a gap in the brief. Eight rows; if it
+cannot be written, the instance is not ready.
 
 ### 5.3 · Certification is per criterion, not per definition revision
 
 ```
-inherits:    the t3 lesson — 73 freezes evaporated when the campaign definition re-froze
+inherits:    the t3 lesson — 90 assets' freezes evaporated when the campaign definition re-froze
+             (measured 2026-09-25 over nirmana_elevation_campaign_events, event_type='asset_frozen':
+              98 assets ever frozen, 8 frozen under t3, 90 not; 103 events under superseded revisions.
+              Assets and events are different populations — 90 is assets.)
 measured_by: the certification record itself
 traces_to:   —  (this is the property that lets the scale improve without destroying earned work)
 ```
@@ -537,8 +564,13 @@ Before an instance is called ready:
 3. **Measured, not inherited.** Every figure names its `measured_by:`; a reviewer rejects any that
    cannot be re-run.
 4. **Presentation parity** holds for the layer's served surface.
-5. **Independent review**, fresh context, findings folded, before the instance is cited by anything
-   below it. Three verdicts:
+5. **The gate map exists.** §5.2's eight-row map from gate to feeding section is written out in the
+   instance. An instance missing the map fails this test outright — the map is the derivability test
+   in tabular form, and demanding it without checking for it is how it goes unwritten.
+6. **Independent review**, fresh context, findings folded, before the instance is cited by anything
+   below it. **The reviewer assigns the verdict, not the author** — an instance carrying a verdict its
+   own author stamped is unreviewed, whatever the verdict says, and nothing may inherit from it.
+   Three verdicts:
 
 | verdict | meaning | may the tier below inherit from it? |
 |---|---|---|
