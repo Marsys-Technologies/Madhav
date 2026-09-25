@@ -260,3 +260,211 @@ def test_seed_rules_propagates_insert_failure_instead_of_reporting_success(monke
 
     with pytest.raises(RuntimeError, match="constraint violation"):
         mod.seed_rules(Conn(), autocommit=False)
+
+
+class TestWL03CitationParenSuppression:
+    """W-L0-3: a parenthetical work-citation — "(Jataka Parijata, ch. 8)" —
+    names a SOURCE TEXT, not a concept the rule qualifies. Matches inside a
+    citation-marked paren (chapter/verse locator or digit) are suppressed;
+    a bare parenthesized concept name like "(Sunapha)" stays eligible."""
+
+    def test_tier1_name_inside_citation_paren_suppressed(self):
+        mod = _get_module()
+        result = mod.detect_yoga_reference(
+            "The same result is stated elsewhere (Jataka Parijata, ch. 8)."
+        )
+        assert result["yoga_canonical_id"] is None
+        assert result["yoga_ambiguous"] is False
+
+    def test_tier1_name_inside_chapter_citation_paren_suppressed(self):
+        mod = _get_module()
+        result = mod.detect_yoga_reference("as given (Jataka Parijata, Ch. II) above")
+        assert result["yoga_canonical_id"] is None
+
+    def test_bigram_inside_citation_paren_suppressed(self):
+        mod = _get_module()
+        result = mod.detect_yoga_reference(
+            "the results (Kusuma Yoga, ch. 3) are described here"
+        )
+        assert result["yoga_canonical_id"] is None
+
+    def test_plain_paren_name_stays_eligible(self):
+        mod = _get_module()
+        result = mod.detect_yoga_reference(
+            "(Sunapha) arises from the second house from the Moon."
+        )
+        assert result["yoga_canonical_id"] == "sunapha"
+
+
+class TestWL03SentenceWindowTruncation:
+    """W-L0-3: the detection window around a rule match is truncated at
+    sentence boundaries ('. '), so a yoga named in a NEIGHBOURING sentence
+    (chapter header, next verse) is no longer attributed to this rule."""
+
+    def test_prior_sentence_yoga_not_attributed(self):
+        mod = _get_module()
+        chunk = {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "text_id": "bphs",
+            "verse_ref": "BPHS 1.3",
+            "content_en": (
+                "Sunapha is described next. Mars in the 10th house gives "
+                "great authority and command over others."
+            ),
+        }
+        rows = list(mod.extract_rules_from_chunk(chunk, valid_text_ids={"bphs"}))
+        assert rows
+        for r in rows:
+            assert r.get("yoga_canonical_id") is None
+            assert r.get("unlinked_reason") == "no_concept_reference_in_window"
+
+    def test_next_sentence_yoga_not_attributed(self):
+        mod = _get_module()
+        chunk = {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "text_id": "bphs",
+            "verse_ref": "BPHS 1.4",
+            "content_en": (
+                "Mars in the 10th house gives great authority and command "
+                "over others. The next sloka explains Sunapha in detail."
+            ),
+        }
+        rows = list(mod.extract_rules_from_chunk(chunk, valid_text_ids={"bphs"}))
+        assert rows
+        for r in rows:
+            assert r.get("yoga_canonical_id") is None
+            assert r.get("unlinked_reason") == "no_concept_reference_in_window"
+
+
+class TestWL03UnlinkedReason:
+    """W-L0-3: every yielded rule carries unlinked_reason — NULL iff
+    yoga_canonical_id is set, a reason string otherwise."""
+
+    def test_no_reference_reason_emitted(self):
+        mod = _get_module()
+        chunk = {
+            "id": "55555555-5555-5555-5555-555555555555",
+            "text_id": "bphs",
+            "verse_ref": "BPHS 1.5",
+            "content_en": "Mars in the 10th house gives great authority and command over others.",
+        }
+        rows = list(mod.extract_rules_from_chunk(chunk, valid_text_ids={"bphs"}))
+        assert rows
+        for r in rows:
+            assert r.get("yoga_canonical_id") is None
+            assert r.get("unlinked_reason") == "no_concept_reference_in_window"
+
+    def test_linked_reason_is_none(self):
+        mod = _get_module()
+        chunk = {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "text_id": "bphs",
+            "verse_ref": "BPHS 1.6",
+            "content_en": (
+                "Mars in the 10th house gives Ruchaka and confers great "
+                "authority and command over others."
+            ),
+        }
+        rows = list(mod.extract_rules_from_chunk(chunk, valid_text_ids={"bphs"}))
+        linked = [r for r in rows if r.get("yoga_canonical_id") == "ruchaka"]
+        assert linked, "expected at least one ruchaka-linked rule"
+        for r in linked:
+            assert r.get("unlinked_reason") is None
+
+    def test_ambiguous_reference_reason(self):
+        mod = _get_module()
+        # "Kala Sarpa Yoga" collides: Tier-1 'Kala Sarpa' -> kala_sarpa_yoga
+        # vs bigram 'Sarpa Yoga' -> sarpa, in the same sentence as the rule.
+        chunk = {
+            "id": "77777777-7777-7777-7777-777777777777",
+            "text_id": "bphs",
+            "verse_ref": "BPHS 1.7",
+            "content_en": (
+                "Mars in the 10th house forms Kala Sarpa Yoga and confers "
+                "great authority and command over others."
+            ),
+        }
+        rows = list(mod.extract_rules_from_chunk(chunk, valid_text_ids={"bphs"}))
+        ambiguous = [r for r in rows if r.get("unlinked_reason") == "ambiguous_reference"]
+        assert ambiguous, "expected at least one ambiguous_reference row"
+        for r in ambiguous:
+            assert r.get("yoga_canonical_id") is None
+
+
+def test_seed_rules_labels_uncatalogued_yoga_reference(monkeypatch):
+    """W-L0-3: a same-sentence yoga reference whose name is NOT in
+    brahma_yoga_catalog is nulled by FK validation AND labelled
+    'reference_not_in_catalog', so the NULL is distinguishable from
+    'no_concept_reference_in_window'. The fixture rule row deliberately has
+    no 'unlinked_reason' key — exercises the .get() default."""
+    mod = _get_module()
+    rule = {
+        "rule_id": "11111111-1111-1111-1111-111111111111",
+        "text_id": "bphs",
+        "verse_ref": "BPHS 1.1",
+        "antecedent_jsonb": "{}",
+        "predicate_jsonb": "{}",
+        "prediction_jsonb": "{}",
+        "confidence": "two_pass_verified",
+        "extracted_by": mod.EXTRACTED_BY,
+        "extraction_pass_log": "{}",
+        "quality_score": 1.0,
+        "yoga_canonical_id": "uncatalogued_yoga",
+        "dasha_system_id": None,
+        "transit_marker": False,
+        "_quality": 1.0,
+    }
+    monkeypatch.setattr(mod, "extract_rules_from_chunk", lambda *_a, **_k: iter([rule.copy()]))
+
+    captured: dict = {}
+
+    class Cursor:
+        rowcount = 1
+
+        def __init__(self):
+            self.sql = ""
+            self._chunks_returned = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def execute(self, sql, params=None):
+            self.sql = sql
+            if "INSERT INTO sutravali_rules" in sql:
+                captured["params"] = params
+
+        def fetchone(self):
+            return {"count": 1}
+
+        def fetchall(self):
+            if "DISTINCT text_id" in self.sql:
+                return [{"text_id": "bphs"}]
+            if "brahma_dasha_systems" in self.sql:
+                return [{"canonical_id": "vimshottari"}]
+            if "brahma_yoga_catalog" in self.sql:
+                return [{"canonical_id": "ruchaka"}]
+            return []
+
+        def fetchmany(self, _size):
+            if self._chunks_returned:
+                return []
+            self._chunks_returned = True
+            return [{
+                "id": rule["rule_id"], "text_id": "bphs",
+                "verse_ref": "BPHS 1.1", "content_en": "Mars gives authority",
+            }]
+
+    class Conn:
+        def cursor(self):
+            return Cursor()
+
+    mod.seed_rules(Conn(), autocommit=False)
+
+    params = captured["params"]
+    # INSERT param order: ..., quality_score(9), yoga_canonical_id(10),
+    # unlinked_reason(11), dasha_system_id(12), transit_marker(13), created_at(14)
+    assert params[10] is None
+    assert params[11] == "reference_not_in_catalog"

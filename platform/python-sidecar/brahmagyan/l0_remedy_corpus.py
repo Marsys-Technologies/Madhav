@@ -2185,6 +2185,33 @@ SOURCE_MC = "Muhurta Chintamani, classical Jyotish muhurta text"
 SOURCE_YM = "Yantra Maharnava, classical yantra text"
 SOURCE_BS = "Brihat Samhita (Varahamihira), classical Jyotish/astronomy text"
 
+# ── W-L0-3: source identity normalization ─────────────────────────────────────
+# brahma_remedy_corpus.source_canonical_id shares ONE identity space with
+# brahma_ontology text-class canonical_ids, but the hand-authored rows below
+# drifted in spelling ('BPHS', 'Phaladeepika', 'Tajaka', 'bphs_jaimini').
+# The map below resolves the observed drift to the ontology canonical id; the
+# drift spellings are additionally registered as synonyms on those ontology
+# rows (migration 1123) so either surface resolves to the same identity.
+_SOURCE_ID_ALIASES = {
+    'BPHS': 'bphs',
+    'Phaladeepika': 'phaladeepika',
+    'Tajaka': 'tajaka_neelakanthi',
+    'bphs_jaimini': 'jaimini_sutram',
+}
+
+
+def canonical_source_id(value: Any, citation: str | None = None) -> Any:
+    """Normalise a source_canonical_id to the brahma_ontology text-class
+    canonical id. 'classical_tradition' is a bucket, not a work: the one row
+    whose citation identifies the work (SOURCE_MC) resolves to
+    'muhurta_chintamani'; every other 'classical_tradition' row names no
+    catalogued work and passes through unchanged (W-L0-3 measured)."""
+    if value in _SOURCE_ID_ALIASES:
+        return _SOURCE_ID_ALIASES[value]
+    if value == 'classical_tradition' and citation == SOURCE_MC:
+        return 'muhurta_chintamani'
+    return value
+
 # 27 nakshatra deity + mantra data. BPHS Ch.94 supplies the DEVATA column only;
 # the mantra column is a constructed nama-mantra form (owner ruling R-3, F-23).
 _NAKSHATRA_DATA: list[tuple[str, str, str, str, str]] = [
@@ -3379,6 +3406,12 @@ def build_all_remedies() -> list[dict[str, Any]]:
         rt = r.get("remedy_type", "")
         r["remedy_type"] = _map_remedy_type(rt)
 
+        # W-L0-3: normalise source identity to the brahma_ontology text-class
+        # canonical id (single choke point for all hand-authored rows)
+        r["source_canonical_id"] = canonical_source_id(
+            r.get("source_canonical_id"), r.get("source_citation")
+        )
+
         # Validate planet
         planet = r.get("planet", "")
         if planet not in VALID_PLANETS:
@@ -3518,7 +3551,7 @@ def seed_remedy_corpus(
                     "day_of_week": r.get("day_of_week"),
                     "color_associated": r.get("color_associated"),
                     "confidence": float(r.get("confidence", 0.85)),
-                    "source_canonical_id": r.get("source_canonical_id", "BPHS"),
+                    "source_canonical_id": r.get("source_canonical_id", "bphs"),
                     "source_citation": r.get("source_citation", SOURCE_CLASSICAL),
                     "classical_ref": r.get("classical_ref"),
                     "category": r.get("category"),

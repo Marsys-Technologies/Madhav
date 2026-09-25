@@ -20,7 +20,12 @@ PLANETS = {"sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu
 # source_canonical_id. It is the value PR #1429 and migration 581 already
 # established for the 9 bīja matrix rows; F-182 extends it to the 11 bīja
 # domain-scaffold rows. See tests/l0/test_f182_mantra_corpus_sweep.py.
-VALID_SOURCES = {"BPHS", "Phaladeepika", "Tajaka", "classical_tradition"}
+# W-L0-3: the writer now normalises to the brahma_ontology text-class
+# canonical ids (migration 1123 aligns production). 'BPHS'/'Phaladeepika'/
+# 'Tajaka' were the drift spellings this packet eliminated; they remain as
+# ontology synonyms, never as emitted ids.
+VALID_SOURCES = {"bphs", "phaladeepika", "tajaka_neelakanthi", "jaimini_sutram",
+                 "muhurta_chintamani", "classical_tradition"}
 
 
 # ── Constants and data ────────────────────────────────────────────────────────
@@ -198,3 +203,36 @@ class TestSweepOcrConfidenceGating:
             "multi-marker ambiguity must still force review even when the "
             "text itself is perfectly legible -- pre-existing behavior preserved"
         )
+
+
+# ── W-L0-3: source identity normalization ─────────────────────────────────────
+
+class TestWL03SourceIdNormalization:
+    """brahma_remedy_corpus.source_canonical_id shares ONE identity space with
+    brahma_ontology text-class canonical ids. Observed drift spellings map
+    deterministically; canonical ids pass through unchanged."""
+
+    def test_drift_alias_map(self):
+        mod = _get_mod()
+        assert mod.canonical_source_id('BPHS') == 'bphs'
+        assert mod.canonical_source_id('Phaladeepika') == 'phaladeepika'
+        assert mod.canonical_source_id('Tajaka') == 'tajaka_neelakanthi'
+        assert mod.canonical_source_id('bphs_jaimini') == 'jaimini_sutram'
+
+    def test_canonical_ids_pass_through(self):
+        mod = _get_mod()
+        for cid in ('bphs', 'saravali', 'hora_sara', 'classical_tradition'):
+            assert mod.canonical_source_id(cid) == cid
+
+    def test_classical_tradition_mc_citation_resolves_to_work(self):
+        mod = _get_mod()
+        assert mod.canonical_source_id('classical_tradition', mod.SOURCE_MC) == 'muhurta_chintamani'
+        # any other citation: 'classical_tradition' names no work — passthrough
+        assert mod.canonical_source_id('classical_tradition', 'other citation') == 'classical_tradition'
+        assert mod.canonical_source_id('classical_tradition') == 'classical_tradition'
+
+    def test_build_all_remedies_emits_no_drift_spellings(self):
+        mod = _get_mod()
+        drift = {"BPHS", "Phaladeepika", "Tajaka", "bphs_jaimini"}
+        for r in mod.build_all_remedies():
+            assert r.get("source_canonical_id") not in drift, r["remedy_id"]

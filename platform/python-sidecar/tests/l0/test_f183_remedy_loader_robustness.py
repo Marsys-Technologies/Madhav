@@ -278,7 +278,7 @@ class TestDeterministicTantricUpsert:
             'day_of_week': None,
             'color_associated': None,
             'confidence': 0.85,
-            'source_canonical_id': 'BPHS',
+            'source_canonical_id': 'bphs',
             'source_citation': 'canonical attestation',
             'classical_ref': 'Ch. 12 V. 4',
             'category': 'tantric',

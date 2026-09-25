@@ -24,6 +24,8 @@ from typing import Any
 import psycopg2  # type: ignore[import]
 import yaml  # type: ignore[import]
 
+from brahmagyan.l0_remedy_corpus import canonical_source_id
+
 logger = logging.getLogger(__name__)
 
 # ── Acceptable tantric source list (from L0FR_SOURCE_DATA §Remedy corpus) ─────
@@ -160,7 +162,7 @@ def insert_to_review_queue(conn, row: dict[str, Any], reason: str) -> None:
                     'day_of_week': None,
                     'color_associated': None,
                     'confidence': 0.70,
-                    'source_canonical_id': row.get('source_text', 'unknown'),
+                    'source_canonical_id': canonical_source_id(row.get('source_text', 'unknown')),
                     'source_citation': _citation_excerpt(row.get('classical_attestation_text')),
                     'classical_ref': f"{row.get('source_chapter', '')} {row.get('source_verse', '')}",
                     'category': row.get('category', ''),
@@ -240,7 +242,7 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
                     'day_of_week': row.get('day_of_week'),
                     'color_associated': row.get('color_associated'),
                     'confidence': 0.85,
-                    'source_canonical_id': row.get('source_text', 'BPHS'),
+                    'source_canonical_id': canonical_source_id(row.get('source_text', 'bphs')),
                     'source_citation': _citation_excerpt(row.get('classical_attestation_text')),
                     'classical_ref': (
                         f"{row.get('source_chapter', '')} {row.get('source_verse', '')}"

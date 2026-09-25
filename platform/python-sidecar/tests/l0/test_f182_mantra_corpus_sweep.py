@@ -280,7 +280,7 @@ class TestBijaAttribution:
         """
         row = next(r for r in rows if r["remedy_id"] == "jupiter_spirituality_puja_01")
         assert row["mantra_text"] == "Om Gurave Namah"
-        assert row["source_canonical_id"] == "BPHS"
+        assert row["source_canonical_id"] == "bphs"
         assert not _bija_occurrences(row["mantra_text"])
 
 

@@ -74,7 +74,7 @@ function makeBundle(
 ): ToolBundle {
   const results: ToolBundleResult[] = rows.map((row) => ({
     content: JSON.stringify(row),
-    source_canonical_id: String(row['source_canonical_id'] ?? 'BPHS'),
+    source_canonical_id: String(row['source_canonical_id'] ?? 'bphs'),
     source_version: '1.0',
     confidence: Number(row['confidence'] ?? 0.85),
   }))
