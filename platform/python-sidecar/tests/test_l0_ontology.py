@@ -379,6 +379,46 @@ class TestVargaEntityClass:
         assert e["canonical_id"] == "d150"
 
 
+class TestRelationTypeEntityClass:
+    """W-L0-9 — §2.4 ruling: the sambandha relation-type vocabulary is L0 data
+    (detection stays L2). Pins the seven-member class, grounded citations, and
+    writer ownership so the class survives the writer's scoped DELETE."""
+
+    EXPECTED_IDS = {
+        "aspect", "conjunction", "exchange", "dispositor",
+        "nakshatra_link", "argala", "virodha",
+    }
+
+    def test_seven_relation_type_entities_present(self):
+        mod = _get_module()
+        rels = [e for e in mod.ENTITIES if e["entity_class"] == "relation_type"]
+        assert {e["canonical_id"] for e in rels} == self.EXPECTED_IDS
+
+    def test_every_relation_type_has_synonyms_and_citation(self):
+        mod = _get_module()
+        rels = [e for e in mod.ENTITIES if e["entity_class"] == "relation_type"]
+        for e in rels:
+            assert e["synonyms"], f"relation_type/{e['canonical_id']} has empty synonyms"
+            assert e.get("source_citation"), \
+                f"relation_type/{e['canonical_id']} missing source_citation"
+
+    def test_nakshatra_link_cites_the_governing_decision(self):
+        """No classical citation exists in-repo for nakshatra-link — the row
+        must cite the §2.4 vocabulary decision, never an invented source."""
+        mod = _get_module()
+        e = next(e for e in mod.ENTITIES
+                 if e["entity_class"] == "relation_type"
+                 and e["canonical_id"] == "nakshatra_link")
+        assert "STRATEGY_v2_1" in e["source_citation"]
+
+    def test_relation_type_is_writer_owned(self):
+        """Writer-derived ownership must include the class, else the scoped
+        DELETE would treat its rows as stale and remove them on the next run."""
+        mod = _get_module()
+        assert "relation_type" in mod.ONTOLOGY_OWNED_ENTITY_CLASSES
+        assert "relation_type" not in mod.CO_WRITER_ENTITY_CLASSES
+
+
 class TestStorageCodeSynonyms:
     """ADHIṢṬHĀNA Lane A3 — storage-code synonyms for planets/houses that
     actually appear in chart_facts.fact_subject (live-verified against

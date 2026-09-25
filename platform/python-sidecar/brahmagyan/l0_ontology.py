@@ -34,7 +34,8 @@ BPHS_CITATION = "BPHS (Brihat Parasara Hora Sastra), classical tradition"
 ENTITIES: list[dict] = []
 
 def _e(entity_class: str, canonical_id: str, name_en: str, name_sa: str,
-       synonyms: list[str], description: str | None = None) -> dict:
+       synonyms: list[str], description: str | None = None,
+       citation: str = BPHS_CITATION) -> dict:
     return {
         "entity_class": entity_class,
         "canonical_id": canonical_id,
@@ -42,7 +43,7 @@ def _e(entity_class: str, canonical_id: str, name_en: str, name_sa: str,
         "canonical_name_sa": name_sa,
         "synonyms": synonyms,
         "description": description,
-        "source_citation": BPHS_CITATION,
+        "source_citation": citation,
     }
 
 # ── Planets ────────────────────────────────────────────────────────────────────
@@ -599,6 +600,54 @@ ENTITIES += [
        "Krishnamurti Paddhati significator via star/sub lord"),
 ]
 
+# ── Relation types (7) — W-L0-9, MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1 ──
+# §2.4 ruling: the sambandha relation-type vocabulary is L0 data; detection of a
+# relation in a chart stays L2 code. Citations are grounded in-repo; where the repo
+# carries no classical witness the row says so rather than inventing one (see
+# L0_W_L0_9_IDENTITY_UNIQUENESS_DESIGN_PROPOSAL_v1_0.md §4).
+
+ENTITIES += [
+    _e("relation_type", "aspect", "Aspect", "Dṛṣṭi",
+       ["aspect", "drishti", "gaze_relation"],
+       "Graha's influence by sight on houses/grahas at given house-distances; "
+       "universal 7th plus special aspects (Mars 4/8, Jupiter 5/9, Saturn 3/10; "
+       "nodes 5/7/9 per later tradition)",
+       "BPHS Ch.26 (Drishti-phala-adhyaya); Jaimini Ch.1 for rashi-drishti"),
+    _e("relation_type", "conjunction", "Conjunction", "Yuti",
+       ["conjunction", "yuti", "co_presence"],
+       "Two or more grahas in one sign; the strongest sambandha grade "
+       "(orb-weighted)",
+       "BPHS Ch.6"),
+    _e("relation_type", "exchange", "Exchange (Parivartana)", "Parivartana",
+       ["exchange", "parivartana", "mutual_exchange", "mutual_reception"],
+       "Two lords occupying each other's signs; mutual sign exchange",
+       "BPHS Ch.32"),
+    _e("relation_type", "dispositor", "Dispositor relation", "Dispositor",
+       ["dispositor", "sign_lordship", "dispositor_chain"],
+       "A graha's dispositor is the lord of the sign it occupies; chains "
+       "terminate at a graha in own sign or a cycle",
+       "BPHS Ch.27 (bhava-bala: a house is as strong as its dispositor)"),
+    _e("relation_type", "nakshatra_link", "Nakshatra link", "Nakshatra link",
+       ["nakshatra_link", "nakshatra-link", "nakshatra_dispositor_link"],
+       "Relation through nakshatra lordship: a graha in another's nakshatra, "
+       "or exchanged nakshatras",
+       "Vocabulary decision MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1 §2.4 — "
+       "no in-repo classical citation; detection analogue: "
+       "nakshatra_dispositor_chain (ga_structural_writer.py)"),
+    _e("relation_type", "argala", "Argala (Intervention)", "Argalā",
+       ["argala", "intervention_relation"],
+       "Jaimini intervention relation from 2/4/11 (and 5) houses on a "
+       "sign/graha",
+       "Jaimini Ch.1; also attributed BPHS Ch.28 (in-repo sources differ on "
+       "the 5th)"),
+    _e("relation_type", "virodha", "Virodha (Obstruction)", "Virodha",
+       ["virodha", "obstruction_relation", "virodhargala_relation"],
+       "Obstruction of an argala (virodhargala): counter-intervention from "
+       "12/10/3 (and 9)",
+       "Jaimini Ch.1 (as virodhargala); BPHS Ch.28 — standalone virodha "
+       "relation per vocabulary decision §2.4"),
+]
+
 # ── Remedy types (12) ─────────────────────────────────────────────────────────
 
 ENTITIES += [
@@ -654,9 +703,9 @@ ENTITIES += [
 
 ENTITIES += [
     _e("text", "bphs", "Brihat Parashara Hora Shastra", "Bṛhat Parāśara Horā Śāstra",
-       ["bphs", "brihat parasara", "parashara hora"], "Foundational Parashari text"),
+       ["bphs", "brihat parasara", "parashara hora", "BPHS"], "Foundational Parashari text"),
     _e("text", "phaladeepika", "Phaladeepika", "Phaladīpikā",
-       ["phaladeepika"], "Mantreswara's predictive synthesis"),
+       ["phaladeepika", "Phaladeepika"], "Mantreswara's predictive synthesis"),
     _e("text", "jataka_parijata", "Jataka Parijata", "Jātaka Pārijāta",
        ["jataka parijata", "parijata"], "Vaidyanatha Dikshita's comprehensive natal text"),
     _e("text", "uttara_kalamrita", "Uttara Kalamrita", "Uttara Kālāmṛta",
@@ -674,7 +723,7 @@ ENTITIES += [
     _e("text", "brihat_samhita", "Brihat Samhita", "Bṛhat Saṃhitā",
        ["brihat samhita", "samhita"], "Varahamihira's mundane/omens encyclopedia"),
     _e("text", "tajaka_neelakanthi", "Tajaka Neelakanthi", "Tājaka Nīlakaṇṭhī",
-       ["tajaka neelakanthi", "neelakanthi"], "Neelakantha's annual-chart text"),
+       ["tajaka neelakanthi", "neelakanthi", "Tajaka"], "Neelakantha's annual-chart text"),
     _e("text", "yavana_jataka", "Yavana Jataka", "Yavana Jātaka",
        ["yavana jataka"], "Sphujidhvaja's Greek-influenced natal text"),
     _e("text", "bhrigu_samhita", "Bhrigu Samhita", "Bhṛgu Saṃhitā",
