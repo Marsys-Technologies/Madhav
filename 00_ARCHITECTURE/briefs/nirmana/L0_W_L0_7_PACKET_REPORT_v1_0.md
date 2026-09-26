@@ -1,7 +1,7 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.4
-status: BASELINE_COMPLETE_GATE_MAPPING_HELD
+version: 1.5
+status: FIXTURE_BUILT_GATE_MAPPING_HELD
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
 branch: l0/brahmagyan-exec
@@ -42,6 +42,24 @@ amendments: >
   → UPDATE to 'complete' → insert head; the guard permits exactly this path,
   1035:383-440), and `l1_data_plane_generation_partitions` carries an FK to
   `l1_data_plane_partition_contexts` (declaration precedes receipt).
+  v1.5 (2026-09-26) — fixture builder COMPLETE (commits 8d24b37e0, a4b7a251c;
+  33/33 gates, two consecutive fresh-DB runs; rehearsal DB madhav_l0w7_fixture).
+  1123 oracle green both directions (state-A 87b69704… == old_digest == production;
+  rolled-back state-B == f1d56d0c… new_digest; bg_rules contract accepted as-is,
+  no constant patch). Correction to v1.2 item 4's predicted verify string:
+  'not_a_yoga_qualifier' appears nowhere in migration 1123 — measured post-patch
+  distribution is no_concept_reference_in_window×2,986 / ambiguous_reference×7 /
+  reference_not_in_catalog×2 / linked×7; remedy drift spellings 0 post-patch.
+  1120 disclosed-skipped (member tables outside the 27-table fixture set — it
+  would refuse at 1120:55-60); 1121/1122/1123 applied verbatim. Post-1122
+  bo_laksana closure = 12 ga_* (no diff vs probe); 11 generations synthesized.
+  New findings F-W-L0-7-3 (175,949/421,096 production chart_facts rows are
+  multi-valued and would fail the capture CHECK) and F-W-L0-7-4
+  (classical_text_chunks.chapter is a page number; sunapha citations carry no
+  chunk_id — linkage is by text). Builder's first-pass notes cited a nonexistent
+  brief/branch and falsely declared 1120–1123 absent — corrected in
+  REHEARSAL_NOTES v1.1; every builder number accepted here was re-verified
+  against the fixture DB first.
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -435,8 +453,10 @@ claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
 pre-registered against state B, state pin declared, re-measure gate set).
 **Machinery mapping: COMPLETE** (v1.3 — guards probed live, zero-generation disclosure,
 seeding design final, F-W-L0-7-1 / F-W-L0-7-2 handed up).
-**Construction: AUTHORIZED** (2026-09-26) — harness, fixture, CI vehicle; fixture builder
-next.
+**Fixture builder: COMPLETE** (v1.5 — 33/33 gates twice; 1123 oracle green both
+directions; 11 closure generations synthesized; F-W-L0-7-3 / F-W-L0-7-4 handed up;
+rehearsal DB madhav_l0w7_fixture live on localhost:55433).
+**Construction: AUTHORIZED** (2026-09-26) — readings runner next, then CI vehicle.
 **Gate mapping: HELD** (strategy ruling: `Dom` vs Decision 11).
 
 Open rulings, restated as OPEN — none inferred here:
