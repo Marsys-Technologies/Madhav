@@ -98,6 +98,13 @@ that surfaced it, and the state.
 | R24 | Exercised on L1–L5 (T4) | — | **OPEN** |
 | R25 | A `--plant` mode for T1: inject a known defect into a scratch copy and assert detection | — | **OPEN** |
 | R26 | Emits `kind: opportunity` rows? No — opportunities are judgement, never machine-emitted. Recorded so nobody adds it | — | DONE (by rule) |
+| R40 | `Vocab.identity`'s `count(DISTINCT (chart_id,event_class,segment_index))` does not scale to the estate's largest table (kala_field, 10.3M rows) and exceeds the hardcoded 180s psql timeout (line 95), making the L3 and `--layer all` census unrunnable on production. Ground truth measured by hand: duplicates = 0 in 47s. Fix: sample-aware or indexed duplicate count, and a configurable timeout | nikasha-test P2 T2 sweep | OPEN |
+| R41 | No per-check fault isolation: one check raising (timeout, missing relation) aborts the ENTIRE layer census instead of degrading that check's verdict to UNKNOWN for that asset. The census must catch per-check exceptions and record them as measured-but-errored | nikasha-test P2 T2 sweep (L3 + all killed) | OPEN |
+| R42 | `Build.completion` emits `N/A "no count_sql"` although `count_sql` is non-null layer-wide, and on multi-table assets it compares the registry `count_sql` result against itself (mi_kula: count_sql 15 vs live 11 scored PASS) | nikasha-test P2 handverify L1/L2/L4/L5 | OPEN |
+| R43 | `Build.registered` misses writers that register via `@register(ASSET_ID)` constant indirection (mi_bhara, mi_sankalpa) and writers living in package directories (ph_rectification) — layer registered-id counts read wrong (L4 8 vs 9; L5 12 vs 14). Fix per §7: resolve module-level constants, walk package `__init__.py` | nikasha-test P2 handverify L4/L5 | OPEN |
+| R44 | `Earn.build_record` / `Cost.baseline` quote non-latest `asset_throughput` rows — must select the latest row per asset (`DISTINCT ON (asset_id) … ORDER BY ended_at DESC`) | nikasha-test P2 handverify L1/L2/L4/L5 | OPEN |
+| R45 | `Build.dep_liveness` reports "all lit" while ignoring dependencies whose last run is stale-only (L2) — stale deps must surface as PARTIAL, not PASS | nikasha-test P2 handverify L2 | OPEN |
+| R46 | View assets are scored against stub `count_sql` (`SELECT 0`): bo_samvada reads live_rows 0 while the view actually returns 15 rows — count_sql for a view must count the view, not a constant | nikasha-test P2 handverify L2 | OPEN |
 
 ### 2.6 · The ledgers and the tracker
 
