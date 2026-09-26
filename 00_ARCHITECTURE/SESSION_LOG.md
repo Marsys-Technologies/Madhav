@@ -41648,3 +41648,106 @@ was released and remotely verified at `80d47c44d38d2f903c844dc674714faa679c2478`
 pre-authorized metadata-only successor. Fresh exact-head CI and independent terminal review are now
 required; no later source mutation is permitted. PR #2605 remains open and unmerged, and all external
 actions remain `NOT_RUN` under `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.
+---
+
+## NIKASHA-TEST-CAMPAIGN-20260926 — 2026-09-26/27
+
+session_open:
+  session_id: NIKASHA-TEST-CAMPAIGN-20260926
+  tool: Kimi Code (K3-256k, low effort — native override OVR.1 cancelled the brief's 5→6 max-effort switch)
+  step_number_or_layer: "Nikaṣa test campaign, phases 0–7 (execution authority: briefs/nirmana/NIKASHA_TEST_CAMPAIGN_PROMPT_v1_0.md)"
+  work_order_surface: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/STATE.md
+
+Body: Full campaign executed on branch `campaign/nikasha-test`: P0 baselines; P1 sandbox
+(183 tables, fidelity PASS); P2 T2 hand-verify (60/60 verdict disagreements, R42/R43/R46) + T1
+(17/17 planted defects detected); P3 closure loop proven only in scratch tooling (headline R57 —
+stock tooling cannot close rows); P4 derivability (130 invention rows; no P-need/V-journey→layer
+mapping is the universal blocker); P5 T5 consistency (R63–R84; [TRANSFERS] contradiction confirmed;
+T4 fingerprint drift confirmed); P6 register v2.0 (214 rows, severity/depends_on/effort) + 10-packet
+implementation plan (~365h) + 6 native decisions; P7 report (verdict NOT_READY_TO_FREEZE),
+manifest rotation (R82 DONE, restamp 2af936045171778c), PR #2736 open unmerged. Governance-script
+change this session: schema_validator.py tool enum extended to admit "Kimi Code" (schema predated
+the harness). mirror_enforcer.py absent from platform/scripts/governance (recorded, not run).
+
+session_close:
+  session_id: NIKASHA-TEST-CAMPAIGN-20260926
+  closed_at: 2026-09-27T01:00:00+05:30
+  tool: "Kimi Code"
+  tool_detail: "Kimi Code, K3-256k, low effort (enum extended 2026-09-27 — schema predated the harness)"
+  known_residuals:
+    - {finding_id: "schema_db_unreachable (CHART_FACTS_SCHEMA.json)", severity: LOW, booking_reference: "NIKASHA-TEST register R83 — detector's own psql env lacks credentials; instrument must not masquerade as pass/noise"}
+    - {finding_id: "a3_schema_db_unreachable (chart_facts)", severity: LOW, booking_reference: "NIKASHA-TEST register R83 — same root cause"}
+  files_touched:
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/STATE.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/EVENTS.jsonl, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/derivations, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/consistency/T5_VOCABULARY.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/consistency/T5_LEDGER_DRIFT.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/PHASE6_ANALYSIS.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/DECISIONS_FOR_THE_NATIVE.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/NIKASHA_TEST_CAMPAIGN_REPORT_v1_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_IMPLEMENTATION_PLAN_v1_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    file_registry:
+      - row_before: "n/a — campaign artefacts live under the nikasha_test campaign surface; register/manifest carry them"
+        row_after: "CAPABILITY_MANIFEST.json: 5 new entries (NIKASHA_CHANGE_REGISTER_v2_0, NIKASHA_IMPLEMENTATION_PLAN_v1_0, NIKASHA_TEST_CAMPAIGN_REPORT_v1_0, NIKASHA_TEST_DECISIONS_FOR_THE_NATIVE, NIKASHA_TEST_PHASE6_ANALYSIS); ASSET_ELEVATION_TEMPLATE fingerprint rotated (R82 DONE); manifest restamped 2af936045171778c"
+        version_of_registry: "CAPABILITY_MANIFEST entry_count 141"
+    canonical_artifacts:
+      - canonical_id: ASSET_ELEVATION_TEMPLATE
+        change: fingerprint_rotated
+        details: "R82: v1.1→v2.0 edit had never been restamped; rotated to 244e87dff30a… in P7, drift HIGH cleared"
+  mirror_updates_propagated: []
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260926T184023Z.md
+    divergences_found: 2
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    report_path: null
+    violations_found: 0
+  mirror_enforcer_run:
+    script: platform/scripts/governance/mirror_enforcer.py
+    exit_code: 127
+    report_path: null
+    desync_pairs: []
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/STATE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_note: "No coordination lease was held this session (feature-branch campaign, single agent); there was nothing to release — the outcome is recorded here."
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/briefs/nirmana/nikasha_test/STATE.md
+      - 00_ARCHITECTURE/briefs/nirmana/nikasha_test/NIKASHA_TEST_CAMPAIGN_REPORT_v1_0.md
+      - 00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - {override_id: "OVR.1", issued_at: "2026-09-26", description: "Model routing: K3-256k LOW effort for ALL phases; the brief's 5→6 switch to K3 max effort cancelled", scope_effect: "STATE.md + EVENTS.jsonl recorded; config.toml thinking.effort set low"}
+  halts_encountered: []
+  native_directive_per_step_verification: []
+  close_criteria_met: true
+  unblocks: "Native review of PR #2736; the 6 decisions in DECISIONS_FOR_THE_NATIVE.md gate implementation-plan packets P1–P9"
+  handoff_notes: >
+    Nikaṣa test campaign complete, verdict NOT_READY_TO_FREEZE (fails T2/T3/T5). All artefacts under
+    00_ARCHITECTURE/briefs/nirmana/ + nikasha_test/; PR #2736 (campaign/nikasha-test → l3/kala-layer-briefs)
+    open, unmerged. mirror_enforcer.py not present in platform/scripts/governance (exit 127 recorded
+    honestly; mirror pair checks not applicable — no mirror surfaces touched). No coordination lease was held — this
+    campaign ran on a feature branch without a coordination lease. Next session reads nikasha_test/STATE.md
+    first, then the report and register v2.0.

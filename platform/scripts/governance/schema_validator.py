@@ -535,12 +535,12 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
                 suggested_remediation="Investigate silent file mutation or refresh CANONICAL_ARTIFACTS",
             ))
     # mirror_pair_freshness_check retired 2026-05-27 per ND.1 close-out.
-    if so.get("tool") not in ("Claude Code", "Codex"):
+    if so.get("tool") not in ("Claude Code", "Codex", "Kimi Code"):
         violations.append(Violation(
             rule="handshake_tool_invalid",
             severity="CRITICAL",
             path="<handshake>",
-            evidence="`tool` must be Claude Code or Codex",
+            evidence="`tool` must be Claude Code, Codex, or Kimi Code",
             suggested_remediation="Record the session's actual tool provenance.",
         ))
     coordination = so.get("coordination", {}) or {}
@@ -613,12 +613,12 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                 suggested_remediation="Either expand declared_scope with rationale OR revert the touch",
             ))
     # mirror_updates_propagated check retired 2026-05-27 per ND.1 close-out.
-    if sc.get("tool") not in ("Claude Code", "Codex"):
+    if sc.get("tool") not in ("Claude Code", "Codex", "Kimi Code"):
         violations.append(Violation(
             rule="close_tool_invalid",
             severity="CRITICAL",
             path="<close>",
-            evidence="`tool` must be Claude Code or Codex",
+            evidence="`tool` must be Claude Code, Codex, or Kimi Code",
             suggested_remediation="Record the session's actual tool provenance.",
         ))
     sync = sc.get("cross_tool_sync", {}) or {}
