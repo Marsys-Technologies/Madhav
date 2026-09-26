@@ -8,9 +8,10 @@ produced_on: 2026-09-26
 authored_by: Claude Code (Fable 5.1), at the native's instruction, 2026-09-26
 audience: Kimi Code agent, autonomous, on the MARSYS-JIS (Madhav) repository
 model_routing: >
-  Phases 0-5 (testing): Kimi K3256, medium effort. Phases 6-7 (analysis and the final report):
-  Kimi K3, max effort. Switch models at the Phase 5 -> Phase 6 boundary and record the switch in
-  EVENTS.jsonl. Do not run analysis at medium effort; do not run testing at max.
+  K3_256 at LOW effort for the ENTIRE campaign, phases 0 through 7 — testing and analysis alike.
+  Native instruction, 2026-09-26, superseding the earlier split routing: no higher model and no
+  higher effort level at any point, including the final analysis and report. There is no model
+  switch in this campaign. Record the routing once, at session open, as an event.
 usage: >
   Paste this ENTIRE file as the first message of a fresh Kimi Code session started in
   /Users/Dev/Vibe-Coding/Apps/Madhav (or a worktree of it). The campaign is idempotent and
@@ -130,13 +131,31 @@ Five constraints are absolute. They are the reason this campaign can be autonomo
    place a file at the repository root (`00_ARCHITECTURE/ROOT_FILE_POLICY.md`). No secret, password
    or connection string ever appears in any output, log, commit or artefact.
 
-## §3 — Model routing
+## §3 — Model routing, and how to work within it
 
-- **Phases 0–5 (testing): Kimi K3256, medium effort.**
-- **Phases 6–7 (analysis, plan, report): Kimi K3, max effort.**
+**K3_256 at LOW effort for the whole campaign, phases 0 through 7.** Native instruction: no higher
+model, no higher effort, at any point — including Phase 6's analysis and Phase 7's report. There is no
+model switch. Record the routing once at session open as an event, and do not change it.
 
-Record the switch as an event. The reason the split exists: testing is mechanical and must be
-cheap enough to re-run; analysis is where the value is and must not be rushed.
+**Work in the shape that suits it**, because the effort budget is a real constraint and the campaign's
+value depends on not losing anything to it:
+
+- **Many small steps, each recorded.** Never batch a phase into one long unbroken stretch of reasoning.
+  Close a packet, append its events, rewrite STATE.md, commit, and only then start the next. If the
+  session is interrupted mid-packet, nothing is lost.
+- **Lean on the prescribed shapes rather than on judgement.** This prompt already fixes the record
+  formats (§6), the checks to run (§5), the verdict vocabulary and the quality bar (§7). Fill them; do
+  not reinvent them. The structure is deliberately tight so that a low-effort run still produces a
+  complete artefact.
+- **Measure, then write.** Every finding comes from a command whose output you paste into the evidence
+  field. A figure you reasoned toward is worth less here than one you ran — and one you ran costs less
+  effort than one you argued for.
+- **One asset, one check, one row at a time.** Where a phase says "every layer", do L0 completely,
+  commit, then L1. Partial-but-recorded always beats broad-but-unfinished.
+- **When something is genuinely too large to settle at this effort level**, do not guess and do not
+  silently skip: record it as `NOT_MEASURED` or `NOT_RUNNABLE — <reason>` with what would be needed, and
+  move on. That is an honest result and the register is designed to carry it. An invented conclusion is
+  the one outcome this constraint must not produce.
 
 ## §4 — Durable state, resumability, and the two logs
 
