@@ -2,7 +2,7 @@
 artifact: NIKASHA_TEST_DECISIONS_RECOMMENDATIONS
 canonical_id: NIKASHA_TEST_DECISIONS_RECOMMENDATIONS
 version: "1.0"
-status: DRAFT_FOR_REVIEW — Kimi reviews; the native finalizes; then the register, plan and decisions file are updated to match
+status: SUPERSEDED — by DECISIONS_RECOMMENDATIONS_v2_0.md (FINAL, 2026-09-27), after review REVIEW_NIKASHA_DECISIONS_RECOMMENDATIONS_v1_0.md (verdict REJECT); body retained unchanged as the reviewed record
 produced_on: 2026-09-27
 campaign_id: nikasha-test
 responds_to: DECISIONS_FOR_THE_NATIVE.md (v1.0, six decisions, AWAITING_NATIVE)

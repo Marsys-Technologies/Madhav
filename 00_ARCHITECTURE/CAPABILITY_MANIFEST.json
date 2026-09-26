@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-27T00:42:22+05:30",
+  "generated_at": "2026-09-27T01:50:03+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "efeb247517ad9798",
+  "fingerprint": "cd25819e80aa93e6",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "7dc5f90ff4d6aa695cab25060869a5315b940ca4038331f596cc0c223e654298",
+      "fingerprint": "4d9cbddaf76a1b4ce973ca8919aa0ec6a90171ba149db1a67f1d490731416272",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-VERIFY-20260927",
+      "last_verified_session": "NIKASHA-DECISIONS-FREEZE-20260927",
       "last_verified_on": "2026-09-27",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
@@ -2024,9 +2024,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "7231cc7b430ccbe0a97a031158dce33d6cfbfabfd24ce665c8a145d5762a5145",
+      "fingerprint": "1efafd894ea3c48ff9a476d1fa59b8a9dcf0f04a24a5a2d78aaa86bbf82f3627",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_session": "NIKASHA-DECISIONS-FREEZE-20260927",
       "last_verified_on": "2026-09-27",
       "note": "10 ordered packets from the nikasha-test campaign, ~365h"
     },
@@ -2051,16 +2051,16 @@
       "canonical_id": "NIKASHA_TEST_DECISIONS_FOR_THE_NATIVE",
       "path": "00_ARCHITECTURE/briefs/nirmana/nikasha_test/DECISIONS_FOR_THE_NATIVE.md",
       "version": "1.0",
-      "status": "OPEN",
+      "status": "RULED",
       "layer": "governance",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "d8c9d8e374647948ca0c6ad6bbdb68120224146e939e70641904756f20c0a1d9",
+      "fingerprint": "23f20ced596de52fab1ec59777243dd87fca694a214d8b7b695df736cbb54bb0",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_session": "NIKASHA-DECISIONS-FREEZE-20260927",
       "last_verified_on": "2026-09-27",
       "note": "6 native-only decisions with recommendations and option costs"
     },
