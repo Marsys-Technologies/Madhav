@@ -1,7 +1,8 @@
 {
   "exported_at": "2026-09-26",
   "source": "production amjis database via cloud-sql-proxy 127.0.0.1:5433 (read-only SELECTs)",
-  "exported_by": "scripts/l0harness rehearsal agent (L0-W7 minimal fixture)",
+  "exported_by": "scripts/l0harness rehearsal agent (L0-W7 fixture, v1.1 full reference exports)",
+  "format_note": "sutravali_rules, brahma_ontology, brahma_remedy_corpus, brahma_class_priors, brahma_dasha_systems and classical_texts are raw to_jsonb(row)::text lines (single production scan each) — imported via jsonb_populate_record with no client-side value handling so numeric scale (e.g. confidence 0.800) and jsonb serialization are byte-faithful; migration 1123's state-A digest gate depends on this. The other files are the original Python-JSON exports (not digest-gated).",
   "tables": [
     {
       "table": "asset_registry",
@@ -27,16 +28,16 @@
     {
       "table": "sutravali_rules",
       "file": "sutravali_rules.jsonl",
-      "filter": "yoga_canonical_id='sunapha'",
-      "row_count": 2,
-      "sha256": "238df9034d315f74b558f1ecfc3bff22c6c29443f71447431f5bd497432c3838"
+      "filter": "full table (no filter); pre-1123 state A (17 linked, no unlinked_reason column); state-A digest 87b69704… verified against production",
+      "row_count": 3002,
+      "sha256": "263ec629f6ea137c2aa274042e9aa9742a9adfb428c71071347f8f9a407f2991"
     },
     {
       "table": "classical_texts",
       "file": "classical_texts.jsonl",
-      "filter": "text_id='bphs' (sunapha citation text; bphs_pg0001_c01 is a chunk_id, not a text_id)",
-      "row_count": 1,
-      "sha256": "e6b386886766818e18fea081635983b274f80c538567a655594e21e3055f1266"
+      "filter": "full table (no filter)",
+      "row_count": 16,
+      "sha256": "1f3c4437d02845163391e9ead81827841fd9a5d5a11056d020ebad02b1639411"
     },
     {
       "table": "classical_text_chunks",
@@ -51,6 +52,34 @@
       "filter": "full table (no filter); needed for chart_facts guard seeding",
       "row_count": 67,
       "sha256": "bfde671d1cdce390beabcda14ccb25e3798d98ee3d257b9c3aca6d595f062fd9"
+    },
+    {
+      "table": "brahma_ontology",
+      "file": "brahma_ontology.jsonl",
+      "filter": "full table (no filter); pre-1121/1123 state (0 relation_type rows, no drift-spelling synonyms)",
+      "row_count": 741,
+      "sha256": "9835848af290205e9da1a466c79bb07fd9adb6ed70e91a9cfc049bb652ec6d2b"
+    },
+    {
+      "table": "brahma_remedy_corpus",
+      "file": "brahma_remedy_corpus.jsonl",
+      "filter": "full table (no filter); pre-1123 drift spellings present (BPHS×193, Phaladeepika×11, Tajaka×3, bphs_jaimini×1, classical_tradition×80 with 1 Muhurta-Chintamani row)",
+      "row_count": 341,
+      "sha256": "ef9071f68725aeca8c139281c983845f2b1c7a6f1486be239fe26fa48d2c1b1f"
+    },
+    {
+      "table": "brahma_class_priors",
+      "file": "brahma_class_priors.jsonl",
+      "filter": "full table (no filter)",
+      "row_count": 177,
+      "sha256": "f92ab6a63147fb28405e8f84b42b6df502e187a90df80b78bef92c7963321976"
+    },
+    {
+      "table": "brahma_dasha_systems",
+      "file": "brahma_dasha_systems.jsonl",
+      "filter": "full table (no filter)",
+      "row_count": 20,
+      "sha256": "fa88f03544ef796a4f59293c897316336f9b892a873a77ce6d53dde7e840f0e5"
     }
   ],
   "zero_row_tables_not_exported": [

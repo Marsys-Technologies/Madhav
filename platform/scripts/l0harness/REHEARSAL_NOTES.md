@@ -1,9 +1,17 @@
-# L0-W7 Data-Plane Fixture — Rehearsal Notes v1.0
+# L0-W7 Data-Plane Fixture — Rehearsal Notes v1.1
 
 **Date**: 2026-09-26
-**Branch**: `l0/infra-w7-data-plane-campaign-rehearsal`
-**Builder**: `scripts/l0harness/build_fixture.py` (steps a–l per `L0_W7_DATA_PLANE_CAMPAIGN_BRIEF_v1_0.md`)
-**Result**: `BUILD GREEN` — 14/14 gates, two consecutive end-to-end runs (fresh DB each run).
+**Branch**: `l0/brahmagyan-exec`
+**Design law**: `00_ARCHITECTURE/briefs/nirmana/L0_W_L0_7_PACKET_REPORT_v1_0.md` v1.4
+**Builder**: `scripts/l0harness/build_fixture.py`
+**Result**: `BUILD GREEN` — 33/33 gates, two consecutive end-to-end runs (fresh DB each run).
+
+v1.1 corrects v1.0: v1.0 cited a nonexistent brief
+(`L0_W7_DATA_PLANE_CAMPAIGN_BRIEF_v1_0.md`) and branch
+(`l0/infra-w7-data-plane-campaign-rehearsal`), and wrongly claimed "no
+1120–1123 migrations exist". Migrations 1120–1124 exist at
+`platform/migrations/1120..1124_*.sql` (W-L0-1/9/2/3 + the HELD 1124) and are
+now exercised by the patch-apply oracle below.
 
 Rehearsal cluster: `/tmp/l0w5/pgdata`, port 55433, trust auth, superuser `Dev`.
 Fixture database: `madhav_l0w7_fixture`. Production source: `amjis` via
@@ -16,37 +24,181 @@ cloud-sql-proxy `127.0.0.1:5433` (read-only probes only).
 - **27 probe-derived tables** (`fixture_schema.py` from `production_schema/` probes):
   full DDL — columns, defaults, PKs, unique constraints, CHECKs, indexes, and 6 FKs
   (`charts_client_id_fkey` deliberately skipped; `clients` is not in the fixture set).
-- **512 bounded reference rows** (`production_seed/`, 7 JSONL + `seed_manifest.json`):
-  asset_registry 129, brahma_yoga_catalog 233, brahma_dosha_catalog 79,
-  sutravali_rules 2 (`yoga_canonical_id='sunapha'`), classical_texts 1 (`bphs`),
-  classical_text_chunks 1 (`bphs_pg0030_c01`, chapter=30, with embedding +
-  content_sha256), fact_category_ownership 67.
+- **Reference data** (`production_seed/`, 11 JSONL + `seed_manifest.json`):
+  - *Full raw `to_jsonb(row)::text` exports* (imported via `\copy` + per-line
+    `jsonb_populate_record`, no client-side value handling — byte-faithful
+    numeric scale and jsonb serialization; migration 1123's digest gates depend
+    on this): **sutravali_rules 3,002** (state A: 17 linked, no
+    `unlinked_reason` column), **brahma_ontology 741**, **brahma_remedy_corpus
+    341** (pre-1123 drift spellings present), **brahma_class_priors 177**,
+    **brahma_dasha_systems 20**, **classical_texts 16**.
+  - *Bounded Python-JSON exports* (not digest-gated): asset_registry 129,
+    brahma_yoga_catalog 233, brahma_dosha_catalog 79, classical_text_chunks 1
+    (`bphs_pg0030_c01`, chapter=30, with embedding + content_sha256),
+    fact_category_ownership 67.
 - **8 roles** mirroring production pg_roles flags (LOGIN/NOINHERIT exactly; none
   super/createrole/createdb/bypassrls — 1035/1036 preflights check this).
 - **207 grantor-faithful grants** replayed from `grants.json`
   (39 amjis_app, 12 l2_owner, 156 l1_owner).
-- **Migrations applied verbatim**: 171-extract → 596 → 1035 → 1036, 1035/1036 as
-  `data_plane_migrator` with `SET ROLE data_plane_l1_owner` / `data_plane_l2_owner`.
-- **2 complete generations** (ga_positions, ga_structural) with capture-faithful
-  row snapshots (3), fact snapshots (3), partitions (2), heads (2); digest,
-  `completed_partitions == receipt count`, `completed_at` set.
+- **Migrations applied verbatim**: the W-L0-1/9/2/3 set **1120 (skipped,
+  disclosed) → 1121 → 1122 → 1123** from `platform/migrations/` (1124 remains
+  HELD and is never applied), then 171-extract → 596 → 1035 → 1036, 1035/1036
+  as `data_plane_migrator` with `SET ROLE data_plane_l1_owner` /
+  `data_plane_l2_owner`.
+- **11 complete L1 generations** — the bo_laksana upstream closure minus
+  ga_yoga, derived live from the post-1122 asset_registry — with
+  capture-faithful row snapshots (3), fact snapshots (3), partition receipts
+  (11), heads (11); digest, `completed_partitions == receipt count ==
+  expected_partitions`, `completed_at` set on every generation.
 
-## 2. Deviations from the brief (each forced by a rehearsal failure)
+## 2. 1120–1123 patch-apply oracle (packet report v1.2 item 4)
 
-1. **Step-(j) data seeds folded into pre-migration step (d).** The brief's
-   post-migration seed would require a fake `data_plane_builder` session to pass
-   the mutation guard. Instead the 12 data rows (charts 1, chart_facts 7,
-   ga_yoga_firings 1, chart_vichara 2, bodha_msr_signals 1) are inserted before
-   the guard triggers exist — same final state, no counterfeit builder session.
-2. **Grant replay (f/g) runs before migrations (e).** Every `grants.json` table is
-   a pre-migration fixture table, and production's grants predated 1035/1036 —
+Build step (j), `step_l0_patch_oracle()`, runs after the reference-data seed
+and before grants/596/1035/1036 (so 1123's asset_registry UPDATE never meets
+596's `nirmana_registry_receipt_invalidation` trigger, and the closure walk
+sees 1122's canonical depends_on). Gate outputs, final run:
+
+1. **State-A digest gate — MATCH.** The freshly imported 3,002-row
+   sutravali_rules digests (vector A, 13 columns) to
+   `87b697041c73359e12daf8258cfdd6e85a38eb5c63fa39865e42f5b46e610dbd`, exactly
+   1123's `old_digest` — and exactly production's own state-A digest (measured
+   via MCP 2026-09-26). This is the export-fidelity proof.
+2. **Rolled-back state-B simulation — MATCH.** Inside a transaction: ADD COLUMN
+   `unlinked_reason`, replay the migration's own 36-row backfill (VALUES block
+   extracted verbatim from the migration file by regex — one source of truth),
+   bulk-label `no_concept_reference_in_window`, digest (vector B, 14 columns),
+   ROLLBACK. Result
+   `f1d56d0cebf7ce2ad270ba1145cda20cae4c10f2ec3fb1ea01bc6b999feee098` == 1123's
+   `new_digest`.
+3. **Registry contract check — PASS, no patch needed.** The exported bg_rules
+   row already carries the 618 `integrity_check_sql` verbatim (the migration's
+   `old_contract` text, compared newline-normalized) and `target_floor=3002` —
+   consistent with the state-A digest equality. A mismatch would fail the
+   build rather than be patched.
+4. **Apply in order: 1120 → 1121 → 1122 → 1123 (NEVER 1124).**
+   - **1120 SKIPPED (disclosed partial application).** All five declared member
+     tables are absent from the 27-table fixture set:
+     `bg_prashna_lagna_methods`, `bg_prashna_tajik_yogas`,
+     `bg_prashna_significators`, `bg_prashna_fructification_rules`,
+     `bg_prashna_special_techniques` (they exist in production). Exact failing
+     statement had it been applied: migration 1120 refuses at 1120:55-60,
+     `RAISE EXCEPTION 'migration 1120 refuses: declared member table % does
+     not exist', member_table` with `member_table='bg_prashna_lagna_methods'`.
+     Consequence: `bg_prashna_rules` keeps `target_table NULL` (production
+     state A); nothing downstream (1122 closure walk, 1123, generation
+     synthesis) reads it.
+   - **1121 applied**: 7 `relation_type` ontology rows (741 → 748).
+   - **1122 applied**: 16 depends_on arrays converged to canonical.
+   - **1123 applied**: 36-row replay backfill + 2,966-row bulk label →
+     7 linked of 3,002; `unlinked_reason` column + XOR/vocabulary CHECKs;
+     remedy-corpus normalization (BPHS×193, Phaladeepika×11, Tajaka×3,
+     bphs_jaimini×1, Muhurta-Chintamani×1 — every measured count asserted by
+     the migration and met); 3 ontology alias entries; bg_rules registry
+     contract replaced 618 → tightened (the migration's exact-match
+     `IN (old_contract, rules_check)` accepted the exported row as-is).
+5. **Post-apply verification — PASS.** sunapha link set exactly
+   `{a5d58ce9-5331-5db4-a803-41d9530e45fc, cf36fd63-ba97-5ead-ad17-de9054fc051f}`;
+   post-1123 digest == `new_digest` (also gated, §4).
+
+**`not_a_yoga_qualifier` finding.** Packet report v1.2 item 4 names a
+`not_a_yoga_qualifier` vocabulary value. It appears nowhere in migration 1123,
+its unit test, or anywhere else in the repo — the migration's declared
+vocabulary is exactly `no_concept_reference_in_window`, `ambiguous_reference`,
+`reference_not_in_catalog`. The fixture gates on the migration's real
+post-patch numbers (7 linked; 2,986/7/2); the report phrase is a report-side
+artifact, recorded here rather than implemented.
+
+## 3. Generation synthesis — bo_laksana upstream closure minus ga_yoga
+
+Derived **live** from the patched asset_registry (recursive `depends_on` walk
+from bo_laksana), per packet report v1.3:
+
+- **Full walk: 25 assets** — bo_laksana; bg_class_priors, bg_dasha_systems,
+  bg_dignity_reference, bg_doshas, bg_kp_sublord_division, bg_nakshatra,
+  bg_ontology, bg_panchanga, bg_reference, bg_rules, bg_texts, bg_yogas;
+  ga_condition, ga_dashas, ga_nakshatra, ga_panchanga, ga_positions,
+  ga_sade_sati, ga_sensitive, ga_strength, ga_structural, ga_vargas,
+  ga_vichara, ga_yoga.
+- **ga\_\* closure: 12 assets** — diff vs the directive's expected-12 list:
+  **none, either direction**. ga_yoga is reachable via `ga_vichara`'s
+  pre-existing live `depends_on` edge.
+- **Synthesized generations: 11** (closure minus ga_yoga): ga_condition,
+  ga_dashas, ga_nakshatra, ga_panchanga, ga_positions, ga_sade_sati,
+  ga_sensitive, ga_strength, ga_structural, ga_vargas, ga_vichara.
+- Generations replicate `open_l1_data_plane_generation` (1035:643-685):
+  contract/L0-release/L0-config pins, mutually consistent
+  `base_context_jsonb`, `expected_partitions=1`, empty building state.
+  Run UUIDs are deterministic: ga_positions `f0000000-…-000000000101`,
+  ga_structural `…0102` (snapshot attachment depends on these), ga_yoga
+  `…0103`, bo_laksana `…0104` (data seeds reference them), remaining closure
+  assets `f0000000-0000-4000-8000-000000000111+` in sorted order.
+- Snapshots attach only to ga_positions (1 row) and ga_structural (2 rows),
+  as before; the other 9 generations complete with 0 snapshots — each gets its
+  partition receipt (`rows_inserted=0`) and a **synthetic disclosed**
+  `semantic_output_digest` =
+  `encode(digest('l0w7-synthetic-empty-generation:' || asset_id, 'sha256'),'hex')`
+  (64-hex, marked synthetic here; production has 0 generations, so no real
+  digest exists to reproduce).
+
+## 4. Gate evidence (final run)
+
+```
+PASS mutation guard on 12 guarded L1 tables                 (12/12)
+PASS capture trigger on 11 L1 tables (chart_dashas none)    (11/11)
+PASS L2 guard+capture on bodha_msr_signals                  (2/2)
+PASS L1 admin immutability triggers                         (7/7)
+PASS L1 data-plane admin tables                             (13/13)
+PASS L2 data-plane admin tables                             (15/15)
+PASS support/receipt/build tables                           (5/5)
+PASS roles                                                  (8/8)
+PASS fixture FK count (charts_client_id_fkey skipped)       (6/6)
+PASS complete generations + heads (closure minus ga_yoga)   (11/11)
+PASS generation heads cover exactly the derived closure     (11-asset set, exact)
+PASS row snapshots / fact snapshots                         (3/3)
+PASS manifest rows: asset_registry                          (129)
+PASS manifest rows: brahma_yoga_catalog                     (233)
+PASS manifest rows: brahma_dosha_catalog                    (79)
+PASS manifest rows: sutravali_rules                         (3002)
+PASS manifest rows: classical_texts                         (16)
+PASS manifest rows: classical_text_chunks                   (1)
+PASS manifest rows: fact_category_ownership                 (67)
+PASS manifest rows: brahma_ontology (+7 relation_type)      (748)
+PASS manifest rows: brahma_remedy_corpus                    (341)
+PASS manifest rows: brahma_class_priors                     (177)
+PASS manifest rows: brahma_dasha_systems                    (20)
+PASS sutravali post-1123 rows/linked                        (3002/7)
+PASS sutravali post-1123 digest == 1123 new_digest          (f1d56d0c…)
+PASS sutravali unlinked_reason distribution                 (2986/7/2)
+PASS sunapha link set                                       (a5d58ce9…, cf36fd63…)
+PASS remedy source drift eliminated                         (0)
+PASS Muhurta Chintamani row reattributed                    (0)
+PASS ontology relation_type rows                            (7 via 1121)
+PASS ontology text aliases present                          (3 via 1123)
+PASS seeded data rows                                       (1/7/1/2/1)
+PASS mutation guard rejects non-builder chart_facts write
+all 33 gates green → BUILD GREEN
+```
+
+Negative gate verified: `INSERT INTO chart_facts …` as superuser returns
+`ERROR: protected L1 INSERT requires direct data_plane_builder
+authentication` (`l1_data_plane_guard_active_mutation()` line 15).
+
+## 5. Deviations from the packet report (each forced by a rehearsal failure or probe)
+
+1. **Data seeds run pre-migration (step d).** A post-migration seed would
+   require a fake `data_plane_builder` session to pass the mutation guard.
+   Instead the 12 data rows (charts 1, chart_facts 7, ga_yoga_firings 1,
+   chart_vichara 2, bodha_msr_signals 1) are inserted before the guard
+   triggers exist — same final state, no counterfeit builder session.
+2. **Grant replay runs before 1035/1036.** Every `grants.json` table is a
+   pre-migration fixture table, and production's grants predated 1035/1036 —
    1036's preflights read `asset_registry` and `asset_output_digest_specs` as
    `data_plane_l2_owner`, which only holds SELECT via those grants. Replaying
    after migrations makes 1036 fail with `permission denied`.
-3. **`asset_output_digest_specs` support table** (28th table, not in the fixture
-   set). 1036:396-405's bo_samvada preflight reads it unconditionally. DDL and
-   grants (SELECT to builder + l2_owner, grantor amjis_app) probed from
-   production. Production also grants `retrieval_census_ro` and
+3. **`asset_output_digest_specs` support table** (28th table, not in the
+   fixture set). 1036:396-405's bo_samvada preflight reads it unconditionally.
+   DDL and grants (SELECT to builder + l2_owner, grantor amjis_app) probed
+   from production. Production also grants `retrieval_census_ro` and
    `nirmana_evidence_ingress_writer` — roles outside the fixture set, omitted.
    Table is empty, matching production's retired-spec state for bo_samvada.
 4. **28 L2 producer stub tables.** 1036's closing GRANT (1036:2049-2062) names
@@ -63,17 +215,39 @@ cloud-sql-proxy `127.0.0.1:5433` (read-only probes only).
    (run as l1_owner) can execute; `yoga_families_id_seq` owned by amjis_app.
 6. **171 applied as programmatic verbatim extract** of just `build_runs` +
    `build_run_assets` from migration 171 (the asset_throughput ALTERs target a
-   table outside the fixture set). No 1120-1123 migrations exist; the old plan
-   note referencing them was wrong.
+   table outside the fixture set). The 1120–1123 migrations live in
+   `platform/migrations/` (not `platform/supabase/migrations/`) and are applied
+   by the oracle (§2); 1124 stays HELD.
 7. **Role creation is idempotent** (`DROP ROLE IF EXISTS` first): roles are
    cluster-level and survive the fixture DB drop between runs.
-8. **`useEvidenceExplorer.ts` / `catalogService.ts`** named in the brief were not
-   found in this repo — treated as absent, no consumer-shape extraction needed.
+8. **`useEvidenceExplorer.ts` / `catalogService.ts`** named in the packet
+   report were not found in this repo — treated as absent, no consumer-shape
+   extraction needed.
+9. **Dual seed format.** The six digest-sensitive tables are raw
+   `to_jsonb(row)::text` line exports (imported byte-faithfully); the other
+   five remain the original Python-JSON exports. `seed_manifest.json`'s
+   `format_note` records which is which. `yoga_families` /
+   `yoga_family_members` stay DDL-only (0 rows in production, verified).
+10. **1120 not applied** — disclosed partial application with the exact
+    failing statement recorded (§2 item 4). The fixture set does not include
+    the five `bg_prashna_*` member tables; adding them would grow the fixture
+    set beyond the 27-table probe contract for zero downstream effect.
+11. **Synthetic empty-generation digests** for the 9 snapshot-less closure
+    generations (§3) — production has never run the data plane, so there is no
+    real completion digest to reproduce; the synthetic values are 64-hex and
+    disclosed here.
+12. **`not_a_yoga_qualifier` not implemented** — the phrase exists only in the
+    packet report, not in migration 1123, its test, or the repo (§2). Gates
+    use the migration's real vocabulary and numbers.
 
-## 3. Production probe surprises (affect future exports/captures)
+## 6. Production probe surprises (affect future exports/captures)
 
 - **Production has 0 generations, 0 snapshots, 0 heads** — the data plane has
   never been run. All generation/snapshot rows in the fixture are synthesized.
+- **Production sutravali_rules state-A digest is exactly 1123's `old_digest`**
+  (`87b69704…`), measured 2026-09-26 — production is in the exact pre-1123
+  state the migration expects (3,002 rows, 17 linked, no `unlinked_reason`
+  column).
 - **175,949 of 421,096 production `chart_facts` rows are multi-valued** (more
   than one typed value column set). They would fail the capture-time CHECK
   (exactly one typed value). The fixture's dignity seed row
@@ -95,32 +269,10 @@ cloud-sql-proxy `127.0.0.1:5433` (read-only probes only).
   column and joins by the integer id.
 - **ga_positions owns 0 fact categories**; production ownership is 64
   ga_structural, 2 ga_condition, 1 ga_ayurdaya (67 total exported).
+- **The five `bg_prashna_*` tables exist in production** but are outside the
+  27-table fixture set — the sole reason 1120 cannot apply here (§2 item 4).
 
-## 4. Gate evidence (final run)
-
-```
-PASS mutation guard on 12 guarded L1 tables                 (12/12)
-PASS capture trigger on 11 L1 tables (chart_dashas none)    (11/11)
-PASS L2 guard+capture on bodha_msr_signals                  (2/2)
-PASS L1 admin immutability triggers                         (7/7)
-PASS L1 data-plane admin tables                             (13/13)
-PASS L2 data-plane admin tables                             (15/15)
-PASS support/receipt/build tables                           (5/5)
-PASS roles                                                  (8/8)
-PASS fixture FK count (charts_client_id_fkey skipped)       (6/6)
-PASS complete generations + heads                           (2/2)
-PASS row snapshots / fact snapshots                         (3/3)
-PASS reference data rows                                    (512/512)
-PASS seeded data rows                                       (1/7/1/2/1)
-PASS mutation guard rejects non-builder chart_facts write
-all 14 gates green → BUILD GREEN
-```
-
-Negative gate verified manually: `INSERT INTO chart_facts …` as superuser
-returns `ERROR: protected L1 INSERT requires direct data_plane_builder
-authentication` (`l1_data_plane_guard_active_mutation()` line 15).
-
-## 5. Rehearsal failures encountered and fixed
+## 7. Rehearsal failures encountered and fixed
 
 | # | Failure | Fix |
 |---|---------|-----|
@@ -130,3 +282,5 @@ authentication` (`l1_data_plane_guard_active_mutation()` line 15).
 | 4 | `permission denied for table asset_output_digest_specs` (1036 preflight) | support-table grants probed + replayed (deviation 3) |
 | 5 | `relation "public.bodha_cgm_nodes" does not exist` (1036 closing GRANT) | 28 L2 stub tables (deviation 4) |
 | 6 | negative gate FAIL — syntax error in gate's own INSERT (unquoted UUID literal), guard never reached | quoted the literal; gate now exercises the guard |
+| 7 | raw import corrupted escaped quotes: `\copy` text format interprets backslash escapes (`\"Poison` → `"Poison`), breaking JSON on `brahma_ontology` | `\copy … WITH (FORMAT csv, DELIMITER E'\x07', QUOTE E'\x06')` — bytes JSON can never carry raw; Python asserts 0x06/0x07 absent first |
+| 8 | j3 contract check false-failed: `query_scalar` is line-splitting, so the multi-line contract compared as `"SELECT"`; the trailing-newline diff was psql's row terminator, not data | full-text fetch preserving newlines, newline-normalized comparison |

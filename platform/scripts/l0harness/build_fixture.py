@@ -1,17 +1,21 @@
-"""Build and rehearse the L0-W7 minimal data-plane fixture.
+"""Build and rehearse the L0-W7 data-plane fixture.
 
 Rehearsal-only: creates a fresh local database on the rehearsal cluster
 (127.0.0.1:55433, trust auth), applies the probe-derived fixture schema, seeds
-bounded production reference data, then applies migrations 171-extract / 596 /
-1035 / 1036 verbatim under their required actor roles, synthesizes two complete
-L1 generations (ga_positions, ga_structural) with capture-faithful snapshots,
-and asserts the trigger/role/grant gates via pg_catalog.
+the production reference set (full exports for the 1120-1123 oracle tables,
+bounded elsewhere), then applies the W-L0-1/9/2/3 migrations 1120/1121/1122/1123
+through the patch-apply oracle (packet report v1.2 item 4; 1124 remains HELD and
+is never applied), applies migrations 171-extract / 596 / 1035 / 1036 verbatim
+under their required actor roles, synthesizes complete L1 generations for the
+bo_laksana upstream closure minus ga_yoga (derived live from the patched
+asset_registry) with capture-faithful snapshots, and asserts the gates.
 
-CI restores production --schema-only pg_dump instead; nothing here touches the
-CI restore path. All reference-data choices trace to scripts/l0harness/
-production_seed/*.jsonl (see seed_manifest.json) and all schema choices trace to
-scripts/l0harness/production_schema/*.json probes. Deviations and probe
-surprises are recorded in REHEARSAL_NOTES.md.
+Design law: 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_7_PACKET_REPORT_v1_0.md
+(v1.4). CI restores production --schema-only pg_dump instead; nothing here
+touches the CI restore path. Reference-data choices trace to
+scripts/l0harness/production_seed/*.jsonl (see seed_manifest.json); schema
+choices trace to scripts/l0harness/production_schema/*.json probes. Deviations
+and probe surprises are recorded in REHEARSAL_NOTES.md.
 
 Usage: python3 scripts/l0harness/build_fixture.py
 """
@@ -29,6 +33,7 @@ PLATFORM = HERE.parent.parent
 SCHEMA_DIR = HERE / "production_schema"
 SEED_DIR = HERE / "production_seed"
 MIGRATIONS = PLATFORM / "supabase" / "migrations"
+MIGRATIONS_PLATFORM = PLATFORM / "migrations"
 
 PGHOST = "127.0.0.1"
 PGPORT = "55433"
@@ -252,8 +257,43 @@ def seed_table(table: str, rows: list[dict]) -> None:
     log(f"  seeded {table}: {len(rows)} rows")
 
 
+def seed_table_raw(table: str) -> int:
+    """Import a raw to_jsonb(row)::text JSONL export with zero client-side value
+    handling (\copy into a temp text table, then jsonb_populate_record per line).
+
+    Numeric scale (confidence 0.800) and jsonb serialization survive byte-exact;
+    migration 1123's state-A digest gate depends on this fidelity. Returns the
+    inserted row count."""
+    path = (SEED_DIR / f"{table}.jsonl").resolve()
+    blob = path.read_bytes()
+    if b"\x06" in blob or b"\x07" in blob:
+        raise SystemExit(f"{path.name} contains control bytes 0x06/0x07 — raw import unsafe")
+    script = (
+        "CREATE TEMP TABLE _imp(line text);\n"
+        # COPY text format would eat backslash escapes (\" → ") and corrupt the
+        # JSON; CSV format with quote/delimiter bytes that JSON can never carry
+        # raw passes each line through byte-exact.
+        f"\\copy _imp FROM '{path}' WITH (FORMAT csv, DELIMITER E'\\x07', QUOTE E'\\x06')\n"
+        f"INSERT INTO {table} "
+        f"SELECT (r).* FROM (SELECT jsonb_populate_record(NULL::{table}, line::jsonb) AS r FROM _imp) s;\n"
+        f"SELECT count(*) FROM {table};\n"
+    )
+    cmd = [
+        "psql", "-X", "-h", PGHOST, "-p", PGPORT, "-U", SUPERUSER, "-d", FIXTURE_DB,
+        "-v", "ON_ERROR_STOP=1", "-qAt",
+    ]
+    res = subprocess.run(cmd, input=script, capture_output=True, text=True)
+    if res.returncode != 0:
+        print(res.stdout)
+        print(res.stderr, file=sys.stderr)
+        raise SystemExit(f"raw import failed for {table}")
+    count = int(res.stdout.strip().splitlines()[-1])
+    log(f"  seeded {table}: {count} rows (raw to_jsonb import)")
+    return count
+
+
 def step_reference_data() -> None:
-    step("seed bounded production reference data (JSONL)")
+    step("seed production reference data (full exports + bounded JSONL)")
     # asset_registry first; topologically ordered so superseded_by self-FK
     # targets land before their dependents.
     assets = load_jsonl("asset_registry")
@@ -274,11 +314,17 @@ def step_reference_data() -> None:
     for r in assets:
         visit(r)
     seed_table("asset_registry", ordered)
-    seed_table("classical_texts", load_jsonl("classical_texts"))
+    # Raw to_jsonb full exports (digest-faithful; classical_texts before
+    # classical_text_chunks for the text_id FK).
+    seed_table_raw("classical_texts")
     seed_table("classical_text_chunks", load_jsonl("classical_text_chunks"))
     seed_table("brahma_yoga_catalog", load_jsonl("brahma_yoga_catalog"))
     seed_table("brahma_dosha_catalog", load_jsonl("brahma_dosha_catalog"))
-    seed_table("sutravali_rules", load_jsonl("sutravali_rules"))
+    seed_table_raw("brahma_ontology")
+    seed_table_raw("brahma_remedy_corpus")
+    seed_table_raw("brahma_class_priors")
+    seed_table_raw("brahma_dasha_systems")
+    seed_table_raw("sutravali_rules")
     seed_table("fact_category_ownership", load_jsonl("fact_category_ownership"))
 
 
@@ -406,6 +452,158 @@ VALUES ({sql_literal(SIGNAL_ID)}, {sql_literal(CHART_ID)}, {sql_literal(AYANAMSH
     log("  seeded ga_yoga_firings(1), chart_vichara(2), bodha_msr_signals(1)")
 
 
+# ── step j: 1120-1123 patch-apply oracle ─────────────────────────────────────
+# Packet report v1.2 item 4, implemented per the test pattern
+# (tests/unit/migrations/l0_rules_link_accountability.test.ts:221-270).
+# 1124 remains HELD (bg_transit_rules 76-vs-75 reconciliation) and is NEVER
+# applied.
+
+DIGEST_1123_OLD = "87b697041c73359e12daf8258cfdd6e85a38eb5c63fa39865e42f5b46e610dbd"
+DIGEST_1123_NEW = "f1d56d0cebf7ce2ad270ba1145cda20cae4c10f2ec3fb1ea01bc6b999feee098"
+
+_DIGEST_VECTOR_A = ("rule_id,text_id,verse_ref,antecedent_jsonb,predicate_jsonb,"
+                    "prediction_jsonb,confidence,extracted_by,extraction_pass_log,"
+                    "quality_score,yoga_canonical_id,dasha_system_id,transit_marker")
+_DIGEST_VECTOR_B = ("rule_id,text_id,verse_ref,antecedent_jsonb,predicate_jsonb,"
+                    "prediction_jsonb,confidence,extracted_by,extraction_pass_log,"
+                    "quality_score,yoga_canonical_id,unlinked_reason,dasha_system_id,"
+                    "transit_marker")
+
+
+def digest_sql(vector: str) -> str:
+    return ("SELECT encode(sha256(convert_to(COALESCE(string_agg("
+            f"jsonb_build_array({vector})::text, "
+            "E'\\n' ORDER BY rule_id::text COLLATE \"C\"),''),'UTF8')),'hex') "
+            "FROM sutravali_rules")
+
+
+def psql_script_capture(script: str) -> subprocess.CompletedProcess:
+    cmd = [
+        "psql", "-X", "-h", PGHOST, "-p", PGPORT, "-U", SUPERUSER, "-d", FIXTURE_DB,
+        "-v", "ON_ERROR_STOP=1", "-qAt",
+    ]
+    res = subprocess.run(cmd, input=script, capture_output=True, text=True)
+    if res.returncode != 0:
+        print(res.stdout)
+        print(res.stderr, file=sys.stderr)
+        raise SystemExit("oracle script failed")
+    return res
+
+
+# Findings recorded for REHEARSAL_NOTES / the final report.
+ORACLE_FINDINGS: dict[str, str] = {}
+
+
+def step_l0_patch_oracle() -> None:
+    step("1120-1123 patch-apply oracle (state-A gate → state-B simulation → apply)")
+
+    # j1 — state-A digest gate: the fixture's sutravali_rules must digest to
+    # 1123's old_digest before any change (proves export/import fidelity).
+    state_a = query_scalar(digest_sql(_DIGEST_VECTOR_A))
+    ORACLE_FINDINGS["state_a_digest"] = state_a
+    if state_a != DIGEST_1123_OLD:
+        raise SystemExit(
+            f"1123 oracle state-A digest mismatch: fixture {state_a}, "
+            f"expected {DIGEST_1123_OLD} — sutravali_rules export is not faithful")
+    log(f"  state-A digest matches 1123 old_digest ({state_a[:16]}…)")
+
+    # j2 — rolled-back state-B simulation: replay the migration's own backfill
+    # (VALUES block extracted verbatim from the migration file, one source of
+    # truth) inside a transaction, digest, roll back. Must equal new_digest.
+    migration = (MIGRATIONS_PLATFORM / "1123_l0_rules_link_accountability.sql").read_text()
+    values_block = re.search(
+        r"FROM \(VALUES\n([\s\S]*?)\n {4}\) AS v\(rule_id, final_yoga, final_reason\)",
+        migration)
+    if not values_block:
+        raise SystemExit("1123 backfill VALUES block not found in migration file")
+    sim = f"""
+BEGIN;
+ALTER TABLE public.sutravali_rules ADD COLUMN unlinked_reason text;
+UPDATE sutravali_rules AS rule
+SET yoga_canonical_id = v.final_yoga, unlinked_reason = v.final_reason
+FROM (VALUES
+{values_block.group(1)}
+    ) AS v(rule_id, final_yoga, final_reason)
+WHERE rule.rule_id = v.rule_id::uuid;
+UPDATE sutravali_rules SET unlinked_reason = 'no_concept_reference_in_window'
+WHERE unlinked_reason IS NULL AND yoga_canonical_id IS NULL;
+{digest_sql(_DIGEST_VECTOR_B)};
+ROLLBACK;
+"""
+    res = psql_script_capture(sim)
+    state_b = res.stdout.strip().splitlines()[-1]
+    ORACLE_FINDINGS["state_b_digest"] = state_b
+    if state_b != DIGEST_1123_NEW:
+        raise SystemExit(
+            f"1123 oracle state-B digest mismatch: simulation {state_b}, "
+            f"expected {DIGEST_1123_NEW}")
+    log(f"  rolled-back state-B simulation matches 1123 new_digest ({state_b[:16]}…)")
+
+    # j3 — registry contract constants: because the state-A digest equals
+    # production's own, the exported bg_rules row must already carry the 618
+    # contract verbatim (the text between the migration's first $check$ pair)
+    # and target_floor 3002 — no patching is needed. A mismatch means the
+    # asset_registry export is unfaithful; fail rather than patch.
+    old_contract = re.search(r"old_contract constant text := \$check\$([\s\S]*?)\$check\$;", migration)
+    if not old_contract:
+        raise SystemExit("1123 old_contract block not found in migration file")
+    # Full-text fetch: the contract is multi-line, so psql_tuple (line-splitting)
+    # cannot be used; psql appends one row-terminating newline to stdout.
+    res = subprocess.run(
+        ["psql", "-X", "-h", PGHOST, "-p", PGPORT, "-U", SUPERUSER, "-d", FIXTURE_DB,
+         "-v", "ON_ERROR_STOP=1", "-qAt", "-c",
+         "SELECT integrity_check_sql FROM asset_registry WHERE asset_id='bg_rules'"],
+        capture_output=True, text=True)
+    if res.returncode != 0:
+        raise SystemExit(f"bg_rules contract fetch failed: {res.stderr}")
+    live_contract = res.stdout
+    if live_contract.strip("\n") != old_contract.group(1).strip("\n"):
+        raise SystemExit("bg_rules registry contract is not the 618 contract verbatim")
+    floor = query_scalar("SELECT target_floor FROM asset_registry WHERE asset_id='bg_rules'")
+    if floor != "3002":
+        raise SystemExit(f"bg_rules target_floor {floor}, expected 3002")
+    log("  bg_rules registry row carries the 618 contract verbatim — no patch needed")
+
+    # j4 — apply 1120, 1121, 1122, 1123 in order (NEVER 1124). Disclosed
+    # partial application: objects each migration references are checked first;
+    # a migration whose objects are absent is skipped and recorded exactly.
+    prashna_tables = ["bg_prashna_lagna_methods", "bg_prashna_tajik_yogas",
+                      "bg_prashna_significators", "bg_prashna_fructification_rules",
+                      "bg_prashna_special_techniques"]
+    missing = [t for t in prashna_tables
+               if query_scalar(f"SELECT to_regclass('{t}') IS NULL") == "t"]
+    if missing:
+        ORACLE_FINDINGS["1120"] = (
+            f"SKIPPED — member tables absent from the fixture set: {', '.join(missing)}. "
+            "Exact failing statement had it been applied: migration 1120 refuses at "
+            "1120:55-60, `RAISE EXCEPTION 'migration 1120 refuses: declared member "
+            f"table % does not exist', member_table` with member_table='{missing[0]}'. "
+            "bg_prashna_rules keeps target_table NULL (production state A); nothing "
+            "downstream (1122 closure walk, 1123, generation synthesis) reads it.")
+        log(f"  1120 SKIPPED (disclosed): {len(missing)} member tables absent ({missing[0]}…)")
+    else:
+        psql_file(MIGRATIONS_PLATFORM / "1120_l0_bg_prashna_rules_target_table_honest.sql")
+        log("  1120 applied (bg_prashna_rules target_table declared)")
+
+    psql_file(MIGRATIONS_PLATFORM / "1121_l0_ontology_relation_type_class.sql")
+    log("  1121 applied (7 relation_type ontology rows)")
+    psql_file(MIGRATIONS_PLATFORM / "1122_l0_declared_dependencies.sql")
+    log("  1122 applied (16 depends_on arrays converged to canonical)")
+    psql_file(MIGRATIONS_PLATFORM / "1123_l0_rules_link_accountability.sql")
+    log("  1123 applied (7 linked of 3,002; unlinked_reason; remedy + ontology normalization)")
+
+    # j5 — post-apply structural verification (1123's own guards re-asserted
+    # here so the numbers land in the build log).
+    sunapha = query_scalar(
+        "SELECT string_agg(rule_id::text, ',' ORDER BY rule_id::text) "
+        "FROM sutravali_rules WHERE yoga_canonical_id='sunapha'")
+    expected_sunapha = ("a5d58ce9-5331-5db4-a803-41d9530e45fc,"
+                        "cf36fd63-ba97-5ead-ad17-de9054fc051f")
+    if sunapha != expected_sunapha:
+        raise SystemExit(f"post-1123 sunapha link set {sunapha}, expected {expected_sunapha}")
+    log("  post-1123 sunapha link set exactly {a5d58ce9…, cf36fd63…}")
+
+
 # ── step e: migrations ────────────────────────────────────────────────────────
 
 def extract_171() -> Path:
@@ -472,29 +670,69 @@ def step_grants() -> None:
 
 # ── steps h+i: generations and snapshots ─────────────────────────────────────
 
-GENERATION_SQL = f"""
+# Closure-derived generation synthesis (packet report v1.3): the fixture
+# synthesizes one complete L1 generation per asset in the bo_laksana upstream
+# closure minus ga_yoga, derived LIVE from the post-1122 asset_registry via a
+# recursive depends_on walk. The expected-12 list below is the directive's
+# reference; any difference from the live walk is recorded in ORACLE_FINDINGS
+# and the DERIVED set is used.
+EXPECTED_CLOSURE_12 = [
+    "ga_condition", "ga_dashas", "ga_nakshatra", "ga_panchanga", "ga_positions",
+    "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural",
+    "ga_vargas", "ga_vichara", "ga_yoga",
+]
+SYNTHESIS_ASSETS: list[str] = []
+RUN_IDS: dict[str, str] = {}
+
+
+def derive_closure() -> list[str]:
+    walk = psql_tuple(
+        "WITH RECURSIVE walk AS ("
+        "SELECT 'bo_laksana'::text AS asset_id "
+        "UNION "
+        "SELECT d.asset_id FROM walk w "
+        "JOIN asset_registry a ON a.asset_id = w.asset_id "
+        "CROSS JOIN LATERAL unnest(a.depends_on) AS d(asset_id)) "
+        "SELECT DISTINCT asset_id FROM walk ORDER BY 1")
+    closure = [a for a in walk if a.startswith("ga_")]
+    ORACLE_FINDINGS["closure_full_walk"] = ",".join(walk)
+    ORACLE_FINDINGS["closure_ga"] = ",".join(closure)
+    missing = [a for a in EXPECTED_CLOSURE_12 if a not in closure]
+    extra = [a for a in closure if a not in EXPECTED_CLOSURE_12]
+    ORACLE_FINDINGS["closure_diff"] = (
+        f"expected-12 minus closure: {missing or 'none'}; "
+        f"closure minus expected-12: {extra or 'none'}")
+    log(f"  closure walk from bo_laksana: {len(walk)} assets, {len(closure)} ga_*; "
+        f"diff vs expected-12 — missing {missing or '[]'}, extra {extra or '[]'}")
+    return closure
+
+
+def generation_sql() -> str:
+    run_rows = [(RUN_IDS[a], a) for a in SYNTHESIS_ASSETS]
+    run_rows += [(RUN_GA_YOGA, "ga_yoga"), (RUN_BO_LAKSANA, "bo_laksana")]
+    run_values = ",\n                    ".join(
+        f"({sql_literal(rid)}::uuid, '{aid}')" for rid, aid in run_rows)
+    gen_values = ",\n                    ".join(
+        f"({sql_literal(RUN_IDS[a])}::uuid, '{a}')" for a in SYNTHESIS_ASSETS)
+    return f"""
 WITH chart AS (SELECT * FROM charts WHERE id = {sql_literal(CHART_ID)})
 INSERT INTO build_runs (id, chart_id, scope, scope_target, action, state, plan,
                         triggered_by, created_at, started_at, ended_at)
 SELECT r.run_id, chart.id, 'asset', r.asset_id, 'build', 'completed',
        '{{"fixture": "l0w7"}}'::jsonb, 'l0w7_fixture', now(), now(), now()
-FROM chart, (VALUES ({sql_literal(RUN_GA_POSITIONS)}::uuid, 'ga_positions'),
-                    ({sql_literal(RUN_GA_STRUCTURAL)}::uuid, 'ga_structural'),
-                    ({sql_literal(RUN_GA_YOGA)}::uuid, 'ga_yoga'),
-                    ({sql_literal(RUN_BO_LAKSANA)}::uuid, 'bo_laksana'))
+FROM chart, (VALUES {run_values})
      AS r(run_id, asset_id);
 
 INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at, ended_at)
 SELECT run_id, asset_id, 1, 'complete', now(), now()
-FROM (VALUES ({sql_literal(RUN_GA_POSITIONS)}::uuid, 'ga_positions'),
-             ({sql_literal(RUN_GA_STRUCTURAL)}::uuid, 'ga_structural'),
-             ({sql_literal(RUN_GA_YOGA)}::uuid, 'ga_yoga'),
-             ({sql_literal(RUN_BO_LAKSANA)}::uuid, 'bo_laksana'))
+FROM (VALUES {run_values})
      AS r(run_id, asset_id);
 
 -- Generations replicate open_l1_data_plane_generation (1035:643-685) exactly:
 -- same pins, same base_context_jsonb shape, inserted in empty building state
--- as the generation guard requires.
+-- as the generation guard requires. One generation per closure asset minus
+-- ga_yoga (packet report v1.3: 11 synthesized, ga_yoga's own generation is
+-- out of scope for the fixture).
 WITH chart AS (SELECT * FROM charts WHERE id = {sql_literal(CHART_ID)})
 INSERT INTO l1_data_plane_generations (
   chart_id, asset_id, generation_id, contract_version,
@@ -532,8 +770,7 @@ SELECT chart.id, r.asset_id, r.run_id::text, {sql_literal(CONTRACT_VERSION)},
     'l0_resource_config_generation_id', {sql_literal(L0_CONFIG_ID)},
     'l0_resource_config_digest', {sql_literal(L0_CONFIG_DIGEST)}
   ), 1
-FROM chart, (VALUES ({sql_literal(RUN_GA_POSITIONS)}::uuid, 'ga_positions'),
-                    ({sql_literal(RUN_GA_STRUCTURAL)}::uuid, 'ga_structural'))
+FROM chart, (VALUES {gen_values})
      AS r(run_id, asset_id);
 
 INSERT INTO l1_data_plane_partition_contexts (chart_id, asset_id, generation_id, partition_key)
@@ -677,27 +914,38 @@ $fixture_snapshots$;
 """
 
 
-COMPLETE_SQL = f"""
--- Partition receipts, then guarded completion transition, then heads.
+def complete_sql() -> str:
+    return f"""
+-- Partition receipts: one row per partition context, LEFT JOIN snapshots so
+-- empty closure generations land rows_inserted=0 (the completion guard
+-- requires completed_partitions == receipt count == expected_partitions).
 INSERT INTO l1_data_plane_generation_partitions
   (chart_id, asset_id, generation_id, partition_key, rows_inserted)
-SELECT g.chart_id, g.asset_id, g.generation_id, s.partition_key, count(*)
+SELECT g.chart_id, g.asset_id, g.generation_id, pc.partition_key, count(s.snapshot_id)
 FROM l1_data_plane_generations g
-JOIN l1_data_plane_row_snapshots s
+JOIN l1_data_plane_partition_contexts pc
+  ON pc.chart_id = g.chart_id AND pc.asset_id = g.asset_id
+ AND pc.generation_id = g.generation_id
+LEFT JOIN l1_data_plane_row_snapshots s
   ON s.chart_id = g.chart_id AND s.asset_id = g.asset_id
- AND s.generation_id = g.generation_id
+ AND s.generation_id = g.generation_id AND s.partition_key = pc.partition_key
 WHERE g.chart_id = {sql_literal(CHART_ID)}
-GROUP BY g.chart_id, g.asset_id, g.generation_id, s.partition_key;
+GROUP BY g.chart_id, g.asset_id, g.generation_id, pc.partition_key;
 
 UPDATE l1_data_plane_generations g
-SET completed_partitions = 1,
+SET completed_partitions = (SELECT count(*) FROM l1_data_plane_generation_partitions p
+      WHERE p.chart_id = g.chart_id AND p.asset_id = g.asset_id
+        AND p.generation_id = g.generation_id),
     status = 'complete',
-    semantic_output_digest = (
-      SELECT encode(digest(string_agg(s.semantic_digest, '|' ORDER BY s.semantic_digest),
-                           'sha256'), 'hex')
-      FROM l1_data_plane_row_snapshots s
-      WHERE s.chart_id = g.chart_id AND s.asset_id = g.asset_id
-        AND s.generation_id = g.generation_id),
+    -- Snapshot-derived digest where snapshots exist; otherwise a synthetic
+    -- disclosed 64-hex digest per asset (REHEARSAL_NOTES.md).
+    semantic_output_digest = COALESCE(
+      (SELECT encode(digest(string_agg(s.semantic_digest, '|' ORDER BY s.semantic_digest),
+                            'sha256'), 'hex')
+       FROM l1_data_plane_row_snapshots s
+       WHERE s.chart_id = g.chart_id AND s.asset_id = g.asset_id
+         AND s.generation_id = g.generation_id),
+      encode(digest('l0w7-synthetic-empty-generation:' || g.asset_id, 'sha256'), 'hex')),
     completed_at = now()
 WHERE g.chart_id = {sql_literal(CHART_ID)};
 
@@ -708,13 +956,33 @@ WHERE chart_id = {sql_literal(CHART_ID)};
 
 
 def step_generations() -> None:
-    step("synthesize complete ga_positions + ga_structural generations")
-    psql(GENERATION_SQL)
-    log("  build_runs(4) + build_run_assets(4) + generations(2) + partition_contexts(2)")
+    global SYNTHESIS_ASSETS, RUN_IDS
+    step("derive bo_laksana upstream closure from the patched asset_registry")
+    closure = derive_closure()
+    SYNTHESIS_ASSETS = [a for a in closure if a != "ga_yoga"]
+    if not SYNTHESIS_ASSETS:
+        raise SystemExit("closure walk yielded no ga_* synthesis assets")
+    RUN_IDS = {
+        "ga_positions": RUN_GA_POSITIONS,
+        "ga_structural": RUN_GA_STRUCTURAL,
+        "ga_yoga": RUN_GA_YOGA,
+        "bo_laksana": RUN_BO_LAKSANA,
+    }
+    extras = [a for a in SYNTHESIS_ASSETS if a not in RUN_IDS]
+    for idx, asset in enumerate(extras):
+        RUN_IDS[asset] = f"f0000000-0000-4000-8000-{0x111 + idx:012x}"
+    ORACLE_FINDINGS["synthesis_assets"] = ",".join(SYNTHESIS_ASSETS)
+
+    n = len(SYNTHESIS_ASSETS)
+    step(f"synthesize complete generations ({n} closure assets minus ga_yoga)")
+    psql(generation_sql())
+    log(f"  build_runs({n + 2}) + build_run_assets({n + 2}) + "
+        f"generations({n}) + partition_contexts({n})")
     step("synthesize capture-faithful row/fact snapshots")
     psql(snapshot_do_block())
-    psql(COMPLETE_SQL)
-    log("  snapshots(3) + fact_snapshots(3) + partitions(2) + heads(2); generations complete")
+    psql(complete_sql())
+    log(f"  snapshots(3) + fact_snapshots(3) + partitions({n}) + heads({n}); "
+        f"generations complete")
 
 
 # ── step k: gates ─────────────────────────────────────────────────────────────
@@ -804,24 +1072,80 @@ def step_gates() -> None:
         "'chart_divisionals','ga_prashna_judgment')",
         "6"))
     results.append(gate(
-        "complete generations + heads",
+        "complete generations + heads (closure minus ga_yoga)",
         "SELECT count(*) FROM l1_data_plane_generations g "
         "JOIN l1_data_plane_generation_heads h ON h.chart_id=g.chart_id "
         "AND h.asset_id=g.asset_id AND h.current_generation_id=g.generation_id "
         "WHERE g.status='complete'",
-        "2"))
+        str(len(SYNTHESIS_ASSETS))))
+    results.append(gate(
+        "generation heads cover exactly the derived closure minus ga_yoga",
+        "SELECT string_agg(asset_id, ',' ORDER BY asset_id) "
+        "FROM l1_data_plane_generation_heads",
+        ",".join(SYNTHESIS_ASSETS)))
     results.append(gate(
         "row snapshots / fact snapshots",
         "SELECT (SELECT count(*) FROM l1_data_plane_row_snapshots) || '/' || "
         "(SELECT count(*) FROM l1_data_plane_fact_snapshots)",
         "3/3"))
+    # Per-manifest row-count gates (post-migration state: brahma_ontology
+    # carries 1121's 7 relation_type rows on top of the export — disclosed).
+    manifest = json.loads((SEED_DIR / "seed_manifest.json").read_text())
+    for t in manifest["tables"]:
+        expected = t["row_count"]
+        note = ""
+        if t["table"] == "brahma_ontology":
+            expected += 7
+            note = " (+7 relation_type rows from 1121)"
+        results.append(gate(
+            f"manifest rows: {t['table']}{note}",
+            f"SELECT count(*) FROM {t['table']}",
+            str(expected)))
+    # 1123 post-patch verification gates (the migration's own numbers).
     results.append(gate(
-        "reference data rows (512)",
-        "SELECT (SELECT count(*) FROM asset_registry) + (SELECT count(*) FROM brahma_yoga_catalog) + "
-        "(SELECT count(*) FROM brahma_dosha_catalog) + (SELECT count(*) FROM sutravali_rules) + "
-        "(SELECT count(*) FROM classical_texts) + (SELECT count(*) FROM classical_text_chunks) + "
-        "(SELECT count(*) FROM fact_category_ownership)",
-        "512"))
+        "sutravali post-1123 rows/linked (3002/7)",
+        "SELECT count(*) || '/' || count(*) FILTER (WHERE yoga_canonical_id IS NOT NULL) "
+        "FROM sutravali_rules",
+        "3002/7"))
+    results.append(gate(
+        "sutravali post-1123 digest == 1123 new_digest",
+        digest_sql(_DIGEST_VECTOR_B),
+        DIGEST_1123_NEW))
+    results.append(gate(
+        "sutravali unlinked_reason distribution (2986/7/2)",
+        "SELECT count(*) FILTER (WHERE unlinked_reason='no_concept_reference_in_window') || '/' || "
+        "count(*) FILTER (WHERE unlinked_reason='ambiguous_reference') || '/' || "
+        "count(*) FILTER (WHERE unlinked_reason='reference_not_in_catalog') "
+        "FROM sutravali_rules",
+        "2986/7/2"))
+    results.append(gate(
+        "sunapha link set (2 rows, exact)",
+        "SELECT string_agg(rule_id::text, ',' ORDER BY rule_id::text) "
+        "FROM sutravali_rules WHERE yoga_canonical_id='sunapha'",
+        "a5d58ce9-5331-5db4-a803-41d9530e45fc,"
+        "cf36fd63-ba97-5ead-ad17-de9054fc051f"))
+    results.append(gate(
+        "remedy source drift eliminated (0)",
+        "SELECT count(*) FROM brahma_remedy_corpus WHERE source_canonical_id IN "
+        "('BPHS','Phaladeepika','Tajaka','bphs_jaimini')",
+        "0"))
+    results.append(gate(
+        "Muhurta Chintamani row reattributed (0 classical_tradition+MC)",
+        "SELECT count(*) FROM brahma_remedy_corpus "
+        "WHERE source_canonical_id='classical_tradition' AND "
+        "source_citation='Muhurta Chintamani, classical Jyotish muhurta text'",
+        "0"))
+    results.append(gate(
+        "ontology relation_type rows (7 via 1121)",
+        "SELECT count(*) FROM brahma_ontology WHERE entity_class='relation_type'",
+        "7"))
+    results.append(gate(
+        "ontology text aliases present (3 via 1123)",
+        "SELECT count(*) FROM brahma_ontology WHERE entity_class='text' AND ("
+        "(canonical_id='bphs' AND 'BPHS'=ANY(synonyms)) OR "
+        "(canonical_id='phaladeepika' AND 'Phaladeepika'=ANY(synonyms)) OR "
+        "(canonical_id='tajaka_neelakanthi' AND 'Tajaka'=ANY(synonyms)))",
+        "3"))
     results.append(gate(
         "seeded data rows",
         "SELECT (SELECT count(*) FROM charts) || '/' || (SELECT count(*) FROM chart_facts) || '/' || "
@@ -859,13 +1183,18 @@ def main() -> None:
     step_recreate_db()          # a
     step_schema_roles()         # b
     step_reference_data()       # c
-    step_data_seeds()           # d (+ j, pre-trigger by design — see REHEARSAL_NOTES)
+    step_data_seeds()           # d (pre-trigger by design — see REHEARSAL_NOTES)
+    step_l0_patch_oracle()      # j — 1120-1123 BEFORE 596 so 1123's
+                                # asset_registry UPDATE does not meet 596's
+                                # nirmana_registry_receipt_invalidation trigger,
+                                # and before the closure walk (needs 1122's
+                                # canonical depends_on)
     step_grants()               # f/g — before migrations: every grants.json table
                                 # is a pre-migration fixture table, and production's
                                 # grants (e.g. SELECT on asset_registry to the owner
                                 # roles) predated 1035/1036, whose preflights read them
     step_migrations()           # e
-    step_generations()          # h + i
+    step_generations()          # h + i (closure-derived)
     step_gates()                # k
     step_summary()              # l
     log("BUILD GREEN")
