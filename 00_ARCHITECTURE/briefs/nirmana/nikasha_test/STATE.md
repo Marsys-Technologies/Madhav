@@ -1,10 +1,10 @@
 ---
 artifact: NIKASHA_TEST_CAMPAIGN_STATE
-version: "0.3"
+version: "0.4"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 2 T1+T2 CLOSED (T2 hand-verified; T1 planted-defect suite 17/17 detected, mutation + differential done — harness/T1_RESULTS.md). Next: Phase 3 closure loop (sandbox only).
-updated: 2026-09-26T23:30:00+05:30
+you_are_here: Phase 3 T3 CLOSED (closure loop proven in sandbox: fix → measured CLOSED → ELEVATED 0→1/40, regression RE-OPENED → 1→0 → re-fix → 1; harness/T3_CLOSURE_LOOP.md). Next: Phase 4 derivability (L1–L5 layer-instance skeletons → derivations/L<n>_INSTANCE_SKELETON.md).
+updated: 2026-09-26T22:22:00+05:30
 ---
 
 # NIKAṢA TEST CAMPAIGN — STATE
@@ -27,7 +27,7 @@ updated: 2026-09-26T23:30:00+05:30
 | 0 | CLOSED | c63ca0774 | census L0: 119 FAIL/90 PARTIAL; tracker 0/40, 0/360 gates |
 | 1 | CLOSED | (this commit) | 183 tables, 0 COPY_FAIL, manifest written; fidelity diff L0: 3 diffs all sampling-induced, 0 UNEXPECTED → FIDELITY PASS (census/fidelity_L0.md); R47 registered (census output path overwrites prod artifact) |
 | 2 | CLOSED (T2 hand-verified all 6 layers; T1 planted-defect suite done) | (this commit) | T2: 60 assets, 60 verdict-level disagreements, all instances of R42/R43/R46; L3 census on sandbox (2.5s) — R40/R41 the only prod blockers; handverify/T2_SUMMARY.md. T1: 17/17 plants detected, 0 cross-asset collateral, all restored; mutation test notices an inverted detector; differential 265 agree / 99 classed / 0 unclassified; new register rows R52–R56; harness/T1_RESULTS.md |
-| 3 | NOT_STARTED | — | closure loop — campaign's most important untested path |
+| 3 | CLOSED (T3 closure loop proven in sandbox) | (this commit) | Three gaps of three kinds fixed and closed BY MEASUREMENT: bg_ontology-Vocab.alias (79/79 dosha synonyms seeded), bg_nakshatra_medical-Build.registered (has_writer=true → cascaded a true new Build.exercised gap, closed by actually running the writer, run c0db4bc1), bg_doshas-Idem.pattern (seeder-following idem_scan). Headline: stock tooling CANNOT close rows (emit_gaps append-only-OPEN + tracker per-row state) — R57; scratch copies (harness/asset_census_closing.py, harness/tracker_sandbox.py) with last-row-per-gap_id + close/re-open emit make it work: 25+11 closures, tracker ELEVATED 0/40→1/40, gates 0/360→9/360. Regression proven (RE-OPENED → 1→0 → re-fix → 1). R33 CLOSED; new rows R57–R62; sandbox restored to baseline; harness/T3_CLOSURE_LOOP.md |
 | 4 | NOT_STARTED | — | tier1/tier2 structured summary ready at derivations/_tier1_tier2_summary.md |
 | 5 | NOT_STARTED | — | — |
 | 6 | NOT_STARTED | — | K3_256 low effort (switch cancelled) |
@@ -131,8 +131,25 @@ Binding rulings absorbed: #9, #10, #11, #13, #16, #17 (details in pre-rewrite ST
 1. ~~Phase 1~~ CLOSED (9495fb1a8).
 2. ~~T2 including L3~~ CLOSED. Register rows R40–R51 written.
 3. ~~T1 planted defects + mutation + differential~~ CLOSED (this commit). R52–R56 written; R25 closed.
-4. Phase 3 closure loop — NOT STARTED, campaign's most important untested path. Next.
-5. Phases 4–7 as per brief.
+4. ~~Phase 3 closure loop~~ CLOSED (this commit). R33 closed; R57–R62 written; sandbox restored to baseline.
+5. Phases 4–7 as per brief. Next: Phase 4 derivability — L1–L5 layer-instance skeletons.
+
+## Phase 3 findings (T3)
+- Three gaps of three kinds (data / registry / detector) fixed in sandbox and observed closing by
+  measurement; full narrative in harness/T3_CLOSURE_LOOP.md.
+- **Headline finding R57**: stock inspector never closes a row (emit_gaps appends OPEN only, skips
+  existing ids) and stock tracker reads state per row — closure is structurally impossible in the
+  shipped tooling. Scratch copies with (a) last-row-per-gap_id state, (b) close/re-open emission,
+  (c) NIKASHA_CONTROL_DIR ledger redirect prove the fix; ~70 lines to port to production.
+- Regression leg works: flipping has_writer true→false produced exactly 1 RE-OPENED row and dropped
+  ELEVATED 1→0 (CERTIFIED_GAPS_OPEN); re-fix re-closed and restored 1/40.
+- Registry fixes cascade (R61): registering the writer surfaced a true new Build.exercised gap,
+  closed by actually running BgMedicalMappingsWriter in the sandbox (60 rows, real throughput).
+- Carr.D1 per-asset detector honestly failed first ('ashtanga hridayam' cited 27×, not in the text
+  registry → R59); passed 27/27 after the text row was admitted.
+- Ledger hygiene gaps found: hand-written rows never auto-close (R58); Ldgr list misses singular
+  `classical_citation` (R60); sandbox sampling emits prod-scale Count.floor rows (R62).
+- Sandbox verified restored to baseline post-run; platform/ and 00_ARCHITECTURE/control/ git-clean.
 
 ## Blockers
 None. (L3 production census blocked by inspector timeout → routed to sandbox; §2.3 fix proposed, not yet applied.)
