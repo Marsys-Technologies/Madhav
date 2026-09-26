@@ -1,7 +1,7 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.8
-status: CI_BUILT_2PASS_3UNMEASURED_PINNED_GATE_MAPPING_HELD
+version: 1.9
+status: GATES_MAPPED_2PASS_3UNMEASURED_CERT_HELD_PILOT_CLAUSE
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
 branch: l0/brahmagyan-exec
@@ -127,6 +127,38 @@ amendments: >
   in the machinery-mapping and fixture-builder phases, -5/-7/-8/-9 in the
   runner phase, all to the L1/L2 data-plane plan. Both governance surfaces
   amended in place with this note.
+  v1.9 (2026-09-26) — certification standard moved; gate mapping recorded; certification
+  remains HELD on a new, stronger ground. (1) ASSET_ELEVATION_TEMPLATE v2_0 adopted for
+  this branch (ADK-0001; synced verbatim at commit 5c1544095): the native-instructed
+  rebuild executing Decision 11 as Dom→Carr (source carriage and reproduction; the
+  mechanical checks D1–D3 stay, the seeded negative case D4 leaves — changelog (a)),
+  adding Decision 16 (composite identity key) and Decision 17 (Build, the ninth gate).
+  The mandate's Ruling 1 substance (Dom out of the data plane; W-L0-7's gate mapping
+  unblocked; the three UNMEASURED stay UNMEASURED) is fully carried by v2_0 changelog
+  (a) — nothing the mandate intended is lost. (2) ADK-0002: v2_0's §0 pilot clause
+  BINDS — both candidate L0 layer instances are not ACCEPTED (v2_1 on this branch is
+  ACCEPT_WITH_CORRECTIONS; the l3 v3_0 is DRAFT_PENDING_ACCEPTANCE, verdict NONE), so
+  gaps may register in §5 but NO §7 certification records may be written. The hold is
+  no longer the open Dom question (that ruling landed — STANDING_MANDATE_2026-09-26.md
+  Ruling 1, RESOLVED) but the pilot clause; it lifts automatically when an instance
+  passes §5.4 and the pilot is re-verified. (3) ADK-0005: the mapping's layer_instance
+  pin is MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md (v2.1, ACCEPT_WITH_CORRECTIONS,
+  at this branch's commit), with disclosure that v3_0 exists on l3 and that the pin
+  migrates to whichever instance first passes §5.4. (4) Gate mapping recorded against
+  v2_0 §4's NINE gates (Ldgr, Idem, Earn, Null, Vocab, Carr, Narr, Dens, Build) as the
+  packet's self-conformance reading — it writes no §7 records and no asset_gaps.jsonl
+  rows — that ruling has since LANDED (ADK-0006, option (c) precisely scoped: register
+  here, absorb at merge, never dual-write) and the eight findings are registered in
+  00_ARCHITECTURE/control/asset_gaps.jsonl as kind=gap, state=OPEN rows. No measurement,
+  pin, or finding changed; the three UNMEASURED verdicts stay UNMEASURED.
+  v1.9 addendum (2026-09-26) — ADK-0006 executed: the eight handed-up findings
+  (F-W-L0-7-1/-2/-3/-4/-5/-7/-8/-9; -6 stays WITHDRAWN, number retired) appended to this
+  branch's asset_gaps.jsonl, one row each, owner="layer packet" naming the receiving
+  L1/L2 plan document, runnable detector per row (the harness re-run converting the three
+  UNMEASURED, pre-registered at the SESSION_LOG 2026-09-26 close, for the producer-path
+  five; concrete probes for -2/-3 and the R3 text_chunk_ids key-join check for -4); file
+  validated line-by-line (9/9 parse, schema fields exact). Report phrases that read
+  "pending ADK-0006" updated; nothing else restructured.
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -144,20 +176,50 @@ Depends on W-L0-1 and W-L0-2 (both closed). Verifies L0's CONSUMERS; never judge
 asset. Any consumer that fails to move is recorded as a finding for L1–L5's plans — it is
 never repaired in this lane.
 
-## HELD item, flagged up front (strategy instruction 2026-09-25)
+## Gate-mapping history and the current hold (flagged up front)
 
 This packet's "moves as the fact predicts" detector is a **domain-correctness detector by
-construction** — it is D4-shaped (template §4.1: "feed a case that must not fire; check it
-doesn't") at the consumer level. The synced certification standard
-(`ASSET_ELEVATION_TEMPLATE_v1_0.md` v1.1, §4) makes `Dom` an always-applies gate with
+construction** — D4-shaped under the then-current template (v1.1 §4.1: "feed a case that
+must not fire; check it doesn't") at the consumer level. When this section was first
+written (strategy instruction 2026-09-25), the synced certification standard was
+`ASSET_ELEVATION_TEMPLATE_v1_0.md` v1.1, whose §4 made `Dom` an always-applies gate with
 `NO_DETECTOR` blocking certification, while native Decision 11 (2026-09-25) assigned
-domain correctness to the reasoning layer above the data plane — and the template cites
-Decision 11 zero times. The strategy session holds this ruling **[OPEN]**.
+domain correctness to the reasoning layer above the data plane — and v1.1 cited Decision
+11 zero times. The hold then was: baseline measurement and harness construction proceed
+(authorized 2026-09-26, ruling-independent); gate mapping, any `Dom`-coverage claim, and
+any certification verdict HELD until the ruling. Template v1.1 §4 was read before this
+design, as instructed.
 
-Per that instruction: the **baseline measurement** and **harness construction**
-(authorized 2026-09-26) are ruling-independent and proceed. The harness's **gate
-mapping**, any **`Dom`-coverage claim**, and any **certification verdict** are HELD until
-the ruling lands. Template v1.1 §4 was read before this design, as instructed.
+**That ruling landed.** STANDING_MANDATE_2026-09-26.md Ruling 1 (RESOLVED): Decision 11
+had already ruled domain correctness out of the data plane; v1.1 was stale, not
+authoritative; the template reconciles to Decision 11; W-L0-7's gate mapping and
+certification are UNBLOCKED, with the three UNMEASURED staying UNMEASURED (honest gaps
+behind producer-path findings, never graded PASS). The ruling was then **executed in a
+different form than the mandate's letter**: cartography found
+`ASSET_ELEVATION_TEMPLATE_v2_0.md` on origin/l3/kala-layer-briefs — rebuilt 2026-09-26 by
+direct native instruction, executing Decision 11 as **Dom→Carr** (source carriage and
+reproduction; the mechanical checks D1–D3 stay, the seeded negative case D4 leaves —
+v2_0 changelog (a)), and adding Decision 16 (composite identity key) and Decision 17
+(**Build**, the ninth gate — changelog: third change). ADHIKĀRIN ruled (ADK-0001) that
+v2_0 governs this branch; it is synced verbatim at
+`00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md` (commit 5c1544095). The
+D4-shaped worry recorded above is exactly what Decision 11 removed from the plane: this
+harness's detector is a consumer-movement measurement, and what it measures is
+carriage-shaped — whether the consumer reproduces what the source row fed it — not a
+doctrinal "must not fire" judgement. The mandate's substance is fully carried.
+
+**The hold that remains is the pilot clause, not the Dom question.** ADK-0002: v2_0 §0's
+pilot clause BINDS — a brief derived from a layer instance that is not yet ACCEPTED may
+register gaps in §5 but may NOT write certification records in §7. Neither candidate L0
+instance qualifies: v2_1 on this branch is ACCEPT_WITH_CORRECTIONS; the l3 v3_0 is
+DRAFT_PENDING_ACCEPTANCE (verdict NONE). That W-L0-7 is a campaign packet rather than one
+of the 129 per-asset briefs does not exempt it — its certification verdict would be a
+certification act derived from the same non-accepted instance, and the clause carries no
+packet carve-out. So: **gate mapping proceeds (recorded below), gaps may be registered,
+certification is HELD** — no §7 verdict rows, exactly as this report has held all along,
+now on the stronger, mechanical ground of the pilot clause rather than an open Dom
+question. The hold lifts automatically when an instance passes §5.4 and the pilot is
+re-verified against it (ADK-0002).
 
 ## State pin — declared 2026-09-26 (strategy item 1: the v1.0 baseline carried an unstated pin)
 
@@ -317,6 +379,9 @@ vehicle: same service, plus a fixture slice (fixture-chart `chart_facts`, the
 the chunk witnesses the bridge validates), then the sequenced run above. Construction
 authorized 2026-09-26 on these terms: build harness + fixture + CI; no gate mapping, no
 `Dom` claim, no certification verdict until the ruling; findings to L1–L5 unfixed.
+(v1.9 note: the ruling landed the same day — mandate Ruling 1, executed as Dom→Carr in
+v2_0, ADK-0001; gate mapping is now recorded below. Certification remains held, on the
+pilot clause — ADK-0002. The findings rule is unchanged.)
 
 ## Fixture construction — disclosed (v1.2, 2026-09-26)
 
@@ -496,17 +561,82 @@ NOT route around it by adding ownership rows — that would change the system un
   bo_laksana.py:3355-3357, `@l2_producer("bo_laksana")`). No consumer code is modified;
   no guard, trigger, or contract function is altered in the fixture.
 
-## Certification-template position (v1.1 §4, read 2026-09-26)
+## Certification standard — v2_0, adopted 2026-09-26 (ADK-0001)
 
-This packet certifies under the 8-gate template. Anticipated conditional disposals, to be
-recorded with reasons at certification: **Narr** N/A (the harness emits no prose); **Dens**
-judged at certification time. **Dom: HELD** per the flag above — no `Dom` coverage is
-claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
+This packet maps under `ASSET_ELEVATION_TEMPLATE_v2_0.md` (v2.0), adopted for this branch
+by ADK-0001 and synced verbatim at commit 5c1544095; the superseded v1.1 §4 was read
+2026-09-26 as instructed. v2_0's §4 carries NINE gates — Ldgr, Idem, Earn, Null, Vocab,
+Carr, Narr, Dens, Build. Known stale text in v2_0, recorded in ADK-0001 and raised on the
+l3 lane rather than edited here: its §4 heading and inherits line still say "the eight
+gates" while the table carries nine. Known divergence on this branch, disclosed per
+ADK-0005: the tier-3 layer template's §5.2 here still reads eight gates/Dom pending the
+tier-3 sync decision — this mapping reads v2_0's nine gates with Carr.
+
+**layer_instance pin (ADK-0005):** `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md`,
+v2.1, ACCEPT_WITH_CORRECTIONS, at this branch's commit. Every measurement, packet and this
+report derive from v2_1's sections; claiming derivation from v3_0 would be a false
+provenance claim. Disclosure: v3_0 exists on origin/l3/kala-layer-briefs
+(DRAFT_PENDING_ACCEPTANCE, verdict NONE — a native-instructed rebuild whose authority line
+says "disregarding the earlier instance"); **the pin migrates to whichever instance first
+passes §5.4**, and v2_0 §0's pilot re-verification runs against the ACCEPTED instance
+regardless of pin.
+
+## Gate mapping — v2_0 §4's nine gates, recorded v1.9
+
+**What this mapping is.** This packet is a consumer-perturbation harness over L0's
+consumers — a measurement instrument, not one of the 129 asset briefs and not a registry
+asset. Each gate below is read as what it asks OF A HARNESS: the instrument that measures
+the assets must itself conform, or its verdicts are unearned signal (§N.8). This is the
+packet's **self-conformance reading**: it writes **NO §7 certification records** (pilot
+clause, ADK-0002 — the layer instance is not ACCEPTED). Its gaps ARE registered:
+ADK-0006 has ruled (option (c), precisely scoped — register here, absorb at merge, never
+dual-write) and the eight findings F-W-L0-7-1/-2/-3/-4/-5/-7/-8/-9 now stand in
+`00_ARCHITECTURE/control/asset_gaps.jsonl` as kind=gap, state=OPEN rows owned by the
+receiving L1/L2 layer packets, each with a runnable detector; the finding ledger below
+remains the prose ledger, the jsonl the machine-read one. Dispositions use v2_0 §4's
+closed verdict vocabulary;
+`DEFERRED` appears once, marked, where a judgement was reserved to certification time and
+certification is held — it is not a §7 record and certifies nothing.
+
+**The three UNMEASURED stay UNMEASURED.** V-R1-S5, V-R2-S6, V-R3-S7 are honest gaps
+behind producer-path findings F-W-L0-7-5/-7/-8/-9, never graded PASS. In gate terms they
+are this packet's **Earn** and **Null** discharge (detectors that can read false; honest
+non-answers instead of plausible defaults), and they translate into **Build**-gate
+questions for the producer assets they blocked on: `ga_yoga`'s decorated-path build
+(F-W-L0-7-9 — permission denied at `open_l1_data_plane_generation`, 1035:599-611;
+F-W-L0-7-5 — undeclared-empty rejection at complete, 1035:1385-1389) and `bo_laksana`'s
+(F-W-L0-7-8 — upstream-head requirement, data_plane_contracts.py:262-266; F-W-L0-7-7 —
+unreadable pg_temp bind shadows). Those are gaps against those assets' own gates, owned by
+the L1/L2 data-plane plans; nothing here asserts them as certification records, and no
+consumer-movement claim is made for the steps that could not run.
+
+| gate | what it asks of a harness | disposition | evidence |
+|---|---|---|---|
+| **Ldgr** derivation ledger | every value the instrument emits names what it read: verdicts → reading/step/mechanism; fixture values → provenance | **PASS** | reading-set table with verified file:line mechanisms; verdict matrix maps each verdict to reading id + step (VERDICT_MATRIX.md, reading_verdicts.json); fixture-construction disclosure names every input's source (schema probes, `l0_yogas.py` seed, synthesized capture artifacts disclosed as synthesized); pin audit names every production-read value and the state it was measured against |
+| **Idem** idempotency | a rebuild replaces its own state, never accretes — the fixture rebuilds clean and re-runs reproduce | **PASS** | 33/33 fixture gates on two consecutive fresh-DB builds (commits 8d24b37e0, a4b7a251c); step-9 reseed+replay green; fixture verified back in state B after the run with the workaround grant revoked; full local CI re-run rehearsed green under `L0H_*` overrides |
+| **Earn** earned signal | every verdict the harness emits has a detector that could read false | **PASS** | `ci_expect.py` is a two-directional pin: it fails on ANY divergence from the pinned verdict map / finding set in either direction (a PASS turning FAIL is a regression; an UNMEASURED becoming measured means the producer-path findings were answered upstream and the pin is stale); the three UNMEASURED prove the detector emits non-PASS; every verdict carries a run artifact (run_readings_20260926.log, reading_verdicts.json) |
+| **Null** honest null | an unmeasurable reading is emitted as UNMEASURED, never as a plausible default | **PASS** | V-R1-S5 / V-R2-S6 / V-R3-S7 emitted UNMEASURED behind F-W-L0-7-9/-5/-8/-7 rather than inferred from the pre-registered predictions; the V-R1-S5 seed-coverage premise risk (no MOON graha_position row) is recorded as a disclosed fixture limitation, not smoothed over; F-W-L0-7-6 WITHDRAWN rather than carried as a defect it was not |
+| **Vocab** vocabulary conformance | the harness introduces no domain ids of its own; it resolves through the asset's own closed sets | **PASS** | catalog seeded by importing the writer's own seed list (`brahmagyan/l0_yogas.py`), not hand-transcribed; canonical ids used verbatim in predictions and assertions; the harness's own identifiers (F-W-L0-7-*, V-*) are a closed, enumerated set with a complete ledger (below); no local name→id map anywhere in the fixture, runner, or CI pin |
+| **Carr** source carriage and reproduction | the harness's predictions carry production-measured source state faithfully, and its state claims reproduce a second way | **PASS** | the predictions are pinned to production-measured state — that IS source carriage: state-A pin declared, R3 re-expressed against the post-1123 set, full pin audit (every production-read value × do 1120–1124 change it); the 1123 oracle reproduces both digests independently (state-A `87b69704…` == `old_digest` == production; rolled-back state-B == `f1d56d0c…` `new_digest`) — §4.1's D3 (independent re-derivation), run. The re-measure gate on 1123 application stands: a snapshot built without 1123 re-derives R3's pre-registration from 1123's backfill table before any run, and the deviation is reported, never silently absorbed |
+| **Narr** narration fidelity | — | **N/A** | the harness emits no prose — verdicts and findings are structured records; there is no narration to restate or re-derive (pre-declared at design time, held) |
+| **Dens** serving density | — | **DEFERRED** (with reason; not a §7 verdict) | serving-density judgement was reserved to certification time ("judged at certification", v1.1-era position, carried); certification is now HELD by the pilot clause (ADK-0002), so Dens is deferred, not judged. The harness also serves no surface of its own — it reads `query_yoga_catalog` / `get_yoga_firings` as a client — so the likely disposal at certification is N/A; that judgement belongs to certification and is not pre-empted here |
+| **Build** buildability | does the harness itself run when triggered and produce the pinned result | **N/A** (with reason) | v2_0 §4.2's checks evaluate an orchestrator-dispatched registry asset (`@register` id, `WriterBase` contract, `target_table`, DAG resolvability, `count_sql`, `build_run_assets` history); this packet is a CI harness, not a registry asset — it has no `@register` id, sits on no build DAG, and the orchestrator-dispatch claim has no referent here. `NO_DETECTOR` would manufacture a gap against a requirement that does not exist for instruments; a PASS would borrow the asset gate's authority for an analogue the gate does not name. Recorded as evidence only, not as gate conformance: the harness's own triggered build — `.github/workflows/l0_consumer_perturbation.yml` (weekly + dispatch, hermetic, no migrate.ts, state-A by construction), rehearsed green locally under `L0H_*` overrides with `ci_expect.py` exit 0 — is the shape a detector would take if the campaign ever requires instruments to carry Build conformance |
+
+**Summary:** six PASS (Ldgr, Idem, Earn, Null, Vocab, Carr), two N/A with reasons (Narr,
+Build), one DEFERRED with reason (Dens — deferred because certification is held, not
+judged). No FAIL, no PARTIAL, no NO_DETECTOR claimed against this packet. This reading
+certifies nothing: §7 stays empty until an L0 layer instance passes §5.4 and the pilot is
+re-verified (ADK-0002). The gap rows are registered: ADK-0006 (option (c)) carried the
+eight findings into `asset_gaps.jsonl` as OPEN ledger rows owned by the receiving L1/L2
+layer packets, each with a runnable detector.
 
 ## What this report does NOT contain
 
-- No gate mapping, no `Dom`-coverage claim, no certification verdict (HELD, strategy
-  ruling pending).
+- No certification verdict and no §7 certification records — HELD under v2_0 §0's pilot
+  clause (ADK-0002: neither L0 layer instance is ACCEPTED). Gate mapping IS recorded
+  (v1.9 — nine gates, self-conformance reading only). No `Dom`-coverage claim exists
+  anywhere in this report: `Dom` no longer exists as a gate — Decision 11, executed as
+  Dom→Carr in v2_0 (mandate Ruling 1, ADK-0001).
 - No consumer repairs — consumer findings belong to L1–L5's plans.
 - No repair of F-W-L0-7-1 (L2 open-before-bind) or F-W-L0-7-2 (ownership-registry gap) —
   both handed to the L1/L2 data-plane plan; the fixture preserves the ownership gap
@@ -517,11 +647,15 @@ claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
   (F-W-L0-7-9 → F-W-L0-7-5 → F-W-L0-7-8 → F-W-L0-7-7). The predictions stand
   pre-registered for the iteration that can execute them.
 
-## Finding ledger (complete, v1.8)
+## Finding ledger (complete, v1.8; carriers updated v1.9 per ADK-0006)
 
 Every number ever allocated in the F-W-L0-7 series, its disposition and its carrier.
 Eight findings are handed up unfixed to the L1/L2 data-plane plan; one number is
-withdrawn. No other number exists.
+withdrawn. No other number exists. **Carrier update (v1.9, ADK-0006 option (c)):** the
+eight findings are also registered in `00_ARCHITECTURE/control/asset_gaps.jsonl` —
+kind=gap, state=OPEN, owner="layer packet" naming the receiving plan document, one
+runnable detector per row — this branch's ledger, absorbed by l3's copy at merge, never
+dual-written. This table remains the prose ledger; the jsonl is the machine-read one.
 
 | id | finding | phase surfaced | disposition / carrier |
 |---|---|---|---|
@@ -554,13 +688,21 @@ verifies consumers, never an L0 asset, and here the consumers could not run.
 **CI vehicle: COMPLETE** (v1.7 — `.github/workflows/l0_consumer_perturbation.yml`,
 weekly + dispatch; hermetic, no migrate.ts, state-A by construction; `ci_expect.py`
 two-directional pin rehearsed green locally with `L0H_*` overrides).
-**Gate mapping: HELD** (strategy ruling: `Dom` vs Decision 11).
+**Gate mapping: RECORDED** (v1.9 — against v2_0 §4's nine gates as the packet's
+self-conformance reading: six PASS, two N/A with reasons, one DEFERRED; writes no §7
+records; the eight findings are registered in asset_gaps.jsonl per ADK-0006 option (c) —
+OPEN, owner="layer packet", runnable detector each).
+**Certification: HELD** (v2_0 §0 pilot clause, ADK-0002 — neither L0 layer instance is
+ACCEPTED: v2_1 ACCEPT_WITH_CORRECTIONS, l3 v3_0 DRAFT_PENDING_ACCEPTANCE; lifts on an
+instance's §5.4 pass + pilot re-verification).
 
 Open rulings, restated as OPEN — none inferred here:
 
 - **W-L0-9 identity ruling:** [OPEN — not ruled]
 - **W-L0-6 Sarvatobhadra school ruling:** [OPEN — not ruled]
-- **`Dom` vs Decision 11:** [OPEN — strategy, ruling to follow]
+- **`Dom` vs Decision 11:** [RESOLVED 2026-09-26 — STANDING_MANDATE_2026-09-26.md Ruling
+  1: Decision 11 had already ruled domain correctness out of the data plane; executed as
+  Dom→Carr in ASSET_ELEVATION_TEMPLATE v2_0, adopted for this branch by ADK-0001]
 
 Migration posture unchanged: 1120–1124 committed and HELD; 1123 must precede 1124; 1124
 gated on the `bg_transit_rules` 76-vs-75 reconciliation. Merge gate on the sangam-stage3
