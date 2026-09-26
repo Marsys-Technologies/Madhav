@@ -684,7 +684,7 @@ Per the template's rule, a finding about the document is fixed in the document a
 and C-2 are the two that make this instance incomplete, and both are measurement passes, not decisions.
 C-8's three inherited rows are corrected above; the parent's detector is a reopen request, recorded.
 
-## Pilot findings — 1 of 5 complete
+## Pilot findings — 5 of 5 complete
 
 `bg_ontology` (`l0_assets/BG_ONTOLOGY_ELEVATION_BRIEF_v1_0.md`), against asset template v2.0:
 
@@ -703,3 +703,32 @@ C-8's three inherited rows are corrected above; the parent's detector is a reope
 - **The §9 opportunity register found the asset's real architectural question**, which no gate would have
   asked: the key contract (composite vs simple) is a native decision worth taking once, and it dissolves
   three registered gaps.
+
+### Pilots 2–5, and what the five together establish
+
+| pilot | asset | kind it tested | derivability | headline finding |
+|---|---|---|---|---|
+| 2 | `bg_rules` | rule corpus | 12/13 | **the extractor's yield varies 29×** across texts — saravali 2.34 rules/chunk, BPHS 0.08, tājaka-nīlakaṇṭhī 0.00 from 290 chunks. At saravali's rate BPHS alone would yield ~3,400 rules, more than the whole corpus holds. Also: `confidence` has **3 distinct values** and **equals `quality_score` on 3,002/3,002 rows** — two columns, one signal, 92% of it the value 1.000 |
+| 3 | `bg_ephemeris` | computed substrate | 12/13 | **the grid is provably complete and the vocabulary provably wrong**: 91,676 days × 9 bodies = 825,084 rows exactly (251 years, 61 leap days — no missing cell), while `body` is stored `'Jupiter'` against the ontology's `jupiter`, and the asset's own integrity check **pins the capitalised form** |
+| 4 | `bg_panchanga` | service, no table | 12/13 | **the template disposes of a table-less asset without inventing a row** — four registry absences and six gate N/As, each with a reason. And `rows_written = 0` reads identically for a healthy service and a writer that produced nothing: the build-state surface cannot tell them apart |
+| 5 | `bg_sarvatobhadra_grid` | empty by design | **13/13** | **abstention is expressible as fidelity.** Every status surface tells the same true story (floor 0, rows 0, consumer discloses its fallback). The only brief needing no invention — and the case that proves `N/A — inapplicable` and `NO_DETECTOR` are different verdicts |
+
+**Template results (v2.0 held; four refinements, none structural):**
+
+1. **C-9 confirmed four times.** Row 13's carriage check had to be chosen by the author in pilots 1–4. The
+   instance must assign a/b/c per asset, or the template must say the author chooses and records why.
+2. **§1's storage bullets assume a table.** A service filled them with four honest N/As, which worked, but
+   the template should say so rather than leaving each author to decide.
+3. **`N/A — inapplicable` vs `NO_DETECTOR` is load-bearing** and the template already separates them; pilot
+   5 is the case that shows why (no claim vs an unverified claim).
+4. **The §9 admission rule held**: every one of the 18 opportunities carries a measurement-after. Three
+   asked the architectural question no gate would have asked — the key contract, the ephemeris grain, and
+   a service's health signal.
+
+**Ledger after five pilots:** 30 gap rows, 18 opportunity rows, 5 assets at `GAPS_REGISTERED`, 35 at
+`NO_BRIEF`, 0/320 gates certified. The opportunities correctly do not withhold elevation.
+
+**Three findings are layer-scope, not asset-scope, and belong to packets rather than briefs:** D1 source
+correspondence (absent, and pilot 2 is where it matters most), the undeclared normalisation at the
+authority (pilots 1, 2 and 3 all hit it), and the build-cost instrument (`rows_written = 0` on three of
+five assets measured).
