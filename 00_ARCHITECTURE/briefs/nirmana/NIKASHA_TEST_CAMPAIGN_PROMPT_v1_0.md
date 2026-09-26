@@ -24,6 +24,35 @@ what_this_campaign_is_not: >
 
 # NIKAṢA TEST CAMPAIGN — AUTONOMOUS EXECUTION PROMPT
 
+## §0.0 — Where you are running, and the environment as it actually is
+
+**You run in a dedicated worktree, not the main checkout.** Verified 2026-09-26:
+
+- `/Users/Dev/Vibe-Coding/Apps/Madhav` (the main checkout) is on `campaign/nirmana-autonomous` and
+  **does not contain the Nikaṣa system at all** — no `asset_census.py`, no tier-4 template, no L0
+  instance v3.0. Running there fails at §0 item 3.
+- `/Users/Dev/madhav-l3/layer-briefs` holds `l3/kala-layer-briefs`, where the system lives, but it is
+  **another agent's working tree**. Do not run there; a branch switch would disturb it.
+- **Your folder: `/Users/Dev/madhav-nikasha`**, a worktree on `campaign/nikasha-test` branched from
+  `origin/l3/kala-layer-briefs`. If it does not exist:
+  `git -C /Users/Dev/Vibe-Coding/Apps/Madhav worktree add -b campaign/nikasha-test /Users/Dev/madhav-nikasha origin/l3/kala-layer-briefs`
+
+**Facts about that worktree, measured, so you do not rediscover them:**
+
+| fact | state | consequence |
+|---|---|---|
+| `.mcp.json`, `AGENTS.md`, `.agents/skills` | tracked, present | MCP servers and skills work |
+| `.agents/agents` (3 subagent profiles), `.kimi-code/mcp.json` | **untracked — present only in the main checkout** | copy them in if you want subagents or Kimi-local MCP: `cp -R /Users/Dev/Vibe-Coding/Apps/Madhav/.agents/agents /Users/Dev/madhav-nikasha/.agents/ && mkdir -p /Users/Dev/madhav-nikasha/.kimi-code && cp /Users/Dev/Vibe-Coding/Apps/Madhav/.kimi-code/mcp.json /Users/Dev/madhav-nikasha/.kimi-code/` |
+| `platform/node_modules` | **absent** in every worktree | no step of this campaign needs node. Do **not** run `npm ci` to satisfy a curiosity; if a test genuinely needs it, record the cost first |
+| read-only DB env | `/Users/Dev/madhav-l3/dbenv.sh` (absolute path, works from anywhere). **The proxy listens on 5433**, though the script sets 5434 — always `export PGPORT=5433` after sourcing | every production read |
+| local PostgreSQL for the sandbox | `/opt/homebrew/bin/{postgres,pg_ctl,initdb,createdb}` present; `postgresql@15` and `postgresql@17` installed via brew and **both stopped**; `docker` available | Phase 1 is feasible. Prefer `initdb` into a scratch directory under the worktree's ignored space, or start one brew service — **never** point the sandbox at the production proxy |
+| the campaign's own scratch space | use `00_ARCHITECTURE/briefs/nirmana/nikasha_test/` for artefacts and a git-ignored dir for the sandbox data | nothing at the repository root (`ROOT_FILE_POLICY.md`) |
+
+**First action of the first session:** confirm you are in `/Users/Dev/madhav-nikasha`, on
+`campaign/nikasha-test`, that `git status` is clean, and that `00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v1_0.md`
+and `platform/scripts/governance/asset_census.py` both exist. Record it as your first event. If any of
+those is false, fix it before reading further.
+
 ## §0 — Read these first, in this order, every session
 
 You do not auto-load `CLAUDE.md`; this repository's governing document is `CLAUDE.md` at the root,
