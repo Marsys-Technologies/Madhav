@@ -1,0 +1,1054 @@
+#!/usr/bin/env python3
+"""catalog_provenance.py — Nikaṣa wave 1, Lane B (R85, D5 rev. 2.1).
+
+Read-only, deterministic-first (no LLM calls). Derives, for every semantic capability
+unit (SCU) in `platform/src/generated/capability_knowledge.snapshot.json`, which
+asset(s) produce or part-produce it, so the necessity closure over
+`asset_registry.depends_on` (B-2) can be computed from the catalog rather than
+guessed.
+
+Scope (NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §4):
+  B-1  the derivation:   this module's `derive_all()` + `--derive` (default action)
+  B-2  the closure:      `--closure` (writes CLOSURE_REPORT.md)
+  B-3  the reader scan:  `--reader-scan` (writes BUILD_DEPENDENCIES_READER_SCAN.md;
+                          read-only grep, never drops or alters `build_dependencies`)
+  B-4  the `--check` gate: exits non-zero when any SCU has neither a reviewed nor a
+                          derived producer and no `no_detector` reason.
+
+Honest tiers (CLAUDE.md §N.7/§N.8; wave1 prompt §2.6):
+  - A machine-derived producer is `disposition: derived_from_source_query` (parsed out
+    of a `kind: source_query` availability-contract requirement's SQL) or
+    `derived_from_service_probe` (read directly off a `kind: service_probe`
+    requirement's own `asset_id` field — no SQL parsing needed or attempted) —
+    NEVER `reviewed_output`. The 12 existing hand-reviewed `producer_output_claims`
+    (disposition `reviewed_output`) are carried through verbatim as the authority
+    where present; this script never overwrites or downgrades one.
+  - A unit nothing resolves gets `no_detector: "<exact reason>"` — never a guess.
+  - Every producer traces to BOTH a `source_ref` (file:line-range or the reviewed
+    claim's own evidence citation) AND a `target_table` (or `null` with a stated
+    reason, e.g. a service asset with no table).
+
+No writer, orchestrator, sealed-tier, editorial.ts, or asset_registry write happens
+here. DB access is read-only (see `connect_db`); this script issues SELECT only.
+
+Run:
+  source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433
+  python3 platform/scripts/governance/catalog_provenance.py --derive --closure --reader-scan
+  python3 platform/scripts/governance/catalog_provenance.py --check
+  python -m pytest platform/scripts/governance/__tests__/test_catalog_provenance.py -v
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Set, Tuple
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SNAPSHOT_PATH = REPO_ROOT / "platform/src/generated/capability_knowledge.snapshot.json"
+PROVENANCE_DIR = REPO_ROOT / "00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance"
+DERIVED_OUTPUT_PATH = PROVENANCE_DIR / "producer_provenance.derived.json"
+CLOSURE_REPORT_PATH = PROVENANCE_DIR / "CLOSURE_REPORT.md"
+READER_SCAN_PATH = PROVENANCE_DIR / "BUILD_DEPENDENCIES_READER_SCAN.md"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §0 — Data types
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class AssetRow:
+    asset_id: str
+    layer: str
+    is_active: bool
+    dead_flag: bool
+    target_table: Optional[str]
+    natural_key_partition: Optional[str]
+    depends_on: Tuple[str, ...]
+    asset_kind: str
+
+
+@dataclass
+class Producer:
+    asset_id: str
+    table: Optional[str]
+    source_ref: str
+    disposition: str  # 'reviewed_output' | 'derived_from_source_query' | 'derived_from_service_probe'
+    shared: bool = False
+
+    def to_json(self) -> dict:
+        return {
+            "asset_id": self.asset_id,
+            "table": self.table,
+            "source_ref": self.source_ref,
+            "disposition": self.disposition,
+            "shared": self.shared,
+        }
+
+
+@dataclass
+class ScuProvenance:
+    scu_id: str
+    producers: List[Producer] = field(default_factory=list)
+    no_detector: Optional[str] = None
+    requirement_kinds: List[str] = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
+
+    def to_json(self) -> dict:
+        out: dict = {
+            "requirement_kinds": self.requirement_kinds,
+            "producers": [p.to_json() for p in self.producers],
+        }
+        if self.no_detector:
+            out["no_detector"] = self.no_detector
+        if self.notes:
+            out["notes"] = self.notes
+        return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §1 — Snapshot loading
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def load_snapshot(path: Path = SNAPSHOT_PATH) -> dict:
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def iter_scu_requirements(snapshot: dict):
+    """Yield (scu_id, requirement_dict) for every availability_contracts[].requirements[]
+    entry across every SCU, in snapshot order."""
+    for scu in snapshot.get("scus", []):
+        scu_id = scu["scu_id"]
+        for ac in scu.get("availability_contracts", []) or []:
+            for req in ac.get("requirements", []) or []:
+                yield scu_id, req
+
+
+def get_reviewed_claims(snapshot: dict) -> Dict[str, List[dict]]:
+    """SCU -> list of producer_output_claims with disposition == 'reviewed_output',
+    verbatim (never mutated). This is the calibration + authority set (12 SCUs / 14
+    assets, measured 2026-09-27 — see B_REPORT.md for the exact recount against the
+    D5 ruling's stated '15 assets')."""
+    out: Dict[str, List[dict]] = {}
+    for scu in snapshot.get("scus", []):
+        claims = [
+            c
+            for c in (scu.get("producer_output_claims") or [])
+            if c.get("disposition") == "reviewed_output"
+        ]
+        if claims:
+            out[scu["scu_id"]] = claims
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §2 — DB access (read-only). Every query here is a SELECT; nothing writes.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def connect_db(db_url: Optional[str] = None):
+    """Connect read-only. `db_url` defaults to $DATABASE_URL; if unset, falls back to
+    a bare libpq connection that reads PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD
+    from the environment (the `dbenv.sh` convention this campaign uses — see
+    NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §2.1). Never issues a write; callers must
+    only SELECT."""
+    dsn = db_url if db_url is not None else os.environ.get("DATABASE_URL", "")
+    try:
+        import psycopg  # psycopg3
+
+        return psycopg.connect(dsn) if dsn else psycopg.connect()
+    except ImportError:
+        import psycopg2  # type: ignore
+
+        return psycopg2.connect(dsn) if dsn else psycopg2.connect("")
+
+
+def load_asset_registry(conn) -> Dict[str, AssetRow]:
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT asset_id, layer, is_active, dead_flag, target_table,
+               natural_key_partition, depends_on, asset_kind
+          FROM asset_registry
+        """
+    )
+    out: Dict[str, AssetRow] = {}
+    for row in cur.fetchall():
+        asset_id, layer, is_active, dead_flag, target_table, nkp, depends_on, asset_kind = row
+        out[asset_id] = AssetRow(
+            asset_id=asset_id,
+            layer=layer,
+            is_active=bool(is_active),
+            dead_flag=bool(dead_flag) if dead_flag is not None else False,
+            target_table=target_table,
+            natural_key_partition=nkp,
+            depends_on=tuple(depends_on or []),
+            asset_kind=asset_kind,
+        )
+    return out
+
+
+def load_information_schema_tables(conn, schema: str = "public") -> Set[str]:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = %s",
+        (schema,),
+    )
+    return {row[0] for row in cur.fetchall()}
+
+
+def active_population(assets: Dict[str, AssetRow]) -> Set[str]:
+    """R220: is_active AND NOT dead_flag, with NULL dead_flag treated as false
+    (production has dead_flag NULL on every row today — `NOT dead_flag` alone is a
+    three-valued-logic trap that silently returns zero rows; see B_REPORT.md)."""
+    return {a.asset_id for a in assets.values() if a.is_active and not a.dead_flag}
+
+
+def known_tables_and_producer_map(
+    assets: Dict[str, AssetRow], info_schema_tables: Set[str]
+) -> Tuple[Set[str], Dict[str, List[AssetRow]]]:
+    known_tables = set(info_schema_tables)
+    table_to_assets: Dict[str, List[AssetRow]] = {}
+    for a in assets.values():
+        if a.target_table:
+            known_tables.add(a.target_table)
+            table_to_assets.setdefault(a.target_table, []).append(a)
+    return known_tables, table_to_assets
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §3 — source_ref parsing + resolution
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SEGMENT_RE = re.compile(r"^([^:#]+):(\d+)-(\d+)$")
+
+
+def parse_source_ref_segments(source_ref: str) -> List[Tuple[str, int, int]]:
+    """A source_ref is one or more ` | `-joined `<file>:<a>-<b>` segments. Anything
+    that does not match that exact shape (whole-file citations, `#anchor` citations,
+    single-line `:N` citations) is not a resolvable segment under this script's
+    contract and is silently excluded here — NOT silently trusted. Callers report
+    the SCU as unresolved only when every segment falls through this filter."""
+    segments: List[Tuple[str, int, int]] = []
+    for raw in (source_ref or "").split("|"):
+        seg = raw.strip()
+        m = _SEGMENT_RE.match(seg)
+        if m:
+            segments.append((m.group(1), int(m.group(2)), int(m.group(3))))
+    return segments
+
+
+def resolve_segment_text(repo_root: Path, file_rel: str, a: int, b: int) -> Optional[str]:
+    """Return the exact text of lines a..b (1-indexed, inclusive) of file_rel under
+    repo_root, or None if the file is missing or the range is out of bounds. Never
+    reads outside [a, b] — that would silently widen the declared contract."""
+    fpath = repo_root / file_rel
+    if not fpath.is_file():
+        return None
+    with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
+        lines = fh.readlines()
+    if a < 1 or b > len(lines) or a > b:
+        return None
+    return "".join(lines[a - 1 : b])
+
+
+def resolve_full_file_text(repo_root: Path, file_rel: str) -> Optional[str]:
+    fpath = repo_root / file_rel
+    if not fpath.is_file():
+        return None
+    with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
+        return fh.read()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §4 — string-literal extraction + relation-name candidate matching
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def extract_string_literals(text: str, file_ext: str) -> List[str]:
+    """Return the contents of every quoted string literal in `text`. `.sql` files ARE
+    the query (DDL/DML directly, not wrapped in a host-language string) so the whole
+    text is returned as one literal. `.ts`/`.js`/`.py` files have their SQL embedded
+    in backtick / single / double (and, for Python, triple) quoted string literals —
+    a small hand-rolled tokenizer walks the text respecting backslash escapes so
+    prose in comments/descriptions (e.g. the literal word "today" in an input_schema
+    description) is never treated as SQL text just because it sits near a FROM/JOIN
+    keyword elsewhere in the same range."""
+    if file_ext == ".sql":
+        return [text]
+
+    literals: List[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch in ("'", '"', "`"):
+            quote = ch
+            # Python triple-quote
+            if file_ext == ".py" and text[i : i + 3] == quote * 3:
+                close = quote * 3
+                end = text.find(close, i + 3)
+                if end == -1:
+                    break
+                literals.append(text[i + 3 : end])
+                i = end + 3
+                continue
+            j = i + 1
+            buf = []
+            while j < n:
+                c = text[j]
+                if c == "\\" and j + 1 < n:
+                    buf.append(text[j + 1])
+                    j += 2
+                    continue
+                if c == quote:
+                    j += 1
+                    break
+                buf.append(c)
+                j += 1
+            literals.append("".join(buf))
+            i = j
+            continue
+        if ch == "#" and file_ext == ".py":
+            end = text.find("\n", i)
+            i = end if end != -1 else n
+            continue
+        if text[i : i + 2] == "//" and file_ext in (".ts", ".js"):
+            end = text.find("\n", i)
+            i = end if end != -1 else n
+            continue
+        i += 1
+    return literals
+
+
+_RELATION_RE = re.compile(
+    r"\b(?:FROM|JOIN|UPDATE|INTO)\s+(?:ONLY\s+)?\"?([A-Za-z_][A-Za-z0-9_]*)\"?"
+    r"(?:\s*\.\s*\"?([A-Za-z_][A-Za-z0-9_]*)\"?)?",
+    re.IGNORECASE,
+)
+
+# Naive-regex noise words the wave1 prompt names by name (§4 B-1) plus the SQL
+# keywords that can immediately follow FROM/JOIN in real queries without being a
+# relation (subquery openers, set-returning functions). These are only a documented
+# example of what the known-tables filter must reject — they are never special-cased
+# by name; the filter is the `known_tables` set membership test below.
+_KNOWN_NOISE_EXAMPLES = {"today", "the", "one", "unnest"}
+
+
+def find_relation_candidates(literal_texts: Sequence[str]) -> List[str]:
+    candidates: List[str] = []
+    for lit in literal_texts:
+        for m in _RELATION_RE.finditer(lit):
+            schema_part, table_part = m.group(1), m.group(2)
+            name = table_part if table_part else schema_part
+            candidates.append(name)
+    return candidates
+
+
+def filter_known_relations(candidates: Sequence[str], known_tables: Set[str]) -> List[str]:
+    seen: List[str] = []
+    for c in candidates:
+        if c in known_tables and c not in seen:
+            seen.append(c)
+    return seen
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §5 — one-hop helper following (best-effort, non-recursive)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_CALL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+_SQL_AND_LANG_STOPWORDS = {
+    "FROM", "JOIN", "UPDATE", "INTO", "SELECT", "WHERE", "AND", "OR", "ORDER", "BY",
+    "GROUP", "LIMIT", "OFFSET", "AS", "ON", "IF", "NOT", "EXISTS", "ONLY", "CROSS",
+    "LEFT", "RIGHT", "INNER", "OUTER", "WITH", "CASE", "WHEN", "THEN", "ELSE", "END",
+    "NULL", "TRUE", "FALSE", "ARRAY", "ANY", "ALL", "DISTINCT", "COUNT", "SUM",
+    "COALESCE", "UNNEST", "NOW", "String", "Number", "Math", "Date", "Array",
+    "Object", "Promise", "query", "console", "JSON", "parseInt", "parseFloat",
+}
+
+_TS_DEF_RE_TMPL = (
+    r"(?:\bfunction\s+{name}\s*\(|\bconst\s+{name}\s*=\s*(?:async\s*)?\(|"
+    r"\bconst\s+{name}\s*=\s*(?:async\s*)?function\b|\bexport\s+function\s+{name}\s*\()"
+)
+_PY_DEF_RE_TMPL = r"\bdef\s+{name}\s*\("
+
+
+def _extract_ts_body(full_text: str, def_start: int, max_lines: int = 400) -> str:
+    brace_start = full_text.find("{", def_start)
+    if brace_start == -1:
+        return ""
+    depth = 0
+    i = brace_start
+    n = len(full_text)
+    lines_seen = 0
+    while i < n:
+        c = full_text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return full_text[brace_start : i + 1]
+        elif c == "\n":
+            lines_seen += 1
+            if lines_seen > max_lines:
+                return full_text[brace_start:i]
+        i += 1
+    return full_text[brace_start:]
+
+
+def _extract_py_body(full_text: str, def_start: int, max_lines: int = 400) -> str:
+    lines = full_text[def_start:].split("\n")
+    if not lines:
+        return ""
+    header_indent = len(lines[0]) - len(lines[0].lstrip())
+    body_lines = [lines[0]]
+    for ln in lines[1 : max_lines + 1]:
+        if ln.strip() == "":
+            body_lines.append(ln)
+            continue
+        indent = len(ln) - len(ln.lstrip())
+        if indent <= header_indent:
+            break
+        body_lines.append(ln)
+    return "\n".join(body_lines)
+
+
+def one_hop_helper_texts(range_text: str, full_file_text: Optional[str], file_ext: str) -> List[Tuple[str, str]]:
+    """Best-effort: for each plain-identifier call in `range_text` that names a
+    function/const-arrow defined elsewhere in the SAME file, return [(name, body_text)]
+    for the first definition site found. Non-recursive (one hop only, per spec)."""
+    if not full_file_text:
+        return []
+    found: List[Tuple[str, str]] = []
+    seen_names: Set[str] = set()
+    for m in _CALL_RE.finditer(range_text):
+        name = m.group(1)
+        if name in _SQL_AND_LANG_STOPWORDS or name in seen_names or len(name) < 3:
+            continue
+        seen_names.add(name)
+        if file_ext == ".py":
+            def_re = re.compile(_PY_DEF_RE_TMPL.format(name=re.escape(name)))
+        else:
+            def_re = re.compile(_TS_DEF_RE_TMPL.format(name=re.escape(name)))
+        dm = def_re.search(full_file_text)
+        if not dm:
+            continue
+        body = (
+            _extract_py_body(full_file_text, dm.start())
+            if file_ext == ".py"
+            else _extract_ts_body(full_file_text, dm.end())
+        )
+        if body:
+            found.append((name, body))
+    return found
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §6 — narrowing shared-table producers via natural_key_partition
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PIN_RE = re.compile(
+    r"\b(fact_category|signal_type_class)\s*(=|IN)\s*"
+    r"(?:'([^']*)'|\(([^)]*)\))",
+    re.IGNORECASE,
+)
+
+
+def extract_query_pins(literal_texts: Sequence[str]) -> Set[str]:
+    """Pull literal fact_category / signal_type_class values the query pins in its
+    WHERE clause, e.g. `fact_category = 'ayurdaya'` or
+    `fact_category = ANY(ARRAY['a','b'])`. Best-effort textual match, not a SQL
+    parser — used only to NARROW a shared-table producer set, never to invent one."""
+    pins: Set[str] = set()
+    array_re = re.compile(r"ARRAY\s*\[([^\]]*)\]", re.IGNORECASE)
+    for lit in literal_texts:
+        for am in array_re.finditer(lit):
+            for tok in am.group(1).split(","):
+                tok = tok.strip().strip("'").strip()
+                if tok:
+                    pins.add(tok)
+        for pm in _PIN_RE.finditer(lit):
+            val_eq, val_in = pm.group(3), pm.group(4)
+            if val_eq:
+                pins.add(val_eq.strip())
+            if val_in:
+                for tok in val_in.split(","):
+                    tok = tok.strip().strip("'").strip()
+                    if tok:
+                        pins.add(tok)
+    return pins
+
+
+def parse_natural_key_partition_values(nkp: Optional[str]) -> Set[str]:
+    """Parse `asset_registry.natural_key_partition` free text of the form
+    `<table>.<column> = <value>` or `<table>.<column> IN (<values>)` into the set of
+    values that asset owns. Text that doesn't match this shape (free-prose rows like
+    bg_texts' "canonical text_id set (15); chunk_id") yields an empty set — the
+    caller must then keep the table's producers flagged `shared`, never guess."""
+    if not nkp:
+        return set()
+    values: Set[str] = set()
+    for m in re.finditer(r"=\s*([A-Za-z0-9_]+)", nkp):
+        values.add(m.group(1))
+    for m in re.finditer(r"IN\s*\(([^)]*)\)", nkp, re.IGNORECASE):
+        for tok in m.group(1).split(","):
+            tok = tok.strip()
+            if tok:
+                values.add(tok)
+    return values
+
+
+def narrow_producers_by_partition(
+    table: str,
+    candidate_assets: List[AssetRow],
+    query_pins: Set[str],
+) -> Tuple[List[AssetRow], bool]:
+    """Returns (narrowed_or_full_list, shared_flag). Narrows to exactly one producer
+    only if exactly one candidate's declared natural_key_partition covers every
+    pinned value and no other candidate's partition covers any of them — otherwise
+    every candidate is kept, flagged shared (per B-1: 'otherwise keep all, flagged')."""
+    if len(candidate_assets) <= 1:
+        return candidate_assets, False
+    if not query_pins:
+        return candidate_assets, True
+    owners = []
+    for a in candidate_assets:
+        owned = parse_natural_key_partition_values(a.natural_key_partition)
+        if owned and query_pins <= owned:
+            owners.append(a)
+    if len(owners) == 1:
+        return owners, False
+    return candidate_assets, True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §7 — the derivation core (pure function; DI'd known_tables/table_to_assets so
+#      tests never need a live DB)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def derive_from_source_query(
+    scu_id: str,
+    req: dict,
+    known_tables: Set[str],
+    table_to_assets: Dict[str, List[AssetRow]],
+    repo_root: Path,
+) -> Tuple[List[Producer], Optional[str]]:
+    source_ref = req.get("source_ref") or ""
+    segments = parse_source_ref_segments(source_ref)
+    if not segments:
+        return [], f"NO_DETECTOR — source_ref did not resolve to any <file>:<a>-<b> segment ({source_ref!r})"
+
+    all_literals: List[str] = []
+    resolved_any = False
+    for file_rel, a, b in segments:
+        text = resolve_segment_text(repo_root, file_rel, a, b)
+        if text is None:
+            continue
+        resolved_any = True
+        ext = Path(file_rel).suffix
+        all_literals.extend(extract_string_literals(text, ext))
+        full_text = resolve_full_file_text(repo_root, file_rel) if ext != ".sql" else None
+        for _name, body in one_hop_helper_texts(text, full_text, ext):
+            all_literals.extend(extract_string_literals(body, ext))
+
+    if not resolved_any:
+        return [], (
+            "NO_DETECTOR — every segment in source_ref names a file that does not "
+            f"exist or a range out of bounds ({source_ref!r})"
+        )
+
+    candidates = find_relation_candidates(all_literals)
+    known = filter_known_relations(candidates, known_tables)
+    if not known:
+        return [], (
+            "NO_DETECTOR — resolved source range(s) contain no relation name in "
+            "asset_registry.target_table ∪ information_schema.tables "
+            f"({source_ref!r})"
+        )
+
+    query_pins = extract_query_pins(all_literals)
+    producers: List[Producer] = []
+    for table in known:
+        assets = table_to_assets.get(table, [])
+        if not assets:
+            continue
+        narrowed, shared = narrow_producers_by_partition(table, assets, query_pins)
+        for a in narrowed:
+            producers.append(
+                Producer(
+                    asset_id=a.asset_id,
+                    table=table,
+                    source_ref=source_ref,
+                    disposition="derived_from_source_query",
+                    shared=shared,
+                )
+            )
+    if not producers:
+        return [], (
+            "NO_DETECTOR — relation name(s) "
+            f"{known} matched no row in asset_registry.target_table ({source_ref!r})"
+        )
+    return producers, None
+
+
+def derive_from_service_probe(req: dict, assets: Dict[str, AssetRow]) -> Tuple[List[Producer], Optional[str]]:
+    asset_id = req.get("asset_id")
+    if not asset_id:
+        return [], "NO_DETECTOR — service_probe requirement carries no asset_id"
+    a = assets.get(asset_id)
+    return (
+        [
+            Producer(
+                asset_id=asset_id,
+                table=a.target_table if a else None,
+                source_ref=req.get("source_ref") or f"service_probe:{req.get('probe_id', '')}",
+                disposition="derived_from_service_probe",
+                shared=False,
+            )
+        ],
+        None,
+    )
+
+
+def derive_all(
+    snapshot: dict,
+    assets: Dict[str, AssetRow],
+    known_tables: Set[str],
+    table_to_assets: Dict[str, List[AssetRow]],
+    repo_root: Path = REPO_ROOT,
+) -> Dict[str, ScuProvenance]:
+    reviewed = get_reviewed_claims(snapshot)
+    result: Dict[str, ScuProvenance] = {}
+
+    for scu in snapshot.get("scus", []):
+        scu_id = scu["scu_id"]
+        sp = ScuProvenance(scu_id=scu_id)
+        result[scu_id] = sp
+
+        # Reviewed claims are carried through verbatim, always, as authority.
+        for claim in reviewed.get(scu_id, []):
+            claim_asset = assets.get(claim["asset_id"])
+            sp.producers.append(
+                Producer(
+                    asset_id=claim["asset_id"],
+                    table=claim_asset.target_table if claim_asset else None,
+                    source_ref=claim.get("evidence", ""),
+                    disposition="reviewed_output",
+                    shared=False,
+                )
+            )
+
+        reqs = list(iter_scu_requirements({"scus": [scu]}))
+        if not reqs and not sp.producers:
+            sp.no_detector = "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim"
+            continue
+
+        per_requirement_reasons: List[str] = []
+        for _scu_id2, req in reqs:
+            kind = req["kind"]
+            sp.requirement_kinds.append(kind)
+            if kind == "source_query":
+                producers, reason = derive_from_source_query(scu_id, req, known_tables, table_to_assets, repo_root)
+                sp.producers.extend(producers)
+                if reason:
+                    per_requirement_reasons.append(reason)
+            elif kind == "service_probe":
+                producers, reason = derive_from_service_probe(req, assets)
+                sp.producers.extend(producers)
+                if reason:
+                    per_requirement_reasons.append(reason)
+            elif kind == "producer_output":
+                # Already covered by the reviewed-claims pass above (the requirement's
+                # asset_id/spec_sha256 mirrors the claim it accompanies); nothing to add.
+                pass
+            elif kind == "derived":
+                per_requirement_reasons.append(
+                    f"NO_DETECTOR — no source_query requirement (kind: derived; {req.get('source_ref', '')})"
+                )
+            else:
+                per_requirement_reasons.append(f"NO_DETECTOR — unrecognized requirement kind {kind!r}")
+
+        # Deduplicate producers (same asset_id + table + disposition).
+        dedup: List[Producer] = []
+        seen_keys: Set[Tuple[str, Optional[str], str]] = set()
+        for p in sp.producers:
+            key = (p.asset_id, p.table, p.disposition)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                dedup.append(p)
+        sp.producers = dedup
+
+        if not sp.producers:
+            sp.no_detector = "; ".join(per_requirement_reasons) or "NO_DETECTOR — no source_query requirement"
+        else:
+            sp.notes.extend(per_requirement_reasons)
+
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §8 — calibration against the reviewed set
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def calibration_report(snapshot: dict, provenance: Dict[str, ScuProvenance]) -> dict:
+    reviewed = get_reviewed_claims(snapshot)
+    out = {}
+    for scu_id, claims in reviewed.items():
+        reviewed_assets = sorted({c["asset_id"] for c in claims})
+        sp = provenance[scu_id]
+        derived_assets = sorted(
+            {p.asset_id for p in sp.producers if p.disposition == "derived_from_source_query"}
+        )
+        agree = set(reviewed_assets) <= set(derived_assets) if derived_assets else False
+        out[scu_id] = {
+            "reviewed_assets": reviewed_assets,
+            "derived_assets": derived_assets,
+            "agreement": agree,
+            "detail": (
+                "no source_query contract on this SCU — nothing to compare"
+                if not sp.requirement_kinds or "source_query" not in sp.requirement_kinds
+                else ("derivation matches or is a superset of the reviewed claim" if agree
+                      else "derivation did not reproduce the reviewed asset(s)")
+            ),
+        }
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §9 — B-2 necessity closure
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def transitive_upstream_closure(seeds: Set[str], depends_on: Dict[str, Sequence[str]]) -> Set[str]:
+    seen: Set[str] = set()
+    frontier = list(seeds)
+    while frontier:
+        a = frontier.pop()
+        if a in seen:
+            continue
+        seen.add(a)
+        for dep in depends_on.get(a, []) or []:
+            if dep not in seen:
+                frontier.append(dep)
+    return seen
+
+
+def compute_closure_report(
+    assets: Dict[str, AssetRow],
+    provenance: Dict[str, ScuProvenance],
+) -> dict:
+    active = active_population(assets)
+    depends_on = {a.asset_id: a.depends_on for a in assets.values()}
+
+    reviewed_seed = {
+        p.asset_id
+        for sp in provenance.values()
+        for p in sp.producers
+        if p.disposition == "reviewed_output"
+    }
+    all_seed = {p.asset_id for sp in provenance.values() for p in sp.producers}
+
+    before_closure = transitive_upstream_closure(reviewed_seed, depends_on)
+    after_closure = transitive_upstream_closure(all_seed, depends_on)
+
+    before_necessary = before_closure & active
+    after_necessary = after_closure & active
+
+    def by_layer(remaining: Set[str]) -> Dict[str, List[str]]:
+        out: Dict[str, List[str]] = {}
+        for asset_id in sorted(remaining):
+            layer = assets[asset_id].layer
+            out.setdefault(layer, []).append(asset_id)
+        return out
+
+    still_outside = active - after_necessary
+
+    def reason_for(asset_id: str) -> str:
+        a = assets[asset_id]
+        is_producer = asset_id in all_seed
+        if is_producer:
+            return "produces a catalog unit but the unit's SCU has no other unresolved path (should not occur)"
+        has_dependents_in_closure = any(asset_id in assets[o].depends_on for o in after_necessary)
+        if has_dependents_in_closure:
+            return "unreachable: appears in some necessary asset's depends_on only outside the active set, or via a superseded edge"
+        return "no catalog unit names this asset as a producer, and no unit-producing asset depends on it (transitively)"
+
+    return {
+        "population_active": sorted(active),
+        "population_active_count": len(active),
+        "reviewed_seed_assets": sorted(reviewed_seed),
+        "derived_plus_reviewed_seed_assets": sorted(all_seed),
+        "before": {
+            "named_producers": len(reviewed_seed),
+            "necessary_count": len(before_necessary),
+            "necessary_assets": sorted(before_necessary),
+        },
+        "after": {
+            "named_producers": len(all_seed),
+            "necessary_count": len(after_necessary),
+            "necessary_assets": sorted(after_necessary),
+        },
+        "still_outside_by_layer": {
+            layer: [{"asset_id": aid, "reason": reason_for(aid)} for aid in aids]
+            for layer, aids in by_layer(still_outside).items()
+        },
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SCAN_EXCLUDE_DIRS = {".git", "node_modules", "__pycache__", ".next", "dist", "build"}
+_SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".sql", ".md", ".sh", ".json", ".yaml", ".yml"}
+
+
+def scan_build_dependencies_readers(repo_root: Path = REPO_ROOT) -> List[Tuple[str, int, str]]:
+    """Read-only grep. Deliberately excludes this lane's own generated output
+    (`PROVENANCE_DIR`, which includes this scan's own prior report): without this
+    exclusion, re-running the scan finds its own previous output file listing
+    'build_dependencies' on every line, and hit counts runaway-inflate on every
+    invocation (observed: 67 -> 144 hits on a second consecutive run before this
+    exclusion was added). Generated drift/build reports are gitignored and outside
+    the repo's source tree in intent even though they live under 00_ARCHITECTURE/."""
+    hits: List[Tuple[str, int, str]] = []
+    pattern = re.compile(r"\bbuild_dependencies\b")
+    excluded_abs = PROVENANCE_DIR.resolve()
+    for dirpath, dirnames, filenames in os.walk(repo_root):
+        dirnames[:] = [d for d in dirnames if d not in _SCAN_EXCLUDE_DIRS and not d.startswith(".")]
+        dp_resolved = Path(dirpath).resolve()
+        if dp_resolved == excluded_abs or excluded_abs in dp_resolved.parents:
+            continue
+        for fname in filenames:
+            if Path(fname).suffix not in _SCAN_EXTS:
+                continue
+            fpath = Path(dirpath) / fname
+            try:
+                with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
+                    for lineno, line in enumerate(fh, start=1):
+                        if pattern.search(line):
+                            rel = str(fpath.relative_to(repo_root))
+                            hits.append((rel, lineno, line.strip()))
+            except (OSError, UnicodeDecodeError):
+                continue
+    return hits
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §11 — report writers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def write_derived_json(
+    snapshot: dict,
+    provenance: Dict[str, ScuProvenance],
+    calibration: dict,
+    out_path: Path = DERIVED_OUTPUT_PATH,
+) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    total = len(provenance)
+    named = sum(1 for sp in provenance.values() if sp.producers)
+    no_detector = sum(1 for sp in provenance.values() if sp.no_detector)
+    reason_counts: Dict[str, int] = {}
+    for sp in provenance.values():
+        if sp.no_detector:
+            key = sp.no_detector.split(" — ", 1)[0].split(";")[0].split(" (")[0]
+            # Coarser bucket: the leading "NO_DETECTOR — <class>" phrase up to the first parenthetical.
+            m = re.match(r"NO_DETECTOR — ([^\(]+)", sp.no_detector)
+            key = (m.group(1).strip() if m else sp.no_detector)
+            reason_counts[key] = reason_counts.get(key, 0) + 1
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generator": "platform/scripts/governance/catalog_provenance.py",
+        "snapshot_content_hash": snapshot.get("content_hash"),
+        "snapshot_scu_count": len(snapshot.get("scus", [])),
+        "summary": {
+            "total_scus": total,
+            "scus_with_producers": named,
+            "scus_no_detector": no_detector,
+            "no_detector_reason_counts": reason_counts,
+        },
+        "scus": {scu_id: sp.to_json() for scu_id, sp in provenance.items()},
+        "calibration": calibration,
+    }
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, sort_keys=False)
+        fh.write("\n")
+
+
+def write_closure_report_md(closure: dict, out_path: Path = CLOSURE_REPORT_PATH) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    lines.append("---")
+    lines.append("artifact: NIKASHA_WAVE1_B2_CLOSURE_REPORT")
+    lines.append("version: \"1.0\"")
+    lines.append(f"generated_at: {datetime.now(timezone.utc).isoformat()}")
+    lines.append("generator: platform/scripts/governance/catalog_provenance.py --closure")
+    lines.append("---")
+    lines.append("")
+    lines.append("# Nikaṣa wave 1 — B-2 necessity closure report")
+    lines.append("")
+    lines.append(
+        "Population: `SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag IS NOT TRUE` "
+        f"= **{closure['population_active_count']}** (R220). NOTE: `dead_flag` is NULL on every "
+        "production row today, so a literal `is_active AND NOT dead_flag` reads 0 rows "
+        "(three-valued-logic trap) — `dead_flag IS NOT TRUE` is the correct predicate and reproduces "
+        "the documented population of 127."
+    )
+    lines.append("")
+    lines.append("## Before (reviewed producers only — the D5 rev. 2.1 ruling's own baseline)")
+    lines.append("")
+    lines.append(f"- Named producer assets: **{closure['before']['named_producers']}**")
+    lines.append(f"- Necessary (closure ∩ active population): **{closure['before']['necessary_count']} / {closure['population_active_count']}**")
+    lines.append("")
+    lines.append("## After (reviewed ∪ derived producers — this session's B-1 output)")
+    lines.append("")
+    lines.append(f"- Named producer assets: **{closure['after']['named_producers']}**")
+    lines.append(f"- Necessary (closure ∩ active population): **{closure['after']['necessary_count']} / {closure['population_active_count']}**")
+    lines.append("")
+    lines.append("## Still outside the closure, by layer")
+    lines.append("")
+    for layer, rows in closure["still_outside_by_layer"].items():
+        lines.append(f"### {layer} ({len(rows)})")
+        lines.append("")
+        for row in rows:
+            lines.append(f"- `{row['asset_id']}` — {row['reason']}")
+        lines.append("")
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def write_reader_scan_md(hits: List[Tuple[str, int, str]], out_path: Path = READER_SCAN_PATH) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    lines.append("---")
+    lines.append("artifact: NIKASHA_WAVE1_B3_BUILD_DEPENDENCIES_READER_SCAN")
+    lines.append("version: \"1.0\"")
+    lines.append(f"generated_at: {datetime.now(timezone.utc).isoformat()}")
+    lines.append("generator: platform/scripts/governance/catalog_provenance.py --reader-scan")
+    lines.append("---")
+    lines.append("")
+    lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")
+    lines.append("")
+    lines.append(
+        "Read-only grep for `\\bbuild_dependencies\\b` across the repo (excluding `.git`, "
+        "`node_modules`, `__pycache__`, `.next`, `dist`, `build`). **No change made to the table "
+        "or any file** — this is evidence for a native decision (R219), not an action."
+    )
+    lines.append("")
+    lines.append(f"Total hits: **{len(hits)}**")
+    lines.append("")
+    by_file: Dict[str, List[Tuple[int, str]]] = {}
+    for rel, lineno, text in hits:
+        by_file.setdefault(rel, []).append((lineno, text))
+    for rel in sorted(by_file):
+        lines.append(f"## `{rel}`")
+        lines.append("")
+        for lineno, text in by_file[rel]:
+            safe = text.replace("|", "\\|")
+            lines.append(f"- L{lineno}: `{safe}`")
+        lines.append("")
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §12 — B-4 --check
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def check_completeness(provenance: Dict[str, ScuProvenance]) -> List[str]:
+    """Returns the list of SCU ids that fail the invariant: every SCU must have
+    either a non-empty producers[] or a non-empty no_detector reason. This is the
+    detector that can read false — see __tests__/test_catalog_provenance.py."""
+    failures = []
+    for scu_id, sp in provenance.items():
+        if not sp.producers and not sp.no_detector:
+            failures.append(scu_id)
+    return failures
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §13 — CLI
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _run_derivation(db_url: Optional[str]) -> Tuple[dict, Dict[str, AssetRow], Dict[str, ScuProvenance]]:
+    snapshot = load_snapshot()
+    conn = connect_db(db_url)
+    try:
+        assets = load_asset_registry(conn)
+        info_tables = load_information_schema_tables(conn)
+    finally:
+        conn.close()
+    known_tables, table_to_assets = known_tables_and_producer_map(assets, info_tables)
+    provenance = derive_all(snapshot, assets, known_tables, table_to_assets)
+    return snapshot, assets, provenance
+
+
+def main(argv: List[str]) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--derive", action="store_true", help="Run B-1 and write producer_provenance.derived.json")
+    ap.add_argument("--closure", action="store_true", help="Run B-2 and write CLOSURE_REPORT.md")
+    ap.add_argument("--reader-scan", action="store_true", help="Run B-3 and write BUILD_DEPENDENCIES_READER_SCAN.md")
+    ap.add_argument("--check", action="store_true", help="Run B-4: exit non-zero if any SCU is unaccounted for")
+    ap.add_argument("--db-url", default=os.environ.get("DATABASE_URL", ""), help="Postgres DSN (default: $DATABASE_URL, else libpq env vars)")
+    args = ap.parse_args(argv)
+
+    if not any([args.derive, args.closure, args.reader_scan, args.check]):
+        args.derive = args.closure = args.reader_scan = args.check = True
+
+    db_url = args.db_url or None
+    exit_code = 0
+
+    if args.reader_scan:
+        hits = scan_build_dependencies_readers()
+        write_reader_scan_md(hits)
+        print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")
+
+    if args.derive or args.closure or args.check:
+        snapshot, assets, provenance = _run_derivation(db_url)
+
+        if args.derive:
+            calibration = calibration_report(snapshot, provenance)
+            write_derived_json(snapshot, provenance, calibration)
+            named = sum(1 for sp in provenance.values() if sp.producers)
+            print(f"[B-1] {named}/{len(provenance)} SCUs have a named producer -> {DERIVED_OUTPUT_PATH}")
+
+        if args.closure:
+            closure = compute_closure_report(assets, provenance)
+            write_closure_report_md(closure)
+            print(
+                f"[B-2] necessary before={closure['before']['necessary_count']}, "
+                f"after={closure['after']['necessary_count']} (of {closure['population_active_count']}) "
+                f"-> {CLOSURE_REPORT_PATH}"
+            )
+
+        if args.check:
+            failures = check_completeness(provenance)
+            if failures:
+                print(f"[B-4] --check FAIL: {len(failures)} SCU(s) with neither a producer nor a no_detector reason:")
+                for f in failures:
+                    print(f"  - {f}")
+                exit_code = 1
+            else:
+                print(f"[B-4] --check PASS: all {len(provenance)} SCUs have a producer or a no_detector reason.")
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
