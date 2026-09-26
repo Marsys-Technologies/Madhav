@@ -5946,19 +5946,25 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟣 **NIRMĀṆA L0 BRAHMAGYAN EXECUTION — BATCHED CLOSE W-L0-1/2/4/5/9 (2026-09-25).** The L0
+> 🟣 **NIRMĀṆA L0 BRAHMAGYAN EXECUTION — BATCHED CLOSE W-L0-3 + W-L0-7 (2026-09-26).** The L0
 > execution lane (`l0/brahmagyan-exec`, worktree-owned by the execution session; plan owned by the
-> strategy session on `l3/kala-layer-briefs`) closed five of nine strategy packets per
-> `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md` §4.2: W-L0-1 registry truth, W-L0-2 declared
-> dependencies/use, W-L0-4 served-surface density contracts (47/47 L0 descriptors), W-L0-5
-> provenance completion (migrations 1120–1124 committed but HELD — 1124 gated on the
-> `bg_transit_rules` 76-vs-75 row reconciliation), W-L0-9 identity-uniqueness design proposal
-> (native ruling OPEN). W-L0-3 code landed, its packet report is still owed. Next executable
-> packet: W-L0-7 consumer-perturbation harness. W-L0-8/W-L0-6 blocked on native rulings. **Merge
-> gate:** the branch does not merge to `main` until the unmerged sangam-stage3 carriage it carries
-> is resolved. Packet reports under `00_ARCHITECTURE/briefs/nirmana/L0_W_L0_*.md` are
-> authoritative for per-packet detector before/after; the batched SESSION_CLOSE is in
-> `SESSION_LOG.md`. This banner is a pointer only.
+> strategy session on `l3/kala-layer-briefs`) discharged the owed W-L0-3 packet report and executed
+> W-L0-7 (consumer-perturbation harness) through v1.7 per
+> `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md` §4.2: the harness lives under
+> `platform/scripts/l0harness/` (fixture 33/33 structural gates, 1123 oracle green both directions),
+> the readings runner completed the first-ever decorated-path run (V-C0-S3 and V-R2-S4 PASS;
+> V-R1-S5, V-R2-S6, V-R3-S7 UNMEASURED pending seed enrichment), and the CI vehicle
+> `.github/workflows/l0_consumer_perturbation.yml` runs hermetically (weekly + dispatch, no
+> production contact by construction). Four producer-path findings (F-W-L0-7-9/-5/-8/-7) were
+> handed to the L1/L2 data-plane plan unfixed. The harness's gate mapping and any `Dom` coverage
+> claim are HELD pending the native's Dom-vs-Decision-11 ruling. Seven of nine packets now have
+> code and reports landed; W-L0-8 and W-L0-6 remain blocked on the open W-L0-9 identity and
+> Sarvatobhadra school rulings. Migrations 1120–1124 stay committed but HELD (1124 gated on the
+> `bg_transit_rules` 76-vs-75 row reconciliation; 1123 must precede it). **Merge gate:** the branch
+> does not merge to `main` until the unmerged sangam-stage3 carriage it carries is resolved. Packet
+> reports under `00_ARCHITECTURE/briefs/nirmana/L0_W_L0_*.md` are authoritative for per-packet
+> detector before/after; both batched SESSION_CLOSEs are in `SESSION_LOG.md`. This banner is a
+> pointer only.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP

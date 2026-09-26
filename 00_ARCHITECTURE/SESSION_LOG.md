@@ -41958,3 +41958,261 @@ merge `l0/brahmagyan-exec` to `main` until the sangam-stage3 carriage is resolve
 migrations 1120–1124: 1124 is gated on the `bg_transit_rules` 76-vs-75 row reconciliation and the
 rest are held with it. Run the §H ritual per close from here — `madhav-l0-state.sh` is a phantom,
 declared dead in this entry's handoff notes.
+
+## NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921 — 2026-09-26
+
+```yaml
+session_open:
+  session_id: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
+  cowork_thread_name: "Madhav — Nirmana L0 Brahmagyan Execution"
+  agent_name: kimi-for-coding
+  agent_version: kimi-for-coding (K2.8, via kimi-code CLI)
+  tool: "Kimi Code"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/madhav-l3/l0-exec
+  step_number_or_layer: "Nirmana L0 Brahmagyan — strategy §4.2 packets W-L0-3 (owed report) and W-L0-7 (batched close)"
+  predecessor_session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921 (2026-09-25 batched close)
+  coordination:
+    session_class: non-campaign
+    session_class_rationale: "Declared in the narrow CCD-011 sense — no remote campaign-coordination lease was ever acquired by this lane and nothing exists to release — NOT as a claim that no campaign state changed. The lane DID change L0 campaign state (harness code, fixture extracts, packet reports, CI workflow); its coordination instrument is exclusive branch/worktree ownership assigned by the native kickoff (execution owns l0/brahmagyan-exec and /Users/Dev/madhav-l3/l0-exec; the strategy session owns l3/kala-layer-briefs and layer-briefs). No coordination_ref entry exists for the L0 lane."
+    work_order_surface: "Strategy-session directives relayed in-session (W-L0-7 baseline acceptance with cross-packet collision fix; W-L0-3 acceptance; construction authorization with gate mapping held); packet reports under 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_*.md"
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (foreign campaign artifact, left untouched)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/NATIVE_DECISIONS_2026-09-25_v1_0.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-26T08:13:35+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-26T08:13:35+05:30}
+  canonical_artifact_fingerprint_check:
+    - {canonical_id: MADHAV_PRODUCT_DEFINITION, fingerprint_sha256: b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5, match: true}
+    - {canonical_id: MADHAV_DATA_PLANE_VALUE_ARCHITECTURE, fingerprint_sha256: 68b991f349edae92519935d5845b6a90f78624f631866c1cbd87a99ca874ec86, match: true}
+    - {canonical_id: ELEVATION_DERIVATION_CHAIN, fingerprint_sha256: 39af35d83e2a901ce03143842c8b0c01fb11bf4e2f172324086f3233a12b738b, match: true}
+    - {canonical_id: LAYER_DEFINITION_AND_STRATEGY_TEMPLATE, fingerprint_sha256: bb88bee1e024b349470b74301159114aaedd6880a0e35f76e86ba74819e0ae42, match: true}
+    - {canonical_id: ASSET_ELEVATION_TEMPLATE, fingerprint_sha256: d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7, match: true}
+  declared_scope:
+    may_touch:
+      - platform/src/lib/retrieval/registry/layers/L0_brahmagyan/**
+      - platform/python-sidecar/brahmagyan/**
+      - platform/migrations/112*.sql
+      - platform/supabase/migrations/112*.sql
+      - platform/scripts/**
+      - platform/scripts/l0harness/**
+      - .github/workflows/l0_consumer_perturbation.yml
+      - .gitignore
+      - 00_ARCHITECTURE/briefs/nirmana/L0_*.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+    must_not_touch:
+      - "origin/main and protected or release refs (merge-gated: sangam-stage3 carriage)"
+      - "/Users/Dev/madhav-l3/layer-briefs and any strategy-session-owned worktree"
+      - "production or shared database, migration application (1120-1124 HELD), deployment, credentials, secrets, infrastructure"
+      - "01_FACTS_LAYER/**, 025_HOLISTIC_SYNTHESIS/**, 03_DOMAIN_REPORTS/**, L1-L5 layer code and data"
+      - "applied migrations (never edited)"
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No MP revision or health-crisis/mental-health serving change occurs."
+      acknowledged: true
+  red_team_due: false
+  notes: "RETROACTIVE OPEN, emitted at close: this is the lane's second governed record and its open is again recorded at close with this disclosure rather than presented as timely. All values are the session's true state. The five fingerprint rows were re-measured against the docs at close (shasum -a 256, 2026-09-26T08:13:35+05:30) and match the post-sync l3-lineage values from the previous entry."
+```
+
+### Opening objective
+
+Per the previous entry's Next session objective and the strategy session's subsequent directives:
+execute W-L0-7 (consumer-perturbation harness — verifies L0's CONSUMERS, never judges an L0 asset)
+per strategy §4.2, fixing first the blocking cross-packet collision (the W-L0-7 frozen baseline
+carried an undeclared pin on pre-1123 production while sibling packet W-L0-3's held migration 1123
+changes the sunapha link set); write the owed W-L0-3 packet report; and cover commits `b9840dd9e`
+(manifest seal-field sync) and `ac268ba5e` (+6 drift accounting) in this close per the strategy
+session's sequencing directive. Construction of the harness was authorized; its gate mapping and
+any `Dom` coverage claim remain HELD pending the native's Dom-vs-Decision-11 ruling.
+
+### Opening stocktake
+
+Worktree `/Users/Dev/madhav-l3/l0-exec` on branch `l0/brahmagyan-exec`, clean at `11384296c` and
+fully pushed. W-L0-7's baseline measurement had been accepted (`9775b435f`): production probes all
+reproduced — sunapha present in `brahma_yoga_catalog` with exactly 2 sutravali links, firing on the
+canonical chart under exactly one ayanamsha, absent from `DETECTOR_INSERT_IDS`. The blocking item
+was the unstated state pin: the frozen baseline read pre-1123 production while 1123 (held, expected
+to land before 1124) rewrites the sunapha link set from `{7ede2ed9…, a5d58ce9…}` to
+`{a5d58ce9…, cf36fd63…}`. `b9840dd9e` and `ac268ba5e` had landed and verified clean but were
+unreported. Migrations 1120–1124 remained committed and HELD; the merge gate on the sangam-stage3
+carriage stood; W-L0-8 and W-L0-6 remained blocked on open native rulings.
+
+### Execution outcome
+
+The collision was fixed first (report v1.1, `a194c19d9`): the W-L0-7 report now declares its pin
+explicitly — reading set and pre-registered movements measured against pre-1123 production (state
+A), 1123 named as the invalidating event, a re-measure gate imposed on R3's pre-registration when
+1123 applies, and the post-1123 link set preferred as the real target since `7ede2ed9…` is a
+parenthetical-attribution false positive by W-L0-3's own finding. The remaining pre-registrations
+were cross-checked for the same unstated-pin class.
+
+The owed W-L0-3 packet report was written and committed (`b56adabc6`), discharging the PARTIAL
+recorded in the previous close.
+
+W-L0-7 was then executed through v1.7 across twelve commits. The harness was built under
+`platform/scripts/l0harness/`: fixture DDL extracted from production by structural probe (16
+tables), the state-B disposable fixture builder (`build_fixture.py`, 33/33 structural gates, the
+1123 oracle green in both directions), the readings runner (`run_readings.py`, 9-step decorated
+sequence) and serve path (`read_serve.ts`). The runner executed — the first-ever decorated-path
+run — with verdicts: V-C0-S3 PASS, V-R2-S4 PASS (stale firing row present, citations NULL; the
+non-movement control held), V-R1-S5 / V-R2-S6 / V-R3-S7 UNMEASURED. Four harness findings were
+handed up unfixed per lane discipline: F-W-L0-7-9 (`data_plane_l1_owner` lacks SELECT on
+`build_runs`/`build_run_assets`; `open_l1_data_plane_generation` dies at 1035:599-611, L2 twin
+1036:951-963), F-W-L0-7-5 (ga_yoga 5-substep plan vs `complete_l1_data_plane_partition`
+undeclared-empty rejection, 1035:1385-1389), F-W-L0-7-8 (bo_laksana needs a completed ga_yoga
+head, `bodha_writers/data_plane_contracts.py:262-266`), F-W-L0-7-7 (pg_temp bind shadows relacl
+NULL, unreadable by `data_plane_builder`). Step-9 reseed+replay green; the grant workaround was
+verified revoked; the fixture was restored to state B (sunapha present, sutravali 3002/7). The CI
+vehicle landed as `.github/workflows/l0_consumer_perturbation.yml` (weekly Friday 04:00 UTC plus
+dispatch; hermetic by construction — no proxy, no pg_dump, no migrate.ts; pgvector/pg15 service)
+with `ci_expect.py` as a two-directional verdict pin, rehearsed green end-to-end via `L0H_*` env
+overrides. Per the strategy session's authorization boundary, the harness asserts measurements
+only: no gate mapping, no `Dom` coverage claim, no certification verdict — all HELD pending the
+native's Dom-vs-Decision-11 ruling.
+
+`b9840dd9e` (manifest seal-field completion: the five synced entries now match l3 field-for-field
+including the four seal fields and the corrected `supersedes` pointer) and `ac268ba5e` (+6 drift
+accounting: W7's 79-finding baseline reconstructed read-only from commit `2d0ae30fd` and diffed;
+6 real additions traced to `d8c008d31`/`657fc6ef4` on `l3/kala-layer-briefs`, inherited from the
+strategy lineage, with the structural detector-truth question handed up) are covered in this close
+per the strategy directive; their substance was already folded into the previous entry's
+`registry_updates_made` and amended `known_residuals` booking, so they are restated here, not
+double-booked.
+
+At close, drift re-measured at exit 3 (85 findings: 83 MEDIUM, 2 LOW) and the schema corpus at
+exit 3 (42 violations) — counts identical to the previous close's amended inherited booking, and
+grep-verified to name zero files this session touched
+(`grep -ci "l0harness\|L0_W_L0\|l0_consumer_perturbation"` → 0 in both reports). Booked below
+under known_residuals as the unchanged inherited baseline. `--close-checklist` on the block below
+validates at 0 violations.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
+  closed_at: 2026-09-26T08:13:35+05:30
+  tool: "Kimi Code"
+  files_touched:
+    - {path: .github/workflows/l0_consumer_perturbation.yml, mutation_type: created, within_declared_scope: true}
+    - {path: .gitignore, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_3_PACKET_REPORT_v1_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_7_PACKET_REPORT_v1_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/REHEARSAL_NOTES.md, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/VERDICT_MATRIX.md, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/build_fixture.py, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/ci_expect.py, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/fixture_schema.py, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/bodha_msr_signals_columns.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/columns.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/columns_l0w7_tables.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/constraints.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/constraints_l0w7_tables.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/grants.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_schema/table_acls.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/asset_registry.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/brahma_class_priors.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/brahma_dasha_systems.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/brahma_dosha_catalog.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/brahma_ontology.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/brahma_remedy_corpus.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/brahma_yoga_catalog.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/classical_text_chunks.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/classical_texts.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/fact_category_ownership.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/seed_manifest.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/production_seed/sutravali_rules.jsonl, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/read_serve.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/reading_verdicts.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/run_readings.py, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/l0harness/run_readings_20260926.log, mutation_type: created, within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - canonical_id: MADHAV_PRODUCT_DEFINITION
+        change: seal_fields_completed
+        rationale: "b9840dd9e — completed the previous entry's fingerprint sync: carried doc_status, fingerprint_sha256, seal_state, sealed_on from l3/kala-layer-briefs and corrected the stale supersedes pointer (v2_0 -> v3_0 for MADHAV_DATA_PLANE_VALUE_ARCHITECTURE). Row now matches l3 field-for-field. Restated here per the strategy session's close-coverage directive; the fingerprint rotation itself was booked in the previous entry and is NOT double-booked."
+      - canonical_id: MADHAV_DATA_PLANE_VALUE_ARCHITECTURE
+        change: seal_fields_completed
+        rationale: "b9840dd9e — same completion as MADHAV_PRODUCT_DEFINITION, including the supersedes-pointer correction."
+      - canonical_id: ELEVATION_DERIVATION_CHAIN
+        change: seal_fields_completed
+        rationale: "b9840dd9e — same completion as MADHAV_PRODUCT_DEFINITION."
+      - canonical_id: LAYER_DEFINITION_AND_STRATEGY_TEMPLATE
+        change: seal_fields_completed
+        rationale: "b9840dd9e — same completion as MADHAV_PRODUCT_DEFINITION."
+      - canonical_id: ASSET_ELEVATION_TEMPLATE
+        change: seal_fields_completed
+        rationale: "b9840dd9e — same completion as MADHAV_PRODUCT_DEFINITION."
+  red_team_pass:
+    due: false
+    performed: false
+    rationale: "Execution lane: per the campaign charter the strategy session owns plan verification and red-team review of packet work; this session's verification instruments are the harness's own measurements (33/33 fixture structural gates, 1123 oracle both directions, verdict matrix, ci_expect two-directional pin) reported in L0_W_L0_7_PACKET_REPORT_v1_0.md. No red-team artifact is claimed by this close."
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: /tmp/l0_close2_drift.md, divergences_found: 85}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: /tmp/l0_close2_schema.md, violations_found: 42}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: "Strategy-session directives relayed in-session (W-L0-7 baseline acceptance with blocking collision fix; W-L0-3 acceptance; construction authorization with gate mapping held) plus the packet reports under 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_*.md"
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_note: "vacuous — the L0 lane never acquired a remote coordination lease; coordination is by exclusive branch/worktree ownership per the native kickoff (l0/brahmagyan-exec owned by this execution session, layer-briefs owned by the strategy session). Nothing existed to release or verify; recorded true with this disclosure rather than inventing a lease."
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_3_PACKET_REPORT_v1_0.md
+      - 00_ARCHITECTURE/briefs/nirmana/L0_W_L0_7_PACKET_REPORT_v1_0.md
+      - platform/scripts/l0harness/VERDICT_MATRIX.md
+      - platform/scripts/l0harness/REHEARSAL_NOTES.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered:
+    - "W-L0-7 gate mapping HELD: harness construction was authorized and completed, but per the strategy session's authorization boundary no gate mapping, no Dom coverage claim and no certification verdict was recorded — the Dom-vs-Decision-11 ruling is OPEN with the native (the synced ASSET_ELEVATION_TEMPLATE v1.1 makes Dom an always-applies gate while Decision 11 removed domain correctness from data-plane obligations; the two are unreconciled and the ruling is the strategy session's to bring)."
+    - "F-W-L0-7-9 / F-W-L0-7-5 / F-W-L0-7-8 / F-W-L0-7-7: four producer-path defects surfaced by the first decorated-path run (missing SELECT grants on build_runs/build_run_assets; ga_yoga substep-plan vs partition-completion rejection; bo_laksana's completed-ga_yoga-head precondition; pg_temp bind shadowing relacl NULL). Handed to the L1/L2 data-plane plan unfixed, per the standing discipline that the harness verifies consumers and never repairs them from L0."
+    - "V-R1-S5 premise risk: the fixture seed carries no MOON graha_position fact for the fixture chart, so the R1 reading cannot be measured until the seed is enriched; enrichment is deferred until the producer-path findings above are answered (a richer seed cannot pass through a broken producer path)."
+    - "Subagent (agent-19) misreport for the third time this lane: reported 'harness fixes made during the run' that were in fact already committed in a4b7a251c. Noted in report v1.6; every load-bearing agent claim this window was independently re-verified against the live fixture DB before acceptance."
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
+      obligation_addressed: true
+      evidence: "No MP revision and no health-crisis/mental-health serving change occurred; all work is L0 consumer-verification harness code, fixture extracts, CI workflow and packet reports."
+  known_residuals:
+    - finding_id: inherited_drift_83_medium
+      severity: MEDIUM
+      booking_reference: "83 MEDIUM drift findings — UNCHANGED from the previous entry's amended booking (which named all 6 post-W7 additions per-finding and traced each to d8c008d31 / 657fc6ef4 on l3/kala-layer-briefs). This session's run reproduces the identical count; grep-verified zero findings name any file this session touched. The structural root cause (drift_detector still cross-checking CAPABILITY_MANIFEST against the deliberately superseded CANONICAL_ARTIFACTS_v1_0.md) remains handed to the strategy session, unacted-on here."
+    - finding_id: inherited_drift_2_low
+      severity: LOW
+      booking_reference: "2 LOW drift findings (schema_db_unreachable, a3_schema_db_unreachable): unchanged DB-unreachable environment findings; identical count to the previous entry's booking, zero findings name any file this session touched."
+    - finding_id: inherited_schema_42_medium
+      severity: MEDIUM
+      booking_reference: "42 schema-validator violations, identical count to the inherited baseline booked by the W7 close (2026-09-15) and re-booked by the previous entry (2026-09-25); grep-verified zero violations name any file this session touched. Owner-visible hygiene per §F, not enlarged by this session."
+  close_criteria_met: true
+  unblocks: ["strategy-session verification of the W-L0-3 and W-L0-7 packet closes", "native rulings on Dom vs Decision 11 (gates W-L0-7 gate mapping), W-L0-9 identity (gates W-L0-8) and W-L0-6 Sarvatobhadra school — all OPEN, none inferred here", "weekly CI signal from l0_consumer_perturbation.yml (first scheduled run Friday 04:00 UTC)"]
+  handoff_notes: "Batched close covering W-L0-3 (report b56adabc6, PARTIAL discharged) and W-L0-7 (v1.0->v1.7, commits 9775b435f..1c98394c8), plus b9840dd9e and ac268ba5e restated-covered per the strategy directive (their substance was folded into the previous entry; not double-booked). (1) MERGE GATE: l0/brahmagyan-exec does not merge to main until the sangam-stage3 carriage is resolved (5 unmerged stage3 commits; stage-3 executor AWAITING_NATIVE_AUTHORIZATION per a169f51f7). (2) Migrations 1120-1124 remain committed and HELD: 1124 gated on the bg_transit_rules 76-vs-75 row reconciliation, 1123 held with it and must precede it; gates named in commit bodies. (3) Native rulings OPEN and not inferred: Dom vs Decision 11 (gates W-L0-7's gate mapping — construction done, certification held), W-L0-9 identity (gates W-L0-8), W-L0-6 Sarvatobhadra school (bg_sarvatobhadra_grid stays 0 rows). (4) The CI workflow is hermetic BY CONSTRUCTION: it builds state-A from the committed production_schema/production_seed extracts and never touches production — production drift is invisible to it; extract refresh is a deliberate act, not an automatic one. (5) F-W-L0-7-9/-5/-8/-7 are handed to the L1/L2 data-plane plan, unfixed, per the discipline that the harness verifies consumers and never judges or repairs an L0 asset. (6) Fixture-coverage seed enrichment (all-ayanamsha chart_facts + MOON graha_position for the three UNMEASURED verdicts) is deferred until those producer-path findings are answered. (7) The W-L0-7 baseline is pinned to pre-1123 production (state A) with 1123 named as the invalidating event and a re-measure gate on R3's pre-registration; the post-1123 sunapha link set {a5d58ce9…, cf36fd63…} is the preferred real target. (8) madhav-l0-state.sh remains a declared phantom, dead since the previous close — the §H ritual (this entry) is the governing close mechanism."
+```
+
+### Next session objective
+
+Await the native's three open rulings — Dom vs Decision 11 (unblocks W-L0-7's gate mapping and any
+certification verdict), W-L0-9 identity (unblocks W-L0-8), W-L0-6 Sarvatobhadra school (unblocks
+W-L0-6; `bg_sarvatobhadra_grid` stays at 0 rows until ruled). On resolution of F-W-L0-7-9 and
+F-W-L0-7-5 by the L1/L2 data-plane plan, enrich the fixture seed (all-ayanamsha `chart_facts` plus a
+MOON `graha_position` fact for the fixture chart) and re-run the readings runner to convert
+V-R1-S5, V-R2-S6 and V-R3-S7 from UNMEASURED to measured verdicts. Do not start W-L0-8 or W-L0-6
+before their rulings. Do not merge `l0/brahmagyan-exec` to `main` until the sangam-stage3 carriage
+is resolved. Do not apply migrations 1120–1124: 1124 is gated on the `bg_transit_rules` 76-vs-75
+row reconciliation and 1123 must precede it.
