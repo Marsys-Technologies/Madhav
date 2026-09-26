@@ -5955,8 +5955,10 @@ block (post-rebuild era), and proceeds.
 > the readings runner completed the first-ever decorated-path run (V-C0-S3 and V-R2-S4 PASS;
 > V-R1-S5, V-R2-S6, V-R3-S7 UNMEASURED pending seed enrichment), and the CI vehicle
 > `.github/workflows/l0_consumer_perturbation.yml` runs hermetically (weekly + dispatch, no
-> production contact by construction). Four producer-path findings (F-W-L0-7-9/-5/-8/-7) were
-> handed to the L1/L2 data-plane plan unfixed. The harness's gate mapping and any `Dom` coverage
+> production contact by construction). Eight findings (F-W-L0-7-1/-2/-3/-4/-5/-7/-8/-9) were
+> handed to the L1/L2 data-plane plan unfixed — the complete ledger with carriers is in the
+> packet report v1.8; F-W-L0-7-6 is recorded WITHDRAWN (allocated 2026-09-26, reclassified
+> same-day as a fixture-seed coverage gap, never a defect in the system under test). The harness's gate mapping and any `Dom` coverage
 > claim are HELD pending the native's Dom-vs-Decision-11 ruling. Seven of nine packets now have
 > code and reports landed; W-L0-8 and W-L0-6 remain blocked on the open W-L0-9 identity and
 > Sarvatobhadra school rulings. Migrations 1120–1124 stay committed but HELD (1124 gated on the

@@ -1,6 +1,6 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.7
+version: 1.8
 status: CI_BUILT_2PASS_3UNMEASURED_PINNED_GATE_MAPPING_HELD
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
@@ -112,6 +112,21 @@ amendments: >
   baseline and both PASS verdicts are pinned against the current seed;
   enrichment becomes meaningful only once F-W-L0-7-9/-5 are answered
   upstream.
+  v1.8 (2026-09-26) — bookkeeping correction on strategy-session review, no
+  measurement changed. (1) Finding-ledger hole closed: F-W-L0-7-6 was
+  provisionally allocated during the 2026-09-26 runner work to the candidate
+  "sunapha formation rule (planet_not_sun_in_2nd_from_moon) unevaluable from
+  the seeded facts — no MOON graha_position row", then WITHDRAWN the same day
+  when that candidate was reclassified as a fixture-seed coverage gap (a
+  limitation of the harness's own seed, not a defect in any consumer or
+  producer); the number is retired, never reassigned, and the coverage gap
+  itself remains tracked as the deferred seed-enrichment item (v1.6 above,
+  V-R1-S5 premise risk). Full ledger with carriers in the Finding ledger
+  section. (2) The 2026-09-26 SESSION_CLOSE and CURRENT_STATE said "four
+  findings handed up"; the true number is EIGHT — -1/-2/-3/-4 were handed up
+  in the machinery-mapping and fixture-builder phases, -5/-7/-8/-9 in the
+  runner phase, all to the L1/L2 data-plane plan. Both governance surfaces
+  amended in place with this note.
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -501,6 +516,24 @@ claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
   UNMEASURED because the decorated L1/L2 producer path fails upstream of them
   (F-W-L0-7-9 → F-W-L0-7-5 → F-W-L0-7-8 → F-W-L0-7-7). The predictions stand
   pre-registered for the iteration that can execute them.
+
+## Finding ledger (complete, v1.8)
+
+Every number ever allocated in the F-W-L0-7 series, its disposition and its carrier.
+Eight findings are handed up unfixed to the L1/L2 data-plane plan; one number is
+withdrawn. No other number exists.
+
+| id | finding | phase surfaced | disposition / carrier |
+|---|---|---|---|
+| F-W-L0-7-1 | L2 open-before-bind order — `open_l2_data_plane_generation` requires the pg_temp bind receipt, the bo_laksana decorator calls open before bind | machinery mapping (v1.3) | handed up unfixed → L2 plan (decorator/migration ordering defect candidate); harness primes one bind per R3 run |
+| F-W-L0-7-2 | `fact_category_ownership` gap — `graha_position`, `yoga_label` + 11 more production categories unowned; the guarded path cannot admit production's own chart_facts writes | machinery mapping (v1.3) | handed up unfixed → L1/data-plane plan; fixture preserves the gap verbatim |
+| F-W-L0-7-3 | 175,949/421,096 production `chart_facts` rows are multi-valued and would fail the capture CHECK | fixture build (v1.5) | handed up unfixed → L1 data-plane plan |
+| F-W-L0-7-4 | `classical_text_chunks.chapter` is a page number; sunapha citations carry no `chunk_id` — linkage is by text | fixture build (v1.5) | handed up unfixed → L1/L2 data-plane plan |
+| F-W-L0-7-5 | ga_yoga's 5-ayanamsha substep plan meets `complete_l1_data_plane_partition`'s undeclared-empty rejection (1035:1385-1389) | runner execution (v1.6) | handed up unfixed → L1 plan |
+| F-W-L0-7-6 | **WITHDRAWN 2026-09-26** — provisionally allocated to "sunapha formation rule unevaluable from seeded facts (no MOON graha_position)"; reclassified the same day as a fixture-seed coverage gap, not a defect in the system under test | runner execution (v1.6) | number retired, never reassigned; coverage gap tracked as the deferred seed-enrichment item (V-R1-S5 premise risk) |
+| F-W-L0-7-7 | 1036 pg_temp bind shadows owned by `data_plane_l2_owner` with relacl NULL are unreadable by `data_plane_builder` | runner execution (v1.6) | handed up unfixed → L2 plan |
+| F-W-L0-7-8 | bo_laksana upstream resolution requires a completed ga_yoga head (`bodha_writers/data_plane_contracts.py:262-266`) | runner execution (v1.6) | handed up unfixed → L2 plan |
+| F-W-L0-7-9 | `open_l1_data_plane_generation`'s SECURITY DEFINER owner `data_plane_l1_owner` holds no SELECT on `build_runs`/`build_run_assets` (1035:599-611; L2 twin 1036:951-963 staged behind) | runner execution (v1.6) | handed up unfixed → L1 plan (L2 twin with it) |
 
 ## Packet status
 
