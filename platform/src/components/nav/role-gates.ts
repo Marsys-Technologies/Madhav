@@ -30,6 +30,14 @@ export interface NavItemDescriptor {
   admin?: boolean
 }
 
+export interface InformationNavItemDescriptor {
+  key: string
+  href: string
+  label: string
+  roles: readonly NavRole[]
+  admin?: boolean
+}
+
 export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   { key: 'roster',      href: '/dashboard',   label: 'Roster',      roles: ['super_admin', 'guest'] },
   { key: 'panchang',    href: '/panchang',    label: 'Panchang',    roles: ['super_admin', 'guest'] },
@@ -40,13 +48,39 @@ export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },
 ] as const
 
+/**
+ * Secondary destinations shown beneath the bottom-aligned Information rail item.
+ * Keep this ordered: the first item is the top entry in the Information menu.
+ */
+export const INFORMATION_NAV_ITEMS: readonly InformationNavItemDescriptor[] = [
+  {
+    key: 'atlas',
+    href: '/information/atlas',
+    label: 'Atlas',
+    roles: ['super_admin'],
+    admin: true,
+  },
+] as const
+
 export function visibleNavItems(role: NavRole | string): NavItemDescriptor[] {
   const normalized: NavRole = role === 'super_admin' ? 'super_admin' : 'guest'
   return NAV_ITEMS.filter((item) => (item.roles as readonly string[]).includes(normalized))
 }
 
+export function visibleInformationNavItems(
+  role: NavRole | string
+): InformationNavItemDescriptor[] {
+  const normalized: NavRole = role === 'super_admin' ? 'super_admin' : 'guest'
+  return INFORMATION_NAV_ITEMS.filter((item) =>
+    (item.roles as readonly string[]).includes(normalized)
+  )
+}
+
 export function isAdminSurface(href: string): boolean {
-  return NAV_ITEMS.find((i) => i.href === href)?.admin === true
+  return (
+    NAV_ITEMS.find((item) => item.href === href)?.admin === true ||
+    INFORMATION_NAV_ITEMS.find((item) => item.href === href)?.admin === true
+  )
 }
 
 /**
