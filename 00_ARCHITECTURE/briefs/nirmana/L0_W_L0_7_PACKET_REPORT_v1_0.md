@@ -1,7 +1,7 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.5
-status: FIXTURE_BUILT_GATE_MAPPING_HELD
+version: 1.6
+status: RUNNER_EXECUTED_2PASS_3UNMEASURED_GATE_MAPPING_HELD
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
 branch: l0/brahmagyan-exec
@@ -60,6 +60,36 @@ amendments: >
   brief/branch and falsely declared 1120–1123 absent — corrected in
   REHEARSAL_NOTES v1.1; every builder number accepted here was re-verified
   against the fixture DB first.
+  v1.6 (2026-09-26) — readings runner EXECUTED (first-ever decorated-path run,
+  dry_run=False, real data_plane_builder session_user): the frozen 9-step
+  sequence ran end-to-end on madhav_l0w7_fixture (platform/scripts/l0harness/
+  run_readings.py + read_serve.ts; evidence run_readings_20260926.log,
+  reading_verdicts.json, VERDICT_MATRIX.md; REHEARSAL_NOTES v1.2 §8).
+  Verdicts: V-C0-S3 PASS (sunapha absent from query_yoga_catalog
+  post-perturbation), V-R2-S4 PASS (stale firing row PRESENT with
+  catalog_classical_citations NULL — the named non-movement control held),
+  V-R1-S5 / V-R2-S6 / V-R3-S7 UNMEASURED — the decorated L1/L2 producer path
+  itself fails before any perturbation verdict can be measured. New finding
+  F-W-L0-7-9 (open_l1_data_plane_generation's SECURITY DEFINER owner
+  data_plane_l1_owner holds no SELECT on build_runs/build_run_assets —
+  permission denied at the partition-open existence check, 1035:599-611; the
+  L2 twin at 1036:951-963 is staged behind it). Confirmed findings:
+  F-W-L0-7-5 (ga_yoga's 5-ayanamsha substep plan meets
+  complete_l1_data_plane_partition's undeclared-empty rejection,
+  1035:1385-1389 — measured past F-W-L0-7-9 via a disclosed, revoked grant
+  workaround), F-W-L0-7-8 (bo_laksana upstream resolution requires a
+  completed ga_yoga head, bodha_writers/data_plane_contracts.py:262-266),
+  F-W-L0-7-7 (1036 pg_temp bind shadows owned by data_plane_l2_owner with
+  relacl NULL are unreadable by data_plane_builder — probe-measured).
+  Step-9 reseed+replay green; workaround grant verified revoked; fixture
+  verified back in state B. Fixture-coverage gaps recorded for the next
+  iteration (chart_facts seeded for surya_siddhanta_classical only; no MOON
+  graha_position row, so a successful R1 rerun could not re-derive the
+  seeded sunapha firing — V-R1-S5's frozen prediction needs a richer fact
+  seed before it can hold). Runner's closing note mis-attributed two
+  already-committed builder fixes to this run — third such misreport from
+  that worker; every number above was re-verified against the fixture DB
+  and the run log before acceptance.
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -444,8 +474,11 @@ claimed by this packet until the strategy ruling resolves `Dom` vs Decision 11.
 - No repair of F-W-L0-7-1 (L2 open-before-bind) or F-W-L0-7-2 (ownership-registry gap) —
   both handed to the L1/L2 data-plane plan; the fixture preserves the ownership gap
   verbatim rather than routing around it.
-- No live perturbation run yet: the predictions above are pre-registered from code and
-  read-only production probes; the measured before/after lands with the harness run.
+- No live perturbation verdict for R1/R2-post-rerun/R3 yet: the perturbation itself
+  ran and C0/R2-stale-window are MEASURED (v1.6); the three downstream verdicts are
+  UNMEASURED because the decorated L1/L2 producer path fails upstream of them
+  (F-W-L0-7-9 → F-W-L0-7-5 → F-W-L0-7-8 → F-W-L0-7-7). The predictions stand
+  pre-registered for the iteration that can execute them.
 
 ## Packet status
 
@@ -456,7 +489,14 @@ seeding design final, F-W-L0-7-1 / F-W-L0-7-2 handed up).
 **Fixture builder: COMPLETE** (v1.5 — 33/33 gates twice; 1123 oracle green both
 directions; 11 closure generations synthesized; F-W-L0-7-3 / F-W-L0-7-4 handed up;
 rehearsal DB madhav_l0w7_fixture live on localhost:55433).
-**Construction: AUTHORIZED** (2026-09-26) — readings runner next, then CI vehicle.
+**Readings runner: EXECUTED** (v1.6 — 9-step decorated-path sequence ran end-to-end;
+V-C0-S3 and V-R2-S4 PASS, V-R1-S5 / V-R2-S6 / V-R3-S7 UNMEASURED behind
+F-W-L0-7-9 / -5 / -8 / -7, all handed up unfixed; fixture verified back in state B
+with the workaround grant revoked). The UNMEASURED triple is a producer-path
+blocker for the L1/L2 data-plane plan, not an L0 asset judgment — the harness
+verifies consumers, never an L0 asset, and here the consumers could not run.
+**Construction: AUTHORIZED** (2026-09-26) — CI vehicle next (fresh_chart_smoke
+pattern), with the fixture-coverage gaps from v1.6 as its seeding inputs.
 **Gate mapping: HELD** (strategy ruling: `Dom` vs Decision 11).
 
 Open rulings, restated as OPEN — none inferred here:

@@ -1,0 +1,696 @@
+{
+  "steps": {
+    "0": {
+      "ok": true,
+      "l1_heads": 11
+    },
+    "1_r1": {
+      "run_id": "855d7821-1320-4f45-82e9-919255a27e04",
+      "ok": false,
+      "substeps": [],
+      "error": "InsufficientPrivilege: permission denied for table build_runs\nCONTEXT:  SQL expression \"p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n     OR NOT EXISTS (\n       SELECT 1\n       FROM public.build_runs br\n       JOIN public.build_run_assets bra ON bra.run_id = br.id\n       WHERE br.id = p_generation_id::uuid\n         AND br.chart_id = p_chart_id\n         AND br.state = 'running'\n         AND bra.asset_id = p_asset_id\n         AND bra.state = 'building'\n     )\"\nPL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 225, in run_ga_yoga\n    res = writer.run_substep(ctx, step)  # decorated: open+writer+complete\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 175, in guarded\n    _open_partition(\n    ~~~~~~~~~~~~~~~^\n        ctx,\n        ^^^^\n    ...<2 lines>...\n        expected_partitions=expected,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 103, in _open_partition\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<17 lines>...\n        ),\n        ^^\n    )\n    ^\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.InsufficientPrivilege: permission denied for table build_runs\nCONTEXT:  SQL expression \"p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n     OR NOT EXISTS (\n       SELECT 1\n       FROM public.build_runs br\n       JOIN public.build_run_assets bra ON bra.run_id = br.id\n       WHERE br.id = p_generation_id::uuid\n         AND br.chart_id = p_chart_id\n         AND br.state = 'running'\n         AND bra.asset_id = p_asset_id\n         AND bra.state = 'building'\n     )\"\nPL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF\n",
+      "failed_substep": "ayanamsha_lahiri_chitrapaksha"
+    },
+    "1_r1_probe": {
+      "run_id": "b2941b56-7a4b-471b-814e-ed266c71d678",
+      "ok": false,
+      "substeps": [],
+      "error": "RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output\nCONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 225, in run_ga_yoga\n    res = writer.run_substep(ctx, step)  # decorated: open+writer+complete\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 182, in guarded\n    _complete_partition(\n    ~~~~~~~~~~~~~~~~~~~^\n        ctx,\n        ^^^^\n    ...<2 lines>...\n        rows_inserted=int(result.rows_inserted),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 135, in _complete_partition\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<4 lines>...\n        (chart_id, asset_id, build_id, partition_key, rows_inserted),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output\nCONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE\n",
+      "failed_substep": "ayanamsha_lahiri_chitrapaksha"
+    },
+    "1_r3": {
+      "run_id": "5b52077c-81ef-4278-bab2-3c05cb24f322",
+      "ok": false,
+      "substeps": [],
+      "error": "ContractError: missing completed selected L1 dependencies: ['ga_yoga']\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 269, in run_bo_laksana\n    vector, _calc = _resolve_upstream_context(\n                    ~~~~~~~~~~~~~~~~~~~~~~~~~^\n        conn, chart_id=CHART_ID, asset_id=\"bo_laksana\",\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        partition_key=\"aya_lahiri_chitrapaksha\")\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/bodha_writers/data_plane_contracts.py\", line 266, in _resolve_upstream_context\n    raise ContractError(f\"missing completed selected L1 dependencies: {missing}\")\nbodha_writers.data_plane_contracts.ContractError: missing completed selected L1 dependencies: ['ga_yoga']\n"
+    },
+    "5_r1": {
+      "run_id": "bdfdcc86-d745-4d78-8f3a-e192fdf56fa8",
+      "ok": false,
+      "substeps": [],
+      "error": "InsufficientPrivilege: permission denied for table build_runs\nCONTEXT:  SQL expression \"p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n     OR NOT EXISTS (\n       SELECT 1\n       FROM public.build_runs br\n       JOIN public.build_run_assets bra ON bra.run_id = br.id\n       WHERE br.id = p_generation_id::uuid\n         AND br.chart_id = p_chart_id\n         AND br.state = 'running'\n         AND bra.asset_id = p_asset_id\n         AND bra.state = 'building'\n     )\"\nPL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 225, in run_ga_yoga\n    res = writer.run_substep(ctx, step)  # decorated: open+writer+complete\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 175, in guarded\n    _open_partition(\n    ~~~~~~~~~~~~~~~^\n        ctx,\n        ^^^^\n    ...<2 lines>...\n        expected_partitions=expected,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 103, in _open_partition\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<17 lines>...\n        ),\n        ^^\n    )\n    ^\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.InsufficientPrivilege: permission denied for table build_runs\nCONTEXT:  SQL expression \"p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n     OR NOT EXISTS (\n       SELECT 1\n       FROM public.build_runs br\n       JOIN public.build_run_assets bra ON bra.run_id = br.id\n       WHERE br.id = p_generation_id::uuid\n         AND br.chart_id = p_chart_id\n         AND br.state = 'running'\n         AND bra.asset_id = p_asset_id\n         AND bra.state = 'building'\n     )\"\nPL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF\n",
+      "failed_substep": "ayanamsha_lahiri_chitrapaksha"
+    },
+    "5_r1_probe": {
+      "run_id": "9acdbab8-fba6-46af-90e6-c7ca04a9d2a6",
+      "ok": false,
+      "substeps": [],
+      "error": "RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output\nCONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 225, in run_ga_yoga\n    res = writer.run_substep(ctx, step)  # decorated: open+writer+complete\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 182, in guarded\n    _complete_partition(\n    ~~~~~~~~~~~~~~~~~~~^\n        ctx,\n        ^^^^\n    ...<2 lines>...\n        rows_inserted=int(result.rows_inserted),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 135, in _complete_partition\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<4 lines>...\n        (chart_id, asset_id, build_id, partition_key, rows_inserted),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output\nCONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE\n",
+      "failed_substep": "ayanamsha_lahiri_chitrapaksha"
+    },
+    "7_r3": {
+      "run_id": "2f72ce17-355b-479f-8bbf-4d447cfd33de",
+      "ok": false,
+      "substeps": [],
+      "error": "ContractError: missing completed selected L1 dependencies: ['ga_yoga']\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 269, in run_bo_laksana\n    vector, _calc = _resolve_upstream_context(\n                    ~~~~~~~~~~~~~~~~~~~~~~~~~^\n        conn, chart_id=CHART_ID, asset_id=\"bo_laksana\",\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        partition_key=\"aya_lahiri_chitrapaksha\")\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/bodha_writers/data_plane_contracts.py\", line 266, in _resolve_upstream_context\n    raise ContractError(f\"missing completed selected L1 dependencies: {missing}\")\nbodha_writers.data_plane_contracts.ContractError: missing completed selected L1 dependencies: ['ga_yoga']\n"
+    },
+    "9_reseed_replay": {
+      "ok": true,
+      "c0_total_matching": 1,
+      "r2_row_present": true,
+      "r2_catalog_citations_restored": true
+    }
+  },
+  "snapshots": {
+    "firings_baseline": [
+      {
+        "id": 1,
+        "fired": true,
+        "build_id": "f0000000-0000-4000-8000-000000000103",
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "strength": 0.8,
+        "derivation": "Venus occupies 2nd from Moon (fixture)",
+        "family_ids": [],
+        "is_partial": false,
+        "computed_at": "2026-09-26T07:43:43.384704+05:30",
+        "ayanamsha_id": "surya_siddhanta_classical",
+        "citation_ref": "bphs:30",
+        "bhanga_active": false,
+        "grounds_jsonb": null,
+        "citation_human": "BPHS ch.30 \u2014 Sunapha Yoga (fixture seed)",
+        "strength_label": null,
+        "bhanga_na_reason": null,
+        "bhanga_rule_fired": null,
+        "yoga_canonical_id": "sunapha",
+        "constituent_houses": [
+          2
+        ],
+        "constituent_planets": [
+          "MOON",
+          "VENUS"
+        ],
+        "constituent_fact_ids": null,
+        "partial_formation_pct": null,
+        "activation_dasha_periods": null,
+        "strength_formula_version": null
+      }
+    ],
+    "msr_baseline": [
+      {
+        "valence": null,
+        "build_id": "f0000000-0000-4000-8000-000000000104",
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "varga_id": null,
+        "bala_gate": null,
+        "fact_kind": "yoga_label",
+        "signal_id": "f0000000-0000-4000-8000-000000000201",
+        "lel_origin": false,
+        "class_prior": 1.0,
+        "computed_at": "2026-09-26T07:43:43.417517+05:30",
+        "ayanamsha_id": "surya_siddhanta_classical",
+        "citation_ref": "fixture://l0w7",
+        "dignity_score": null,
+        "orb_tightness": null,
+        "shadbala_norm": null,
+        "citation_human": "L0-W7 fixture seed",
+        "engine_version": "bo_laksana",
+        "epistemic_tier": null,
+        "signal_type_id": "fixture_yoga_signal",
+        "signature_tier": null,
+        "valence_source": null,
+        "argala_modifier": null,
+        "aspect_modifier": null,
+        "epistemic_jsonb": null,
+        "signature_class": null,
+        "source_l1_asset": "ga_yoga",
+        "signal_tradition": "parashari",
+        "source_subsystem": "ganita",
+        "computed_salience": 1.0,
+        "producer_asset_id": "bo_laksana",
+        "signal_type_class": "yoga",
+        "aggregation_member": false,
+        "remedy_hooks_array": null,
+        "configuration_jsonb": {},
+        "pada_precision_flag": null,
+        "ratification_factor": null,
+        "salience_robustness": null,
+        "signal_summary_text": "Sunapha Yoga present (fixture)",
+        "top_k_salience_rank": null,
+        "verification_method": null,
+        "signal_headline_text": null,
+        "verification_rescale": null,
+        "active_duration_class": "long_term",
+        "cancellation_modifier": null,
+        "domain_salience_jsonb": {
+          "wealth": 1.0
+        },
+        "neechabhanga_modifier": null,
+        "present_but_enfeebled": false,
+        "deterministic_strength": 0.8,
+        "domains_affected_array": [
+          "wealth"
+        ],
+        "salience_pctl_in_class": null,
+        "varga_provenance_jsonb": null,
+        "verification_certainty": 0.9,
+        "classical_sources_array": null,
+        "classical_sources_jsonb": null,
+        "constituent_facts_array": [
+          "f100000000000005"
+        ],
+        "house_weight_multiplier": null,
+        "predicted_outcome_class": null,
+        "functional_context_score": null,
+        "graph_edge_pattern_jsonb": null,
+        "recurring_pattern_marker": null,
+        "salience_formula_version": "fixture_salience_v1",
+        "salience_inputs_complete": false,
+        "shared_factor_keys_jsonb": null,
+        "system_convergence_count": null,
+        "vargottama_amplification": null,
+        "verification_pass_status": "two_pass_verified",
+        "constituent_signals_array": null,
+        "contradicts_signals_array": null,
+        "active_dasha_periods_jsonb": null,
+        "relationship_classification": null,
+        "cross_system_consensus_count": null,
+        "channel_render_priority_jsonb": null,
+        "salience_conditioned_by_jsonb": null,
+        "divisional_corroboration_count": null,
+        "ashtakavarga_support_multiplier": null,
+        "graha_weakness_indicators_jsonb": null,
+        "activation_predicted_dates_jsonb": null,
+        "cross_domain_shared_factor_count": null,
+        "dasha_activation_proximity_score": null,
+        "strength_normalized_to_chart_max": null,
+        "cross_ayanamsha_consistency_score": null,
+        "salience_confidence_interval_jsonb": null,
+        "source_corroboration_count_by_text": null,
+        "source_corroboration_count_by_verse": null,
+        "graph_node_strength_contribution_jsonb": null
+      }
+    ],
+    "c0_baseline": {
+      "content": {
+        "rows": [
+          {
+            "canonical_id": "sunapha",
+            "name_sa": "Sunaph\u0101",
+            "name_en": "Sunapha Yoga",
+            "category": "other",
+            "formation_rule_jsonb": {
+              "requires": [
+                {
+                  "relation": "planet_not_sun_in_2nd_from_moon"
+                }
+              ]
+            },
+            "formation_text": "A planet other than the Sun in the 2nd from the Moon.",
+            "significations_jsonb": {
+              "gives": [
+                "self_earned_wealth",
+                "intelligence"
+              ],
+              "subcategory": "chandra_yoga"
+            },
+            "significations_text": "Self-made prosperity, capable.",
+            "cancellation_conditions": {},
+            "classical_citations": [
+              {
+                "chapter": 30,
+                "text_id": "bphs"
+              },
+              {
+                "chapter": 38,
+                "text_id": "saravali"
+              }
+            ],
+            "source_chunk_ids": [],
+            "school": "parashari",
+            "rare": false,
+            "computed_strength_formula": null,
+            "created_at": "2026-09-06 21:26:45.659226+05:30",
+            "bhanga_rules_jsonb": null,
+            "partial_formation_threshold": null,
+            "strength_formula_ref": null,
+            "result_class": null
+          }
+        ],
+        "total_matching": 1,
+        "more_available": false
+      },
+      "is_error": false
+    },
+    "r2_baseline": {
+      "content": {
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "build_id": null,
+        "rows": [
+          {
+            "id": 1,
+            "yoga_canonical_id": "sunapha",
+            "ayanamsha_id": "surya_siddhanta_classical",
+            "fired": true,
+            "strength": 0.8,
+            "strength_label": null,
+            "partial_formation_pct": null,
+            "is_partial": false,
+            "bhanga_active": false,
+            "bhanga_rule_fired": null,
+            "bhanga_na_reason": null,
+            "constituent_planets": [
+              "MOON",
+              "VENUS"
+            ],
+            "constituent_houses": [
+              2
+            ],
+            "constituent_fact_ids": null,
+            "family_ids": [],
+            "activation_dasha_periods": null,
+            "derivation": "Venus occupies 2nd from Moon (fixture)",
+            "citation_ref": "bphs:30",
+            "citation_human": "BPHS ch.30 \u2014 Sunapha Yoga (fixture seed)",
+            "catalog_classical_citations": [
+              {
+                "chapter": 30,
+                "text_id": "bphs"
+              },
+              {
+                "chapter": 38,
+                "text_id": "saravali"
+              }
+            ],
+            "grounds_jsonb": null,
+            "constituent_planets_role_split_available": false,
+            "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present \u2014 see constituent_planets_role_split_available."
+          }
+        ],
+        "count": 1,
+        "total_matching": 1,
+        "more_available": false,
+        "filters": {
+          "fired": null,
+          "all": true,
+          "ayanamsha_id": null,
+          "bhanga_active": null,
+          "is_partial": null,
+          "yoga_canonical_id": "sunapha",
+          "limit": 50,
+          "offset": 0
+        },
+        "provenance": {
+          "tables": [
+            "ga_yoga_firings",
+            "brahma_yoga_catalog"
+          ],
+          "note": "constituent_fact_ids resolve back to chart_facts.fact_id (\u00a7N.5). Default fired=true \u2014 a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). catalog_classical_citations (F-D1) is the classical grounding from brahma_yoga_catalog \u2014 distinct from citation_ref/citation_human, which describe the strength-derivation formula, not the classical source.",
+          "source": "L1 Ga\u1e47ita yoga-firing detail; served chart-scoped.",
+          "grounds_jsonb_available": true
+        }
+      },
+      "is_error": false
+    },
+    "sunapha_catalog_row": {
+      "rare": false,
+      "school": "parashari",
+      "name_en": "Sunapha Yoga",
+      "name_sa": "Sunaph\u0101",
+      "category": "other",
+      "created_at": "2026-09-06T21:26:45.659226+05:30",
+      "canonical_id": "sunapha",
+      "result_class": null,
+      "formation_text": "A planet other than the Sun in the 2nd from the Moon.",
+      "source_chunk_ids": [],
+      "bhanga_rules_jsonb": null,
+      "classical_citations": [
+        {
+          "chapter": 30,
+          "text_id": "bphs"
+        },
+        {
+          "chapter": 38,
+          "text_id": "saravali"
+        }
+      ],
+      "significations_text": "Self-made prosperity, capable.",
+      "formation_rule_jsonb": {
+        "requires": [
+          {
+            "relation": "planet_not_sun_in_2nd_from_moon"
+          }
+        ]
+      },
+      "significations_jsonb": {
+        "gives": [
+          "self_earned_wealth",
+          "intelligence"
+        ],
+        "subcategory": "chandra_yoga"
+      },
+      "strength_formula_ref": null,
+      "cancellation_conditions": {},
+      "computed_strength_formula": null,
+      "partial_formation_threshold": null
+    },
+    "c0_step3": {
+      "content": {
+        "rows": [],
+        "total_matching": 0,
+        "more_available": false,
+        "empty_reason": "No yogas matched (yoga_name=sunapha, tradition=any, domain=any). Stored tradition (school): parashari. Stored domain (category): raja, dhana, aristha, pancha_mahapurusha, sannyasa, other."
+      },
+      "is_error": false
+    },
+    "r2_step4": {
+      "content": {
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "build_id": null,
+        "rows": [
+          {
+            "id": 1,
+            "yoga_canonical_id": "sunapha",
+            "ayanamsha_id": "surya_siddhanta_classical",
+            "fired": true,
+            "strength": 0.8,
+            "strength_label": null,
+            "partial_formation_pct": null,
+            "is_partial": false,
+            "bhanga_active": false,
+            "bhanga_rule_fired": null,
+            "bhanga_na_reason": null,
+            "constituent_planets": [
+              "MOON",
+              "VENUS"
+            ],
+            "constituent_houses": [
+              2
+            ],
+            "constituent_fact_ids": null,
+            "family_ids": [],
+            "activation_dasha_periods": null,
+            "derivation": "Venus occupies 2nd from Moon (fixture)",
+            "citation_ref": "bphs:30",
+            "citation_human": "BPHS ch.30 \u2014 Sunapha Yoga (fixture seed)",
+            "catalog_classical_citations": null,
+            "grounds_jsonb": null,
+            "constituent_planets_role_split_available": false,
+            "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present \u2014 see constituent_planets_role_split_available."
+          }
+        ],
+        "count": 1,
+        "total_matching": 1,
+        "more_available": false,
+        "filters": {
+          "fired": null,
+          "all": true,
+          "ayanamsha_id": null,
+          "bhanga_active": null,
+          "is_partial": null,
+          "yoga_canonical_id": "sunapha",
+          "limit": 50,
+          "offset": 0
+        },
+        "provenance": {
+          "tables": [
+            "ga_yoga_firings",
+            "brahma_yoga_catalog"
+          ],
+          "note": "constituent_fact_ids resolve back to chart_facts.fact_id (\u00a7N.5). Default fired=true \u2014 a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). catalog_classical_citations (F-D1) is the classical grounding from brahma_yoga_catalog \u2014 distinct from citation_ref/citation_human, which describe the strength-derivation formula, not the classical source.",
+          "source": "L1 Ga\u1e47ita yoga-firing detail; served chart-scoped.",
+          "grounds_jsonb_available": true
+        }
+      },
+      "is_error": false
+    },
+    "firings_step5": [
+      {
+        "id": 1,
+        "fired": true,
+        "build_id": "f0000000-0000-4000-8000-000000000103",
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "strength": 0.8,
+        "derivation": "Venus occupies 2nd from Moon (fixture)",
+        "family_ids": [],
+        "is_partial": false,
+        "computed_at": "2026-09-26T07:43:43.384704+05:30",
+        "ayanamsha_id": "surya_siddhanta_classical",
+        "citation_ref": "bphs:30",
+        "bhanga_active": false,
+        "grounds_jsonb": null,
+        "citation_human": "BPHS ch.30 \u2014 Sunapha Yoga (fixture seed)",
+        "strength_label": null,
+        "bhanga_na_reason": null,
+        "bhanga_rule_fired": null,
+        "yoga_canonical_id": "sunapha",
+        "constituent_houses": [
+          2
+        ],
+        "constituent_planets": [
+          "MOON",
+          "VENUS"
+        ],
+        "constituent_fact_ids": null,
+        "partial_formation_pct": null,
+        "activation_dasha_periods": null,
+        "strength_formula_version": null
+      }
+    ],
+    "firings_step5_probe": [
+      {
+        "id": 1,
+        "fired": true,
+        "build_id": "f0000000-0000-4000-8000-000000000103",
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "strength": 0.8,
+        "derivation": "Venus occupies 2nd from Moon (fixture)",
+        "family_ids": [],
+        "is_partial": false,
+        "computed_at": "2026-09-26T07:43:43.384704+05:30",
+        "ayanamsha_id": "surya_siddhanta_classical",
+        "citation_ref": "bphs:30",
+        "bhanga_active": false,
+        "grounds_jsonb": null,
+        "citation_human": "BPHS ch.30 \u2014 Sunapha Yoga (fixture seed)",
+        "strength_label": null,
+        "bhanga_na_reason": null,
+        "bhanga_rule_fired": null,
+        "yoga_canonical_id": "sunapha",
+        "constituent_houses": [
+          2
+        ],
+        "constituent_planets": [
+          "MOON",
+          "VENUS"
+        ],
+        "constituent_fact_ids": null,
+        "partial_formation_pct": null,
+        "activation_dasha_periods": null,
+        "strength_formula_version": null
+      }
+    ],
+    "r2_step6": {
+      "content": {
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "build_id": null,
+        "rows": [
+          {
+            "id": 1,
+            "yoga_canonical_id": "sunapha",
+            "ayanamsha_id": "surya_siddhanta_classical",
+            "fired": true,
+            "strength": 0.8,
+            "strength_label": null,
+            "partial_formation_pct": null,
+            "is_partial": false,
+            "bhanga_active": false,
+            "bhanga_rule_fired": null,
+            "bhanga_na_reason": null,
+            "constituent_planets": [
+              "MOON",
+              "VENUS"
+            ],
+            "constituent_houses": [
+              2
+            ],
+            "constituent_fact_ids": null,
+            "family_ids": [],
+            "activation_dasha_periods": null,
+            "derivation": "Venus occupies 2nd from Moon (fixture)",
+            "citation_ref": "bphs:30",
+            "citation_human": "BPHS ch.30 \u2014 Sunapha Yoga (fixture seed)",
+            "catalog_classical_citations": null,
+            "grounds_jsonb": null,
+            "constituent_planets_role_split_available": false,
+            "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present \u2014 see constituent_planets_role_split_available."
+          }
+        ],
+        "count": 1,
+        "total_matching": 1,
+        "more_available": false,
+        "filters": {
+          "fired": null,
+          "all": true,
+          "ayanamsha_id": null,
+          "bhanga_active": null,
+          "is_partial": null,
+          "yoga_canonical_id": "sunapha",
+          "limit": 50,
+          "offset": 0
+        },
+        "provenance": {
+          "tables": [
+            "ga_yoga_firings",
+            "brahma_yoga_catalog"
+          ],
+          "note": "constituent_fact_ids resolve back to chart_facts.fact_id (\u00a7N.5). Default fired=true \u2014 a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). catalog_classical_citations (F-D1) is the classical grounding from brahma_yoga_catalog \u2014 distinct from citation_ref/citation_human, which describe the strength-derivation formula, not the classical source.",
+          "source": "L1 Ga\u1e47ita yoga-firing detail; served chart-scoped.",
+          "grounds_jsonb_available": true
+        }
+      },
+      "is_error": false
+    },
+    "msr_step7": [
+      {
+        "valence": null,
+        "build_id": "f0000000-0000-4000-8000-000000000104",
+        "chart_id": "f0000000-0000-4000-8000-000000000001",
+        "varga_id": null,
+        "bala_gate": null,
+        "fact_kind": "yoga_label",
+        "signal_id": "f0000000-0000-4000-8000-000000000201",
+        "lel_origin": false,
+        "class_prior": 1.0,
+        "computed_at": "2026-09-26T07:43:43.417517+05:30",
+        "ayanamsha_id": "surya_siddhanta_classical",
+        "citation_ref": "fixture://l0w7",
+        "dignity_score": null,
+        "orb_tightness": null,
+        "shadbala_norm": null,
+        "citation_human": "L0-W7 fixture seed",
+        "engine_version": "bo_laksana",
+        "epistemic_tier": null,
+        "signal_type_id": "fixture_yoga_signal",
+        "signature_tier": null,
+        "valence_source": null,
+        "argala_modifier": null,
+        "aspect_modifier": null,
+        "epistemic_jsonb": null,
+        "signature_class": null,
+        "source_l1_asset": "ga_yoga",
+        "signal_tradition": "parashari",
+        "source_subsystem": "ganita",
+        "computed_salience": 1.0,
+        "producer_asset_id": "bo_laksana",
+        "signal_type_class": "yoga",
+        "aggregation_member": false,
+        "remedy_hooks_array": null,
+        "configuration_jsonb": {},
+        "pada_precision_flag": null,
+        "ratification_factor": null,
+        "salience_robustness": null,
+        "signal_summary_text": "Sunapha Yoga present (fixture)",
+        "top_k_salience_rank": null,
+        "verification_method": null,
+        "signal_headline_text": null,
+        "verification_rescale": null,
+        "active_duration_class": "long_term",
+        "cancellation_modifier": null,
+        "domain_salience_jsonb": {
+          "wealth": 1.0
+        },
+        "neechabhanga_modifier": null,
+        "present_but_enfeebled": false,
+        "deterministic_strength": 0.8,
+        "domains_affected_array": [
+          "wealth"
+        ],
+        "salience_pctl_in_class": null,
+        "varga_provenance_jsonb": null,
+        "verification_certainty": 0.9,
+        "classical_sources_array": null,
+        "classical_sources_jsonb": null,
+        "constituent_facts_array": [
+          "f100000000000005"
+        ],
+        "house_weight_multiplier": null,
+        "predicted_outcome_class": null,
+        "functional_context_score": null,
+        "graph_edge_pattern_jsonb": null,
+        "recurring_pattern_marker": null,
+        "salience_formula_version": "fixture_salience_v1",
+        "salience_inputs_complete": false,
+        "shared_factor_keys_jsonb": null,
+        "system_convergence_count": null,
+        "vargottama_amplification": null,
+        "verification_pass_status": "two_pass_verified",
+        "constituent_signals_array": null,
+        "contradicts_signals_array": null,
+        "active_dasha_periods_jsonb": null,
+        "relationship_classification": null,
+        "cross_system_consensus_count": null,
+        "channel_render_priority_jsonb": null,
+        "salience_conditioned_by_jsonb": null,
+        "divisional_corroboration_count": null,
+        "ashtakavarga_support_multiplier": null,
+        "graha_weakness_indicators_jsonb": null,
+        "activation_predicted_dates_jsonb": null,
+        "cross_domain_shared_factor_count": null,
+        "dasha_activation_proximity_score": null,
+        "strength_normalized_to_chart_max": null,
+        "cross_ayanamsha_consistency_score": null,
+        "salience_confidence_interval_jsonb": null,
+        "source_corroboration_count_by_text": null,
+        "source_corroboration_count_by_verse": null,
+        "graph_node_strength_contribution_jsonb": null
+      }
+    ]
+  },
+  "verdicts": {
+    "V-C0-S3": {
+      "predicted": "sunapha absent from query_yoga_catalog output",
+      "measured": "total_matching=0, sunapha rows=0",
+      "verdict": "PASS"
+    },
+    "V-R2-S4": {
+      "predicted": "sunapha firing row STILL PRESENT; catalog_classical_citations -> NULL",
+      "measured": "row present (id=1, ayanamsha=surya_siddhanta_classical), catalog_classical_citations=NULL",
+      "verdict": "PASS"
+    },
+    "V-R1-S5": {
+      "predicted": "firings lose exactly the sunapha/surya_siddhanta row; others byte-identical",
+      "measured": "R1 rerun did not complete: InsufficientPrivilege: permission denied for table build_runs; grant-workaround probe R1 also failed: RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output",
+      "verdict": "UNMEASURED"
+    },
+    "V-R2-S6": {
+      "predicted": "sunapha firing row absent entirely",
+      "measured": "premise broken (R1 rerun failed); actual served state: row PRESENT",
+      "verdict": "UNMEASURED"
+    },
+    "V-R3-S7": {
+      "predicted": "catalog_ids ['sunapha']->[]; rule_ids {a5d58ce9\u2026, cf36fd63\u2026}->[]; citations ['bphs:30','saravali:38'] unchanged; classical_sources_jsonb NOT NULL; corroboration stays 2",
+      "measured": "R3 rebuild did not complete: ContractError: missing completed selected L1 dependencies: ['ga_yoga']",
+      "verdict": "UNMEASURED"
+    }
+  },
+  "findings": [
+    {
+      "id": "F-W-L0-7-9",
+      "step": "1/R1-baseline",
+      "summary": "open_l1_data_plane_generation (SECURITY DEFINER, owner data_plane_l1_owner) checks build_runs/build_run_assets existence (1035:599-611) but the owner role holds no SELECT grant on either table (grant probe 2026-09-26: only amjis_app holds any privilege on them) \u2014 the decorated R1 dies inside open_l1 before the writer body. open_l2_data_plane_generation carries the same check (1036:951-963) under data_plane_l2_owner with the same missing grant; not measurable here because R3 fails earlier at upstream resolution (F-W-L0-7-8)",
+      "error_text": "InsufficientPrivilege: permission denied for table build_runs\nCONTEXT:  SQL expression \"p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n     OR NOT EXISTS (\n       SELECT 1\n       FROM public.build_runs br\n       JOIN public.build_run_assets bra ON bra.run_id = br.id\n       WHERE br.id = p_generation_id::uuid\n         AND br.chart_id = p_chart_id\n         AND br.state = 'running'\n         AND bra.asset_id = p_asset_id\n         AND bra.state = 'building'\n     )\"\nPL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 225, in run_ga_yoga\n    res = writer.run_substep(ctx, step)  # decorated: open+writer+complete\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 175, in guarded\n    _open_partition(\n    ~~~~~~~~~~~~~~~^\n        ctx,\n        ^^^^\n    ...<2 lines>...\n        expected_partitions=expected,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 103, in _open_partition\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<17 lines>...\n        ),\n        ^^\n    )\n    ^\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.InsufficientPrivilege: permission denied for table build_runs\nCONTEXT:  SQL expression \"p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'\n     OR NOT EXISTS (\n       SELECT 1\n       FROM public.build_runs br\n       JOIN public.build_run_assets bra ON bra.run_id = br.id\n       WHERE br.id = p_generation_id::uuid\n         AND br.chart_id = p_chart_id\n         AND br.state = 'running'\n         AND bra.asset_id = p_asset_id\n         AND bra.state = 'building'\n     )\"\nPL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF\n",
+      "evidence": "1035:599-611 (PL/pgSQL line 18: build_runs/build_run_assets existence check); grant probe (information_schema.role_table_grants): no data_plane_l1_owner priv on either table"
+    },
+    {
+      "id": "F-W-L0-7-5",
+      "step": "1/R1-baseline (grant-workaround probe)",
+      "summary": "ga_yoga writer plans 5 ayanamsha substeps but the fixture seeds chart_facts for surya_siddhanta_classical only; the first substep (ayanamsha_lahiri_chitrapaksha) finds 0 facts, writes 0 rows, and complete_l1_data_plane_partition rejects the undeclared empty partition (asset_registry.target_floor=63 \u2260 0). Measured via the disclosed grant workaround because F-W-L0-7-9 otherwise masks it",
+      "error_text": "RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output\nCONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 225, in run_ga_yoga\n    res = writer.run_substep(ctx, step)  # decorated: open+writer+complete\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 182, in guarded\n    _complete_partition(\n    ~~~~~~~~~~~~~~~~~~~^\n        ctx,\n        ^^^^\n    ...<2 lines>...\n        rows_inserted=int(result.rows_inserted),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/ga_writers/data_plane_runtime.py\", line 135, in _complete_partition\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<4 lines>...\n        (chart_id, asset_id, build_id, partition_key, rows_inserted),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/lib/python3.13/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output\nCONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE\n",
+      "evidence": "ga_yoga.py:45-52 (5-substep plan); ga_yoga_writer.py:147-156 + :2822-2828 (no facts \u2192 return 0); 1035:1385-1389 (undeclared empty output); asset_registry target_floor probe"
+    },
+    {
+      "id": "F-W-L0-7-8",
+      "step": "1/R3-baseline",
+      "summary": "bo_laksana cannot resolve its upstream vector: ga_yoga is in its transitive L1 closure but has no generation head (R1 baseline failed), so _resolve_upstream_context raises before bind/open",
+      "error_text": "ContractError: missing completed selected L1 dependencies: ['ga_yoga']\n--- traceback tail ---\nTraceback (most recent call last):\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/run_readings.py\", line 269, in run_bo_laksana\n    vector, _calc = _resolve_upstream_context(\n                    ~~~~~~~~~~~~~~~~~~~~~~~~~^\n        conn, chart_id=CHART_ID, asset_id=\"bo_laksana\",\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        partition_key=\"aya_lahiri_chitrapaksha\")\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/Dev/madhav-l3/l0-exec/platform/python-sidecar/bodha_writers/data_plane_contracts.py\", line 266, in _resolve_upstream_context\n    raise ContractError(f\"missing completed selected L1 dependencies: {missing}\")\nbodha_writers.data_plane_contracts.ContractError: missing completed selected L1 dependencies: ['ga_yoga']\n",
+      "evidence": "bodha_writers/data_plane_contracts.py:262-266 (missing completed selected L1 dependencies)"
+    },
+    {
+      "id": "F-W-L0-7-7",
+      "step": "probe",
+      "summary": "1036 pg_temp bind shadows are unreadable by the writer role: bind_l2_exact_inputs (SECURITY DEFINER, owner data_plane_l2_owner) creates the chart_facts shadow with relacl NULL; pg_temp precedes public in name resolution, so the decorated bo_laksana run's unqualified chart_facts reads land on a shadow it cannot SELECT",
+      "error_text": "InsufficientPrivilege: permission denied for table chart_facts",
+      "evidence": "probe_shadow_acl: bind_l2_exact_inputs with the 11-head vector succeeds, then SELECT count(*) FROM chart_facts as session_user=data_plane_builder raises"
+    }
+  ]
+}

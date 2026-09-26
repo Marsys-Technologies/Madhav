@@ -1,10 +1,15 @@
-# L0-W7 Data-Plane Fixture — Rehearsal Notes v1.1
+# L0-W7 Data-Plane Fixture — Rehearsal Notes v1.2
 
 **Date**: 2026-09-26
 **Branch**: `l0/brahmagyan-exec`
 **Design law**: `00_ARCHITECTURE/briefs/nirmana/L0_W_L0_7_PACKET_REPORT_v1_0.md` v1.4
 **Builder**: `scripts/l0harness/build_fixture.py`
 **Result**: `BUILD GREEN` — 33/33 gates, two consecutive end-to-end runs (fresh DB each run).
+
+v1.2 adds §8 (readings runner: first decorated-path execution of the frozen
+9-step sequence; 2 PASS / 3 UNMEASURED verdicts; F-W-L0-7-5/-7/-8 confirmed
+and new F-W-L0-7-9 measured) and corrects §6's stale "integer identity"
+claim for chart_facts.chart_id.
 
 v1.1 corrects v1.0: v1.0 cited a nonexistent brief
 (`L0_W7_DATA_PLANE_CAMPAIGN_BRIEF_v1_0.md`) and branch
@@ -264,9 +269,12 @@ authentication` (`l1_data_plane_guard_active_mutation()` line 15).
 - **`yoga_label` and `graha_shadbala_total` fact categories are unowned** in
   `fact_category_ownership` — seed rows in those categories are only possible
   pre-trigger (guard checks ownership for chart_facts writes).
-- **`chart_facts.chart_id` joins `charts.id`** (integer identity), not a UUID —
-  the fixture chart uses `f0000000-…-000000000001` as the charts row's UUID
-  column and joins by the integer id.
+- **`chart_facts.chart_id` joins `charts.id` by UUID directly** — `charts.id`
+  is `uuid` (`f0000000-…-000000000001` for the fixture chart) and
+  `chart_facts.chart_id` carries the same value; there is no integer-identity
+  indirection (corrected 2026-09-26, readings-runner verification:
+  `information_schema.columns` shows `charts.id uuid`; v1.1's "integer
+  identity" note was wrong).
 - **ga_positions owns 0 fact categories**; production ownership is 64
   ga_structural, 2 ga_condition, 1 ga_ayurdaya (67 total exported).
 - **The five `bg_prashna_*` tables exist in production** but are outside the
@@ -284,3 +292,116 @@ authentication` (`l1_data_plane_guard_active_mutation()` line 15).
 | 6 | negative gate FAIL — syntax error in gate's own INSERT (unquoted UUID literal), guard never reached | quoted the literal; gate now exercises the guard |
 | 7 | raw import corrupted escaped quotes: `\copy` text format interprets backslash escapes (`\"Poison` → `"Poison`), breaking JSON on `brahma_ontology` | `\copy … WITH (FORMAT csv, DELIMITER E'\x07', QUOTE E'\x06')` — bytes JSON can never carry raw; Python asserts 0x06/0x07 absent first |
 | 8 | j3 contract check false-failed: `query_scalar` is line-splitting, so the multi-line contract compared as `"SELECT"`; the trailing-newline diff was psql's row terminator, not data | full-text fetch preserving newlines, newline-normalized comparison |
+
+---
+
+## 8. Readings runner (W-L0-7 9-step decorated-path rehearsal, 2026-09-26)
+
+Runner: `scripts/l0harness/run_readings.py` (+ `read_serve.ts` tsx bridge).
+Full output: `run_readings_20260926.log`; machine state:
+`reading_verdicts.json`. Command:
+
+```
+cd platform && /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3 scripts/l0harness/run_readings.py
+```
+
+The runner rebuilds the fixture (step 0), then executes the frozen 9-step
+sequence from the packet report v1.5 "Predicted movement" against the real
+decorated path (`dry_run=False`) on a direct `data_plane_builder` psycopg
+connection — `session_user`, never `SET ROLE` (1035:578-580, 1036:805-807,
+1036:941-943 check `session_user`; SET ROLE would not satisfy it).
+
+### Measured verdicts vs the frozen matrix
+
+| Verdict | Predicted | Measured | Result |
+|---|---|---|---|
+| V-C0-S3 | sunapha absent from `query_yoga_catalog` | `total_matching=0`, sunapha rows=0 | **PASS** |
+| V-R2-S4 | firing row PRESENT, `catalog_classical_citations` → NULL | row id=1 present, citations NULL | **PASS** |
+| V-R1-S5 | firings lose exactly the sunapha/surya_siddhanta row | R1 cannot complete (F-W-L0-7-9; workaround probe hits F-W-L0-7-5) | **UNMEASURED** |
+| V-R2-S6 | sunapha firing row absent | premise broken; actual served state: row PRESENT | **UNMEASURED** |
+| V-R3-S7 | catalog_ids/rule_ids → [], citations unchanged | R3 fails at upstream resolution (F-W-L0-7-8) | **UNMEASURED** |
+
+Step 9 (RESEED + REPLAY) green: catalog row re-inserted via
+`jsonb_populate_record`, link set exact, replay C0 `total_matching=1`, R2
+citations restored.
+
+### Findings measured by the run (verbatim errors in the log/JSON)
+
+- **F-W-L0-7-9 (NEW, masks everything downstream).**
+  `InsufficientPrivilege: permission denied for table build_runs` raised
+  inside `open_l1_data_plane_generation` (PL/pgSQL line 18 at IF — the
+  build_runs/build_run_assets existence check, 1035:599-611). The function is
+  SECURITY DEFINER owned by `data_plane_l1_owner`, which holds **no SELECT
+  grant on build_runs/build_run_assets** (grant probe: only amjis_app holds
+  any privilege on them). The decorated R1 dies before the writer body.
+  `open_l2_data_plane_generation` carries the same check (1036:951-963) under
+  `data_plane_l2_owner` with the same missing grant — not measurable here
+  because R3 fails earlier (F-W-L0-7-8). Whether production grants this is
+  unverifiable from the rehearsal cluster (production proxy password
+  unavailable); the fixture's grant set is the production-probed one, so the
+  defect reproduces with production-faithful grants.
+- **F-W-L0-7-5 (confirmed).** Measured via the disclosed grant workaround
+  (below): `RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has
+  undeclared empty output` (`complete_l1_data_plane_partition` line 75 at
+  RAISE). The ga_yoga writer plans 5 ayanamsha substeps; the fixture seeds
+  chart_facts for surya_siddhanta_classical only, so the first substep finds
+  0 facts → 0 rows → complete_l1 rejects the undeclared empty partition
+  (asset_registry.target_floor=63 ≠ 0). Identical error pre- and
+  post-perturbation — the catalog perturbation never reaches the R1 path.
+- **F-W-L0-7-8 (confirmed).** R3 pre-flight:
+  `ContractError: missing completed selected L1 dependencies: ['ga_yoga']`
+  (`bodha_writers/data_plane_contracts.py:262-266`). ga_yoga is in
+  bo_laksana's transitive L1 closure but has no generation head (R1 failed),
+  so `_resolve_upstream_context` raises before bind/open. Fires identically
+  at baseline and post-perturb.
+- **F-W-L0-7-7 (re-measured through the real bind path).**
+  `InsufficientPrivilege: permission denied for table chart_facts`:
+  `bind_l2_exact_inputs` (SECURITY DEFINER, owner data_plane_l2_owner) builds
+  pg_temp shadows with relacl NULL; pg_temp precedes public in name
+  resolution, so the writer role's unqualified `chart_facts` reads land on a
+  shadow it cannot SELECT. Probe used the 11-head vector (bind only validates
+  each element vs heads, 1036:813-828 — no closure-completeness check, so the
+  bind succeeds even with ga_yoga headless).
+
+### Runner deviations (disclosed)
+
+1. **Serve role = data_plane_builder, not amjis_app.** amjis_app holds no
+   SELECT on ga_yoga_firings in the production-probed grant set
+   (`grants.json`); data_plane_builder does. `read_serve.ts` honors
+   `DATABASE_URL`, so the reads run as data_plane_builder. C0/R2 handlers are
+   role-agnostic apart from table grants.
+2. **build_runs lifecycle rows inserted as superuser.** data_plane_builder
+   holds no INSERT on build_runs/build_run_assets (owner amjis_app; only
+   amjis_app grants exist) — the harness mirrors
+   `run_heavy_writer_standalone.py:121-141`, which does the same on its own
+   connection. State transitions use the fixture-valid CHECK values
+   (`failed`/`error`; there is no `last_error` column — error text goes to
+   `build_run_assets.error`).
+3. **Grant-workaround probe (temporary GRANT + REVOKE, superuser).** To
+   measure F-W-L0-7-5 past the F-W-L0-7-9 mask, the runner temporarily runs
+   `GRANT SELECT ON build_runs, build_run_assets TO data_plane_l1_owner`,
+   reruns R1, then REVOKES — mirroring this fixture's own doctrine (solve
+   surprises in the builder/roles, never edit migrations or consumer/writer
+   SQL). Both the masked error (F-W-L0-7-9) and the unmasked error
+   (F-W-L0-7-5) are recorded as findings; the main-path verdicts use the
+   no-workaround result.
+4. **R3 bind prime.** F-W-L0-7-1 (decorator opens before binding, but
+   1036:984-996 requires a pre-existing pg_temp receipt): each R3 run primes
+   exactly one `bind_l2_exact_inputs(chart_id, vector)` in the same
+   transaction first. Receipt/shadows are ON COMMIT DROP, so the whole R3 run
+   stays in ONE transaction. (Moot in this run — R3 never reaches bind —
+   but the prime path is what the probe in finding F-W-L0-7-7 exercises.)
+
+### Fixture-coverage gaps surfaced (for a future fixture revision)
+
+- ga_yoga needs seeded chart_facts for all 5 planned ayanamshas (or a
+  declared-empty carve-out) for R1 to complete; today only
+  surya_siddhanta_classical is seeded → F-W-L0-7-5.
+- The seeded `yoga_label` fact f…005 is not in the snapshot v_map, so the L2
+  chart_facts shadow would lack the R3 target fact even if R3 ran.
+- The sunapha formation rule (planet_not_sun_in_2nd_from_moon) is unevaluable
+  from seeded facts (no MOON position row): any successful R1 rerun would
+  DELETE the seeded firing and not recreate it, destroying the step-4
+  pre-registered state. This compounds V-R1-S5's premise: the frozen matrix's
+  "lose exactly the sunapha row" can only hold if the writer re-derives
+  sunapha, which this fixture's fact coverage does not support.

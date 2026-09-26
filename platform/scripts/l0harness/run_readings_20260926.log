@@ -1,0 +1,105 @@
+[run_readings] ═══ W-L0-7 readings runner — decorated-path rehearsal ═══
+[run_readings] step 0: rebuilding fixture (build_fixture.py)
+[run_readings]   build_fixture: [build_fixture]   brahma_dasha_systems           20 rows  sha256:fa88f03544ef796a…  [full table (no filter)]
+[run_readings]   build_fixture: [build_fixture] fixture database madhav_l0w7_fixture on 127.0.0.1:55433 is ready
+[run_readings]   build_fixture: [build_fixture] BUILD GREEN
+[run_readings] step 0: state-B gate green (sutravali 3002/7, sunapha present, link set exact, seeded firing present, 11 L1 heads)
+[run_readings] ── step 1: BASELINE (R1 then R3, snapshots)
+[run_readings] R1[baseline]: build_runs lifecycle 855d7821-1320-4f45-82e9-919255a27e04 (scope=asset, ga_yoga)
+[run_readings] R1[baseline] substep ayanamsha_lahiri_chitrapaksha FAILED: InsufficientPrivilege: permission denied for table build_runs
+CONTEXT:  SQL expression "p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+     OR NOT EXISTS (
+       SELECT 1
+       FROM public.build_runs br
+       JOIN public.build_run_assets bra ON bra.run_id = br.id
+       WHERE br.id = p_generation_id::uuid
+         AND br.chart_id = p_chart_id
+         AND br.state = 'running'
+         AND bra.asset_id = p_asset_id
+         AND bra.state = 'building'
+     )"
+PL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF
+[run_readings] FINDING F-W-L0-7-9 (1/R1-baseline): open_l1_data_plane_generation (SECURITY DEFINER, owner data_plane_l1_owner) checks build_runs/build_run_assets existence (1035:599-611) but the owner role holds no SELECT grant on either table (grant probe 2026-09-26: only amjis_app holds any privilege on them) — the decorated R1 dies inside open_l1 before the writer body. open_l2_data_plane_generation carries the same check (1036:951-963) under data_plane_l2_owner with the same missing grant; not measurable here because R3 fails earlier at upstream resolution (F-W-L0-7-8)
+[run_readings] step 1 probe: temporary GRANT SELECT on build_runs to data_plane_l1_owner (disclosed; revoked after) to measure the downstream failure the packet predicts
+[run_readings] probe[baseline]: GRANT SELECT ON build_runs, build_run_assets TO data_plane_l1_owner (temporary, disclosed)
+[run_readings] R1[probe-grant-workaround/baseline]: build_runs lifecycle b2941b56-7a4b-471b-814e-ed266c71d678 (scope=asset, ga_yoga)
+[ga_yoga_writer] No chart_facts found for chart=f0000000-0000-4000-8000-000000000001 ayanamsha=lahiri_chitrapaksha — skipping
+[run_readings] R1[probe-grant-workaround/baseline] substep ayanamsha_lahiri_chitrapaksha FAILED: RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output
+CONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE
+[run_readings] probe[baseline]: workaround grant REVOKED
+[run_readings] FINDING F-W-L0-7-5 (1/R1-baseline (grant-workaround probe)): ga_yoga writer plans 5 ayanamsha substeps but the fixture seeds chart_facts for surya_siddhanta_classical only; the first substep (ayanamsha_lahiri_chitrapaksha) finds 0 facts, writes 0 rows, and complete_l1_data_plane_partition rejects the undeclared empty partition (asset_registry.target_floor=63 ≠ 0). Measured via the disclosed grant workaround because F-W-L0-7-9 otherwise masks it
+[run_readings] R3[baseline]: build_runs lifecycle 5b52077c-81ef-4278-bab2-3c05cb24f322 (scope=asset, bo_laksana)
+[run_readings] R3[baseline] pre-flight FAILED: ContractError: missing completed selected L1 dependencies: ['ga_yoga']
+[run_readings] FINDING F-W-L0-7-8 (1/R3-baseline): bo_laksana cannot resolve its upstream vector: ga_yoga is in its transitive L1 closure but has no generation head (R1 baseline failed), so _resolve_upstream_context raises before bind/open
+[run_readings] step 1: baseline snapshots — firings=1, msr=1, C0 total=1, R2 total=1
+[run_readings] ── step 2: PERTURB — DELETE sunapha catalog row (as superuser, per brief)
+[run_readings] step 2: sunapha catalog row deleted (rowcount=1); pre-image captured
+[run_readings] ── step 3: C0 read (query_yoga_catalog)
+[run_readings] step 3: C0 total_matching=0
+[run_readings] ── step 4: R2 stale read (get_yoga_firings, no writer rerun yet)
+[run_readings] step 4: R2 sunapha row=PRESENT, catalog_classical_citations=NULL
+[run_readings] ── step 5: R1 rerun (all 5 ayanamsha substeps, perturbed catalog)
+[run_readings] R1[post-perturb]: build_runs lifecycle bdfdcc86-d745-4d78-8f3a-e192fdf56fa8 (scope=asset, ga_yoga)
+[run_readings] R1[post-perturb] substep ayanamsha_lahiri_chitrapaksha FAILED: InsufficientPrivilege: permission denied for table build_runs
+CONTEXT:  SQL expression "p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+     OR NOT EXISTS (
+       SELECT 1
+       FROM public.build_runs br
+       JOIN public.build_run_assets bra ON bra.run_id = br.id
+       WHERE br.id = p_generation_id::uuid
+         AND br.chart_id = p_chart_id
+         AND br.state = 'running'
+         AND bra.asset_id = p_asset_id
+         AND bra.state = 'building'
+     )"
+PL/pgSQL function open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text) line 18 at IF
+[run_readings] step 5: R1 rerun failed at ayanamsha_lahiri_chitrapaksha — recorded; downstream verdicts conditional
+[run_readings] step 5 probe: grant-workaround rerun to check whether the perturbed catalog changes the R1 failure mode
+[run_readings] probe[post-perturb]: GRANT SELECT ON build_runs, build_run_assets TO data_plane_l1_owner (temporary, disclosed)
+[run_readings] R1[probe-grant-workaround/post-perturb]: build_runs lifecycle 9acdbab8-fba6-46af-90e6-c7ca04a9d2a6 (scope=asset, ga_yoga)
+[ga_yoga_writer] No chart_facts found for chart=f0000000-0000-4000-8000-000000000001 ayanamsha=lahiri_chitrapaksha — skipping
+[run_readings] R1[probe-grant-workaround/post-perturb] substep ayanamsha_lahiri_chitrapaksha FAILED: RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output
+CONTEXT:  PL/pgSQL function complete_l1_data_plane_partition(uuid,text,text,text,integer) line 75 at RAISE
+[run_readings] probe[post-perturb]: workaround grant REVOKED
+[run_readings] ── step 6: R2 read (post-rerun)
+[run_readings] step 6: R2 sunapha row=PRESENT
+[run_readings] ── step 7: R3 rebuild (bind prime with current vector)
+[run_readings] R3[post-perturb]: build_runs lifecycle 2f72ce17-355b-479f-8bbf-4d447cfd33de (scope=asset, bo_laksana)
+[run_readings] R3[post-perturb] pre-flight FAILED: ContractError: missing completed selected L1 dependencies: ['ga_yoga']
+[run_readings] ── probe: 1036 pg_temp shadow ACL (auxiliary, non-verdict)
+[run_readings] FINDING F-W-L0-7-7 (probe): 1036 pg_temp bind shadows are unreadable by the writer role: bind_l2_exact_inputs (SECURITY DEFINER, owner data_plane_l2_owner) creates the chart_facts shadow with relacl NULL; pg_temp precedes public in name resolution, so the decorated bo_laksana run's unqualified chart_facts reads land on a shadow it cannot SELECT
+[run_readings] ── step 8: verdict vs frozen matrix
+[run_readings] ── step 9: RESEED sunapha catalog row + REPLAY reads
+[run_readings] step 9: reseeded; replay C0 total=1, R2 citations restored=True
+
+═══ VERDICT TABLE (frozen matrix vs measured) ═══
+V-C0-S3: PASS
+  predicted: sunapha absent from query_yoga_catalog output
+  measured:  total_matching=0, sunapha rows=0
+V-R2-S4: PASS
+  predicted: sunapha firing row STILL PRESENT; catalog_classical_citations -> NULL
+  measured:  row present (id=1, ayanamsha=surya_siddhanta_classical), catalog_classical_citations=NULL
+V-R1-S5: UNMEASURED
+  predicted: firings lose exactly the sunapha/surya_siddhanta row; others byte-identical
+  measured:  R1 rerun did not complete: InsufficientPrivilege: permission denied for table build_runs; grant-workaround probe R1 also failed: RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output
+V-R2-S6: UNMEASURED
+  predicted: sunapha firing row absent entirely
+  measured:  premise broken (R1 rerun failed); actual served state: row PRESENT
+V-R3-S7: UNMEASURED
+  predicted: catalog_ids ['sunapha']->[]; rule_ids {a5d58ce9…, cf36fd63…}->[]; citations ['bphs:30','saravali:38'] unchanged; classical_sources_jsonb NOT NULL; corroboration stays 2
+  measured:  R3 rebuild did not complete: ContractError: missing completed selected L1 dependencies: ['ga_yoga']
+
+═══ FINDINGS ═══
+F-W-L0-7-9 (1/R1-baseline): open_l1_data_plane_generation (SECURITY DEFINER, owner data_plane_l1_owner) checks build_runs/build_run_assets existence (1035:599-611) but the owner role holds no SELECT grant on either table (grant probe 2026-09-26: only amjis_app holds any privilege on them) — the decorated R1 dies inside open_l1 before the writer body. open_l2_data_plane_generation carries the same check (1036:951-963) under data_plane_l2_owner with the same missing grant; not measurable here because R3 fails earlier at upstream resolution (F-W-L0-7-8)
+  error: InsufficientPrivilege: permission denied for table build_runs
+  evidence: 1035:599-611 (PL/pgSQL line 18: build_runs/build_run_assets existence check); grant probe (information_schema.role_table_grants): no data_plane_l1_owner priv on either table
+F-W-L0-7-5 (1/R1-baseline (grant-workaround probe)): ga_yoga writer plans 5 ayanamsha substeps but the fixture seeds chart_facts for surya_siddhanta_classical only; the first substep (ayanamsha_lahiri_chitrapaksha) finds 0 facts, writes 0 rows, and complete_l1_data_plane_partition rejects the undeclared empty partition (asset_registry.target_floor=63 ≠ 0). Measured via the disclosed grant workaround because F-W-L0-7-9 otherwise masks it
+  error: RaiseException: L1 partition ayanamsha_lahiri_chitrapaksha has undeclared empty output
+  evidence: ga_yoga.py:45-52 (5-substep plan); ga_yoga_writer.py:147-156 + :2822-2828 (no facts → return 0); 1035:1385-1389 (undeclared empty output); asset_registry target_floor probe
+F-W-L0-7-8 (1/R3-baseline): bo_laksana cannot resolve its upstream vector: ga_yoga is in its transitive L1 closure but has no generation head (R1 baseline failed), so _resolve_upstream_context raises before bind/open
+  error: ContractError: missing completed selected L1 dependencies: ['ga_yoga']
+  evidence: bodha_writers/data_plane_contracts.py:262-266 (missing completed selected L1 dependencies)
+F-W-L0-7-7 (probe): 1036 pg_temp bind shadows are unreadable by the writer role: bind_l2_exact_inputs (SECURITY DEFINER, owner data_plane_l2_owner) creates the chart_facts shadow with relacl NULL; pg_temp precedes public in name resolution, so the decorated bo_laksana run's unqualified chart_facts reads land on a shadow it cannot SELECT
+  error: InsufficientPrivilege: permission denied for table chart_facts
+  evidence: probe_shadow_acl: bind_l2_exact_inputs with the 11-head vector succeeds, then SELECT count(*) FROM chart_facts as session_user=data_plane_builder raises
+[run_readings] reading_verdicts.json written (/Users/Dev/madhav-l3/l0-exec/platform/scripts/l0harness/reading_verdicts.json)
