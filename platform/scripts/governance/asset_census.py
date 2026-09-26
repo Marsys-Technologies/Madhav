@@ -362,20 +362,81 @@ def build_history(prefix: str) -> dict:
                 f"WHERE a.asset_id LIKE '{prefix}%' ORDER BY a.asset_id, r.created_at")
     for aid, scope, state, disp, when, err in ((x + [""] * 6)[:6] for x in rows):
         d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
-                                     scopes=set(), last_state="", last_when="", sample_error=""))
+                                     blocked=0, scopes=set(), last_state="", last_when="",
+                                     last_disposition="", sample_error="", sample_blocked=""))
         d["runs"] += 1
         d[state] = d.get(state, 0) + 1
         if disp == "skip_no_delta":
             d["skipped"] += 1
+        # Packet B1: 'blocked_dependency' (migration 1095) marks a row whose writer never
+        # ran because an upstream dependency failed/was blocked in the SAME run — a
+        # cascade CONSEQUENCE, not its own root cause. Tracked separately from the plain
+        # `error` tally so grading below can count "one cause, N blocked" instead of
+        # grading a chart FAIL/PARTIAL purely from downstream cascade noise
+        # (B1_before_20260926T173931Z.json §4 — asset_census was the worst offender:
+        # it already read `disposition` for skip_no_delta but never checked this value).
+        if state == "error" and disp == "blocked_dependency":
+            d["blocked"] += 1
+            if err and not d["sample_blocked"]:
+                d["sample_blocked"] = err
         d["scopes"].add(scope)
-        d["last_state"], d["last_when"] = state, when
-        if state == "error" and err and not d["sample_error"]:
+        d["last_state"], d["last_when"], d["last_disposition"] = state, when, disp
+        if state == "error" and disp != "blocked_dependency" and err and not d["sample_error"]:
             d["sample_error"] = err
     glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
     glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
                          f"WHERE r.scope='global' AND a.asset_id LIKE '{prefix}%'") or 0)
     lit = {r[0] for r in psql("SELECT asset_id FROM asset_throughput WHERE state='lit'")}
     return dict(per=per, global_runs=glob, global_with_layer=glob_l0, lit=lit)
+
+
+def _grade_build_history(h: dict) -> dict:
+    """Grade one asset's Build.history verdict from its build_history() per-asset dict `h`.
+
+    Extracted as its own pure function (Packet B1) so this grading arithmetic is
+    unit-testable directly against a hand-built `h`, without mocking psql/scalar for
+    the whole measure() pipeline.
+
+    Packet B1: a cascade-blocked row (disposition='blocked_dependency', migration 1095)
+    is a CONSEQUENCE, never its own cause — it must not by itself grade a chart
+    FAIL/PARTIAL. Before this fix, asset_census already read `disposition` (for
+    skip_no_delta) but never checked this value at all — a chart whose every build
+    blemish was downstream cascade from someone else's failure was graded exactly as
+    if it had real defects of its own (B1_before_20260926T173931Z.json §4, the packet's
+    most consequential surface: a governance signal, not just a UI cosmetic).
+
+    `genuine_error` excludes blocked rows from the count this grading acts on;
+    `last_run_was_blocked_only` excludes a purely-cascade most-recent-run from the
+    "most recent run failed" FAIL trigger specifically. `h['blocked']` is still
+    surfaced in every branch's `measured` text — never silently dropped (§N.6: count
+    it, don't hide it; a chart with genuinely zero non-cascade defects grades PASS,
+    not NA, so the blocked count doesn't vanish from the report).
+    """
+    genuine_error = h["error"] - h["blocked"]
+    bad = genuine_error + h["aborted"]
+    last_run_was_blocked_only = (
+        h["last_state"] == "error" and h["last_disposition"] == "blocked_dependency"
+    )
+    if h["last_state"] in ("error", "aborted") and not last_run_was_blocked_only:
+        return dict(v=FAIL, measured=f"most recent run {h['last_state']} ({h['last_when']}); {genuine_error} error(s), {h['aborted']} abort(s), {h['blocked']} blocked_dependency (cascade, not counted as failure). {h['sample_error']}")
+    if bad:
+        return dict(v=PARTIAL, measured=f"latest run complete, but {genuine_error} error(s) and {h['aborted']} abort(s) on record ({h['blocked']} additional blocked_dependency row(s) excluded as cascade-only). {h['sample_error']}")
+    if h["blocked"]:
+        # C-4 (review B1_review_20260926T182200Z.md, §N.8): PASS must require at
+        # least one EARNED completion, not merely "zero genuine errors". Without
+        # this guard, an asset that has NEVER once completed a build — every
+        # attempt cascade-blocked, none of them its own fault — would grade PASS
+        # from an all-cascade history alone: a green signal with no detector
+        # behind the claim "this asset builds successfully" (the exact §N.8
+        # defect class). Measured against live production at review time: 0 of
+        # 124 assets currently hit this branch (6 FAIL->FAIL, 7 FAIL->PARTIAL, 89
+        # PARTIAL->PARTIAL, 22 PASS->PASS, zero flips to PASS) — latent, not live,
+        # but the path exists and would fire the moment a new asset is added
+        # downstream of a chronically-failing root.
+        if h["complete"] == 0:
+            return dict(v=PARTIAL, measured=f"0 complete — this asset has NEVER once finished a build; {h['blocked']} blocked_dependency row(s) were all downstream cascade ({h['sample_blocked']}), not a defect of this asset, but a history with zero completions cannot grade PASS on the strength of 'no genuine error' alone; {h['skipped']} skip_no_delta")
+        return dict(v=PASS, measured=f"{h['complete']} complete, no genuine error or abort; {h['blocked']} blocked_dependency row(s) were all downstream cascade from an upstream failure, not a defect of this asset ({h['sample_blocked']}); {h['skipped']} skip_no_delta (healthy)")
+    return dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
 
 
 def declared_keys(table: str) -> list[list[str]]:
@@ -540,13 +601,7 @@ def measure(layer_key: str) -> dict:
             m["Build.history"] = dict(v=NA, measured="never run; check 7 owns this")
         else:
             m["Build.exercised"] = dict(v=PASS, measured=f"{h['runs']} run(s), scope(s): {', '.join(sorted(h['scopes']))}, last {h['last_when']}")
-            bad = h["error"] + h["aborted"]
-            if h["last_state"] in ("error", "aborted"):
-                m["Build.history"] = dict(v=FAIL, measured=f"most recent run {h['last_state']} ({h['last_when']}); {h['error']} error(s), {h['aborted']} abort(s). {h['sample_error']}")
-            elif bad:
-                m["Build.history"] = dict(v=PARTIAL, measured=f"latest run complete, but {h['error']} error(s) and {h['aborted']} abort(s) on record. {h['sample_error']}")
-            else:
-                m["Build.history"] = dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
+            m["Build.history"] = _grade_build_history(h)
 
         dead = [d for d in r["depends_on"] if d not in hist["lit"]]
         m["Build.dep_liveness"] = dict(
