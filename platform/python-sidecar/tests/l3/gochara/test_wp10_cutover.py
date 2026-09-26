@@ -134,7 +134,10 @@ CREATE TABLE asset_registry (
   asset_id TEXT PRIMARY KEY,
   target_table TEXT,
   count_sql TEXT,
-  clear_tables TEXT,
+  -- text[], matching production (migration 1091 header; step05_evidence.md
+  -- information_schema). Declared TEXT here before the ADK-0013 fidelity fix,
+  -- which let step 5's malformed '[...]' literal pass rehearsal.
+  clear_tables TEXT[],
   integrity_check_sql TEXT,
   depends_on TEXT[],
   scope TEXT,
@@ -226,6 +229,20 @@ def _apply_sql_file(conn, name: str, preset: str | None = None):
     with conn.cursor() as cur:
         if preset:
             cur.execute(preset)
+        cur.execute(sql)
+
+
+MIGRATIONS = SIDECAR.parent / "migrations"
+
+
+def _apply_step05_repin(conn):
+    # The corrected, production-applied form (migration 1091, '{...}' array
+    # literals). The preparation copy scripts/kala_gochara_cutover/
+    # step05_registry_repin.sql intentionally keeps the malformed '[...]'
+    # literal as the record of what was first attempted — applying THAT is the
+    # negative check below, not the rehearsal path.
+    sql = (MIGRATIONS / "1091_wp10_ka_gochara_registry_repin.sql").read_text()
+    with conn.cursor() as cur:
         cur.execute(sql)
 
 
@@ -355,15 +372,15 @@ def test_step04_apply_verify_and_idempotent(db):
 
 def test_step05_repin_fields_and_conjuncts(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
-    _apply_sql_file(db, "step05_registry_repin.sql")
+    _apply_step05_repin(db)
     row = None
     with db.cursor() as cur:
         cur.execute("SELECT count_sql, clear_tables, depends_on, target_table "
                     "FROM asset_registry WHERE asset_id='ka_gochara'")
         row = cur.fetchone()
     assert "generation='4.0'" in row[0] and "kala_gochara_windows " in row[0]
-    assert row[1] == ("[kala_gochara_windows, kala_gochara_contacts, "
-                      "kala_gochara_coverage]")
+    assert row[1] == ["kala_gochara_windows", "kala_gochara_contacts",
+                      "kala_gochara_coverage"]
     assert set(row[2]) == {"bg_ephemeris", "bg_transit_rules",
                            "ka_gochara_resonance", "ka_vedha_gochara",
                            "ka_moorti_nirnaya", "ga_positions", "ga_dashas",
@@ -373,7 +390,7 @@ def test_step05_repin_fields_and_conjuncts(db):
     # century clear_tables declared (F-30)
     assert _scalar(db, "SELECT clear_tables FROM asset_registry "
                        "WHERE asset_id='ka_gochara_v3_century_materialize'") == \
-        "[kala_gochara_windows, kala_gochara_windows_v2]"
+        ["kala_gochara_windows", "kala_gochara_windows_v2"]
     # full contract evaluates green on the seeded fixture
     assert _integrity(db) is True
     # conjunct (f): a '2.0' row in production turns the contract red
@@ -392,7 +409,7 @@ def test_step05_repin_fields_and_conjuncts(db):
 
 def test_step05_conjunct_k_detects_published_over_void(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
-    _apply_sql_file(db, "step05_registry_repin.sql")
+    _apply_step05_repin(db)
     # authority at a '4.x' generation with NO windows and NO published manifest
     with db.cursor() as cur:
         cur.execute("INSERT INTO kala_gochara_authority "
@@ -405,11 +422,24 @@ def test_step05_reversal_restores_registry(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
     before = _scalar(db, "SELECT count_sql FROM asset_registry "
                          "WHERE asset_id='ka_gochara'")
-    _apply_sql_file(db, "step05_registry_repin.sql")
+    _apply_step05_repin(db)
     _apply_sql_file(db, "step05_reversal.sql")
     assert _scalar(db, "SELECT count_sql FROM asset_registry "
                        "WHERE asset_id='ka_gochara'") == before
     assert "'2.0'" in before
+
+
+def test_step05_preparation_copy_malformed_literal_now_fails(db):
+    # Negative check (ADK-0013 harness fidelity fix): the preparation copy of
+    # the step-5 SQL still carries the malformed '[...]' clear_tables literal
+    # that passed rehearsal when this fixture declared clear_tables TEXT.
+    # Against the corrected text[] declaration it must error — i.e. the fixed
+    # harness would have caught the original E-017 defect.
+    _run_script("step04_apply_verify.py", "--dsn", DSN)
+    with pytest.raises(psycopg.Error, match="malformed array literal"):
+        _apply_sql_file(db, "step05_registry_repin.sql")
+    # the copy's own BEGIN leaves an aborted explicit transaction behind
+    db.execute("ROLLBACK")
 
 
 # ── steps 6–8 — candidate build, flip gates, flip ────────────────────────────
@@ -514,7 +544,7 @@ def test_step08_flip_and_reverse(db):
                    (CHART_A,)) == "4.0"
     # conjunct (k) holds because a window exists. The published-over-void case is covered by
     # test_step05_conjunct_k_detects_published_over_void; step 8 now refuses that flip up front.
-    _apply_sql_file(db, "step05_registry_repin.sql")
+    _apply_step05_repin(db)
     assert _integrity(db) is True
     # reversal: authority back to '3.0', manifest rolled_back
     rr = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,

@@ -3,7 +3,7 @@ artifact: WP7_REVIEW_REQUEST_7B_T1
 packet_id: "§7.B-tranche-1"
 version: "2.0"
 status: REVIEWED_BY_ADHIKARIN
-disposition: "REVIEWED_BY_ADHIKARIN 2026-09-27 per ADK-0013 — ACCEPT as the record of a tranche completed GREEN under the native's 2026-09-24T11:39:01Z ruling; residual items disposed: (3) conjunct-(j)/1072 is merge-time information carried to the merger (HOLD_STATE); (4) standing-grant question remains the native's; (5) secret rotation remains the native's (transcript-scope, verified no-commit); harness fidelity fix (test_wp10_cutover.py clear_tables TEXT→text[]) ASSIGNED to this lane. NOT marked REVIEWED: K3/O-2 is separate and unaffected."
+disposition: "REVIEWED_BY_ADHIKARIN 2026-09-27 per ADK-0013 — ACCEPT as the record of a tranche completed GREEN under the native's 2026-09-24T11:39:01Z ruling; residual items disposed: (3) conjunct-(j)/1072 is merge-time information carried to the merger (HOLD_STATE); (4) standing-grant question remains the native's; (5) secret rotation remains the native's (transcript-scope, verified no-commit); harness fidelity fix (test_wp10_cutover.py clear_tables TEXT→text[]) assigned to this lane and DISPOSED 2026-09-27 (17 passed on disposable DB, negative check added; see residual line below). NOT marked REVIEWED: K3/O-2 is separate and unaffected."
 date: 2026-09-24
 author: "subagent (l3/gochara-autonomous-wp0-7, §7.B tranche-1 run, second attempt under E-015 authorization)"
 design_file: "GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md §9 steps 0–5; GOCHARA_NATIVE_RULINGS_2026-09-24_v1_0.md §3 (A-2 authorized); E-015 native 'go ahead'"
@@ -94,6 +94,16 @@ ESCALATIONS.md). Outcomes under that ruling:
 Reviewer items still open from v2.0: (3) conjunct-(j)/1072 merge-time interplay
 (1072 remains unapplied — the note now describes a live production state);
 (4) grant posture (revoked; standing-grant question still the native's);
-(5) the secret-echo disclosure; plus the step-5 harness fix
-(`test_wp10_cutover.py:137` `clear_tables TEXT` → `text[]`).
+(5) the secret-echo disclosure.
+**Step-5 harness fix — DISPOSED 2026-09-27 (ADK-0013, this lane):**
+`test_wp10_cutover.py` `clear_tables` now declared `text[]` (production's real
+type); step-5 rehearsal applies the corrected numbered migration 1091 (`'{...}'`
+form) instead of the preparation copy; new negative check
+`test_step05_preparation_copy_malformed_literal_now_fails` proves the fixed
+harness catches the original `'[...]'` defect (`malformed array literal`
+raised). The fidelity fix also exposed a second latent defect the old harness
+hid: `step05_reversal.sql`'s text→text[] restore would fail against production —
+the (never-applied) reversal script now parses the snapshot's text form back to
+`text[]`, with a comment. Re-run on a fresh disposable DB: **17 passed**
+(16 original + 1 negative check); container torn down.
 Nothing marked REVIEWED.
