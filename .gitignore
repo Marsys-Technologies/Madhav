@@ -149,3 +149,6 @@ platform/scripts/probe/fixtures/p4k/*/report.json
 # Asset elevation tracker generated data (regenerate with asset_elevation_tracker.py)
 00_ARCHITECTURE/control/asset_elevation_tracker.json
 00_ARCHITECTURE/control/asset_elevation_tracker.js
+
+# Kimi Code local config — may carry inline credentials, never commit
+.kimi-code/mcp.json
