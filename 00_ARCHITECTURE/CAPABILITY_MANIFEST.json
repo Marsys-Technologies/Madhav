@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-27T00:10:06+05:30",
+  "generated_at": "2026-09-27T00:42:22+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "2af936045171778c",
+  "fingerprint": "efeb247517ad9798",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1965,13 +1965,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f",
+      "fingerprint": "4927436c177602541dbeed4aea949074682e8c9f87313f0c6002770ac2003f41",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_session": "NIKASHA-VERIFY-20260927",
       "last_verified_on": "2026-09-27",
       "tier": 4,
       "note": "tier-4 template; produces one instance per asset",
-      "fingerprint_sha256": "244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f",
+      "fingerprint_sha256": "4927436c177602541dbeed4aea949074682e8c9f87313f0c6002770ac2003f41",
       "doc_status": "DRAFT_PENDING_REVIEW",
       "supersedes": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md"
     },
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "a8644782ab32b432efbf227fd4c86e844794c983e8f2c2ae3c1b3de6c0e3d8a7",
+      "fingerprint": "7dc5f90ff4d6aa695cab25060869a5315b940ca4038331f596cc0c223e654298",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_session": "NIKASHA-VERIFY-20260927",
       "last_verified_on": "2026-09-27",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
