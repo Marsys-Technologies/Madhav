@@ -2,7 +2,8 @@
 artifact: WP7_REVIEW_REQUEST_12_4
 packet_id: "§12.4-binding-adoption"
 version: "1.0"
-status: IMPLEMENTED_AWAITING_REVIEW
+status: REVIEWED_BY_ADHIKARIN
+disposition: "REVIEWED_BY_ADHIKARIN 2026-09-27 per ADK-0013 — ACCEPT WITH CONDITIONS: (a) the B1-resolver vacuous-adoption note and the B6 adopted-while-unruled note stay in BINDING_PROOF_MATRIX_v1_0.md verbatim as standing disclosures (B8-6 remains an unruled DECISION; any future native ruling reopens that row); (b) the adoption-by-reference pin stays at binding v2.3 @ 7374d8f71, not the §12.4-quoted v2.2. NOT marked REVIEWED: K3/O-2 is separate and unaffected."
 date: 2026-09-24
 author: "subagent (l3/gochara-autonomous-wp0-7, §12.4 binding run)"
 design_file: "KALA_SYNERGY_BINDING_v1_0.md v2.3 @ 7374d8f71 (origin/l3/kala-elevation-readiness); BINDING_PROOF_MATRIX_v1_0.md v1.0"

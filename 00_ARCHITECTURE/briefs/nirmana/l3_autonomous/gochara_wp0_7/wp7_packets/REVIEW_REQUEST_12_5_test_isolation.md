@@ -2,7 +2,8 @@
 artifact: WP7_REVIEW_REQUEST_12_5
 packet_id: "§12.5-test-isolation"
 version: "1.0"
-status: IMPLEMENTED_AWAITING_REVIEW
+status: REVIEWED_BY_ADHIKARIN
+disposition: "REVIEWED_BY_ADHIKARIN 2026-09-27 per ADK-0013 — ACCEPT WITH CONDITION: the root cause is UNKNOWN and the fix is a guard, not a cure; the unknown root cause and the pre-existing test_wp6_ledger/test_wp7_sentinel ordering quirk remain recorded as open known-items, and any recurrence of either automatically reopens this packet rather than being absorbed as flake. NOT marked REVIEWED: K3/O-2 is separate and unaffected."
 date: 2026-09-24
 author: "subagent (l3/gochara-autonomous-wp0-7, §12.5 fix)"
 design_file: "GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0.md §12.5"

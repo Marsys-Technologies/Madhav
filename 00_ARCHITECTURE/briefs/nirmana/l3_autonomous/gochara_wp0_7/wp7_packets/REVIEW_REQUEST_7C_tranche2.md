@@ -2,7 +2,8 @@
 artifact: WP7_REVIEW_REQUEST_7C_T2
 packet_id: "§7.C-tranche-2"
 version: "1.0"
-status: STOPPED_AWAITING_NATIVE
+status: REVIEWED_BY_ADHIKARIN
+disposition: "REVIEWED_BY_ADHIKARIN 2026-09-27 per ADK-0013 — ACCEPT as an accurate halt record; its three decision items are disposed elsewhere in the register (owners: this lane branch-local per ADK-0011/0012; overlay rebuild: escalated to the native as a production write per ADK-0011(ii); M-1 candidate-1 parameters CONFIRMED as recorded, activity_shape=linear_no_box, orb_max_deg=5.0). NOT marked REVIEWED: K3/O-2 is separate and unaffected."
 date: 2026-09-24
 author: "subagent (l3/gochara-autonomous-wp0-7, §7.C tranche-2 attempt)"
 design_file: "GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md §9 steps 6–10; NATIVE RULING 2026-09-24T11:39:01Z (ESCALATIONS.md)"
