@@ -1,0 +1,206 @@
+{
+  "packet": "A2 — Always record why it failed",
+  "measurement": "BEFORE",
+  "measured_at_utc": "2026-09-26T12:08:20Z",
+  "measured_by": "nirmana-engine-diagnostician",
+  "working_directory": "/Users/Dev/madhav-engine",
+  "branch": "campaign/nirmana-engine",
+  "db_posture": {
+    "value": {
+      "default_transaction_read_only": "on",
+      "connection": "PGHOST=127.0.0.1 PGPORT=5433 PGDATABASE=amjis PGUSER=amjis_app (proxy on 5433, per role instructions)",
+      "server_version": "PostgreSQL 15.17 (Homebrew client)"
+    },
+    "population": "session-level GUC on the connection used for every query below",
+    "query": "SHOW default_transaction_read_only;"
+  },
+  "distinct_state_values": {
+    "value": {
+      "complete": 3160,
+      "error": 1565,
+      "queued": 1465,
+      "aborted": 706
+    },
+    "population": "all rows in build_run_assets, grouped by state (no other state value, e.g. 'building'/'skipped', is currently present in the data, though both are legal per the CHECK constraint)",
+    "query": "SELECT state, count(*) FROM build_run_assets GROUP BY state ORDER BY count(*) DESC;"
+  },
+  "failed_population_denominator": {
+    "value": {
+      "error_total": 1565,
+      "error_has_text": 1564,
+      "error_empty": 1,
+      "aborted_total": 706,
+      "aborted_has_text": 406,
+      "aborted_empty": 300,
+      "failed_total_error_plus_aborted": 2271,
+      "failed_has_text_total": 1970,
+      "failed_empty_total": 301,
+      "empty_share_of_failed_pct": 13.25
+    },
+    "population": "build_run_assets rows with state IN ('error','aborted'), split by whether error IS NULL/blank vs has text",
+    "query": "SELECT state, count(*) FILTER (WHERE error IS NULL) AS null_error, count(*) FILTER (WHERE error IS NOT NULL AND btrim(error)='') AS empty_string_error, count(*) FILTER (WHERE error IS NULL OR btrim(error)='') AS total_empty, count(*) FILTER (WHERE error IS NOT NULL AND btrim(error)<>'') AS has_error_text, count(*) AS total FROM build_run_assets WHERE state IN ('error','aborted') GROUP BY state ORDER BY state; -- re-verified with a broader whitespace regex '^\\s*$' (catches tabs/newlines, not just spaces): identical result, 301."
+  },
+  "empty_error_population": {
+    "value": {
+      "total_records": 301,
+      "distinct_assets": 82,
+      "distinct_runs": 46,
+      "date_range_started_at": "299 of 301 rows have started_at IS NULL (never began); the 2 exceptions started at 2026-08-10T10:23:51Z and 2026-09-10T22:03:47Z",
+      "date_range_ended_at": "ALL 301 rows have ended_at IS NULL — none of these asset rows ever recorded a completion timestamp either, only the terminal state and (absent) error text",
+      "by_state": { "error": 1, "aborted": 300 }
+    },
+    "population": "build_run_assets rows with state IN ('error','aborted') AND (error IS NULL OR error is whitespace-only)",
+    "query": "SELECT count(*), count(DISTINCT asset_id), count(DISTINCT run_id) FROM build_run_assets WHERE state IN ('error','aborted') AND (error IS NULL OR error ~ '^\\s*$');"
+  },
+  "campaign_claim_reconciliation": {
+    "value": {
+      "claimed_total_failed_aborted": 2283,
+      "measured_total_failed_aborted": 2271,
+      "delta": -12,
+      "claimed_split": { "cascade_blocked": 1281, "infra": 543, "silent_empty_error": 307, "causal": 127, "sum_of_claimed_parts": 2258 },
+      "measured_split": { "cascade_blocked": 1281, "infra": 561, "silent_empty_error": 301, "causal_or_other": 128, "sum_of_measured_parts": 2271 },
+      "verdict": "Partially confirmed, not exact. cascade_blocked (1281) matches the claim exactly. causal (128 vs ~127) is within rounding. infra is undercounted by the campaign by exactly 18 — those 18 are a 'frozen manifest validation failed: ...' family that measures as infra-class (guardian-shaped: engine self-protection, not a data/logic bug) but was evidently not folded into the original 543. silent_empty_error is overcounted by the campaign by 6 (307 claimed vs 301 measured) — plausibly measurement-time drift: build_runs/build_run_assets are subject to a live 90-day retention prune (M-4, cockpit/watchdog/route.ts) that runs on every 5-minute watchdog tick, and the oldest failed records in this population sit right at the 90-day boundary (earliest error/aborted record: 2026-06-28, vs today 2026-09-26), so a handful of the oldest empty-error rows the campaign counted may have been pruned since. Also notable: the campaign's own four parts sum to 2258, not to its own stated headline of 2283 — a 25-record internal inconsistency independent of anything measured here.",
+      "also_found": "7 build_run_assets rows carry error text 'BLOCKED: upstream dependency...' (the cascade-cause signature) while state='complete', not 'error'/'aborted' — a data-integrity anomaly outside both the claimed and measured splits (excluded from both counts above since both counts are scoped to state IN ('error','aborted'))."
+    },
+    "population": "all build_run_assets rows with state IN ('error','aborted'), classified by error-text prefix family",
+    "query": "SELECT count(*) FILTER (WHERE error ILIKE 'BLOCKED: upstream dependenc%') AS blocked, count(*) FILTER (WHERE error IS NULL OR btrim(error)='') AS empty_error, count(*) FILTER (WHERE error IS NOT NULL AND btrim(error)<>'' AND error NOT ILIKE 'BLOCKED: upstream dependenc%' AND (error ILIKE 'guardian_cleanup%' OR error ILIKE 'orphaned_by_crash%' OR error ILIKE 'manual reap%' OR error ILIKE 'worker_crash%' OR error ILIKE 'frozen manifest validation failed%')) AS infra, count(*) FILTER (WHERE error IS NOT NULL AND btrim(error)<>'' AND error NOT ILIKE 'BLOCKED: upstream dependenc%' AND NOT (error ILIKE 'guardian_cleanup%' OR error ILIKE 'orphaned_by_crash%' OR error ILIKE 'manual reap%' OR error ILIKE 'worker_crash%' OR error ILIKE 'frozen manifest validation failed%')) AS causal_or_other, count(*) AS total FROM build_run_assets WHERE state IN ('error','aborted');"
+  },
+  "clustering": {
+    "value": {
+      "by_run_dominant_cluster": "3 runs (9f4daf36…, 423dfb7f…, 5d9e208e…) each contribute ALL 82 of their asset rows as empty-error aborts = 246 of 301 records (81.7%) from just 3 run_ids",
+      "by_run_level_cause_after_join_to_build_runs.last_error": {
+        "orphan-watchdog: run never dispatched": { "asset_rows": 295, "distinct_runs": 42, "distinct_assets": 82 },
+        "invokeRunJob failed (env var / dispatch)": { "asset_rows": 3, "distinct_runs": 1, "distinct_assets": 3 },
+        "run itself has NO last_error either": { "asset_rows": 2, "distinct_runs": 2, "distinct_assets": 1 },
+        "exit-3 deferred due to stale lock": { "asset_rows": 1, "distinct_runs": 1, "distinct_assets": 1 }
+      },
+      "by_asset_top": { "ka_gochara_sweep": 31, "ka_kshetra": 12, "bo_cgm_motifs": 6, "bo_upaya": 6, "ga_strength": 5 },
+      "by_scope_action_of_parent_run": { "global/rebuild": 246, "asset_set/rebuild": 45, "asset/rebuild": 5, "asset_set/build": 3, "asset/build": 1, "global/build": 1 },
+      "by_position": "spread 0–81; buckets roughly even (30 per 10-wide bucket) except the first (85, dominated by position=0 in single/small asset_set runs) and last (66, tail of the 3 mega 82-asset runs) — position tracks run size, not an independent signal",
+      "verdict": "ONE dominant cluster / ONE dominant root cause. 295 of 301 records (98.0%) trace to a single build_runs.last_error message — 'orphan-watchdog: run never dispatched' — written by exactly one code path (the watchdog's undispatched-run reaper). A second, much smaller cluster (3 records, 1 run) traces to a structurally identical but distinct dispatch-failure path (invokeRunJob env-var failure). 2 records are genuinely unattributable even at the run level. This is a single defect class (a missing error-text propagation in the 'abort queued assets on dispatch failure' idiom), but that idiom is copy-pasted across at least 4 call sites, so the FIX is one pattern applied at multiple sites, not one file edit."
+    },
+    "population": "the 301 empty-error build_run_assets rows, joined to their parent build_runs row",
+    "query": "SELECT run_id, count(*) FROM build_run_assets WHERE state IN ('error','aborted') AND (error IS NULL OR error ~ '^\\s*$') GROUP BY run_id ORDER BY count(*) DESC; -- plus a join to build_runs.last_error, asset_id, scope/action and position groupings (see report)"
+  },
+  "cross_reference_build_events_and_noop_events": {
+    "value": {
+      "build_events_rows_for_the_46_empty_error_runs": 0,
+      "orchestrator_noop_events_rows_for_the_46_empty_error_runs": 0
+    },
+    "population": "build_events.build_id and orchestrator_noop_events.run_id matched against the 46 distinct run_ids behind the 301 empty-error records",
+    "query": "SELECT count(*), count(DISTINCT build_id) FROM build_events WHERE build_id IN (SELECT DISTINCT run_id::text FROM build_run_assets WHERE state IN ('error','aborted') AND (error IS NULL OR error ~ '^\\s*$')); -- and the equivalent against orchestrator_noop_events.run_id",
+    "verdict": "CAPTURE FIX is not needed for the dominant cluster — it is a PLUMBING FIX. build_events and orchestrator_noop_events are both emitted by the Python orchestrator process itself, which for every one of these 46 runs never started (that is the entire content of 'run never dispatched') — so there is nothing anywhere else in the engine that knows more than build_runs.last_error already records. The information exists exactly once, at the run level, and simply never gets copied down to the per-asset error column."
+  },
+  "code_paths": {
+    "value": [
+      {
+        "file": "platform/src/app/api/cockpit/watchdog/route.ts",
+        "lines": "122-138",
+        "function": "POST handler, step '1. Orphan build_runs' (the 'genuine hang' / running>30min reaper)",
+        "writes": "UPDATE build_runs SET state='failed', ended_at=NOW() — NO last_error clause at all",
+        "error_text_behavior": "NEVER — this statement has no last_error column in its SET list under any condition",
+        "build_run_assets_touched": false,
+        "what_the_engine_knows_here": "It knows exactly why it classified the run as orphaned: NOT EXISTS recent asset_throughput.last_built_at AND NOT EXISTS recent build_substep_progress — i.e. 'no heartbeat or substep commit in 15 minutes on a run running >30 minutes.' That sentence is fully constructible from data already in the WHERE clause and is not written anywhere."
+      },
+      {
+        "file": "platform/src/app/api/cockpit/watchdog/route.ts",
+        "lines": "176-249 (stuckCandidates / classifyStuckCandidate) and 328-336",
+        "function": "POST handler, step '2. asset_throughput stuck building>15min' — the trulyStuck branch",
+        "writes": "UPDATE asset_throughput SET state='error', last_error='orphan-watchdog: writer never reported back' (asset_throughput only, not build_run_assets)",
+        "error_text_behavior": "UNCONDITIONAL literal for asset_throughput.last_error",
+        "build_run_assets_touched": false,
+        "what_the_engine_knows_here": "Already writes text at the asset_throughput layer; the gap is that build_run_assets for the same asset is never updated by this branch at all — it is left at whatever state it was in ('building'), relying entirely on the separate M-5 statement below to ever surface anything to build_run_assets.error."
+      },
+      {
+        "file": "platform/src/app/api/cockpit/watchdog/route.ts",
+        "lines": "343-352",
+        "function": "POST handler, 'M-5: Also surface the orphan error in build_run_assets'",
+        "writes": "UPDATE build_run_assets bra SET error='orphan-watchdog: writer never reported back' ... WHERE bra.state='running' AND br.state='running' AND br.started_at<30min ago AND bra.error IS NULL",
+        "error_text_behavior": "CONDITIONAL, but the condition is UNSATISFIABLE — build_run_assets.state has a CHECK constraint permitting only ('queued','building','complete','skipped','error','aborted'); 'running' is not a legal value for this column (it is only legal for build_runs.state) and no code anywhere in the repo ever writes bra.state='running'. This UPDATE can never match a row: it is dead code masquerading as a fix.",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "N/A — the statement's own predicate is a bug (almost certainly 'running' copy-pasted from the build_runs vocabulary instead of the correct build_run_assets value 'building'), so nothing this statement 'knows' ever reaches a row."
+      },
+      {
+        "file": "platform/src/app/api/cockpit/watchdog/route.ts",
+        "lines": "354-372",
+        "function": "POST handler, step '3. Orphan build_runs: planned>10min with started_at IS NULL' (undispatchedRuns)",
+        "writes": "UPDATE build_runs SET state='failed', ended_at=NOW(), last_error='orphan-watchdog: run never dispatched' (355-363, unconditional literal) THEN a separate UPDATE build_run_assets SET state='aborted' WHERE run_id=ANY($1) AND state='queued' (367-371) — no error clause",
+        "error_text_behavior": "build_runs.last_error: UNCONDITIONAL. build_run_assets.error: NEVER — the second statement has no error column in its SET list.",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "THE dominant defect (295 of 301 / 98% of all empty-error records, across 42 runs). The text it needs is sitting three lines above in the very same function, already computed and already written to build_runs.last_error for the same run_id — it is simply not passed into the second UPDATE's SET list."
+      },
+      {
+        "file": "platform/src/app/api/cockpit/runs/route.ts",
+        "lines": "617-620",
+        "function": "POST handler (clear-before-build path), invokeRunJob catch block",
+        "writes": "UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 (errMsg) THEN UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued' — no error clause",
+        "error_text_behavior": "build_runs.last_error: UNCONDITIONAL (errMsg from the caught exception). build_run_assets.error: NEVER.",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "The exact same pattern as the watchdog's undispatched-run branch, same repo, different file. errMsg (e.g. 'invokeRunJob failed: missing GCP_PROJECT env var...') is already in scope and already written to build_runs.last_error two lines above; it is not passed to the abort UPDATE."
+      },
+      {
+        "file": "platform/src/app/api/cockpit/runs/route.ts",
+        "lines": "689-696",
+        "function": "POST handler (standard build-dispatch path), invokeRunJob catch block",
+        "writes": "same shape as 617-620: build_runs.last_error=$1 unconditional, then UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued' with no error clause",
+        "error_text_behavior": "build_runs.last_error: UNCONDITIONAL. build_run_assets.error: NEVER.",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "Same as above — the identical idiom, a third call site."
+      },
+      {
+        "file": "platform/src/lib/build/recalibrationEnqueue.ts",
+        "lines": "186-189",
+        "function": "enqueue function, invokeRunJob catch block",
+        "writes": "same shape again: build_runs.last_error=$1 unconditional, then UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued' with no error clause",
+        "error_text_behavior": "build_runs.last_error: UNCONDITIONAL. build_run_assets.error: NEVER.",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "Same idiom, a fourth call site — confirms this is a repeated pattern (copy-pasted, not centralized in a shared helper), not a single typo."
+      },
+      {
+        "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+        "lines": "325-337",
+        "function": "_terminalize_preflight_failure",
+        "writes": "ONE CTE: UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=%s ... RETURNING id, then UPDATE build_run_assets SET state='aborted', ended_at=NOW(), error=%s WHERE run_id IN (...) AND state='queued' — the SAME message parameter is passed to both",
+        "error_text_behavior": "UNCONDITIONAL, and correctly propagated to BOTH tables in one statement",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "This is the reference-good pattern already in the codebase (Python side) — proof the fix for the TypeScript sites above is mechanical, not a new design: mirror this CTE shape."
+      },
+      {
+        "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+        "lines": "464-497 (_mark_asset_blocked)",
+        "function": "_mark_asset_blocked",
+        "writes": "asset_throughput upsert with last_error=msg, then UPDATE build_run_assets SET state='error', error=%s (msg), ended_at=NOW()",
+        "error_text_behavior": "UNCONDITIONAL — this is the BLOCKED-cascade writer (1,281 of the 2,271 failed records)",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "Not part of the empty-error population; included for completeness of the enumeration."
+      },
+      {
+        "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+        "lines": "1120-1141",
+        "function": "run() orphan-cleanup-on-claim block",
+        "writes": "UPDATE asset_throughput SET state='error', last_error='orphaned_by_crash: ...' THEN UPDATE build_run_assets SET state='error', error='orphaned_by_crash: ...', ended_at=NOW() WHERE ... state='building'",
+        "error_text_behavior": "UNCONDITIONAL literal, written to both tables",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "Not part of the empty-error population (127 'orphaned_by_crash' records all carry text); included for completeness."
+      },
+      {
+        "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+        "lines": "574-599 (mark_asset_error)",
+        "function": "mark_asset_error",
+        "writes": "UPDATE asset_throughput SET state='error', last_error=%s THEN UPDATE build_run_assets SET state='error', ended_at=NOW(), error=%s (same `error` param, truncated to 2000 chars)",
+        "error_text_behavior": "UNCONDITIONAL, provided the caller passes a non-empty `error` string — this is the standard writer-exception path (covers KeyError/TypeError/DEP-ASSERT/UniqueViolation/etc. causal failures, and the worker_crash/guardian_cleanup family where those strings originate from a caller composing str(exc))",
+        "build_run_assets_touched": true,
+        "what_the_engine_knows_here": "The one theoretical gap here is upstream: if an exception's __str__ is itself empty (e.g. a bare `raise SomeError()` with no message), `error[:2000]` would be an empty string written as literal text, not NULL — this would currently show as 'has_error_text' (an empty string with quotes, distinguishable from NULL) rather than contribute to the measured empty/blank population, so it is not currently inflating the 301 figure, but is a latent risk A2 should close by rejecting/labeling an empty caller-supplied message rather than storing it verbatim."
+      }
+    ],
+    "note_on_incomplete_attribution": "Two large 'has text' families in the infra bucket — 'guardian_cleanup' (310 records) and 'manual reap: parent run stopped...' (77 records) — do not match ANY string literal or f-string found anywhere in this repository (platform/python-sidecar or platform/src), searched exhaustively. NOT ATTRIBUTABLE from source in this repo: these were either written by an external/out-of-repo guardian process, a manually-run operator SQL statement, or code that has since been deleted. This does not affect the empty-error figures above (these families all carry non-empty text) but is reported because the assignment asked for every site that writes a failed state, and these two families' true source is not visible from this checkout."
+  },
+  "what_the_engine_could_write_instead": {
+    "value": [
+      "watchdog/route.ts:122-138 (orphanRuns) — could write last_error = 'orphan-watchdog: heartbeat and substep-commit stale for 15+ min on a run running 30+ min' (all inputs to that sentence are already in the query's own WHERE clause) and should also terminalize any build_run_assets rows still 'building' under that run_id, which it currently does not touch at all.",
+      "watchdog/route.ts:367-371, runs/route.ts:619-620, runs/route.ts:695-696, recalibrationEnqueue.ts:188-189 — each already computed the exact right string one statement earlier (the literal 'orphan-watchdog: run never dispatched', or the caught errMsg); the fix is passing that same value into the abort UPDATE's SET list, exactly mirroring runner.py's _terminalize_preflight_failure CTE shape.",
+      "watchdog/route.ts:343-352 (M-5) — fix the impossible predicate (bra.state='running' -> 'building', or whatever the intended target state actually is) so the statement can ever match a row; as written it is inert."
+    ]
+  },
+  "scope_note": "Read-only measurement. No code, data, or schema was changed. The only file written by this task is this JSON."
+}

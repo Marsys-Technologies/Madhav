@@ -1,0 +1,285 @@
+{
+  "packet": "A1 — Record how long and how fast",
+  "measured_at_utc": "2026-09-26T12:07:30Z",
+  "measured_by": "nirmana-engine-diagnostician",
+  "working_directory": "/Users/Dev/madhav-engine",
+  "db_posture": {
+    "value": {
+      "default_transaction_read_only": "on",
+      "current_database": "amjis",
+      "current_user": "amjis_app",
+      "server_version": "PostgreSQL 15.18 on x86_64-pc-linux-gnu"
+    },
+    "population": "n/a — server/session settings",
+    "query": "source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433; psql -h localhost -p 5433 -U $PGUSER -d $PGDATABASE -c \"SHOW default_transaction_read_only;\" -c \"SELECT current_database(), current_user, inet_server_addr(), inet_server_port(), version();\"",
+    "note": "Read-only confirmed BEFORE any query was run. No write statement was issued against this DB at any point in this measurement session."
+  },
+
+  "schema": {
+    "asset_throughput": {
+      "value": {
+        "columns": [
+          "asset_id text NOT NULL",
+          "rows_per_second double precision",
+          "measurement_count integer DEFAULT 0",
+          "last_measured_at timestamptz",
+          "last_measured_build_id uuid",
+          "history jsonb DEFAULT '[]'",
+          "chart_id uuid",
+          "state text NOT NULL DEFAULT 'dormant' (CHECK dormant/building/lit/stale/error/incomplete)",
+          "built_against_upstream_hash text",
+          "built_against_writer_hash text",
+          "last_built_at timestamptz",
+          "last_error text",
+          "rows_written integer",
+          "expected_rows integer"
+        ],
+        "duration_or_rate_columns_present": ["rows_per_second (present, defined 2026-06-06 migration 169, NEVER populated by any writer)"],
+        "duration_columns_present": "NONE — no started_at, no duration_ms/duration_seconds column exists on this table at all. Only last_built_at (a single timestamp, overwritten at BOTH the start-of-build 'building' transition and the end-of-build completion UPDATE — see write-site finding below, so it cannot be used to derive duration on its own)."
+      },
+      "population": "information_schema / \\d output for public.asset_throughput",
+      "query": "psql ... -c '\\d asset_throughput'"
+    },
+    "build_run_assets": {
+      "value": {
+        "columns": [
+          "run_id uuid NOT NULL", "asset_id text NOT NULL", "position integer NOT NULL",
+          "state text NOT NULL DEFAULT 'queued' (queued/building/complete/skipped/error/aborted)",
+          "started_at timestamptz", "ended_at timestamptz", "error text",
+          "output_changed boolean",
+          "disposition text (build/skip_no_delta/deferred_no_writer/withheld_protected/dormant/out_of_domain/blocked_dependency)"
+        ],
+        "duration_hook": "ALREADY EXISTS AND IS ALREADY POPULATED for state='complete': started_at + ended_at are both real, distinct timestamps set at different moments (started_at at the 'building' INSERT, ended_at at the completion UPDATE). This is the load-bearing finding: A1 does not need a new duration column for the run-asset level — it needs (a) a rate computed from this existing pair and (b) that rate persisted onto asset_throughput.rows_per_second, since build_run_assets is a per-run audit log, not the served throughput surface."
+      },
+      "population": "\\d build_run_assets",
+      "query": "psql ... -c '\\d build_run_assets'"
+    },
+    "build_runs": {
+      "value": {
+        "columns": ["id uuid", "chart_id uuid NOT NULL", "scope text NOT NULL", "scope_target text", "action text NOT NULL", "state text NOT NULL", "plan jsonb NOT NULL", "current_asset_id text", "triggered_by text NOT NULL", "created_at timestamptz DEFAULT now()", "started_at timestamptz", "ended_at timestamptz", "pause_requested_at timestamptz", "stop_requested_at timestamptz", "last_error text", "plan_manifest jsonb", "plan_manifest_digest text"],
+        "duration_hook": "run-level started_at/ended_at also exist here (whole-run duration), separate from per-asset duration in build_run_assets."
+      },
+      "population": "\\d build_runs",
+      "query": "psql ... -c '\\d build_runs'"
+    },
+    "build_events": {
+      "value": {
+        "columns": ["build_id text", "stage_seq integer", "chart_id text", "ayanamsha_role text", "asset text", "stage text", "status text", "percent numeric(5,2)", "message text", "metadata jsonb", "emitted_at timestamptz DEFAULT now()", "stop_requested boolean", "asset_id text"],
+        "duration_hook": "NONE directly — emitted_at is a single point-in-time per event row; a duration would have to be derived by diffing two event rows for the same (build_id, asset), which is fragile (see the recommendation below)."
+      },
+      "population": "\\d build_events",
+      "query": "psql ... -c '\\d build_events'"
+    },
+    "build_substep_progress": {
+      "value": {
+        "columns": ["chart_id uuid NOT NULL", "asset_id text NOT NULL", "substep_key text NOT NULL", "build_fingerprint text NOT NULL", "rows_written integer NOT NULL DEFAULT 0", "completed_at timestamptz NOT NULL DEFAULT now()"],
+        "duration_hook": "NONE — only completed_at exists; there is no started_at/duration column at the substep level. The task brief's premise ('plus substep-level timing where build_substep_progress already has the hook') is NOT confirmed by the schema: there is no timing hook here today beyond a single completion timestamp. See code-write-site finding: this table is written by only 3 asset-specific writers, not by the generic orchestrator substep driver, so a substep-duration feature would need a NEW started_at column plus new instrumentation in the generic driver, not just wiring an existing hook."
+      },
+      "population": "\\d build_substep_progress",
+      "query": "psql ... -c '\\d build_substep_progress'"
+    }
+  },
+
+  "before_figures": {
+    "1_asset_throughput_total_rows": {
+      "value": 268,
+      "population": "all rows in asset_throughput (global + per-chart)",
+      "query": "SELECT count(*) FROM asset_throughput;"
+    },
+    "2_rows_per_second_null_by_layer": {
+      "value": {
+        "bg (L0)": { "total": 39, "null": 39, "pct_null": 100.0 },
+        "bo (L2)": { "total": 67, "null": 67, "pct_null": 100.0 },
+        "ga (L1)": { "total": 57, "null": 57, "pct_null": 100.0 },
+        "ka (L3)": { "total": 57, "null": 57, "pct_null": 100.0 },
+        "mi (L5)": { "total": 28, "null": 28, "pct_null": 100.0 },
+        "ph (L4)": { "total": 20, "null": 20, "pct_null": 100.0 },
+        "ALL_LAYERS": { "total": 268, "null": 268, "pct_null": 100.0 }
+      },
+      "population": "every asset_throughput row, grouped by 2-char asset_id prefix (bg/ga/bo/ka/ph/mi)",
+      "query": "SELECT substring(asset_id from 1 for 2) AS prefix, count(*) total, count(*) FILTER (WHERE rows_per_second IS NULL) null_rps, round(100.0*count(*) FILTER (WHERE rows_per_second IS NULL)/count(*),1) pct_null FROM asset_throughput GROUP BY 1 ORDER BY 1;",
+      "correction_to_stated_assumption": "The campaign brief's framing ('rows_per_second is reportedly NULL for every one of the 40 L0 assets') UNDERSTATES the finding. rows_per_second is NULL for 100% of ALL 268 rows across ALL SIX layers, not just L0's 39. Confirmed independently by re-running the same NULL check restricted to rows whose most recent build_run_assets disposition was a genuine 'build' (not a skip): 64/64 still NULL (see figure 5 below). No writer in any layer, and no code path anywhere in the engine, has ever computed this column (see code-write-sites — the only reference to rows_per_second in the entire codebase outside migrations/tests is a read in a governance census script that reports it as a missing signal). This is an engine-wide gap, not an L0-specific one. Separately: L0 (bg) itself has only 39 asset_throughput rows although asset_registry lists 40 bg assets — bg_gochara_citation_resolution has NO throughput row at all (never built/tracked), so 'NULL for every one of the 40' is imprecise in the other direction too: 39 are NULL, 1 doesn't exist as a row to be NULL."
+    },
+    "3_duration_column_null_by_layer": {
+      "value": "NOT APPLICABLE on asset_throughput — no duration column exists there to be NULL (see schema section). On build_run_assets, the closest existing pair (started_at, ended_at) is fully populated for state='complete' (3159/3159 = 100%), largely populated for state='error' on ended_at (1564/1565 = 99.9%) but sparse for error's started_at (324/1565 = 20.7%), and sparse for state='aborted' on both (started_at 8/706 = 1.1%, ended_at 406/706 = 57.5%, both-present 7/706 = 1.0%).",
+      "population": "build_run_assets rows grouped by state",
+      "query": "SELECT state, count(*) n, count(*) FILTER (WHERE started_at IS NOT NULL) has_started, count(*) FILTER (WHERE ended_at IS NOT NULL) has_ended, count(*) FILTER (WHERE started_at IS NOT NULL AND ended_at IS NOT NULL) has_both FROM build_run_assets GROUP BY 1 ORDER BY 1;",
+      "raw_result": {
+        "aborted":  {"n": 706,  "has_started": 8,    "has_ended": 406,  "has_both": 7},
+        "complete": {"n": 3159, "has_started": 3159, "has_ended": 3159, "has_both": 3159},
+        "error":    {"n": 1565, "has_started": 324,  "has_ended": 1564, "has_both": 323},
+        "queued":   {"n": 1465, "has_started": 0,     "has_ended": 0,    "has_both": 0}
+      },
+      "interpretation": "Duration is ALREADY fully derivable today for every completed build (ended_at - started_at, 100% coverage, sample durations range 0.038s to 212.2s in the last 8 completions checked). This materially changes A1's implementation: for the 'complete' case there is no new timing capture needed at all, only a rate computation + a write into asset_throughput.rows_per_second. Duration IS a genuine gap for 'aborted' (99% missing started_at) and partially for 'error' (79% missing started_at) — those are the honest attribution gaps A1 should name, not silently paper over with a derived duration that doesn't exist."
+    },
+    "4_rows_written_zero_or_null": {
+      "value": {
+        "total_asset_throughput_rows": 268,
+        "rows_written_null_or_zero": 42,
+        "share_pct": 15.7
+      },
+      "population": "all asset_throughput rows",
+      "query": "SELECT count(*) FILTER (WHERE rows_written IS NULL OR rows_written = 0), count(*) FROM asset_throughput;",
+      "by_layer": {
+        "bg": {"null": 1, "zero": 11, "positive": 27, "total": 39},
+        "bo": {"null": 0, "zero": 0,  "positive": 67, "total": 67},
+        "ga": {"null": 0, "zero": 3,  "positive": 54, "total": 57},
+        "ka": {"null": 1, "zero": 11, "positive": 45, "total": 57},
+        "mi": {"null": 3, "zero": 10, "positive": 15, "total": 28},
+        "ph": {"null": 2, "zero": 0,  "positive": 18, "total": 20}
+      },
+      "by_layer_query": "SELECT substring(asset_id from 1 for 2) prefix, count(*) FILTER (WHERE rows_written IS NULL) null_rw, count(*) FILTER (WHERE rows_written=0) zero_rw, count(*) FILTER (WHERE rows_written>0) pos_rw, count(*) total FROM asset_throughput GROUP BY 1 ORDER BY 1;",
+
+      "populated_vs_empty_target_check": {
+        "method": "For each of the 42 rows with rows_written NULL/0, joined asset_registry to get count_sql/target_table, then executed each asset's own registered count_sql against the actual target table (parameterized by the row's chart_id where the SQL takes $1) to see whether the real target is populated.",
+        "L0_bg_result": {
+          "checked": 10,
+          "confirmed_populated_but_recorded_zero_or_null": 9,
+          "confirmed_genuinely_empty": 1,
+          "detail": {
+            "bg_ephemeris":          {"recorded_rows_written": 0, "actual_count_sql_result": 825084, "verdict": "LYING — real build ran (disposition=build), target fully populated, rows_written wrongly recorded as 0"},
+            "bg_muhurta_lattice":    {"recorded_rows_written": 0, "actual_count_sql_result": 173219, "verdict": "LYING (same pattern)"},
+            "bg_ontology":           {"recorded_rows_written": 0, "actual_count_sql_result": 741,    "verdict": "LYING (same pattern)"},
+            "bg_reference":         {"recorded_rows_written": 0, "actual_count_sql_result": 1242,   "verdict": "LYING (same pattern)"},
+            "bg_sky_calendar":       {"recorded_rows_written": 0, "actual_count_sql_result": 31081,  "verdict": "LYING (same pattern)"},
+            "bg_texts":              {"recorded_rows_written": 0, "actual_count_sql_result": 10651,  "verdict": "LYING (same pattern)"},
+            "bg_vidhi_primitives":   {"recorded_rows_written": 0, "actual_count_sql_result": 60,     "verdict": "LYING (same pattern)"},
+            "bg_text_index":         {"recorded_rows_written": 0, "actual_count_sql_result": 361,    "verdict": "LYING, but disposition=skip_no_delta (retained a stale 0 from a prior never-recorded build, not a fresh mis-record)"},
+            "bg_sign_medical":       {"recorded_rows_written": null, "actual_count_sql_result": 12,  "verdict": "LYING — rows_written NULL, target has 12 rows"},
+            "bg_sarvatobhadra_grid": {"recorded_rows_written": 0, "actual_count_sql_result": 0, "verdict": "HONEST — genuinely empty"}
+          },
+          "queries": "count_sql per asset taken verbatim from asset_registry.count_sql, executed directly, e.g. bg_ephemeris: SELECT count(*) FROM ephemeris_daily; bg_reference: sum of 11 reference_* table counts; full list of 10 statements run in this session, results as above."
+        },
+        "L3_ka_result": {
+          "checked": 1,
+          "confirmed_populated_but_recorded_zero": 1,
+          "detail": {
+            "ka_gochara_v3_century_materialize@chart_1c826d5a": {"recorded_rows_written": 0, "recorded_state": "stale", "actual_count_sql_result": 916, "verdict": "LYING — target populated (916 g3_ rows for that chart) but rows_written=0"}
+          },
+          "query": "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation LIKE 'g3_%' — asset_registry.count_sql verbatim, run with chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a'"
+        },
+        "L5_mi_result": {
+          "checked": 6,
+          "confirmed_genuinely_empty": 6,
+          "detail": {
+            "mi_abhilekha@1c826d5a": 0, "mi_abhilekha@482012f1": 0,
+            "mi_jivanaghatana@1c826d5a": 0, "mi_pramana@1c826d5a": 0,
+            "mi_sankalpa@482012f1": 0, "mi_seva (global count_sql, ignores chart filter)": 0,
+            "mi_vistara (global)": 0
+          },
+          "note": "mi_seva's own count_sql (`SELECT count(*) FROM mimamsa_preferences`) does not filter by chart_id at all despite the asset being chart-scoped in asset_throughput — a separate, narrower correctness concern noted here but out of A1's scope (not a rows_written/rate defect)."
+        },
+        "L1_ga_result": {
+          "checked": 3,
+          "confirmed_genuinely_empty": 3,
+          "detail": {"ga_prashna@482012f1": 0, "ga_prashna@cb73cd3d": 0, "ga_prashna@1c826d5a": 0},
+          "note": "Consistent with the writer's own documented convention (asset_runner.py `_run_data_writer`): target_floor=0 for ga_prashna declares that 0 rows is a legitimate outcome (no prashna question on a natal chart), and state is correctly 'lit' not 'dormant'/'error'."
+        },
+        "not_attributable": {
+          "count": 22,
+          "reason": "No count_sql AND/OR no target_table registered for these asset_ids, so the actual-vs-recorded check cannot be run without inventing a query.",
+          "assets": ["bg_ephemeris_engine", "bg_panchanga", "ka_dasha_kala (x3 charts)", "ka_graha_sancara", "ka_muhurta_seva", "ka_tulana (x3 charts)", "ka_bhavishya_lekha (error state, has count_sql but state=error so 0 is an honest failure marker)", "ka_kshetra (error)", "mi_adhilepa (error)", "mi_bhara (error, x2)", "mi_darshana (error)", "mi_pariksha (error)", "ph_nimitta (error)", "ph_phaladesa (error)"],
+          "note": "NOT ATTRIBUTABLE — asset_registry has no count_sql/target_table for these, or the row is in an honestly-labeled 'error' state (13 of the 22) where rows_written=0/NULL is expected and correctly non-misleading, not a gap."
+        }
+      },
+      "summary_lying_vs_honest": {
+        "confirmed_lying_zero_or_null_against_populated_target": 10,
+        "confirmed_honestly_empty": 10,
+        "not_attributable_missing_count_sql_or_target": 9,
+        "not_attributable_because_error_state_honest": 13,
+        "total_checked_population": 42,
+        "note": "The campaign brief's estimate ('rows_written reads 0 against populated tables for ~10 of them [L0]') is CONFIRMED and precisely bounded: 9 of L0's 12 zero/null rows are confirmed-populated-but-recorded-zero (a 10th, ka_gochara_v3_century_materialize, is L3 not L0). This is a real, verified defect class, not a guess."
+      }
+    },
+
+    "5_disposition_breakdown": {
+      "value": {
+        "method": "For every asset_throughput row, resolved the LATEST build_run_assets row for that (asset_id, chart_id) — matching chart-scoped assets on (asset_id, chart_id) and global assets (chart_id IS NULL) on asset_id alone against the latest row for that asset_id across any chart, since build_runs.chart_id is NOT NULL even for global-asset builds.",
+        "disposition_build":          {"n": 64,  "rows_per_second_null": 64,  "pct_null_rps": 100.0, "rows_written_zero_or_null": 9, "pct_zero_or_null_rw": 14.1},
+        "disposition_skip_no_delta":  {"n": 25,  "rows_per_second_null": 25,  "pct_null_rps": 100.0, "rows_written_zero_or_null": 2, "pct_zero_or_null_rw": 8.0},
+        "disposition_unresolved":     {"n": 179, "rows_per_second_null": 179, "pct_null_rps": 100.0, "rows_written_zero_or_null": 31, "pct_zero_or_null_rw": 17.3}
+      },
+      "population": "268 asset_throughput rows joined to their latest matching build_run_assets row",
+      "query": "See full CTE in session log: latest_bra_global (DISTINCT ON asset_id, any chart, ordered by started_at DESC) UNION-style LEFT JOIN against latest_bra_chart (DISTINCT ON asset_id+chart_id) onto asset_throughput, disposition coalesced, grouped by disposition with NULL/zero rollups.",
+      "excluding_healthy_skips": {
+        "value": "rows_per_second is NULL for 100% of rows REGARDLESS of disposition — including the 64 rows whose most recent action was a genuine 'build' (not a skip). This proves the gap is not explained by legitimate skip_no_delta rows; it is present even when real work happened. For rows_written: excluding the 25 skip_no_delta rows (which correctly retain a prior value and should not be counted as a gap), the honest gap is 9 (build) + 31 (unresolved-disposition, largely pre-dating the disposition field or error-state rows) = 40 of 243 non-skip rows (16.5%), versus 42 of 268 including skips (15.7%) — close because skip_no_delta legitimately shows almost no rows_written gap of its own (2/25, both explainable: bg_text_index inherited a stale 0 recorded before telemetry ever worked, mi_vistara is genuinely empty)."
+      },
+      "identified_9_build_disposition_zero_rows": [
+        {"asset_id": "bg_ephemeris", "chart_id": null, "verdict": "LYING (see figure 4)"},
+        {"asset_id": "bg_muhurta_lattice", "chart_id": null, "verdict": "LYING"},
+        {"asset_id": "bg_ontology", "chart_id": null, "verdict": "LYING"},
+        {"asset_id": "bg_reference", "chart_id": null, "verdict": "LYING"},
+        {"asset_id": "bg_sky_calendar", "chart_id": null, "verdict": "LYING"},
+        {"asset_id": "bg_texts", "chart_id": null, "verdict": "LYING"},
+        {"asset_id": "bg_vidhi_primitives", "chart_id": null, "verdict": "LYING"},
+        {"asset_id": "ga_prashna", "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "verdict": "HONEST — confirmed actual count 0"},
+        {"asset_id": "ka_dasha_kala", "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "verdict": "NOT ATTRIBUTABLE — no count_sql/target_table registered"}
+      ]
+    }
+  },
+
+  "code_write_sites": {
+    "note": "Every distinct engine code path (Python orchestrator, legacy L1 writer telemetry, and Next.js cockpit routes) that INSERTs or UPDATEs asset_throughput or touches build_substep_progress, found by grepping for literal 'INSERT INTO'/'UPDATE' against these table names across platform/python-sidecar and platform/src, excluding test files and one-off dispatch/migration scripts.",
+    "orchestrator_core_python": [
+      {"file": "platform/python-sidecar/pipeline/orchestrator/runner.py", "line": 480, "function": "_mark_asset_blocked", "does": "INSERT ... state='error', message='BLOCKED: upstream...' (chart-scoped branch). Cascade-failure marking, no timing/rate touched."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/runner.py", "line": 488, "function": "_mark_asset_blocked", "does": "INSERT ... state='error' (global-asset else branch). Same as above."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/runner.py", "line": 1127, "function": "execute_run", "does": "UPDATE ... state='error' for every row still 'building' when a fresh run acquires the chart lock (orphan-from-crash reap). No rate touched; rows_written untouched (retains whatever it was)."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/staleness.py", "line": 131, "function": "propagate_downstream_staleness", "does": "UPDATE ... state='stale' for downstream assets, self-joined against pre-UPDATE snapshot to log prev_state. No rows_written/rate touched."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 524, "function": "_upsert_throughput_state", "does": "INSERT recovery row (chart-scoped) when a state UPDATE matched 0 rows. Sets state/last_error/last_built_at only."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 532, "function": "_upsert_throughput_state", "does": "INSERT recovery row (global else branch), same shape."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 584, "function": "mark_asset_error", "does": "UPDATE state='error', last_error=%s, last_built_at=NOW(). THE failure-path write. rows_written is deliberately NOT touched here — it retains its previous value. This is the honest-null anchor point: no rate is ever computed on this path, by construction, today."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 636, "function": "_run_service_health_probe", "does": "UPDATE state='lit', last_built_at=NOW(), rows_written=0 (GREEN branch — service assets deliberately record 0 rows by design, this is NOT a defect for storage_type='service')."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 773, "function": "_drive_substeps", "does": "UPDATE last_built_at=NOW(), rows_written=<cumulative> after EACH substep (heartbeat, keeps the watchdog from reaping a long-running heavy writer). THIS is the natural home for per-substep duration/rate if A1 adds it — it already has cumulative rows_written and a timestamp per iteration, so a rows-since-last-heartbeat / seconds-since-last-heartbeat rate is directly computable here without a new column, by diffing against the row's own previous last_built_at before overwriting it."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 849, "function": "_mark_probe_green", "does": "UPDATE state='lit', rows_written=COALESCE(rows_written,0) (skip-if-green: writer not run at all, so 0/unchanged rows is correct)."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 916, "function": "_skip_no_delta", "does": "UPDATE state='lit', last_built_at=NOW(), last_error=NULL. rows_written NOT touched (correctly retains prior value on a legitimate skip)."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 1195, "function": "_run_data_writer", "does": "THE MAIN COMPLETION WRITE: UPDATE state=%s, last_built_at=NOW(), rows_written=%s, built_against_upstream_hash=%s, built_against_writer_hash=%s, last_error=NULL. This is where A1's new duration+rate columns need to be set for the success path — rows_written is already computed as (rows_inserted+rows_updated) at this point (line ~1073), and a duration is available by reading back this row's own pre-overwrite last_built_at (set at the 'building' transition, see next entry) OR — more robustly, since last_built_at gets clobbered on every heartbeat during _drive_substeps — by reading build_run_assets.started_at for this (run_id, asset_id), which is untouched by heartbeats."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 1387, "function": "run_asset", "does": "INSERT/UPSERT state='building', last_built_at=NOW() at the START of the asset's execution (chart-scoped branch). Comment in-source ('WATCHDOG HEARTBEAT FIX') confirms this is the canonical build-start timestamp — but it lands in the SAME column (last_built_at) that the completion UPDATE (line 1195) later overwrites, so asset_throughput alone cannot yield duration; the start timestamp is lost by the time of completion unless captured into a local variable or read from build_run_assets.started_at (which IS preserved, see schema finding 3)."},
+      {"file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "line": 1395, "function": "run_asset", "does": "Same INSERT/UPSERT, global-asset (chart_id IS NULL) else branch."}
+    ],
+    "legacy_L1_writer_telemetry_python": [
+      {"file": "platform/python-sidecar/ga_writers/_telemetry.py", "line": 26, "function": "update_asset_throughput (module-level helper, shared _UPSERT_SQL)", "does": "INSERT/UPSERT state, rows_written, last_measured_build_id, last_built_at=NOW(), last_measured_at=NOW(). Explicitly documented in its own docstring as a SEPARATE, best-effort, exception-swallowing path used by several ga_writers/*.py files (ga_strength_writer.py, ga_vargas_writer.py, ga_sade_sati_writer.py, ga_panchanga_writer.py, ga_sensitive_writer.py, ga_positions_writer.py, ga_dashas_writer.py) — this bypasses the orchestrator's own asset_runner.py completion write entirely for L1 (ga_*) writers. It sets last_measured_at (suggesting a 'measurement' concept already exists in naming) but NEVER computes or sets rows_per_second — confirming the gap is not a bug in an existing rate computation, it is that no rate computation exists anywhere, in either the orchestrator path or this legacy L1 path.", "risk_for_A1": "A1 must patch BOTH this shared helper AND asset_runner.py's write sites, or L1 (ga_*) assets will keep reporting NULL rate/duration after L2-L5 assets start reporting real values — an inconsistency the packet should watch for."}
+    ],
+    "cockpit_typescript_routes": [
+      {"file": "platform/src/app/api/cockpit/refresh/route.ts", "line": 66, "does": "INSERT ... state='dormant' placeholder row, ON CONFLICT DO UPDATE SET updated_at=now() — wrapped in .catch(()=>null) with an explicit source comment 'non-fatal: table may not have updated_at column'. CONFIRMED: asset_throughput has NO updated_at column, so this ON CONFLICT clause silently no-ops on every conflict today — an existing, already-acknowledged dead branch, unrelated to A1 but worth flagging as a nearby honest-signal smell (§N.8-adjacent): the .catch() makes a real failure indistinguishable from success."},
+      {"file": "platform/src/app/api/cockpit/clear/execute/route.ts", "line": 236, "does": "UPDATE state='dormant', last_built_at=NULL, rows_written=0 (reset after a clear operation, chart-scoped)."},
+      {"file": "platform/src/app/api/cockpit/clear/execute/route.ts", "line": 253, "does": "Same reset, global-asset branch."},
+      {"file": "platform/src/app/api/cockpit/clear/execute/route.ts", "line": 265, "does": "UPDATE state='stale' for downstream assets after a clear."},
+      {"file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 250, "does": "UPDATE state='lit', rows_written=$3, last_error=NULL, last_built_at=NOW() — reaper recovering a heartbeat-alive-but-orphaned build using its last known substep rows count. No rate touched."},
+      {"file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 295, "does": "UPDATE state='incomplete', rows_written=$3, last_built_at=NOW(), last_error=... — reaper marking a stale-heartbeat build incomplete."},
+      {"file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 330, "does": "UPDATE state='error', last_error='orphan-watchdog: writer never reported back' for builds truly stuck >15 min. rows_written/rate untouched."},
+      {"file": "platform/src/app/api/cockpit/runs/route.ts", "line": 540, "does": "UPDATE state='dormant', last_built_at=NULL, rows_written=NULL (pre-rebuild clear, chart-scoped)."},
+      {"file": "platform/src/app/api/cockpit/runs/route.ts", "line": 551, "does": "Same reset, global-asset branch."},
+      {"file": "platform/src/app/api/cockpit/runs/route.ts", "line": 564, "does": "UPDATE state='stale' for downstream assets."}
+    ],
+    "build_substep_progress_writers": {
+      "note": "Only 3 writer-owned files touch this table directly — the generic orchestrator substep driver (_drive_substeps in asset_runner.py) does NOT read or write it, and its own `completed_keys` resume parameter is never populated from this table in the current production call path (grep-confirmed: `_drive_substeps(...)` is invoked once, at asset_runner.py:1043, without a completed_keys argument, so it always defaults to an empty set today — the 'resume, skip already-finished substeps' capability described in the driver's own docstring is currently dead for every writer except the 3 below, which implement their own private resumability using this table.",
+      "sites": [
+        {"file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py", "line": 528, "does": "writer-private INSERT (own resumability bookkeeping)"},
+        {"file": "platform/python-sidecar/services/ka_kshetra/writer.py", "line": 2463, "function": "_record_substep", "does": "INSERT (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at=now()) ON CONFLICT ... DO UPDATE. Reads back via _load_completed_substeps (own method, line ~2448). Only completed_at is stored — no started_at, so no per-substep duration exists here either despite this table being the closest thing to a 'substep timing' surface in the schema."},
+        {"file": "platform/python-sidecar/services/ka_gochara_sweep/writer.py", "line": 666, "does": "Same private pattern as ka_kshetra."}
+      ]
+    }
+  },
+
+  "honest_signal_analysis_per_N8": {
+    "rows_per_second": {
+      "detector_exists_today": false,
+      "finding": "No code path anywhere in the engine computes rows_per_second. It is not a broken detector producing a wrong value — it is the complete absence of a detector. Confirmed by exhaustive grep: the only non-migration, non-test reference to the string 'rows_per_second' in the whole repository is in platform/scripts/governance/asset_census.py, which READS it (as a health-signal check flagging it missing) but never writes it.",
+      "what_A1_must_ensure": "If A1 adds a rate computation, it must be placed ONLY on success-completing write sites (asset_runner.py:1195 _run_data_writer, :636 service GREEN probe [rate is meaningless for 0-row service asset, should stay NULL], :849 _mark_probe_green [skip-no-rows, should stay NULL], and the legacy ga_writers/_telemetry.py path) and explicitly NEVER on mark_asset_error (line 584), the orphan-crash reap (runner.py:1127), or the watchdog's truly-stuck error path (watchdog/route.ts:330) — those three are the paths that must produce a real, correctly-false 'no rate recorded' (NULL), because a failed or aborted build has no valid duration to divide rows by. This is directly checkable: today none of those three failure paths touch rows_written or any new rate column, which is the right shape to preserve."
+    },
+    "duration": {
+      "detector_exists_today": "PARTIALLY — via build_run_assets.started_at/ended_at for the 'complete' state (100% populated), but genuinely does not exist for 'aborted' (started_at 1.1% populated) and is weak for 'error' (started_at 20.7% populated).",
+      "what_A1_must_ensure": "A duration figure for an aborted/most error builds must render as NULL/'not recorded', not 0 or a wrong-but-plausible number, because 79-99% of those rows are missing the timestamp needed to compute it honestly. If A1's implementation back-fills a duration for these rows by any proxy (e.g. defaulting started_at to created_at or ended_at when missing), that would be exactly the '5.0-on-computed-zero-grade' class of invented-judgment defect §N.7 item 6 warns against."
+    }
+  },
+
+  "contradictions_of_stated_campaign_assumptions": [
+    "The brief's framing that rows_per_second is NULL 'for every one of the 40 L0 assets' is too narrow: it is NULL for ALL 268 asset_throughput rows across ALL SIX layers (100%, not just L0), with zero exceptions found by any disposition or state cut. This is an engine-wide gap, not an L0-specific one, and both A1's scope and its acceptance criteria should say so.",
+    "L0 (bg) has only 39 asset_throughput rows, not 40 — bg_gochara_citation_resolution (present in asset_registry) has never been tracked at all (no row, not even a NULL one). This asset would need special handling in any before/after diff keyed on 'the 40 L0 assets'.",
+    "The 'rows_written reads 0 for ~10 of them [L0 assets]' claim is CONFIRMED, and more precisely bounded than stated: 9 of L0's 12 zero/null rows are verified-populated-target-but-recorded-zero (a defect); a 10th matching case (ka_gochara_v3_century_materialize) exists but is in L3 (ka_), not L0; one L0 case (bg_sarvatobhadra_grid) is genuinely, honestly empty and must not be 'fixed' to a nonzero value.",
+    "The brief's premise that build_substep_progress 'already has the hook' for substep-level timing does not hold: the table has no started_at/duration column (only completed_at), and the generic orchestrator substep driver does not use this table at all today (only 3 specific L3 writers write to it privately, for their own resumability, also without timing). Any substep-level timing feature is new work, not wiring an existing hook.",
+    "A genuinely-usable duration hook DOES already exist, just not where the brief pointed: build_run_assets.started_at/ended_at, 100% populated for completed builds. This is very likely cheaper for A1 to build on than adding new columns to asset_throughput or build_substep_progress.",
+    "rows_per_second is not read or displayed anywhere in the served application (zero hits in platform/src for 'rows_per_second'/'rowsPerSecond' outside tests) — populating it will not visibly change any UI surface unless a consuming display is also added; this may or may not be in A1's scope and is worth confirming before claiming the packet 'done'.",
+    "A separate, active write path exists for L1 (ga_*) writers — platform/python-sidecar/ga_writers/_telemetry.py — that bypasses the orchestrator's own asset_runner.py completion write. A1 must patch both paths or L1 assets will lag L2-L5 in reporting real rate/duration after this packet ships."
+  ]
+}
