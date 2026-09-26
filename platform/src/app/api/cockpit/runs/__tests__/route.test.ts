@@ -226,6 +226,57 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
   })
 })
 
+// ─── 2b. has_cowriters predicate parity with runner.py (A3 predicate-asymmetry fix) ──
+// runner.py's check-time query only counts a peer as a co-writer when
+// `peer.is_active = true AND peer.has_writer = true` (a row without has_writer can
+// never actually write its target_table — migration 342). Freeze-time (this route)
+// must compute has_cowriters with the SAME predicate, or a benign is_active/
+// has_writer=false placeholder sharing a target_table can freeze has_cowriters=true
+// while the check correctly computes false, producing a false "asset_registry
+// changed after dispatch" abort with nothing about the asset's own contract having
+// changed (see A3_before_20260926T120851Z.json, sensitivity_finding).
+
+describe('POST /api/cockpit/runs — has_cowriters predicate parity (A3 predicate-asymmetry fix)', () => {
+  it('does NOT mark has_cowriters=true for a peer that shares target_table but has has_writer=false', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([
+      { asset_id: 'ga_positions', layer: 'ganita', scope: 'per_chart', depends_on: [], estimated_seconds: 30, target_table: 'shared_target', has_writer: true },
+      // A placeholder row: active, shares target_table, but has no WriterBase behind
+      // it (has_writer=false). It can never actually write shared_target and must
+      // NOT count as a co-writer hazard — exactly runner.py's check-time predicate.
+      { asset_id: 'ga_placeholder_peer', layer: 'ganita', scope: 'per_chart', depends_on: [], estimated_seconds: 30, target_table: 'shared_target', has_writer: false },
+    ] as unknown as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    expect(insert).toBeDefined()
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    const gaPositions = manifest.assets.find((a: { asset_id: string }) => a.asset_id === 'ga_positions')
+    expect(gaPositions.has_cowriters).toBe(false)
+  })
+
+  it('still marks has_cowriters=true when TWO real (has_writer=true) writers share a target_table', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([
+      { asset_id: 'ga_positions', layer: 'ganita', scope: 'per_chart', depends_on: [], estimated_seconds: 30, target_table: 'shared_target', has_writer: true },
+      { asset_id: 'ga_strength', layer: 'ganita', scope: 'per_chart', depends_on: ['ga_positions'], estimated_seconds: 30, target_table: 'shared_target', has_writer: true },
+    ] as unknown as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    const byId = Object.fromEntries(manifest.assets.map((a: { asset_id: string; has_cowriters: boolean }) => [a.asset_id, a.has_cowriters]))
+    expect(byId.ga_positions).toBe(true)
+    expect(byId.ga_strength).toBe(true)
+  })
+})
+
 // ─── 3. scope='asset' + global asset → rejected for everyone ─────────────────
 
 describe('POST /api/cockpit/runs — scope=asset + global asset', () => {

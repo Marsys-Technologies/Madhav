@@ -121,8 +121,42 @@ def test_registry_dependency_drift_fails_closed_instead_of_replanning_the_run():
                 {"asset_id": "ga_strength", "scope": "per_chart", "depends_on": ["ga_positions", "ga_extra"], "natural_key_partition": "chart_id", "has_cowriters": True},
             ]
 
-    with pytest.raises(ValueError, match="changed after dispatch"):
-        _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(_run()))
+    # A3 Decision 4: the check reports every divergence, it does not raise. Only
+    # ga_strength diverged (its depends_on gained ga_extra); ga_positions matches.
+    diverged = _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(_run()))
+    assert set(diverged) == {"ga_strength"}
+    assert "changed after dispatch for frozen asset ga_strength" in diverged["ga_strength"]
+
+
+def test_registry_has_cowriters_flip_alone_is_a_divergence():
+    """F-2 (rereview 20260926T152022Z): `has_cowriters` is the field Decision 2's
+    predicate fix (route.ts's `active AND has_writer` EXISTS check) is about, and
+    the rereview's mutation M-TERM-3 deleted the `has_cowriters` comparison term
+    from `_verify_registry_still_matches_manifest` entirely — 32/32 tests stayed
+    green, because nothing exercised a has_cowriters-only flip. `scope` and
+    `natural_key_partition` each have their own dedicated mismatch coverage
+    elsewhere in this module and in test_a3_registry_divergence_narrowing.py;
+    `has_cowriters` had none. Every OTHER field here matches the frozen manifest
+    exactly (ga_positions: scope, depends_on, natural_key_partition all
+    unchanged) — only has_cowriters flips False -> True — so this test can only
+    go green if the has_cowriters term is actually compared.
+    """
+    class Cursor:
+        def execute(self, _sql, _params):
+            pass
+
+        def fetchall(self):
+            return [
+                # Only has_cowriters differs from the frozen manifest (False -> True);
+                # a second writer started sharing ga_positions's target_table after
+                # dispatch, e.g. via a new @register() onto the same table.
+                {"asset_id": "ga_positions", "scope": "per_chart", "depends_on": [], "natural_key_partition": "chart_id", "has_cowriters": True},
+                {"asset_id": "ga_strength", "scope": "per_chart", "depends_on": ["ga_positions"], "natural_key_partition": "chart_id", "has_cowriters": True},
+            ]
+
+    diverged = _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(_run()))
+    assert set(diverged) == {"ga_positions"}
+    assert "changed after dispatch for frozen asset ga_positions" in diverged["ga_positions"]
 
 
 def test_registry_dependency_reorder_alone_does_not_fail_preflight():
@@ -147,4 +181,49 @@ def test_registry_dependency_reorder_alone_does_not_fail_preflight():
                 {"asset_id": "ga_strength", "scope": "per_chart", "depends_on": ["ga_positions", "ga_extra"], "natural_key_partition": "chart_id", "has_cowriters": True},
             ]
 
-    _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(run))
+    diverged = _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(run))
+    assert diverged == {}
+
+
+def test_registry_divergence_reports_every_mismatch_not_just_the_first():
+    """A3 Decision 4: a run with TWO diverging assets must name BOTH, not just the
+    first one encountered in plan order. The old code raised on the first mismatch
+    and could never even see the second."""
+    run = _run()
+
+    class Cursor:
+        def execute(self, _sql, _params):
+            pass
+
+        def fetchall(self):
+            return [
+                # ga_positions: scope flipped from per_chart -> global (diverged).
+                {"asset_id": "ga_positions", "scope": "global", "depends_on": [], "natural_key_partition": "chart_id", "has_cowriters": False},
+                # ga_strength: gained an untracked dependency (diverged).
+                {"asset_id": "ga_strength", "scope": "per_chart", "depends_on": ["ga_positions", "ga_extra"], "natural_key_partition": "chart_id", "has_cowriters": True},
+            ]
+
+    diverged = _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(run))
+    assert set(diverged) == {"ga_positions", "ga_strength"}
+    assert "ga_positions" in diverged["ga_positions"]
+    assert "ga_strength" in diverged["ga_strength"]
+
+
+def test_registry_asset_no_longer_registered_is_reported_not_raised():
+    """An asset dropped from asset_registry entirely between freeze and check is a
+    genuine divergence (family A) and is reported via the same dict, not raised."""
+    run = _run()
+
+    class Cursor:
+        def execute(self, _sql, _params):
+            pass
+
+        def fetchall(self):
+            # ga_strength row is simply gone.
+            return [
+                {"asset_id": "ga_positions", "scope": "per_chart", "depends_on": [], "natural_key_partition": "chart_id", "has_cowriters": False},
+            ]
+
+    diverged = _verify_registry_still_matches_manifest(Cursor(), validate_frozen_run_manifest(run))
+    assert set(diverged) == {"ga_strength"}
+    assert "no longer registered" in diverged["ga_strength"]

@@ -1,25 +1,25 @@
 ---
 artifact: NIRMANA_ENGINE_ELEVATION_STATE
 canonical_id: NIRMANA_ENGINE_ELEVATION_STATE
-version: "0.4"
+version: "0.5"
 status: LIVE — rewritten at every packet close
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md
 runs_in: /Users/Dev/madhav-engine (branch campaign/nirmana-engine)
-last_updated: 2026-09-26T14:15Z
+last_updated: 2026-09-26T15:50Z
 ---
 
 # Nirmāṇa engine elevation — STATE
 
 ## Where the campaign is
 
-**Phase A (the gate) — IN FLIGHT. A2 and A1 CLOSED. A3 in correction on one blocking finding.**
+**Phase A (the gate) — ALL THREE PACKETS CLOSED, each reviewer-accepted. Reconciliation commit and the Phase A gate check are next; Phase B has not started.**
 
 | packet | title | status | review verdict | before | after |
 |---|---|---|---|---|---|
 | A1 | Record how long and how fast | **CLOSED** | ACCEPT_WITH_CORRECTIONS ×2 → cleared on B-1 discharge | coverage was a writer-dependent lottery (bo 0/24, ph 0/8) | **123/123 writers timed by the engine**; production rows unchanged at 0/268 and labelled so |
 | A2 | Always record why it failed | **CLOSED** | ACCEPT_WITH_CORRECTIONS → **ACCEPT** on re-review | 301 empty-error records / 82 assets / 46 runs (13.25% of failures) | prospective: every terminating path now writes attributable text; proof re-run independently |
-| A3 | Stop one registry change killing a whole run | **correction pass in flight** — C-1 blocking | ACCEPT_WITH_CORRECTIONS | every one of 8 runs lost 100% of its plan | 8 writers execute where 0 did; production after-figure **unmeasured** |
+| A3 | Stop one registry change killing a whole run | **CLOSED** | ACCEPT_WITH_CORRECTIONS ×2 → **ACCEPT** | all 8 runs lost 100% of plan; Family A = 11 records / 2 runs | on the real run's own manifest: **10/10 aborted → 1/10 failed**; production **unmeasured** |
 | A2b | `mark_asset_error` empty-exception hardening | **carried** (split out of A2 to keep waves disjoint) | — | latent, not inflating the 301 | — |
 | A3b | Runs dispatched with no manifest at all | **carried** (split out of A3; 6 of its 8 runs) | — | 7 records / 6 runs | — |
 | B1 | Cascade reads as one cause, N blocked | not started | — | 1,281 cascade records (confirmed exactly) | — |
@@ -137,6 +137,46 @@ three `nirmana-analysis-receipts` pins knowingly stale. Neither can be regenerat
 exists: the census generator refuses without an explicit `--source-revision`, and the layer-pins
 generator resolves content from committed git blobs. A follow-up commit reconciles both. **No `bg_*`
 digest changed**, so the native-ratified L0 frozen pin is untouched.
+
+
+## A3 — closed 2026-09-26, three correction rounds
+
+**What landed.** A registry change mid-run no longer destroys the run. The validator reports *every*
+divergence instead of raising on the first, the diverged asset alone fails, its dependents block
+through the existing cascade, and every unaffected asset completes. The freeze/check predicate
+asymmetry — where the same field was computed with different rules at each end, so an asset whose own
+row never moved could still be failed — is closed; `route.ts` was the only one of four sites out of
+step.
+
+**What the gate changed, three times.** Round one: the terminal write was deferred past the claim, and
+a hard-exit path in that window could detect a divergence and then silently discard it — *a campaign
+about ending silent failures had introduced one.* Round two closed it by moving the check earlier, but
+**the executor's own exit enumeration was incomplete** — neither executor nor implementer looked at the
+caller, which wraps everything in `except Exception: sys.exit(1)`. Round three wrapped the window
+properly.
+
+**The finding that justifies the whole review apparatus.** The implementer called its `conn.rollback()`
+"defensive and untested". The reviewer tested it against real psycopg: after a genuine in-transaction
+fault the connection is `INERROR` and the next statement raises `InFailedSqlTransaction`. **Without
+that rollback the record-writing would have failed too** — the fix would have worked only against the
+test double. The caveat was over-modest, and the thing it hedged was load-bearing.
+
+**Figures, at three honest strengths** (`measurements/A3_after_*.json`): production before = all 8 runs
+losing 100% of plan; production after = **UNMEASURED**, and stays so until a real divergence occurs;
+counterfactual on the real run's own frozen manifest = **10/10 aborted → 1/10 failed**, because no asset
+in that plan depended on the diverged one. **A3 fixes 2 of the 8 runs**, not 8 — Family B is 6 of them
+and is carried as A3b.
+
+**Carried, not absorbed:** `G-1` — the orphan-cleanup statements just past the fixed window are guarded
+by neither handler, so a fault there still loses a divergence; explicitly *not* charged against A3,
+since the correction's boundary was specified as ending at the claim. `F-5` — A3 writes build-state
+where HEAD wrote nothing, and round three **widened** that surface while narrowing its own loss;
+bounded by a measured self-heal. These lie in opposite directions and are reported as a pair.
+
+**`G-2`, a reviewer correcting itself:** a lost divergence is not lost forever — the watchdog still
+terminalizes the row. The honest claim is that the *reason* is lost and the row is **misattributed**
+into `"orphan-watchdog: run never dispatched"` — Family B's signature, the exact bucket this packet's
+before-measurement worked to separate from Family A.
 
 ## Branch head
 

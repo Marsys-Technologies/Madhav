@@ -340,8 +340,18 @@ def _terminalize_preflight_failure(cur, *, run_id: str, message: str) -> None:
     )
 
 
-def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> None:
-    """Fail closed if mutable registry config changed after dispatch, before work starts."""
+def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> dict[str, str]:
+    """Detect every asset in the frozen plan whose registry row diverged after dispatch.
+
+    Returns ``{asset_id: reason}`` for EVERY divergent asset in `frozen.plan`, not just
+    the first one found (A3 Decision 4 — the query below already computes the full
+    per-asset comparison row in ONE round trip; the old code discarded every mismatch
+    but the first by raising immediately, which is exactly the data the caller needs
+    to narrow an abort to only the genuinely-affected asset(s) instead of the whole
+    run). An empty dict means the registry still matches the frozen manifest for
+    every planned asset. This function never raises for a mismatch — the caller
+    (execute_run) decides what a divergence means; see _terminalize_diverged_assets.
+    """
     cur.execute(
         """SELECT ar.asset_id, ar.scope, COALESCE(ar.depends_on, '{}') AS depends_on,
                   ar.natural_key_partition,
@@ -356,10 +366,12 @@ def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> N
         (frozen.plan,),
     )
     rows = {row["asset_id"]: row for row in cur.fetchall()}
+    diverged: dict[str, str] = {}
     for asset_id in frozen.plan:
         row = rows.get(asset_id)
         if row is None:
-            raise ValueError(f"frozen run manifest asset {asset_id} is no longer registered")
+            diverged[asset_id] = f"frozen run manifest asset {asset_id} is no longer registered"
+            continue
         if (
             row["scope"] != frozen.asset_scopes[asset_id]
             # Sort both sides: the frozen manifest's depends_on is stored sorted
@@ -370,7 +382,8 @@ def _verify_registry_still_matches_manifest(cur, frozen: FrozenRunManifest) -> N
             or row.get("natural_key_partition") != frozen.asset_partitions[asset_id]
             or bool(row.get("has_cowriters")) != frozen.asset_has_cowriters[asset_id]
         ):
-            raise ValueError(f"asset_registry changed after dispatch for frozen asset {asset_id}")
+            diverged[asset_id] = f"asset_registry changed after dispatch for frozen asset {asset_id}"
+    return diverged
 
 
 def _verify_sidecar_code_matches_manifest(frozen: FrozenRunManifest) -> None:
@@ -462,6 +475,44 @@ def is_asset_complete(cur, chart_id, asset_id: str) -> bool:
 
 # ── Main entry ────────────────────────────────────────────────────────────────
 
+def _mark_asset_error_terminal(conn, cur, run_id: str, chart_id, asset_id: str, message: str) -> None:
+    """
+    Shared terminal-error write: asset_throughput + build_run_assets + the
+    asset.state_change event, for an asset that fails THIS run without its writer
+    having run at all. Two callers share this exact shape today: a dependent
+    blocked by a failed/diverged upstream (_mark_asset_blocked), and an asset whose
+    own asset_registry row genuinely diverged from the frozen manifest between
+    freeze and check time (_terminalize_diverged_assets, A3). Not used for a
+    writer's own runtime failure — that path belongs to asset_runner, not this one.
+    """
+    if chart_id is not None:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+               VALUES (%s, %s, 'error', %s, NOW())
+               ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
+               DO UPDATE SET state='error', last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+            (asset_id, chart_id, message),
+        )
+    else:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+               VALUES (%s, NULL, 'error', %s, NOW())
+               ON CONFLICT (asset_id) WHERE chart_id IS NULL
+               DO UPDATE SET state='error', last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+            (asset_id, message),
+        )
+    cur.execute(
+        """UPDATE build_run_assets SET state='error', error=%s, ended_at=NOW()
+           WHERE run_id=%s AND asset_id=%s""",
+        (message[:2000], run_id, asset_id),
+    )
+    conn.commit()
+    emit_event({
+        "type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
+        "from_state": "queued", "to_state": "error", "error": message[:500],
+    })
+
+
 def _mark_asset_blocked(conn, cur, run_id: str, chart_id, asset_id: str, blocking_deps: list[str]) -> None:
     """
     Mark an asset BLOCKED because an upstream it depends on errored/was blocked.
@@ -475,33 +526,49 @@ def _mark_asset_blocked(conn, cur, run_id: str, chart_id, asset_id: str, blockin
         "skipped to avoid building on incomplete data"
         % ", ".join(sorted(blocking_deps))
     )
-    if chart_id is not None:
-        cur.execute(
-            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
-               VALUES (%s, %s, 'error', %s, NOW())
-               ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
-               DO UPDATE SET state='error', last_error=EXCLUDED.last_error, last_built_at=NOW()""",
-            (asset_id, chart_id, msg),
-        )
-    else:
-        cur.execute(
-            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
-               VALUES (%s, NULL, 'error', %s, NOW())
-               ON CONFLICT (asset_id) WHERE chart_id IS NULL
-               DO UPDATE SET state='error', last_error=EXCLUDED.last_error, last_built_at=NOW()""",
-            (asset_id, msg),
-        )
-    cur.execute(
-        """UPDATE build_run_assets SET state='error', error=%s, ended_at=NOW()
-           WHERE run_id=%s AND asset_id=%s""",
-        (msg[:2000], run_id, asset_id),
-    )
-    conn.commit()
-    emit_event({
-        "type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
-        "from_state": "queued", "to_state": "error", "error": msg[:500],
-    })
+    _mark_asset_error_terminal(conn, cur, run_id, chart_id, asset_id, msg)
     logger.warning("[orchestrator] BLOCKED %s — upstream not complete: %s", asset_id, blocking_deps)
+
+
+def _terminalize_diverged_assets(
+    conn, cur, run_id: str, chart_id, asset_scopes: dict[str, str], diverged: dict[str, str],
+) -> None:
+    """
+    A3 Decision 1: fail ONLY the asset(s) whose asset_registry row genuinely
+    diverged from the frozen manifest between freeze and check time — never the
+    whole run, and never by silently re-freezing onto the live (possibly only
+    transiently mutated) registry row. Each diverged asset gets the SAME
+    'frozen manifest validation failed: …' error-string prefix the old whole-run
+    abort used, so any existing monitoring keyed on that prefix keeps matching —
+    now attributed to the one asset that actually diverged, instead of stamped
+    onto every queued row in the run regardless of whether it was affected.
+
+    Transitive dependents of a diverged asset are NOT marked here: the caller
+    seeds this asset's id into execute_dag's `failed` set (via _schedule_parallel's
+    seed_failed), and the ordinary on_block/_mark_asset_blocked cascade already
+    used for an upstream writer failure blocks them exactly the same way — one
+    cause, N blocked, not a second bespoke blocking mechanism.
+
+    F-3 (rereview 20260926T152022Z) — DELIBERATE state-class divergence from the
+    watchdog's own convention: this goes through the shared
+    _mark_asset_error_terminal helper, which writes state='error' via
+    _mark_asset_blocked's "loud, surfaced state" convention — NOT state='aborted',
+    which is what platform/src/app/api/cockpit/watchdog/route.ts:138 uses for a
+    "queued row that never got a chance" (and which AssetNode.tsx:53 renders as
+    "cancelled"). A registry-diverged asset never got a chance to run either, by
+    that same description — but it is reported as a genuine FAILURE (it was
+    checked and found incompatible), not a cancellation, which is the stronger
+    and more accurate signal for an operator to act on. Consequence: any
+    monitoring that filters strictly on state='aborted' will NOT see this family
+    of failure. The 'frozen manifest validation failed: …' error-TEXT prefix
+    (above) is preserved specifically so text-based monitoring keeps matching
+    regardless of this state-class choice.
+    """
+    for asset_id, reason in diverged.items():
+        eff_chart_id = None if asset_scopes.get(asset_id) == "global" else chart_id
+        message = f"frozen manifest validation failed: {reason}"
+        _mark_asset_error_terminal(conn, cur, run_id, eff_chart_id, asset_id, message)
+        logger.error("[orchestrator] REGISTRY DIVERGED %s: %s", asset_id, reason)
 
 
 def execute_dag(
@@ -510,6 +577,7 @@ def execute_dag(
     run_fn,
     worker_limit: int,
     seed_completed: Optional[set] = None,
+    seed_failed: Optional[set] = None,
     on_block=None,
     should_stop=None,
     on_complete=None,         # called(asset_id) when asset lands in completed; errors are swallowed
@@ -526,10 +594,17 @@ def execute_dag(
     Invariant: an asset is dispatched ONLY when every dep is in `completed` and none
     is in `failed`; a failed dep blocks it (transitively). Two assets run at once only
     if neither depends on the other. Returns (failed_set, terminal|None).
+
+    `seed_failed` (A3): assets already known to have failed BEFORE any writer ran —
+    e.g. a registry-divergence preflight failure (_terminalize_diverged_assets) — are
+    seeded straight into `failed` and excluded from `pending`, so they are never
+    dispatched (their terminal row was already written by the caller) while their
+    transitive dependents are still blocked by the ordinary on_block cascade below,
+    exactly as if a writer had failed them.
     """
     completed: set = set(seed_completed or set())
-    failed: set = set()
-    pending: list[str] = list(plan)
+    failed: set = set(seed_failed or set())
+    pending: list[str] = [a for a in plan if a not in failed]
     in_flight: dict = {}          # future → asset_id
     deadlines: dict = {}          # future → wall-clock deadline (seconds since epoch)
     terminal: Optional[str] = None
@@ -660,6 +735,7 @@ def _schedule_parallel(
     asset_partitions: dict[str, str | None],
     asset_has_cowriters: dict[str, bool],
     force: bool = False,
+    seed_failed: Optional[set[str]] = None,
 ) -> tuple[set[str], Optional[str]]:
     """
     Wave-parallel DAG executor. Replaces the serial plan walk while preserving the
@@ -866,6 +942,7 @@ def _schedule_parallel(
         run_fn=worker,
         worker_limit=_WORKER_LIMIT,
         seed_completed=completed,
+        seed_failed=seed_failed,
         on_block=on_block,
         should_stop=should_stop,
         on_complete=on_complete,
@@ -1036,7 +1113,6 @@ def execute_run(run_id: str) -> None:
     action: str = run["action"]
     try:
         frozen = validate_frozen_run_manifest(run)
-        _verify_registry_still_matches_manifest(cur, frozen)
         _verify_sidecar_code_matches_manifest(frozen)
     except ValueError as exc:
         # A legacy, tampered, or registry-mutated run is unsafe to execute. Mark
@@ -1056,6 +1132,21 @@ def execute_run(run_id: str) -> None:
     # Check for @register()'d writers that lack has_writer=true in asset_registry.
     # They are silently excluded from every build plan by the plan resolver query
     # (WHERE has_writer=true). Discovering this mid-run would leave L2+/L5 empty.
+    #
+    # A3/C-1: this MUST run before registry-divergence detection below, not after.
+    # In "enforce" mode (the default) a gap is a HARD FAIL — sys.exit(1), no
+    # retry, nothing about this run_id ever runs again. A hard-fail exit sitting
+    # AFTER a divergence was detected but BEFORE it was written would let a real
+    # divergence be found and then discarded with nothing recorded anywhere — the
+    # exact silent-failure shape this campaign exists to eliminate (confirmed by
+    # probe: with a gap present and mode="enforce", the old ordering raised
+    # SystemExit(1) with zero build_run_assets/asset_throughput writes). Running
+    # this check first means nothing has been detected yet when it can hard-fail,
+    # so nothing can be lost. The concurrency-cap/chart-lock/global-assets-lock
+    # checks further below are different in kind — they are genuine DEFERS (no
+    # build_runs mutation; the row stays 'planned' and a later retry of this same
+    # run_id re-detects everything fresh) — so leaving those between detection
+    # and claim is correct, not a hole.
     if _WRITER_GAP_MODE != "off":
         _gaps = _check_writer_registry_gaps(cur)
         if _gaps:
@@ -1079,45 +1170,126 @@ def execute_run(run_id: str) -> None:
             else:
                 logger.warning(msg, len(_gaps), _gaps)
 
-    # Concurrency cap: defer if too many runs are already active.
-    active_count = count_other_running_runs(cur, run_id)
-    if active_count >= _MAX_CONCURRENT_RUNS:
-        logger.warning(
-            "[orchestrator] max concurrent runs (%d) reached (%d active) — deferring run %s",
-            _MAX_CONCURRENT_RUNS, active_count, run_id,
+    # A3: registry divergence no longer raises — it returns the full set of
+    # genuinely-affected assets (possibly empty) so only THOSE assets (plus their
+    # transitive dependents) fail, instead of the manifest-structural/code-digest
+    # checks above, which remain fail-closed/whole-run (out of this packet's
+    # scope — see Family B in the before-measurement).
+    diverged = _verify_registry_still_matches_manifest(cur, frozen) or {}
+    if diverged:
+        logger.error(
+            "[orchestrator] run %s asset_registry diverged for %d/%d planned asset(s): %s",
+            run_id, len(diverged), len(plan), sorted(diverged.keys()),
         )
-        conn.close()
-        sys.exit(3)
 
-    if not acquire_chart_lock(cur, chart_id):
-        logger.warning("[orchestrator] chart %s locked by another run — deferring", chart_id)
-        conn.close()
-        sys.exit(3)
-    # Lock acquired; commit the advisory lock transaction so it survives later commits
-    conn.commit()
+    # A3 Decision 1 / C-1 / C-4 / F-1 (rereview 20260926T152022Z): a genuine
+    # registry divergence fails only the affected asset(s), never the whole
+    # run — but the per-asset terminal write is deferred until AFTER
+    # claim_runnable_run succeeds below (not done here), because writing it
+    # earlier — before the run is guaranteed to actually execute in this
+    # invocation — would leave that asset stuck 'error' across a retry even if
+    # the divergence had meanwhile resolved.
+    #
+    # Between here and the claim, THREE things can happen — the prior version
+    # of this comment enumerated only the first two, and the rereview
+    # falsified that enumeration by measurement (F-1):
+    #   1. DEFER — the concurrency-cap / chart-lock / global-assets-lock
+    #      checks below, all sys.exit(3). No build_runs mutation; the row
+    #      stays 'planned' for a later retry of this same run_id that
+    #      re-detects everything fresh. SystemExit does not subclass
+    #      Exception, so the try/except below never intercepts these —
+    #      a defer must NOT write, since the run retries and would
+    #      re-detect the same divergence.
+    #   2. SOFT LOSS OF THE CLAIM — claim_runnable_run returns False (a plain
+    #      `return`, not an exception) because some OTHER concurrent actor
+    #      already moved build_runs.state out of ('planned','running'), e.g.
+    #      an external stop/cancel. HEAD's own _terminalize_preflight_failure
+    #      UPDATE is gated on the same state list and would equally match
+    #      zero rows in that interleaving — not a regression this packet
+    #      introduces.
+    #   3. HARD FAULT — count_other_running_runs / acquire_chart_lock /
+    #      claim_runnable_run (or their own conn.commit() calls) raise a
+    #      genuine exception (DB timeout, connection reset, serialization
+    #      failure). Nothing in this window used to catch that: it propagated
+    #      straight out of execute_run, through main.py's blanket
+    #      `except Exception: sys.exit(1)` — an exit(1)-class path INSIDE
+    #      this window that the prior comment's enumeration did not name.
+    #      On that path a divergence detected above was logged (line ~1165)
+    #      but never written to build_run_assets/asset_throughput — lost on
+    #      a fault the run will simply retry into, blind to the very
+    #      divergence that was already found. That is C-4's own defect class
+    #      (a confident, wrong exit enumeration) recurring inside C-4's own
+    #      fix. The try/except below exists ONLY to close this third case:
+    #      on a genuine exception, terminalize the already-detected
+    #      diverged asset(s) before re-raising, so the record survives even
+    #      though this attempt still fails and the exception still reaches
+    #      main.py's sys.exit(1) unchanged — only whether the divergence is
+    #      RECORDED changes, not the outcome of this attempt.
+    try:
+        # Concurrency cap: defer if too many runs are already active.
+        active_count = count_other_running_runs(cur, run_id)
+        if active_count >= _MAX_CONCURRENT_RUNS:
+            logger.warning(
+                "[orchestrator] max concurrent runs (%d) reached (%d active) — deferring run %s",
+                _MAX_CONCURRENT_RUNS, active_count, run_id,
+            )
+            conn.close()
+            sys.exit(3)
 
-    holds_global_assets_lock = False
-    if any(scope == "global" for scope in _asset_scopes.values()):
-        if not acquire_global_assets_lock(cur):
-            logger.warning("[orchestrator] global assets locked by another run — deferring %s", run_id)
+        if not acquire_chart_lock(cur, chart_id):
+            logger.warning("[orchestrator] chart %s locked by another run — deferring", chart_id)
+            conn.close()
+            sys.exit(3)
+        # Lock acquired; commit the advisory lock transaction so it survives later commits
+        conn.commit()
+
+        holds_global_assets_lock = False
+        if any(scope == "global" for scope in _asset_scopes.values()):
+            if not acquire_global_assets_lock(cur):
+                logger.warning("[orchestrator] global assets locked by another run — deferring %s", run_id)
+                release_chart_lock(cur, chart_id)
+                conn.commit()
+                conn.close()
+                sys.exit(3)
+            holds_global_assets_lock = True
+            conn.commit()
+
+        # The dispatcher may have terminalized a failed/ambiguous job invocation
+        # after this process loaded the row.  Only a planned row can be claimed;
+        # losing the compare-and-swap means no asset or throughput state is touched.
+        if not claim_runnable_run(conn, cur, run_id):
+            logger.warning("[orchestrator] run %s is no longer runnable — refusing execution", run_id)
+            if holds_global_assets_lock:
+                release_global_assets_lock(cur)
             release_chart_lock(cur, chart_id)
             conn.commit()
             conn.close()
-            sys.exit(3)
-        holds_global_assets_lock = True
-        conn.commit()
-
-    # The dispatcher may have terminalized a failed/ambiguous job invocation
-    # after this process loaded the row.  Only a planned row can be claimed;
-    # losing the compare-and-swap means no asset or throughput state is touched.
-    if not claim_runnable_run(conn, cur, run_id):
-        logger.warning("[orchestrator] run %s is no longer runnable — refusing execution", run_id)
-        if holds_global_assets_lock:
-            release_global_assets_lock(cur)
-        release_chart_lock(cur, chart_id)
-        conn.commit()
-        conn.close()
-        return
+            return
+    except Exception:
+        # F-1: a genuine (non-SystemExit) fault anywhere in the window above.
+        # If a divergence was already detected, record it now — this is the
+        # ONLY place that can happen for this attempt, since main.py's blanket
+        # handler below us does not know about `diverged` at all. Roll back
+        # first: the connection may be left in a failed-transaction state by
+        # whatever raised, and the terminal write must not be issued into that
+        # (same convention as Guard B's rollback-before-further-work further
+        # below). A secondary failure while terminalizing must not mask the
+        # original fault — log it and still re-raise the original exception.
+        if diverged:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            try:
+                _terminalize_diverged_assets(conn, cur, run_id, chart_id, _asset_scopes, diverged)
+            except Exception:
+                logger.error(
+                    "[orchestrator] run %s: failed to terminalize diverged asset(s) %s "
+                    "after a hard fault in the pre-claim window — the divergence record "
+                    "is lost for this attempt (logged above at detection time only)",
+                    run_id, sorted(diverged.keys()), exc_info=True,
+                )
+        raise
 
     # Orphan cleanup: reset assets stuck in 'building' from a prior crashed run.
     # We hold the chart advisory lock, so no other orchestrator is running for this
@@ -1151,6 +1323,19 @@ def execute_run(run_id: str) -> None:
         mark_run_state(conn, cur, run_id, "running", started_at=True)
         emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "running"})
 
+        # A3 Decision 1: NOW that the run is claimed and guaranteed to run to
+        # completion in this invocation (no defer path remains beyond this point),
+        # write the diverged asset(s)' terminal state. seed_failed (below) blocks
+        # their transitive dependents through the ordinary on_block cascade; every
+        # unaffected asset in the plan still runs normally.
+        if diverged:
+            emit_event({
+                "type": "run.registry_divergence_narrowed",
+                "run_id": run_id,
+                "diverged_assets": sorted(diverged.keys()),
+            })
+            _terminalize_diverged_assets(conn, cur, run_id, chart_id, _asset_scopes, diverged)
+
         # Wave-parallel execution. The scheduler enforces the SAME upstream-success
         # gate as the old serial loop (an asset runs only when all deps are 'lit'; a
         # failed/blocked dep blocks it transitively), but runs independent DAG branches
@@ -1158,6 +1343,7 @@ def execute_run(run_id: str) -> None:
         failed_assets, terminal = _schedule_parallel(
             conn, cur, run_id, chart_id, plan, action, _asset_scopes, _asset_deps,
             frozen.asset_partitions, frozen.asset_has_cowriters, force=force,
+            seed_failed=set(diverged) if diverged else None,
         )
 
         if terminal == "stopped":

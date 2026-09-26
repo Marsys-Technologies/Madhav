@@ -370,10 +370,26 @@ export async function POST(req: NextRequest) {
   // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
   // operational metadata, so the runner must never re-plan a queued run from it.
   const registryByAssetId = new Map(registryResult.rows.map(entry => [entry.asset_id, entry]))
-  const writerCountByTarget = new Map<string, number>()
+  // A3 (predicate-asymmetry fix): has_cowriters exists to detect a real shared-write
+  // hazard -- another asset that could ALSO write this row's target_table. A row
+  // with has_writer=false is a placeholder (migration 342: "plan resolver filter
+  // excludes placeholder assets from build plans") with no WriterBase behind it, so
+  // it can never actually write anything and is not a co-writer hazard. This map
+  // therefore only ever holds asset_ids that have has_writer=true -- the SAME
+  // predicate runner.py's check-time query applies (peer.is_active=true AND
+  // peer.has_writer=true; registryResult.rows is already is_active=true-filtered
+  // above). Before this fix, an is_active-but-no-writer row sharing a target_table
+  // still counted here, so freeze-time could compute has_cowriters=true for an
+  // asset while check-time correctly computed false for the same asset/row --
+  // producing a false "asset_registry changed after dispatch" abort with nothing
+  // about the asset's own contract actually having changed (A3 before-measurement,
+  // registry_change_attribution.circumstantial_findings).
+  const activeWriterAssetIdsByTarget = new Map<string, string[]>()
   for (const entry of registryResult.rows) {
-    if (entry.target_table) {
-      writerCountByTarget.set(entry.target_table, (writerCountByTarget.get(entry.target_table) ?? 0) + 1)
+    if (entry.target_table && entry.has_writer) {
+      const ids = activeWriterAssetIdsByTarget.get(entry.target_table) ?? []
+      ids.push(entry.asset_id)
+      activeWriterAssetIdsByTarget.set(entry.target_table, ids)
     }
   }
   const manifestAssets: FrozenManifestAsset[] = []
@@ -392,12 +408,18 @@ export async function POST(req: NextRequest) {
         code: 'CODE_DIGEST_UNAVAILABLE',
       }, { status: 422 })
     }
+    // Mirrors runner.py's EXISTS predicate exactly: true iff some OTHER active,
+    // has_writer=true row shares this asset's target_table (self excluded).
+    const hasCowriters = Boolean(
+      entry.target_table
+      && (activeWriterAssetIdsByTarget.get(entry.target_table) ?? []).some(id => id !== entry.asset_id),
+    )
     manifestAssets.push({
       asset_id: entry.asset_id,
       scope: entry.scope,
       depends_on: [...(entry.depends_on ?? [])],
       natural_key_partition: entry.natural_key_partition ?? null,
-      has_cowriters: Boolean(entry.target_table && (writerCountByTarget.get(entry.target_table) ?? 0) > 1),
+      has_cowriters: hasCowriters,
       expected_code_digest: expectedDigest,
     })
   }
