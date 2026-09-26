@@ -96,7 +96,7 @@ that surfaced it, and the state.
 | R22 | Width universes: read a declared universe from the registry or the layer instance where one exists, instead of always `NOT_GENERIC` | pilots | **OPEN** — needs a place to *declare* universes first (R06-adjacent) |
 | R23 | Field-level reachability census over capability modules (fields selected vs columns built) | pilots 1–3 | **OPEN** |
 | R24 | Exercised on L1–L5 (T4) | — | **OPEN** |
-| R25 | A `--plant` mode for T1: inject a known defect into a scratch copy and assert detection | — | **OPEN** |
+| R25 | A `--plant` mode for T1: inject a known defect into a scratch copy and assert detection | — | **DONE** (nikasha_test/harness/plant.py, 17 plants; T1_RESULTS.md) |
 | R26 | Emits `kind: opportunity` rows? No — opportunities are judgement, never machine-emitted. Recorded so nobody adds it | — | DONE (by rule) |
 | R40 | `Vocab.identity`'s `count(DISTINCT (chart_id,event_class,segment_index))` does not scale to the estate's largest table (kala_field, 10.3M rows) and exceeds the hardcoded 180s psql timeout (line 95), making the L3 and `--layer all` census unrunnable on production. Ground truth measured by hand: duplicates = 0 in 47s. Fix: sample-aware or indexed duplicate count, and a configurable timeout | nikasha-test P2 T2 sweep | OPEN |
 | R41 | No per-check fault isolation: one check raising (timeout, missing relation) aborts the ENTIRE layer census instead of degrading that check's verdict to UNKNOWN for that asset. The census must catch per-check exceptions and record them as measured-but-errored | nikasha-test P2 T2 sweep (L3 + all killed) | OPEN |
@@ -110,6 +110,11 @@ that surfaced it, and the state.
 | R49 | `Build.history`'s "most recent run error" text quotes a non-latest error (ka_avadhi, ka_kshetra) — same latest-row bug class as R44, in `build_run_assets` reads | nikasha-test P2 handverify L3 | OPEN |
 | R50 | `Build.exercised` run count off by one (L1 ga_dashas: census 108, actual 107 from `build_run_assets ⋈ build_runs`) | nikasha-test P2 handverify L1 | OPEN |
 | R51 | `Dens.served`'s measured module list mis-attributes serving modules (L4: query_predictive_anchors.ts wrongly included for ph_pramana/ph_sodhana; index.ts for ph_rectification/ph_suddha_sodhana) — verdicts unaffected, evidence wrong | nikasha-test P2 handverify L4 | OPEN |
+| R52 | `Build.completion` inverted: emptying a table whose build record agrees with the emptiness flips the check FAIL→**PASS** (planted TRUNCATE of bg_muhurta_lattice read "live=0 and rows_written=0 — consistent"). It is a rows_written↔live consistency test, not a non-emptiness test — destroying data makes the asset look healthy | nikasha-test P2 T1 plant build_completion_truncate | OPEN |
+| R53 | `Build.target`'s FAIL branch is dead code: `asset_registry.asset_kind` is NOT NULL with CHECK(data\|service\|artifact), so the only expressible target-table loss degrades PASS→N/A, never FAIL | nikasha-test P2 T1 plant build_target_null | OPEN |
+| R54 | `Vocab.alias` verdict saturates: no synonyms-bearing asset is PASS anywhere, so emptying all 662 alias sets moved the measured value 79/741→741/741 empty while the verdict stayed FAIL→FAIL — severity is invisible at verdict level | nikasha-test P2 T1 plant vocab_alias | OPEN |
+| R55 | `Earn.build_record` ≡ `Cost.baseline` are one detector (both read `asset_throughput.rows_per_second`), and constant-FAIL wherever rows_per_second is unset (the entire sandbox) — they provide no independent signal and only the sensitivity direction is plantable | nikasha-test P2 T1 plant earn_cost_signal | OPEN |
+| R56 | `Count.floor`/`Build.completion` silently absent (no verdict emitted) on assets whose `count_sql` is parameterized or multi-table — 57 assets on L1/L2/L4/L5. The differential reimplementation finds real breaches the inspector never reports (ga_vargas 0 < 22 092; bo_laksana 7 409 < 60 000; ph_sankrama 630 < 2 510) | nikasha-test P2 T1 differential | OPEN |
 
 ### 2.6 · The ledgers and the tracker
 

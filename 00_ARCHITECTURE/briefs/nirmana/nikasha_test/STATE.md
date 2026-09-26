@@ -1,10 +1,10 @@
 ---
 artifact: NIKASHA_TEST_CAMPAIGN_STATE
-version: "0.2"
+version: "0.3"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 2 T2 CLOSED (6 layers hand-verified, T2_SUMMARY.md). Next: T1 planted-defect suite (harness/plant.py, sandbox only), then mutation + differential tests.
-updated: 2026-09-26T21:00:00+05:30
+you_are_here: Phase 2 T1+T2 CLOSED (T2 hand-verified; T1 planted-defect suite 17/17 detected, mutation + differential done — harness/T1_RESULTS.md). Next: Phase 3 closure loop (sandbox only).
+updated: 2026-09-26T23:30:00+05:30
 ---
 
 # NIKAṢA TEST CAMPAIGN — STATE
@@ -26,7 +26,7 @@ updated: 2026-09-26T21:00:00+05:30
 |---|---|---|---|
 | 0 | CLOSED | c63ca0774 | census L0: 119 FAIL/90 PARTIAL; tracker 0/40, 0/360 gates |
 | 1 | CLOSED | (this commit) | 183 tables, 0 COPY_FAIL, manifest written; fidelity diff L0: 3 diffs all sampling-induced, 0 UNEXPECTED → FIDELITY PASS (census/fidelity_L0.md); R47 registered (census output path overwrites prod artifact) |
-| 2 | IN_PROGRESS (T2 CLOSED — all 6 layers hand-verified; T1 planted defects not started) | (this commit) | T2: 60 assets, 60 verdict-level disagreements, all instances of R42/R43/R46; L3 census on sandbox (2.5s) — R40/R41 the only prod blockers; handverify/T2_SUMMARY.md |
+| 2 | CLOSED (T2 hand-verified all 6 layers; T1 planted-defect suite done) | (this commit) | T2: 60 assets, 60 verdict-level disagreements, all instances of R42/R43/R46; L3 census on sandbox (2.5s) — R40/R41 the only prod blockers; handverify/T2_SUMMARY.md. T1: 17/17 plants detected, 0 cross-asset collateral, all restored; mutation test notices an inverted detector; differential 265 agree / 99 classed / 0 unclassified; new register rows R52–R56; harness/T1_RESULTS.md |
 | 3 | NOT_STARTED | — | closure loop — campaign's most important untested path |
 | 4 | NOT_STARTED | — | tier1/tier2 structured summary ready at derivations/_tier1_tier2_summary.md |
 | 5 | NOT_STARTED | — | — |
@@ -107,11 +107,31 @@ Binding rulings absorbed: #9, #10, #11, #13, #16, #17 (details in pre-rewrite ST
   (d) Build.dep_liveness "all lit" ignores stale-only dependencies (L2);
   (e) bo_samvada view asset scored against stub count_sql SELECT 0 (live_rows 0 vs real 15).
 
+## Phase 2 findings so far (T1)
+- T1 planted-defect suite (sandbox only): 17 plants across 15 of 18 inspector checks, all detected
+  for the planted asset and no other (collateral=[] on all), all restored clean
+  (harness/plant.py, harness/T1_RESULTS.json, census/plants/*.json).
+- Mutation test: inverted Vocab.identity in harness/asset_census_mutant.py; control FAIL vs mutant
+  PASS on the same planted duplicate → suite_notices=true (harness/T1_MUTATION.json).
+- Differential test (harness/differential.py, harness/T1_DIFFERENTIAL.md): independent
+  reimplementation of Vocab.identity / Build.registered / Count.floor over all 6 layers:
+  265 agreements, 99 disagreements ALL classed (9×R46, 19×R48, 13×R43, 57×new R56, 1 methodology),
+  0 unclassified.
+- New register rows R52–R56 (NIKASHA_CHANGE_REGISTER): Build.completion inverted FAIL→PASS on
+  data destruction (sharpens R42); Build.target FAIL branch dead under asset_kind CHECK;
+  Vocab.alias severity verdict-invisible (FAIL saturation); Earn.build_record ≡ Cost.baseline
+  single constant-FAIL detector; Count.floor/Build.completion silently absent on 57 assets with
+  parameterized/multi-table count_sql (real floor breaches hidden: ga_vargas 0<22092,
+  bo_laksana 7409<60000, ph_sankrama 630<2510).
+- R25 CLOSED (plant mode built).
+- NOT_MEASURED: Complete.width, Carr.detector, Reach.fields (constant verdicts, no per-asset
+  input to plant).
+
 ## Open threads (carried forward)
 1. ~~Phase 1~~ CLOSED (9495fb1a8).
-2. ~~T2 including L3~~ CLOSED (this commit). Register rows R40–R51 written.
-3. T1 planted defects (harness/plant.py) — NOT STARTED, sandbox only. Next.
-4. Phase 3 closure loop — NOT STARTED, campaign's most important untested path.
+2. ~~T2 including L3~~ CLOSED. Register rows R40–R51 written.
+3. ~~T1 planted defects + mutation + differential~~ CLOSED (this commit). R52–R56 written; R25 closed.
+4. Phase 3 closure loop — NOT STARTED, campaign's most important untested path. Next.
 5. Phases 4–7 as per brief.
 
 ## Blockers
