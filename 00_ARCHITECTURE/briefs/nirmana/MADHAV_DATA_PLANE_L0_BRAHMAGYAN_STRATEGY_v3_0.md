@@ -218,7 +218,7 @@ remaining 34 are marked honestly.
 
 | asset | fidelity | measured result |
 |---|---|---|
-| bg_ontology | **FAIL (identity)** | 741 rows, **730 distinct `canonical_id`** — 11 ids carried by two entity classes each (`kemadruma` doṣa+yoga, `phaladeepika` school+text, `kp` dasha_system+school, `sade_sati`/`balarishta`/`dhaiya` concept+doṣa, `daridra` doṣa+yoga, `ashtakavarga` concept+school, `neecha_bhanga_raja_yoga` concept+yoga, `sthira_dasha` concept+dasha_system, `vyatipata` upagraha+yoga). A resolver returns two rows and the caller picks one. |
+| bg_ontology | **CORRECTED 2026-09-26 by pilot 1 — not an identity FAIL** | This row previously read FAIL: 741 rows, 730 distinct `canonical_id`, 11 ids in two classes each. Re-measured against the table's **declared key** — `UNIQUE (entity_class, canonical_id)`, a live database constraint, and the seeder's own `ON CONFLICT` target — production holds **741 rows, 741 distinct composites, 0 duplicates**. The authority is internally consistent and the 11 ids (`ashtakavarga` concept+school, `phaladeepika` school+text, `kemadruma` doṣa+yoga, …) are a school and a concept being two things, which the composite key permits by design. **The defect is elsewhere and is two defects:** (i) the detector this document and the sealed data plane §4.1 rule 1 specify — `count(DISTINCT canonical_id)` *across* classes — is the wrong detector for a composite-key authority and reports FAIL on conformant data (reopen request C-8); (ii) consumers that resolve on `canonical_id` alone, chiefly `resolve_entity.ts`, which returns two rows and applies a hard-coded class preference (`bg_ontology-G04`). |
 | bg_ontology | **FAIL (one class)** | alias sets: 15 of 16 classes complete; **`dosha` 79 rows of 79 with an empty alias set** — the class a doṣa name lookup must resolve through. |
 | bg_rules | **PASS (source present)** / **WEAK (linkage)** | 3,002 rules, **all** carrying `verse_ref`, across 14 texts. But only **17 of 3,002** carry a `yoga_canonical_id` — the rule→concept link is 0.6% populated. |
 | bg_doshas | **PARTIAL (qualification)** | 79 rows, all with a citation field populated, but **53 cite the placeholder `classical_tradition`** rather than a text — a populated field that names no source. |
@@ -238,7 +238,7 @@ L0's synergy is one question: **is the shared vocabulary actually shared?** Thre
 
 | seam | measured | state |
 |---|---|---|
-| **A · catalogue → identity** — every yoga, doṣa and daśā-system id resolves to one ontology row | 233 yoga + 79 doṣa + 20 daśā-system rows against 741 ontology rows whose key is **not unique** (730 distinct) | **REAL at the core, broken at the key.** The seam exists and is used; over-counting is guaranteed for the 11 duplicated ids. Per the template's join rule, that non-unique key *is* the finding. |
+| **A · catalogue → identity** — every yoga, doṣa and daśā-system id resolves to one ontology row | 233 yoga + 79 doṣa + 20 daśā-system rows against 741 ontology rows keyed `UNIQUE (entity_class, canonical_id)` — **unique under the declared key**, 730 distinct on `canonical_id` alone | **REAL, and UNDECLARED.** Corrected 2026-09-26: the key is not broken; the seam is not *declared*. The three catalogues each seed identity rows into the ontology (pilot 1 §1) and none references it by a declared contract, so the seam cannot be broken to be measured. A consumer joining on `canonical_id` alone over-counts for 11 ids — a consumer defect, not an authority one. |
 | **B · rules → concepts** | 17 of 3,002 rules linked to a concept id | **EFFECTIVELY ABSENT.** 3,002 qualified rules and almost no machine path from a rule to the concept it qualifies. |
 | **C · remedies → source identity** | 52 of 341 resolve; 289 fail on spelling | **UNNORMALISED.** The seam is declared and populated but does not join. |
 
@@ -394,7 +394,7 @@ This section **inverts** for L0: it does not conform to the vocabulary, it *is* 
 
 | §4.1 rule | state | measured |
 |---|---|---|
-| 1 · one canonical id, one closed alias set per thing | **FAIL, both halves** | 741 rows / 730 distinct ids (11 duplicated across classes); `dosha` 79/79 with no alias set |
+| 1 · one canonical id, one closed alias set per thing | **FAIL on the alias half only** (corrected 2026-09-26) | identity half: **PASSES under the authority's declared key** — 741 rows, 741 distinct `(entity_class, canonical_id)`, 0 duplicates, constraint `brahma_ontology_canonical_unique`. The across-classes detector this document inherited from data plane §4.1 is wrong for a composite-key authority (C-8). Alias half: **FAIL** — `dosha` 79/79 with no alias set |
 | 2 · the set is the only permitted surface; an unlisted name is raised | **PARTIAL** | `resolve_entity` exists and resolves by name and synonym; for the 11 duplicated ids it returns two rows, which is a resolution that has not resolved |
 | 3 · resolution one-directional, normalisation declared once | **FAIL** | the 289 unresolved remedy ids differ from resolving ones only by case (`BPHS` vs `bphs`, `Phaladeepika` vs `phaladeepika`) — normalisation is not declared at the authority |
 | 4 · code-side snapshots generated, pinned, parity-tested | **PARTIAL** | parity-style tests exist (10 vocabulary/parity test files, including `test_event_classes_parity.py`, `test_domain_vocabulary.py`); whether *every* snapshot has one is **NOT MEASURED** |
@@ -676,5 +676,30 @@ or §7. Recorded here rather than silently renumbered.
 | C-6 | parity never run; invalidation path never exercised | **layer** | Dens and the first consumer cutover |
 | C-7 | template defines no §6/§7 though §5.2 cites §7; §2.5 is ordered after §2.7 | **template** (tier 3 is sealed — this is a reopen request, not an edit) | the L1 instance, which would inherit both |
 
+| C-8 | data plane §4.1 rule 1's detector (`count(DISTINCT canonical_id)` across classes) reports FAIL on data that satisfies its own `UNIQUE (entity_class, canonical_id)` constraint; this document inherited the error into 1.2, 1.3 and 2.6 | **sealed data plane** (tier 2) — the three rows here are corrected; the parent's detector is not mine to edit | every `Vocab` gate on every layer, and the L1 instance |
+| C-9 | row 13 of the asset-brief inheritance (the concepts an asset touches, each with the carriage check it invites) **cannot be filled from this instance** — §2.7 names the three checks at layer scope and assigns none per asset. Pilot 1 had to choose D1 itself | document (this instance) | the next asset brief |
+| C-10 | §1.1 models one `target_table` per asset and cannot express a **shared table with several producers**. `brahma_ontology` has four (`l0_ontology.py` 414 rows / 14 classes, plus `l0_yogas.py`, `l0_doshas.py`, `l0_dasha_systems.py` supplying 327 more), and `bg_ontology`'s `count_sql` credits it with all 741 | document (this instance) + layer | the first asset certification |
+
 Per the template's rule, a finding about the document is fixed in the document and never deferred: C-1
 and C-2 are the two that make this instance incomplete, and both are measurement passes, not decisions.
+C-8's three inherited rows are corrected above; the parent's detector is a reopen request, recorded.
+
+## Pilot findings — 1 of 5 complete
+
+`bg_ontology` (`l0_assets/BG_ONTOLOGY_ELEVATION_BRIEF_v1_0.md`), against asset template v2.0:
+
+- **Derivability: 12 of 13 inheritance rows filled without invention.** The thirteenth is C-9.
+- **The pilot corrected a finding in this document rather than inheriting it** — which is what a pilot is
+  for. The identity FAIL was a wrong detector, not wrong data.
+- **10 gap rows and 6 opportunity rows registered** in `asset_gaps.jsonl`; tracker reads
+  `GAPS_REGISTERED=1 · open gaps 10 · open opportunities 6`, and the opportunities correctly do not
+  withhold elevation.
+- **The new §1.1 width census earned its place immediately:** the `text` class and the corpus both hold 15
+  members and differ by **3 in each direction**. A row count reads 15 = 15 and sees nothing.
+- **The new §1.2 reachability census earned its place immediately:** of 741 built rows, **233 are
+  unreachable** through `list_entities`, which explains the emptiness with a statement measurably untrue
+  (`entity_class='yoga'` "has no dedicated top-level class"), and 79 more are reachable but undeclared.
+  58% reachable-and-declared.
+- **The §9 opportunity register found the asset's real architectural question**, which no gate would have
+  asked: the key contract (composite vs simple) is a native decision worth taking once, and it dissolves
+  three registered gaps.
