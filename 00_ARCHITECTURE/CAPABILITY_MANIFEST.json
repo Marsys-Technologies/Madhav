@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-26T12:53:12+05:30",
+  "generated_at": "2026-09-27T00:10:06+05:30",
   "generator_version": "1.0",
-  "entry_count": 136,
-  "fingerprint": "7794567b405a9207",
+  "entry_count": 141,
+  "fingerprint": "2af936045171778c",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1965,13 +1965,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "bb341cc1a696db7b5541af8792237aff12ac18985b1491979a73ed8ed98fa4dc",
+      "fingerprint": "244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f",
       "native_id": "project",
-      "last_verified_session": "L0-PILOT-BUILD-GATE-20260926",
-      "last_verified_on": "2026-09-26",
+      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_on": "2026-09-27",
       "tier": 4,
       "note": "tier-4 template; produces one instance per asset",
-      "fingerprint_sha256": "bb341cc1a696db7b5541af8792237aff12ac18985b1491979a73ed8ed98fa4dc",
+      "fingerprint_sha256": "244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f",
       "doc_status": "DRAFT_PENDING_REVIEW",
       "supersedes": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md"
     },
@@ -1995,6 +1995,91 @@
       "fingerprint_sha256": "2233d00ad48d389da0cded71dfece336fe83b21fd1bde9243af9118540ece569",
       "doc_status": "DRAFT_PENDING_ACCEPTANCE",
       "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md"
+    },
+    {
+      "canonical_id": "NIKASHA_CHANGE_REGISTER_v2_0",
+      "path": "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md",
+      "version": "2.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "a8644782ab32b432efbf227fd4c86e844794c983e8f2c2ae3c1b3de6c0e3d8a7",
+      "native_id": "project",
+      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_on": "2026-09-27",
+      "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
+    },
+    {
+      "canonical_id": "NIKASHA_IMPLEMENTATION_PLAN_v1_0",
+      "path": "00_ARCHITECTURE/briefs/nirmana/NIKASHA_IMPLEMENTATION_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7231cc7b430ccbe0a97a031158dce33d6cfbfabfd24ce665c8a145d5762a5145",
+      "native_id": "project",
+      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_on": "2026-09-27",
+      "note": "10 ordered packets from the nikasha-test campaign, ~365h"
+    },
+    {
+      "canonical_id": "NIKASHA_TEST_CAMPAIGN_REPORT_v1_0",
+      "path": "00_ARCHITECTURE/briefs/nirmana/nikasha_test/NIKASHA_TEST_CAMPAIGN_REPORT_v1_0.md",
+      "version": "1.0",
+      "status": "FINAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "0c9a5993ae2ad447647d16175680cc86d958bee8d5c17a2c895d0884afeab620",
+      "native_id": "project",
+      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_on": "2026-09-27",
+      "note": "campaign report; verdict NOT_READY_TO_FREEZE"
+    },
+    {
+      "canonical_id": "NIKASHA_TEST_DECISIONS_FOR_THE_NATIVE",
+      "path": "00_ARCHITECTURE/briefs/nirmana/nikasha_test/DECISIONS_FOR_THE_NATIVE.md",
+      "version": "1.0",
+      "status": "OPEN",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d8c9d8e374647948ca0c6ad6bbdb68120224146e939e70641904756f20c0a1d9",
+      "native_id": "project",
+      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_on": "2026-09-27",
+      "note": "6 native-only decisions with recommendations and option costs"
+    },
+    {
+      "canonical_id": "NIKASHA_TEST_PHASE6_ANALYSIS",
+      "path": "00_ARCHITECTURE/briefs/nirmana/nikasha_test/PHASE6_ANALYSIS.md",
+      "version": "1.0",
+      "status": "FINAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c12a85ae483cbff5f8fdcae65f853b7cf46597b048dc6705b450e50b2c32968b",
+      "native_id": "project",
+      "last_verified_session": "NIKASHA-TEST-P7-20260927",
+      "last_verified_on": "2026-09-27",
+      "note": "readiness verdicts, root-cause clusters, freeze evaluation, build-system re-verification"
     }
   ]
 }

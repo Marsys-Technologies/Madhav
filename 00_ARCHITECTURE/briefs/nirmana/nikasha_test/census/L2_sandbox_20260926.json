@@ -1,0 +1,2060 @@
+{
+ "L2": {
+  "generated": "2026-09-26T21:07:57+05:30",
+  "layer": "L2",
+  "layer_name": "Bodha",
+  "scoring": "contribution",
+  "n_assets": 23,
+  "global_runs": 67,
+  "global_runs_touching_layer": 607,
+  "never_exercised_with_writer": [],
+  "registered_ids": 23,
+  "registry_has_writer": 23,
+  "phantom_registered": [],
+  "local_map_candidates": -1,
+  "assets": [
+   {
+    "asset_id": "bo_anveshana",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_discoveries",
+    "has_writer": true,
+    "writer_files": [
+     "bo_anveshana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_anveshana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_discoveries"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-10"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=4437, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "3695 rows, 30 cols; fully populated 28; NEVER populated ['calibration_hook', 'novelty_class_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (discovery_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "3 module(s): query_contradictions.ts, query_discoveries.ts, query_triangulation.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "96 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-10"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 24 error(s) and 12 abort(s) on record. BLOCKED: upstream dependency(ies) bo_bimba, bo_drishti, bo_karanajala, bo_laksana, bo_samskara, bo_sangati did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_arudha",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_arudha.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_arudha.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-07-27"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=20, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "22 run(s), scope(s): asset_set, global, layer, last 2026-09-10"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 3 abort(s) on record. BLOCKED: upstream dependency(ies) ga_structural did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_bimba",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_cgm_nodes",
+    "has_writer": true,
+    "writer_files": [
+     "bo_bimba.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_bimba.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "no idempotency pattern in the writer's own SQL \u2014 it likely delegates; verify there"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_cgm_nodes"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-11"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=255, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "1101 rows, 45 cols; fully populated 20; NEVER populated ['source_subsystem', 'clustering_coefficient', 'closeness_centrality', 'core_number', 'cgm_subgraph_cluster_id', 'configuration_constituents_array', 'hub_score', 'hub_edge_types_array', 'cross_ayanamsha_presence_score', 'node_embedding_vec', 'ephemeris_audit_jsonb', 'msr_salience_version_used', 'cdlm_version_used']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, snapshot_type, node_type, node_subject): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 1101/1101 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): graha_portrait.ts, traverse_chart_graph.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "121 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 25 error(s) and 8 abort(s) on record. BLOCKED: upstream dependency(ies) bo_laksana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_cdlm_summary",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_cdlm_chart_summary",
+    "has_writer": true,
+    "writer_files": [
+     "bo_cdlm_summary.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_cdlm_summary.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_cdlm_chart_summary"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=40, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "15 rows, 23 cols; fully populated 19; NEVER populated ['dynamic_system_id', 'dynamic_maha_lord', 'dynamic_antar_lord', 'tradition_view_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, snapshot_type, dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 15/15 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "1 module(s): query_cdlm_summary.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "80 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-09"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 16 error(s) and 9 abort(s) on record. BLOCKED: upstream dependency(ies) bo_sangati did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_cgm_motifs",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_cgm_motifs",
+    "has_writer": true,
+    "writer_files": [
+     "bo_cgm_motifs.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_cgm_motifs.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_cgm_motifs"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-09"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=600, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "1811 rows, 16 cols; fully populated 16; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (motif_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 1811/1811 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_cgm_motifs.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "123 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-09"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 25 error(s) and 11 abort(s) on record. BLOCKED: upstream dependency(ies) bo_bimba, bo_karanajala did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_cgm_paths",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_cgm_paths",
+    "has_writer": true,
+    "writer_files": [
+     "bo_cgm_paths.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_cgm_paths.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_cgm_paths"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=45, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "135 rows, 20 cols; fully populated 20; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, snapshot_type, path_type, from_node_id, to_node_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 135/135 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_cgm_paths.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "79 run(s), scope(s): asset_set, global, layer, last 2026-09-09"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 17 error(s) and 8 abort(s) on record. BLOCKED: upstream dependency(ies) bo_bimba, bo_karanajala did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_chart_gestalt",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_chart_gestalt",
+    "has_writer": true,
+    "writer_files": [
+     "bo_chart_gestalt.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_chart_gestalt.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_chart_gestalt"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "5 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-10"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=5, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "15 rows, 20 cols; fully populated 19; NEVER populated ['pivot_ids']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "1 module(s): query_chart_gestalt.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "94 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-10"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 23 error(s) and 12 abort(s) on record. BLOCKED: upstream dependency(ies) bo_anveshana, bo_bimba, bo_cgm_paths, bo_laksana, bo_sangati did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_drishti",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_question_lenses",
+    "has_writer": true,
+    "writer_files": [
+     "bo_drishti.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_drishti.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_question_lenses"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=60, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "180 rows, 15 cols; fully populated 15; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, question_type): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 180/180 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "2 module(s): query_domain_reading.ts, query_question_lenses.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "79 run(s), scope(s): asset_set, global, layer, last 2026-09-09"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 17 error(s) and 9 abort(s) on record. BLOCKED: upstream dependency(ies) bo_karanajala, bo_laksana, bo_sangati did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_grounding",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_grounding_matches",
+    "has_writer": true,
+    "writer_files": [
+     "bo_grounding.py"
+    ],
+    "catalog_status": "DRAFT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_grounding.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_grounding_matches"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "7 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=50731, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "2537 rows, 13 cols; fully populated 10; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, target_kind, target_id, build_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 run(s), scope(s): asset, asset_set, last 2026-09-12"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 2 error(s) and 1 abort(s) on record. BLOCKED: upstream dependency(ies) bo_laksana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_karanajala",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_cgm_edges",
+    "has_writer": true,
+    "writer_files": [
+     "bo_karanajala.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_karanajala.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_cgm_edges"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=845, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "2517 rows, 43 cols; fully populated 34; NEVER populated ['intrinsic_strength', 'directionality', 'weight_varga_source', 'cross_subsystem_mapping_ref', 'cancelled_by_jsonb', 'cross_ayanamsha_edge_stability_score', 'edge_betweenness', 'in_shortest_path_count']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, snapshot_type, edge_type, from_node_id, to_node_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 2517/2517 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): query_contradictions.ts, traverse_chart_graph.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "125 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 26 error(s) and 8 abort(s) on record. BLOCKED: upstream dependency(ies) bo_bimba, bo_laksana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_laksana",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_laksana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_laksana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "11 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=49730, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "134 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-08"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 39 error(s) and 8 abort(s) on record. ForeignKeyViolation: update or delete on table \"bodha_msr_signals\" violates foreign key constraint \"bodha_signal_embeddings_signal_id_fkey\" on table \"bodha_signal_embeddings\""
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_laksana_rerank",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_laksana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_laksana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "7 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=10877, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "25 run(s), scope(s): asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 2 error(s) and 3 abort(s) on record. BLOCKED: upstream dependency(ies) bo_karanajala did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_nakshatra_semantic",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_nakshatra_semantic.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_nakshatra_semantic.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-11"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=45, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "22 run(s), scope(s): asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 3 abort(s) on record. "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_pramana_mapa",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "synthesis_quality_scorecard",
+    "has_writer": true,
+    "writer_files": [
+     "bo_pramana_mapa.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_pramana_mapa.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "no idempotency pattern in the writer's own SQL \u2014 it likely delegates; verify there"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=synthesis_quality_scorecard"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-11"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=1, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "3 rows, 34 cols; fully populated 30; NEVER populated ['centrality_formula_version', 'no_pre_answer_pass', 'ledger_independence_pass', 'discovery_not_fabricated_pass']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (scorecard_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_quality_scorecard.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 26 error(s) and 13 abort(s) on record. BLOCKED: upstream dependency(ies) bo_anveshana, bo_bimba, bo_drishti, bo_karanajala, bo_laksana, bo_samskara, bo_sangati, bo_upaya did not complete in this run; skipped to avoid building on incomplete"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_pratijna",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_pratijna",
+    "has_writer": true,
+    "writer_files": [
+     "bo_pratijna.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_pratijna.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_pratijna"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-09"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=135, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "405 rows, 16 cols; fully populated 10; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, event_class_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "1 module(s): query_pratijna.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "119 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-09"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 25 error(s) and 8 abort(s) on record. BLOCKED: upstream dependency(ies) bo_laksana, bo_sangati did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_samskara",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_signal_embeddings",
+    "has_writer": true,
+    "writer_files": [
+     "bo_samskara.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_samskara.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_signal_embeddings"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=50171, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "7537 rows, 10 cols; fully populated 10; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (embedding_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "2 module(s): query_signals.ts, traverse_chart_graph.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 36 error(s) and 9 abort(s) on record. BLOCKED: upstream dependency(ies) bo_laksana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_samvada",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": 0,
+    "target_table": "vw_chart_digest",
+    "has_writer": true,
+    "writer_files": [
+     "bo_samvada.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_samvada.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "no idempotency pattern in the writer's own SQL \u2014 it likely delegates; verify there"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=vw_chart_digest"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "5 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=1, live=0"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-11"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=1, rps=-"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=0, floor=0, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "15 rows, 13 cols; fully populated 12; NEVER populated []"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_ucd.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "98 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 23 error(s) and 12 abort(s) on record. BLOCKED: upstream dependency(ies) bo_karanajala, bo_laksana, bo_pramana_mapa, bo_sangati, bo_upaya did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_sangati",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_cdlm_cells",
+    "has_writer": true,
+    "writer_files": [
+     "bo_sangati.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_sangati.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_cdlm_cells"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=210, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "430 rows, 59 cols; fully populated 30; NEVER populated ['dynamic_system_id', 'dynamic_maha_lord', 'dynamic_antar_lord', 'dynamic_window_start_iso', 'dynamic_window_end_iso', 'tradition_view_id', 'subdomain_row', 'subdomain_col', 'contradicting_signal_pairs_jsonb', 'shared_factor_keys_jsonb', 'shared_signals_high_convergence_count', 'recurring_pattern_markers_array', 'cross_ayanamsha_cell_stability_score', 'asymmetry_score', 'cgm_subgraph_cluster_id', 'cgm_bridge_edge_seeds_jsonb', 'cgm_domain_super_node_strength_contribution_jsonb', 'cgm_antagonist_edge_seeds_jsonb', 'cell_remedy_priority_rank', 'weakest_constituent_graha_jsonb', 'pattern_remedy_theme_jsonb', 'cell_remedy_hooks_array', 'dominant_linkage_rank_in_chart', 'domain_relationship_class', 'narrative_thread_seed', 'predicted_activation_dasha_windows_jsonb', 'cell_evolution_gradient_score', 'channel_render_priority_jsonb', 'phase_aligned_pattern_marker']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, snapshot_type, dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id, domain_row, domain_col, subdomain_row, subdomain_col): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 430/430 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "3 module(s): query_domain_reading.ts, query_remedies.ts, query_triangulation.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "122 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 25 error(s) and 9 abort(s) on record. BLOCKED: upstream dependency(ies) bo_karanajala, bo_laksana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_special_lagna",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_special_lagna.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_special_lagna.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-07-27"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=20, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "22 run(s), scope(s): asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 3 abort(s) on record. "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_sudarshana",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_sudarshana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_sudarshana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-07-27"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=45, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "19 run(s), scope(s): asset_set, global, layer, last 2026-09-10"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 3 abort(s) on record. provenance receipt: cannot pass more than 100 arguments to a function"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_upaya",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_rm_resonances",
+    "has_writer": true,
+    "writer_files": [
+     "bo_upaya.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_upaya.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_rm_resonances"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "5 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=239, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "135 rows, 24 cols; fully populated 18; NEVER populated ['is_chara_karaka_role', 'associated_motifs_array']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, snapshot_type, graha): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 135/135 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "6 module(s): query_remedies.ts, query_rm_chart_summary.ts, query_rm_dosha_remedy_bundles.ts, query_rm_pattern_remedies.ts, query_rm_resonances.ts, query_ucd.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "126 run(s), scope(s): asset, asset_set, global, layer, last 2026-09-10"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 27 error(s) and 12 abort(s) on record. BLOCKED: upstream dependency(ies) bo_laksana, bo_sangati did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_vargottama_dhana",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_msr_signals",
+    "has_writer": true,
+    "writer_files": [
+     "bo_vargottama_dhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_vargottama_dhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "ON CONFLICT where the layer convention is delete-then-insert"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_msr_signals"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-07-26"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=16, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7409 rows, 85 cols; fully populated 40; NEVER populated ['varga_provenance_jsonb', 'source_corroboration_count_by_verse', 'divisional_corroboration_count', 'dasha_activation_proximity_score', 'aspect_modifier', 'argala_modifier', 'salience_confidence_interval_jsonb', 'shared_factor_keys_jsonb', 'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb', 'graha_weakness_indicators_jsonb', 'recurring_pattern_marker', 'active_dasha_periods_jsonb', 'activation_predicted_dates_jsonb', 'predicted_outcome_class', 'cross_ayanamsha_consistency_score', 'channel_render_priority_jsonb', 'salience_robustness', 'bala_gate']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 7409/7409 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "9 module(s): graha_portrait.ts, query_discoveries.ts, query_domain_reading.ts, query_pratijna.ts, query_remedies.ts, query_signals.ts, query_triangulation.ts, query_ucd.ts, traverse_chart_graph.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "19 run(s), scope(s): asset_set, global, layer, last 2026-09-11"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 3 abort(s) on record. "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "bo_yantra_mechanism",
+    "layer": "L2",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "bodha_mechanisms",
+    "has_writer": true,
+    "writer_files": [
+     "bo_yantra_mechanism.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bo_yantra_mechanism.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bodha_mechanisms"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-09"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=615, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "1868 rows, 24 cols; fully populated 18; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, ayanamsha_id, build_id, mechanism_class, fingerprint_hash): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 1868/1868 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "2 module(s): index.ts, query_mechanisms.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "23 run(s), scope(s): asset_set, global, layer, last 2026-09-09"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 3 abort(s) on record. BLOCKED: upstream dependency(ies) bo_cgm_motifs, bo_cgm_paths, bo_karanajala did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   }
+  ]
+ }
+}

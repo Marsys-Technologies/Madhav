@@ -5939,6 +5939,16 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> ⚪ **NIKAṢA TEST CAMPAIGN — COMPLETE (2026-09-27).** The eight-phase test of the Nikaṣa elevation
+> system (authority: `briefs/nirmana/NIKASHA_TEST_CAMPAIGN_PROMPT_v1_0.md`) closed with verdict
+> **NOT_READY_TO_FREEZE** (freeze fails on T2 inspector verdict integrity, T3 closure loop absent in
+> stock tooling, T5 cross-surface consistency). Deliverables: `nikasha_test/NIKASHA_TEST_CAMPAIGN_REPORT_v1_0.md`,
+> `briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md` (214 rows, supersedes v1.0),
+> `briefs/nirmana/NIKASHA_IMPLEMENTATION_PLAN_v1_0.md` (10 packets, ~365h),
+> `nikasha_test/DECISIONS_FOR_THE_NATIVE.md` (6 rulings required). PR #2736
+> (`campaign/nikasha-test` → `l3/kala-layer-briefs`) is open and unmerged. Authoritative campaign state:
+> `briefs/nirmana/nikasha_test/STATE.md` — this banner is a pointer only.
+
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
 > three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
