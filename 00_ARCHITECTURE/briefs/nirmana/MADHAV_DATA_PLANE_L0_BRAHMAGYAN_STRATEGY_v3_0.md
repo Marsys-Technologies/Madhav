@@ -141,7 +141,7 @@ measured_by: asset_registry (live) for identity/floor/writer/integrity/catalog_s
 traces_to:   0.3
 ```
 
-**40 assets.** 34 writer-backed, 6 not. 38 carry a `count_sql`; 2 are services with no table by design.
+**40 assets.** The registry says 34 writer-backed and 6 not; **the code registers 36** — `bg_nakshatra_medical` and `bg_transit_engine` each carry a live `@register(...)` while the registry declares `has_writer = false`. Found 2026-09-26 by the new `Build` gate's first check (native ruling, decision 17); the two rows below are corrected and the registry itself is now a gap. 38 carry a `count_sql`; 2 are services with no table by design.
 1 is `catalog_status = DRAFT` (`bg_vidhi_floors`); the other 39 are CURRENT. Tracker state:
 **NO_BRIEF = 40/40, ELEVATED 0/40, gates certified 0/320.**
 
@@ -167,7 +167,7 @@ traces_to:   0.3
 | bg_sky_calendar | bg_sky_calendar | 31,081 | 31,059 | +22 | y | y |
 | bg_gochara_arcs | bg_gochara_arcs | 33,933 | 33,933 | 0 | y | y |
 | bg_transit_rules | bg_transit_rules | 76 | 76 | 0 | y | y |
-| bg_transit_engine | bg_transit_engine | 9 | 9 | 0 | **n** | y |
+| bg_transit_engine | bg_transit_engine | 9 | 9 | 0 | **registry says n — WRONG, a writer IS registered** (corrected 2026-09-26) | y |
 | bg_cohort | bg_synthetic_cohort + 1 | 110,000 | 110,000 | 0 | y | y |
 | bg_class_priors | brahma_class_priors (partition) | 171 | 171 | 0 | y | y |
 | bg_class_lifetime_counts | brahma_class_priors (partition) | 6 | 6 | 0 | y | y |
@@ -182,7 +182,7 @@ traces_to:   0.3
 | bg_vastu_directions | bg_vastu_directions + 1 | 32 | 32 | 0 | y | y |
 | bg_medical_mappings | bg_medical_mappings | 21 | 21 | 0 | y | y |
 | bg_sign_medical | bg_sign_medical | 12 | 12 | 0 | y | y |
-| bg_nakshatra_medical | bg_nakshatra_medical | 27 | 27 | 0 | **n** | y |
+| bg_nakshatra_medical | bg_nakshatra_medical | 27 | 27 | 0 | **registry says n — WRONG, a writer IS registered** (corrected 2026-09-26) | y |
 | bg_prashna_rules | bg_prashna_lagna_methods + … (**target_table NULL**) | 41 | 41 | 0 | y | y |
 | bg_sarvatobhadra_grid | bg_sarvatobhadra_grid | 0 | 0 | 0 | **n** | n |
 | bg_ephemeris_engine | — (service) | n/a | — | — | **n** | n |
@@ -609,7 +609,7 @@ measured_by: asset_certs.jsonl for gates (read 2026-09-26: 1 line, the _schema l
 traces_to:   4.4
 ```
 
-**Eight gates × 40 assets = 320. Certified: 0.** The ledger holds its schema line and nothing else,
+**Nine gates × 40 assets = 360. Certified: 0.** (Eight until 2026-09-26; `Build` added by native ruling 17 — a template-wide gate, 9 × 129 across L0–L5, of which 360 is L0's share.) The ledger holds its schema line and nothing else,
 which agrees with the tracker's `gates certified 0/320`.
 
 | gate | this layer's reading |
@@ -622,6 +622,7 @@ which agrees with the tracker's `gates certified 0/320`.
 | **Carr** source carriage | §2.7's a/b/c; all three are NO DETECTOR or PARTIAL today |
 | **Narr** narration fidelity | conditional — applies to the assets whose rows carry prose (`formation_text`, `effects_text`) |
 | **Dens** serving density | conditional on reaching a served surface: 46 modules do, and 0 declare a density contract |
+| **Build** buildability | **new 2026-09-26.** Six read-only checks. Already failing for 2 of 40 on check 1 alone (registered-vs-registry) and for 3 of the 5 measured on check 6 (`rows_written = 0` against populated tables). `ctx.dry_run` is supported by all 32 L0 writer files, so the dispatch proof costs no production write. |
 
 ### 5.3 · Certification is per criterion, not per definition revision
 

@@ -1,7 +1,7 @@
 ---
 artifact: NATIVE_DECISIONS_2026-09-25
 canonical_id: NATIVE_DECISIONS_2026_09_25
-version: "1.7"
+version: "1.8"
 status: RULED
 date: 2026-09-25
 decision_owner: Native
@@ -509,3 +509,70 @@ pass rather than a re-investigation.
 
 **The one remaining dependency is native-side:** supply or authorise the edition of Muhūrta Cintāmaṇi
 whose chakra chapter is to be ingested.
+
+---
+
+# v1.8 — decisions 16 and 17 (2026-09-26)
+
+## 16 — The identity key stays composite; rule 1's detector is corrected
+
+**Native ruling:** go with the recommendation.
+
+**The rule.** `brahma_ontology`'s key is and remains **`(entity_class, canonical_id)`** — the constraint the
+table already declares and the seeder already writes against. A school and a concept sharing a name are two
+things, and the composite key is the correct model. **Consumers become class-aware**; a consumer resolving on
+`canonical_id` alone is the defect, not the data.
+
+**What changed, and where.** Data plane §4.1 rule 1's identity **detector** — not the rule — is corrected: it
+required `count(DISTINCT canonical_id)` across entity classes and so reported FAIL against 741 rows that
+satisfy their own live constraint (741 distinct composites, zero duplicates). **The seal's reopen rule was
+invoked for the first time**, and by a finding from below: the first tier-4 pilot brief, not a governance pass.
+Recorded in that document's changelog as a reopen, with this ruling named.
+
+**Consequences:** three registered gap rows change character (`bg_ontology-G03`/`G04`, `bg_ephemeris-G01`); the
+ephemeris `body` case mismatch (`'Jupiter'` vs `jupiter`) is now unambiguously a **normalisation fix at the
+authority plus class-aware consumers**, not a data rename; the L0 instance's three inherited rows were
+corrected the same day.
+
+## 17 — `Build` is the ninth gate, template-wide
+
+**Native ruling:** go with the recommendation. Raised by the native: *an important thing about the asset is to
+work seamlessly with the orchestrator and to rebuild successfully when triggered.*
+
+**The rule.** Every asset is gated on **buildability**: the orchestrator can dispatch it and a triggered
+rebuild produces the correct result. Six read-only static checks — registered · contract · dispatchable target
+· DAG resolvable · count/integrity · completion honesty — plus a runtime state established by `ctx.dry_run`
+(part of the frozen contract, so **dispatchability is provable with no production write**) and, when
+authorized, a real rebuild. **`state = 'lit'` is never itself the proof** — §N.8 records the promotion
+predicate that asserted completion while only checking row presence.
+
+**Scope, stated because the native asked it be unambiguous: this is not an L0 measure.** The gate lives in the
+tier-4 template, so it applies to **all 129 assets across L0–L5 — 9 × 129 = 1,161 cells.** The `9 × 40 = 360`
+figure is only L0's share, L0 being the layer in flight.
+
+**THE BOUNDARY RULE — the native asked this be decided here.** A gate asks whether the thing **works**; an
+opportunity asks whether it could work **better**.
+
+| situation | where it goes |
+|---|---|
+| cannot be dispatched · contract violated · DAG wrong · rebuild produces the wrong result or accretes · the build record asserts a completion that did not happen | **`Build` gap** — blocks certification |
+| the rebuild works **but only after a manual step** | **`Build` gap** — "seamlessly when triggered" is part of the claim |
+| the rebuild works correctly and could be **faster, cheaper, incremental rather than full, or smaller in blast radius** | **§9 opportunity** — never blocks |
+| the rebuild works and there is nothing to improve | **nothing enters the ledger.** A passing gate writes a certification record; rows come only from FAIL / PARTIAL / NO_DETECTOR and inherited must-adds |
+
+**Fixes go in the asset or the registry, never in the orchestrator.** The freeze is precisely why every check
+above is decidable.
+
+**It earned its place before it was written into anything.** The first check found **two assets —
+`bg_nakshatra_medical` and `bg_transit_engine` — whose writers are registered in code while the registry
+declares `has_writer = false`.** Two instruments had already read that the wrong way, including the L0
+instance's own inventory, now corrected. Check 6 fails for three of the five piloted assets (`rows_written = 0`
+against 741, 825,084 and a live service).
+
+**Landed the same day:** tier-4 template §4.2 (the six checks and the boundary rule), tier-3 layer template
+§5.2 (the ninth gate, its map row, the 9 × 129 scope — recorded as a reopen), the tracker (`GATES` now nine;
+L0 reads 0/360), and the L0 instance's corrected rows.
+
+**Two reopens in two days is the mechanism working, not the seal failing.** Both were found from below — one by
+a pilot brief, one by the native — and both are recorded in the reopened documents' changelogs rather than
+edited in silently.

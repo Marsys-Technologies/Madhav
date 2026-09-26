@@ -58,6 +58,17 @@ GATES = [
  ("Carr","source carriage",        "always",      "what the asset restates from a source matches it; what it computes reproduces a second way; a witness disagreement is carried, not settled — ONE applicable check from CARRIAGE_MENU, run"),
  ("Narr","narration fidelity",     "emits prose", "prose restates cited facts and does not re-derive them (§N.7)"),
  ("Dens","serving density",        "is served",   "confirmed vs catalog-only counted separately; dense layer survives a trim (§N.6)"),
+ # NINTH GATE, added 2026-09-26 by native ruling (decision 17). An asset's content is worth nothing if
+ # the orchestrator cannot rebuild it on demand, and the property is decidable read-only: registered
+ # (@register id matches the registry, BOTH quote styles) · contract (WriterBase; run XOR
+ # plan_substeps+run_substep; never commits ctx.db_conn; never writes asset_throughput) · dispatchable
+ # target (target_table set, or service/multi-table declared) · DAG resolvable (deps exist, no cycle,
+ # declared edges match what it reads) · count/integrity present and able to fail · completion honesty
+ # (the build record agrees with the live count — rows_written=0 against a populated table is a status
+ # with no measurement behind it). Runtime state comes from ctx.dry_run, never from state='lit' (§N.8).
+ # The gate asks whether the rebuild WORKS; making a working rebuild faster or incremental is a tier-4
+ # §9 opportunity and never blocks. Fixes go in the asset or the registry, never the frozen orchestrator.
+ ("Build","buildability",          "always",      "the orchestrator can dispatch the asset and a triggered rebuild produces the correct result — six static checks plus a dry-run proof"),
 ]
 
 # Pick the ONE that fits what the asset actually does. Running three where one applies is theatre;

@@ -30,6 +30,7 @@ role: >
   layer requires carries a current passing record and its gap rows are closed — never by assertion.
 independent_review: NOT YET — native review before the pilot (native instruction 2026-09-26). The pilot on five L0 assets is its first practical test; a defect found there is fixed HERE.
 changelog:
+  - "2.0 (2026-09-26, third change — native ruling, decision 17): NINTH GATE `Build` — buildability. Can the orchestrator dispatch this asset, and does a triggered rebuild produce the correct result? Six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus one runtime state proved by `ctx.dry_run` and, when authorized, a real rebuild. The gate set is 9 per asset, template-wide: 9 x 129 = 1,161 across L0-L5, not an L0 measure. THE BOUNDARY RULE, which the native asked be decided here: the gate asks DOES IT WORK; §9 asks COULD IT WORK BETTER. A passing gate writes a certification record and NO ledger row — rows come only from FAIL / PARTIAL / NO_DETECTOR. Making a working rebuild faster, cheaper or incremental is a §9 opportunity under the build-cost column and never blocks certification. One boundary case sits on the gate side: a rebuild that works only after a manual step is a Build gap, because `seamlessly when triggered` is part of the claim. A buildability gap is fixed in the ASSET or the REGISTRY, never in the orchestrator — the freeze is why any of this is checkable. Requires the tier-3 reopen of layer template §5.2 (decision 17)."
   - "2.0 (2026-09-26, second change — native review folded, same day): (h) §9 OPPORTUNITY REGISTER added — the 'beyond' half of the delta: algorithm/architecture (three outcome columns: output, inputs, BUILD COST), concept completeness (width and depth against a DECLARED universe), retrieval reachability (fields and rows exposed, requirement [TRANSFERS] to the retrieval plane), and synergy (joint value neither asset carries alone; shared roots are not confirmations). One admission rule: no measurement-after, no entry. Opportunities NEVER block certification. (i) §1 gains three measured items: build-cost baseline ('not instrumented' is a legal value), completeness census, reachability census. (j) §4 Vocab row names which of the six §4.1 rules apply to the asset. (k) §5 is the DELTA LEDGER, both kinds: asset_gaps.jsonl gains `kind: gap | opportunity`; the four states are reused with CLOSED meaning 'proven by its measurement' for either kind; the tracker filters on kind and prints conforms (gaps) and could-be-better (opportunities) separately. Ledger schema lines and tracker aligned in the same commit."
   - "2.0 (2026-09-26): rebuilt from the sealed tiers 1-3. (a) RULING 11 — gate `Dom` (is the astrology right) becomes `Carr` (source carriage and reproduction): the three mechanical checks stay, the seeded negative case leaves with the verdict framing, and the sentence that made `Dom` a certification blocker is replaced by the carriage framing. (b) §0.1 now carries the sealed layer template's thirteen inherited items row for row — v1.1 had ten; missing were the preserved kernel, the Jyotish concepts with the carriage check each invites, and the individual/synergistic/cross-layer terms as three rows. (c) THE DELTA LEDGER: §5's gap register IS `asset_gaps.jsonl`, whose `_schema` line fixes the fields; a brief's delta section is those rows rendered, never retyped, and `what` carries `measured … / required …` so the delta is a re-run, not a claim. (d) Every section carries the layer template's three lines (inherits / measured_by / traces_to). (e) PILOT clause — a brief derived from a layer instance that is not yet ACCEPTED may register gaps and may not certify. (f) RULING 9 — §8 verdict may be signed by reviewer, native or session once a review has happened; §7's verified_by records who ran the detector, and the independence that matters is the detector's. (g) Change packet gains the frozen orchestrator contract conformance lines (§N.2/§N.3). Three alignment items outside this document are listed at the end, not done silently."
 ---
@@ -227,6 +228,7 @@ traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured 
 | **Carr** source carriage and reproduction | always | what the asset restates from a source matches that source; what it computes reproduces a second way; a witness disagreement is carried, not settled — **one** applicable check from §4.1, run | | | |
 | **Narr** narration fidelity | if it emits prose | prose restates cited facts and never re-derives them (§N.7) | | | |
 | **Dens** serving density | if it reaches a served surface | confirmed and catalog-only rows counted separately; the dense layer survives a trim (§N.6) | | | |
+| **Build** buildability | always | the orchestrator can dispatch this asset and a triggered rebuild produces the correct result — the six checks of §4.2 | | | |
 
 **Verdict vocabulary, closed set, these spellings exactly** (they are the tracker's and the ledger's):
 `PASS` · `FAIL` · `PARTIAL` (holds for a *named* subset) · `NO_DETECTOR` (never recorded as PASS) ·
@@ -234,6 +236,47 @@ traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured 
 
 A conditional gate that does not apply is disposed of with an explicit `N/A` and one line of reason. It is
 never silently dropped.
+
+### 4.2 · Buildability — the six checks, and what is NOT a gap
+
+```
+inherits:    CLAUDE.md §N.2 (the FROZEN orchestrator contract), §N.3 (idempotency per layer), §N.8 (a status needs a detector that could read false); ORCHESTRATOR_CONVERGENCE_CLOSE §2
+measured_by: six static checks over the writer, the registry and the build record — all read-only; plus the runtime state below
+traces_to:   0.1 — an asset that cannot be rebuilt serves no P-need, whatever it holds today
+```
+
+An asset's content is worth nothing if the orchestrator cannot rebuild it on demand. All six checks run
+read-only, and all six can return false:
+
+| # | check | asserts |
+|---|---|---|
+| 1 | **registered** | exactly one `@register('<asset_id>')`, and the id matches the registry **exactly** — both quote styles searched, because an ad-hoc grep that misses one is not a detector |
+| 2 | **contract** | a `WriterBase` subclass; `run(ctx)` **XOR** `plan_substeps` + `run_substep`; never commits or closes `ctx.db_conn`; never writes `asset_throughput`; takes `chart_id` / `birth_params` from `ctx.config` |
+| 3 | **dispatchable target** | a `target_table` set, **or** service / multi-table declared explicitly, so the orchestrator's clear and count steps have something to aim at |
+| 4 | **DAG resolvable** | every `depends_on` entry exists in the registry; no cycle; every dependency is itself buildable; and the declared edges match what the asset actually reads |
+| 5 | **count and integrity** | `count_sql` present, correctly scoped, and `integrity_check_sql` present — each able to fail |
+| 6 | **completion honesty** | the build record agrees with the live count. `rows_written = 0` against a populated table is a status with no measurement behind it, and for a service it is indistinguishable from a writer that produced nothing |
+
+**Runtime state, recorded and never assumed:** `never_rebuilt` · `dry_run_ok` · `rebuilt_ok` ·
+`rebuild_failed`. `ctx.dry_run` is part of the frozen contract, so **dispatchability can be proved end to
+end with no production write** — that is the cheap proof and it is always available. A real rebuild proof
+needs authorization and is a different state. **`state = 'lit'` is never itself the proof** (§N.8 records
+the promotion predicate that asserted completion while only checking row presence).
+
+**What is a gap and what is an opportunity — the line, decided by native ruling:**
+
+- **Gap (blocks certification):** the orchestrator cannot dispatch it · the contract is violated · the DAG
+  is wrong · a rebuild produces the wrong result or accretes · the build record asserts a completion that
+  did not happen · **or the rebuild works only after a manual step** — "seamlessly when triggered" is part
+  of the claim.
+- **Opportunity (§9, never blocks):** the rebuild works correctly and could be **faster, cheaper,
+  incremental rather than full, or smaller in blast radius.** That belongs in §9's build-cost column.
+- **A passing `Build` gate produces a certification record and no ledger row at all.** Ledger rows come
+  only from FAIL / PARTIAL / NO_DETECTOR and inherited must-adds.
+
+**Fixes go in the asset or the registry — never in the orchestrator.** The contract is frozen, and it is
+the reason every check above is decidable at all. If an asset appears to need the contract changed, stop
+and raise it (§6).
 
 ### 4.1 · The carriage menu — pick one, run it
 
@@ -431,8 +474,8 @@ ledger fields.
 
 | layer | what is distinctive |
 |---|---|
-| L0 Brahmagyan | `scoring_mode: fidelity`; `Ldgr` reads as source-presence; **`Vocab` inverts — the asset *is* part of the set, so the gate tests uniqueness and alias completeness of what it owns**; `Carr` D1 dominates; never R for lack of a reader |
-| L1 Gaṇita | contribution; `Idem` is delete-then-insert on chart × natural key; the load-bearing rule is "consumers refer to L1 facts, they do not recompute them"; `Carr` D3 dominates |
+| L0 Brahmagyan | `scoring_mode: fidelity`; `Ldgr` reads as source-presence; **`Vocab` inverts — the asset *is* part of the set, so the gate tests uniqueness and alias completeness of what it owns**; `Carr` D1 dominates; never R for lack of a reader; **`Build`**: rebuild is a global re-seed with `ON CONFLICT` upsert, no chart involved, so blast radius is the whole reference table and the dry-run proof is cheap |
+| L1 Gaṇita | contribution; `Idem` is delete-then-insert on chart × natural key; the load-bearing rule is "consumers refer to L1 facts, they do not recompute them"; `Carr` D3 dominates; **`Build`**: rebuild is per chart, so check 6 (completion honesty) is per `(asset, chart_id)` and a rebuild's blast radius is one chart — the opportunity side is usually incremental-versus-full |
 | L2 Bodha | shared roots visible — several signals from one placement are not independent confirmations; `Ldgr` must resolve to `chart_facts.fact_id` |
 | L3 Kāla | the switch rule that the observed event never chooses the trigger; nearest-vs-better-supported under a named criterion; honest "none found" |
 | L4 Phala | no self-calibration; a forecast is emitted only when earned; the bridge or its falsifier is a carried field |

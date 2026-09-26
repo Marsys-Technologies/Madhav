@@ -24,7 +24,7 @@ decision_owner: Native
 inherits:
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md            # tier 1
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md   # tier 2
-  - 00_ARCHITECTURE/control/asset_elevation_tracker.py             # the eight gates + brief-shape scan, as run (sole tracker; kala_brief_tracker.py is L3-only and superseded)
+  - 00_ARCHITECTURE/control/asset_elevation_tracker.py             # the nine gates + brief-shape scan, as run (sole tracker; kala_brief_tracker.py is L3-only and superseded)
 role: >
   The tier-3 template. One instance per layer (L0-L5) produces that layer's definition, strategy
   and evaluation ladder. Every instance must be derivable from tiers 1-2 without inventing a
@@ -34,6 +34,7 @@ independent_review: DONE - reviews/KIMI_K3_REVIEW_LAYER_TEMPLATE_v1_0.md (extern
   native or the session may sign; a review must have happened). The L0 instance remains its first
   practical test; a defect found there is fixed here before L1-L5 are instantiated.
 changelog:
+  - "REOPENED AND AMENDED (2026-09-26, native ruling — decision 17). §5.2 gains a NINTH gate, `Build` — buildability. An asset's content is worth nothing if the orchestrator cannot rebuild it on demand, and the property is decidable: six read-only static checks plus a runtime state that `ctx.dry_run` establishes without any production write. Raised by the native after the L0 pilot and earned immediately — the check found two assets (bg_nakshatra_medical, bg_transit_engine) whose writers are registered in code while the registry declares has_writer=false, which two instruments had already read the wrong way. The gate set is 9 per asset across all 129 assets of L0-L5, not an L0 measure. Boundary rule, decided by the native and specified in the tier-4 template §4.2: the gate asks whether the rebuild WORKS — a failure blocks certification, including a rebuild needing a manual step — while §9 asks whether it could work BETTER and never blocks; a passing gate writes a certification record and no ledger row. Fixes go in the asset or the registry, never in the frozen orchestrator. §5.2's gate table, its map and its inherits line updated; no other clause touched."
   - "FINAL / SEALED (2026-09-25, native instruction + decision 13): version set to FINAL and the template sealed alongside tiers 1 and 2. Numbered versions stop here; the identity of record is the manifest fingerprint. What remains open below the seal is the layer instance, the asset template and the asset instance. No content changed in this entry."
   - "1.2 (2026-09-25, native rulings 9 and 11 of NATIVE_DECISIONS_2026-09-25 v1.2): (a) RULING 11 - `Domain correctness` is not a data-plane obligation. The astrological verdict is formed above the data plane, in the reasoning layer; this template governs data-plane layer plans only. §2.7 is therefore RESCOPED from `is the astrology right?` to SOURCE CARRIAGE AND REPRODUCTION - the three mechanical checks that are data checks and stay (the encoded restatement against its cited passage; two witnesses agreeing or their disagreement CARRIED unresolved; a computed quantity reproducing when derived a second way) - and the fourth, the seeded negative case, is removed with the verdict framing: authoring a case the tradition says must not fire is a doctrinal act and belongs to the layer above. The §5.2 gate `Dom` becomes `Carr` on the same basis, and its menu drops D4. No layer is scored on doctrinal correctness by this template. (b) RULING 9 - §5.4 item 6 no longer requires that the REVIEWER assign the verdict: the reviewer, the native or the session may sign, and the requirement is that a review actually happened. What stays void is a verdict with no review behind it, or one signed with acceptance tests still pending. (c) §3.1's `ten proof obligations` now carries its reason, so it is not `corrected` to eleven by a later reader."
   - "1.1 (2026-09-25, native-directed simplification + K3 review fold): §5.2 rewritten — 33 criteria across five tiers replaced by THREE INSTRUMENTS of which only the first certifies: (a) eight gates, each a claim with a detector that could return false; (b) brief shape, scanned for presence and producing no records; (c) inheritance and ladder position, read not scored. `Fct` folded into `Ldgr`; `Narr`/`Dens` conditional; `Dom` runs one detector from a menu rather than four. §4.4 gains the two elements K3 found missing against product §16 (preserved kernel; relevant Jyotish concepts with the domain detector each invites) — its BLOCKER 1. §5.4 gains two tests K3 found demanded-but-unenforced: the gate map must EXIST (BLOCKER 2 — a 33-row map per asset is why it was never written; an eight-row map is enforceable), and THE REVIEWER ASSIGNS THE VERDICT, NOT THE AUTHOR (K3 finding 4 — the first instance carried a verdict its own author stamped with every acceptance test pending)."
@@ -514,9 +515,16 @@ traces_to:   4.4 — the gates are what an asset brief is certified against
 
 Three instruments, not one. Only the first produces certification records.
 
-**(a) The gates — certified, per asset.** Six always, plus at most two that apply conditionally.
-Each is a claim with a detector that could return false; a gate without one is `NO DETECTOR`, which
-is an honest null, never a pass.
+**(a) The gates — certified, per asset.** **Seven always, plus at most two that apply conditionally
+— nine in total** (eight at v1.1; `Build` added 2026-09-26 by native ruling, decision 17). Each is a
+claim with a detector that could return false; a gate without one is `NO DETECTOR`, which is an honest
+null, never a pass. The set is per asset and layer-independent: **9 × 129 assets across L0–L5**.
+
+**The gate/opportunity boundary, decided by native ruling and specified in the tier-4 template §4.2:**
+a gate asks whether the thing **works** — a failure blocks certification, including a rebuild that
+works only after a manual step — while an *opportunity* asks whether it could work **better**, and
+never blocks. **A passing gate writes a certification record and no ledger row**; ledger rows come only
+from FAIL / PARTIAL / NO_DETECTOR and inherited must-adds.
 
 | gate | the claim | conditional on |
 |---|---|---|
@@ -528,6 +536,7 @@ is an honest null, never a pass.
 | **Carr** · source carriage | what the asset restates from a source matches that source, what it computes reproduces a second way, and a witness disagreement is carried rather than settled — **one** applicable detector below | — |
 | **Narr** · narration fidelity | prose restates cited facts and does not re-derive them (§N.7) | the asset emits prose |
 | **Dens** · serving density | confirmed and catalog-only rows are counted separately; the dense layer survives a trim (§N.6) | the asset reaches a served surface |
+| **Build** · buildability | the orchestrator can dispatch the asset and a triggered rebuild produces the correct result — six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus a runtime state proved by `ctx.dry_run`, never by `state = 'lit'` | — |
 
 `Ldgr` absorbs the former facts/interpretation gate: a ledger entry naming its upstream ids **is**
 the separation test, and the separate gate had no detector of its own.
@@ -570,6 +579,7 @@ any row it cannot fill.
 | **Carr** | §2.7 source carriage and reproduction; §4.4's Jyotish-concepts row | what the asset restates or computes, and which menu item each invites |
 | **Narr** | §2.2 presentation fields | whether the asset emits prose, and which fields carry it |
 | **Dens** | §2.2 presentation fields; §3.4 the served boundary | whether the asset reaches a served surface, and which |
+| **Build** | §2.5 edges and order; §1.1 (writer, target table, build record); §4.3 generation and rollback | the asset's writer and registered id, its declared target, its edges, and its build record |
 
 A row an instance cannot fill is a hole in **that instance**, not a gap in the brief — the brief
 author would have to invent it. Report unfillable rows in §7 as corrections with gates.
