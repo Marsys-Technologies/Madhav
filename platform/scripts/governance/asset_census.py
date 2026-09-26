@@ -320,7 +320,7 @@ def throughput(prefix: str) -> dict[str, dict]:
                 "coalesce(round(rows_per_second)::text,''), coalesce(last_built_at::date::text,'') "
                 f"FROM asset_throughput WHERE asset_id LIKE '{prefix}%'")
     return {r[0]: dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4])
-            for r in (x + [""] * 5 for x in rows)}
+            for r in ((x + [""] * 5)[:5] for x in rows)}
 
 
 def catalog(tables: list[str]) -> dict:
@@ -347,6 +347,35 @@ def catalog(tables: list[str]) -> dict:
         if m:
             keys.setdefault(tn, []).append([c.strip().strip('"') for c in m.group(1).split(",")])
     return dict(exists=exists, cols=cols, keys=keys)
+
+
+def build_history(prefix: str) -> dict:
+    """What the orchestrator ACTUALLY did, from build_runs / build_run_assets.
+
+    The static checks say an asset *should* be dispatchable. Only this says whether it ever was, and what
+    happened. Native context (2026-09-26): a global build skips L0 and walks L1->L5, so an L0 asset is
+    only ever exercised by a layer- or asset-scope run — measured here rather than assumed."""
+    per: dict[str, dict] = {}
+    rows = psql("SELECT a.asset_id, r.scope, a.state, coalesce(a.disposition,''), "
+                "coalesce(r.created_at::date::text,''), coalesce(left(a.error,200),'') "
+                "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
+                f"WHERE a.asset_id LIKE '{prefix}%' ORDER BY a.asset_id, r.created_at")
+    for aid, scope, state, disp, when, err in ((x + [""] * 6)[:6] for x in rows):
+        d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
+                                     scopes=set(), last_state="", last_when="", sample_error=""))
+        d["runs"] += 1
+        d[state] = d.get(state, 0) + 1
+        if disp == "skip_no_delta":
+            d["skipped"] += 1
+        d["scopes"].add(scope)
+        d["last_state"], d["last_when"] = state, when
+        if state == "error" and err and not d["sample_error"]:
+            d["sample_error"] = err
+    glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
+    glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
+                         f"WHERE r.scope='global' AND a.asset_id LIKE '{prefix}%'") or 0)
+    lit = {r[0] for r in psql("SELECT asset_id FROM asset_throughput WHERE state='lit'")}
+    return dict(per=per, global_runs=glob, global_with_layer=glob_l0, lit=lit)
 
 
 def declared_keys(table: str) -> list[list[str]]:
@@ -397,6 +426,7 @@ def measure(layer_key: str) -> dict:
     regd = registered_ids(cfg["prefix"])
     counts = live_counts(reg)
     thru = throughput(cfg["prefix"])
+    hist = build_history(cfg["prefix"])
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
 
     known = set(reg)
@@ -501,6 +531,30 @@ def measure(layer_key: str) -> dict:
                                 measured=(cap["note"] or f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "
                                           f"declaring density_contract: {cap['density']}"))
 
+        h = hist["per"].get(aid)
+        if not h:
+            m["Build.exercised"] = dict(
+                v=(FAIL if r["has_writer"] else NA),
+                measured=("registered with a writer and the orchestrator has NEVER run it (no build_run_assets row)"
+                          if r["has_writer"] else "never run, and it has no writer — consistent"))
+            m["Build.history"] = dict(v=NA, measured="never run; check 7 owns this")
+        else:
+            m["Build.exercised"] = dict(v=PASS, measured=f"{h['runs']} run(s), scope(s): {', '.join(sorted(h['scopes']))}, last {h['last_when']}")
+            bad = h["error"] + h["aborted"]
+            if h["last_state"] in ("error", "aborted"):
+                m["Build.history"] = dict(v=FAIL, measured=f"most recent run {h['last_state']} ({h['last_when']}); {h['error']} error(s), {h['aborted']} abort(s). {h['sample_error']}")
+            elif bad:
+                m["Build.history"] = dict(v=PARTIAL, measured=f"latest run complete, but {h['error']} error(s) and {h['aborted']} abort(s) on record. {h['sample_error']}")
+            else:
+                m["Build.history"] = dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
+
+        dead = [d for d in r["depends_on"] if d not in hist["lit"]]
+        m["Build.dep_liveness"] = dict(
+            v=(PASS if not dead else FAIL),
+            measured=("all declared dependencies are lit" if not dead
+                      else f"declared dependencies not lit: {dead} — a DEP-ASSERT trap if no writer can light them")) \
+            if r["depends_on"] else dict(v=NA, measured="no declared dependencies")
+
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         m["Carr.detector"] = dict(v=NO_DET, measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
         m["Reach.fields"] = dict(v=NOT_GENERIC, measured="field-level exposure census is per-capability; not generic")
@@ -510,8 +564,11 @@ def measure(layer_key: str) -> dict:
                            catalog_status=r["catalog_status"], measurements=m))
 
     extra = sorted(set(regd) - known)
+    never = [a["asset_id"] for a in assets if a["measurements"]["Build.exercised"]["v"] == FAIL]
     return dict(generated=dt.datetime.now().astimezone().isoformat(timespec="seconds"), layer=layer_key,
                 layer_name=cfg["name"], scoring=cfg["scoring"], n_assets=len(assets),
+                global_runs=hist["global_runs"], global_runs_touching_layer=hist["global_with_layer"],
+                never_exercised_with_writer=never,
                 registered_ids=len(regd), registry_has_writer=sum(1 for r in reg.values() if r["has_writer"]),
                 phantom_registered=extra, local_map_candidates=lmaps, assets=assets)
 
@@ -572,6 +629,10 @@ def main() -> int:
         parts = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] in (PARTIAL, NO_DET))
         print(f"{k} {c['layer_name']} ({c['scoring']}): {c['n_assets']} assets · "
               f"{c['registered_ids']} registered ids vs {c['registry_has_writer']} has_writer=true")
+        print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
+              f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
+        if c["never_exercised_with_writer"]:
+            print(f"  !! registered with a writer and NEVER run by the orchestrator: {c['never_exercised_with_writer']}")
         if c["phantom_registered"]:
             print(f"  !! registered but absent from the registry: {c['phantom_registered']}")
         print(f"  FAIL {fails} · PARTIAL/NO_DETECTOR {parts} · assets measured {c['n_assets']}")

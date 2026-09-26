@@ -245,8 +245,26 @@ measured_by: six static checks over the writer, the registry and the build recor
 traces_to:   0.1 — an asset that cannot be rebuilt serves no P-need, whatever it holds today
 ```
 
-An asset's content is worth nothing if the orchestrator cannot rebuild it on demand. All six checks run
-read-only, and all six can return false:
+An asset's content is worth nothing if the orchestrator cannot rebuild it on demand.
+
+**Two build scenarios, and they do not exercise the same assets.** Measured 2026-09-26 over 776 recorded
+runs (`build_runs`, scopes `global` / `layer` / `asset_set` / `asset`; actions build / rebuild / update):
+
+| scenario | what the orchestrator does | what it proves |
+|---|---|---|
+| **global build or rebuild** | **skips L0** and walks the DAG L1 → L5 | that an asset builds in the full chain, and — the failure mode that matters — that it does not **break the autonomous run** for everything downstream of it |
+| **layer-scope build** | every asset in the layer, in DAG order | that an asset builds among its siblings without being **dropped** or degrading |
+
+**L0's proving path is not the global one.** Of **68 global runs, zero** included any `bg_*` asset —
+the skip is real, not folklore. So for L0 the only paths that can prove buildability are layer and
+asset scope, and a layer plan must say which scope it is claiming. For L1–L5 the global path is the
+one that matters, because that is where one asset's failure stops the run.
+
+**A failure is never only this asset's problem.** The blocking radius — how many assets are transitively
+downstream of it — is what turns one error into a broken autonomous build, so it is recorded with the
+gap as its severity weight, not left to be inferred.
+
+All nine checks run read-only, and all nine can return false:
 
 | # | check | asserts |
 |---|---|---|
@@ -256,6 +274,13 @@ read-only, and all six can return false:
 | 4 | **DAG resolvable** | every `depends_on` entry exists in the registry; no cycle; every dependency is itself buildable; and the declared edges match what the asset actually reads |
 | 5 | **count and integrity** | `count_sql` present, correctly scoped, and `integrity_check_sql` present — each able to fail |
 | 6 | **completion honesty** | the build record agrees with the live count. `rows_written = 0` against a populated table is a status with no measurement behind it, and for a service it is indistinguishable from a writer that produced nothing |
+| 7 | **exercised** | the orchestrator has actually run this asset at least once (`build_run_assets`), and under which scope. A registered writer the orchestrator has never dispatched is the sharpest "not integrated" signal there is — measured 2026-09-26: **5 of 40 L0 assets have never appeared in any run**, one of them (`bg_sign_medical`) with a writer |
+| 8 | **history** | its recorded outcomes: `state ∈ complete / error / aborted / queued` and `disposition`. FAIL if the most recent run errored or aborted; PARTIAL if it has errored before and the latest run completed; NA if never run (check 7 owns that). Measured: **13 of 40 L0 assets have errored or aborted**, 7 of them with the *identical* error — `post-write integrity check failed: integrity_check_sql → False` — which is one systemic finding, not seven |
+| 9 | **dependency liveness** | every declared dependency can actually reach `lit` before this asset runs. A dependency that no writer can ever light is a permanent `DEP-ASSERT` trap; a dependency merely not lit *yet* is an ordering fault. Both are orchestrator-integration failures and both are this asset's gap, not the orchestrator's |
+
+**`disposition = 'skip_no_delta'` is not a failure.** It is the orchestrator correctly declining to rebuild
+what has not changed — healthy behaviour, and 21 of L0's records carry it. **`aborted` is the dropped
+case**, and it is a gap.
 
 **Runtime state, recorded and never assumed:** `never_rebuilt` · `dry_run_ok` · `rebuilt_ok` ·
 `rebuild_failed`. `ctx.dry_run` is part of the frozen contract, so **dispatchability can be proved end to
@@ -266,9 +291,10 @@ the promotion predicate that asserted completion while only checking row presenc
 **What is a gap and what is an opportunity — the line, decided by native ruling:**
 
 - **Gap (blocks certification):** the orchestrator cannot dispatch it · the contract is violated · the DAG
-  is wrong · a rebuild produces the wrong result or accretes · the build record asserts a completion that
-  did not happen · **or the rebuild works only after a manual step** — "seamlessly when triggered" is part
-  of the claim.
+  is wrong · a declared dependency can never be lit · **it errors or is aborted in a real run** · **it has
+  never been run at all despite having a writer** · a rebuild produces the wrong result or accretes · the
+  build record asserts a completion that did not happen · **or the rebuild works only after a manual step**
+  — "seamlessly when triggered" is part of the claim.
 - **Opportunity (§9, never blocks):** the rebuild works correctly and could be **faster, cheaper,
   incremental rather than full, or smaller in blast radius.** That belongs in §9's build-cost column.
 - **A passing `Build` gate produces a certification record and no ledger row at all.** Ledger rows come
