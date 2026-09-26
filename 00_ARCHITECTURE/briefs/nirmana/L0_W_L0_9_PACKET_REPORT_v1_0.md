@@ -1,7 +1,7 @@
 ---
 artifact: L0_W_L0_9_PACKET_REPORT
-version: 1.2
-status: CURRENT — Part 1 executed per the ratified design (A+C); production application HELD
+version: 1.3
+status: PACKET_CLOSED (ADK-0008) — with named carried blocks: 1125 production application (Part 5), sealed detector-text alignment (strategy lane)
 packet: W-L0-9 (Identity uniqueness and the missing classes)
 session: l0/nirmana-elevation-20260921 execution session (worktree /Users/Dev/madhav-l3/l0-exec)
 date: 2026-09-26
@@ -29,6 +29,14 @@ changelog:
     (ii) the Bhavat Bhavam scope-object status flipped ADK-pending → RULED
     (ADK-0007: the registered slice is THE L0 scope object, honest qualification
     state travelling with the designation).
+  - v1.3 (2026-09-26): packet CLOSE ruled — ADK-0008 (ADHIKARIN register):
+    PACKET_CLOSED with the carried-forward blocks retained verbatim. The holds
+    (1125 application, sealed-text amendment) are correctly out-of-scope carried
+    items, per W-L0-3's CODE_COMPLETE_MIGRATION_HELD precedent; conditioning
+    closure on a Part 5 production write would make every packet on this lane
+    unclosable by construction. The corrected detector's first production run at
+    application is the recorded post-application verification hook; a live
+    failure there would land as a NEW finding, not an unclose.
 ---
 
 # W-L0-9 Packet Report — Identity uniqueness and the missing classes
