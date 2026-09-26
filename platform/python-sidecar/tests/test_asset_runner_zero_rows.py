@@ -171,7 +171,7 @@ def test_failed_post_write_integrity_rolls_back_output_before_recording_error(mo
     monkeypatch.setattr(ar, 'load_upstream_receipts', lambda cur, deps, chart_id: [])
     monkeypatch.setattr(ar, 'compute_upstream_hash', lambda cur, asset_id, chart_id: 'upstream')
     monkeypatch.setattr(ar, 'get_writer_source_hash', lambda asset_id: 'writer')
-    monkeypatch.setattr(ar, '_drive_substeps', lambda *args, **kwargs: (1, 0))
+    monkeypatch.setattr(ar, '_drive_substeps', lambda *args, **kwargs: (1, 0, 0.0))
     monkeypatch.setattr(ar, '_probe_asset', lambda *args, **kwargs: (False, 'detector returned false'))
     monkeypatch.setattr(
         ar,

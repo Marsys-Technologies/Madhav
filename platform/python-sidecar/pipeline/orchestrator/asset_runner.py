@@ -11,8 +11,10 @@ import ast
 import hashlib
 import json
 import logging
+import math
 import os
 import threading
+import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -702,6 +704,115 @@ def _run_service_health_probe(
         logger.warning("[orchestrator] service %s health probe %s: %s", asset_id, status, message)
 
 
+# ── Duration/rate guard (A1 — CLAUDE.md §N.8) ─────────────────────────────────
+
+def _compute_duration_and_rate(
+    rows_written: int, duration_seconds: float | None,
+) -> tuple[float | None, float | None]:
+    """
+    Guard the write-time division for asset_throughput.duration_seconds /
+    rows_per_second.
+
+    A missing, zero, negative, or non-finite duration yields (None, None) —
+    never 0, never a ZeroDivisionError, and never a fabricated rate standing in
+    for "no valid duration was measured". This is the one guard every
+    success-completion write site must call before persisting either column;
+    it is deliberately never called from a failure/abort/error path (those
+    paths must not touch these columns at all, leaving them NULL by omission).
+
+    A genuine 0-row completion paired with a real positive duration still
+    yields a genuine rate of 0.0 (an honest measured "wrote nothing this run"),
+    not NULL — only the DURATION side of the guard suppresses the rate; a
+    zero row count on its own is not a reason to null out an otherwise-valid
+    duration/rate pair.
+    """
+    if duration_seconds is None:
+        return None, None
+    try:
+        duration = float(duration_seconds)
+    except (TypeError, ValueError):
+        return None, None
+    if not math.isfinite(duration) or duration <= 0:
+        return None, None
+    rate = (rows_written or 0) / duration
+    return duration, rate
+
+
+# Cached once per process (C2, gate review A1_review_20260926T124832Z.md F-2):
+# migration 1094 adds asset_throughput.duration_seconds, but a deploy of this
+# code can legitimately reach production before that migration is actually
+# applied — or the bulk migration runner can silently no-op while reporting
+# success (CLAUDE.md §N.4's named hazard). Before this cache, the completion
+# UPDATE named `duration_seconds = %s` unconditionally: on an out-of-order or
+# silently-no-op deploy, EVERY data-writer completion write would raise
+# `column "duration_seconds" does not exist` and no asset could ever complete
+# a build again. None = not yet probed; True/False once probed, for the life
+# of this process (never re-probed per write — a schema change mid-process is
+# not a supported deploy shape here).
+_DURATION_COLUMNS_PRESENT: bool | None = None
+
+
+def _duration_columns_present(cur) -> bool:
+    """
+    Detect, once per process, whether asset_throughput.duration_seconds exists.
+
+    Graceful degradation for migration 1094 (see module-level comment above):
+    when the column is absent, the completion write must still succeed —
+    it simply omits duration_seconds/rows_per_second from the UPDATE entirely,
+    so the build completes and those two columns stay whatever they already
+    were (NULL, on a fresh install). This must never be probed per write; the
+    result is cached for the remainder of the process.
+
+    R-2 (gate review A1_rereview_20260926T132725Z.md N-2): the absence branch is
+    logged, once per process (same cardinality as the probe itself). Without
+    this, an operator reading a NULL duration_seconds cannot tell "this
+    particular build wasn't timed" (an ordinary skip path) from "migration 1094
+    has never applied in this environment, so NOTHING will ever be timed here"
+    — a silent, permanent, fleet-wide measurement outage wearing an ordinary
+    NULL's clothes (CLAUDE.md §N.4's `[[feedback-deploy-migrations-silent-noop]]`
+    hazard, one layer up: the migration silently does nothing, and — before this
+    fix — the code silently did nothing about it either).
+    """
+    global _DURATION_COLUMNS_PRESENT
+    if _DURATION_COLUMNS_PRESENT is None:
+        # R-7 (gate review N-6): schema-qualified so a same-named table in
+        # another schema of a multi-schema deployment can never produce a false
+        # positive here. A false positive would make the completion UPDATE name
+        # a column that doesn't actually exist in THIS asset_throughput, raise,
+        # and reintroduce exactly the build-fatal hazard this cache exists to
+        # prevent. 'public' matches this codebase's own established idiom for
+        # probing column existence (see l0_class_lifetime_counts.py,
+        # mimamsa/outcome.py, services/w2g_validations/_db.py — all filter
+        # table_schema = 'public' rather than to_regclass, which this codebase
+        # reserves for whole-table existence checks, a different question).
+        cur.execute(
+            """SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'asset_throughput'
+                 AND column_name = 'duration_seconds'"""
+        )
+        _DURATION_COLUMNS_PRESENT = cur.fetchone() is not None
+        if not _DURATION_COLUMNS_PRESENT:
+            logger.warning(
+                "[orchestrator] asset_throughput.duration_seconds is ABSENT in "
+                "this environment (migration 1094_asset_throughput_duration_"
+                "seconds.sql has not applied here). Every completion write this "
+                "process makes will omit duration_seconds/rows_per_second "
+                "entirely -- a fleet-wide measurement outage for the lifetime "
+                "of this process, not an ordinary per-row NULL. Apply migration "
+                "1094 to restore duration tracking."
+            )
+            emit_event({
+                "type": "asset.duration_columns_absent",
+                "message": (
+                    "asset_throughput.duration_seconds is absent; migration "
+                    "1094_asset_throughput_duration_seconds.sql has not applied "
+                    "in this environment -- duration/rate tracking is disabled "
+                    "for the lifetime of this process"
+                ),
+            })
+    return _DURATION_COLUMNS_PRESENT
+
+
 # ── Sub-step driver (Orchestrator Convergence Phase 2) ────────────────────────
 
 def _drive_substeps(
@@ -714,7 +825,7 @@ def _drive_substeps(
     ctx: ContextSpec,
     completed_keys: set[str] | None = None,
     defer_commits: bool = False,
-) -> tuple[int, int]:
+) -> tuple[int, int, float]:
     """
     Drive a writer's sub-steps, each as its own SAVEPOINT + heartbeat + commit.
 
@@ -734,12 +845,30 @@ def _drive_substeps(
       scoped to `step.key`) makes an accidental re-run safe anyway.
 
     The writer MUST NOT commit/rollback/close — this driver owns the transaction
-    lifecycle (one commit per sub-step). Returns (rows_inserted, rows_updated).
+    lifecycle (one commit per sub-step). Returns (rows_inserted, rows_updated,
+    duration_seconds) — the third element is the SUM of each executed sub-step's
+    ENGINE-MEASURED wall-clock time (C1, gate review A1_review_20260926T124832Z.md
+    F-1): this driver times its own call into `writer.run_substep(ctx, step)` with
+    `time.monotonic()` (immune to wall-clock adjustments, unlike `time.time()`),
+    rather than depending on the writer to self-report `WriterResult.
+    duration_seconds`. A1's original design summed the writer's self-report, but
+    measured coverage of that field was a lottery decided by whether each writer
+    happened to populate it (bg 30/32, mi 14/14, ka 2/23, ga 1/19, bo 0/24, ph
+    0/8 — roughly 201/268 asset_throughput rows stayed NULL through this very
+    path). Timing the call itself makes the signal universal and earned (§N.8):
+    the engine measures the thing it claims to measure. `WriterResult.
+    duration_seconds` still exists in the frozen contract and writers may still
+    set it — this driver simply no longer consults it for the persisted duration;
+    it is never used to override the engine's own measurement. A skipped
+    (already-completed, `completed_keys`) sub-step contributes 0 and is never
+    timed — it did no work THIS run, so it must not inflate this run's measured
+    duration.
     """
     completed_keys = completed_keys or set()
     substeps = writer.plan_substeps(ctx)
     total = len(substeps)
     rows_inserted = 0
+    duration_seconds = 0.0
     rows_updated = 0
 
     for idx, step in enumerate(substeps):
@@ -757,15 +886,22 @@ def _drive_substeps(
             continue
 
         cur.execute("SAVEPOINT writer_exec")
+        # C1: time the engine's own call into the writer, not the writer's self-
+        # report. monotonic() brackets ONLY writer.run_substep — not the SAVEPOINT/
+        # RELEASE statements either side of it — so this is the writer's own work,
+        # as measured by the caller that invoked it.
+        substep_started = time.monotonic()
         try:
             result = writer.run_substep(ctx, step)
         except Exception:
             cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
             raise
+        substep_elapsed = time.monotonic() - substep_started
         cur.execute("RELEASE SAVEPOINT writer_exec")
 
         rows_inserted += int(result.rows_inserted or 0)
         rows_updated += int(result.rows_updated or 0)
+        duration_seconds += substep_elapsed
 
         # Heartbeat: keep the asset visibly alive for BOTH reapers and feed live
         # cockpit progress. Cumulative rows_written is finalized below in run_asset.
@@ -789,7 +925,7 @@ def _drive_substeps(
             "rows_written": rows_inserted + rows_updated,
         })
 
-    return rows_inserted, rows_updated
+    return rows_inserted, rows_updated, duration_seconds
 
 
 # ── Probe / verify-then-conditionally-regenerate (Phase 4 — the one new primitive) ─
@@ -1040,7 +1176,7 @@ def _run_data_writer(
     # provenance, while an error state prevents partial output being accepted.
     defer_writer_commits = has_integrity_check and not writer.has_substeps
     try:
-        rows_inserted, rows_updated = _drive_substeps(
+        rows_inserted, rows_updated, writer_duration_seconds = _drive_substeps(
             conn, cur, run_id, chart_id, asset_id, writer, ctx,
             defer_commits=defer_writer_commits,
         )
@@ -1072,6 +1208,19 @@ def _run_data_writer(
             return False
 
     rows_written = int((rows_inserted + rows_updated) or 0)
+
+    # A1/C1: pin duration/rate to what THIS run's writer actually did (rows_written
+    # + writer_duration_seconds — the latter now the ENGINE's own time.monotonic()
+    # measurement around each run_substep call, summed by _drive_substeps above,
+    # not the writer's self-report) BEFORE any of the no-op-completion
+    # reclassification below can overwrite rows_written with a presence-probe
+    # count that reflects prior runs' work, not this run's measured time — using
+    # the promoted count against this run's near-zero duration would fabricate
+    # an inflated rate. NULL on any non-positive/non-finite duration
+    # (_compute_duration_and_rate), never 0, never a ZeroDivisionError.
+    write_duration_seconds, write_rows_per_second = _compute_duration_and_rate(
+        rows_written, writer_duration_seconds,
+    )
 
     # When a chart-scoped data writer produces 0 rows, record 'dormant' rather than
     # 'lit'. 'lit' would cause the plan resolver's action='build' filter to exclude
@@ -1191,14 +1340,30 @@ def _run_data_writer(
             asset_id, rows_written, target_floor, final_state
         )
 
-    cur.execute(
-        """UPDATE asset_throughput
-           SET state = %s, last_built_at = NOW(), rows_written = %s,
-               built_against_upstream_hash = %s, built_against_writer_hash = %s,
-               last_error = NULL
-           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
-        (final_state, rows_written, upstream_hash, writer_hash, chart_id, asset_id),
-    )
+    # C2 (gate review F-2): degrade gracefully when migration 1094 has not yet
+    # applied in this environment. Never name duration_seconds/rows_per_second
+    # in the UPDATE unless the column is actually present — an out-of-order or
+    # silently-no-op'd deploy must never turn "a column reads NULL" into
+    # "no asset can complete a build" (CLAUDE.md §N.4).
+    if _duration_columns_present(cur):
+        cur.execute(
+            """UPDATE asset_throughput
+               SET state = %s, last_built_at = NOW(), rows_written = %s,
+                   built_against_upstream_hash = %s, built_against_writer_hash = %s,
+                   last_error = NULL, duration_seconds = %s, rows_per_second = %s
+               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+            (final_state, rows_written, upstream_hash, writer_hash,
+             write_duration_seconds, write_rows_per_second, chart_id, asset_id),
+        )
+    else:
+        cur.execute(
+            """UPDATE asset_throughput
+               SET state = %s, last_built_at = NOW(), rows_written = %s,
+                   built_against_upstream_hash = %s, built_against_writer_hash = %s,
+                   last_error = NULL
+               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+            (final_state, rows_written, upstream_hash, writer_hash, chart_id, asset_id),
+        )
     _guard_state_write(cur, run_id, chart_id, asset_id, final_state)
     cur.execute(
         """UPDATE build_run_assets

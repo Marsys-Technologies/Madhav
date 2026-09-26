@@ -116,24 +116,45 @@ def test_unimplemented_writer_raises():
 # ── B. Sub-step driver ──────────────────────────────────────────────────────────
 
 class _Heavy3(WriterBase):
+    """Self-reports duration_seconds=999.0 — an obviously-irrelevant value, to
+    prove C1's engine-side timing never consults it (see the test below, which
+    controls time.monotonic() to a known sequence and asserts the persisted
+    duration is the CONTROLLED clock's 7.5, not 3 x 999.0)."""
     asset_id = 'ga_heavy'
     has_substeps = True
     def plan_substeps(self, ctx):
         return [SubStep(key=f'sys{i}', label=f'system {i}') for i in range(3)]
     def run_substep(self, ctx, step):
-        return WriterResult(asset_id=self.asset_id, rows_inserted=10)
+        return WriterResult(asset_id=self.asset_id, rows_inserted=10, duration_seconds=999.0)
+
+
+def _fake_monotonic(monkeypatch, *ticks: float):
+    """Monkeypatch asset_runner.time.monotonic() to return `ticks` in sequence —
+    deterministic, no real sleep required. `_drive_substeps` calls it exactly
+    twice (start, end) per EXECUTED sub-step and zero times per skipped one."""
+    it = iter(ticks)
+    monkeypatch.setattr(asset_runner.time, 'monotonic', lambda: next(it))
 
 
 def test_driver_runs_each_substep_with_heartbeat(monkeypatch):
+    """C1: _drive_substeps must time the ENGINE's own call into
+    writer.run_substep() with time.monotonic(), summing each executed sub-
+    step's real elapsed wall time — NOT the writer's self-reported
+    WriterResult.duration_seconds (_Heavy3 sets that to an irrelevant 999.0
+    precisely to prove it has no effect). Fails without the C1 fix: a driver
+    that instead summed the writer's self-report would compute 3 x 999.0 =
+    2997.0, not this test's controlled-clock 7.5."""
     events: list[dict] = []
     monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: events.append(e))
+    _fake_monotonic(monkeypatch, 0.0, 2.5, 2.5, 5.0, 5.0, 7.5)
 
     conn, cur = FakeConn(), FakeCursor()
-    ins, upd = asset_runner._drive_substeps(
+    ins, upd, dur = asset_runner._drive_substeps(
         conn, cur, 'run-1', 'chart-C', 'ga_heavy', _Heavy3(), _ctx(conn),
     )
 
     assert (ins, upd) == (30, 0)
+    assert dur == pytest.approx(7.5)  # engine-measured: 3 sub-steps x 2.5s each (controlled clock)
     sqls = cur.sqls()
     # one SAVEPOINT + RELEASE per sub-step (3 each)
     assert sqls.count('SAVEPOINT writer_exec') == 3
@@ -152,30 +173,35 @@ def test_driver_runs_each_substep_with_heartbeat(monkeypatch):
 def test_integrity_gated_driver_defers_every_substep_commit(monkeypatch):
     """A final detector failure must be able to roll back every substep."""
     monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: None)
+    _fake_monotonic(monkeypatch, 0.0, 2.5, 2.5, 5.0, 5.0, 7.5)
 
     conn, cur = FakeConn(), FakeCursor()
-    ins, upd = asset_runner._drive_substeps(
+    ins, upd, dur = asset_runner._drive_substeps(
         conn, cur, 'run-1', 'chart-C', 'ga_heavy', _Heavy3(), _ctx(conn),
         defer_commits=True,
     )
 
     assert (ins, upd) == (30, 0)
+    assert dur == pytest.approx(7.5)  # engine-measured (controlled clock), not writer self-report
     assert conn.commits == 0
 
 
 def test_driver_resume_skips_completed(monkeypatch):
     events: list[dict] = []
     monkeypatch.setattr(asset_runner, 'emit_event', lambda e, cur=None: events.append(e))
+    _fake_monotonic(monkeypatch, 10.0, 11.25)  # only sys2 executes -> one start/end pair
 
     runs = {'n': 0}
 
     class Heavy3Counting(_Heavy3):
         def run_substep(self, ctx, step):
             runs['n'] += 1
-            return WriterResult(asset_id=self.asset_id, rows_inserted=10)
+            # Irrelevant self-report (C1 never reads it) -- distinct from _Heavy3's
+            # 999.0 only to prove per-class self-reports are equally ignored.
+            return WriterResult(asset_id=self.asset_id, rows_inserted=10, duration_seconds=1234.0)
 
     conn, cur = FakeConn(), FakeCursor()
-    ins, upd = asset_runner._drive_substeps(
+    ins, upd, dur = asset_runner._drive_substeps(
         conn, cur, 'run-1', 'chart-C', 'ga_heavy', Heavy3Counting(), _ctx(conn),
         completed_keys={'sys0', 'sys1'},
     )
@@ -183,6 +209,10 @@ def test_driver_resume_skips_completed(monkeypatch):
     # only sys2 actually executed; sys0/sys1 skipped
     assert runs['n'] == 1
     assert (ins, upd) == (10, 0)
+    # a skipped sub-step contributes 0 to duration and is never timed -- it did
+    # no work this run, so only sys2's own engine-measured 1.25s counts (the
+    # controlled clock), not the writer's self-reported 1234.0.
+    assert dur == pytest.approx(1.25)
     assert cur.sqls().count('SAVEPOINT writer_exec') == 1
     assert conn.commits == 1
     skipped = [e for e in events if e['type'] == 'asset.substep' and e.get('skipped')]

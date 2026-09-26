@@ -1,25 +1,25 @@
 ---
 artifact: NIRMANA_ENGINE_ELEVATION_STATE
 canonical_id: NIRMANA_ENGINE_ELEVATION_STATE
-version: "0.3"
+version: "0.4"
 status: LIVE — rewritten at every packet close
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md
 runs_in: /Users/Dev/madhav-engine (branch campaign/nirmana-engine)
-last_updated: 2026-09-26T12:55Z
+last_updated: 2026-09-26T14:15Z
 ---
 
 # Nirmāṇa engine elevation — STATE
 
 ## Where the campaign is
 
-**Phase A (the gate) — IN FLIGHT. A2 CLOSED (reviewer ACCEPT). A1 in correction. A3 next.**
+**Phase A (the gate) — IN FLIGHT. A2 and A1 CLOSED. A3 in correction on one blocking finding.**
 
 | packet | title | status | review verdict | before | after |
 |---|---|---|---|---|---|
-| A1 | Record how long and how fast | **correction pass in flight** after ACCEPT_WITH_CORRECTIONS | ACCEPT_WITH_CORRECTIONS (1st) | 268/268 rows NULL rate (100%, all six layers) | pending re-review |
+| A1 | Record how long and how fast | **CLOSED** | ACCEPT_WITH_CORRECTIONS ×2 → cleared on B-1 discharge | coverage was a writer-dependent lottery (bo 0/24, ph 0/8) | **123/123 writers timed by the engine**; production rows unchanged at 0/268 and labelled so |
 | A2 | Always record why it failed | **CLOSED** | ACCEPT_WITH_CORRECTIONS → **ACCEPT** on re-review | 301 empty-error records / 82 assets / 46 runs (13.25% of failures) | prospective: every terminating path now writes attributable text; proof re-run independently |
-| A3 | Stop one registry change killing a whole run | **unblocked — `runs/route.ts` released by A2's close**; implementation next | — | 18 records / 8 runs, every run losing 100% of its plan | — |
+| A3 | Stop one registry change killing a whole run | **correction pass in flight** — C-1 blocking | ACCEPT_WITH_CORRECTIONS | every one of 8 runs lost 100% of its plan | 8 writers execute where 0 did; production after-figure **unmeasured** |
 | A2b | `mark_asset_error` empty-exception hardening | **carried** (split out of A2 to keep waves disjoint) | — | latent, not inflating the 301 | — |
 | A3b | Runs dispatched with no manifest at all | **carried** (split out of A3; 6 of its 8 runs) | — | 7 records / 6 runs | — |
 | B1 | Cascade reads as one cause, N blocked | not started | — | 1,281 cascade records (confirmed exactly) | — |
@@ -101,6 +101,42 @@ have fixed it was unsupported); and `asset_runner.py`'s `mark_asset_error` can s
 
 **One observation for a governance lane, not A2:** the test bed pins `chart_id NOT NULL` in its own DDL,
 so it would not notice production drifting away from that constraint.
+
+
+## A1 — closed 2026-09-26, two correction rounds
+
+**What landed.** The orchestrator now measures its own monotonic wall-clock around its invocation of
+the writer, and is the sole timing authority. `WriterResult.duration_seconds` still exists on the
+frozen contract and writers may still set it — the engine simply no longer reads it. Migration 1094
+adds the missing duration column; the completion write degrades gracefully when that column is absent,
+and says so once per process rather than degrading silently.
+
+**What the gate changed, twice.** The first submission summed what writers *self-reported*, so coverage
+was a lottery — `bo 0/24`, `ph 0/8`, roughly 201 of 268 rows would have stayed NULL. The reviewer
+established that by reading the code, and stated that had the *code* claimed that coverage rather than
+the documentation, it would have been a REJECT. The second round was cleared only after a blocking
+finding: the digest inventory had gone stale again for exactly A1's 37 writers, and committing a
+mismatched inventory would have made the follow-up re-pin pin a **wrong** one — a knowingly-red gate
+turning into a permanently-wrong receipt spine.
+
+**The hazard that was closed pre-emptively.** Duration and rate are pinned *before* the
+no-op-completion reclassification can overwrite `rows_written` with a presence-probe count from prior
+runs. Pairing an inherited count with this run's near-zero duration would have produced a confident,
+fabricated throughput number — the §N.8 defect class this campaign exists to remove. The reviewer
+verified the ordering by reading every line between pin and write, across both rounds.
+
+**Honest partial, and it is genuinely partial.** The legacy `ga_writers/_telemetry.py` path — 8 writer
+call sites — still records NULL, because closing it means editing writers (stop condition §8(2)). That
+is decision **D-1** for the native. Five other paths also yield NULL and always will: health-probe
+service assets, `_mark_probe_green`, `_skip_no_delta`, the degraded branch, and fully-resumed writers.
+**NULL rate remains a normal, correct reading** — two drafts of D-1 asserted otherwise and the gate
+caught both.
+
+**Commit sequence, declared not discovered.** A1 commits with `capability_estate_census.json` and the
+three `nirmana-analysis-receipts` pins knowingly stale. Neither can be regenerated before the commit
+exists: the census generator refuses without an explicit `--source-revision`, and the layer-pins
+generator resolves content from committed git blobs. A follow-up commit reconciles both. **No `bg_*`
+digest changed**, so the native-ratified L0 frozen pin is untouched.
 
 ## Branch head
 

@@ -1,0 +1,65 @@
+{
+  "packet": "A1",
+  "phase": "after",
+  "taken_by": "campaign executor, from the independent reviewer's empirical verification",
+  "taken_at_utc": "2026-09-26T14:10Z",
+  "db_posture": "read-only (transaction_read_only=on, amjis, PGPORT=5433); no write issued",
+
+  "honest_tension_declared": {
+    "statement": "As with A2, A1's PRODUCTION figure has not moved and must not be made to appear to have.",
+    "why": "Migration 1094 is deliberately unapplied, and no build has been run through the corrected engine. Every asset_throughput row still reads NULL. Running a production build purely to make an after-figure look good would also violate the campaign's own prohibition on rebuilding the estate to test.",
+    "resolution": "The after-metric is measured on CAPABILITY - whether the engine can now measure what it claims to measure, and for which writers - not on rows. The production figure is reported unchanged and labelled unchanged."
+  },
+
+  "primary_after_figure": {
+    "metric": "writer coverage of engine-measured duration",
+    "before": {
+      "shape": "writer-dependent lottery - the engine summed only what each writer chose to self-report in WriterResult.duration_seconds, which defaults to 0.0",
+      "per_layer_writers_reporting": {"bg": "30/32", "mi": "14/14", "ka": "2/23", "ga": "1/19", "bo": "0/24", "ph": "0/8"},
+      "implication": "roughly 201 of 268 rows would have stayed NULL, including every L2 and L4 asset"
+    },
+    "after": {
+      "shape": "writer-independent - the orchestrator brackets its own invocation with time.monotonic()",
+      "writers_covered": "123 of 123",
+      "census": {"light_run_only": 98, "heavy_plan_substeps": 25, "neither": 0},
+      "mechanism": "WriterBase.plan_substeps defaults to exactly one SubStep and run_substep defaults to self.run(ctx), so a light writer's run() executes INSIDE the bracket - timing both shapes is the same call site",
+      "dispatch_coverage": "reviewer traced run_asset: data assets, service-assets-with-writers, and the probe-fail regenerate path all funnel through _run_data_writer -> _drive_substeps; nothing else invokes writer code"
+    },
+    "direction": "predicted direction, confirmed - the reviewer's wording is that the per-layer lottery is gone AS A CONCEPT, not merely improved",
+    "instrument": "reviewer constructed a genuine light writer (run() only, no self-reported duration, real sleep(0.25)) and drove it through the real _drive_substeps",
+    "empirical_result": "rows=500, engine-measured duration=0.2528s, persisted duration_seconds=0.2528, rows_per_second=1977.5"
+  },
+
+  "production_figure_unchanged_and_labelled": {
+    "metric": "asset_throughput rows with a non-null rows_per_second",
+    "before": "0 of 268",
+    "after": "0 of 268",
+    "why_unchanged": "migration 1094 is intentionally unapplied and no build has been run through the corrected engine. This figure moves on the first real build after the migration lands, and not before.",
+    "query": "SELECT count(*) FILTER (WHERE rows_per_second IS NOT NULL) AS with_rate, count(*) AS total FROM asset_throughput;"
+  },
+
+  "residual_null_paths_after_the_fix": {
+    "note": "Enumerated because two drafts of DECISIONS_FOR_THE_NATIVE.md asserted a coverage absolute without checking these. NULL remains a normal, frequent and CORRECT reading.",
+    "paths": [
+      {"path": "_run_service_health_probe", "reason": "legacy health-probe service assets, no registered writer", "frequency": "8 storage_type=service assets"},
+      {"path": "_mark_probe_green", "reason": "writer never runs, nothing to time", "frequency": "common steady state"},
+      {"path": "_skip_no_delta", "reason": "healthy skip, not a failure", "frequency": "common steady state"},
+      {"path": "C2 degraded branch", "reason": "migration 1094 not applied in that environment", "frequency": "environment-wide when it bites; now observable via logger.warning + asset.duration_columns_absent event"},
+      {"path": "fully-resumed writer", "reason": "every substep already complete via completed_keys, duration sums to 0.0", "frequency": "occasional"},
+      {"path": "legacy ga_writers/_telemetry.py", "reason": "8 writer call sites pass no duration; blocked by stop condition 8(2)", "frequency": "8 call sites - the subject of decision D-1"}
+    ]
+  },
+
+  "n8_detector": {
+    "claim": "a failed build records NO rate, not a zero",
+    "code_path_that_makes_it_read_null": "_compute_duration_and_rate is called only from the success-completion write site. mark_asset_error, the orphan-crash reap, the service-probe GREEN branch and _skip_no_delta never call it and never name the columns, so they read NULL by omission.",
+    "guard": "None / 0 / negative / non-finite duration -> (None, None). A genuine positive duration with 0 rows -> (duration, 0.0), an honest measured zero deliberately distinguished from an unknown.",
+    "subsystem_health_detector_added": "on the absent branch the probe emits logger.warning naming the column and migration, plus emit_event asset.duration_columns_absent, once per process - so a fleet-wide measurement outage is distinguishable from ordinary per-row NULLs"
+  },
+
+  "fabricated_rate_hazard_closed": {
+    "statement": "duration and rate are pinned BEFORE the no-op-completion reclassification block can overwrite rows_written with a presence-probe count from prior runs",
+    "why_it_matters": "pairing an inherited row count with this run's near-zero duration would have produced a confident, entirely fabricated throughput number - the SATYA-DIPA N.8 defect class",
+    "verification": "reviewer read every line between pin (1117/1181) and write (1249/1308) across both correction passes and confirmed the only mutation of rows_written is the reclassification block"
+  }
+}

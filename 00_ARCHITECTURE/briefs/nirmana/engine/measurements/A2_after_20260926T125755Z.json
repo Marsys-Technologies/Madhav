@@ -1,0 +1,52 @@
+{
+  "packet": "A2",
+  "phase": "after",
+  "taken_by": "campaign executor (direct verification; no agent spawned - one grep answers it)",
+  "taken_at_utc": "2026-09-26T13:00Z",
+  "db_posture": "read-only (transaction_read_only=on, amjis, PGPORT=5433); no write issued",
+
+  "honest_tension_declared": {
+    "statement": "The campaign prompt section 6 requires 'an after-measurement that differs from the before in the predicted direction'. For A2 the PRODUCTION figure cannot differ, and must not be made to.",
+    "why": "A2 is a prospective code-path fix. The 301 historical empty-error records stay 301 forever. Backfilling error text onto past failures would mean INVENTING a cause the engine never recorded - precisely the defect CLAUDE.md N.7 item 6 forbids ('an honest null beats an invented judgment') and B.10 forbids ('no fabricated computation').",
+    "resolution": "The after-metric is measured on the CODE, not on the history: the number of engine paths that CAN terminate a run-asset in a failed state without writing attributable text. That figure is real, re-runnable, and moved in the predicted direction. The historical figure is reported unchanged and explicitly labelled as such."
+  },
+
+  "primary_after_figure": {
+    "metric": "production TypeScript UPDATE sites that set build_run_assets to a failed state (aborted/error) WITHOUT binding error text",
+    "before": 7,
+    "after": 0,
+    "population": "all UPDATE build_run_assets statements in platform/src, excluding __tests__",
+    "query": "grep -rn -A6 'UPDATE build_run_assets' --include='*.ts' platform/src | grep -v __tests__",
+    "verification_detail": "5 failed-state update sites remain in production TS (watchdog/route.ts:161, :168, :387, :448 and terminalizeFailedRun.ts:54). All 5 carry 'error = $1'. The only site without an error clause is watchdog/route.ts:294, which sets state='complete' - a success path, correctly carrying no error.",
+    "direction": "predicted direction, confirmed"
+  },
+
+  "historical_figure_unchanged_by_design": {
+    "metric": "empty-error share of historical failure records",
+    "before": "301 of 2,271 (13.25%)",
+    "after": "301 of 2,271 (13.25%)",
+    "query": "SELECT state, count(*) FILTER (WHERE error IS NULL OR btrim(error)='') AS empty_error, count(*) AS total FROM build_run_assets WHERE state IN ('error','aborted') GROUP BY state;",
+    "note": "UNCHANGED AND CORRECTLY SO. Reported here so no reader mistakes the code fix for a historical repair."
+  },
+
+  "corroborating_figure": {
+    "metric": "rows ever written by the deleted M-5 backstop",
+    "value": 0,
+    "query": "SELECT count(*) FROM build_run_assets WHERE error LIKE 'orphan-watchdog%'",
+    "note": "M-5 never changed state, so any row it had ever written would still carry its text. Zero rows means it never fired once in its life - which is what made deleting it safe rather than a loss of coverage. Measured by the reviewer, independently of the implementer."
+  },
+
+  "seeded_failure_proof": {
+    "method": "one real failure seeded at each identified path against a throwaway local database, then the deleted M-5 block temporarily re-inserted to confirm the new tests fail on the real text",
+    "as_submitted": "7 passed / 0 failed",
+    "with_defect_reintroduced": "2 failed / 5 passed, both failures asserting on the actual message text",
+    "note": "The first pass's proof failed on undefined imports rather than on the defect - the right conclusion for the wrong reason. This one fails for the reason it claims."
+  },
+
+  "finding_registered_not_fixed": {
+    "id": "A2b-5",
+    "statement": "watchdog/route.ts:294 sets state='complete' without clearing a pre-existing error. A row that errored and later completed retains stale error text.",
+    "severity": "latent - with M-5 deleted, nothing stamps a healthy asset, so no current path produces the contradictory pair",
+    "belongs_to": "A2b / C2 (stuck states), not A2"
+  }
+}
