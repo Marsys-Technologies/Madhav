@@ -13,6 +13,7 @@ cross_campaign_evidence: >
   engine/EVENTS.jsonl (B1 gate verdicts 2026-09-26T18:25Z and 19:05Z), commits f4a6f9541 (A2), 8edba0533 (A1), 551d5ecad (A3).
   196 commits ahead of origin/main; no PR; nothing merged or deployed.
 changelog:
+  - "1.0 (2026-09-27, pre-review correction): B1 row updated — B1 was committed (`17e5a1257`) after this draft was written; it was REJECT/in-flight at drafting time."
   - "1.0 (2026-09-27): first draft. Agrees with the campaign on D2, D3 and the shape of D5; disagrees on D1 (already done elsewhere), D4 (which namespace) and D6 (what NULL means after instrumentation). Every disagreement cites the evidence that produced it."
 ---
 
@@ -45,7 +46,7 @@ Its packets are D1's rows:
 | R34 rate + duration | **A1** | CLOSED, commit `8edba0533` | ACCEPT after two correction rounds | engine times the writer itself (monotonic clock), sole timing authority; migration 1094 adds the duration column. **Honest partial:** the legacy `ga_writers/_telemetry.py` path (8 `ga_*` call sites) still writes NULL — engine decision **D-1** |
 | R35 error text on every failure | **A2** | CLOSED, commit `f4a6f9541` | ACCEPT on re-review | `terminalizeFailedRun.ts`, seven call sites routed through it; 295 of the 301 silent records were one already-computed message being dropped one statement later. Carried: A2b (`mark_asset_error` empty-exception) |
 | R36 run-killer | **A3** | CLOSED, commit `551d5ecad` | ACCEPT after three rounds | validator reports every divergence, only the diverged asset fails, dependents block by cascade. **Fixes 2 of the 8 runs** (Family A). The other 6 (Family B) were dispatched with no manifest at all — carried as A3b |
-| R38 cascade reporting | **B1** | IN FLIGHT — 18 files uncommitted (+572/−58) | **REJECT** at 19:05Z on two triggers | code judged good; the C-1 proof cannot fail (deleting the fix leaves 4/4 tests green) and the premise was inverted — see the finding below |
+| R38 cascade reporting | **B1** | CLOSED on branch, commit `17e5a1257` (after a REJECT at 19:05Z) | accepted after the rejected round | per its commit: 8 of 8 currently-blocked production assets now render `blocked`; 18 badges flip off green (13 → blocked, 4 pre-existing false-greens repaired, 1 timeout) |
 | R37 crash / orphan / guardian | **C1** | not started | — | engine diagnostician: `guardian_cleanup` (310 records) and `manual reap` (77) have **zero source hits in this codebase** — an external process or operator SQL. C1 must not start by assuming the code is here |
 
 **The finding the native should hear now, from B1's rejected round:** the reviewer ran the real
@@ -53,7 +54,7 @@ Its packets are D1's rows:
 `dormant`, zero `blocked`, zero `error`. Seven of the nine are on the native's own chart.** The cockpit
 today shows blocked assets as successes because the stats route never reads `last_error` — a
 pre-existing defect worse than the one B1 set out to fix, found only because the gate refused the
-packet twice. It stays open until B1 lands.
+packet twice. B1 has since fixed it on the engine branch (`17e5a1257`); it stays live in production until that branch is merged and deployed.
 
 **What this means for the Nikaṣa plan:** P1 and P2 are redundant (already done); P8's R38 half is B1
 and its R37 half is C1. ~27 h of proposed work is removed from the plan. The proof queries P1 named
@@ -77,7 +78,7 @@ which D1 should be re-pointed at rather than duplicated:
 
 **Proposed ruling:**
 > D1 is closed as ALREADY AUTHORIZED (engine campaign, 2026-09-26). R34/R35/R36 are re-owned to engine
-> packets A1/A2/A3 with state `CLOSED_ON_BRANCH — pending merge`; R38 to B1 `IN_PROGRESS`; R37 to C1
+> packets A1/A2/A3 with state `CLOSED_ON_BRANCH — pending merge`; R38 to B1 `CLOSED_ON_BRANCH — pending merge`; R37 to C1
 > `OPEN`. P1 and P2 are withdrawn from the plan; P8 becomes "consume B1/C1". The freeze precondition
 > "instrument the builder before the from-scratch run" is satisfied by **merging and deploying the
 > engine branch and observing one instrumented build**, not by a ruling. Engine D-1 → option (b) in
