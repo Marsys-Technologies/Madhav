@@ -1,6 +1,6 @@
 ---
 artifact: L0_W_L0_9_PACKET_REPORT
-version: 1.1
+version: 1.2
 status: CURRENT — Part 1 executed per the ratified design (A+C); production application HELD
 packet: W-L0-9 (Identity uniqueness and the missing classes)
 session: l0/nirmana-elevation-20260921 execution session (worktree /Users/Dev/madhav-l3/l0-exec)
@@ -22,6 +22,13 @@ changelog:
     migration authored HELD, both class-blind resolvers made fail-closed, detector
     replaced in the registered integrity contract, tests extended. No production
     write of any kind; migration 1125 awaits the Part 5 hard stop with 1120–1124.
+  - v1.2 (2026-09-26): PRAMĀṆIN pass-2 corrections amended in place, disclosed —
+    (i) the supabase migrations head corrected 1090 → 1092
+    (`1092_kala_convergence_target_provenance.sql`; verified by the §-referenced
+    origin/* scan; the migration-1125 header itself never carried the error);
+    (ii) the Bhavat Bhavam scope-object status flipped ADK-pending → RULED
+    (ADK-0007: the registered slice is THE L0 scope object, honest qualification
+    state travelling with the designation).
 ---
 
 # W-L0-9 Packet Report — Identity uniqueness and the missing classes
@@ -94,7 +101,10 @@ returns TRUE once that duplicate is declared.
    origin/* head plus this branch's held 1120–1124 — highest number on any ref is
    **1124** (`1124_nirmana_l0_provenance_completion.sql`, this branch, HELD);
    `platform/migrations/` head otherwise 1091, `platform/supabase/migrations/`
-   head 1090. Next free number is **1125** — matches the expected value.
+   head 1092 (`1092_kala_convergence_target_provenance.sql`). Next free number
+   is **1125** — matches the expected value. (AMENDED 2026-09-26: this line
+   originally read "head 1090"; corrected to the measured 1092 after the
+   PRAMĀṆIN pass-2 divergence report. Conclusion unaffected.)
    **HELD gate:** production application is a Part 5 hard stop belonging to the
    native, behind the unreconciled `_migrations_applied` ledger (same regime as
    1120–1124).
@@ -253,8 +263,12 @@ KP extraction is differently scoped). Mirrored by `bhavat_bhavam_registry.py` an
 **Proposal:** declare the registered slice THE L0 scope object; a second DB-backed
 copy would create a second authority. No citation was fabricated to force closure.
 (Kickoff assigns this to W-L0-9; plan §2.4 row text says W-L0-5 — discrepancy
-noted, kickoff followed.) **Status: the closure proposal is with ADHIKARIN as
-ADK-pending.**
+noted, kickoff followed.) **Status: RULED 2026-09-26 (ADK-0007) — the registered
+slice IS declared the L0 scope object; no DB-backed copy. The honest qualification
+state (UNQUALIFIED_SOURCE / rights UNRESOLVED) travels with the designation and
+versions forward only when a classical witness is admitted by explicit ruling.**
+(AMENDED: line originally read "ADK-pending"; ADK-0007 landed after this section
+was first written.)
 
 ## Blocks carried forward
 
@@ -270,8 +284,9 @@ ADK-pending.**
 4. **W-L0-8 input (recorded finding):** ~78 unregistered cross-class synonym
    collisions now refuse bare resolution (fail-closed); W-L0-8 owns the
    vocabulary-level reconciliation.
-5. **Part 3 closure (ADHIKARIN):** the Bhavat Bhavam scope-object closure
-   proposal is ADK-pending.
+5. ~~Part 3 closure (ADHIKARIN)~~ — LANDED 2026-09-26 (ADK-0007): the Bhavat
+   Bhavam scope-object closure is ruled; the registered slice is THE scope
+   object. (AMENDED: originally read "ADK-pending".)
 
 ## Packet status
 
@@ -281,5 +296,5 @@ polysemy registry authored as HELD migration 1125 with the corrected detector
 registered in the `bg_ontology` integrity contract; both class-blind resolvers
 fail-closed with the polysemy rule; tests extended and green (49+1 py ontology
 file; 272 TS layer; 1975 TS registry-wide). The packet's remaining gates are
-not execution-side: production application (Part 5 hard stop), the sealed-text
-detector amendment (strategy), and the Part 3 closure ruling (ADHIKARIN).
+not execution-side: production application (Part 5 hard stop) and the sealed-text
+detector amendment (strategy). The Part 3 closure ruling LANDED (ADK-0007).
