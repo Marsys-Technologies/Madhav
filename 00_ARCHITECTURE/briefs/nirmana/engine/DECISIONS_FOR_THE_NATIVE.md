@@ -1,8 +1,8 @@
 ---
 artifact: NIRMANA_ENGINE_DECISIONS_FOR_THE_NATIVE
 canonical_id: NIRMANA_ENGINE_DECISIONS_FOR_THE_NATIVE
-version: "1.2"
-status: OPEN — one entry, raised 2026-09-26, campaign continued around it
+version: "1.3"
+status: OPEN — two entries, raised 2026-09-26, campaign continued around both
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md §8
 changelog: >
@@ -143,3 +143,67 @@ rather than either correct behaviour (1, 2, 3, 5) or an environment fault alread
 
 Nothing. A1 proceeds through its correction pass and re-review with this limit named; A2, A3 and
 Phases B–D are untouched by it.
+
+---
+
+## D-2 · The analysis-receipt pins cannot be reconciled, and the blocker is not this campaign's
+
+**Raised by:** packet A1's required digest regeneration, 2026-09-26.
+**Why it is here rather than fixed:** re-pinning is governance-gated and its precondition is absent.
+**Effect on the campaign:** three tests stay red on this branch, with precise attribution. No packet is
+blocked; Phase A closed with all three packets reviewer-accepted.
+
+### What happened, in order
+
+1. A1 edited `asset_runner.py`. A real CI gate — `test_checked_in_writer_digest_inventory_matches_sidecar_sources` — went red, and its own error message names the remedy: regenerate the writer-digest inventory.
+2. A1 regenerated it. That was **required**, not optional.
+3. Regenerating invalidated two downstream artifacts that embed a hash of the inventory:
+   - `capability_estate_census.json` — **reconciled.** It needs an explicit `--generated-at` and `--source-revision`, which is why it could not be regenerated before the commit existed. Done against `551d5ecad`, verified `OK`.
+   - `nirmana-analysis-layer-pins.json` — **could not be reconciled.** This entry.
+
+### Why the pins could not be reconciled
+
+The reviewer established that reverting only the digest file turns all 14 receipt tests green, so **the
+three failures are genuinely A1's**, not pre-existing. But the remedy is blocked by something that is:
+
+- **The pins reference commits that do not exist in this repository.** `6c1a65e23be6…`,
+  `5142109f7f21…`, `8c80cd46159d…` and others are ancestors of neither the campaign branch nor
+  `origin/main`. `--check` reports them as *"must be an ancestor of HEAD"*. They cannot be made
+  ancestors of anything here.
+- **L4 and L5 have no layer pin at all** in the definition snapshot (`"L4: definition snapshot has no
+  layer pin"`, same for L5).
+- **L3's archived pin already differs from its own immutable historical snapshot**, independently of
+  this campaign.
+- **Regeneration is governance-gated.** The generator requires `--convergence-commit <reviewed sha>`,
+  and supersession requires `--authority-decision` and `--authority-commit`. Its own docstring warns
+  that re-pinning *"would invalidate 29 already-frozen L0 capsules"*. That is an authorization this
+  campaign was not delegated, and fabricating one would be precisely the unearned-claim defect the
+  campaign exists to remove.
+
+### A correction to the executor's own earlier reasoning
+
+Two things previously recorded were wrong and are corrected here:
+
+1. I declared a **two-commit sequence** — commit, then re-pin. The re-pin half is not achievable at all,
+   for the reasons above. The census half was, and is done.
+2. I wrote in A1's commit message that **"no `bg_*` digest changed, so the L0 frozen pin is untouched and
+   L0 stays green."** The first clause is true and measured (39 digests changed: `bo` 23, `ga` 13, `ka` 3;
+   `bg_*` = 0). The second does not follow — `probe_digest` also changed, and the receipt spine is
+   layer-wide. **L0 is implicated in the red tests.** I took that phrasing from a reviewer without
+   verifying it, which is the same failure this campaign has been correcting in others.
+
+### What the native is being asked to decide
+
+- **(a) Leave the three tests red** on this branch and reconcile the pins in whatever workstream owns
+  that artifact, where the missing ancestor commits and the absent L4/L5 pins can be addressed properly.
+  **Executor's recommendation.** The failures are attributable, bounded to one test file, and caused by a
+  regeneration that a different CI gate demanded.
+- **(b) Authorize a supersession re-pin** with an explicit `--authority-decision`, accepting that it
+  invalidates 29 frozen L0 capsules and that the referenced ancestor commits will still be missing.
+- **(c) Revert A1's digest regeneration** — which re-breaks the gate that demanded it. Not recommended;
+  it trades an attributable red test for an unattributable one.
+
+### What this does NOT block
+
+Nothing in this campaign. Phase A is closed with all three packets reviewer-accepted. Phase B is
+unaffected — it touches neither artifact.
