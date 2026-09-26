@@ -1,0 +1,66 @@
+{
+  "exported_at": "2026-09-26",
+  "source": "production amjis database via cloud-sql-proxy 127.0.0.1:5433 (read-only SELECTs)",
+  "exported_by": "scripts/l0harness rehearsal agent (L0-W7 minimal fixture)",
+  "tables": [
+    {
+      "table": "asset_registry",
+      "file": "asset_registry.jsonl",
+      "filter": "full table (no filter)",
+      "row_count": 129,
+      "sha256": "8e9e72cc704c02216b3a6d58c0c22abaa31ce7fd11834409817c402df76e46be"
+    },
+    {
+      "table": "brahma_yoga_catalog",
+      "file": "brahma_yoga_catalog.jsonl",
+      "filter": "full table (no filter)",
+      "row_count": 233,
+      "sha256": "3347fc8386e75728dbf668adc9c3dededd01eb537bab567212fdc2551be8ff1e"
+    },
+    {
+      "table": "brahma_dosha_catalog",
+      "file": "brahma_dosha_catalog.jsonl",
+      "filter": "full table (no filter)",
+      "row_count": 79,
+      "sha256": "7cbf5dc268ae081687aaec484ed1030e574fb626f925148a74a4d5e6f13a8f86"
+    },
+    {
+      "table": "sutravali_rules",
+      "file": "sutravali_rules.jsonl",
+      "filter": "yoga_canonical_id='sunapha'",
+      "row_count": 2,
+      "sha256": "238df9034d315f74b558f1ecfc3bff22c6c29443f71447431f5bd497432c3838"
+    },
+    {
+      "table": "classical_texts",
+      "file": "classical_texts.jsonl",
+      "filter": "text_id='bphs' (sunapha citation text; bphs_pg0001_c01 is a chunk_id, not a text_id)",
+      "row_count": 1,
+      "sha256": "e6b386886766818e18fea081635983b274f80c538567a655594e21e3055f1266"
+    },
+    {
+      "table": "classical_text_chunks",
+      "file": "classical_text_chunks.jsonl",
+      "filter": "text_id='bphs' AND chapter=30 (sunapha BPHS chapter; exactly 1 chunk)",
+      "row_count": 1,
+      "sha256": "b0153eb8ebd04fd2d37ce59e6c7c7651118da6cf760fd2995cda06af43638ff9"
+    },
+    {
+      "table": "fact_category_ownership",
+      "file": "fact_category_ownership.jsonl",
+      "filter": "full table (no filter); needed for chart_facts guard seeding",
+      "row_count": 67,
+      "sha256": "bfde671d1cdce390beabcda14ccb25e3798d98ee3d257b9c3aca6d595f062fd9"
+    }
+  ],
+  "zero_row_tables_not_exported": [
+    {
+      "table": "yoga_families",
+      "reason": "0 rows in production (verified 2026-09-26)"
+    },
+    {
+      "table": "yoga_family_members",
+      "reason": "0 rows in production (verified 2026-09-26)"
+    }
+  ]
+}

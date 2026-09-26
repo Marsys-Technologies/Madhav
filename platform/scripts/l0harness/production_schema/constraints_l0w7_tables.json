@@ -1,0 +1,188 @@
+[
+  {
+    "table_name": "chart_dashas",
+    "conname": "cd_level_n_max4",
+    "contype": "c",
+    "def": "CHECK (((level_n >= 1) AND (level_n <= 4)))"
+  },
+  {
+    "table_name": "chart_dashas",
+    "conname": "chart_dashas_verification_pass_status_check",
+    "contype": "c",
+    "def": "CHECK ((verification_pass_status = ANY (ARRAY['two_pass_verified'::text, 'classical_match'::text, 'divergent_flagged'::text, 'single'::text, 'scope_cap_sentinel'::text])))"
+  },
+  {
+    "table_name": "chart_dashas",
+    "conname": "chart_dashas_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (dasha_row_id)"
+  },
+  {
+    "table_name": "chart_divisionals",
+    "conname": "chart_divisionals_degree_in_sign_check",
+    "contype": "c",
+    "def": "CHECK (((degree_in_sign >= (0)::numeric) AND (degree_in_sign < (30)::numeric)))"
+  },
+  {
+    "table_name": "chart_divisionals",
+    "conname": "chart_divisionals_house_check",
+    "contype": "c",
+    "def": "CHECK (((house >= 1) AND (house <= 12)))"
+  },
+  {
+    "table_name": "chart_divisionals",
+    "conname": "chart_divisionals_sign_number_check",
+    "contype": "c",
+    "def": "CHECK (((sign_number >= 1) AND (sign_number <= 12)))"
+  },
+  {
+    "table_name": "chart_divisionals",
+    "conname": "chart_divisionals_verification_pass_status_check",
+    "contype": "c",
+    "def": "CHECK ((verification_pass_status = ANY (ARRAY['two_pass_verified'::text, 'classical_match'::text, 'divergent_flagged'::text, 'single'::text])))"
+  },
+  {
+    "table_name": "chart_divisionals",
+    "conname": "chart_divisionals_chart_id_fkey",
+    "contype": "f",
+    "def": "FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE"
+  },
+  {
+    "table_name": "chart_divisionals",
+    "conname": "chart_divisionals_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "charts",
+    "conname": "charts_chart_type_check",
+    "contype": "c",
+    "def": "CHECK ((chart_type = ANY (ARRAY['natal'::text, 'prashna'::text, 'synastry'::text, 'varshaphala'::text])))"
+  },
+  {
+    "table_name": "charts",
+    "conname": "charts_role_check",
+    "contype": "c",
+    "def": "CHECK ((role = ANY (ARRAY['native'::text, 'tertiary'::text, 'fixture'::text])))"
+  },
+  {
+    "table_name": "charts",
+    "conname": "charts_client_id_fkey",
+    "contype": "f",
+    "def": "FOREIGN KEY (client_id) REFERENCES profiles(id) ON DELETE CASCADE"
+  },
+  {
+    "table_name": "charts",
+    "conname": "charts_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "charts",
+    "conname": "charts_chart_id_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id)"
+  },
+  {
+    "table_name": "fact_category_ownership",
+    "conname": "fact_category_ownership_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (fact_category, owning_asset_id)"
+  },
+  {
+    "table_name": "ga_condition_composite",
+    "conname": "ga_condition_composite_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "ga_condition_composite",
+    "conname": "ga_condition_composite_unique",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id, graha)"
+  },
+  {
+    "table_name": "ga_medical",
+    "conname": "ga_medical_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "ga_medical",
+    "conname": "ga_medical_chart_id_ayanamsha_id_graha_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id, graha)"
+  },
+  {
+    "table_name": "ga_prashna_judgment",
+    "conname": "ga_prashna_judgment_chart_id_fkey",
+    "contype": "f",
+    "def": "FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE"
+  },
+  {
+    "table_name": "ga_prashna_judgment",
+    "conname": "ga_prashna_judgment_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "ga_prashna_judgment",
+    "conname": "ga_prashna_judgment_chart_id_ayanamsha_id_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id)"
+  },
+  {
+    "table_name": "ga_prashna_lagna",
+    "conname": "ga_prashna_lagna_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "ga_prashna_lagna",
+    "conname": "ga_prashna_lagna_chart_id_ayanamsha_id_lagna_method_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id, lagna_method)"
+  },
+  {
+    "table_name": "ga_transit_anchors",
+    "conname": "ga_transit_anchors_natal_house_from_moon_check",
+    "contype": "c",
+    "def": "CHECK (((natal_house_from_moon >= 1) AND (natal_house_from_moon <= 12)))"
+  },
+  {
+    "table_name": "ga_transit_anchors",
+    "conname": "ga_transit_anchors_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "ga_transit_anchors",
+    "conname": "ga_transit_anchors_natural_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id, graha)"
+  },
+  {
+    "table_name": "ga_vastu_planet_direction_map",
+    "conname": "ga_vastu_planet_direction_map_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "ga_vastu_planet_direction_map",
+    "conname": "ga_vastu_planet_direction_map_chart_id_ayanamsha_id_graha_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id, graha)"
+  },
+  {
+    "table_name": "l1_tajik_varsha_year_lords",
+    "conname": "l1_tajik_varsha_year_lords_pkey",
+    "contype": "p",
+    "def": "PRIMARY KEY (varsha_id)"
+  },
+  {
+    "table_name": "l1_tajik_varsha_year_lords",
+    "conname": "l1_tajik_varsha_year_lords_chart_id_ayanamsha_id_build_id_v_key",
+    "contype": "u",
+    "def": "UNIQUE (chart_id, ayanamsha_id, build_id, varsha_year)"
+  }
+]

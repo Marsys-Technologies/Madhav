@@ -1,0 +1,1244 @@
+[
+ {
+  "table_name": "asset_registry",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "brahma_class_priors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_class_priors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_class_priors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_class_priors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dasha_systems",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dasha_systems",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dasha_systems",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dasha_systems",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dosha_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dosha_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dosha_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_dosha_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_ontology",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_ontology",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_ontology",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_ontology",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_remedy_corpus",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_remedy_corpus",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_remedy_corpus",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_remedy_corpus",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_yoga_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_yoga_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_yoga_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "brahma_yoga_catalog",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "charts",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "classical_text_chunks",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "classical_text_chunks",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "classical_text_chunks",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "classical_text_chunks",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "sutravali_rules",
+  "grantee": "data_plane_builder",
+  "privilege_type": "DELETE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "sutravali_rules",
+  "grantee": "data_plane_builder",
+  "privilege_type": "INSERT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "sutravali_rules",
+  "grantee": "data_plane_builder",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "sutravali_rules",
+  "grantee": "data_plane_builder",
+  "privilege_type": "UPDATE",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "asset_registry",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "charts",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "fact_category_ownership",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l1_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "asset_registry",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "DELETE",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "INSERT",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "REFERENCES",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "TRIGGER",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "TRUNCATE",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "UPDATE",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "charts",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "amjis_app"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_l2_owner",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "bodha_msr_signals",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l2_owner"
+ },
+ {
+  "table_name": "chart_dashas",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_divisionals",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_facts",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "chart_vichara",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_condition_composite",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_medical",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_judgment",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_prashna_lagna",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_transit_anchors",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_vastu_planet_direction_map",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "ga_yoga_firings",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ },
+ {
+  "table_name": "l1_tajik_varsha_year_lords",
+  "grantee": "data_plane_verifier",
+  "privilege_type": "SELECT",
+  "grantor": "data_plane_l1_owner"
+ }
+]
