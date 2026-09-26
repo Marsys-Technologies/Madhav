@@ -153,3 +153,17 @@ Binding rulings absorbed: #9, #10, #11, #13, #16, #17 (details in pre-rewrite ST
 
 ## Blockers
 None. (L3 production census blocked by inspector timeout → routed to sandbox; §2.3 fix proposed, not yet applied.)
+
+## 2026-09-27 · Post-campaign session (Claude, native-directed) — verification, review, reconciliation, D5 revision
+
+| step | what happened | evidence |
+|---|---|---|
+| Verify Kimi's completion report | Every claim held except one: "drift HIGH cleared" was false (the register was edited after its fingerprint was stamped). Fixed. Three apparent figure disputes were all grain mismatches — Kimi correct on all three, including catching a wrong `776` in tier 4 §4.2 (truth 762). | commit `db2f7296f` |
+| Recommendations on D1–D6 | Drafted v1.0; found D1 asks authorization for work the engine campaign (`/Users/Dev/madhav-engine`) had already executed the same day — neither campaign read the other. | `DECISIONS_RECOMMENDATIONS_v1_0.md`, commits `e9d360cfa`, `857a86c03` |
+| Independent review | Kimi K3-256k hit its usage quota before writing. GPT-6 Astra (Codex, high): **REJECT** — D1/D4/D6 REJECT, D2/D3/D5 ACCEPT_WITH_CORRECTIONS, 27 fact checks. | `briefs/reviews/REVIEW_NIKASHA_DECISIONS_RECOMMENDATIONS_v1_0.md` |
+| Reconcile + freeze (Fable, delegated) | 33 findings: 31 UPHELD, 2 PARTLY, 0 REBUTTED. D1/D4/D6 rewritten, D2/D3/D5 corrected; decisions RULED; register +R215–R217, plan reshaped. | v2.0, commit `9931dc9fe` |
+| **D5 revised 2.1 by the native** | The frozen D5 was wrong in kind: Pariprāśna's planner LLM chooses catalog units per question, so no static question→layer table is used. Necessity = catalog provenance + upstream DAG closure, computed (63/127 active today; 64 outside, all 23 ph/mi); P-needs become the planner test; T3 §0.1 re-scoped; no §3.6. Native's two corrections adopted: producer-or-part-producer (no "sole producer"), and closure propagates upstream. Side findings R219 (dead `build_dependencies`), R220 (127 active, not 129). | v2.1, register §2.10, commits `5d7d2baef` + this one |
+
+**Hand-off to the engine campaign (R215 discipline — read at its next session open):** R216 (rebase `asset_census.py` on B1 `17e5a1257`) and R217 (`build_runs.last_error` never written by `mark_run_state`) are engine-surface rows owned there; this session did not write into that worktree.
+
+**Not done here:** no push; PR #2736 unchanged on the remote; sealed tiers untouched (D2 authorizes the reopens, executing them is P9); the from-scratch L0→L5 run has not started — freeze criterion (PHASE6 §6.5) still unmet.

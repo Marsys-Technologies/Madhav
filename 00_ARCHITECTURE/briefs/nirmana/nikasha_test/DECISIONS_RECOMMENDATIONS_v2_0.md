@@ -427,14 +427,14 @@ not pairs; rate is defined at zero rows; D-1/D-2 were ruled and B1 was committed
 | D2 | three reopens, 12 ids, T3→T2→T1 | three reopens, 32 named rows + 3 explicit deferrals, remedies chosen on the agenda, seal T1→T2→T3 | corrected |
 | D3 | reword test 4, apply as a class | producer-field proof binding; parity/sentinel [TRANSFERS]-pending with owner + dependency; §5.4, §2.2, §13.3, T4 §1.2; four layers | corrected |
 | D4 | census ids as namespace; no alias table; census stays the writer | identity `(asset, scope, registered criterion)` → derived id; reviewed 30-row crosswalk; `Earn.service_state` preserved; closure semantics proven first; R79 re-scoped | **rewritten** |
-| D5 | session drafts, native ratifies by exception; new §3.2; pair rows | session drafts §3.6; native affirmatively adopts a named revision; no pair rows; §0.1 semantics stand | corrected |
+| D5 | session drafts, native ratifies by exception; new §3.2; pair rows | **rev. 2.1 (native):** matrix withdrawn — the planner LLM maps questions to catalog units per query; necessity = catalog provenance + upstream DAG closure, computed (63/127 today); P-needs as planner test (R218); §0.1 re-scoped (R221); no §3.6 | overturned by the native |
 | D6 | NULL by cause; NO_DETECTOR today; Earn re-keyed to duration+timestamp; before merge | attempt-linked provenance; instrument feature-detection; failed builds → Build.history; zero-row rate kept; sanctioned baseline; tested before adoption | **rewritten** |
 
 ## §6 · Mechanical consequences applied this session
 
 - **Register** (`NIKASHA_CHANGE_REGISTER_v2_0.md`): R34, R36 → `CLOSED_ON_BRANCH`; R35, R37, R38
   re-owned with residuals; R217, R215, R216 added (§2.9); R55, R57, R78–R81 re-specified; R71 remedy
-  fixed with R94/R119/R140/R185; R85 re-pointed to §3.6; every sealed-tier row annotated with its D2
+  fixed with R94/R119/R140/R185; R85 re-scoped to catalog provenance (rev. 2.1); every sealed-tier row annotated with its D2
   reopen or explicit deferral; state vocabulary gains `CLOSED_ON_BRANCH`; counts re-totalled (217).
 - **Plan** (`NIKASHA_IMPLEMENTATION_PLAN_v1_0.md`): P1/P2 → acceptance packets (+R217); P4 +R216 and
   the D6 spec; P5 dependencies ruled; P6 rewritten per D4; P7 +R215; P8 → consume B1/C1, hold B2/R21;
@@ -452,7 +452,7 @@ not pairs; rate is defined at zero rows; D-1/D-2 were ruled and B1 was committed
 2. **D4's criterion registry** is a new artefact (location chosen by P6). It is the one piece of this
    ruling that adds machinery rather than removing it; the alternative — hand rows with free-text
    criteria — is what produced the 11 overlap groups.
-3. **D5's signature** is the only thing that seals §3.6. The session can draft; it cannot adopt.
+3. **D5 (rev. 2.1):** no §3.6 exists to sign. The native reviews the R218 planner-test output per P-need; the session computes the closure and does not judge necessity.
 4. **D6 item 4** grades "instrument present, no measured completion ever" as `FAIL — no sanctioned
    baseline build`. The gap is real and one sanctioned build closes it for every asset; if the native
    would rather see a distinct verdict for "never yet measured", that is a one-word change.

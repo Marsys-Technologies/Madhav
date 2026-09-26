@@ -2,7 +2,7 @@
 artifact: NIKASHA_IMPLEMENTATION_PLAN
 canonical_id: NIKASHA_IMPLEMENTATION_PLAN
 version: "1.0"
-status: PROPOSED — rulings D1–D6 applied 2026-09-27 (nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md); no native decision pending on any packet; what remains for the native is the affirmative adoption of T2 §3.6 (D5) and the three re-seal signatures (D2)
+status: PROPOSED — rulings D1–D6 applied 2026-09-27 (nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md); no native decision pending on any packet; what remains for the native is the review of the R218 planner-test output per P-need (D5 rev. 2.1 — §3.6 withdrawn) (D5) and the three re-seal signatures (D2)
 produced_on: 2026-09-26
 authored_by: nikasha-test campaign, Phase 6 (K3_256 LOW effort, per native instruction)
 register: NIKASHA_CHANGE_REGISTER_v2_0.md (214 rows)
@@ -29,7 +29,7 @@ Total: **10 packets, ≈ 379 h** (≈ 157 h in P1–P8 after the 2026-09-27 ruli
 2.5 + 16; ≈ 222 h in P9–P10, dominated by the derivability mappings). Native decisions: 6, **all ruled
 2026-09-27** (`nikasha_test/DECISIONS_FOR_THE_NATIVE.md`, reconciled in
 `nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md`). No packet waits on a decision; the native's remaining
-acts are the affirmative adoption of T2 §3.6 (D5) and the three re-seal signatures (D2).
+acts are the review of the R218 planner-test output per P-need (D5 rev. 2.1 — §3.6 withdrawn) (D5) and the three re-seal signatures (D2).
 
 ---
 

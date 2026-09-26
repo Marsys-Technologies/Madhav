@@ -118,7 +118,7 @@ reopens by ruling.
 >   rename to `document_reviews` **and** one glossary line — T1 has no glossary section, so the
 >   agenda names where the line lands, recommended §16).
 > - **T2** (data plane): R06 (multi-producer clause — §7.1 or §13.3, chosen on the agenda), R73 and
->   R75 (frontmatter counts), R85 (D5 — new **§3.6**, because §3.2 already exists), R88 (§9.2
+>   R75 (frontmatter counts), R85 (D5 rev. 2.1: **withdrawn from the T2 agenda** — necessity is computed from the catalog; no §3.6 is created), R88 (§9.2
 >   per-layer switch behaviour), R89 (§3.4 carried-by-layer column), R90 (§5 per-layer obligation
 >   enumeration), R91 (per-layer entity classes), R119's T2 half (the [TRANSFERS] tag at §13.3 items 1
 >   and 6 and on the §12.2/DP rows where a layer plan reads them), and the §7.1 text halves of
@@ -129,7 +129,8 @@ reopens by ruling.
 >   "align on nine" or "record the six-plus-three split", chosen on the agenda), R67, R68's T3 half
 >   (:359/:520 spelling), R71 (D3's text at §5.4 test 4 **and** §2.2 `measured_by`; R94/R140/R185 close
 >   with it), R74 (§5.1 ruling-11 clause), R93 (§3.2 evidence→disposition rule and preserved kernels),
->   R120 (§4.4 role row; R192/R208 close with it), R201 (§2.3 names the source of declared use).
+>   R120 (§4.4 role row; R192/R208 close with it), R201 (§2.3 names the source of declared use),
+>   R221 (§0.1 re-scoped to catalog units produced and closure position — D5 rev. 2.1).
 > - **Explicitly deferred to a second reopen round**, after P9's derivability re-run makes their remedy
 >   text known: R131 (§0.2 external comparison), R210 (default per-obligation detectors), R214 (§0.3
 >   migration-pin location). They stay OPEN; no sealed row is silently outside this ruling.
@@ -369,6 +370,6 @@ and carry no signal (R55: they are one detector reading one column).
 and BLOCKS_LAYER work. Per the campaign brief §5 Phase 6.4, no packet waits on these: the plan
 continues around each, and the packet that needs a ruling names it.*
 
-*All six ruled 2026-09-27. What remains for the native personally: the affirmative adoption of T2 §3.6
+*All six ruled 2026-09-27. What remains for the native personally: the review of the R218 planner-test output per P-need (D5 rev. 2.1 — §3.6 withdrawn)
 (D5) and the three re-seal signatures (D2). The register and plan carry the mechanical consequences,
 each changed row marked "per D<n> ruling 2026-09-27".*
