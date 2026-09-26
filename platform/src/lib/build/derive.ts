@@ -2,7 +2,7 @@
 // These belong in the sidecar long-term but are derived here so the UI
 // ships independently of sidecar changes.
 
-import type { BuildState, SessionIndex, PhaseDetail } from './types'
+import type { BuildState, SessionIndex } from './types'
 
 const IST_OFFSET_MIN = 5 * 60 + 30
 
@@ -69,22 +69,6 @@ export function macroCompletionPercent(state: BuildState): number {
   const activeEntry = arc.find((m) => m.status === 'active')
   const activeFraction = activeEntry ? phaseCompletionPercent(state) / 100 : 0
   return Math.round(((closedMacros + activeFraction) / arc.length) * 100)
-}
-
-export function phaseDetailAcPercent(detail: PhaseDetail): number {
-  const acs = detail.acceptance_criteria
-  if (!acs.length) return 0
-  const passed = acs.filter((ac) => {
-    const s = ac.status.toLowerCase()
-    return s === 'passed' || s === 'pass' || s === 'completed' || s === 'satisfied'
-  }).length
-  return Math.round((passed / acs.length) * 100)
-}
-
-export function phaseDetailDeliverablePercent(detail: PhaseDetail): number {
-  const total = detail.deliverables_complete.length + detail.deliverables_pending.length
-  if (!total) return 0
-  return Math.round((detail.deliverables_complete.length / total) * 100)
 }
 
 // Convert a session_id like "S15-GOVERNANCE-BASELINE-CLOSE" into a friendly title.
