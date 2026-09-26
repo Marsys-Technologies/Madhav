@@ -315,6 +315,71 @@ class TestResolve:
         assert e["entity_class"] == "house"
 
 
+class TestPolysemyResolution:
+    """W-L0-9 Option A+C (native Decision 16 / mandate Ruling 2 / ADK-0003,
+    2026-09-26): identity is the composite (entity_class, canonical_id); bare
+    resolution of a multiply-registered name refuses fail-closed
+    (AmbiguousEntityError, the AmbiguousGrahaIdentity pattern); class-qualified
+    resolution succeeds. The ENTITIES mirror legitimately carries phaladeepika
+    twice (school :697, text :707) — data truth, not a dedupe target."""
+
+    def test_bare_phaladeepika_refuses_naming_both_classes(self):
+        mod = _get_module()
+        with pytest.raises(mod.AmbiguousEntityError) as exc:
+            mod.resolve("phaladeepika")
+        msg = str(exc.value)
+        assert "school.phaladeepika" in msg
+        assert "text.phaladeepika" in msg
+
+    def test_class_qualified_phaladeepika_resolves(self):
+        mod = _get_module()
+        e_text = mod.resolve("phaladeepika", entity_class="text")
+        assert e_text is not None
+        assert e_text["entity_class"] == "text"
+        assert e_text["canonical_id"] == "phaladeepika"
+        e_school = mod.resolve("phaladeepika", entity_class="school")
+        assert e_school is not None
+        assert e_school["entity_class"] == "school"
+
+    def test_bare_argala_refuses_across_aspect_and_relation_type(self):
+        """aspect_type.argala x relation_type.argala — the 12th registered pair
+        (held migration 1121's relation_type class)."""
+        mod = _get_module()
+        with pytest.raises(mod.AmbiguousEntityError) as exc:
+            mod.resolve("argala")
+        msg = str(exc.value)
+        assert "aspect_type.argala" in msg
+        assert "relation_type.argala" in msg
+
+    def test_class_qualified_argala_resolves(self):
+        mod = _get_module()
+        e = mod.resolve("argala", entity_class="relation_type")
+        assert e is not None
+        assert e["entity_class"] == "relation_type"
+
+    def test_varga_tie_break_is_the_one_named_exception(self):
+        """Lane-A3 declared policy: exactly one varga row in the match set wins
+        deterministically (D9 collides with the legacy concept/navamsa 'D9'
+        synonym; additive-only constraint forbids removing it)."""
+        mod = _get_module()
+        e = mod.resolve("D9")
+        assert e is not None
+        assert e["entity_class"] == "varga"
+        assert e["canonical_id"] == "d9"
+
+    def test_single_match_path_unchanged(self):
+        mod = _get_module()
+        e = mod.resolve("Shani")
+        assert e is not None
+        assert e["canonical_id"] == "saturn"
+        assert e["entity_class"] == "planet"
+
+    def test_class_qualified_miss_returns_none(self):
+        mod = _get_module()
+        assert mod.resolve("phaladeepika", entity_class="yoga") is None
+        assert mod.resolve("uranus", entity_class="planet") is None
+
+
 class TestVargaEntityClass:
     """ADHIṢṬHĀNA Lane A3 — registry completion.
 

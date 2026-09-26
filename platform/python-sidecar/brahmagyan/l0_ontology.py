@@ -11,6 +11,20 @@ Populates brahma_ontology with canonical entity definitions across classes:
   - domain        — life domains (career, marriage, health, wealth, ...)
   - concept       — key Jyotish concepts (yoga, dosha, strength, ...)
 
+IDENTITY (W-L0-9, ratified 2026-09-26 — native Decision 16, mandate Ruling 2,
+ADHIKARIN register ADK-0003): the identity of a brahma_ontology row IS the
+composite (entity_class, canonical_id), as enforced by the live constraint
+brahma_ontology_canonical_unique (platform/migrations/ws2_l0_ontology.sql:26)
+and matched by every writer's ON CONFLICT (entity_class, canonical_id) upsert.
+Bare canonical_id is NOT unique: 730 distinct ids over 741 rows, 11 declared
+cross-class duplicate pairs (plus argala, relation_type x aspect_type, from held
+migration 1121) — verified live 2026-09-26. The declared pairs are registered in
+brahma_polysemy_registry (migration 1125, HELD); resolution rule: "class-qualified
+citation required; bare resolution of a registered id refuses" — enforced
+fail-closed by resolve() below (AmbiguousEntityError) and by
+resolve_entity.ts (AmbiguousEntityError). A consumer resolving on canonical_id
+alone is the defect, not the data.
+
 Volume floor: >= 100 entities total
 Acceptance gate:
   - resolve('Shani') -> 'saturn' (planet class)
@@ -1119,23 +1133,64 @@ ONTOLOGY_OWNED_ENTITY_CLASSES = frozenset(
 
 # ── Resolve function ───────────────────────────────────────────────────────────
 
-def resolve(term: str) -> dict | None:
+class AmbiguousEntityError(ValueError):
+    """Raised when a bare term resolves to more than one canonical entity.
+
+    Fail-closed twin of AmbiguousGrahaIdentity (l0_semantic_release.py).
+    brahma_ontology identity is the composite (entity_class, canonical_id) —
+    native Decision 16 / mandate Ruling 2 / ADK-0003 (2026-09-26). Bare
+    resolution of a multiply-registered name refuses loudly; pass entity_class
+    to resolve within a class. Declared cross-class pairs are registered in
+    brahma_polysemy_registry (migration 1125, HELD).
+    """
+
+
+def resolve(term: str, entity_class: str | None = None) -> dict | None:
     """
     Resolve any synonym/alias to its canonical entity.
-    Returns the entity dict or None.
+    Returns the entity dict, None when nothing matches.
     Case-insensitive.
+
+    entity_class — optional class qualifier. When supplied, resolution is
+    scoped to that class (the composite-key discipline of Decision 16).
+    When omitted and the term matches MORE THAN ONE entity, resolution
+    refuses loudly (AmbiguousEntityError naming the candidates) — with ONE
+    declared exception, mirroring resolve_entity.ts's Lane-A3 tie-break:
+    when the match set contains exactly one entity_class='varga' row, the
+    varga row wins (varga is the authoritative class for varga-code identity,
+    e.g. 'D9' colliding with the legacy concept/navamsa synonym; additive-only
+    constraint forbids removing that legacy synonym). All other multi-match
+    sets raise. Single-match and no-match behaviour is unchanged.
     """
     t = term.lower().replace(" ", "_").replace("-", "_")
+    matches: list[dict] = []
     for entity in ENTITIES:
+        if entity_class is not None and entity["entity_class"] != entity_class:
+            continue
         if entity["canonical_id"] == t:
-            return entity
-        if entity["canonical_name_en"].lower().replace(" ", "_") == t:
-            return entity
-        if entity.get("canonical_name_sa", "").lower().replace(" ", "_") == t:
-            return entity
-        if t in [s.lower() for s in entity["synonyms"]]:
-            return entity
-    return None
+            matches.append(entity)
+        elif entity["canonical_name_en"].lower().replace(" ", "_") == t:
+            matches.append(entity)
+        elif entity.get("canonical_name_sa", "").lower().replace(" ", "_") == t:
+            matches.append(entity)
+        elif t in [s.lower() for s in entity["synonyms"]]:
+            matches.append(entity)
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    varga_matches = [e for e in matches if e["entity_class"] == "varga"]
+    if entity_class is None and len(varga_matches) == 1:
+        return varga_matches[0]
+    candidates = ", ".join(
+        f"{e['entity_class']}.{e['canonical_id']}" for e in matches
+    )
+    qualifier = f" within class '{entity_class}'" if entity_class else ""
+    raise AmbiguousEntityError(
+        f'ambiguous entity "{term}"{qualifier}: {candidates} — '
+        "identity is (entity_class, canonical_id); re-resolve with entity_class "
+        "(see brahma_polysemy_registry, migration 1125)"
+    )
 
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
