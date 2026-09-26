@@ -3,7 +3,7 @@ artifact: NIKASHA_TEST_CAMPAIGN_STATE
 version: "0.4"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 4 CLOSED (5 skeletons + 10 briefs + 130 inventions). Next: Phase 5 consistency cross-checks.
+you_are_here: Phase 5 CLOSED (T5 consistency: R63–R84). Next: Phase 6 analysis + register v2.0 (K3_256 LOW).
 updated: 2026-09-26T22:22:00+05:30
 ---
 
@@ -29,7 +29,7 @@ updated: 2026-09-26T22:22:00+05:30
 | 2 | CLOSED (T2 hand-verified all 6 layers; T1 planted-defect suite done) | (this commit) | T2: 60 assets, 60 verdict-level disagreements, all instances of R42/R43/R46; L3 census on sandbox (2.5s) — R40/R41 the only prod blockers; handverify/T2_SUMMARY.md. T1: 17/17 plants detected, 0 cross-asset collateral, all restored; mutation test notices an inverted detector; differential 265 agree / 99 classed / 0 unclassified; new register rows R52–R56; harness/T1_RESULTS.md |
 | 3 | CLOSED (T3 closure loop proven in sandbox) | (this commit) | Three gaps of three kinds fixed and closed BY MEASUREMENT: bg_ontology-Vocab.alias (79/79 dosha synonyms seeded), bg_nakshatra_medical-Build.registered (has_writer=true → cascaded a true new Build.exercised gap, closed by actually running the writer, run c0db4bc1), bg_doshas-Idem.pattern (seeder-following idem_scan). Headline: stock tooling CANNOT close rows (emit_gaps append-only-OPEN + tracker per-row state) — R57; scratch copies (harness/asset_census_closing.py, harness/tracker_sandbox.py) with last-row-per-gap_id + close/re-open emit make it work: 25+11 closures, tracker ELEVATED 0/40→1/40, gates 0/360→9/360. Regression proven (RE-OPENED → 1→0 → re-fix → 1). R33 CLOSED; new rows R57–R62; sandbox restored to baseline; harness/T3_CLOSURE_LOOP.md |
 | 4 | CLOSED | (this commit) | 5 layer-instance skeletons + 10 asset briefs + 130 invention rows in derivations/ (L1 17, L2 30, L3 49, L4 17, L5 17). C-9/R09 confirmed all 5 layers; C-10 confirmed L1/L2/L3/L5, refuted L4. Universal top blocker: no P-need/V-journey→layer necessity mapping (tier-3 §0.1 unfillable). [TRANSFERS] contradiction tier-2 §1 vs tier-3 §5.4 test 4. |
-| 5 | NOT_STARTED | — | — |
+| 5 | CLOSED | (this commit) | T5: 22 register rows R63–R84. 17 vocabulary disagreements (gate-count drift "eight"→nine ×5 surfaces; verdict spelling; L0 0/320 self-contradiction; [TRANSFERS] contradiction confirmed T2§1/§12.2 vs T3§5.4 t4; missing T1 review file; T2 miscounted review; "ten obligations" ×2; review-record naming ×4; pilots carry 8 gates; dual criterion strings) + 7 agreements + 11 ledger overlap pairs reconciled (namespace proposal, R28 scope) + drift HIGH confirmed (T4 fingerprint) / manifest MATCH 136 entries. consistency/T5_VOCABULARY.md, T5_LEDGER_DRIFT.md |
 | 6 | NOT_STARTED | — | K3_256 low effort (switch cancelled) |
 | 7 | NOT_STARTED | — | — |
 

@@ -122,6 +122,33 @@ that surfaced it, and the state.
 | R61 | Registry repairs cascade: fixing `has_writer=false`→true for bg_nakshatra_medical immediately opened a NEW measured gap (`Build.exercised` — writer never dispatched). Closure tooling must expect cascades; the T3 loop handled it by actually running the writer in the sandbox | nikasha-test P3 T3 | OPEN (behaviour correct; recorded as a loop-design fact) |
 | R62 | A census run against a sampled sandbox emits prod-scale `Count.floor` rows (bg_cohort, bg_ephemeris, bg_muhurta_lattice appended by the T3 run) — floors are declared for production scale; emit-gaps needs target-awareness (or floors a scope) so sandbox runs don't pollute the ledger | nikasha-test P3 T3 | OPEN |
 
+### 2.5a · T5 consistency findings (Phase 5 — nikasha_test/consistency/T5_VOCABULARY.md, T5_LEDGER_DRIFT.md)
+
+| # | change | surfaced by | state |
+|---|---|---|---|
+| R63 | T4 §4 says "the eight gates" in 4 places (lines 13, 210, 213, 498) while its own table lists nine (Build added by ruling 17) — replace with "the nine gates" | nikasha-test P5 T5 | OPEN |
+| R64 | T4 §4.2 heading "the six checks" → "the nine checks" (the body already counts nine) | nikasha-test P5 T5 | OPEN |
+| R65 | Build check-count disagreement: T3 §5.2/changelog and the tracker GATES comment say "six static checks"; T4 §4.2 lists nine. Align on nine, or explicitly record "T3 names the six static checks; T4 adds three run-record checks" | nikasha-test P5 T5 | OPEN |
+| R66 | asset_elevation_tracker.py:43 comment "Eight, not thirty-three" → "Nine, not thirty-three" | nikasha-test P5 T5 | OPEN |
+| R67 | T3 §5.4 test 5: "§5.2's eight-row map" → "§5.2's nine-row map" (the map has nine rows) | nikasha-test P5 T5 | OPEN |
+| R68 | Verdict spelling drift: T3 :359 and :520 use `NO DETECTOR` (space); T4 :278 uses bare `NA` — normalize to the closed set `NO_DETECTOR` / `N/A` that ledgers, tracker, census already use | nikasha-test P5 T5 | OPEN |
+| R69 | L0 v3.0 self-contradiction: "0/320 gates" at lines 146, 522, 613, 730 vs 360 at line 612 — replace the four stale figures with 0/360 | nikasha-test P5 T5 | OPEN |
+| R70 | L0 v3.0 §1.1/§9 status figures no longer reproduce (doc: 40 NO_BRIEF / 30 gap rows; measured 2026-09-26: 40 GAPS_REGISTERED / 243 gap + 19 opportunity rows) — restate or date-stamp as pre-census-emission | nikasha-test P5 T5 | OPEN |
+| R71 | **[TRANSFERS] contradiction**: T2 §1 (:83-85, "a layer plan does not inherit it as its own work") + §12.2 (:614, Presentation parity [TRANSFERS]) vs T3 §5.4 test 4 (:628, "Presentation parity holds for the layer's served surface") — reword T3 test 4 to carry parity as a named [TRANSFERS] row, or un-mark it in T2 | nikasha-test P5 T5 | OPEN |
+| R72 | T1 frontmatter `review_record: briefs/reviews/REVIEW_PRODUCT_DEFINITION_v3_1.md` — the file does not exist anywhere; "11 MAJOR + 14 MINOR, all folded" unverifiable. Locate/restore or correct the pointer | nikasha-test P5 T5 | OPEN |
+| R73 | T2 frontmatter document_reviews misstates the v3.0 review as "2 BLOCKER + 10 MAJOR + 11 MINOR"; the file measures 2+9+10 = 21 findings (matches the FINAL review's own line 8). Correct the counts | nikasha-test P5 T5 | OPEN |
+| R74 | "Ten obligations": T3 §5.1 lists ten with no reason for omitting Domain correctness; T1 §14 has 11 rows; only T2 §13.3 carries the reconciliation. Add the ruling-11 clause to T3 §5.1 | nikasha-test P5 T5 | OPEN |
+| R75 | T2 changelog item (f) says "§13.3 is nine elements"; §13.3 says and has "Ten elements" (1, 1a, 1b, 2–8). Fix the changelog or annotate 1b's later addition | nikasha-test P5 T5 | OPEN |
+| R76 | "Review record" names four different artefact patterns across tiers (`review_record` T1 / `source_review_record` + `document_reviews` + `review_backing` T2 / `*_VALIDATION_AND_REVIEW_RECORD` layer instances). Rename T1's field to `document_reviews` and add one glossary line fixing the four names | nikasha-test P5 T5 | OPEN |
+| R77 | All five L0 pilot briefs carry eight gates, no Build row (`## §4 · The eight gates`, 8 rows each) while tracker REQUIRED_GATES demands nine — on pilot refresh, add the Build row per pilot and recompute N/A counts ("six of nine" for BG_PANCHANGA :20) | nikasha-test P5 T5 | OPEN |
+| R78 | Same check, two criterion strings: hand rows `bg_ontology-G02`/`bg_ephemeris-G03` vs census rows `bg_ontology-Earn.build_record`/`bg_ephemeris-Earn.build_record` — one criterion-string authority (census string + merged hand `measured:` clause), withdraw the duplicate ids | nikasha-test P5 T5 | OPEN |
+| R79 | Census emit_gaps dedupe is by id only — add a substance key (asset, criterion-family) with alias resolution (`Vocab.rule1.alias`≡`Vocab.alias`, `Dens.density_contract`≡`Dens.served`, `Carr.D1\|D2\|D3`≡`Carr.detector`, `Completeness.*`≡`Complete.*`); skip or attach when a hand row covers the substance | nikasha-test P5 T5 (R28 scope) | OPEN |
+| R80 | asset_gaps.jsonl `_schema`: add `superseded_by` so folding a duplicate sets it on the thinner row while the ledger stays append-only | nikasha-test P5 T5 (R28 scope) | OPEN |
+| R81 | Ledger cleanup: 11 hand↔census overlap pairs measured in T5_LEDGER_DRIFT.md §A (bg_ontology G02/G07/G10/G05, bg_ephemeris G03/G05/G02, bg_panchanga G01(partial)/G02, bg_rules G03/G06) — fold each census row's `measured:` reading into the hand row's `what`, mark the census row `superseded_by` the hand id | nikasha-test P5 T5 (R28 scope) | OPEN |
+| R82 | CANONICAL_ARTIFACTS row for ASSET_ELEVATION_TEMPLATE: rotate fingerprint_sha256 to 244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f and update last_verified_*; also fix the L0 manifest note's stale "REVISED_PENDING_REVIEW" prose | nikasha-test P5 T5 (drift_detector HIGH, confirmed) | OPEN |
+| R83 | drift_detector schema_db_unreachable LOWs (psql auth failure on 127.0.0.1:5433): run the schema checks against a reachable DB or mark them NOT_MEASURED — an unreachable instrument must not masquerade as a passing or a noise finding | nikasha-test P5 T5 | OPEN |
+| R84 | T5 NOT_MEASURED set (needs production registry/run tables at analysis time): 129 total assets L1–L5; 776 build runs; 5-of-40 never run; 13 errored/aborted; 21 skip_no_delta; catalog_status split (bg_vidhi_floors DRAFT claim) | nikasha-test P5 T5 | OPEN (measure in P6 §6.7) |
+
 ### 2.6 · The ledgers and the tracker
 
 | # | change | surfaced by | state |
