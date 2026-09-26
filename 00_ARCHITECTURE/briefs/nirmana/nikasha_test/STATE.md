@@ -3,8 +3,8 @@ artifact: NIKASHA_TEST_CAMPAIGN_STATE
 version: "0.1"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 1 — sandbox build
-updated: 2026-09-26T17:25:00+05:30
+you_are_here: Phase 1 — sandbox built (110+49 tables); fidelity diff in progress; Phase 2 T2 prod sweep + hand-verify L0/L1/L2/L4/L5 done
+updated: 2026-09-26T19:05:00+05:30
 ---
 
 # NIKAṢA TEST CAMPAIGN — STATE

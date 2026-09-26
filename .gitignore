@@ -152,3 +152,4 @@ platform/scripts/probe/fixtures/p4k/*/report.json
 
 # Kimi Code local config — may carry inline credentials, never commit
 .kimi-code/mcp.json
+00_ARCHITECTURE/briefs/nirmana/nikasha_test/.sandbox/

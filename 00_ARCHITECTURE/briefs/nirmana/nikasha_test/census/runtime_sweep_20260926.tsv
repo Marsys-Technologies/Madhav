@@ -1,0 +1,7 @@
+L1	80s	rc=2
+L2	81s	rc=2
+L3	251s	rc=5
+L4	44s	rc=2
+L5	27s	rc=2
+all	563s	rc=5
+[sweep] done
