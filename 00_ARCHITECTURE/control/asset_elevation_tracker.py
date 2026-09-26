@@ -19,7 +19,9 @@ not an asset that is idempotent. The two are reported in separate columns and ne
 import argparse, collections, datetime, glob, io, json, os, re, subprocess, sys, time
 
 ROOT  = subprocess.run(["git","rev-parse","--show-toplevel"],capture_output=True,text=True).stdout.strip() or "."
-CTRL  = os.path.join(ROOT,"00_ARCHITECTURE/control")
+# R57/P3: ledger/output paths overridable so a sandbox run never reads or writes the production
+# control directory (NIKASHA_CONTROL_DIR; ported from harness/tracker_sandbox.py).
+CTRL  = os.environ.get("NIKASHA_CONTROL_DIR", os.path.join(ROOT,"00_ARCHITECTURE/control"))
 OUT   = os.path.join(CTRL,"asset_elevation_tracker.json")
 GAPS  = os.path.join(CTRL,"asset_gaps.jsonl")
 CERTS = os.path.join(CTRL,"asset_certs.jsonl")
@@ -216,6 +218,16 @@ def lifecycle(reg, brief, gaps, certs, required):
 
 def scan(layer_keys, env_file):
     gaps_all,gbad=jsonl(GAPS); certs_all,cbad=jsonl(CERTS)
+    # R57/P3 closing semantics: a gap_id's state is its LATEST row (append-only ledger, closure is
+    # a later CLOSED row, regression a later OPEN row). Rows without a gap_id are per-row facts
+    # (hand-written, no detector binding, R58) and pass through unchanged. Without this collapse,
+    # an appended CLOSED row is additive — the earlier OPEN row for the same gap_id still counts
+    # as open, and the tracker's ELEVATED count never moves (ported from harness/tracker_sandbox.py).
+    _latest={}; _rest=[]
+    for g in gaps_all:
+        if g.get("gap_id"): _latest[g["gap_id"]]=g
+        else: _rest.append(g)
+    gaps_all=_rest+list(_latest.values())
     gap_by=collections.defaultdict(list); cert_by=collections.defaultdict(list)
     for g in gaps_all: gap_by[g.get("asset")].append(g)
     for c in certs_all: cert_by[c.get("asset")].append(c)

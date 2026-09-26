@@ -63,7 +63,9 @@ from pathlib import Path
 
 ROOT = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
             .stdout.strip() or ".")
-CTRL = ROOT / "00_ARCHITECTURE" / "control"
+# R57/P3: ledger directory is overridable so a sandbox --emit-gaps run never touches the
+# production ledgers (NIKASHA_CONTROL_DIR; ported from harness/asset_census_closing.py).
+CTRL = Path(os.environ.get("NIKASHA_CONTROL_DIR", str(ROOT / "00_ARCHITECTURE" / "control")))
 WRITERS = ROOT / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers"
 
 LAYERS = {
@@ -611,7 +613,28 @@ def measure(layer_key: str) -> dict:
             if r["depends_on"] else dict(v=NA, measured="no declared dependencies")
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
-        m["Carr.detector"] = dict(v=NO_DET, measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
+        # P3/R57 item (d): a per-asset carriage detector registered at <CTRL>/detectors/<asset>_D<1|2|3>.py
+        # IS the detector — run it and adopt its verdict instead of the blanket NO_DETECTOR. Ported
+        # from harness/asset_census_closing.py unchanged.
+        det_dir = CTRL / "detectors"
+        det = None
+        if det_dir.is_dir():
+            for n in (1, 2, 3):
+                p = det_dir / f"{aid}_D{n}.py"
+                if p.exists():
+                    det = p
+                    break
+        if det is not None:
+            try:
+                pr = subprocess.run([sys.executable, str(det)], capture_output=True, text=True,
+                                    env=os.environ, timeout=120)
+                out = json.loads(pr.stdout.strip().splitlines()[-1])
+                m["Carr.detector"] = dict(v=out["verdict"],
+                                          measured=f"{det.name}: {out['measured']}")
+            except Exception as exc:  # a registered detector that cannot run is not a pass
+                m["Carr.detector"] = dict(v=NO_DET, measured=f"{det.name} failed to run: {exc}")
+        else:
+            m["Carr.detector"] = dict(v=NO_DET, measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
         m["Reach.fields"] = dict(v=NOT_GENERIC, measured="field-level exposure census is per-capability; not generic")
 
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
@@ -628,36 +651,101 @@ def measure(layer_key: str) -> dict:
                 phantom_registered=extra, local_map_candidates=lmaps, assets=assets)
 
 
-def emit_gaps(census: dict) -> tuple[int, int]:
-    """Append ledger rows for measured failures. Deterministic ids; existing ids skipped."""
+# D4 ruling (DECISIONS_RECOMMENDATIONS_v2_0.md): the verdict a check can return keeps growing
+# (NOT_GENERIC today; R41's per-check fault isolation adds an "errored" state; an unmeasured
+# criterion is silently absent from `measurements` and never reaches this function at all). A
+# gap closes on an EXPLICIT allowlist, never on "whatever isn't in the failing tuple" — the sandbox
+# port's own defect (D4 finding #6): closing on "any other verdict" would close on NOT_GENERIC too.
+CLOSABLE = (PASS, NA)
+FAILING = (FAIL, PARTIAL, NO_DET)
+# A gap row's own state vocabulary (asset_gaps.jsonl `_schema`): OPEN and IN_PROGRESS are both
+# live/unresolved (D4: "an IN_PROGRESS row transitions on PASS" exactly like an OPEN one); CLOSED
+# is resolved; anything else (WITHDRAWN, or a state string this script has never written) is left
+# alone rather than re-opened by inference.
+LIVE_GAP_STATES = ("OPEN", "IN_PROGRESS")
+
+
+def emit_gaps(census: dict) -> tuple[int, int, int, int]:
+    """Append-only ledger with deterministic ids (`<asset>-<criterion>`), closing by measurement.
+
+    D4 ruling (R57 amended), each an acceptance case with its own test in
+    __tests__/test_a2_emit_gaps_closure.py:
+
+    - CLOSED only on `PASS` or an explicitly justified `N/A` — never on `NOT_GENERIC`, `UNKNOWN`,
+      an errored check, or an unmeasured criterion (i.e. anything outside CLOSABLE is a no-op,
+      not an implicit close).
+    - check failing (FAIL/PARTIAL/NO_DETECTOR), no row with this gap_id yet     -> append OPEN
+    - check failing, latest row OPEN or IN_PROGRESS                            -> skip (already open)
+    - check failing, latest row CLOSED (or any other terminal state)           -> append OPEN
+      ("RE-OPENED by measurement" — the defect regressed; a loop that only counts up is not a loop)
+    - check closable (PASS/N-A) now, latest row OPEN or IN_PROGRESS            -> append CLOSED
+      (closure BY MEASUREMENT: the same detector now passes; the row quotes the new measured value)
+    - check closable, latest row CLOSED or no row                             -> nothing to do
+    - a row carrying `superseded_by` (R80) is a dead identity — never touched, never resurrected,
+      regardless of what the census currently measures for that gap_id.
+    - hand `change`/`owner`/`gate` are CARRIED FORWARD from the prior row onto every transition
+      row (CLOSED or RE-OPENED); only a gap_id's very first OPEN row uses the census's own
+      defaults, because there is no prior hand annotation yet to carry.
+    Rows whose gap_id is not a deterministic `<asset>-<criterion>` id (hand-written rows with no
+    detector binding, R58) are never touched by this function at all — no census criterion will
+    ever produce that gap_id, so `latest` simply never matches them.
+    """
     path = CTRL / "asset_gaps.jsonl"
-    existing = set()
+    latest: dict[str, dict] = {}
     if path.exists():
         for ln in path.read_text(encoding="utf-8").split("\n"):
             if ln.strip():
                 try:
-                    existing.add(json.loads(ln).get("gap_id"))
+                    r = json.loads(ln)
                 except json.JSONDecodeError:
-                    pass
+                    continue
+                if r.get("gap_id"):
+                    latest[r["gap_id"]] = r  # append-only: last row for an id wins
     ts = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    added = skipped = 0
+    added = skipped = closed = reopened = 0
     with path.open("a", encoding="utf-8") as f:
         for a in census["assets"]:
             for crit, res in a["measurements"].items():
-                if res["v"] not in (FAIL, PARTIAL, NO_DET):
-                    continue
+                v = res["v"]
+                if v not in FAILING and v not in CLOSABLE:
+                    continue  # NOT_GENERIC / UNKNOWN / errored / anything future: never a transition
                 gid = f"{a['asset_id']}-{crit}"
-                if gid in existing:
-                    skipped += 1
-                    continue
-                f.write(json.dumps(dict(
-                    asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
-                    what=f"measured: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
-                    change="", detector=f"asset_census.py --layer {census['layer']} ({crit})",
-                    owner="asset_census", gate="this asset's certification",
-                    state="OPEN", ts=ts), ensure_ascii=False) + "\n")
-                added += 1
-    return added, skipped
+                prior = latest.get(gid)
+                if prior is not None and prior.get("superseded_by"):
+                    continue  # a superseded id is never resurrected, whatever is measured now
+                prior_state = (prior or {}).get("state", "OPEN").upper()
+                # Carry hand metadata forward; only the very first OPEN row for a gid has none
+                # to carry, so it alone falls back to the census's own defaults.
+                change = prior.get("change", "") if prior else ""
+                owner = prior.get("owner", "asset_census") if prior else "asset_census"
+                gate = prior.get("gate", "this asset's certification") if prior else "this asset's certification"
+                if v in FAILING:
+                    if prior is None:
+                        f.write(json.dumps(dict(
+                            asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
+                            what=f"measured: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
+                            change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
+                            owner=owner, gate=gate, state="OPEN", ts=ts), ensure_ascii=False) + "\n")
+                        added += 1
+                    elif prior_state in LIVE_GAP_STATES:
+                        skipped += 1
+                    else:  # CLOSED (or any other terminal/unknown state) — regression re-opens
+                        f.write(json.dumps(dict(
+                            asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
+                            what=f"RE-OPENED by measurement: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
+                            change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
+                            owner=owner, gate=gate, state="OPEN", ts=ts), ensure_ascii=False) + "\n")
+                        reopened += 1
+                else:  # v in CLOSABLE
+                    if prior is not None and prior_state in LIVE_GAP_STATES:
+                        f.write(json.dumps(dict(
+                            asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
+                            what=f"CLOSED by measurement: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
+                            change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
+                            owner=owner, gate=gate, state="CLOSED", ts=ts), ensure_ascii=False) + "\n")
+                        closed += 1
+                    # else: no prior, or prior already CLOSED/terminal — nothing to do (idempotent)
+    return added, skipped, closed, reopened
 
 
 def main() -> int:
@@ -701,8 +789,9 @@ def main() -> int:
             print(f"    FAIL {crit}: {len(n)} — {', '.join(n[:6])}{'…' if len(n) > 6 else ''}")
         worst = max(worst, 2 if fails else (3 if parts else 0))
         if a.emit_gaps:
-            added, skipped = emit_gaps(c)
-            print(f"  ledger: {added} row(s) appended, {skipped} already present")
+            added, skipped, closed, reopened = emit_gaps(c)
+            print(f"  ledger: {added} row(s) appended, {skipped} already present, "
+                  f"{closed} closed by measurement, {reopened} re-opened")
 
     Path(a.out).write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
     print(f"census written: {os.path.relpath(a.out, ROOT)}")
