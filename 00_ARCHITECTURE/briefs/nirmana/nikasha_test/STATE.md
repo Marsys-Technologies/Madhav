@@ -3,7 +3,7 @@ artifact: NIKASHA_TEST_CAMPAIGN_STATE
 version: "0.4"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 5 CLOSED (T5 consistency: R63–R84). Next: Phase 6 analysis + register v2.0 (K3_256 LOW).
+you_are_here: Phase 6 CLOSED (register v2.0 = 214 rows; analysis + 10-packet plan + 6 native decisions). Next: Phase 7 — report, fingerprints, PR.
 updated: 2026-09-26T22:22:00+05:30
 ---
 
@@ -30,7 +30,7 @@ updated: 2026-09-26T22:22:00+05:30
 | 3 | CLOSED (T3 closure loop proven in sandbox) | (this commit) | Three gaps of three kinds fixed and closed BY MEASUREMENT: bg_ontology-Vocab.alias (79/79 dosha synonyms seeded), bg_nakshatra_medical-Build.registered (has_writer=true → cascaded a true new Build.exercised gap, closed by actually running the writer, run c0db4bc1), bg_doshas-Idem.pattern (seeder-following idem_scan). Headline: stock tooling CANNOT close rows (emit_gaps append-only-OPEN + tracker per-row state) — R57; scratch copies (harness/asset_census_closing.py, harness/tracker_sandbox.py) with last-row-per-gap_id + close/re-open emit make it work: 25+11 closures, tracker ELEVATED 0/40→1/40, gates 0/360→9/360. Regression proven (RE-OPENED → 1→0 → re-fix → 1). R33 CLOSED; new rows R57–R62; sandbox restored to baseline; harness/T3_CLOSURE_LOOP.md |
 | 4 | CLOSED | (this commit) | 5 layer-instance skeletons + 10 asset briefs + 130 invention rows in derivations/ (L1 17, L2 30, L3 49, L4 17, L5 17). C-9/R09 confirmed all 5 layers; C-10 confirmed L1/L2/L3/L5, refuted L4. Universal top blocker: no P-need/V-journey→layer necessity mapping (tier-3 §0.1 unfillable). [TRANSFERS] contradiction tier-2 §1 vs tier-3 §5.4 test 4. |
 | 5 | CLOSED | (this commit) | T5: 22 register rows R63–R84. 17 vocabulary disagreements (gate-count drift "eight"→nine ×5 surfaces; verdict spelling; L0 0/320 self-contradiction; [TRANSFERS] contradiction confirmed T2§1/§12.2 vs T3§5.4 t4; missing T1 review file; T2 miscounted review; "ten obligations" ×2; review-record naming ×4; pilots carry 8 gates; dual criterion strings) + 7 agreements + 11 ledger overlap pairs reconciled (namespace proposal, R28 scope) + drift HIGH confirmed (T4 fingerprint) / manifest MATCH 136 entries. consistency/T5_VOCABULARY.md, T5_LEDGER_DRIFT.md |
-| 6 | NOT_STARTED | — | K3_256 low effort (switch cancelled) |
+| 6 | CLOSED | (this commit) | Register v2.0: 214 rows (R01–R214; OPEN 197, severity 12 BLOCKS_FREEZE / 107 BLOCKS_LAYER / 83 DEGRADES / 12 COSMETIC). R84 measured on prod: 129 assets ✓, build_runs 762 (doc 776 drift), 5/40 & 13/40 ✓, skip_no_delta 17 (doc 21 drift), rows_per_second NULL 268/268, 288/419 silent failures. Verdicts: T3 + inspector NOT_READY, T1/T2/T4 READY_WITH_CHANGES. 8 root-cause clusters. Freeze: T2/T3/T5 FAIL. Plan: 10 packets ≈365h, every OPEN row assigned; 6 native decisions. PHASE6_ANALYSIS.md, NIKASHA_IMPLEMENTATION_PLAN_v1_0.md, DECISIONS_FOR_THE_NATIVE.md |
 | 7 | NOT_STARTED | — | — |
 
 ## Component inventory (Phase 0.4)
