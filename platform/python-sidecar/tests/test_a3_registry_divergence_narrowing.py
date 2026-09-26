@@ -125,8 +125,12 @@ class FakeCursor:
             self._result = []
         elif "UPDATE build_run_assets SET state='error'" in s:
             # Shared by _mark_asset_blocked and _terminalize_diverged_assets
-            # (both go through _mark_asset_error_terminal).
-            self._state[params[2]] = "error"
+            # (both go through _mark_asset_error_terminal). Packet B1 added two more
+            # bound params (disposition, blocked_by_asset_id) ahead of run_id/asset_id
+            # in the UPDATE's param tuple — asset_id is the LAST positional param
+            # regardless of how many columns the SET clause grows to, so index from
+            # the end rather than assuming a fixed absolute position.
+            self._state[params[-1]] = "error"
             self._result = []
         else:
             self._result = []
@@ -325,7 +329,9 @@ def test_divergence_error_message_names_the_asset_and_keeps_the_monitoring_prefi
     def recording_execute(self, sql, params=None):
         s = " ".join(sql.split())
         if "UPDATE build_run_assets SET state='error'" in s:
-            errors[params[2]] = params[0]
+            # Packet B1: asset_id is now the LAST positional param (see the
+            # FakeCursor.execute comment above); message is still first.
+            errors[params[-1]] = params[0]
         return orig_execute(self, sql, params)
 
     monkeypatch.setattr(FakeCursor, "execute", recording_execute)

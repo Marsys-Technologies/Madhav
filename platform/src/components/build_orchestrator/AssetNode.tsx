@@ -3,7 +3,11 @@
 // 'incomplete' — SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24). A first-class UI state
 // rather than a fallback: the safe-looking fallback ('pending') would have been WRONG in
 // the other direction, reading as "not started" for an asset that has real committed data.
-export type AssetState = 'pending' | 'running' | 'complete' | 'failed' | 'cancelled' | 'skipped' | 'incomplete'
+// 'blocked' — Packet B1 ("Cascade reads as one cause, N blocked"), same discipline: a
+// dependent skipped because an upstream failed/was blocked in this run
+// (build_run_assets.disposition='blocked_dependency', migration 1095) is a cascade
+// CONSEQUENCE, not this asset's own defect — 'failed' would misreport it as one.
+export type AssetState = 'pending' | 'running' | 'complete' | 'failed' | 'cancelled' | 'skipped' | 'incomplete' | 'blocked'
 
 export interface AssetNodeData {
   asset_id: string       // e.g. 'A3_chart_facts'
@@ -33,8 +37,16 @@ interface AssetNodeProps {
  * The fallback is a crash guard, NOT a licence to leave a known state unmapped: an
  * unmapped 'incomplete' silently became 'pending', which is a false report in its own
  * right (it claims no data exists when partial data does).
+ *
+ * Packet B1: `disposition` (build_run_assets.disposition, migration 1095) is an
+ * OPTIONAL second argument, read verbatim — never re-derived from `error` text
+ * (§N.7 item 1). When dbState==='error' AND disposition==='blocked_dependency', the
+ * mapping returns 'blocked' instead of 'failed'. Omitting the argument (every
+ * existing caller) preserves today's 'error'->'failed' mapping exactly — this is
+ * additive, not a behaviour change for anyone who doesn't pass it.
  */
-export function mapDbStateToUiState(dbState: string): AssetState {
+export function mapDbStateToUiState(dbState: string, disposition?: string | null): AssetState {
+  if (dbState === 'error' && disposition === 'blocked_dependency') return 'blocked'
   const mapping: Record<string, AssetState> = {
     // asset_throughput states
     dormant:      'pending',
@@ -56,6 +68,7 @@ export function mapDbStateToUiState(dbState: string): AssetState {
     failed:       'failed',
     cancelled:    'cancelled',
     skipped:      'skipped',
+    blocked:      'blocked',
   }
   return mapping[dbState] ?? 'pending'
 }
@@ -69,6 +82,10 @@ const STATE_CONFIG: Record<AssetState, { color: string; icon: string; label: str
   skipped:   { color: 'text-gray-500 border-gray-700',     icon: '—', label: 'Skipped' },
   // Half-filled glyph, blue not green: real data committed, plan not finished.
   incomplete:{ color: 'text-blue-400 border-blue-500',     icon: '◐', label: 'Incomplete' },
+  // Amber, not red: a cascade consequence of an upstream failure, not this asset's
+  // own defect (Packet B1). Distinct glyph from 'failed' so an operator can tell
+  // "this broke" from "something upstream broke it" at a glance.
+  blocked:   { color: 'text-yellow-400 border-yellow-600', icon: '⊗', label: 'Blocked' },
 }
 
 // Short name mapping for compact display

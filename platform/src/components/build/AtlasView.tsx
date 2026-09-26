@@ -11,7 +11,10 @@ type AssetStat = {
   error: string | null
   // Mirrors AssetState in src/app/api/cockpit/stats/deriveState.ts — keep in step.
   // 'incomplete': migration 474 / SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24).
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
+  // 'blocked': Packet B1 ("Cascade reads as one cause, N blocked") — review
+  // B1_review_20260926T182200Z.md C-2b caught this sibling mirror left un-updated
+  // while LiveDependencyGraph.tsx's identical mirror was correctly fixed.
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down' | 'blocked'
   last_built_at: string | null
   // Badge-honesty (pre-D-4b readiness pass): real progress from the substep-resumption
   // ledger, populated when state === 'partial' or 'incomplete'. `total` is honestly null
@@ -41,6 +44,19 @@ function getDisplayTables(asset: AtlasAsset): string[] {
   return []
 }
 
+// Packet B1 — R-6 (review B1_rereview_20260926T190244Z.md): two censuses found
+// four missed surfaces between them, and the reviewer names the structural cause
+// as non-exhaustive switches over a hand-mirrored union — silently falling
+// through to a default instead of failing compilation. This `default` + `never`
+// assertion makes the three switches below exhaustive: adding a future
+// AssetStat['state'] member without a matching `case` here now fails `tsc`,
+// instead of silently returning `undefined` (which TS would otherwise widen the
+// return type to include, and which rendered as a blank/grey fallback in practice
+// — precisely how 'blocked' went unmapped in this same file before this packet).
+function assertNeverAssetStatState(x: never): never {
+  throw new Error(`AtlasView: unhandled AssetStat state ${JSON.stringify(x)} — add a case above`)
+}
+
 function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean): string {
   if (loading || !state) return 'bg-muted text-muted-foreground'
   switch (state) {
@@ -55,6 +71,12 @@ function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean
     case 'error':
     case 'service_down':
       return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200'
+    // Packet B1: a cascade CONSEQUENCE, never this asset's own defect — amber like
+    // building/stale/dormant, never red like a genuine 'error', and never the
+    // unmapped-fallback grey either (the exact anti-pattern AssetNode.tsx's own
+    // docstring warns against, which the review caught this file repeating).
+    case 'blocked':
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
     // Distinct from 'error': a resumable, in-progress materialization (real committed
     // substeps exist), not a broken writer. Amber-adjacent (blue) so it never reads as
     // either "done" (lit) or "broken" (error) at a glance.
@@ -68,6 +90,8 @@ function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean
       return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
     case 'not_migrated':
       return 'bg-muted text-muted-foreground'
+    default:
+      return assertNeverAssetStatState(state)
   }
 }
 
@@ -106,6 +130,10 @@ function stateBadgeLabel(
       return 'not built'
     case 'service_ok':
       return 'service ✓'
+    case 'blocked':
+      return 'blocked by upstream failure'
+    default:
+      return assertNeverAssetStatState(state)
   }
 }
 
@@ -118,6 +146,7 @@ function reconciliationDot(state: AssetStat['state'] | undefined, loading: boole
       return 'bg-emerald-500'
     case 'dormant':
     case 'stale':
+    case 'blocked':
       return 'bg-amber-500'
     case 'error':
     case 'service_down':
@@ -127,6 +156,8 @@ function reconciliationDot(state: AssetStat['state'] | undefined, loading: boole
       return 'bg-blue-500'
     case 'not_migrated':
       return 'bg-muted-foreground/30'
+    default:
+      return assertNeverAssetStatState(state)
   }
 }
 
@@ -470,8 +501,13 @@ export function AtlasView({
       if (!s) { grey++; continue }
       // 'incomplete' is counted with the amber (unfinished) group, never with lit —
       // the summary bar is the one number an operator reads at a glance.
+      // 'blocked' (Packet B1, review C-2b) joins the SAME amber group: this file's
+      // mirrored AssetState union had drifted from deriveState.ts's (the identical
+      // mirror in LiveDependencyGraph.tsx was fixed; this one was not), so 'blocked'
+      // fell through to the `else grey++` catch-all — indistinguishable from "no
+      // stat at all" — instead of reading as the cascade-consequence amber it is.
       if (s.state === 'lit' || s.state === 'service_ok') lit++
-      else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building' || s.state === 'partial' || s.state === 'incomplete') amber++
+      else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building' || s.state === 'partial' || s.state === 'incomplete' || s.state === 'blocked') amber++
       else if (s.state === 'error' || s.state === 'service_down') red++
       else grey++
     }

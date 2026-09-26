@@ -46,7 +46,10 @@ interface Props {
   activeRun?: ActiveRun | null
   /** Task 1: isBuilding flag (activeRun !== null) lifted from CockpitShell */
   isBuilding?: boolean
-  /** Task 7: count of assets currently in error state — shown as badge when > 0 */
+  /** Task 7: count of assets currently in error state — shown as badge when > 0.
+   *  This component has no filter of its own; it only renders this prop. The
+   *  filter lives at the source, CockpitShell.tsx's own `errorCount` (Packet B1,
+   *  review C-2a) — see that computation's comment for the full trace. */
   errorCount?: number
   proMode?: boolean
   onProModeToggle?: () => void

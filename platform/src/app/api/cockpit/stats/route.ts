@@ -5,6 +5,9 @@ import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { deriveState } from './deriveState'
 import type { AssetState } from './deriveState'
 import { readSqlScalarMetric } from './scalarMetric'
+import { blockedByAssetIdColumnPresent } from '@/lib/db/columnPresence'
+import { errorFromThroughput } from './throughputError'
+import type { ThroughputEntry } from './throughputError'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15 // seconds — Next.js route segment config
@@ -49,6 +52,13 @@ export interface AssetStats {
   // count — never fabricated (B.10); the substep plan's size is not persisted anywhere.
   // See deriveState's own comment for the badge-honesty rationale.
   substep_progress?: { committed: number; total: number | null }
+  // Packet B1: populated only when state === 'blocked' — the immediate upstream
+  // asset_id(s) that caused this asset to be skipped this run (build_run_assets.
+  // blocked_by_asset_id, migration 1095). Prospective-only: null for any block
+  // recorded before the migration landed, even though state/disposition still read
+  // correctly. Surfaced so an operator (or a future UI) can drill straight to the
+  // real cause instead of re-deriving it from prose.
+  blocked_by_asset_id?: string | null
 }
 
 interface RegistryAsset {
@@ -67,7 +77,9 @@ interface RegistryAsset {
   has_substeps: boolean
 }
 
-type ThroughputEntry = { state: string; last_built_at: string | null; rows_written: number | null }
+// ThroughputEntry + errorFromThroughput live in ./throughputError.ts (R-2, review
+// B1_rereview_20260926T190244Z.md) so the fix has a direct, importable unit-test
+// target — see that file's header for the full defect/fix account.
 
 // Stats source hierarchy:
 //   1. rows_written from asset_throughput (normal polls) — build-time truth, <100ms
@@ -119,7 +131,9 @@ async function fetchAllCounts(
         volume: tp.rows_written,
         size_bytes: null,
         last_updated: now,
-        error: null,
+        // R-2: was unconditionally null — see errorFromThroughput's own comment for
+        // why this must be gated on tp.state==='error' rather than passed through raw.
+        error: errorFromThroughput(tp),
         state: (tp.state ?? 'dormant') as AssetState,
         last_built_at: tp.last_built_at ?? null,
         build_state_stale: false,
@@ -168,7 +182,10 @@ async function fetchAllCounts(
         size_bytes,
         size_is_estimate,
         last_updated: now,
-        error: null,
+        // R-2: was unconditionally null — the count_sql path is exactly the one the
+        // review proved `?mode=live` cannot help through, since this branch also
+        // ignored asset_throughput.last_error entirely. See errorFromThroughput.
+        error: errorFromThroughput(tp),
         state: 'dormant' as const,
         last_built_at: null,
         build_state_stale: false,
@@ -260,17 +277,77 @@ export async function GET(req: NextRequest) {
 
     const assets = registryResult.rows
 
-    // Batch-fetch throughput state+last_built_at for this chart
+    // Batch-fetch throughput state+last_built_at (+ last_error, R-2) for this chart
     const throughputMap = new Map<string, ThroughputEntry>()
     if (chartId) {
-      const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null; rows_written: number | null }>(
-        `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at, rows_written
+      const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null; rows_written: number | null; last_error: string | null }>(
+        `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at, rows_written, last_error
            FROM asset_throughput
           WHERE chart_id = $1 OR chart_id IS NULL
           ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST, last_built_at DESC NULLS LAST`,
         [chartId]
       )
       for (const r of tpRows) throughputMap.set(r.asset_id, r)
+    }
+
+    // Packet B1 ("Cascade reads as one cause, N blocked"): the latest
+    // build_run_assets.disposition (+ blocked_by_asset_id, migration 1095) per asset
+    // — the evidence deriveState uses to distinguish a dependent blocked by an
+    // upstream failure (disposition='blocked_dependency') from this asset's OWN
+    // genuine error.
+    //
+    // C-5(a) (review B1_review_20260926T182200Z.md): DISTINCT ON (bra.asset_id)
+    // needs a TOTAL ORDER — two runs sharing an identical created_at (clock
+    // granularity, concurrent inserts) resolved nondeterministically without a
+    // tiebreaker. `bra.run_id DESC` added below.
+    //
+    // C-5(b) (review): disposition (build_run_assets) and error
+    // (asset_throughput.last_error) were not bound to the SAME event — "the
+    // chart's latest run" is only a PROXY for "the run that produced the CURRENT
+    // error", and an asset-scoped rebuild can touch some assets and not others,
+    // so they can diverge. The real tie: _mark_asset_error_terminal writes BOTH
+    // columns inside ONE transaction, so build_run_assets.ended_at and
+    // asset_throughput.last_built_at are the SAME NOW() (stable within a Postgres
+    // transaction) whenever one write produced the other. `ended_at` is fetched
+    // here and compared against throughputMap's `last_built_at` below before a
+    // disposition is ever trusted — an exact timestamp match on a shared fact,
+    // never a re-derivation from error TEXT (§N.7 item 1).
+    //
+    // C-5(c) (review): throughputMap admits `chart_id = $1 OR chart_id IS NULL`
+    // (a global asset's asset_throughput row is chart-independent) but this query
+    // originally only admitted `br.chart_id = $1` — a global asset blocked under
+    // a DIFFERENT chart's global-scope run would never resolve here. A second,
+    // chart-unscoped query for this chart's registered GLOBAL assets closes that
+    // gap (measured harmless today — zero global-scope rows in the eligible
+    // backfill set — but the gap was real).
+    const dispositionMap = new Map<string, { disposition: string | null; blocked_by_asset_id: string | null; ended_at: string | null }>()
+    // C-1 (review, BLOCKS THE DEPLOY): probe once, cache for the process — never
+    // select a column that may not exist yet in this environment (migration 1095).
+    const includeBlockedBy = await blockedByAssetIdColumnPresent()
+    const blockedByCol = includeBlockedBy ? 'bra.blocked_by_asset_id' : 'NULL::text AS blocked_by_asset_id'
+    if (chartId) {
+      const { rows: dispRows } = await query<{ asset_id: string; disposition: string | null; blocked_by_asset_id: string | null; ended_at: string | null }>(
+        `SELECT DISTINCT ON (bra.asset_id) bra.asset_id, bra.disposition, ${blockedByCol}, bra.ended_at
+           FROM build_run_assets bra
+           JOIN build_runs br ON br.id = bra.run_id
+          WHERE br.chart_id = $1
+          ORDER BY bra.asset_id, br.created_at DESC, bra.run_id DESC`,
+        [chartId]
+      )
+      for (const r of dispRows) dispositionMap.set(r.asset_id, r)
+
+      const globalAssetIds = assets.filter(a => a.scope === 'global').map(a => a.asset_id)
+      if (globalAssetIds.length > 0) {
+        const { rows: globalDispRows } = await query<{ asset_id: string; disposition: string | null; blocked_by_asset_id: string | null; ended_at: string | null }>(
+          `SELECT DISTINCT ON (bra.asset_id) bra.asset_id, bra.disposition, ${blockedByCol}, bra.ended_at
+             FROM build_run_assets bra
+             JOIN build_runs br ON br.id = bra.run_id
+            WHERE bra.asset_id = ANY($1::text[])
+            ORDER BY bra.asset_id, br.created_at DESC, bra.run_id DESC`,
+          [globalAssetIds]
+        )
+        for (const r of globalDispRows) dispositionMap.set(r.asset_id, r)
+      }
     }
 
     // Badge-honesty (pre-D-4b readiness pass): committed-substep counts for every
@@ -313,7 +390,18 @@ export async function GET(req: NextRequest) {
         last_selftest_at: null,
       }
       const substepsCommitted = substepCountMap.get(asset.asset_id) ?? null
-      const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null, substepsCommitted)
+      const dispEntry = dispositionMap.get(asset.asset_id)
+      // C-5(b): only trust dispEntry's disposition when its `ended_at` is the SAME
+      // write as tp's `last_built_at` (both set by one NOW() inside
+      // _mark_asset_error_terminal's single transaction — see the dispositionMap
+      // query's own comment above). A mismatch means this asset's current error
+      // came from a DIFFERENT attempt than the one this disposition describes;
+      // treating it as null (⇒ deriveState reports plain 'error') is the honest
+      // fallback, never a stale cross-attempt splice.
+      const eventMatchedDisposition = (dispEntry?.ended_at != null && dispEntry.ended_at === (tp?.last_built_at ?? null))
+        ? dispEntry.disposition
+        : null
+      const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null, substepsCommitted, eventMatchedDisposition)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
       // stale/dormant/error/absent — signals the bar to badge "build-state stale".
       // Excludes 'building': an actively-building asset with committed substep rows is not stale.
@@ -330,6 +418,10 @@ export async function GET(req: NextRequest) {
         substep_progress: (derivedState === 'partial' || derivedState === 'incomplete') && substepsCommitted != null
           ? { committed: substepsCommitted, total: null }
           : undefined,
+        // Safe to read dispEntry directly here: derivedState can only be 'blocked'
+        // when eventMatchedDisposition === 'blocked_dependency', which only happens
+        // when dispEntry's ended_at already matched this same write (above).
+        blocked_by_asset_id: derivedState === 'blocked' ? (dispEntry?.blocked_by_asset_id ?? null) : undefined,
         last_built_at: tp?.last_built_at ?? null,
         build_state_stale: buildStateStale,
         rows_written: (tp?.rows_written != null && derivedState === 'building')

@@ -189,3 +189,74 @@ describe('cockpit surfaces never collapse incomplete into a done-equivalent', ()
     expect(s).toBe('incomplete')
   })
 })
+
+/**
+ * Packet B1 — "Cascade reads as one cause, N blocked".
+ *
+ * THE DEFECT (B1_before_20260926T173931Z.json §4): a dependent asset skipped because
+ * an upstream failed/was blocked (runner.py::_mark_asset_blocked) was reported
+ * identically to a genuinely broken writer — both surfaced as state='error' with
+ * nothing but free-text prose distinguishing them. Every consumer of deriveState's
+ * output (CockpitShell, LayerPanel, CockpitHeader, AssetRow — all filter on
+ * `state === 'error'`) therefore counted a cascade victim as a failure.
+ *
+ * THE FIX: deriveState takes a 6th argument, `latestRunDisposition` — the LATEST
+ * build_run_assets.disposition for this asset+chart (migration 1095), read verbatim,
+ * never re-derived from the error TEXT (§N.7 item 1). When it is
+ * 'blocked_dependency', deriveState reports 'blocked' instead of 'error'. Because
+ * every downstream consumer already keys off the SAME derived `state` string (never
+ * asset_throughput.state/build_run_assets.state directly), this one change is
+ * sufficient for the whole v2 cockpit chain to stop counting a blocked dependent as a
+ * failure — no code change needed in CockpitShell.tsx, LayerPanel.tsx,
+ * CockpitHeader.tsx, or AssetRow.tsx.
+ */
+describe('deriveState — blocked cascade victims are not counted as failures (Packet B1)', () => {
+  it('reports blocked when disposition is blocked_dependency, even though state=error', () => {
+    expect(
+      deriveState({ has_substeps: false }, null, 'BLOCKED: upstream dependency(ies) bg_root did not complete in this run; skipped to avoid building on incomplete data', 'error', null, 'blocked_dependency')
+    ).toBe('blocked')
+  })
+
+  it('a genuine error (no blocked_dependency disposition) is unaffected — still error', () => {
+    expect(
+      deriveState({ has_substeps: false }, null, 'worker_crash: RuntimeError: boom', 'error', null, null)
+    ).toBe('error')
+    // Omitting the 6th argument entirely (every pre-B1 call site) must behave exactly
+    // as before — this is additive, not a rewrite.
+    expect(
+      deriveState({ has_substeps: false }, null, 'worker_crash: RuntimeError: boom', 'error', null)
+    ).toBe('error')
+  })
+
+  it('a writer TIMEOUT (Decision 2) is never reported as blocked — it is its own root cause', () => {
+    // The orchestrator now records a timeout with disposition NULL (never
+    // 'blocked_dependency') and an honest 'TIMEOUT:' message — see
+    // _mark_asset_timeout in runner.py. Confirms deriveState doesn't independently
+    // reintroduce the old text-sniffing defect by pattern-matching the message.
+    expect(
+      deriveState({ has_substeps: false }, null, 'TIMEOUT: writer exceeded its writer_timeout_seconds budget (600s) — this asset is the failure, not a blocked dependent', 'error', null, null)
+    ).toBe('error')
+  })
+
+  it('blocked takes priority over the partial/has_substeps downgrade', () => {
+    // A genuinely blocked asset's writer never ran, so it cannot have committed real
+    // substeps THIS run either — a stale substep count from a prior attempt must not
+    // relabel a fresh block as 'partial'.
+    expect(
+      deriveState({ has_substeps: true }, null, 'BLOCKED: upstream dependency(ies) bg_root did not complete in this run; skipped to avoid building on incomplete data', 'error', 5, 'blocked_dependency')
+    ).toBe('blocked')
+  })
+
+  it('blocked is a member of the served AssetState contract', () => {
+    const s: AssetState = 'blocked'
+    expect(s).toBe('blocked')
+  })
+
+  it('mapDbStateToUiState maps error+blocked_dependency to blocked, not failed', () => {
+    expect(mapDbStateToUiState('error', 'blocked_dependency')).toBe('blocked')
+    // Omitting the disposition argument (every pre-B1 caller) is unchanged.
+    expect(mapDbStateToUiState('error')).toBe('failed')
+    expect(mapDbStateToUiState('error', null)).toBe('failed')
+    expect(mapDbStateToUiState('error', 'some_other_value')).toBe('failed')
+  })
+})

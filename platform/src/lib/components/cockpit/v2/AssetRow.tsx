@@ -137,7 +137,11 @@ function StatusDot({
 }) {
   const isDraft = catalogStatus === 'DRAFT'
   const isHealthy = state === 'lit' || state === 'service_ok'
-  const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting'
+  // 'blocked' (Packet B1): a dependent skipped because an upstream failed/was
+  // blocked this run (disposition='blocked_dependency') is a cascade CONSEQUENCE,
+  // not this asset's own defect — grouped with the amber "not this asset's fault"
+  // states, never with the red 'error' state that would misreport it as one.
+  const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting' || state === 'blocked'
   // DRAFT only forces red when the asset is NOT healthy — a running DRAFT asset is green.
   const isRed = state === 'error' || state === 'service_down' || state === 'not_migrated' || (isDraft && !isHealthy)
 
@@ -265,11 +269,6 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       toast.error(err instanceof Error ? err.message : 'Failed to start build')
     }
   }
-  // O1: distinguish BLOCKED cascade errors from genuine root failures
-  function isBlockedCascade(errorMessage: string): boolean {
-    return errorMessage.startsWith('BLOCKED:')
-  }
-
   const isActive = asset.is_active
   const isDataPlaneDown = stat?.error_class === 'dataplane'
   // Suppress red-error display when the failure is a transient data-plane blip
@@ -363,17 +362,30 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
               </div>
             )}
             {hasError && stat?.error && (
-              isBlockedCascade(stat.error) ? (
-                // O1: blocked cascade — amber/orange, chain icon, distinct tooltip
+              // Packet B1: was a text-sniff (`stat.error.startsWith('BLOCKED:')`,
+              // O1) — replaced with the structural signal. `derivedState === 'blocked'`
+              // traces to build_run_assets.disposition='blocked_dependency'
+              // (migration 1095), read verbatim by the server's deriveState(), never
+              // re-derived from the error TEXT here (§N.7 item 1: a narration must
+              // trace to a cited fact, not re-derive one — the old text-sniff would
+              // have also mislabeled a writer TIMEOUT as a blocked cascade, since a
+              // pre-B1 timeout's message also started with 'BLOCKED:'; Decision 2's
+              // engine fix means a timeout no longer produces that text OR that
+              // disposition, but this UI must not have its own independent copy of
+              // the old, now-corrected heuristic either).
+              derivedState === 'blocked' ? (
+                // blocked cascade — amber/orange, chain icon, distinct tooltip
                 <div
                   style={{ fontSize: '9px', color: 'rgba(236,147,50,0.9)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  title={`Blocked by upstream failure — ${stat.error}`}
+                  title={stat.blocked_by_asset_id
+                    ? `Blocked by upstream failure — ${stat.blocked_by_asset_id}`
+                    : `Blocked by upstream failure — ${stat.error}`}
                 >
                   <Link2 size={9} style={{ flexShrink: 0, color: 'rgba(236,147,50,0.8)' }} />
-                  <span>blocked by upstream failure</span>
+                  <span>blocked by upstream failure{stat.blocked_by_asset_id ? `: ${stat.blocked_by_asset_id}` : ''}</span>
                 </div>
               ) : (
-                // O1: genuine root failure — keep existing red styling
+                // genuine root failure — keep existing red styling
                 <div
                   style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   title={stat.error}

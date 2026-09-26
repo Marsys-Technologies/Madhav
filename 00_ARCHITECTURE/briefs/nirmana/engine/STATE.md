@@ -1,19 +1,19 @@
 ---
 artifact: NIRMANA_ENGINE_ELEVATION_STATE
 canonical_id: NIRMANA_ENGINE_ELEVATION_STATE
-version: "0.5"
+version: "0.6"
 status: LIVE — rewritten at every packet close
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md
 runs_in: /Users/Dev/madhav-engine (branch campaign/nirmana-engine)
-last_updated: 2026-09-26T15:50Z
+last_updated: 2026-09-26T19:40Z
 ---
 
 # Nirmāṇa engine elevation — STATE
 
 ## Where the campaign is
 
-**Phase A (the gate) — ALL THREE PACKETS CLOSED, each reviewer-accepted. Reconciliation commit and the Phase A gate check are next; Phase B has not started.**
+**Phase A CLOSED and gate-checked (PASS). Phase B IN FLIGHT — B1 closed after a REJECT and three rounds; B2 next, carrying B1's C-4.**
 
 | packet | title | status | review verdict | before | after |
 |---|---|---|---|---|---|
@@ -22,8 +22,8 @@ last_updated: 2026-09-26T15:50Z
 | A3 | Stop one registry change killing a whole run | **CLOSED** | ACCEPT_WITH_CORRECTIONS ×2 → **ACCEPT** | all 8 runs lost 100% of plan; Family A = 11 records / 2 runs | on the real run's own manifest: **10/10 aborted → 1/10 failed**; production **unmeasured** |
 | A2b | `mark_asset_error` empty-exception hardening | **carried** (split out of A2 to keep waves disjoint) | — | latent, not inflating the 301 | — |
 | A3b | Runs dispatched with no manifest at all | **carried** (split out of A3; 6 of its 8 runs) | — | 7 records / 6 runs | — |
-| B1 | Cascade reads as one cause, N blocked | not started | — | 1,281 cascade records (confirmed exactly) | — |
-| B2 | Blocking radius, recorded | not started | — | — | — |
+| B1 | Cascade reads as one cause, N blocked | **CLOSED** | REJECT → ACCEPT_WITH_CORRECTIONS → **ACCEPT** | 0 of 10 blocked assets rendered correctly — **9 rendered green** | **8 of 8 render blocked**; 18 badges flip off green |
+| B2 | Blocking radius, recorded | **rescoped, next** | — | DAG clean, no cycles; radius does **not** predict observed cascade | — |
 | C1 | Crash, orphan and reap | not started | — | — | — |
 | C2 | Stuck states | not started | — | — | — |
 | D1 | Nine checks applied to the engine | not started (authored last; frozen only if the asset contract has stopped moving) | — | — | — |
@@ -177,6 +177,42 @@ bounded by a measured self-heal. These lie in opposite directions and are report
 terminalizes the row. The honest claim is that the *reason* is lost and the row is **misattributed**
 into `"orphan-watchdog: run never dispatched"` — Family B's signature, the exact bucket this packet's
 before-measurement worked to separate from Family A.
+
+
+## B1 — closed 2026-09-26, one REJECT and three rounds
+
+**The premise was inverted, and that was the executor's error.** The before-measurement I commissioned
+said seven surfaces *"count a blocked asset as a failure."* For the whole `deriveState` chain the
+truth was the opposite: `fetchAllCounts` hard-coded `error: null` on **both** paths, so the blocked
+branch was unreachable and cascade victims rendered **green**. Measured: **9 of 10 real production
+blocked assets rendered `lit`**, 7 of them on the native's own chart.
+
+My census was wrong three ways — it **named a dead surface** (`AssetNode.tsx`, zero live importers),
+**missed live ones** (`AgentsView`, `AtlasView`, `AssetProgressBar`, `PlanTimeline`,
+`runs/[id]/assets`, `ArmillaryGraph`), and **mischaracterised the direction** for those it did name.
+It was found only because the gate refused the packet twice.
+
+**What landed.** A cause is no longer recorded as a consequence: a writer timeout was being passed
+through as `blocking_deps=["timeout:600s"]`, a fabricated dependency; it now writes an honest
+`TIMEOUT:` cause. Blocked assets carry `disposition='blocked_dependency'` (a value that already
+existed in the schema with zero rows and zero references) plus a prospective root column. The
+governance census stops grading a chart FAIL from cascade-only history — and no longer grades an asset
+that has **never once built** as PASS. **8 of 8** currently-blocked assets now render blocked;
+**18 badges flip off green**, of which 4 are pre-existing false-greens repaired as a side effect.
+
+**An instruction of mine was correctly refused.** I said "carry the signal through." The builder
+checked production first, found `bg_transit_engine` — *healthy* — carrying a stale never-cleared
+error, and gated on computed state instead. The reviewer's ruling: it would have called the
+unconditional pass-through **a defect**. Computed state over stale text, §N.8, applied against the
+executor.
+
+**Proof discipline.** 16 mutations across three gates, every file byte-restored. The second round's
+"decisive assertion" was **decorative** — deleting the fix left 4/4 green. It now fails under the same
+mutation that exposed it.
+
+**Certified honestly:** counting surfaces **complete**; labelling surfaces **not** — `PlanTimeline`,
+`runs/[id]/assets` and `ArmillaryGraph.stateColor` remain, three unmapped-default sites survive, and
+R-6 is one-third done. Carried to B2 as C-3 and C-4.
 
 ## Branch head
 

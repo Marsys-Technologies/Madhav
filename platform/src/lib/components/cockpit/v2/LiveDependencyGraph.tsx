@@ -12,7 +12,10 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 // AssetWithState type the whole v2 cockpit renders from, so the two must stay in step).
 // 'incomplete' added by SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24) — the widened stats
 // contract does not type-check into this surface without it.
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
+// 'blocked' added by Packet B1 ("Cascade reads as one cause, N blocked") for the same
+// reason — a dependent blocked by an upstream failure (disposition='blocked_dependency')
+// is no longer reported as 'error'.
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down' | 'blocked'
 
 interface AssetWithState extends AssetRow {
   state: AssetState
@@ -131,7 +134,9 @@ function strokeFor(state: AssetState): string {
   // 'lit'/'building' (badge-honesty, pre-D-4b readiness pass).
   // 'incomplete' (migration 474) joins them for the same reason: unfinished, resumable,
   // and never to be stroked with the 'lit' colour.
-  if (state === 'stale' || state === 'partial' || state === 'incomplete') return 'rgba(140,104,36,0.55)'
+  // 'blocked' (Packet B1) joins them too: a cascade victim, never stroked with the
+  // same colour as a genuine 'error'.
+  if (state === 'stale' || state === 'partial' || state === 'incomplete' || state === 'blocked') return 'rgba(140,104,36,0.55)'
   if (state === 'building') return GOLD_NODE_MID
   if (state === 'lit')      return GOLD_ROOT_MID
   if (state === 'service_down') return 'rgba(181,71,76,0.85)'
@@ -142,7 +147,8 @@ function edgeOpacityMultiplier(fromState: AssetState, toState: AssetState): numb
   if (fromState === 'dormant' || toState === 'dormant' || fromState === 'not_migrated' || toState === 'not_migrated') return 0
   if (fromState === 'building' || toState === 'building') return 0.45
   if (fromState === 'stale' || toState === 'stale' || fromState === 'partial' || toState === 'partial'
-      || fromState === 'incomplete' || toState === 'incomplete') return 0.32
+      || fromState === 'incomplete' || toState === 'incomplete'
+      || fromState === 'blocked' || toState === 'blocked') return 0.32
   return 1.0
 }
 

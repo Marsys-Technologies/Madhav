@@ -100,6 +100,24 @@ const SEG: Record<string, SegmentColors> = {
     continuousFill: 'rgba(122,86,24,0.20)',
     trackBorder:  'rgba(122,86,24,0.16)',
   },
+  // Packet B1 (review B1_review_20260926T182200Z.md C-2b): SEG is Record<string,...>,
+  // not typed against AssetState, so `SEG[effectiveState] ?? SEG.dormant` silently
+  // fell back to dormant styling for 'blocked' with nothing to catch the gap at
+  // compile time — precisely the anti-pattern AssetNode.tsx's own docstring warns
+  // against ("the fallback is a crash guard, NOT a licence to leave a known state
+  // unmapped"). Orange, matching AssetRow.tsx/AssetNode.tsx's shared convention for
+  // this state — distinct from both 'error' (red, this asset's own defect) and the
+  // muted 'stale'/'dormant' amber (idle, not a consequence of anything).
+  blocked: {
+    filledBg:     'rgba(236,147,50,0.35)',
+    filledBorder: 'rgba(236,147,50,0.55)',
+    activeBg:     'rgba(236,147,50,0.22)',
+    activeBorder: 'rgba(236,147,50,0.42)',
+    emptyBg:      'rgba(236,147,50,0.10)',
+    emptyBorder:  'rgba(236,147,50,0.20)',
+    continuousFill: 'rgba(236,147,50,0.40)',
+    trackBorder:  'rgba(236,147,50,0.28)',
+  },
   not_migrated: {
     filledBg:     'rgba(80,70,50,0.10)',
     filledBorder: 'rgba(80,70,50,0.18)',
@@ -144,6 +162,21 @@ export function AssetProgressBar({
   const isLit         = effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit'
   const isError       = effectiveState === 'error'
   const isStale       = effectiveState === 'stale'
+  // Packet B1 — R-6 (review B1_rereview_20260926T190244Z.md): assessed for a
+  // compile-time exhaustive Record (as AtlasView.tsx's switches got below), and
+  // deliberately NOT converted. `effectiveState` is `sseState ?? state`, and
+  // `sseState` is sourced from a live SSE event payload — a genuinely untyped
+  // string at the language boundary, not a value this component can ever prove
+  // exhaustive at compile time (unlike AtlasView's switches, which only ever see
+  // a server-typed AssetStat['state']). Casting it to force a Record key match
+  // would be type theatre: it would satisfy `tsc` without verifying anything at
+  // runtime. The honest fix for an untyped boundary is a LOUD runtime fallback,
+  // not a silent one — the anti-pattern this packet exists to remove was the
+  // SILENCE (`?? SEG.dormant` with nothing marking that a substitution happened),
+  // not the fallback's mere existence.
+  if (process.env.NODE_ENV !== 'production' && !(effectiveState in SEG)) {
+    console.warn(`[AssetProgressBar] unmapped state ${JSON.stringify(effectiveState)} — falling back to 'dormant' styling. Add a SEG entry.`)
+  }
   const c = SEG[effectiveState] ?? SEG.dormant
 
   // Substep-segmented vs. continuous fill

@@ -9,6 +9,13 @@ export interface ActiveRunAsset {
   started_at: string | null
   ended_at: string | null
   error: string | null
+  // Packet B1 (review C-2b): build_run_assets.disposition, read verbatim — never
+  // re-derived from `error` text. 'blocked_dependency' means this row is a
+  // cascade CONSEQUENCE (an upstream failed/was blocked this run), not this
+  // asset's own defect. blocked_by_asset_id (migration 1095) is prospective-only
+  // and null in any environment where that column hasn't applied yet.
+  disposition: string | null
+  blocked_by_asset_id: string | null
 }
 
 export interface ActiveRun {
