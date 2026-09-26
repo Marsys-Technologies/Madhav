@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "7.6"
+version: "7.7"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -195,7 +195,7 @@ written to stop a third round.
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` (v1.0 SUPERSEDED — premature seal, floors stale, enrichment not folded) | 2.1 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 7.6 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 7.7 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -293,6 +293,19 @@ The orchestrator was built once and is FROZEN at `ORCHESTRATOR_CONVERGENCE_CLOSE
 - gets `chart_id` + `birth_params` from `ctx.config`.
 
 **If a writer seems to need a contract change → STOP and raise with the native.** The freeze is deliberate. See ORCHESTRATOR_CONVERGENCE_CLOSE §2 for the canonical type definitions.
+
+**KNOWN BREACH — "sole build-state writer" is doctrine, not present fact (recorded 2026-09-27,
+native-delegated decision D-1, campaign `nirmana-engine`).** Eight `ga_*` writer call sites reach
+`asset_throughput` directly through the legacy helper `ga_writers/_telemetry.py`, bypassing the
+orchestrator's write path. This predates the Nirmāṇa engine campaign, which found it but is forbidden
+from repairing it — closing it means editing writers, and that belongs to the asset campaign, not the
+engine campaign. Until it is closed, read the fourth bullet above as *the rule*, and this note as *the
+exception that currently exists*. Two consequences follow and must not be forgotten: assets built
+through that legacy path record a **NULL duration and rate** even after the engine began timing writers
+itself (A1); and any downstream guarantee resting on "the orchestrator is the sole build-state writer"
+inherits this gap. Disposition: **wire the duration through the 8 call sites in the asset campaign**,
+then delete this note. Full record, with the measured per-layer coverage and the two rejected
+alternatives: `00_ARCHITECTURE/briefs/nirmana/engine/DECISIONS_FOR_THE_NATIVE.md` §D-1.
 
 ### §N.3 — Idempotency standard per layer ([[feedback-idempotency-pattern-per-layer]])
 
@@ -394,7 +407,14 @@ usually true" or "nothing has broken yet" is not a substitute for a real detecto
 
 ---
 
-*End of CLAUDE.md v7.6 (2026-09-25, governance-simplification arc, native-authorized) — §D's
+*End of CLAUDE.md v7.7 (2026-09-27, native-delegated decision D-1, campaign `nirmana-engine`) — §N.2
+gains a **KNOWN BREACH** note. The contract's fourth bullet ("does NOT write `asset_throughput` itself —
+orchestrator is the sole build-state writer") is presently false: 8 `ga_*` writer call sites reach
+`asset_throughput` directly via `ga_writers/_telemetry.py`. This is pre-existing, was found by the
+engine campaign, and cannot be repaired by it — closing it means editing writers (the campaign's own
+stop condition). The native delegated the call; disposition is to wire the duration through those 8
+call sites in the **asset** campaign and then delete the note. No doctrine changed by this entry — the
+rule stands; the document now states where it is not yet true. Prior: *End of CLAUDE.md v7.6 (2026-09-25, governance-simplification arc, native-authorized) — §D's
 precedence paragraph rewritten. It said "Any disagreement between this file and CANONICAL_ARTIFACTS
 resolves in favor of CANONICAL_ARTIFACTS"; `drift_detector.py` §H.3.5 read that prose-precedence rule
 as naming a comparison target, was repointed onto CANONICAL_ARTIFACTS on 2026-08-22 (in a repair

@@ -1,8 +1,8 @@
 ---
 artifact: NIRMANA_ENGINE_DECISIONS_FOR_THE_NATIVE
 canonical_id: NIRMANA_ENGINE_DECISIONS_FOR_THE_NATIVE
-version: "1.3"
-status: OPEN — two entries, raised 2026-09-26, campaign continued around both
+version: "2.0"
+status: RESOLVED — both entries decided 2026-09-27 under explicit native delegation ("take the call on my behalf")
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md §8
 changelog: >
@@ -24,6 +24,11 @@ changelog: >
 
 # Decisions for the native — campaign `nirmana-engine`
 
+> **BOTH DECISIONS TAKEN, 2026-09-27.** The native delegated these explicitly: *"Please take the call
+> on my behalf on the two things that need my decision."* The rulings are recorded at the head of each
+> entry. The evidence below each ruling is unchanged from when the entry was raised — it is what the
+> decision was made on, and is left intact so the reasoning can be audited or reversed.
+
 Per the campaign prompt §8, a packet stops and records here when the work would require (1) changing
 the frozen `WriterBase` contract, (2) changing an asset's data, writer or algorithm, or (3) exposing a
 secret. **In every case the rest of the campaign continues.** Nothing here blocks another packet.
@@ -31,6 +36,29 @@ secret. **In every case the rest of the campaign continues.** Nothing here block
 ---
 
 ## D-1 · The legacy L1 telemetry path cannot be instrumented without editing writers
+
+> ### RULING — option (b), taken 2026-09-27 under native delegation
+>
+> **Wire the duration through the 8 `ga_*` call sites, in the ASSET campaign — not this one.** And
+> amend `CLAUDE.md` §N.2 **now** to say where it is not yet true, rather than leaving doctrine
+> formally false while the fix waits.
+>
+> **Why (b) over (a):** leaving it means the contract's "sole build-state writer" clause stays a
+> statement the codebase contradicts, and every downstream guarantee resting on it silently inherits
+> the gap. A rule nobody has noticed is broken is worse than a rule with a dated exception written
+> beside it.
+>
+> **Why (b) over (c):** retiring the legacy path is correct in principle but is a contract-boundary
+> change, and the native's own standing rule — the one already applied to D1's timing — is that the
+> asset contract must stop moving before things are tuned to it. (c) is the right eventual answer, not
+> the right one now.
+>
+> **What was done under this ruling:** `CLAUDE.md` amended to v7.7 with a **KNOWN BREACH** note in
+> §N.2 naming the 8 call sites, the two consequences, and the disposition. **No writer was edited** —
+> that remains the asset campaign's work and this campaign's stop condition §8(2).
+>
+> **What would reverse this:** evidence that the 8 call sites are themselves scheduled for retirement,
+> which would make (c) cheaper than (b).
 
 **Raised by:** packet A1 ("Record how long and how fast"), 2026-09-26.
 **Stop condition:** §8(2) — changing an asset's writer.
@@ -147,6 +175,30 @@ Phases B–D are untouched by it.
 ---
 
 ## D-2 · The analysis-receipt pins cannot be reconciled, and the blocker is not this campaign's
+
+> ### RULING — option (a), taken 2026-09-27 under native delegation
+>
+> **Leave the three tests red, attributed, and reconcile the pins in the workstream that owns that
+> artifact.** They will be named in the pull request description rather than left to be discovered.
+>
+> **Why (a):** the failures are precisely attributable — the reviewer proved that reverting one
+> generated file turns all fourteen green — and they were caused by a regeneration a *different* CI
+> gate demanded by name. An attributable red test is honest. It is also bounded: one test file.
+>
+> **Why not (b):** it cannot actually succeed. Re-pinning requires an `--authority-decision` **and**
+> ancestor commits that **do not exist in this repository at all** — `6c1a65e2`, `5142109f`,
+> `8c80cd46` are reachable from neither this branch nor `origin/main`. Authorising a supersession
+> would invalidate 29 frozen L0 capsules and *still* fail its own ancestry check. Buying a broken
+> outcome with a fabricated authorization is the exact unearned-claim defect this campaign exists to
+> remove.
+>
+> **Why not (c):** reverting A1's digest regeneration re-breaks the gate that demanded it, trading an
+> attributable red test for an unattributable one. Strictly worse.
+>
+> **What this ruling does NOT claim:** that the pins are fine. They are not — L4 and L5 have **no
+> layer pin at all**, and L3's archived pin already disagrees with its own immutable snapshot,
+> independently of anything this campaign did. That is a real, pre-existing defect in a governance
+> artifact and it is now on the record as one. It needs an owner; this campaign is not it.
 
 **Raised by:** packet A1's required digest regeneration, 2026-09-26.
 **Why it is here rather than fixed:** re-pinning is governance-gated and its precondition is absent.
