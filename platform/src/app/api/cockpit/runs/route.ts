@@ -4,6 +4,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
 import { resolveBuildPlan, computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
+import { terminalizeFailedRun } from '@/lib/build/terminalizeFailedRun'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
@@ -616,8 +617,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const errMsg = (err as Error).message
       console.error('[api/cockpit/runs] invokeRunJob failed after clear — marking run failed:', errMsg)
-      await query(`UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`, [errMsg, runId])
-      await query(`UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`, [runId])
+      await terminalizeFailedRun(runId, errMsg)
       // Note: data was already cleared; user will need to rebuild again after fixing the job issue
       return NextResponse.json(
         { error: 'Data cleared but build job failed to start', detail: errMsg, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
@@ -687,14 +687,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const errMsg = (err as Error).message
     console.error('[api/cockpit/runs] invokeRunJob failed — marking run failed:', errMsg)
-    await query(
-      `UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`,
-      [errMsg, runId]
-    )
-    await query(
-      `UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`,
-      [runId]
-    )
+    await terminalizeFailedRun(runId, errMsg)
     return NextResponse.json(
       { error: 'Failed to dispatch build job', detail: errMsg, run_id: runId },
       { status: 503 }

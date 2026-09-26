@@ -5,6 +5,13 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+// NOTE: deliberately not a static top-level import — this file's mock-hoisting
+// trick (vi.mock factories referencing mockQuery/mockVerifyOidcToken, declared
+// via plain `const` below rather than `vi.hoisted`) relies on route.ts only
+// ever being imported dynamically, inside each test body, AFTER those consts
+// have run. A static import here would force route.ts to load before they
+// exist. Grab the named export from the same dynamic `await import('../route')`
+// each test already performs instead.
 
 // ─── module-level mocks (must precede route import) ──────────────────────────
 
@@ -41,10 +48,9 @@ function noOrphans() {
   mockQuery
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 1. orphan running runs
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 2. stuck building assets
-    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 3. M-5: UPDATE build_run_assets SET error
-    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 4. undispatched planned runs
-    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 5. M-4: DELETE build_run_assets (retention)
-    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 6. M-4: DELETE build_runs (retention)
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 3. undispatched planned runs
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 4. M-4: DELETE build_run_assets (retention)
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 5. M-4: DELETE build_runs (retention)
 }
 
 // ─── A — auth gate ────────────────────────────────────────────────────────────
@@ -90,62 +96,82 @@ describe('POST /api/cockpit/watchdog — nothing to reap', () => {
 // ─── C — undispatched planned-run reaper (D2 fix) ────────────────────────────
 
 describe('POST /api/cockpit/watchdog — planned-orphan reaper (D2)', () => {
+  // Packet A2 ("Always record why it failed"): this reaper's build_runs UPDATE
+  // and its build_run_assets abort UPDATE used to be two separate query() calls
+  // (the second with no `error` clause at all — the packet's dominant defect,
+  // 295/301 empty-error records). They are now ONE combined CTE statement, so
+  // there is no longer a separate "5th query is the abort update" call to find —
+  // asserting on the single combined call's SQL + params instead.
+  //
+  // Correction pass (A2_review_20260926T123936Z.md §C1): M-5 was deleted
+  // outright (a run-age-only staleness proxy that stamped healthy in-flight
+  // assets), so it no longer occupies a mock slot here.
   it('marks planned runs failed and aborts their queued assets', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 1. running orphans
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 2. stuck assets
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 3. M-5 UPDATE build_run_assets SET error
-      .mockResolvedValueOnce({                                    // 4. undispatched planned
+      .mockResolvedValueOnce({                                    // 3. undispatched planned (combined CTE)
         rows: [
           { id: 'run-aaa', chart_id: 'chart-111' },
           { id: 'run-bbb', chart_id: 'chart-222' },
         ],
         rowCount: 2,
       })
-      .mockResolvedValueOnce({ rows: [], rowCount: 2 })          // 5. abort queued assets
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 6. M-4 DELETE build_run_assets
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 7. M-4 DELETE build_runs
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 4. M-4 DELETE build_run_assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 5. M-4 DELETE build_runs
 
-    const { POST } = await import('../route')
+    const { POST, UNDISPATCHED_RUN_MESSAGE } = await import('../route')
     const res = await POST(makeReq())
     expect(res.status).toBe(200)
 
     const body = await res.json()
     expect(body.undispatched_runs_failed).toBe(2)
 
-    // The 5th query (index 4) must be the build_run_assets abort update
+    // The 3rd query (index 2) is the combined statement: it fails build_runs AND
+    // aborts build_run_assets in one round trip, propagating the SAME message
+    // (bound once as $1) to both tables' error columns.
     const calls = mockQuery.mock.calls as [string, unknown[]][]
-    const assetAbortCall = calls[4]
-    expect(assetAbortCall[0]).toMatch(/UPDATE build_run_assets/)
-    expect(assetAbortCall[0]).toMatch(/aborted/)
-    // run IDs passed as array param
-    expect(assetAbortCall[1]).toEqual([['run-aaa', 'run-bbb']])
+    const undispatchedCall = calls[2]
+    expect(undispatchedCall[0]).toMatch(/UPDATE build_runs/)
+    expect(undispatchedCall[0]).toMatch(/UPDATE build_run_assets/)
+    expect(undispatchedCall[0]).toMatch(/state = 'aborted'/)
+    expect(undispatchedCall[0]).toMatch(/last_error = \$1/)
+    expect(undispatchedCall[0]).toMatch(/error = \$1/)
+    // the message is bound once and referenced from both UPDATEs (no run-id array
+    // param anymore — the WHERE clause selects the matching runs itself).
+    expect(undispatchedCall[1]).toEqual([UNDISPATCHED_RUN_MESSAGE])
   })
 
-  it('does not call asset-abort update when no planned orphans found', async () => {
+  it('the undispatched-reaper statement is unconditional but affects zero rows when nothing matches', async () => {
     noOrphans()
     const { POST } = await import('../route')
-    await POST(makeReq())
-    // 6 queries total: 3 reapers + M-5 UPDATE + 2 M-4 DELETEs; no asset-abort (7th) call
-    expect(mockQuery).toHaveBeenCalledTimes(6)
-    const calls = mockQuery.mock.calls as [string][]
-    // None of the 6 calls should be the asset-abort UPDATE (which targets aborted state)
-    expect(calls.every(c => !(/aborted/.test(c[0])))).toBe(true)
+    const res = await POST(makeReq())
+    // 5 queries total: 3 reapers (M-5 deleted, see A2_review_20260926T123936Z.md
+    // §C1) + 2 M-4 DELETEs. The combined statement always runs (it is a single
+    // WHERE-scoped UPDATE, not a conditional second call), but with nothing to
+    // match it reports 0 — the honest "ran, found nothing" case, not "never asked".
+    expect(mockQuery).toHaveBeenCalledTimes(5)
+    const body = await res.json()
+    expect(body.undispatched_runs_failed).toBe(0)
   })
 
-  it('undispatched reaper SQL targets planned + started_at IS NULL + created_at threshold', async () => {
+  it('undispatched reaper SQL targets planned + started_at IS NULL + created_at threshold, and binds the attributable message', async () => {
     noOrphans()
-    const { POST } = await import('../route')
+    const { POST, UNDISPATCHED_RUN_MESSAGE } = await import('../route')
     await POST(makeReq())
 
-    // M-5 UPDATE moved to slot 3 (index 2); undispatched is now slot 4 (index 3)
-    const calls = mockQuery.mock.calls as [string][]
-    const undispatchedCall = calls[3][0]
-    expect(undispatchedCall).toMatch(/state = 'planned'/)
-    expect(undispatchedCall).toMatch(/started_at IS NULL/)
-    expect(undispatchedCall).toMatch(/created_at/)
-    expect(undispatchedCall).toMatch(/10 minutes/)
-    expect(undispatchedCall).toMatch(/orphan-watchdog: run never dispatched/)
+    // M-5 deleted (A2_review_20260926T123936Z.md §C1); undispatched is slot 3 (index 2)
+    const calls = mockQuery.mock.calls as [string, unknown[]][]
+    const [undispatchedSql, undispatchedParams] = calls[2]
+    expect(undispatchedSql).toMatch(/state = 'planned'/)
+    expect(undispatchedSql).toMatch(/started_at IS NULL/)
+    expect(undispatchedSql).toMatch(/created_at/)
+    expect(undispatchedSql).toMatch(/10 minutes/)
+    // Packet A2: the message is now a bound parameter, not an inline SQL
+    // literal (so the SAME value reaches build_run_assets.error too) — assert
+    // on the param, not on SQL text containing the string.
+    expect(undispatchedParams).toEqual([UNDISPATCHED_RUN_MESSAGE])
+    expect(UNDISPATCHED_RUN_MESSAGE).toBe('orphan-watchdog: run never dispatched')
   })
 })
 
@@ -219,10 +245,9 @@ describe('POST /api/cockpit/watchdog — clause 1 false-kill fix', () => {
         rowCount: 1,
       })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 2. stuck assets
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 3. M-5 UPDATE build_run_assets
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 4. undispatched planned
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 5. M-4 DELETE build_run_assets
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 6. M-4 DELETE build_runs
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 3. undispatched planned
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 4. M-4 DELETE build_run_assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })            // 5. M-4 DELETE build_runs
 
     const { POST } = await import('../route')
     const res = await POST(makeReq())
