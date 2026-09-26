@@ -104,7 +104,7 @@ acts are the affirmative adoption of T2 §3.6 (D5) and the three re-seal signatu
 ## P9 · Layer-instance blockers (C8 cluster — the derivability mappings)
 
 - **Closes (primary rows; the ~100 remaining P4 rows are `depends_on` transcription rows that close with their primary):**
-  - **R85** — the P-need/V-journey → layer necessity mapping (the universal blocker behind tier-3 §0.1 on all five layers; 12 h). **D5 ruled 2026-09-27:** the session drafts a candidate matrix as new T2 §3.6 (§3.2 exists) — per cell the distinction lost, its supporting clauses and a judgement-vs-evidence tag, undetermined cells explicit; the native affirmatively adopts a named revision inside the T2 reopen (silence is not adoption); §0.1's necessity semantics stand; joint dependencies are recorded separately under §3.5's seams, with no adjacent-pair rows.
+  - **R85** — **re-scoped by D5 rev. 2.1 (native, 2026-09-27):** catalog provenance — name the producing asset(s) for the 170 of 182 catalog units that carry none (`capability_knowledge.snapshot.json` `producer_output_claims`; editorial.ts / compiler.ts), then compute the necessity closure over `asset_registry.depends_on` (today 63 of 127 active assets; all 23 ph/mi outside). The signed P/V × layer matrix is withdrawn: Pariprāśna's planner LLM chooses catalog units per question, so no static table is used. Plus **R218** — the planner P-need test (each of P01–P24 through `plan_retrieval`, PASS when every route's catalog unit has a named producer; 6 h) and **R221** — T3 §0.1 re-scoped to catalog units produced + closure position (2 h; T3 reopen agenda). No T2 §3.6. 12 + 6 + 2 h.
   - **R06 + R10 + R95/R96/R103/R136/R205-class** — multi-producer shared-table expression: a shared table declares its producers; each producer's `count_sql` scopes to its own rows; the layer plan names the counting owner (8 + 4 h + transcription).
   - **R09 + R16** — per-asset carriage-check assignment (C-9, confirmed on all five non-reference layers; 6 + 2 h). Needs **D2** (sealed tier-3 reopen).
   - **R08** — tier-3 §5.2's undefined "§7" and the §2.5/§2.7 order (2 h; D2).
@@ -114,7 +114,7 @@ acts are the affirmative adoption of T2 §3.6 (D5) and the three re-seal signatu
 - **Proof:** the Phase-4 derivability test re-run — a fresh reader derives each layer-instance skeleton (Parts 0, 1.1, 2.1–2.7, 4.4 inheritance) from tiers 1–4 + census only, and the invention count per layer goes to **0** (baseline: L1 15 · L2 30 · L3 49 · L4 18 · L5 18 = 130, `derivations/L*_INVENTIONS.md`).
 - **Dependencies:** P4 (the census must emit the fields these mappings are read through); the D2 reopens (ruled 2026-09-27; agenda in `nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md` D2, seal order T1 → T2 → T3; R131/R210/R214 explicitly deferred to a second round after this packet's derivability re-run); D3 and D5 (ruled).
 - **Effort:** primaries ≈ **157 h** + transcription rows (~97 rows × 0.5–2 h ≈ **55 h**) ≈ **212 h**.
-- **Who decides:** D2, D3 and D5 ruled 2026-09-27; the native's remaining acts are the affirmative adoption of §3.6 and the three re-seal signatures; executor for the census/registry machinery.
+- **Who decides:** D2, D3 and D5 ruled 2026-09-27; the native's remaining acts are review of the R218 planner-test output per P-need and the three re-seal signatures (§3.6 withdrawn by D5 rev. 2.1); executor for the census/registry machinery.
 
 ## P10 · The builder's own elevation plan — last
 

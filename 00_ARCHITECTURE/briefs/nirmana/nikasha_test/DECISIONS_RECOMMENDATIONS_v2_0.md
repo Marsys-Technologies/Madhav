@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_TEST_DECISIONS_RECOMMENDATIONS
 canonical_id: NIKASHA_TEST_DECISIONS_RECOMMENDATIONS
-version: "2.0"
+version: "2.1"
 status: FINAL — rulings adopted 2026-09-27 under native delegation ("use Fable to reconcile it and freeze it"); DECISIONS_FOR_THE_NATIVE.md carries each ruling verbatim
 produced_on: 2026-09-27
 campaign_id: nikasha-test
@@ -19,6 +19,7 @@ evidence_snapshots: >
   last_error 288/419 (761 runs); asset_throughput.duration_seconds ABSENT; build_run_assets.blocked_by_asset_id
   ABSENT — nothing from the engine branch is deployed.
 changelog:
+  - "2.1 (2026-09-27, native revision of D5): the native ruled the frozen D5 wrong in kind — Pariprāśna's planner LLM decides per question which catalog units it needs, so a static question→layer table measures nothing the system uses. D5 rewritten: necessity = catalog provenance + upstream DAG closure, computed (63/127 today); P-needs become the planner test; T3 §0.1 re-scoped (R221); no T2 §3.6. Register R218–R221 added; R85 re-scoped; D2 agendas amended (R85 off T2, R221 on T3). D1–D4, D6 untouched."
   - "2.0 (2026-09-27): FINAL. Every review finding re-verified against the cited file:line / commit / code rather than taken on trust. 33 findings (26 numbered + 7 in §4): 31 UPHELD, 2 PARTLY UPHELD (D4.5, D6.5), 0 REBUTTED; all 27 fact-table verdicts confirmed. D1, D4 and D6 rulings rewritten; D2, D3 and D5 corrected in place. Supersedes v1.0."
 ---
 
@@ -118,7 +119,7 @@ withdrawn → acceptance packets; "one instrumented build" → representative pa
 >   rename to `document_reviews` **and** one glossary line — T1 has no glossary section, so the
 >   agenda names where the line lands, recommended §16).
 > - **T2** (data plane): R06 (multi-producer clause — §7.1 or §13.3, chosen on the agenda), R73 and
->   R75 (frontmatter counts), R85 (D5 — new **§3.6**, because §3.2 already exists), R88 (§9.2
+>   R75 (frontmatter counts), R85 (D5 rev. 2.1: **withdrawn from the T2 agenda** — necessity is computed from the catalog; no §3.6 is created), R88 (§9.2
 >   per-layer switch behaviour), R89 (§3.4 carried-by-layer column), R90 (§5 per-layer obligation
 >   enumeration), R91 (per-layer entity classes), R119's T2 half (the [TRANSFERS] tag at §13.3 items 1
 >   and 6 and on the §12.2/DP rows where a layer plan reads them), and the §7.1 text halves of
@@ -129,7 +130,8 @@ withdrawn → acceptance packets; "one instrumented build" → representative pa
 >   "align on nine" or "record the six-plus-three split", chosen on the agenda), R67, R68's T3 half
 >   (:359/:520 spelling), R71 (D3's text at §5.4 test 4 **and** §2.2 `measured_by`; R94/R140/R185 close
 >   with it), R74 (§5.1 ruling-11 clause), R93 (§3.2 evidence→disposition rule and preserved kernels),
->   R120 (§4.4 role row; R192/R208 close with it), R201 (§2.3 names the source of declared use).
+>   R120 (§4.4 role row; R192/R208 close with it), R201 (§2.3 names the source of declared use),
+>   R221 (§0.1 re-scoped to catalog units produced and closure position — D5 rev. 2.1).
 > - **Explicitly deferred to a second reopen round**, after P9's derivability re-run makes their remedy
 >   text known: R131 (§0.2 external comparison), R210 (default per-obligation detectors), R214 (§0.3
 >   migration-pin location). They stay OPEN; no sealed row is silently outside this ruling.
@@ -263,6 +265,43 @@ withdrawn, R57's port gains acceptance cases, and the cost is raised honestly.
 
 **Ruling (adopted 2026-09-27):**
 
+> **Necessity is a property of the catalog, not of questions — and it propagates upstream through the
+> build DAG.** (Native revision 2.1, 2026-09-27, superseding the 2.0 text below-the-line.) Pariprāśna
+> answers a question by a planner LLM searching the semantic capability catalog
+> (`platform/src/generated/capability_knowledge.snapshot.json`, 182 SCUs; `planner_projection.ts`) and
+> choosing retrieval tools per query; a synthesis LLM then answers. No static question→layer or
+> question→asset mapping exists or can: which information a question needs is decided per question, by
+> the planner. A signed P/V × layer matrix therefore measures nothing the system uses, and is withdrawn.
+>
+> What replaces it, in four parts:
+>
+> 1. **Catalog completeness.** Everything an asset produces that the planner could need must appear in
+>    the catalog — the asset template's completeness (§1.1) and reachability (§1.2) measurements,
+>    unchanged.
+> 2. **Catalog provenance.** Every catalog unit names the asset(s) that produce or part-produce it
+>    (`producer_output_claims`). Today **12 of 182** units do, naming 15 assets. R85 becomes this job.
+> 3. **Necessity, computed.** An asset is necessary if it produces or part-produces any catalog unit,
+>    **or** lies upstream in the build DAG (`asset_registry.depends_on` — the DAG the orchestrator walks;
+>    `build_dependencies` is a dead pre-rename table, R219) of any asset that does: the transitive
+>    closure from the catalog's producer claims. Under completeness there is no "sole producer" test —
+>    two full producers of one unit is a §9 consolidation opportunity, never a necessity failure.
+>    Measured 2026-09-27 on today's catalog: **63 of 127 active assets necessary, 64 not reachable** —
+>    all 23 Phala/Mīmāṃsā, 21 L0, 9 L3, 6 L1, 4 L2. An asset outside the closure is first a
+>    catalog-provenance finding (part 2); only once every unit names its producers is it a merge/retire
+>    candidate.
+> 4. **The P-needs are the test, not the map.** Each of P01–P24 is run through `plan_retrieval`; the
+>    test passes when the plan resolves to capabilities whose catalog units carry named producers
+>    (R218). The native's judgement is exercised where it genuinely lives — the P-needs themselves
+>    (T1 §2, already the native's) and acceptance of each planner plan — not on 220 cells.
+>
+> Tier-3 §0.1 is re-scoped on the T3 reopen agenda (R221): from "P-needs and V-journeys this layer is
+> necessary for" to "the catalog units this layer's assets produce or part-produce, and the layer's
+> place in the necessity closure" — a derived section, filled from parts 2–3, never judged. The clause
+> whose unanswerability produced the 130 invention rows is retired with its cause. **No T2 §3.6 is
+> created.** Layer instances inherit the computed closure and narrow, never invent.
+
+**Superseded 2.0 text (kept for the record):**
+
 > **The native owns the necessity judgement; the session prepares it; nothing is adopted by silence.**
 > The session drafts a candidate necessity matrix as new **T2 §3.6 "Necessity — P/V × layer"** (§3.2
 > already exists and is cited widely; nothing is renumbered): P01–P24 and V01–V13 against L0–L5. Each
@@ -293,6 +332,11 @@ withdrawn, R57's port gains acceptance cases, and the cost is raised honestly.
 **What changed from v1.0:** §3.2 → §3.6; ratify-by-exception → affirmative adoption of a named
 revision; adjacent-pair rows dropped for separately-recorded joint dependencies; §3.1 demoted to
 support; the effort framing corrected.
+
+**What changed in 2.1 (native revision):** the signed matrix is withdrawn — Pariprāśna's planner
+LLM maps questions to catalog units per query, so no static question→layer table is used anywhere;
+necessity moves to the catalog (provenance + DAG closure, computed) with the P-needs as a behavioural
+test; §0.1 re-scoped; no §3.6.
 
 ---
 

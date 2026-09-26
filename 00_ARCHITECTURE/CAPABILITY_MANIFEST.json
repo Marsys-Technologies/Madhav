@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-27T01:50:03+05:30",
+  "generated_at": "2026-09-27T03:49:12+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "cd25819e80aa93e6",
+  "fingerprint": "c75a50c892496ea2",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "4d9cbddaf76a1b4ce973ca8919aa0ec6a90171ba149db1a67f1d490731416272",
+      "fingerprint": "03c422cd1db9ab5dddefd96eae977e5da855b95df5aa57e9243f290830541cae",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-DECISIONS-FREEZE-20260927",
+      "last_verified_session": "NIKASHA-D5-REVISION-20260927",
       "last_verified_on": "2026-09-27",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
@@ -2024,9 +2024,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "1efafd894ea3c48ff9a476d1fa59b8a9dcf0f04a24a5a2d78aaa86bbf82f3627",
+      "fingerprint": "b3fe92f028b81f54099a5812f1e7bbeccf438b654add16a834be6384faabf827",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-DECISIONS-FREEZE-20260927",
+      "last_verified_session": "NIKASHA-D5-REVISION-20260927",
       "last_verified_on": "2026-09-27",
       "note": "10 ordered packets from the nikasha-test campaign, ~365h"
     },
@@ -2058,9 +2058,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "23f20ced596de52fab1ec59777243dd87fca694a214d8b7b695df736cbb54bb0",
+      "fingerprint": "87f96c196b10101938a71841a83c64281295aa9a5d896bd701a99f8290532946",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-DECISIONS-FREEZE-20260927",
+      "last_verified_session": "NIKASHA-D5-REVISION-20260927",
       "last_verified_on": "2026-09-27",
       "note": "6 native-only decisions with recommendations and option costs"
     },

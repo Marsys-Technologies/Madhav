@@ -1,12 +1,13 @@
 ---
 artifact: NIKASHA_CHANGE_REGISTER
 canonical_id: NIKASHA_CHANGE_REGISTER
-version: "2.0"
+version: "2.1"
 status: LIVING
 supersedes: NIKASHA_CHANGE_REGISTER_v1_0.md
 produced_on: 2026-09-26
 decision_owner: Native
 changelog:
+  - "2.1 (2026-09-27, D5 native revision): R85 re-scoped to catalog provenance + DAG closure (the P/V × layer matrix is withdrawn — the planner LLM maps questions to catalog units per query); R218 planner test, R219 dead `build_dependencies`, R220 active population 127, R221 T3 §0.1 re-scope (§2.10). Totals 217 → 221; OPEN 198 → 202."
   - "2.0 (2026-09-27, NIKASHA-DECISIONS-FREEZE-20260927): rulings D1–D6 applied per nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md — R34/R36 → CLOSED_ON_BRANCH (engine A1/A3) with residuals; R35/R37/R38 re-owned to engine A2/C1/B1 with residuals; R215–R217 added (§2.9); R55 re-specified (D6); R57 amended and R78–R81 re-scoped (D4; R79 not withdrawn); R71 remedy fixed with R94/R119/R140/R185 (D3); R85 → T2 §3.6 (D5); every sealed-tier row annotated with its D2 reopen or explicit deferral; state vocabulary gains CLOSED_ON_BRANCH; counts re-totalled to 217. Version stays 2.0 (LIVING; in-place update, as R82's P7 close was)."
   - "2.0 (2026-09-26): v1.0 rows carried forward; R85–R214 added from the Phase-4 derivability pass."
 system_name: "Nikaṣa (निकष) — the touchstone: the stone gold is rubbed against to test whether it is what it claims to be. Chosen because the system's one rule is that a claim carries a detector that could return false."
@@ -37,13 +38,13 @@ is a register row here (R85–R214), quoted against the clause that failed to pr
 
 ## 0 · Index
 
-**Total rows: 217** (R01–R84 carried from v1.0; R85–R214 added in v2.0 from P4 derivations; R215–R217 added by the 2026-09-27 rulings, §2.9).
+**Total rows: 221** (R01–R84 carried from v1.0; R85–R214 added in v2.0 from P4 derivations; R215–R217 added by the 2026-09-27 rulings, §2.9; R218–R221 added by the D5 revision 2.1, §2.10).
 
 ### 0.1 · Count by state
 
 | state | count |
 |---|---|
-| OPEN | 198 |
+| OPEN | 202 |
 | CLOSED_ON_BRANCH | 2 |
 | DONE | 15 |
 | CLOSED | 1 |
@@ -54,8 +55,8 @@ is a register row here (R85–R214), quoted against the clause that failed to pr
 | severity | count | meaning |
 |---|---|---|
 | BLOCKS_FREEZE | 12 | freeze criterion cannot be met while open (closure loop, gate integrity, silent coverage, contradictions) |
-| BLOCKS_LAYER | 109 | a layer instance/brief cannot be derived from the tiers without inventing content |
-| DEGRADES | 84 | system runs but evidence/verdicts are wrong, incomplete, or misleading |
+| BLOCKS_LAYER | 111 | a layer instance/brief cannot be derived from the tiers without inventing content |
+| DEGRADES | 86 | system runs but evidence/verdicts are wrong, incomplete, or misleading |
 | COSMETIC | 12 | wording, ordering, stale figures; no measurement impact |
 
 ### 0.3 · Where the rows live
@@ -239,7 +240,7 @@ rest `depends_on` it.
 
 | # | change (what → clause → proposed) | surfaced by | severity | depends_on | effort_h | state |
 |---|---|---|---|---|---|---|
-| R85 | Per-layer necessity set over P01–P24/V01–V13 (which rows cannot be answered without L1). Clause (T3 §0.1): "List the P-needs and V-journeys for which this layer is **necessary** — not "involved in", not "contributes to", but *cannot be answered without*." → Add to T2 §3.1 (or T1 §11) a per-layer "necessary for P/V" column derived from the DP-contract ↔ P/V mapping; a layer instance then narrows, never invents | nikasha-test P4 derivability L1 | BLOCKS_LAYER | — | 12 | OPEN — D5 ruling 2026-09-27: lands as new T2 §3.6 (§3.2 already exists) — session-drafted candidate matrix, per cell the distinction lost / supporting clauses / judgement-vs-evidence tag, undetermined cells explicit; the native affirmatively adopts a named revision inside the T2 reopen (silence is not adoption); §0.1 semantics stand; joint dependencies recorded separately under §3.5's seams, no adjacent-pair rows |
+| R85 | **Re-scoped per D5 rev. 2.1 (2026-09-27):** catalog provenance — every SCU in `platform/src/generated/capability_knowledge.snapshot.json` names the asset(s) that produce or part-produce it (`producer_output_claims`; today 12 of 182 units, 15 assets), then the necessity closure is computed over `asset_registry.depends_on` (63 of 127 active assets today; 64 outside — all 23 ph/mi, 21 bg, 9 ka, 6 ga, 4 bo). Replaces the withdrawn P/V × layer matrix: Pariprāśna's planner LLM maps questions to catalog units per query, so no static table is used by the system. Original clause (T3 §0.1) is re-scoped by R221 | nikasha-test P4 derivability L1; re-scoped by native ruling 2026-09-27 | BLOCKS_LAYER | — | 12 | OPEN — per D5 rev. 2.1; lands in P9 (effort unchanged, job changed); no T2 §3.6 |
 | R86 | Seed and migration-pin DAG readings; census emits only the live-registry view. Clause (T3 §0.3): "measured_by: registry depends_on reconciled across seed, migration pin AND live asset_registry — state all three and any disagreement" → Extend the census with `depends_on` as read from (a) registry seed, (b) migration pin, (c) live asset_registry; emit the disagreement set per asset | nikasha-test P4 derivability L1 | BLOCKS_LAYER | — | 6 | OPEN |
 | R87 | Deployed-vs-current-code half of the three-way baseline, per asset. Clause (T3 §1.1): "whether current code on any live head differs from what is deployed" → Census gains a per-asset field: deployed schema hash vs newest live-head writer hash, with the commits named | nikasha-test P4 derivability L1 | BLOCKS_LAYER | — | 6 | OPEN |
 | R88 | L1's life-event switch behaviour (what a computation layer emits when the switch is OFF). Clause (T3 §2.1): "The life-event switch: what this layer may do when ON, what it emits when OFF, and the storage separation that makes OFF a selection rather than a rebuild." → State in T2 §9.2, per layer: L1 computes identically under both states; the switch binds consumers (L2+), not the fact layer; detector: birth-fact immutability per (chart_id, input revision) | nikasha-test P4 derivability L1 | BLOCKS_LAYER | — | 3 | OPEN — T2 reopen agenda (D2 ruling 2026-09-27) |
@@ -397,6 +398,15 @@ rest `depends_on` it.
 | R215 | A campaign checks `CURRENT_STATE_v1_0.md` and the sibling worktrees (`/Users/Dev/madhav-*`) for concurrent campaigns on the same surface at session open, and records what it found in its session_open | D1 ruling 2026-09-27 (Nikaṣa and the engine campaign ran the same day on the same orchestrator surface, neither reading the other) | DEGRADES | — | 1 | OPEN — per D1 ruling 2026-09-27; lands in P7 |
 | R216 | `platform/scripts/governance/asset_census.py` is changed by engine B1 (`17e5a1257`, +75 lines: blocked-dependency classification and its tests) and again by P4/P6 — P4 rebases on B1's diff before any detector change lands and keeps B1's census tests green | D1 ruling 2026-09-27 (review §4.4, verified by `git show --stat 17e5a1257`) | BLOCKS_LAYER | — | 2 | OPEN — per D1 ruling 2026-09-27; first item in P4 |
 | R217 | `build_runs.last_error` is never written by `mark_run_state` (`runner.py:408–425`: `UPDATE build_runs SET state = %s[, ended_at = NOW()] WHERE id = %s`) on the failed-assets path (:1450), the exception path (:1456) or the writer-gap path (:1240); only `_terminalize_preflight_failure` (:327) and the TypeScript `terminalizeFailedRun` / watchdog CTEs write it. This is the residual behind the 288/419 silent runs after engine A2, which fixed `build_run_assets.error` (301 asset rows), not the run row | D1 ruling 2026-09-27 (review D1.1, verified in the engine worktree @ 73385d72f) | BLOCKS_LAYER | R35 | 2 | OPEN — engine-owned (runner.py is engine surface; the engine campaign's STATE must pick it up — relayed, not edited from here); tracked in P1 with A2's acceptance |
+
+### 2.10 · Rows added by the D5 revision 2.1 (native, 2026-09-27)
+
+| # | change | surfaced by | severity | depends_on | effort_h | state |
+|---|---|---|---|---|---|---|
+| R218 | Planner P-need test: run each of P01–P24 through `plan_retrieval`; PASS when the plan resolves to capabilities whose catalog units carry named producers (R85). This behavioural test replaces the signed necessity matrix; its per-P-need output is what the native reviews | D5 rev. 2.1 (planner_projection.ts: planner searches the SCU snapshot per query — no static mapping) | BLOCKS_LAYER | R85 | 6 | OPEN — per D5 rev. 2.1; lands in P9 |
+| R219 | `build_dependencies` is a dead pre-rename table (ids `A1`/`A10`, layer `L25`, `category_prefix a1_`; 75 edge rows with **zero** overlap against `asset_registry.depends_on`'s 344) — mark dead / drop; every DAG reader (census closure, cockpit, docs) must use `asset_registry.depends_on`, the DAG the orchestrator walks | D5 rev. 2.1 closure measurement 2026-09-27 (first closure ran on it and expanded 12→12) | DEGRADES | — | 1 | OPEN — per D5 rev. 2.1; lands in P6 |
+| R220 | Active-asset population: `is_active AND NOT dead_flag` = **127**, while tier 4 and the census count 129 registry rows; identify the two and scope every population figure (closure, 9×N gate cells, census totals) to the active set, stating the population | D5 rev. 2.1 closure measurement 2026-09-27 | DEGRADES | — | 1 | OPEN — per D5 rev. 2.1; lands in P4 |
+| R221 | T3 §0.1 re-scoped on the T3 reopen agenda: "P-needs and V-journeys this layer is necessary for" → "the catalog units this layer's assets produce or part-produce, and the layer's place in the necessity closure" — a derived section filled from R85, never judged; retires the clause that produced the 130 P4 invention rows | D5 rev. 2.1 | BLOCKS_LAYER | R85 | 2 | OPEN — per D5 rev. 2.1; on the D2 T3 agenda |
 
 ## 3 · The native's staleness hypothesis, tested
 
