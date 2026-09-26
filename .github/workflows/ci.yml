@@ -652,6 +652,33 @@ jobs:
           NIRMANA_L0_GOCHARA_CITATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_gochara_citation_test
         run: npx vitest run tests/unit/migrations/nirmana_l0_gochara_citation_chunk_repair.test.ts --reporter=verbose
 
+      - name: Nirmāṇa B2 — provision the migration 1096 downstream-dependents test DB
+        # Dedicated disposable database on this job's local postgres:16 service.
+        # The test's own beforeAll refuses to run against anything but a database
+        # named vw_downstream_test, so it cannot target production accidentally.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE vw_downstream_test;"
+
+      - name: Nirmāṇa B2 — vw_asset_downstream_dependents (migration 1096) against real Postgres
+        # Packet B2 correction C-2 (review B2_review_20260926T202916Z.md):
+        # tests/integration/vw_asset_downstream_dependents.db.test.ts previously ran
+        # ONLY by hand — a plain `vitest run` reported it 100% skipped, and this env
+        # var appeared nowhere in this file. Wired in here, mirroring the exact
+        # provision-then-run pattern every other tests/integration/*.db.test.ts
+        # suite in this job already uses. Proves: the migration's real SQL applied
+        # to a fresh Postgres agrees with an independent JS BFS and with plan.ts's
+        # own real computeDownstreamClosure() over the real 129-row production
+        # registry (fixtures/b2_real_registry_20260927.json, frozen 2026-09-27,
+        # read-only export); the corrected top-5 and the three C-1 category-flip
+        # assets; and a real detector for the UNION-ALL drift the review measured
+        # exhausts a 512 MB temp_file_limit in 3.1s on the live graph.
+        env:
+          VW_DOWNSTREAM_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vw_downstream_test
+        run: npx vitest run tests/integration/vw_asset_downstream_dependents.db.test.ts --reporter=verbose
+
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
       # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/

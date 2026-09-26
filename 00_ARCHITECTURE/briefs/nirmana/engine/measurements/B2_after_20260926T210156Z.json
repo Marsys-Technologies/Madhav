@@ -1,0 +1,74 @@
+{
+  "packet": "B2",
+  "phase": "after",
+  "taken_by": "independent reviewer, re-derived live; the B2-R-1 acceptance run executed by the executor",
+  "taken_at_utc": "2026-09-27T02:30Z",
+  "db_posture": "read-only against production (transaction_read_only=on); all writes confined to throwaway local databases, created and dropped",
+
+  "premise_partly_falsified_and_recorded_as_such": {
+    "packet_own_proof_bar": "MET - the figure matches an independent recomputation from depends_on, three separate ways (recursive CTE, Python BFS, and the real imported plan.ts traversal)",
+    "the_expectation_it_failed": "it does NOT predict observed cascades. ga_dashas has the 2nd-largest radius yet ranks LAST in observed citations; ph_nimitta has the SMALLEST in that set yet ranks 2nd. Real cascades track how often an asset CRASHED, not graph shape.",
+    "how_this_is_reported": "as an expectation the EXECUTOR added, not as a packet failure. The figure is presented as an upper bound on what COULD be blocked, never as a prediction of what HAS been - and that caveat is in the rendered text, not only in a doc."
+  },
+
+  "primary_after_figure_live_top_5": {
+    "instrument": "migration 1096 applied verbatim to a throwaway Postgres loaded with the real registry, cross-checked against an independent Python BFS and against production read-only",
+    "ga_positions": 79,
+    "bg_ontology": 69,
+    "bg_reference": 62,
+    "ga_dashas": 61,
+    "ga_vargas": 61,
+    "distribution": {"0": 39, "1-5": 18, "6-20": 18, "20+": 54},
+    "correction_from_diagnosis": "ga_positions is 79, NOT the 80 the before-measurement recorded. The diagnosis counted over all 129 registry rows; the shipped view counts over the 127 ACTIVE ones, which is the population the consumer's own response contains."
+  },
+
+  "the_correction_that_mattered": {
+    "finding": "the view and plan.ts's transitiveDownstream() disagreed on 13 of 129 assets in production",
+    "cause": "plan.ts runs over what runs/route.ts loads (WHERE is_active = true, 127 rows); the unfiltered view counted all 129",
+    "concrete_harm": "bg_sky_calendar, ka_kota_chakra and ka_tithi_pravesha - all live, CURRENT, active - read 'could affect up to 1 downstream' where the 1 was a RETIRED asset nothing will ever rebuild. stats/route.ts uses the same is_active filter for its own asset list, so the route would have shipped a count over a population its response does not contain.",
+    "fix": "is_active filters on BOTH the edge source and the outer list",
+    "why_this_was_caught": "the executor instructed reuse of plan.ts's existing traversal; the builder wrote SQL instead (defensible - a view must be SQL), so the executor asked the gate whether the two actually agree rather than accepting the reasoning"
+  },
+
+  "the_semantic_question_settled": {
+    "question": "with the edge source filtered, is a chain A -> I(inactive) -> B severed or traversed?",
+    "answer": "SEVERED - and plan.ts severs identically",
+    "how_established": "the reviewer BUILT the case rather than inferring it: a registry A <- I(inactive) <- B plus a control A <- M <- C, real migration applied to a throwaway Postgres. Shipped view: A = 2 (B excluded). Real imported computeDownstreamClosure over the is_active population: A = 2. Control with plan.ts given all rows including inactive: A = 4.",
+    "verdict": "agreement BY CONSTRUCTION, not luck - the mechanisms are isomorphic (the view drops inactive rows from the edge source; transitiveDownstream never iterates them)",
+    "semantics_sustained": "B sits behind something nothing will ever build, so counting it would tell an operator that rebuilding A unblocks what it cannot"
+  },
+
+  "B2_R_1_the_proof_that_could_not_fail": {
+    "finding": "no such path exists live - both inactive assets are pure sinks, and the fixture's inactive asset was also a sink. So the 127-asset comparison NEVER EXERCISED SEVERANCE, and neither did the fixture.",
+    "consequence": "the reviewer built the non-severing variant and ran it against the corrected suite: 11 passed. NOTHING could tell the two apart - a proof that cannot fail on the exact axis the whole C-1 correction turns on.",
+    "fix": "one fixture row - beyond_inactive, depends_on ['inactive_dependent'], is_active true. No test logic changed; the file's own BFS already severs.",
+    "acceptance_run_executed_by_the_executor": {
+      "shipped_severing_view": "11 passed / 11",
+      "non_severing_variant": "5 failed / 6 passed",
+      "failing_tests_named": ["agrees with an independent JS BFS for every ACTIVE asset", "an inactive dependent never inflates its active ancestor's count", "the view over the REAL 129-row registry agrees with the REAL computeDownstreamClosure on all 127 active", "the three named category flips now read a real 0", "the corrected top-5 matches ga_positions=79"],
+      "migration_restored": "sha256 fc6cf197fd75c766e3ef54f4bd9106e1af6fc631dbced083d3c74bddedfe6a7f, byte-identical before and after"
+    }
+  },
+
+  "n8_moved_to_presentation": {
+    "why": "a view has nothing to go stale, which is why it was chosen over a table - no detector walks ancestors, so a stored value would have exactly the 'detector checks a proxy' defect",
+    "burden_discharged": "absent -> renders nothing; 0 -> 'no downstream impact'; >0 -> 'could affect up to N downstream (upper bound, not a prediction)'",
+    "caveat_is_in_the_surface": "verified - stripping the caveat text turns a test red",
+    "union_detector_added": "UNION -> UNION ALL previously stayed green. It now fails in 199 ms naming the real duplicate pairs (diamond_join, root_a) n=2 and (final, root_a) n=2. The reviewer measured that this mutation exhausts a 512 MB temp_file_limit in 3.1 s on the real graph - the regression that would take the poll down."
+  },
+
+  "measured_costs_disclosed": {
+    "latency": "+30-200 ms per poll, measured live by the reviewer (80/163/266 ms vs ~50 ms baseline across three runs); independently corroborated by the implementer at the same order of magnitude. The implementer's first report did not quantify it at all.",
+    "ci": "the DB suite was skipIf-gated and absent from ci.yml - it passed only by hand. Now wired into the existing db-integration-tests job, and the reviewer RAN it rather than parsing it, dropping both the database and the amjis_app role first so the role was genuinely absent as in a fresh container: 11/11 including role creation and the grant assertion."
+  },
+
+  "certification_carried_verbatim_not_softened": {
+    "certified": "no live surface currently mislabels blocked/partial/incomplete",
+    "refused": "labelling is NOT certified closed to regression",
+    "reasons_named": ["AtlasView.tsx:17 and LiveDependencyGraph.tsx:18 still carry hand-maintained copies of the AssetState union, and BOTH have already drifted once during this campaign", "AtlasView's summary has no exhaustiveness witness", "/api/cockpit/runs/[id]/assets still returns raw state='error' for a cascade victim - adding disposition made it disposition-CAPABLE, not disposition-IMPOSING"]
+  },
+
+  "honesty_note": {
+    "flake_discrepancy": "the implementer could not reproduce the reviewer's 4 load-flakes across two runs and said so plainly rather than fabricating a reproduction. The reviewer then re-ran clean and got 3 failed / 12,473 passed, sole failing file D-2's - and recorded that ITS OWN earlier 7-failed figure was the loaded-machine reading and the implementer's was exactly right."
+  }
+}

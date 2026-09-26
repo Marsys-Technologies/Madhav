@@ -2,7 +2,20 @@
 // export more than GET/POST/route-config — Next's build-time route-shape check forbids any
 // other export from a route.ts file, which is why this logic cannot live there directly).
 
-export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down' | 'blocked'
+// Packet B2 — C-3 (review B1_rereview2_20260926T193112Z.md): a runtime array
+// declared alongside the type, with the TYPE derived FROM the array (not the
+// reverse) so the two literally cannot drift — a hand-maintained second list would
+// itself be the "no detector checks the actual claim" defect class (§N.8) this
+// fix exists to close. This is the runtime source of truth a test needs to prove
+// "every AssetState has a mapping" in some other module (e.g. AssetProgressBar's
+// SEG) — TypeScript types don't exist at runtime, so a test asserting exhaustive
+// coverage needs a real value to iterate, not just a type.
+export const ALL_ASSET_STATES = [
+  'lit', 'building', 'stale', 'dormant', 'error', 'partial', 'incomplete',
+  'not_migrated', 'service_ok', 'service_down', 'blocked',
+] as const
+
+export type AssetState = typeof ALL_ASSET_STATES[number]
 
 // Badge-honesty defect (pre-D-4b readiness pass, native-flagged, 2026-07-21): a HEAVY
 // (has_substeps=true) writer whose build hit its own writer_timeout_seconds mid-materialization

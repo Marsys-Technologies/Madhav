@@ -6,6 +6,7 @@ import { deriveState } from './deriveState'
 import type { AssetState } from './deriveState'
 import { readSqlScalarMetric } from './scalarMetric'
 import { blockedByAssetIdColumnPresent } from '@/lib/db/columnPresence'
+import { downstreamDependentsViewPresent } from '@/lib/db/viewPresence'
 import { errorFromThroughput } from './throughputError'
 import type { ThroughputEntry } from './throughputError'
 
@@ -59,6 +60,27 @@ export interface AssetStats {
   // correctly. Surfaced so an operator (or a future UI) can drill straight to the
   // real cause instead of re-deriving it from prose.
   blocked_by_asset_id?: string | null
+  // Packet B2 ("the DAG-derived downstream count"). Sourced from
+  // vw_asset_downstream_dependents (migration 1096) — the size of the reverse-
+  // transitive-closure of asset_registry.depends_on rooted at this asset, i.e.
+  // how many OTHER ACTIVE assets would need a rebuild if this one's data changed.
+  // ACTIVE is load-bearing, not incidental: the view filters is_active on BOTH the
+  // edge source and the outer list, so a chain through an inactive asset is SEVERED
+  // rather than traversed. That matches plan.ts's transitiveDownstream() by
+  // construction (it never iterates inactive rows), and it is the honest semantic -
+  // an asset sitting behind something nothing will ever build is not unblocked by
+  // rebuilding this one. Without the filter the view and the planner disagreed on
+  // 13 of 129 real assets.
+  // An UPPER BOUND on what a failure of this asset COULD affect, NEVER a
+  // prediction of what an actual failure HAS affected or WILL affect — the
+  // packet's own before-measurement found this static DAG figure does not
+  // predict which failures historically cascaded hardest (that is driven by
+  // incident frequency, not graph shape). Every render of this field must carry
+  // that caveat in the same place the number appears (see AssetRow.tsx).
+  // 0 is a real, honest answer ("no downstream impact" — a genuine leaf asset).
+  // null means "not computed this poll" (the view is absent in this environment,
+  // pending migration 1096, or the query itself failed) — NEVER conflated with 0.
+  downstream_dependent_count?: number | null
 }
 
 interface RegistryAsset {
@@ -110,6 +132,7 @@ async function fetchAllCounts(
         build_state_stale: false,
         service_health: asset.service_health ?? null,
         last_invoked_at: asset.last_invoked_at ?? null,
+        downstream_dependent_count: null, // overridden below once fetched
         last_selftest_at: asset.last_selftest_at ?? null,
       }
     }
@@ -139,6 +162,7 @@ async function fetchAllCounts(
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        downstream_dependent_count: null, // overridden below once fetched
       }
     }
 
@@ -158,6 +182,7 @@ async function fetchAllCounts(
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        downstream_dependent_count: null, // overridden below once fetched
       }
     }
 
@@ -191,6 +216,7 @@ async function fetchAllCounts(
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        downstream_dependent_count: null, // overridden below once fetched
       }
     } catch (err) {
       const msg = (err as Error).message ?? ''
@@ -212,6 +238,7 @@ async function fetchAllCounts(
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        downstream_dependent_count: null, // overridden below once fetched
       }
     }
   }
@@ -367,6 +394,27 @@ export async function GET(req: NextRequest) {
       for (const r of substepRows) substepCountMap.set(r.asset_id, parseInt(r.committed, 10))
     }
 
+    // Packet B2 ("the DAG-derived downstream count"): vw_asset_downstream_dependents
+    // (migration 1096) — a DAG-derived, chart-independent count (the registry's
+    // depends_on graph is the same for every chart), so this is ONE query for the
+    // whole registry, not per-chart. Gated by downstreamDependentsViewPresent()
+    // (mirrors blockedByAssetIdColumnPresent's C-1 precedent, C-1): never SELECT a
+    // relation that may not exist yet in this environment (migration 1096). Absent
+    // or on any query failure, the map stays empty and every asset's
+    // downstream_dependent_count reads null — "not computed this poll", never a
+    // fabricated 0 (see AssetStats.downstream_dependent_count's own comment).
+    const downstreamDependentsMap = new Map<string, number>()
+    if (await downstreamDependentsViewPresent()) {
+      try {
+        const { rows: downstreamRows } = await query<{ asset_id: string; downstream_dependent_count: number }>(
+          `SELECT asset_id, downstream_dependent_count FROM vw_asset_downstream_dependents`
+        )
+        for (const r of downstreamRows) downstreamDependentsMap.set(r.asset_id, Number(r.downstream_dependent_count))
+      } catch (err) {
+        console.error('[cockpit/stats] vw_asset_downstream_dependents query failed — degrading to null for this poll', err)
+      }
+    }
+
     const rawStats = await fetchAllCounts(assets, chartId, throughputMap, liveMode)
 
     // Build a lookup map so we can correlate rawStats back to assets and throughput
@@ -387,6 +435,7 @@ export async function GET(req: NextRequest) {
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        downstream_dependent_count: null, // overridden below once fetched
         last_selftest_at: null,
       }
       const substepsCommitted = substepCountMap.get(asset.asset_id) ?? null
@@ -422,6 +471,9 @@ export async function GET(req: NextRequest) {
         // when eventMatchedDisposition === 'blocked_dependency', which only happens
         // when dispEntry's ended_at already matched this same write (above).
         blocked_by_asset_id: derivedState === 'blocked' ? (dispEntry?.blocked_by_asset_id ?? null) : undefined,
+        // Packet B2: real value if computed this poll; null (never a fabricated 0)
+        // if vw_asset_downstream_dependents was absent or the query failed above.
+        downstream_dependent_count: downstreamDependentsMap.get(asset.asset_id) ?? null,
         last_built_at: tp?.last_built_at ?? null,
         build_state_stale: buildStateStale,
         rows_written: (tp?.rows_written != null && derivedState === 'building')

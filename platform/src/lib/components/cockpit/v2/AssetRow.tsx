@@ -38,6 +38,48 @@ function derivePrimaryLabel(dormant: boolean): string {
   return dormant ? 'Build' : 'Rebuild'
 }
 
+// Packet B2 ("the DAG-derived downstream count"). The one consumer of
+// vw_asset_downstream_dependents (migration 1096) — rendered ONLY next to a
+// GENUINE root failure (never a 'blocked' cascade victim; that asset's own
+// downstream reach is not the story of its own row).
+//
+// Three cases, each rendered honestly rather than collapsed into one another
+// (§N.8 — an absent-or-zero figure must never read as a confident number it
+// is not):
+//   - count is null/undefined  → not computed this poll (view absent pending
+//     migration 1096, or the query failed) — render NOTHING. Silence here is
+//     the honest answer: there is no fabricated number to show.
+//   - count === 0              → a genuine leaf asset. Rendered explicitly as
+//     "no downstream impact", never as a blank (which would be indistinguishable
+//     from "not computed") and never as a bare "0" (which reads like an error
+//     count, not an all-clear).
+//   - count > 0                → "could affect up to N downstream", captioned
+//     as an upper bound in the same place the number appears — this is a DAG
+//     upper bound, never an observed or predicted cascade count (the packet's
+//     own before-measurement found the static DAG figure does NOT predict which
+//     failures historically cascaded hardest).
+function DownstreamImpactNote({ count }: { count?: number | null }) {
+  if (count == null) return null
+  if (count === 0) {
+    return (
+      <div
+        style={{ fontSize: '9px', color: 'var(--on-dark-faint)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}
+        title="No other asset transitively depends on this one (DAG upper bound: 0)."
+      >
+        no downstream impact
+      </div>
+    )
+  }
+  return (
+    <div
+      style={{ fontSize: '9px', color: 'var(--on-dark-faint)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}
+      title={`Upper bound from the dependency graph, not an observed or predicted cascade: ${count} asset${count === 1 ? '' : 's'} transitively depend${count === 1 ? 's' : ''} on this one.`}
+    >
+      could affect up to {count.toLocaleString()} downstream (upper bound, not a prediction)
+    </div>
+  )
+}
+
 // Service-health pill — replaces progress bar for asset_type='service' rows.
 // state='lit' ⟹ GREEN probe passed; 'error'/'service_down' ⟹ probe failed;
 // 'building' ⟹ probe running.
@@ -386,12 +428,15 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
                 </div>
               ) : (
                 // genuine root failure — keep existing red styling
-                <div
-                  style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  title={stat.error}
-                >
-                  {stat.error.slice(0, 64)}
-                </div>
+                <>
+                  <div
+                    style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={stat.error}
+                  >
+                    {stat.error.slice(0, 64)}
+                  </div>
+                  <DownstreamImpactNote count={stat.downstream_dependent_count} />
+                </>
               )
             )}
             {/* O2: lit asset with 0 rows — subtle note, not alarming */}
