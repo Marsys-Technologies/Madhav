@@ -3,7 +3,7 @@ artifact: NIKASHA_TEST_CAMPAIGN_STATE
 version: "0.2"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 1 — sandbox built (110+73 tables); fidelity re-diff pending after extension pass 2. Phase 2 — T2 prod sweep done for L0/L1/L2/L4/L5; L3 blocked by inspector timeout, will census on sandbox; hand-verify done except L3.
+you_are_here: Phase 1 CLOSED (sandbox + fidelity PASS). Phase 2 — next: L3 census on sandbox + hand-verify L3, then T1 planted-defect suite.
 updated: 2026-09-26T20:40:00+05:30
 ---
 
@@ -25,7 +25,7 @@ updated: 2026-09-26T20:40:00+05:30
 | phase | state | commit | headline figure |
 |---|---|---|---|
 | 0 | CLOSED | c63ca0774 | census L0: 119 FAIL/90 PARTIAL; tracker 0/40, 0/360 gates |
-| 1 | IN_PROGRESS (sandbox built; fidelity re-diff pending) | 45087f280 | 110 core tables, 0 COPY_FAIL, manifest written; ext pass 1: +73 ok / 92 junk-name failures (extraction defect, fix script ready) |
+| 1 | CLOSED | (this commit) | 183 tables, 0 COPY_FAIL, manifest written; fidelity diff L0: 3 diffs all sampling-induced, 0 UNEXPECTED → FIDELITY PASS (census/fidelity_L0.md); R47 registered (census output path overwrites prod artifact) |
 | 2 | IN_PROGRESS (T2 sweep + hand-verify 5/6 layers; L3 pending; T1 not started) | 45087f280 | runtimes L1 80s, L2 81s, L4 44s, L5 27s; L3/all FAILED on 180s inspector timeout; kala_field dup ground truth = 0 (47s manual) |
 | 3 | NOT_STARTED | — | closure loop — campaign's most important untested path |
 | 4 | NOT_STARTED | — | tier1/tier2 structured summary ready at derivations/_tier1_tier2_summary.md |

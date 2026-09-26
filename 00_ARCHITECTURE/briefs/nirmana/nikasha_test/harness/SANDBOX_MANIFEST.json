@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-26T12:30:36.714937+00:00",
+ "generated": "2026-09-26T14:10:12.661962+00:00",
  "ddl_sha256": "25c2be3344f45e362c354c5e57e456dc1d436fcf1cc997ab2288b1aaf712eb8c",
  "sampling_rule": "abs(hashtext(ctid::text)) % 20 = 0  (deterministic 5%)",
  "fk_enforcement": "disabled in sandbox via ALTER DATABASE \u2026 SET session_replication_role=replica (constraints remain defined for pg_constraint reads)",
@@ -779,6 +779,517 @@
    "rule": "view",
    "rows_production": 0,
    "rows_sandbox": 0,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_avastha_schemes",
+   "rule": "full",
+   "rows_production": 35,
+   "rows_sandbox": 35,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_combustion_orbs",
+   "rule": "full",
+   "rows_production": 8,
+   "rows_sandbox": 8,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_graha_naisargika_friendship",
+   "rule": "full",
+   "rows_production": 72,
+   "rows_sandbox": 72,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_motion_state_thresholds",
+   "rule": "full",
+   "rows_production": 27,
+   "rows_sandbox": 27,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_muhurta_activity_rules",
+   "rule": "full",
+   "rows_production": 329,
+   "rows_sandbox": 329,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_muhurta_factor_census",
+   "rule": "full",
+   "rows_production": 51,
+   "rows_sandbox": 51,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_prashna_fructification_rules",
+   "rule": "full",
+   "rows_production": 5,
+   "rows_sandbox": 5,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_prashna_lagna_methods",
+   "rule": "full",
+   "rows_production": 5,
+   "rows_sandbox": 5,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_prashna_significators",
+   "rule": "full",
+   "rows_production": 12,
+   "rows_sandbox": 12,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_prashna_special_techniques",
+   "rule": "full",
+   "rows_production": 3,
+   "rows_sandbox": 3,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_prashna_tajik_yogas",
+   "rule": "full",
+   "rows_production": 16,
+   "rows_sandbox": 16,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_synthetic_cohort_md",
+   "rule": "sample5pct_ctidhash",
+   "rows_production": 100000,
+   "rows_sandbox": 5079,
+   "sampled_5pct": true
+  },
+  {
+   "table": "bg_transit_moorti",
+   "rule": "full",
+   "rows_production": 27,
+   "rows_sandbox": 27,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bg_vastu_direction_remedials",
+   "rule": "full",
+   "rows_production": 24,
+   "rows_sandbox": 24,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_anomalies",
+   "rule": "full",
+   "rows_production": 10873,
+   "rows_sandbox": 10873,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_cgm_chart_topology_summary",
+   "rule": "full",
+   "rows_production": 15,
+   "rows_sandbox": 15,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_contradictions",
+   "rule": "full",
+   "rows_production": 45,
+   "rows_sandbox": 45,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_convergence",
+   "rule": "full",
+   "rows_production": 120,
+   "rows_sandbox": 120,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_rm_chart_summary",
+   "rule": "full",
+   "rows_production": 15,
+   "rows_sandbox": 15,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_rm_dasha_windowed_prescriptions",
+   "rule": "full",
+   "rows_production": 20,
+   "rows_sandbox": 20,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_rm_dosha_remedy_bundles",
+   "rule": "full",
+   "rows_production": 10,
+   "rows_sandbox": 10,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_rm_pattern_remedies",
+   "rule": "full",
+   "rows_production": 135,
+   "rows_sandbox": 135,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_rm_remedy_prescriptions",
+   "rule": "full",
+   "rows_production": 405,
+   "rows_sandbox": 405,
+   "sampled_5pct": false
+  },
+  {
+   "table": "bodha_triangulation",
+   "rule": "full",
+   "rows_production": 405,
+   "rows_sandbox": 405,
+   "sampled_5pct": false
+  },
+  {
+   "table": "brahma_activity_ontology",
+   "rule": "full",
+   "rows_production": 12,
+   "rows_sandbox": 12,
+   "sampled_5pct": false
+  },
+  {
+   "table": "brahma_yoga_source_chunks",
+   "rule": "full",
+   "rows_production": 85,
+   "rows_sandbox": 85,
+   "sampled_5pct": false
+  },
+  {
+   "table": "charts",
+   "rule": "full",
+   "rows_production": 6,
+   "rows_sandbox": 6,
+   "sampled_5pct": false
+  },
+  {
+   "table": "classical_texts",
+   "rule": "full",
+   "rows_production": 16,
+   "rows_sandbox": 16,
+   "sampled_5pct": false
+  },
+  {
+   "table": "fact_category_ownership",
+   "rule": "full",
+   "rows_production": 67,
+   "rows_sandbox": 67,
+   "sampled_5pct": false
+  },
+  {
+   "table": "ga_prashna_lagna",
+   "rule": "full",
+   "rows_production": 5,
+   "rows_sandbox": 5,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_field_gof",
+   "rule": "full",
+   "rows_production": 6,
+   "rows_sandbox": 6,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_field_salience",
+   "rule": "full",
+   "rows_production": 7650,
+   "rows_sandbox": 7650,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_field_snapshots",
+   "rule": "full",
+   "rows_production": 1,
+   "rows_sandbox": 1,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_field_weight_versions",
+   "rule": "full",
+   "rows_production": 1,
+   "rows_sandbox": 1,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_field_windows",
+   "rule": "full",
+   "rows_production": 25178,
+   "rows_sandbox": 25178,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_gochara_authority",
+   "rule": "full",
+   "rows_production": 2,
+   "rows_sandbox": 2,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_gochara_contacts",
+   "rule": "full",
+   "rows_production": 0,
+   "rows_sandbox": 0,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_gochara_coverage",
+   "rule": "full",
+   "rows_production": 0,
+   "rows_sandbox": 0,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_gochara_publication",
+   "rule": "full",
+   "rows_production": 0,
+   "rows_sandbox": 0,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_gochara_v2_build_state",
+   "rule": "full",
+   "rows_production": 594,
+   "rows_sandbox": 594,
+   "sampled_5pct": false
+  },
+  {
+   "table": "kala_gochara_windows_archive_20260805",
+   "rule": "full",
+   "rows_production": 35620,
+   "rows_sandbox": 35620,
+   "sampled_5pct": false
+  },
+  {
+   "table": "life_events",
+   "rule": "full",
+   "rows_production": 63,
+   "rows_sandbox": 63,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_anchor_adjustment",
+   "rule": "full",
+   "rows_production": 195,
+   "rows_sandbox": 195,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_attribution",
+   "rule": "full",
+   "rows_production": 1425,
+   "rows_sandbox": 1425,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_calibration_snapshot",
+   "rule": "full",
+   "rows_production": 5,
+   "rows_sandbox": 5,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_convergence_adjustment",
+   "rule": "full",
+   "rows_production": 1000,
+   "rows_sandbox": 1000,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_discoveries",
+   "rule": "full",
+   "rows_production": 71,
+   "rows_sandbox": 71,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_fact_adjustment",
+   "rule": "sample5pct_ctidhash",
+   "rows_production": 123272,
+   "rows_sandbox": 6099,
+   "sampled_5pct": true
+  },
+  {
+   "table": "mimamsa_insight_embeddings",
+   "rule": "full",
+   "rows_production": 0,
+   "rows_sandbox": 0,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_manifestation_sets",
+   "rule": "full",
+   "rows_production": 195,
+   "rows_sandbox": 195,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_negative_controls",
+   "rule": "full",
+   "rows_production": 4,
+   "rows_sandbox": 4,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_reliability",
+   "rule": "full",
+   "rows_production": 6,
+   "rows_sandbox": 6,
+   "sampled_5pct": false
+  },
+  {
+   "table": "mimamsa_signal_adjustment",
+   "rule": "sample5pct_ctidhash",
+   "rows_production": 100275,
+   "rows_sandbox": 4988,
+   "sampled_5pct": true
+  },
+  {
+   "table": "nirmana_bg_texts_integrity_baselines",
+   "rule": "full",
+   "rows_production": 1,
+   "rows_sandbox": 1,
+   "sampled_5pct": false
+  },
+  {
+   "table": "phala_rectification_best",
+   "rule": "full",
+   "rows_production": 2,
+   "rows_sandbox": 2,
+   "sampled_5pct": false
+  },
+  {
+   "table": "prashna_charts",
+   "rule": "full",
+   "rows_production": 2,
+   "rows_sandbox": 2,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_aspects",
+   "rule": "full",
+   "rows_production": 19,
+   "rows_sandbox": 19,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_constants",
+   "rule": "full",
+   "rows_production": 203,
+   "rows_sandbox": 203,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_dasha_systems",
+   "rule": "full",
+   "rows_production": 20,
+   "rows_sandbox": 20,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_doshas",
+   "rule": "full",
+   "rows_production": 79,
+   "rows_sandbox": 79,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_glossary",
+   "rule": "full",
+   "rows_production": 364,
+   "rows_sandbox": 364,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_houses",
+   "rule": "full",
+   "rows_production": 12,
+   "rows_sandbox": 12,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_karakas",
+   "rule": "full",
+   "rows_production": 77,
+   "rows_sandbox": 77,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_nakshatra_matrix",
+   "rule": "full",
+   "rows_production": 2721,
+   "rows_sandbox": 2721,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_nakshatra_pada",
+   "rule": "full",
+   "rows_production": 108,
+   "rows_sandbox": 108,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_signs",
+   "rule": "full",
+   "rows_production": 12,
+   "rows_sandbox": 12,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_strength_systems",
+   "rule": "full",
+   "rows_production": 33,
+   "rows_sandbox": 33,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_topic_tags",
+   "rule": "full",
+   "rows_production": 481,
+   "rows_sandbox": 481,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_upagrahas",
+   "rule": "full",
+   "rows_production": 11,
+   "rows_sandbox": 11,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_vargas",
+   "rule": "full",
+   "rows_production": 19,
+   "rows_sandbox": 19,
+   "sampled_5pct": false
+  },
+  {
+   "table": "reference_yogas",
+   "rule": "full",
+   "rows_production": 233,
+   "rows_sandbox": 233,
+   "sampled_5pct": false
+  },
+  {
+   "table": "vidhi_intent_floors",
+   "rule": "full",
+   "rows_production": 14,
+   "rows_sandbox": 14,
+   "sampled_5pct": false
+  },
+  {
+   "table": "vw_chart_digest",
+   "rule": "view",
+   "rows_production": null,
+   "rows_sandbox": "view",
    "sampled_5pct": false
   }
  ]

@@ -105,6 +105,7 @@ that surfaced it, and the state.
 | R44 | `Earn.build_record` / `Cost.baseline` quote non-latest `asset_throughput` rows — must select the latest row per asset (`DISTINCT ON (asset_id) … ORDER BY ended_at DESC`) | nikasha-test P2 handverify L1/L2/L4/L5 | OPEN |
 | R45 | `Build.dep_liveness` reports "all lit" while ignoring dependencies whose last run is stale-only (L2) — stale deps must surface as PARTIAL, not PASS | nikasha-test P2 handverify L2 | OPEN |
 | R46 | View assets are scored against stub `count_sql` (`SELECT 0`): bo_samvada reads live_rows 0 while the view actually returns 15 rows — count_sql for a view must count the view, not a constant | nikasha-test P2 handverify L2 | OPEN |
+| R47 | Census JSON output path is hardcoded to `00_ARCHITECTURE/control/asset_census.json`: a census run against the sandbox silently overwrites the production census artifact. Output path must be a flag, or include the target DB identity in the document | nikasha-test P1 fidelity (sandbox run overwrote the prod file; restored from git) | OPEN |
 
 ### 2.6 · The ledgers and the tracker
 

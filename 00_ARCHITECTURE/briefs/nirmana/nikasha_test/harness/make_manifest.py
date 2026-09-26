@@ -12,7 +12,7 @@ for line in (SB / "copy_report.tsv").read_text().splitlines():
     tables.append({
         "table": t, "rule": rule,
         "rows_production": None if pc in ("view", "COPY_FAIL") or pc == "view" else int(pc) if pc.isdigit() else pc,
-        "rows_sandbox": sc if sc == "COPY_FAIL" else int(sc),
+        "rows_sandbox": sc if sc in ("COPY_FAIL", "view") else int(sc),
         "sampled_5pct": rule == "sample5pct_ctidhash",
     })
 manifest = {
