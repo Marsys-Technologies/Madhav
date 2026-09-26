@@ -405,3 +405,56 @@ citations restored.
   pre-registered state. This compounds V-R1-S5's premise: the frozen matrix's
   "lose exactly the sunapha row" can only hold if the writer re-derives
   sunapha, which this fixture's fact coverage does not support.
+
+---
+
+## 9. CI vehicle (2026-09-26)
+
+Workflow: `.github/workflows/l0_consumer_perturbation.yml` — weekly (Fri 04:00
+UTC, offset from fresh_chart_smoke's Wed 03:00) + workflow_dispatch. NOT
+push/PR-gated: the pinned state is 2 PASS / 3 UNMEASURED behind four named
+producer-path findings, so gating PRs would be noise; the job's value is
+detecting DIVERGENCE from the pin.
+
+Two deliberate departures from the fresh_chart_smoke vehicle, disclosed in the
+workflow header:
+
+1. **Hermetic — no cloud-sql-proxy, no production pg_dump.** The fixture is
+   self-contained from committed extracts (`production_schema/*.json`,
+   `production_seed/*.jsonl`, probed 2026-09-26). Production drift after that
+   date is invisible BY CONSTRUCTION (the state pin); refreshing extracts is a
+   deliberate human act.
+2. **No migrate.ts.** State A is the point: this branch carries 1120–1124 and
+   migrate.ts would apply them, destroying the pre-patch state (1124 must
+   never apply). The builder applies 1121/1122/1123 itself, verbatim, under
+   the 1123 oracle.
+
+Supporting changes:
+
+- `build_fixture.py` / `run_readings.py`: connection targets now
+  env-overridable (`L0H_PGHOST`, `L0H_PGPORT`, `L0H_PGSUPERUSER`,
+  `L0H_FIXTURE_DB`; defaults = the local rehearsal values, so local use is
+  unchanged). No other behaviour change.
+- `ci_expect.py`: two-directional pin. Asserts the exact verdict map
+  (V-C0-S3/V-R2-S4 PASS; V-R1-S5/V-R2-S6/V-R3-S7 UNMEASURED), the exact
+  finding set {F-W-L0-7-9,-5,-8,-7}, step-0 gate green, step-9 replay green.
+  Fails on ANY divergence either way — a PASS turning FAIL is a regression,
+  an UNMEASURED becoming measured means the L1/L2 producer-path findings were
+  answered upstream and the pin is stale; both need a deliberate re-pin in the
+  same commit, never a weakened gate.
+- CI-only accommodation: the pg15 service image password-protects roles, and
+  the decorated path requires `session_user = data_plane_builder`
+  (1035:578-580 / 1036:805-807 / 1036:941-943 — SET ROLE does not satisfy
+  it), so the workflow sets a throwaway password on that role after the
+  fixture build creates it. Local trust-auth rehearsal needs no such step.
+
+Rehearsal of the override path (2026-09-26): full sequence re-run locally with
+all four `L0H_*` vars set — BUILD GREEN, state-B gate green, all four findings
+reproduced verbatim, step-9 replay green, workaround grant verified revoked
+(0 rows), fixture back in state B, `ci_expect.py` exit 0.
+
+Fixture-coverage seed enrichment (all-ayanamsha chart_facts + MOON position,
+per §8's gaps) is deliberately NOT in this pass: the frozen baseline and both
+PASS verdicts are pinned against the current seed, and enriching it only
+becomes meaningful once the producer-path findings (F-W-L0-7-9/-5) are
+answered upstream. Recorded as the next iteration's input.

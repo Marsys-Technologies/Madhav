@@ -1,7 +1,7 @@
 ---
 artifact: L0_W_L0_7_PACKET_REPORT
-version: 1.6
-status: RUNNER_EXECUTED_2PASS_3UNMEASURED_GATE_MAPPING_HELD
+version: 1.7
+status: CI_BUILT_2PASS_3UNMEASURED_PINNED_GATE_MAPPING_HELD
 packet: W-L0-7 (consumer-perturbation harness)
 session: NIRMANA_L0_BRAHMAGYAN_EXECUTION_20260921
 branch: l0/brahmagyan-exec
@@ -90,6 +90,28 @@ amendments: >
   already-committed builder fixes to this run — third such misreport from
   that worker; every number above was re-verified against the fixture DB
   and the run log before acceptance.
+  v1.7 (2026-09-26) — CI vehicle BUILT (.github/workflows/
+  l0_consumer_perturbation.yml, weekly + dispatch, not push-gated) with two
+  deliberate departures from the fresh_chart_smoke pattern disclosed in the
+  workflow header: hermetic (no cloud-sql-proxy / production dump — the
+  fixture is self-contained from the committed 2026-09-26 extracts, so
+  production drift is invisible BY CONSTRUCTION under the declared state
+  pin) and NO migrate.ts (state A is the point; this branch carries
+  1120–1124 and migrate.ts would destroy the pre-patch state — the builder
+  applies 1121/1122/1123 itself under the 1123 oracle). New ci_expect.py is
+  a two-directional pin: it fails on any divergence from the pinned verdict
+  map / finding set in EITHER direction (a PASS turning FAIL is a
+  regression; an UNMEASURED becoming measured means the producer-path
+  findings were answered upstream and the pin is stale — both need a
+  deliberate re-pin, never a weakened gate). build_fixture.py /
+  run_readings.py connection targets are now L0H_*-env-overridable
+  (defaults unchanged for local use); the override path was rehearsed with
+  a full local re-run — BUILD GREEN, all four findings reproduced, step-9
+  replay green, workaround grant verified revoked, ci_expect exit 0.
+  Fixture-coverage seed enrichment deliberately deferred: the frozen
+  baseline and both PASS verdicts are pinned against the current seed;
+  enrichment becomes meaningful only once F-W-L0-7-9/-5 are answered
+  upstream.
 ---
 
 # W-L0-7 Packet Report — Consumer-perturbation harness
@@ -495,8 +517,10 @@ F-W-L0-7-9 / -5 / -8 / -7, all handed up unfixed; fixture verified back in state
 with the workaround grant revoked). The UNMEASURED triple is a producer-path
 blocker for the L1/L2 data-plane plan, not an L0 asset judgment — the harness
 verifies consumers, never an L0 asset, and here the consumers could not run.
-**Construction: AUTHORIZED** (2026-09-26) — CI vehicle next (fresh_chart_smoke
-pattern), with the fixture-coverage gaps from v1.6 as its seeding inputs.
+**Construction: AUTHORIZED** (2026-09-26).
+**CI vehicle: COMPLETE** (v1.7 — `.github/workflows/l0_consumer_perturbation.yml`,
+weekly + dispatch; hermetic, no migrate.ts, state-A by construction; `ci_expect.py`
+two-directional pin rehearsed green locally with `L0H_*` overrides).
 **Gate mapping: HELD** (strategy ruling: `Dom` vs Decision 11).
 
 Open rulings, restated as OPEN — none inferred here:

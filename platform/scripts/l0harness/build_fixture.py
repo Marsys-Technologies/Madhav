@@ -23,6 +23,7 @@ Usage: python3 scripts/l0harness/build_fixture.py
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -35,11 +36,11 @@ SEED_DIR = HERE / "production_seed"
 MIGRATIONS = PLATFORM / "supabase" / "migrations"
 MIGRATIONS_PLATFORM = PLATFORM / "migrations"
 
-PGHOST = "127.0.0.1"
-PGPORT = "55433"
-SUPERUSER = "Dev"
-MAINTENANCE_DB = "postgres"
-FIXTURE_DB = "madhav_l0w7_fixture"
+PGHOST = os.environ.get("L0H_PGHOST", "127.0.0.1")
+PGPORT = os.environ.get("L0H_PGPORT", "55433")
+SUPERUSER = os.environ.get("L0H_PGSUPERUSER", "Dev")
+MAINTENANCE_DB = os.environ.get("L0H_PGMAINTENANCE_DB", "postgres")
+FIXTURE_DB = os.environ.get("L0H_FIXTURE_DB", "madhav_l0w7_fixture")
 
 # Fixed identities (uuid-shaped, hex-only) so every seeded cross-reference is
 # deterministic and greppable.

@@ -41,11 +41,12 @@ PLATFORM = HERE.parent.parent
 SIDECAR = PLATFORM / "python-sidecar"
 TSX = PLATFORM / "node_modules" / ".bin" / "tsx"
 
-PGHOST = "127.0.0.1"
-PGPORT = "55433"
-FIXTURE_DB = "madhav_l0w7_fixture"
+PGHOST = os.environ.get("L0H_PGHOST", "127.0.0.1")
+PGPORT = os.environ.get("L0H_PGPORT", "55433")
+FIXTURE_DB = os.environ.get("L0H_FIXTURE_DB", "madhav_l0w7_fixture")
+SUPERUSER = os.environ.get("L0H_PGSUPERUSER", "Dev")
 BUILDER_URL = f"postgres://data_plane_builder@{PGHOST}:{PGPORT}/{FIXTURE_DB}"
-SUPER_URL = f"postgres://Dev@{PGHOST}:{PGPORT}/{FIXTURE_DB}"
+SUPER_URL = f"postgres://{SUPERUSER}@{PGHOST}:{PGPORT}/{FIXTURE_DB}"
 
 CHART_ID = "f0000000-0000-4000-8000-000000000001"
 SUNAPHA_AYANAMSHA = "surya_siddhanta_classical"
