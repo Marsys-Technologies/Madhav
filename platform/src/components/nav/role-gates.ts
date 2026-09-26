@@ -6,7 +6,7 @@
  *
  * Roles:
  *   - super_admin: full instrument operator. Roster + Panchang + Cockpit +
- *     Audit + Performance + AIOps + Admin.
+ *     Audit + Performance + Admin. Observatory lives inside Cockpit.
  *   - guest: legacy 'client' role rolled into 'guest' per Unit 2c. Sees only
  *     their owned + granted charts + the global Panchang surface.
  *
@@ -39,11 +39,10 @@ export interface InformationNavItemDescriptor {
 }
 
 export const NAV_ITEMS: readonly NavItemDescriptor[] = [
-  { key: 'roster',      href: '/dashboard',   label: 'Roster',      roles: ['super_admin', 'guest'] },
+  { key: 'roster',      href: '/dashboard',   label: 'Jātakas',     roles: ['super_admin', 'guest'] },
   { key: 'panchang',    href: '/panchang',    label: 'Panchang',    roles: ['super_admin', 'guest'] },
   { key: 'cockpit',     href: '/cockpit',     label: 'Cockpit',     roles: ['super_admin'], admin: true },
   { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
-  { key: 'aiops',       href: '/aiops',       label: 'AIOps',       roles: ['super_admin'], admin: true },
   { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },
 ] as const

@@ -19,7 +19,6 @@ import {
   LayoutGrid,
   Gauge,
   FileSearch,
-  Bot,
   ChartColumn,
   ChevronDown,
   Info,
@@ -28,6 +27,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import {
+  NAV_ITEMS as NAV_DESCRIPTORS,
   normalizeRole,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
@@ -53,6 +53,7 @@ function MoonCrescentIcon({ className }: { className?: string }) {
 }
 
 interface NavItem {
+  key: string
   href: string
   label: string
   icon: LucideIcon | React.ComponentType<{ className?: string }>
@@ -64,15 +65,22 @@ interface AppShellRailProps {
   profile: { role: 'super_admin' | 'guest'; status?: string }
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Jātakas',     icon: LayoutGrid,       roles: ['super_admin', 'guest'] },
-  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
-  { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,            roles: ['super_admin'] },
-  { href: '/audit',       label: 'Audit',       icon: FileSearch,       roles: ['super_admin'] },
-  { href: '/aiops',       label: 'AIOps',       icon: Bot,              roles: ['super_admin'] },
-  { href: '/performance', label: 'Performance', icon: ChartColumn,      roles: ['super_admin'] },
-  { href: '/admin',       label: 'Admin',       icon: Settings2,        roles: ['super_admin'] },
-]
+const NAV_ICONS: Record<string, NavItem['icon']> = {
+  roster: LayoutGrid,
+  panchang: MoonCrescentIcon,
+  cockpit: Gauge,
+  audit: FileSearch,
+  performance: ChartColumn,
+  admin: Settings2,
+}
+
+const NAV_ITEMS: NavItem[] = NAV_DESCRIPTORS.map(({ key, href, label, roles }) => ({
+  key,
+  href,
+  label,
+  roles,
+  icon: NAV_ICONS[key],
+}))
 
 export function AppShellRail({ user, profile }: AppShellRailProps) {
   const pathname = usePathname()
@@ -162,13 +170,13 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
       {/* Nav links */}
       <div className="relative flex flex-1 flex-col gap-0.5 w-full px-2">
-        {visibleItems.map(({ href, label, icon: Icon }, index) => {
+        {visibleItems.map(({ key, href, label, icon: Icon }, index) => {
           const isActive = href === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
             : pathname.startsWith(href)
           return (
             <motion.div
-              key={href}
+              key={key}
               whileHover={reducedMotion ? {} : { x: 2 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               className="relative w-full"

@@ -6,14 +6,7 @@ import { Logo } from '@/components/brand/Logo'
 import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
-  { href: '/cockpit', label: 'Cockpit' },
-  { href: '/cockpit/plan', label: 'Plan' },
-  { href: '/cockpit/sessions', label: 'Sessions' },
-  { href: '/cockpit/registry', label: 'Registry' },
-  { href: '/cockpit/interventions', label: 'Interventions' },
-  { href: '/cockpit/parallel', label: 'Parallel' },
-  { href: '/cockpit/health', label: 'Health' },
-  { href: '/cockpit/activity', label: 'Activity' },
+  { href: '/observatory', label: 'Observatory' },
 ]
 
 export function BuildHeader() {

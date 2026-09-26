@@ -2,7 +2,7 @@ import 'server-only'
 import { Storage } from '@google-cloud/storage'
 import { query } from '@/lib/db/client'
 import { buildKey, cacheGetOrCompute } from '@/lib/cache/shared_cache'
-import type { BuildState, SessionDetail, PhaseDetail } from './types'
+import type { BuildState } from './types'
 
 export interface ActiveChartEntry {
   id: string
@@ -108,22 +108,4 @@ async function readGCSJson<T>(objectPath: string): Promise<T> {
 
 export async function fetchBuildState(): Promise<BuildState> {
   return readGCSJson<BuildState>('build-state.json')
-}
-
-export async function fetchSessionDetail(id: string): Promise<SessionDetail | null> {
-  try {
-    return await readGCSJson<SessionDetail>(`sessions/${id}.json`)
-  } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 404) return null
-    throw err
-  }
-}
-
-export async function fetchPhaseDetail(id: string): Promise<PhaseDetail | null> {
-  try {
-    return await readGCSJson<PhaseDetail>(`phases/${id}.json`)
-  } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 404) return null
-    throw err
-  }
 }

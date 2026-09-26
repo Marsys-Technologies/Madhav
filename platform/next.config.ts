@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
+const RETIRED_COCKPIT_SECTIONS = [
+  'plan',
+  'sessions',
+  'registry',
+  'interventions',
+  'parallel',
+  'health',
+  'activity',
+] as const;
+
 const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -24,6 +34,25 @@ const nextConfig: NextConfig = {
         source: '/clients/:id/build/:conversationId',
         destination: '/clients/:id/nirmana/:conversationId',
         permanent: true,
+      },
+      ...RETIRED_COCKPIT_SECTIONS.map((section) => ({
+        source: `/cockpit/${section}/:path*`,
+        destination: '/cockpit',
+        permanent: false,
+      })),
+      // The former AIOps control routes were retired with their dropped DB
+      // tables. Keep old bookmarks and Observatory deep-links operational by
+      // sending them to the maintained AIOps observability surface. Temporary
+      // redirects let a future Mīmāṃsā rebuild reclaim these paths.
+      {
+        source: '/aiops',
+        destination: '/observatory',
+        permanent: false,
+      },
+      {
+        source: '/aiops/:path*',
+        destination: '/observatory',
+        permanent: false,
       },
     ]
   },
