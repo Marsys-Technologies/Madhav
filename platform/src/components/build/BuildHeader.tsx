@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { href: '/cockpit/plan', label: 'Plan' },
   { href: '/cockpit/sessions', label: 'Sessions' },
   { href: '/cockpit/registry', label: 'Registry' },
-  { href: '/cockpit/atlas', label: 'Atlas' },
   { href: '/cockpit/interventions', label: 'Interventions' },
   { href: '/cockpit/parallel', label: 'Parallel' },
   { href: '/cockpit/health', label: 'Health' },

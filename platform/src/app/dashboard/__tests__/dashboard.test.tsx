@@ -244,6 +244,7 @@ describe('Nav role-gates (pure helper)', () => {
     expect(isAdminSurface('/cockpit')).toBe(true)
     expect(isAdminSurface('/audit')).toBe(true)
     expect(isAdminSurface('/admin')).toBe(true)
+    expect(isAdminSurface('/information/atlas')).toBe(true)
     expect(isAdminSurface('/dashboard')).toBe(false)
     expect(isAdminSurface('/panchang')).toBe(false)
   })
