@@ -1952,8 +1952,8 @@
   },
   {
    "canonical_id": "ASSET_ELEVATION_TEMPLATE",
-   "path": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md",
-   "version": "1.1",
+   "path": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md",
+   "version": "2.0",
    "status": "CURRENT",
    "layer": "governance",
    "expose_to_chat": false,
@@ -1961,14 +1961,15 @@
     "file"
    ],
    "interface_version": "1.0",
-   "fingerprint": "d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7",
+   "fingerprint": "244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f",
    "native_id": "project",
-   "last_verified_session": "L3-DATAPLANE-REVIEW-FOLD-20260925",
-   "last_verified_on": "2026-09-25",
+   "last_verified_session": "L0-BRAHMAGYAN-EXEC-ADK-0001-ADK-0005-20260926",
+   "last_verified_on": "2026-09-26",
    "tier": 4,
    "note": "tier-4 template; produces one instance per asset",
-   "fingerprint_sha256": "d797299cb2300b331012c6cf08ff0542f000273bac74912e0cfb3207303bd6f7",
-   "doc_status": "READY_FOR_USE"
+   "fingerprint_sha256": "244e87dff30a38381ce01e02ef70e5031cb83ee0af8d1468b2596b598114a98f",
+   "doc_status": "READY_FOR_USE",
+   "supersedes": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md"
   },
   {
    "canonical_id": "MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY",
