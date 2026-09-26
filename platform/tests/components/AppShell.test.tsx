@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent } from '@testing-library/react'
 import { AppShell } from '@/components/shared/AppShell'
+import { BuildHeader } from '@/components/build/BuildHeader'
+import {
+  INFORMATION_NAV_ITEMS,
+  visibleInformationNavItems,
+} from '@/components/nav/role-gates'
 
 // AppShellRail uses Next.js navigation hooks and Firebase — mock at module level.
 vi.mock('next/navigation', () => ({
@@ -124,6 +129,29 @@ describe('AppShell', () => {
     expect(cockpitLink).toBeNull()
   })
 
+  it('places Information at the bottom rail and reveals Atlas as its first item', () => {
+    const { getByRole, getByText } = render(
+      <AppShell user={BASE_USER} profile={{ role: 'super_admin' }} />
+    )
+    const nav = getByRole('navigation', { name: 'Primary navigation' })
+    fireEvent.mouseEnter(nav)
+
+    const information = getByRole('button', { name: 'Information' })
+    fireEvent.click(information)
+
+    const atlas = getByRole('link', { name: 'Atlas' })
+    expect(atlas.getAttribute('href')).toBe('/information/atlas')
+    expect(getByText('Information')).toBeTruthy()
+  })
+
+  it('keeps the admin-only Information menu hidden from guests', () => {
+    const { queryByRole } = render(
+      <AppShell user={BASE_USER} profile={{ role: 'guest' }} />
+    )
+    expect(queryByRole('button', { name: 'Information' })).toBeNull()
+    expect(visibleInformationNavItems('guest')).toEqual([])
+  })
+
   it('displays user initial in avatar trigger', () => {
     const { getByRole } = render(
       <AppShell user={{ uid: 'u1', email: 'alice@example.com' }} profile={BASE_PROFILE} />
@@ -181,5 +209,20 @@ describe('AppShell', () => {
     const nav = getByRole('navigation', { name: 'Primary navigation' })
     fireEvent.mouseEnter(nav)
     expect(getByText('Abhisek')).toBeTruthy()
+  })
+})
+
+describe('Information navigation placement', () => {
+  it('keeps Atlas first in the Information menu', () => {
+    expect(INFORMATION_NAV_ITEMS[0]).toMatchObject({
+      key: 'atlas',
+      href: '/information/atlas',
+      label: 'Atlas',
+    })
+  })
+
+  it('removes Atlas from the Cockpit header', () => {
+    const { queryByRole } = render(<BuildHeader />)
+    expect(queryByRole('link', { name: 'Atlas' })).toBeNull()
   })
 })
