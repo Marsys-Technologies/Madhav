@@ -3,8 +3,8 @@ artifact: NIKASHA_TEST_CAMPAIGN_STATE
 version: "0.2"
 status: IN_PROGRESS
 campaign_id: nikasha-test
-you_are_here: Phase 1 CLOSED (sandbox + fidelity PASS). Phase 2 — next: L3 census on sandbox + hand-verify L3, then T1 planted-defect suite.
-updated: 2026-09-26T20:40:00+05:30
+you_are_here: Phase 2 T2 CLOSED (6 layers hand-verified, T2_SUMMARY.md). Next: T1 planted-defect suite (harness/plant.py, sandbox only), then mutation + differential tests.
+updated: 2026-09-26T21:00:00+05:30
 ---
 
 # NIKAṢA TEST CAMPAIGN — STATE
@@ -26,7 +26,7 @@ updated: 2026-09-26T20:40:00+05:30
 |---|---|---|---|
 | 0 | CLOSED | c63ca0774 | census L0: 119 FAIL/90 PARTIAL; tracker 0/40, 0/360 gates |
 | 1 | CLOSED | (this commit) | 183 tables, 0 COPY_FAIL, manifest written; fidelity diff L0: 3 diffs all sampling-induced, 0 UNEXPECTED → FIDELITY PASS (census/fidelity_L0.md); R47 registered (census output path overwrites prod artifact) |
-| 2 | IN_PROGRESS (T2 sweep + hand-verify 5/6 layers; L3 pending; T1 not started) | 45087f280 | runtimes L1 80s, L2 81s, L4 44s, L5 27s; L3/all FAILED on 180s inspector timeout; kala_field dup ground truth = 0 (47s manual) |
+| 2 | IN_PROGRESS (T2 CLOSED — all 6 layers hand-verified; T1 planted defects not started) | (this commit) | T2: 60 assets, 60 verdict-level disagreements, all instances of R42/R43/R46; L3 census on sandbox (2.5s) — R40/R41 the only prod blockers; handverify/T2_SUMMARY.md |
 | 3 | NOT_STARTED | — | closure loop — campaign's most important untested path |
 | 4 | NOT_STARTED | — | tier1/tier2 structured summary ready at derivations/_tier1_tier2_summary.md |
 | 5 | NOT_STARTED | — | — |
@@ -108,12 +108,11 @@ Binding rulings absorbed: #9, #10, #11, #13, #16, #17 (details in pre-rewrite ST
   (e) bo_samvada view asset scored against stub count_sql SELECT 0 (live_rows 0 vs real 15).
 
 ## Open threads (carried forward)
-1. Run extend_sandbox_fix.sh → merge copy_report_ext*.tsv → re-run make_manifest.py → re-run L0 sandbox
-   census → fidelity diff vs prod (write census/fidelity_L0.md) → close Phase 1.
-2. L3 census on the SANDBOX (kala_field sampled ~515k, query completes) + T2 hand-verify L3 → close Phase 2 T2.
-3. T1 planted defects (harness/plant.py) — NOT STARTED, sandbox only.
+1. ~~Phase 1~~ CLOSED (9495fb1a8).
+2. ~~T2 including L3~~ CLOSED (this commit). Register rows R40–R51 written.
+3. T1 planted defects (harness/plant.py) — NOT STARTED, sandbox only. Next.
 4. Phase 3 closure loop — NOT STARTED, campaign's most important untested path.
-5. Register rows: write now for the 5 systemic inspector defects + 2 timeout defects (then P6 batch).
+5. Phases 4–7 as per brief.
 
 ## Blockers
 None. (L3 production census blocked by inspector timeout → routed to sandbox; §2.3 fix proposed, not yet applied.)
