@@ -666,3 +666,28 @@ Production state at halt: no '4.0' rows anywhere; generations v1=38287 /
 3.0=1830; authorities both '3.0'; century `is_active=false`; registry re-pin
 (step 5) live; 1080/1081/1082/1083/1084/1087 all applied. Evidence:
 `evidence/step06_evidence.md`.
+
+## E-019 — corrected premise: the migration ledger did not lose migrations (ADK-0014 interim measure)
+
+Recorded under ADHIKĀRIN ruling ADK-0014 (register:
+`00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md`), docs-only, branch-local.
+
+The premise "the ledger lost migrations" is **FALSE**. The eight campaign
+migrations (1080–1084, 1087, 1091 — plus 1086, which is excluded as never
+applied) were applied via
+`00_ARCHITECTURE/CONDUCTOR/build_orchestrator/scripts/apply_migration.sh` and
+direct `psql -f`, paths that never write `_migrations_applied` (grep count of
+`_migrations_applied` in apply_migration.sh: 0; the ledger writer is
+`platform/scripts/migrate.ts`, which these applies bypassed). Re-verified by
+PRAMĀṆIN against production (read-only): **zero rows** for the eight by
+filename, by sha256, AND by sql_identity; all seven applied migrations verified
+structurally live; 1086 matches its pre-state (old ga_strength spec active, new
+spec absent) and must not be recorded as applied.
+
+The ledger backfill for the seven (1080–1084/1087/1091) is **owed** and remains
+a **native escalation** — a production write (Part 5.1), not performed. The
+pre-computed (filename, sha256, sql_identity) triples live in
+`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/HOLD_STATE_2026-09-24.md`,
+section "Migration-ledger gap (owed backfill)" — cited, not duplicated here.
+Until the backfill lands, `migrate.ts` treats the seven as unapplied; keep the
+runner out of production.
