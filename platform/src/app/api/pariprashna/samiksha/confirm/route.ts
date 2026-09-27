@@ -19,6 +19,8 @@ import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { confirmCandidate, dismissCandidate } from '@/lib/pariprashna/samiksha/confirm'
+import { getConversation } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import type { StructuredPredictionCandidate } from '@/lib/pariprashna/samiksha/detector'
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
@@ -95,6 +97,14 @@ export async function POST(request: NextRequest) {
     db: { query },
   })
   if (permission === 'deny') return res.forbidden()
+
+  // Jātaka chart workspace: load and authorize the referenced conversation
+  // before any write. A missing, inaccessible or other-chart conversation gets
+  // the same 404 (no enumeration); correction-history is read-only, so neither
+  // confirm nor dismiss may touch the stamp, lifecycle or ledger for it.
+  const conversation = await getConversation({ id: body.conversationId, userId: user.uid, isSuperAdmin })
+  if (!conversation || conversation.chart_id !== body.chartId) return res.notFound('conversation')
+  if (isCorrectionArchived(conversation)) return archivedReadOnlyResponse()
 
   const candidate = body.candidate as StructuredPredictionCandidate
 
