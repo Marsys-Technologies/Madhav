@@ -68,6 +68,20 @@ describe('PATCH /api/charts/[id] — birthplace safety', () => {
     expect(mockDispatch).not.toHaveBeenCalled()
   })
 
+  it('422 on timezone_id when a new place keeps the former place\'s timezone', async () => {
+    const res = await PATCH(
+      patch({ ...BODY, birth_place: 'New York, USA', lat: 40.7128, lon: -74.006, timezone_id: 'Asia/Kolkata' }),
+      { params: Promise.resolve({ id: 'c1' }) },
+    )
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('VALIDATION_FAILED')
+    expect(Object.keys(body.fields)).toEqual(['timezone_id'])
+    expect(statements.some((s) => /^\s*(UPDATE|INSERT|DELETE)/i.test(s))).toBe(false)
+    expect(statements).toContain('ROLLBACK')
+    expect(mockDispatch).not.toHaveBeenCalled()
+  })
+
   it('a display-only rename is unaffected', async () => {
     const res = await PATCH(patch({ ...BODY, name: 'Renamed' }), { params: Promise.resolve({ id: 'c1' }) })
     expect(res.status).toBe(200)

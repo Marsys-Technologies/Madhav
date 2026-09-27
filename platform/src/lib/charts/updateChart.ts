@@ -251,15 +251,45 @@ export function validateLocationChange(
   stored: NormalizedChartInputs,
   submitted: NormalizedChartInputs,
 ): Record<string, string> | null {
-  if (stored.birth_place === submitted.birth_place) return null
+  const placeChanged = stored.birth_place !== submitted.birth_place
   const latChanged = stored.birth_lat !== submitted.birth_lat
   const lonChanged = stored.birth_lng !== submitted.birth_lng
-  if (latChanged && lonChanged) return null
-  const reselect = 'The birth place changed but its coordinates did not — reselect the new place so its latitude, longitude and timezone update together.'
-  return {
-    birth_place: reselect,
-    lat: 'Enter the latitude of the new place.',
-    lon: 'Enter the longitude of the new place.',
+  if (placeChanged && !(latChanged && lonChanged)) {
+    const reselect = 'The birth place changed but its coordinates did not — reselect the new place so its latitude, longitude and timezone update together.'
+    return {
+      birth_place: reselect,
+      lat: 'Enter the latitude of the new place.',
+      lon: 'Enter the longitude of the new place.',
+    }
   }
+  const locationChanged = placeChanged || latChanged || lonChanged || stored.timezone_id !== submitted.timezone_id
+  if (locationChanged && !isTimezonePlausible(submitted)) {
+    return {
+      timezone_id: 'This timezone does not fit the birth place’s longitude — reselect the place or choose its timezone.',
+    }
+  }
+  return null
+}
+
+/** Largest accepted gap between a zone's offset and the longitude's solar time. */
+const MAX_ZONE_SOLAR_GAP_MINUTES = 4 * 60
+
+/**
+ * Plausibility, not proof: the zone's effective offset at the birth moment
+ * must lie within four hours of the longitude's mean solar time (wrapping
+ * across the date line). Real zones stay well inside that — single-zone
+ * countries, date-line zones and DST included — while a zone left over from a
+ * distant former place falls outside it. Nearby wrong zones are not caught.
+ */
+function isTimezonePlausible(inputs: NormalizedChartInputs): boolean {
+  if (inputs.birth_lng === null || !inputs.timezone_id) return true
+  let offset: number
+  try {
+    offset = resolveTimezoneOffsetMinutes(inputs.birth_date, inputs.birth_time, inputs.timezone_id)
+  } catch {
+    return false
+  }
+  const gap = Math.abs(offset - inputs.birth_lng * 4) % 1440
+  return Math.min(gap, 1440 - gap) <= MAX_ZONE_SOLAR_GAP_MINUTES
 }
 

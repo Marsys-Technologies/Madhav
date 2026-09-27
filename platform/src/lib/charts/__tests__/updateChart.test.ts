@@ -245,5 +245,37 @@ describe('validateLocationChange — birthplace edits are computation-safe', () 
   it('allows correcting coordinates for the same place', () => {
     expect(validateLocationChange(stored, { ...same, birth_lat: 20.3 })).toBeNull()
   })
+
+  describe('timezone plausibility', () => {
+    const NEW_YORK = { birth_place: 'New York, USA', birth_lat: 40.7128, birth_lng: -74.006 }
+
+    it('rejects a new place whose coordinates arrived but whose timezone is still the former place\'s', () => {
+      const fields = validateLocationChange(stored, { ...same, ...NEW_YORK, timezone_id: 'Asia/Kolkata' })
+      expect(fields).not.toBeNull()
+      expect(Object.keys(fields!)).toEqual(['timezone_id'])
+      expect(fields!.timezone_id).toMatch(/timezone/i)
+    })
+
+    it('accepts a new place with its own timezone', () => {
+      expect(validateLocationChange(stored, { ...same, ...NEW_YORK, timezone_id: 'America/New_York' })).toBeNull()
+    })
+
+    it('rejects a timezone-only change that does not fit the coordinates', () => {
+      expect(validateLocationChange(stored, { ...same, timezone_id: 'America/New_York' })).toHaveProperty('timezone_id')
+    })
+
+    it.each([
+      ['a single-zone country far from its meridian (Kashgar on China time)', { birth_place: 'Kashgar', birth_lat: 39.47, birth_lng: 75.99, timezone_id: 'Asia/Shanghai' }],
+      ['a zone across the date line (Kiritimati, UTC+14)', { birth_place: 'Kiritimati', birth_lat: 1.87, birth_lng: -157.43, timezone_id: 'Pacific/Kiritimati' }],
+      ['western Europe on central European time', { birth_place: 'A Coruña', birth_lat: 43.36, birth_lng: -8.41, timezone_id: 'Europe/Madrid' }],
+    ])('accepts %s', (_label, place) => {
+      expect(validateLocationChange(stored, { ...same, ...place })).toBeNull()
+    })
+
+    it('never blocks an edit that does not touch the location', () => {
+      const oddStored = { ...stored, timezone_id: 'America/New_York' }
+      expect(validateLocationChange(oddStored, { ...same, timezone_id: 'America/New_York', name: 'Renamed' })).toBeNull()
+    })
+  })
 })
 
