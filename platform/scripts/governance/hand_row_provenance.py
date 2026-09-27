@@ -20,6 +20,12 @@ spent on R80+R81). `missing_census_run_id()` therefore checks only rows timestam
 `CUTOFF_TS` (this wave's own date) — exactly the same grandfather pattern the ledger's own
 `_schema` doc already uses for `kind` ("Rows without `kind` are read as kind=gap
 (pre-2026-09-26 rows)"). A row before the cutoff is exempt, not silently passed as compliant.
+
+C2 (W3-1_REVIEW.md §10, gate review correction, 2026-09-28): the hand/machine discriminator
+(`is_hand_written`/`is_machine_written`) reads `detector`, not `owner` — see `is_machine_written`'s
+own docstring for the reviewer's demonstrated failure mode this replaces (a census-driven CLOSED/
+RE-OPENED transition on a hand-owned gap_id used to misread as a hand row, because `emit_gaps`
+deliberately carries the hand `owner` forward onto its own transition rows).
 """
 from __future__ import annotations
 
@@ -34,11 +40,31 @@ CUTOFF_TS = "2026-09-29T00:00:00+05:30"  # the day AFTER this wave (2026-09-28) 
 # written later today) or falsely flagging a one-time migration as a rule violation.
 
 
+def is_machine_written(row: dict) -> bool:
+    """C2 (W3-1_REVIEW.md §10, reviewer's demonstrated defect): whether THIS ROW was written by
+    `asset_census.py`'s `emit_gaps()` — never the current `owner` field, which is not reliable for
+    this. `emit_gaps` deliberately CARRIES the prior row's `owner`/`change`/`gate` forward onto its
+    own CLOSED/RE-OPENED transition rows (D4; the whole point is that a hand annotation survives a
+    machine transition). So a hand-owned gap_id's census-driven closure is a row the census wrote,
+    still bearing the hand owner — `owner != "asset_census"` on that row is true, and the
+    owner-only check the original R15/R29 landing used misread it as a hand row.
+
+    `detector` is the reliable signal instead: every row `emit_gaps` ever writes — the gap_id's
+    first OPEN row AND every later CLOSED/RE-OPENED transition — sets
+    `detector=f"asset_census.py --layer {layer} ({criterion})"` itself (asset_census.py's
+    `emit_gaps`), regardless of whose `owner` it carries forward. A hand-authored `detector` string
+    (free text describing a probe or census a human ran) never begins with that literal prefix.
+    """
+    return str(row.get("detector") or "").startswith("asset_census.py")
+
+
 def is_hand_written(row: dict) -> bool:
-    """A row is hand-written iff its owner is not the census itself — the same discriminator
-    T5_LEDGER_DRIFT.md §A already establishes as reliable (every row carries `criterion`; `owner`
-    is what actually distinguishes a census row from a hand one)."""
-    return row.get("owner") != "asset_census"
+    """A row is hand-written iff THIS ROW was not written by the census itself (see
+    `is_machine_written` for why that is not the same question as "is the row's current `owner`
+    the census"). The T5_LEDGER_DRIFT.md §A discriminator (`owner`) identifies who a row's
+    judgement belongs to, which is a different, and for this purpose insufficient, question from
+    who wrote this specific line."""
+    return not is_machine_written(row)
 
 
 def is_judgemental_kind(row: dict) -> bool:

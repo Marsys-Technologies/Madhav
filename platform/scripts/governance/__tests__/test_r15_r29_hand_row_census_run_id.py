@@ -80,11 +80,60 @@ def test_row_with_no_ts_at_all_is_grandfathered_not_flagged_by_omission():
 
 
 def test_is_hand_written_and_is_judgemental_kind_helpers():
-    assert hrp.is_hand_written({"owner": "bg_x brief"})
-    assert not hrp.is_hand_written({"owner": "asset_census"})
+    assert hrp.is_hand_written({"owner": "bg_x brief", "detector": "the probe fails when down"})
+    assert not hrp.is_hand_written({"owner": "asset_census", "detector": "asset_census.py --layer L0 (Foo.bar)"})
     assert hrp.is_judgemental_kind({"kind": "gap"})
     assert hrp.is_judgemental_kind({"kind": "opportunity"})
     assert not hrp.is_judgemental_kind({"kind": "something_else"})
+
+
+# ── C2 (W3-1_REVIEW.md §10): the reviewer's demonstrated failure mode ──
+#
+# emit_gaps() CARRIES a prior row's `owner` forward onto its own CLOSED/RE-OPENED transition rows
+# (by design — D4: a hand annotation survives a machine transition). R81 made five census-derived
+# ids hand-owned (folding the hand row's owner onto the surviving, previously-census-owned id: e.g.
+# bg_ontology-Dens.served now carries owner="layer packet"). From 2026-09-29, the first real census
+# run that CLOSES or RE-OPENS one of those hand-owned ids appends a MACHINE-WRITTEN row that still
+# reads owner="layer packet" — a row an owner-only check misreads as hand-written and (wrongly)
+# expects to carry census_run_id.
+
+def test_owner_only_discriminator_would_have_flagged_a_census_transition_on_a_hand_owned_id():
+    """Reproduces the reviewer's exact scenario: bg_ontology-Dens.served starts as a hand-owned id
+    (R81's fold carried the hand row's owner onto it), then a later census run CLOSES it. The
+    resulting CLOSED row is machine-written (emit_gaps wrote it, detector says so) but still reads
+    owner="layer packet" (carried forward, unchanged) — exactly emit_gaps's own documented
+    contract. The FIXED discriminator (detector-based) must not flag it; the OLD one (owner-based,
+    reproduced inline below as `_naive_owner_only_is_hand_written`, not `hrp`'s own function) would
+    have."""
+    rows = [
+        # R81's fold: bg_ontology-Dens.served survives with the hand row's owner carried onto it.
+        dict(asset="bg_ontology", gap_id="bg_ontology-Dens.served", kind="gap", criterion="Dens.served",
+             what="folded", change="declare density_contract on resolve_entity and list_entities",
+             detector="asset_census.py --layer L0 (Dens.served)", owner="layer packet",
+             gate="W-L0-8", state="OPEN", ts="2026-09-28T03:12:00+05:30"),
+        # A later (post-cutoff) census run closes it by measurement — machine-written, hand owner
+        # carried forward unchanged, exactly as emit_gaps's own CLOSED-branch code does.
+        dict(asset="bg_ontology", gap_id="bg_ontology-Dens.served", kind="gap", criterion="Dens.served",
+             what="CLOSED by measurement: 2 module(s) now declare density_contract",
+             change="declare density_contract on resolve_entity and list_entities",
+             detector="asset_census.py --layer L0 (Dens.served)", owner="layer packet",
+             gate="W-L0-8", state="CLOSED", ts=AFTER),
+    ]
+
+    def _naive_owner_only_is_hand_written(row):
+        return row.get("owner") != "asset_census"
+
+    naive_flags = [r.get("gap_id") for r in rows
+                   if _naive_owner_only_is_hand_written(r) and hrp.is_judgemental_kind(r)
+                   and (r.get("ts") or "") >= hrp.CUTOFF_TS and not r.get("census_run_id")]
+    assert naive_flags == ["bg_ontology-Dens.served"], (
+        "the naive owner-only check must reproduce the reviewer's false positive on this fixture"
+    )
+
+    assert hrp.missing_census_run_id(rows) == [], (
+        "the fixed, detector-based discriminator must recognise the CLOSED row as machine-written "
+        "and never flag it, even though its carried-forward owner is a hand owner"
+    )
 
 
 def test_real_ledger_has_zero_violations_today_every_row_predates_the_cutoff():
