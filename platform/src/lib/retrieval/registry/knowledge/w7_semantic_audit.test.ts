@@ -69,7 +69,11 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
       expect(scuIds.has(edge.to_scu_id)).toBe(true)
       expect(edge.source_ref?.length).toBeGreaterThan(0)
     }
-    expect(sourceRefsChecked).toBe(355)
+    // R3 boundary (native strategic ruling packets 1-4): get_av_transit_gating and
+    // synergy_pipeline both moved from descriptor_metadata_review (2 editorial_sources each)
+    // to authored_declaration (1 editorial_sources entry, matching query_planet_transit's own
+    // authored precedent) so each could carry a genuine second, per-mode binding — 355 -> 353.
+    expect(sourceRefsChecked).toBe(353)
   })
 
   it('preserves the declared four-item historical manual sample in every layer', () => {

@@ -11,24 +11,30 @@ const snapshot = snapshotJson as CapabilityKnowledgeSnapshot
 describe('Purna capability coverage projection', () => {
   it('preserves the complete generated denominator and exposes the contract deficit', () => {
     const rows = buildCapabilityCoverage(snapshot)
-    expect(rows).toHaveLength(186)
-    expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(186)
+    // R3 boundary (native strategic ruling packets 1-4): get_av_transit_gating and
+    // synergy_pipeline each gained a genuine second, per-mode binding (kakshya_windows /
+    // dry_run) — the coverage denominator is per-BINDING, so 186 -> 188 rows even though the
+    // SCU count (182) is unchanged.
+    expect(rows).toHaveLength(188)
+    expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(188)
     expect(new Set(rows.map((row) => row.scu_id)).size).toBe(182)
-    // R3 boundary regen 2: the seven required-product proof-typing bindings landed
-    // (get_strength, get_av_transit_gating, graha_portrait, query_planet, pact_query,
-    // compose_large_n moved off "missing"; synergy_cross_layer moved off "deliberately_dark"
-    // once its scope bug was fixed). Remaining missing: classical_attribution_lookup (fails
-    // closed by design, RC-9), query_muhurat and query_sutravali_rules_for_planet (both
-    // explicitly out of scope, review §4 / R0 salvage matrix), and synergy_pipeline
-    // (deliberately left uncontracted — its dry_run vs executed modes need a genuine
-    // per-mode proof-kind type-system extension the current model cannot express without
-    // either wrongly barring the executed mode from evidence use or under-constraining the
-    // dry-run stub; see the boundary commit report). Remaining deliberately_dark:
-    // call_transit_search (L3 Kāla campaign ownership boundary) and channel_chat_dispatch
-    // (RC-9 legacy-route disposition).
-    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(4)
-    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(180)
-    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(2)
+    // synergy_pipeline is no longer missing: its executed mode is now contracted (derived,
+    // 6 legs) and its dry_run mode is contracted (snapshot_resource, proof_kind 'plan') —
+    // genuine per-mode proof typing closed the type-system gap the prior comment described.
+    // query_sutravali_rules_for_planet is no longer missing: its sidecar route's real
+    // parameter-binding bug (python-sidecar/routers/sutravali.py) is fixed and it is now
+    // contracted like its siblings. Remaining missing (2): classical_attribution_lookup
+    // (fails closed by design — the underlying tables were permanently retired in WS-0; an
+    // empty result would falsely imply "classically silent") and query_muhurat (its sidecar
+    // route has no matching registered nirmana-elevation health-probe asset; deferred to a
+    // later phase of this same campaign, not fabricated here). Remaining deliberately_dark
+    // (3 rows): call_transit_search (L3 Kāla campaign ownership boundary, untouched),
+    // channel_chat_dispatch (legacy-route disposition, unchanged), and get_av_transit_gating's
+    // kakshya_windows binding specifically (its sav_bav_gating default binding remains
+    // separately, statically proven and counted under "authored" above).
+    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(2)
+    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(183)
+    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(3)
   })
 
   it('keeps semantic outputs, bindings, and exact evidence dependencies together', () => {

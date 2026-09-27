@@ -49,6 +49,11 @@ const historicalV9 = {
   report_hash: 'sha256:089c5422a191d5eb5c2f3de2337e679272fba9b460e2312934e180ae686bfe35',
   artifact_hash: 'sha256:a7f89f0db4be2bf7f97a50f70d2a62f07bd0331222501062d8de3b3cd82f3fff',
 } as const
+const historicalV10 = {
+  capability_content_hash: 'sha256:cdb9e5ad93149497046f16d6789bfd4e939db2c4429ef00cb42cdaff5b5d6903',
+  report_hash: 'sha256:531abd18af54ccb1e33982dca9b381fb11e4080cc11653629869a946bb544919',
+  artifact_hash: 'sha256:716ef3e362d593cff93075cd721d06b58d72e9a78dbb30792e92e1067f93fe59',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -88,14 +93,17 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    // R3 boundary regen 3: capability_content_hash advanced again fixing gaps the mandated
-    // independent semantic review of the R0-R3 delta found (query_planet/graha_portrait now
-    // actually thread the served-generation fence get_strength's own doc comment claimed;
-    // synergy_pipeline's scope corrected 'global'→'per_chart' to match synergy_cross_layer's
-    // earlier fix; get_av_transit_gating's source_query probe now mirrors the real handler's
-    // ayanamsha_id filter) with every acceptance denominator unchanged (see the v10 pin test
-    // below and the semantic snapshot review in the boundary commit).
-    expect(report.report_hash).toBe('sha256:531abd18af54ccb1e33982dca9b381fb11e4080cc11653629869a946bb544919')
+    // R3 boundary — native strategic ruling packets 1-5: capability_content_hash advanced
+    // again for the full "explicit-empty build-fence semantics" / "actual certify-request
+    // byte limit" / "genuine per-mode proof typing" (synergy_pipeline dry_run-vs-executed,
+    // get_av_transit_gating sav_bav_gating-vs-kakshya_windows) / "remaining residual
+    // classification" (query_sutravali_rules_for_planet's sidecar param-binding bug fixed
+    // and contracted) packets, PLUS the mandated independent review's 3 confirmed
+    // fix-and-reverify findings (get_dashas envelope provenance, register_d8's missing
+    // rethrow, synergy_pipeline's 2 missing temporal legs) — with every acceptance
+    // denominator unchanged (see the v11 pin test below and the semantic snapshot review in
+    // the boundary commit).
+    expect(report.report_hash).toBe('sha256:17bcd5e76cd2ff84f4c95a7787050de2c753c5c7ac99d2c385c1d47a7f5315ac')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -367,15 +375,14 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v10 source-successor artifact to the current executable report without claiming live acceptance (R3 boundary review follow-up)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v10 source-successor artifact immutable while a later successor advances (R3 boundary review follow-up)', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v10.json',
       import.meta.url,
-    ), 'utf8')) as Record<string, unknown>
-    const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
-    const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
-    const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
 
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV10.artifact_hash)
     expect(artifact).toMatchObject({
       schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v10',
       predecessor: {
@@ -383,6 +390,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
         capability_content_hash: historicalV9.capability_content_hash,
         report_hash: historicalV9.report_hash,
+      },
+      capability_content_hash: historicalV10.capability_content_hash,
+      report_hash: historicalV10.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '8ea19c33839124d624e5e988dbbb676e4dd8650a',
+    })
+  })
+
+  it('pins the v11 source-successor artifact to the current executable report without claiming live acceptance (R3 boundary, native strategic ruling packets 1-4)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v11.json',
+      import.meta.url,
+    ), 'utf8')) as Record<string, unknown>
+    const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
+    const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
+    const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
+
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v11',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v10.json',
+        acceptance_version: 'beyond-acarya-source-acceptance-v2',
+        capability_content_hash: historicalV10.capability_content_hash,
+        report_hash: historicalV10.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -425,7 +456,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: '8ea19c33839124d624e5e988dbbb676e4dd8650a',
+      evaluated_source_revision: '84dafb55dcb3cd40ffa5d01eba4640433f3dd985',
     })
   })
 })
