@@ -396,7 +396,12 @@ export async function storeConnectionValidation(userId: string, connectionId: st
           model.supportsTools, model.supportsStructuredOutput])
       }
     }
-    await writeAiAudit(client, userId, { event: 'connection_validated', connectionId })
+    await writeAiAudit(client, userId, result.state === 'validated'
+      ? { event: 'connection_validation_succeeded', connectionId }
+      : result.state === 'invalid'
+        ? { event: 'connection_validation_rejected', connectionId,
+          errorCode: result.errorCode ?? 'AI_CONNECTION_INVALID' }
+        : { event: 'connection_validated', connectionId })
   })
 }
 
@@ -435,7 +440,9 @@ export async function markConnectionForRevalidation(userId: string, connectionId
       WHERE c.user_id=$1 AND c.id=$2 AND c.credential_version=$3 AND c.deleted_at IS NULL
       AND EXISTS(SELECT 1 FROM profiles p WHERE p.id=c.user_id AND p.status='active') RETURNING c.id`,
     [userId, connectionId, credentialVersion, state, error.code])).rows)
-    await writeAiAudit(client, userId, { event: 'connection_validated', connectionId })
+    await writeAiAudit(client, userId, error.code === 'AI_CONNECTION_INVALID'
+      ? { event: 'connection_validation_rejected', connectionId, errorCode: error.code }
+      : { event: 'connection_validated', connectionId })
   })
 }
 

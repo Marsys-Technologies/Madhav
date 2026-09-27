@@ -7,9 +7,13 @@ vi.mock('../../repository', () => ({ insertRoleInvocationReceipt: insertReceipt 
 import { trackRoleExecutor } from '../tracked-executor'
 import type { RoleExecutionEvent, RoleExecutor } from '../provider-executor'
 
+const connectionId = '10000000-0000-4000-8000-000000000003'
+const conversationId = '10000000-0000-4000-8000-000000000004'
+const correlationId = '10000000-0000-4000-8000-000000000005'
+
 function executor(options?: { fail?: boolean }): RoleExecutor {
   return {
-    descriptor: { role: 'worker', providerId: 'openai', connectionId: 'connection-1', modelId: 'model-1' },
+    descriptor: { role: 'worker', providerId: 'openai', connectionId, modelId: 'model-1' },
     async generate() {
       if (options?.fail) throw new Error('raw provider secret')
       return {
@@ -28,6 +32,17 @@ function executor(options?: { fail?: boolean }): RoleExecutor {
       })
     },
   }
+}
+
+function observation(write: (input: unknown) => Promise<void>) {
+  const target = { kind: 'provider_model' as const, providerId: 'openai' as const, connectionId, modelId: 'model-1' }
+  return { snapshot: {
+    source: 'pariprashna' as const, userId: 'user-1', correlationId, conversationId,
+    selection: { kind: 'default' as const },
+    resolvedChoice: { kind: 'provider_model' as const, connectionId, modelId: 'model-1' },
+    configurationVersion: null,
+    roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+  }, write }
 }
 
 describe('trackRoleExecutor', () => {
@@ -138,5 +153,50 @@ describe('trackRoleExecutor', () => {
     expect(delegateCancelled).toBe(true)
     expect(insertReceipt).toHaveBeenCalledTimes(2)
     expect(insertReceipt.mock.calls[1][0]).toMatchObject({ phase: 'terminal', status: 'cancelled' })
+  })
+
+  it('observes exact terminal facts only after the durable terminal receipt', async () => {
+    const write = vi.fn(async input => { expect(insertReceipt.mock.calls.at(-1)?.[0]).toMatchObject({
+      phase: 'terminal', status: 'succeeded',
+    }); expect(input).toMatchObject({
+      role: 'worker', terminal_status: 'success', input_tokens: 1, output_tokens: 2,
+      retry_count: 0, fallback_used: false,
+    }) })
+    const wrapped = trackRoleExecutor(executor(), { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) })
+
+    await wrapped.generate({ systemPrompt: 'private prompt', messages: [] })
+
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(write.mock.calls)).not.toContain('private prompt')
+    expect(JSON.stringify(write.mock.calls)).not.toContain('private output')
+  })
+
+  it('keeps an Observatory failure non-fatal without repeating execution or receipts', async () => {
+    const delegate = executor()
+    const execute = vi.spyOn(delegate, 'generate')
+    const write = vi.fn().mockRejectedValue(new Error('telemetry unavailable'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const wrapped = trackRoleExecutor(delegate, { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) })
+
+    await expect(wrapped.generate({ systemPrompt: 'private prompt', messages: [] })).resolves.toMatchObject({
+      finishReason: 'stop',
+    })
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(insertReceipt).toHaveBeenCalledTimes(2)
+    expect(write).toHaveBeenCalledTimes(1)
+  })
+
+  it('observes stream usage once after complete consumption', async () => {
+    const write = vi.fn().mockResolvedValue(undefined)
+    const reader = trackRoleExecutor(executor(), { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) }).stream({ systemPrompt: 'private prompt', messages: [] }).getReader()
+
+    while (!(await reader.read()).done) { /* consume */ }
+
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write.mock.calls[0][0]).toMatchObject({ terminal_status: 'success', total_tokens: 3,
+      retry_count: 0 })
   })
 })

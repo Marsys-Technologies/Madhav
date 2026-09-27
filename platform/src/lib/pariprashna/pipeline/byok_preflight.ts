@@ -57,7 +57,8 @@ export async function prepareByokTurn(input: {
   try {
     const executors = Object.freeze(Object.fromEntries(AI_ROLES.map(role => {
       const executor = createRoleExecutor(plan.roles[role])
-      return [role, trackRoleExecutor(executor, { userId: input.userId, snapshotId })]
+      return [role, trackRoleExecutor(executor, { userId: input.userId, snapshotId,
+        observation: { snapshot: safeSnapshot } })]
     })) as ByokTurnRuntime['executors'])
     const synth = safeSnapshot.roles.synthesizer
     const displayModelId = synth.modelId ?? ('cliId' in synth ? `${synth.cliId}:built-in-default` : 'selected-model')

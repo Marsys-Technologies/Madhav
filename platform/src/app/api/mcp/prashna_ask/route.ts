@@ -103,6 +103,7 @@ import {
   projectMcpEvidencePlan,
 } from '@/lib/mcp/prashna_ask/evidence'
 import { logSafeByokToolFailure } from '@/lib/mcp/prashna_ask/logging'
+import { observeMcpExternalSynthesis } from '@/lib/ai-console/observability'
 
 // Wall-clock generous enough for the elevated super_admin cost cap (300s) plus
 // margin for the HTTP round trip; the resolved per-entitlement cap enforces the
@@ -518,7 +519,7 @@ export async function POST(request: Request) {
         cap_tripped: null,
       }
       try {
-        return NextResponse.json(buildMcpEvidenceEnvelope({
+        const envelope = buildMcpEvidenceEnvelope({
           question,
           plan: null,
           results: [],
@@ -545,7 +546,9 @@ export async function POST(request: Request) {
               audit_written: safetyDecision.audit_written,
             },
           },
-        }))
+        })
+        await observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+        return NextResponse.json(envelope)
       } finally {
         byokRuntime.releaseAdmission()
       }
@@ -832,7 +835,7 @@ export async function POST(request: Request) {
           stripped_leaked_capabilities: [], empty_result_tools: [], cap_tripped: null,
         }
         try {
-          return NextResponse.json(buildMcpEvidenceEnvelope({
+          const envelope = buildMcpEvidenceEnvelope({
             question,
             plan: projectMcpEvidencePlan(plan),
             results: [],
@@ -857,7 +860,9 @@ export async function POST(request: Request) {
                 audit_written: postPlanSafety.audit_written,
               },
             },
-          }))
+          })
+          await observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+          return NextResponse.json(envelope)
         } finally {
           byokRuntime.releaseAdmission()
         }
@@ -1514,6 +1519,7 @@ export async function POST(request: Request) {
           controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...boundedFailure }) + '\n'))
           return
         }
+        await observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
         controller.enqueue(encoder.encode(finalLine))
         return
       }

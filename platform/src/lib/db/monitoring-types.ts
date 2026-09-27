@@ -16,8 +16,8 @@ export interface LlmCallLogRow {
   query_id: string
   conversation_id: string | null
   call_stage: LlmCallStage | string
-  model_id: string
-  provider: string
+  model_id: string | null
+  provider: string | null
   input_tokens: number | null
   output_tokens: number | null
   reasoning_tokens: number | null

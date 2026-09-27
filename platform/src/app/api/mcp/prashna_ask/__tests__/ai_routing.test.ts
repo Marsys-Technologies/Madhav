@@ -68,6 +68,9 @@ describe('MCP BYOK routing seam', () => {
       deep_planner: expect.objectContaining({ target: expect.objectContaining({ role: 'deep_planner' }) }),
       worker: expect.objectContaining({ target: expect.objectContaining({ role: 'worker' }) }),
     })
+    for (const [, context] of mocks.trackRoleExecutor.mock.calls) {
+      expect(context).toMatchObject({ snapshotId: 'snapshot-1', observation: { snapshot: runtime.safeSnapshot } })
+    }
     expect(mocks.prepareMcpRouting.mock.invocationCallOrder[0]).toBeLessThan(mocks.admitByokTurn.mock.invocationCallOrder[0])
     expect(mocks.admitByokTurn.mock.invocationCallOrder[0]).toBeLessThan(mocks.createRoleExecutor.mock.invocationCallOrder[0])
   })
@@ -88,5 +91,6 @@ describe('MCP BYOK routing seam', () => {
     expect(source).toContain("import('@/lib/models/runtime_config')")
     expect(source).toContain("import('@/lib/pipeline/prashna_ask_synthesis')")
     expect(source).toContain('if (byokRuntime)')
+    expect(source).toContain('observeMcpExternalSynthesis(byokRuntime.safeSnapshot)')
   })
 })

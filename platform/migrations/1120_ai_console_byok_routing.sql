@@ -6,6 +6,31 @@
 -- Transaction owned by platform/scripts/migrate.ts, including its tracking insert.
 -- Do not add transaction control here: an inner COMMIT would break runner atomicity.
 
+-- Observatory vocabulary is widened here because this migration is still unapplied.
+-- Guard the legacy relations for minimal/disposable schema tests that exercise only AI Console tables.
+DO $$
+BEGIN
+  IF to_regclass('public.llm_usage_events') IS NOT NULL THEN
+    ALTER TABLE public.llm_usage_events DROP CONSTRAINT IF EXISTS llm_usage_events_provider_check;
+    ALTER TABLE public.llm_usage_events ADD CONSTRAINT llm_usage_events_provider_check
+      CHECK (provider IN ('anthropic','openai','gemini','deepseek','nim','xai','kimi','openrouter','cli'));
+    ALTER TABLE public.llm_usage_events DROP CONSTRAINT IF EXISTS llm_usage_events_pipeline_stage_check;
+    ALTER TABLE public.llm_usage_events ADD CONSTRAINT llm_usage_events_pipeline_stage_check
+      CHECK (pipeline_stage IN ('classify','compose','retrieve','synthesize','synthesizer','audit','other',
+        'planner','deep_planner','worker','title','history_summary','interpretation_sets'));
+    ALTER TABLE public.llm_usage_events DROP CONSTRAINT IF EXISTS llm_usage_events_status_check;
+    ALTER TABLE public.llm_usage_events ADD CONSTRAINT llm_usage_events_status_check
+      CHECK (status IN ('success','error','timeout','cancelled'));
+    ALTER TABLE public.llm_usage_events ALTER COLUMN conversation_id DROP NOT NULL;
+  END IF;
+  IF to_regclass('public.llm_call_log') IS NOT NULL THEN
+    ALTER TABLE public.llm_call_log ALTER COLUMN model_id DROP NOT NULL;
+    ALTER TABLE public.llm_call_log ALTER COLUMN provider DROP NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS llm_call_log_external_synthesis_idx
+      ON public.llm_call_log(query_id,call_stage) WHERE call_stage='external_synthesis';
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION ai_choice_shape(k text, conn uuid, model text, config uuid, cli text, allow_default boolean DEFAULT false)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT COALESCE(
@@ -244,14 +269,17 @@ CREATE TABLE IF NOT EXISTS ai_configuration_audit_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id text NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   actor_user_id text NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
-  event text NOT NULL CHECK (event IN ('connection_created','connection_updated','connection_renamed','connection_credential_replaced','connection_validated','connection_deleted','configuration_created','configuration_updated','configuration_duplicated','configuration_deleted','default_selected','cli_granted','cli_revoked','conversation_selected')),
+  event text NOT NULL CHECK (event IN ('connection_created','connection_updated','connection_renamed','connection_credential_replaced','connection_validated','connection_validation_succeeded','connection_validation_rejected','connection_deleted','configuration_created','configuration_updated','configuration_duplicated','configuration_deleted','default_selected','cli_granted','cli_revoked','conversation_selected')),
   connection_id uuid,
   configuration_id uuid,
   cli_id text REFERENCES ai_cli_installations(cli_id) ON DELETE RESTRICT,
   configuration_version bigint CHECK (configuration_version > 0),
+  error_code text CHECK (error_code IN ('AI_CONNECTION_INVALID','AI_MODEL_UNAVAILABLE','AI_ROLE_INCOMPATIBLE','AI_PROVIDER_UNREACHABLE','AI_PERMISSION_DENIED','AI_BILLING_UNAVAILABLE','AI_RATE_LIMITED','AI_EXECUTION_FAILED')),
   created_at timestamptz NOT NULL DEFAULT now(),
   FOREIGN KEY (user_id, connection_id) REFERENCES ai_provider_connections(user_id,id) ON DELETE RESTRICT,
-  FOREIGN KEY (user_id, configuration_id) REFERENCES ai_custom_configurations(user_id,id) ON DELETE RESTRICT
+  FOREIGN KEY (user_id, configuration_id) REFERENCES ai_custom_configurations(user_id,id) ON DELETE RESTRICT,
+  CHECK ((event = 'connection_validation_rejected' AND error_code IS NOT NULL)
+    OR (event <> 'connection_validation_rejected' AND error_code IS NULL))
 );
 CREATE INDEX IF NOT EXISTS ai_audit_user_idx ON ai_configuration_audit_log(user_id, created_at);
 

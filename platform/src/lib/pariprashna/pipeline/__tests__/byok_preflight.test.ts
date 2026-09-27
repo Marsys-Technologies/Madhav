@@ -49,6 +49,11 @@ describe('prepareByokTurn', () => {
     expect(m.order).toEqual(['atomic-authority-selection-resolve-snapshot', 'build', 'admit',
       'executor:synthesizer', 'executor:planner', 'executor:deep_planner', 'executor:worker'])
     expect(m.prepare).toHaveBeenCalledOnce()
+    expect(m.trackExecutor).toHaveBeenCalledTimes(4)
+    for (const [, context] of m.trackExecutor.mock.calls) {
+      expect(context).toMatchObject({ snapshotId: '30000000-0000-4000-8000-000000000003',
+        observation: { snapshot } })
+    }
   })
 
   it('rejects stale existing-turn identity without overwriting or resolving', async () => {

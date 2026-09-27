@@ -56,7 +56,8 @@ export async function prepareMcpByokRuntime(input: {
   try {
     const make = (role: 'planner' | 'deep_planner' | 'worker') => trackRoleExecutor(
       createRoleExecutor(plan.roles[role]),
-      { userId: input.userId, snapshotId: prepared.snapshotId },
+      { userId: input.userId, snapshotId: prepared.snapshotId,
+        observation: { snapshot: prepared.safeSnapshot } },
     )
     return Object.freeze({
       role: prepared.role,

@@ -68,6 +68,8 @@ export interface RecordSynthesisTurnObservationArgs {
   status: 'success' | 'error'
   errorCode?: string
   snapshot: TurnMetricsSnapshot
+  /** BYOK calls are observed once by trackRoleExecutor; this legacy writer must stay silent. */
+  routingMode?: 'legacy' | 'byok'
   /** Injectable for tests. Defaults to the real DB pool. */
   db?: ObservatoryDb
 }
@@ -130,6 +132,7 @@ export function buildSynthesisParameters(snapshot: TurnMetricsSnapshot): Record<
  * hot path.
  */
 export async function recordSynthesisTurnObservation(args: RecordSynthesisTurnObservationArgs): Promise<void> {
+  if (args.routingMode === 'byok') return
   if (!args.identity) {
     warnIdentityMissingOnce()
     return

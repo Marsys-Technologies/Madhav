@@ -12,6 +12,7 @@ import type {
   RoleExecutionEvent, RoleExecutionRequest, RoleExecutionResult, RoleExecutor, SafeCliExecutorDescriptor,
 } from './provider-executor'
 import { isStructuredOutputValidationError, StructuredOutputValidationError } from './structured-output-error'
+import { attachSafeExecutionFailureFacts } from './execution-facts'
 
 interface Dependencies {
   runner?: CliRunner
@@ -47,11 +48,14 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
   request: RoleExecutionRequest): Promise<RoleExecutionResult> {
   if ((request.tools?.length ?? 0) > 0 || request.toolChoice && request.toolChoice !== 'none') {
     // The common contract carries definitions but no authorized handler authority.
-    throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role)
+    throw attachSafeExecutionFailureFacts(new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role),
+      { retryCount: 0 })
   }
   if (request.responseSchema && (!execution.capabilities.supportsStructuredOutput
-    || !definition.supportsStructuredOutput)) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role)
-  if (request.abortSignal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+    || !definition.supportsStructuredOutput)) throw attachSafeExecutionFailureFacts(
+    new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role), { retryCount: 0 })
+  if (request.abortSignal?.aborted) throw attachSafeExecutionFailureFacts(
+    new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount: 0 })
 
   const prompt = serializePrompt(request)
   let retryCount = 0
@@ -77,11 +81,14 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
       return { text: parsed.text, ...(request.responseSchema ? { structured } : {}), toolCalls: [],
         finishReason: 'stop', usage: parsed.usage, retryCount }
     } catch (error) {
-      if (request.abortSignal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
-      if (isStructuredOutputValidationError(error)) throw error
+      if (request.abortSignal?.aborted) throw attachSafeExecutionFailureFacts(
+        new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount })
+      if (isStructuredOutputValidationError(error)) {
+        throw attachSafeExecutionFailureFacts(error, { retryCount })
+      }
       const safe = normalizeAiError(error, { source: 'cli', role: execution.role })
       if (retryCount === 0 && TRANSIENT.has(safe.code)) { retryCount = 1; continue }
-      throw new AiConsoleError(safe.code, execution.role)
+      throw attachSafeExecutionFailureFacts(new AiConsoleError(safe.code, execution.role), { retryCount })
     }
   }
 }

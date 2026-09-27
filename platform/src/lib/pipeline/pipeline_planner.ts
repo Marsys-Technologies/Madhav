@@ -492,7 +492,10 @@ export async function callPipelinePlanner(
         abortSignal: byok?.abortSignal,
         maxOutputTokens: byok?.maxOutputTokens,
       })
-      interaction = { finalText: result.text, usage: result.usage }
+      interaction = { finalText: result.text, usage: {
+        inputTokens: result.usage.inputTokens ?? 0,
+        outputTokens: result.usage.outputTokens ?? 0,
+      } }
     } catch (error) {
       if (isStructuredOutputValidationError(error)) {
         interaction = { finalText: error.candidateText(), usage: { inputTokens: 0, outputTokens: 0 } }

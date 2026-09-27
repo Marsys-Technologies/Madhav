@@ -150,16 +150,17 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
     const parsed = z.object({ type: z.literal('result'), subtype: z.literal('success'), is_error: z.literal(false),
       result: z.string(), structured_output: z.unknown().optional(), usage: UsageSchema.optional() }).passthrough().safeParse(raw)
     if (!parsed.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
-    const inputTokens = parsed.data.usage?.input_tokens ?? 0
-    const outputTokens = parsed.data.usage?.output_tokens ?? 0
+    const inputTokens = parsed.data.usage?.input_tokens ?? null
+    const outputTokens = parsed.data.usage?.output_tokens ?? null
     return { text: parsed.data.result, structured: parsed.data.structured_output,
-      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+      usage: { inputTokens, outputTokens,
+        totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens },
       reportedOutputTokens: parsed.data.usage?.output_tokens }
   }
 
   let text = ''
-  let inputTokens = 0
-  let outputTokens = 0
+  let inputTokens: number | null = null
+  let outputTokens: number | null = null
   let reportedOutputTokens: number | undefined
   let completed = false
   const lines = stdout.split(/\r?\n/).filter(Boolean)
@@ -182,8 +183,8 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
       if (!text) throw new AiConsoleError('AI_EXECUTION_FAILED')
       const terminal = z.object({ usage: UsageSchema.optional() }).passthrough().safeParse(raw)
       if (!terminal.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
-      inputTokens = terminal.data.usage?.input_tokens ?? 0
-      outputTokens = terminal.data.usage?.output_tokens ?? 0
+      inputTokens = terminal.data.usage?.input_tokens ?? null
+      outputTokens = terminal.data.usage?.output_tokens ?? null
       reportedOutputTokens = terminal.data.usage?.output_tokens
       completed = true
     } else if (!['thread.started', 'turn.started', 'item.started'].includes(event.data.type)) {
@@ -191,6 +192,7 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
     }
   }
   if (!text || !completed) throw new AiConsoleError('AI_EXECUTION_FAILED')
-  return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+  return { text, usage: { inputTokens, outputTokens,
+    totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens },
     reportedOutputTokens }
 }

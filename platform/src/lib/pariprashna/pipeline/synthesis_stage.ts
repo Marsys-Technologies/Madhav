@@ -542,6 +542,7 @@ export async function runSynthesisStage(args: {
         status: opts?.aborted || streamErrorCode ? 'error' : 'success',
         errorCode: opts?.aborted ? 'client_aborted' : streamErrorCode,
         snapshot: metricsSnapshot,
+        routingMode: args.synthesizerExecutor ? 'byok' : 'legacy',
       })
     }
   }

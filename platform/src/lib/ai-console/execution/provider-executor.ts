@@ -10,6 +10,7 @@ import { AiConsoleError, normalizeAiError, type PublicAiError } from '../errors'
 import type { AiRole, ProviderId } from '../types'
 import type { ProviderRuntimeFailure, ResolvedRoleExecution } from './types'
 import { StructuredOutputValidationError } from './structured-output-error'
+import { attachSafeExecutionFailureFacts } from './execution-facts'
 
 export interface SafeProviderExecutorDescriptor extends SafeRuntimeModelDescriptor {
   readonly role: AiRole
@@ -35,9 +36,9 @@ export interface RoleExecutionRequest {
 }
 
 export interface NormalizedUsage {
-  inputTokens: number
-  outputTokens: number
-  totalTokens: number
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
 }
 
 export interface RoleToolCall { name: string; args: unknown; callId: string }
@@ -100,7 +101,7 @@ async function generate(execution: ResolvedRoleExecution, descriptor: SafeProvid
   let text = ''
   const toolCalls: RoleToolCall[] = []
   let finishReason = 'error'
-  let usage: NormalizedUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+  let usage: NormalizedUsage = { inputTokens: null, outputTokens: null, totalTokens: null }
   let retryCount = 0
   while (true) {
     const next = await reader.read()
@@ -115,9 +116,11 @@ async function generate(execution: ResolvedRoleExecution, descriptor: SafeProvid
   let structured: unknown
   if (request.responseSchema) {
     try { structured = JSON.parse(text) as unknown }
-    catch { throw new StructuredOutputValidationError(execution.role, text) }
+    catch { throw attachSafeExecutionFailureFacts(
+      new StructuredOutputValidationError(execution.role, text), { retryCount }) }
     if (!structuredOutputValidator.compile(request.responseSchema)(structured)) {
-      throw new StructuredOutputValidationError(execution.role, text)
+      throw attachSafeExecutionFailureFacts(
+        new StructuredOutputValidationError(execution.role, text), { retryCount })
     }
   }
   return { text, ...(request.responseSchema ? { structured } : {}), toolCalls, finishReason, usage, retryCount }
@@ -149,7 +152,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
     if (cancelled) { dispose(); return false }
     if (request.abortSignal?.aborted) {
       dispose()
-      throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+      throw attachSafeExecutionFailureFacts(new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount })
     }
     assertExactBinding(binding.providerId, binding.connectionId, binding.modelId, descriptor)
     const runtimeDescriptor = adapterDescriptor(descriptor)
@@ -183,7 +186,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
       try { await execution.markRuntimeFailure(normalized as ProviderRuntimeFailure) }
       catch { /* Health telemetry must not replace the safe terminal provider error. */ }
     }
-    throw new AiConsoleError(normalized.code, execution.role)
+    throw attachSafeExecutionFailureFacts(new AiConsoleError(normalized.code, execution.role), { retryCount })
   }
 
   async function pullOne(controller: ReadableStreamDefaultController<RoleExecutionEvent>): Promise<void> {
@@ -191,7 +194,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
       || (request.responseSchema !== undefined && !execution.capabilities.supportsStructuredOutput)) {
       settled = true
       detachExternalAbort()
-      throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role)
+      throw attachSafeExecutionFailureFacts(
+        new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role), { retryCount })
     }
     while (!cancelled) {
       try {
@@ -229,7 +233,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
         iterator = undefined
         dispose()
         returnIteratorSafely(current)
-        controller.error(new AiConsoleError('AI_EXECUTION_FAILED', execution.role))
+        controller.error(attachSafeExecutionFailureFacts(
+          new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount }))
       }
       detachExternalAbort = () => {
         request.abortSignal?.removeEventListener('abort', onAbort)
@@ -304,14 +309,15 @@ function translate(value: unknown, retryCount: number): RoleExecutionEvent | und
     const inputTokens = token(rawUsage.inputTokens)
     const outputTokens = token(rawUsage.outputTokens)
     return { type: 'finish', finishReason: finishReason(part.finishReason),
-      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens }, retryCount }
+      usage: { inputTokens, outputTokens,
+        totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens }, retryCount }
   }
   if (part.type === 'error') throw part.error
   return undefined
 }
 
-function token(value: unknown): number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+function token(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
 }
 
 function finishReason(value: unknown): string {

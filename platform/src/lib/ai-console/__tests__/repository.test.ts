@@ -801,7 +801,15 @@ describe('immutable history and safe audit', () => {
     await expect(audit.writeAiAudit(client, 'alice', { event: 'connection_renamed', connectionId, prompt: 'forbidden' })).rejects.toBeDefined()
     expect(execute).not.toHaveBeenCalled()
     await audit.writeAiAudit(client, 'alice', { event: 'connection_renamed', connectionId })
-    expect(calls()[0].params).toEqual(['alice', 'connection_renamed', connectionId, null, null, null])
+    expect(calls()[0].params).toEqual(['alice', 'connection_renamed', connectionId, null, null, null, null])
+    execute.mockClear()
+    await expect(audit.writeAiAudit(client, 'alice', { event: 'connection_validation_rejected',
+      connectionId, errorCode: 'AI_CONNECTION_INVALID', message: 'raw upstream body' })).rejects.toBeDefined()
+    expect(execute).not.toHaveBeenCalled()
+    await audit.writeAiAudit(client, 'alice', { event: 'connection_validation_rejected',
+      connectionId, errorCode: 'AI_CONNECTION_INVALID' })
+    expect(calls()[0].params).toEqual(['alice', 'connection_validation_rejected', connectionId,
+      null, null, null, 'AI_CONNECTION_INVALID'])
   })
 })
 
