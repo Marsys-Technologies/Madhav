@@ -29,6 +29,14 @@ const historicalV5 = {
   report_hash: 'sha256:22b4f8d5237e786493ee848f8f750d3b8622399941daa12b75b0b741cf1c4542',
   artifact_hash: 'sha256:2243892141bbc350d804958d4ad78c2425e84c44a9e09634eb883dbe34a600d9',
 } as const
+// Jātaka Phase-A3: v6 becomes an immutable historical predecessor (like v2-v5) now that v7
+// exists as the current executable report — see the "keeps the v6 source-successor immutable"
+// and "pins the v7 source-successor artifact" tests below.
+const historicalV6 = {
+  capability_content_hash: 'sha256:0a2a675d0098390453d77ba0119b87fad865728e908290eaee6cc84fc465bc36',
+  report_hash: 'sha256:bfe04932a3358e9142b09e89902c02eaf9b020a389075ccd92b424a397b480c0',
+  artifact_hash: 'sha256:04579974349aed1377b26755b4a737dcb4cd14adee808b773e6cc986a956aec5',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -68,7 +76,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    expect(report.report_hash).toBe('sha256:bfe04932a3358e9142b09e89902c02eaf9b020a389075ccd92b424a397b480c0')
+    expect(report.report_hash).toBe('sha256:7bdef36180d6734a5ce495a6a0458928c07fd501c049600a187d850814945001')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -255,9 +263,25 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v6 source-successor artifact to the current executable report without claiming live acceptance', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v6 source-successor immutable after a later contract-truth advance (Jātaka Phase-A3)', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v6.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV6.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v6',
+      capability_content_hash: historicalV6.capability_content_hash,
+      report_hash: historicalV6.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v7 source-successor artifact to the current executable report without claiming live acceptance (Jātaka Phase-A3)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v7.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -265,12 +289,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v6',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v7',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v5.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v6.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV5.capability_content_hash,
-        report_hash: historicalV5.report_hash,
+        capability_content_hash: historicalV6.capability_content_hash,
+        report_hash: historicalV6.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -313,7 +337,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: '8ac41f7e258a86a30bd90b153628c62a22078374',
+      evaluated_source_revision: 'ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b',
     })
   })
 })
