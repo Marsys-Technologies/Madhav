@@ -1634,9 +1634,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "a022983c96ae0a0523827b676ca69c3714e20c8895e330c0416bc2ceb021754e",
+      "fingerprint": "dbe44c43c8df047d8e0de560aa5584217b4c0ffbaa963efed8c282dbcbf672a5",
       "native_id": "project",
-      "last_verified_session": "NIRMANA-L0-L5-COUPLING-FIX-20260927",
+      "last_verified_session": "JATAKA-CONTROLLED-PROD-ROLLOUT-20260927",
       "last_verified_on": "2026-09-27"
     },
     {
