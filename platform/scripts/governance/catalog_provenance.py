@@ -1491,9 +1491,11 @@ def classify_no_detector_reason(reason: Optional[str]) -> str:
     phrase anywhere used to read as a valid, closed-set reason).
 
     Every message this module generates has the exact shape
-    `f"NO_DETECTOR — {class_token}: {free_text_detail}"` — the class token is
-    the FIRST word up to the first `': '`, never searched for elsewhere in the
-    string. A reason that doesn't start with the literal `"NO_DETECTOR — "`
+    `f"NO_DETECTOR — {class_token}: {free_text_detail}"`. After the prefix the
+    reason is split on its FIRST ":" and the text before it is exact-matched
+    (no strip, no search) against the closed set — a class name appearing
+    anywhere else in the string counts for nothing. A reason that doesn't start
+    with the literal `"NO_DETECTOR — "`
     prefix, or whose token-before-the-first-colon isn't a member of
     `NO_DETECTOR_REASON_CLASSES`, is `"unclassified"` — deliberately not a
     member of the closed set, so `--check` rejects it rather than pattern-
@@ -1501,7 +1503,7 @@ def classify_no_detector_reason(reason: Optional[str]) -> str:
     if not reason or not reason.startswith(_NO_DETECTOR_PREFIX):
         return "unclassified"
     rest = reason[len(_NO_DETECTOR_PREFIX):]
-    class_token, sep, _detail = rest.partition(": ")
+    class_token, sep, _detail = rest.partition(":")
     if sep and class_token in NO_DETECTOR_REASON_CLASSES:
         return class_token
     return "unclassified"
@@ -1557,10 +1559,12 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
     producer appended beside, or placed before, a real one used to still pass),
     or (b) a `no_detector` reason whose class is a member of the CLOSED
     `NO_DETECTOR_REASON_CLASSES` set, exact-matched (F — never substring-
-    matched; see `classify_no_detector_reason`) AND not contradicted by the
-    snapshot itself declaring a claim/probe for this SCU (F2 guard below). An
-    SCU with neither is a failure, naming the SCU and (for an unbound producer)
-    the producer itself.
+    matched; see `classify_no_detector_reason`). In BOTH cases every producer
+    the snapshot itself declares for this SCU (each `producer_output_claims`
+    pair, each service-probe asset) must be present (F — erasing or demoting a
+    declared producer fails, whatever the reason string says). An SCU failing
+    any of this is a failure, naming the SCU and (for an unbound or missing
+    producer) the producer itself.
 
     Per-disposition binding, checked for EVERY producer (B3), against the
     SNAPSHOT (never the artifact's own say-so):
@@ -1654,6 +1658,21 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
             if covers:
                 has_covering = True
 
+        # F (review-4 corrections): the snapshot says which producers belong on
+        # this SCU — every `producer_output_claims` pair and every service-probe
+        # asset it declares here must be PRESENT in the artifact's producers.
+        # Erasing a reviewed SCU's producers behind a fabricated reason, or
+        # quietly demoting a reviewed claim while derived producers keep the SCU
+        # "covered", both fail here, naming the missing producer.
+        present = {(p.get("asset_id"), p.get("disposition")) for p in producers}
+        declared = set(claim_keys) | {(a, "derived_from_service_probe") for a in probe_assets}
+        for missing_asset, missing_disposition in sorted(declared - present):
+            failures.append(
+                f"{scu_id}: snapshot-declared producer {missing_asset!r} (disposition "
+                f"{missing_disposition!r}) is missing from the artifact"
+            )
+            scu_failed = True
+
         if scu_failed:
             continue
         if has_covering:
@@ -1688,15 +1707,14 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
                 f"{reason_class!r}, not 'route_evidence_only_not_a_producer'"
             )
             continue
-        # F2 guard: the snapshot's own COVERING claim (any disposition except
-        # route_evidence_only — B1: route evidence is not production, so a
-        # route-evidence-only claim cannot prove a producer belongs here) or
-        # service probe for this SCU is proof a producer should exist; no reason
-        # string overrides that.
-        covering_claim_keys = {k for k in claim_keys if k[1] != "route_evidence_only"}
+        # F2 is enforced above by the declared-producer presence check, which
+        # subsumes the earlier guard: a covering claim/probe the snapshot
+        # declares is either present (and then covers, if bound) or missing
+        # (and then fails) — so no reason string can excuse it. A declared
+        # route-evidence claim, present, only ever lands here with the
+        # route_evidence_only_not_a_producer class (B1 agreement above).
         if reason_class in NO_DETECTOR_REASON_CLASSES:
-            if not covering_claim_keys and not probe_assets:
-                continue
+            continue
 
         failures.append(f"{scu_id}: no covering producer and no valid no_detector reason")
     return failures

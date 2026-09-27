@@ -22,6 +22,8 @@ import json
 import pathlib
 import sys
 
+import pytest
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 import catalog_provenance as cp  # noqa: E402
@@ -1461,6 +1463,94 @@ def test_check_fails_on_a_no_detector_reason_containing_a_trigger_substring_but_
     out = capsys.readouterr().out
     assert exit_code != 0
     assert target in out
+
+
+@pytest.mark.parametrize(
+    "forged",
+    [
+        "NO_DETECTOR — zzz kind: derived zzz",
+        "NO_DETECTOR — I made this up; no availability_contracts requirement exists lol",
+        "NO_DETECTOR — xx source_ref_out_of_range xx: y",
+        "NO_DETECTOR — resolved range(s) contain no relation name: y",
+        "NO_DETECTOR — no_contractX: y",
+        "NO_DETECTOR —  no_contract: leading space is not the class token",
+        "NO_DETECTOR — no_contract",
+    ],
+)
+def test_check_fails_on_a_prefixed_reason_whose_class_token_is_not_exact(forged, tmp_path, monkeypatch, capsys):
+    """F (review-4 corrections): WITH the exact `NO_DETECTOR — ` prefix, a reason
+    is valid only when the text before its FIRST ":" is exactly a closed-set
+    class. Each forged string carries an old substring trigger (or a near-miss
+    class name) somewhere else, which the substring classifier accepted.
+    Mutation this catches: restoring substring matching (the pre-F classifier)."""
+    payload = _load_real_committed_artifact()
+    target = "scu.catalog.get_dignity"
+    payload["scus"][target]["producers"] = []
+    payload["scus"][target]["no_detector"] = forged
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_classify_splits_on_the_first_colon_and_exact_matches():
+    """F: split on the FIRST ":" (not ": "), exact-match the class token."""
+    assert cp.classify_no_detector_reason("NO_DETECTOR — no_contract:detail") == "no_contract"
+    assert cp.classify_no_detector_reason("NO_DETECTOR — no_contract: a: b") == "no_contract"
+    assert cp.classify_no_detector_reason("NO_DETECTOR — no_contract") == "unclassified"
+    assert cp.classify_no_detector_reason("NO_DETECTOR — x: no_contract: y") == "unclassified"
+    assert cp.classify_no_detector_reason("no_contract: y") == "unclassified"
+
+
+def test_check_fails_when_a_reviewed_claim_is_demoted_beside_derived_producers(tmp_path, monkeypatch, capsys):
+    """F (review-4 corrections): `scu.kala.temporal_activation` keeps its derived
+    producers (so it still reads covered) but its two snapshot-declared
+    `reviewed_output` claims are removed. The snapshot says those producers
+    belong here, so this must fail, naming each missing one. Mutation this
+    catches: dropping the declared-producer presence check."""
+    payload = _load_real_committed_artifact()
+    target = "scu.kala.temporal_activation"
+    entry = payload["scus"][target]
+    removed = sorted(p["asset_id"] for p in entry["producers"] if p.get("disposition") == "reviewed_output")
+    assert removed == ["ka_bhavishya_lekha", "ka_yojaka"]
+    entry["producers"] = [p for p in entry["producers"] if p.get("disposition") != "reviewed_output"]
+    assert any(p.get("disposition") == "derived_from_source_query" for p in entry["producers"])
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    lines = out.splitlines()
+    for asset_id in removed:
+        assert any(target in ln and repr(asset_id) in ln and "missing" in ln for ln in lines), asset_id
+
+
+def test_all_snapshot_declared_producers_are_present_in_the_committed_artifact():
+    """F: the presence check is satisfiable — the real artifact carries all 15
+    declared producer_output_claims pairs and all 9 service-probe pairs."""
+    payload = _load_real_committed_artifact()
+    snapshot = cp.load_snapshot()
+    claim_keys = cp.snapshot_producer_output_claim_keys(snapshot)
+    probe_assets = cp.snapshot_service_probe_asset_ids(snapshot)
+    n_claims = sum(len(v) for v in claim_keys.values())
+    n_probes = sum(len(v) for v in probe_assets.values())
+    missing = []
+    for scu_id, keys in claim_keys.items():
+        present = {(p["asset_id"], p["disposition"]) for p in payload["scus"][scu_id]["producers"]}
+        missing += [(scu_id, k) for k in keys - present]
+    for scu_id, assets in probe_assets.items():
+        present = {p["asset_id"] for p in payload["scus"][scu_id]["producers"]
+                   if p["disposition"] == "derived_from_service_probe"}
+        missing += [(scu_id, a) for a in assets - present]
+    assert (n_claims, n_probes, missing) == (15, 9, [])
 
 
 def test_check_fails_when_a_reviewed_scus_producers_are_erased_and_replaced_with_a_fake_reason(
