@@ -35,6 +35,7 @@ coordination lease that produced it.
 | CCD-012 | 2026-09-15 | Codex | ACTIVE | Supersede CCD-011's source-only ceiling for the governed Pūrṇa live-release wrap-up while retaining exact-candidate, safety, serialization, evidence and no-fabrication gates. |
 | CCD-013 | 2026-09-27 | Codex → Claude Code | ACTIVE | Authorize the isolated Jātaka chart-workspace workstream to implement and commit plan Tasks 1–8 locally under an exact file allowlist, reserve cross-cutting migration 1120 through JATAKA-REQ-01, and keep browser/full-recompute acceptance blocked until a non-production Firebase project, disposable local PostgreSQL database and approved L0 seed/snapshot exist. |
 | CCD-014 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A integrity-hardening follow-up (correction-history write doors, context staleness or stop-and-report, reading-door readiness parity, safe birthplace edits, persistence-boundary recheck) under the hardening addendum; reserve cross-cutting migration 1121 through JATAKA-REQ-02; Task 9 remains blocked. |
+| CCD-015 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A2 integrity session (chart-context staleness end to end or stop-and-report per consumer, `prashna_ask` and `chat/build` reading-door gates, terminal/persistence/retry/stale/serving-impact correctness, migration 1121 security disposition) under the Phase-A2 addendum; reserve cross-cutting migration 1122 through JATAKA-REQ-03; Task 9 remains blocked. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -340,3 +341,28 @@ coordination lease that produced it.
   or frozen-contract change, or L3 Kāla / Pūrṇa mutation.
 - **Coordination:** lease `MADHAV-JATAKA-PHASE-A-HARDENING-20260927` on `origin/campaign-coordination`.
 - **Supersession:** none. Extends CCD-013; the parent Jātaka amendment is unchanged.
+
+## CCD-015 — Jātaka Phase-A2 integrity session
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `JATAKA-PHASE-A2-INTEGRITY-20260927`.
+- **Authority:** the native accepted the Phase-A hardening report at `695401d31` ("Items 1, 3, 4
+  and 5 are implemented and mock-tested. Item 2 and two reading doors remain open. Task 9 remains
+  blocked.") and authorized a new, narrowly governed Phase-A2 integrity session.
+- **Decision:** permit local source changes, tests and local commits for the work and exact file
+  scope in `briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A2_INTEGRITY_ADDENDUM_v1_0.md`: chart-context
+  staleness marked in the correction transaction and enforced at every identified current-query
+  consumer (named sidecar, retrieval and Pūrṇa files only — not blanket authority over those
+  trees); the MCP `prashna_ask` and super-admin `chat/build` reading doors; terminal-event,
+  persistence-result, retry, stale-readiness and serving-impact correctness; the migration 1121
+  security disposition. A consumer that needs a frozen or actively leased contract is reported,
+  and item 2 is then not claimed complete.
+- **Migration:** reserve `1122_jataka_chart_context_staleness.sql` through `JATAKA-REQ-03` after a
+  fresh `origin/main` (`6b26f3ff0`, max 1079) and complete open-PR sweep (21 PRs, 22 migration files,
+  max 1090). Authored only; never applied under this authority. 1121 stays unapplied.
+- **Ceiling:** no Task 9, browser acceptance, migration application, database or external-service
+  access, credentials, push, PR, merge, deploy, production data or real-user mutation; frozen
+  `WriterBase`, runner/`asset_runner` transaction contracts, governed `asset_registry` definitions,
+  unrelated writers and L3 Kāla implementation stay excluded.
+- **Coordination:** lease `MADHAV-JATAKA-PHASE-A2-INTEGRITY-20260927` on `origin/campaign-coordination`.
+- **Supersession:** none. Extends CCD-013 and CCD-014; the parent amendment and the Phase-A
+  addendum are unchanged.

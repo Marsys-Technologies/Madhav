@@ -1634,9 +1634,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "759f8adc616074b6bdc9e597a9ea3c15472ecc75871ccee0474bd4ac0690082e",
+      "fingerprint": "f0c8abd0816bae4192b0339fe201dde5977fb298eb2f9cca269ada312ba9e038",
       "native_id": "project",
-      "last_verified_session": "JATAKA-PHASE-A-HARDENING-20260927",
+      "last_verified_session": "JATAKA-PHASE-A2-INTEGRITY-20260927",
       "last_verified_on": "2026-09-27"
     },
     {
