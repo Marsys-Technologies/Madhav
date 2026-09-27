@@ -12,11 +12,13 @@
 
 ## Global Constraints
 
-- Work only in `/Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav` on branch `codex/jataka-chart-workspace`; the design baseline is commit `bf604c39b`.
+- Work only in `/Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav` on branch `codex/jataka-chart-workspace`; commits `bf604c39b` (design) and `f95a8a4ca` (this plan) must be ancestors of `HEAD`.
+- Execution authority is `00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md` / CCD-013 / `JATAKA-REQ-01`. Root `CLAUDECODE_BRIEF.md` remains the first read and the L3 campaign remains active.
 - Do not implement in `/Users/Dev/Vibe-Coding/Apps/Madhav`; that shared checkout was intentionally left untouched.
 - Before changing code, read root `CLAUDE.md` in full, follow its mandatory-reading sequence and session-open protocol, then read root `AGENTS.md`, `platform/AGENTS.md`, this plan, and the linked design specification.
 - After `npm ci`, read the relevant Next.js 16 guides under `platform/node_modules/next/dist/docs/` before changing App Router pages or handlers.
 - Local-only means: no deployment, push, merge, production migration, production database write, Cloud Run dispatch, or real-user chart correction.
+- The currently authorized execution phase is Tasks 1–8 with local source and mock-backed tests. Task 9 is blocked until its environment gate passes; Task 10 must report that block honestly if it remains.
 - Use a disposable local PostgreSQL database. Stop if `DATABASE_URL` points to a non-local host.
 - Set `BUILD_EXECUTOR=local` for end-to-end recompute proof. Never remove that guard to make local testing easier.
 - Do not change `platform/python-sidecar/**`, the frozen orchestrator contract, writer contracts, Jyotish computations, or governed asset definitions.
@@ -46,10 +48,11 @@ Expected before implementation:
 ```text
 codex/jataka-chart-workspace
 <clean status>
-bf604c39b docs: design Jataka chart workspace and safe recompute
+<HEAD descends from f95a8a4ca and contains the Jātaka parallel-execution amendment>
 ```
 
-If the branch, cleanliness, or design commit differs, stop and reconcile that state before editing. Do not reset or discard someone else's changes.
+Verify ancestry with `git merge-base --is-ancestor f95a8a4ca HEAD`. If the branch, cleanliness,
+ancestry or amendment differs, stop and report it. Do not reset or discard someone else's changes.
 
 ### JavaScript dependencies
 
@@ -57,14 +60,26 @@ If the branch, cleanliness, or design commit differs, stop and reconcile that st
 cd /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav/platform
 npm ci
 npm run guard:migration-numbers
-npm run migration:next
 ```
 
-At the recorded baseline, the highest migration number across both migration directories is `1079`, so the planned migration filename is `platform/supabase/migrations/1080_jataka_conversation_archive_context.sql`. The migration guard remains authoritative; if it reports a different next number before the migration is created, use that reported number and update every reference in this plan in the same commit.
+Migration numbers `1070–1119` are reserved for L3 Kāla even though the numeric guard may report a
+number inside that range. `JATAKA-REQ-01` reserves the first cross-cutting number, so the planned
+migration is `platform/supabase/migrations/1120_jataka_conversation_archive_context.sql`.
+Immediately before creating it, fetch protected `origin/main`, inspect all open PR migration file
+lists, and re-run `guard:migration-numbers`. If `1120` has a newer claimant, stop and reserve the
+next free number at or above `1121` on `origin/campaign-coordination`, then update every plan/test
+reference before writing the file. The numeric guard alone is not authoritative for campaign ranges.
 
-### Local secrets and runtime safety
+### Task 9 environment gate and runtime safety
 
-Use an ignored `platform/.env.local` configured for local resources. It must include the existing application auth settings plus these local execution values:
+Do not begin Task 9 until all three exist: Firebase Admin credentials for a non-production test
+project, a workstream-owned disposable local PostgreSQL database, and an approved L0 seed/snapshot
+or deterministic seed procedure sufficient for the full rebuild. Do not copy the shared checkout's
+`.env.local`, use production resources, reuse the PostgreSQL instances on ports `55432`/`55433`, or
+add a Firebase Auth emulator path without a successor amendment.
+
+Once that gate passes, use an ignored `platform/.env.local` configured only for those approved
+local/test resources. It must include the existing test-project auth settings plus these values:
 
 ```dotenv
 DATABASE_URL=postgresql://<local-user>:<local-password>@127.0.0.1:<local-port>/<disposable-database>
@@ -111,7 +126,7 @@ The rebuild route spawns the orchestrator itself when `BUILD_EXECUTOR=local`; do
 | `platform/src/components/profile/__tests__/ChartReadinessBand.test.tsx` | Create | Textual states and layer accessibility tests |
 | `platform/src/components/profile/__tests__/CapabilityCard.test.tsx` | Create | Permission and blocked-link behaviour |
 | `platform/src/app/clients/[id]/page.tsx` | Modify | Compose D1 hero, readiness, capabilities, summaries, and secondary actions |
-| `platform/supabase/migrations/1080_jataka_conversation_archive_context.sql` | Create | Add correction archive reason, immutable chart-input snapshot, and rebuild-run linkage |
+| `platform/supabase/migrations/1120_jataka_conversation_archive_context.sql` | Create | Add correction archive reason, immutable chart-input snapshot, and rebuild-run linkage |
 | `platform/tests/unit/migrations/jataka_conversation_archive_context.test.ts` | Create | Additive/idempotent migration contract |
 | `platform/src/lib/charts/types.ts` | Create | Shared normalized chart-input and historical snapshot types |
 | `platform/src/lib/conversations.ts` | Modify | Expose archive metadata and correction-read-only helper |
@@ -558,7 +573,7 @@ git commit -m "feat(jataka): add D1-first chart workspace"
 ## Task 4: Add governed historical archive context
 
 **Files:**
-- Create: `platform/supabase/migrations/1080_jataka_conversation_archive_context.sql`
+- Create: `platform/supabase/migrations/1120_jataka_conversation_archive_context.sql`
 - Create: `platform/tests/unit/migrations/jataka_conversation_archive_context.test.ts`
 - Create: `platform/src/lib/charts/types.ts`
 - Modify: `platform/src/lib/conversations.ts`
@@ -572,7 +587,7 @@ git commit -m "feat(jataka): add D1-first chart workspace"
 The test reads the migration text and requires additive/idempotent DDL, a constrained reason, a run FK, and no destructive statement:
 
 ```typescript
-const sql = fs.readFileSync(path.join(REPO_ROOT, 'platform/supabase/migrations/1080_jataka_conversation_archive_context.sql'), 'utf8')
+const sql = fs.readFileSync(path.join(REPO_ROOT, 'platform/supabase/migrations/1120_jataka_conversation_archive_context.sql'), 'utf8')
 expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS archive_reason TEXT/i)
 expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS archived_chart_snapshot JSONB/i)
 expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS archived_by_run_id UUID/i)
@@ -683,7 +698,7 @@ npx vitest run tests/unit/migrations/jataka_conversation_archive_context.test.ts
 - [ ] **Step 7: Commit**
 
 ```bash
-git add platform/supabase/migrations/1080_jataka_conversation_archive_context.sql platform/tests/unit/migrations/jataka_conversation_archive_context.test.ts platform/src/lib/charts/types.ts platform/src/lib/conversations.ts
+git add platform/supabase/migrations/1120_jataka_conversation_archive_context.sql platform/tests/unit/migrations/jataka_conversation_archive_context.test.ts platform/src/lib/charts/types.ts platform/src/lib/conversations.ts
 git commit -m "feat(jataka): preserve chart context on archived readings"
 ```
 
@@ -1322,7 +1337,7 @@ git commit -m "feat(jataka): make corrected-chart history read-only"
 
 ---
 
-## Task 9: Prove the complete local flow
+## Task 9: Prove the complete local flow — BLOCKED UNTIL THE ENVIRONMENT GATE PASSES
 
 **Files:**
 - Create: `platform/tests/e2e/jataka-chart-workspace.spec.ts`
@@ -1370,8 +1385,8 @@ After confirming the parsed `DATABASE_URL` host is local, preview and apply only
 
 ```bash
 cd platform
-npx tsx --env-file-if-exists=.env.local scripts/migrate.ts --dry-run --only 1080_jataka_conversation_archive_context.sql
-npx tsx --env-file-if-exists=.env.local scripts/migrate.ts --only 1080_jataka_conversation_archive_context.sql
+npx tsx --env-file-if-exists=.env.local scripts/migrate.ts --dry-run --only 1120_jataka_conversation_archive_context.sql
+npx tsx --env-file-if-exists=.env.local scripts/migrate.ts --only 1120_jataka_conversation_archive_context.sql
 ```
 
 The dry run must name only the Jātaka archive-context migration. Record both command results in the final implementation report; do not apply through Supabase Cloud or any remote console.
@@ -1435,11 +1450,14 @@ Expected: the tagged local recompute journey passes against disposable data, inc
 cd /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
 git status --short
 git diff --check
-git diff --stat bf604c39b..HEAD
-git diff --name-only bf604c39b..HEAD
+git diff --stat f95a8a4ca..HEAD
+git diff --name-only f95a8a4ca..HEAD
 ```
 
-Confirm no `.env*`, credentials, generated build output, Python-sidecar changes, governance artifacts, or unrelated files are present.
+Confirm no `.env*`, credentials, generated build output, Python-sidecar changes, unplanned
+governance artifacts, or unrelated files are present. The committed CCD-013, root-brief amendment
+and Jātaka execution amendment are the expected governance baseline and must remain unchanged during
+implementation.
 
 - [ ] **Step 8: Commit the acceptance test**
 
@@ -1472,7 +1490,7 @@ cd platform
 npm run guard:migration-numbers
 npx vitest run src/lib/charts/__tests__ src/components/dashboard/__tests__/ClientCard.test.tsx src/components/dashboard/__tests__/RosterTableView.test.tsx src/components/profile/__tests__ src/components/clients/__tests__/EditClientForm.test.tsx src/components/consume/__tests__/HistoricalConversationView.test.tsx src/app/api/charts/[id]/__tests__/route.patch.test.ts src/app/api/cockpit/runs/__tests__/route.test.ts src/app/api/pariprashna/__tests__/route.test.ts
 npx tsc --noEmit
-git diff --check bf604c39b..HEAD
+git diff --check f95a8a4ca..HEAD
 ```
 
 - [ ] **Step 3: Request code review without deployment**

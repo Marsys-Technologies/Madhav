@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.79
+version: 6.80
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.80 (2026-09-27, JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927): Native-authorized
+    governance aside for the isolated Jātaka chart-workspace feature. CCD-013 and
+    JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0 authorize Claude Code to implement,
+    test and commit plan Tasks 1–8 locally under an exact allowlist; JATAKA-REQ-01 reserves
+    cross-cutting migration 1120 after a fresh protected-main and open-PR sweep. Task 9 remains
+    blocked until non-production Firebase credentials, a workstream-owned disposable local
+    PostgreSQL database and an approved L0 seed/snapshot exist. This does not change the active L3
+    Kāla/Pūrṇa split or authorize push, PR, merge, deployment, migration application, production
+    access, credentials/infrastructure action or real-user chart mutation.
   - v6.79 (2026-09-20, L3 KĀLA AUTONOMOUS CONDUCTOR, Packet B3, DP-SD-021): New top banner records
     the native-authorized platform split — L3 Kāla data-plane elevation moves to Claude Code
     (integration branch codex/madhav-l3-claude-code) while Pūrṇa Anveṣaṇa remains in Codex — with a
@@ -5939,6 +5948,19 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟣 **JĀTAKA CHART WORKSPACE — PARALLEL LOCAL-EXECUTION EXCEPTION (2026-09-27, CCD-013).**
+> Native authorization permits Claude Code to implement, test and commit Tasks 1–8 of
+> `platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md` only in the isolated
+> worktree `/Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav` on branch
+> `codex/jataka-chart-workspace`, under
+> `briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md`.
+> `JATAKA-REQ-01` reserves migration `1120`; `1080` is invalid because `1070–1119` belongs to L3.
+> Task 9/browser/full-recompute proof is **BLOCKED** until a non-production Firebase project,
+> workstream-owned disposable local PostgreSQL database and approved L0 seed/snapshot exist. This
+> is a governance aside, not a third data-plane campaign: L3 Kāla and Pūrṇa state/authority remain
+> unchanged. No push, PR, merge, deployment, production/shared mutation or credential action is
+> authorized.
+
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
 > three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
@@ -9408,6 +9430,12 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+The Jātaka chart-workspace workstream is authorized for local source implementation and mock-backed
+verification through plan Task 8 only. Its migration number is reserved as cross-cutting `1120`.
+The browser/full-recompute journey is not yet runnable because the approved test Firebase,
+disposable database and L0 seed/snapshot are absent; that missing evidence remains a hard block, not
+a waived acceptance criterion. The active L3 Kāla and Pūrṇa Anveṣaṇa campaigns are unchanged.
 
 At the final source-candidate checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route

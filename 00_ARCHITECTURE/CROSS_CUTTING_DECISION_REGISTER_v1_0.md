@@ -32,6 +32,8 @@ coordination lease that produced it.
 | CCD-009 | 2026-08-20 | Claude Code | ACTIVE | Record the real-time owner authorization for a Claude-Code-driven PARIŚEṢA V4 Phase 0 truth-cut and bounded repair-wave session, closing the gap CCD-007 (Codex-scoped) and CCD-008 (close-mechanics-only, explicitly not exercising CCD-007) left open; no merge/deploy/data/infra exception granted. |
 | CCD-010 | 2026-09-12 | Codex | ACTIVE | Adopt Madhav Product Definition v3.0 as the final target for subsequent product planning; authorize its bounded documentation registration/local commit and one-time actual managed-profile exception. No application, campaign, data, deployment, product push or merge authority. |
 | CCD-011 | 2026-09-14 | Codex | ACTIVE | Record the native-delegated MADHAV PŪRṆA ANVEṢAṆA source campaign: inspect, design, implement, test, document, commit, push and open focused/stacked PRs in isolated worktrees, while prohibiting merge, deployment, shared/production migration application, production mutation, credentials/infrastructure, retirement, doctrine ratification and unsupported acceptance claims. |
+| CCD-012 | 2026-09-15 | Codex | ACTIVE | Supersede CCD-011's source-only ceiling for the governed Pūrṇa live-release wrap-up while retaining exact-candidate, safety, serialization, evidence and no-fabrication gates. |
+| CCD-013 | 2026-09-27 | Codex → Claude Code | ACTIVE | Authorize the isolated Jātaka chart-workspace workstream to implement and commit plan Tasks 1–8 locally under an exact file allowlist, reserve cross-cutting migration 1120 through JATAKA-REQ-01, and keep browser/full-recompute acceptance blocked until a non-production Firebase project, disposable local PostgreSQL database and approved L0 seed/snapshot exist. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -288,3 +290,32 @@ coordination lease that produced it.
 - **Supersession:** CCD-011 is superseded only where its explicit external-action ceiling conflicts
   with this scoped live-release delegation. Its evidence discipline, source history, security
   boundaries and all unrelated decisions remain in force.
+
+## CCD-013 — Jātaka chart-workspace parallel local-execution authority
+
+- **Date/tool/session:** 2026-09-27; Codex governance bridge handing execution to Claude Code;
+  `JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927`.
+- **Authority:** the native explicitly approved the recommended narrow governance amendment,
+  migration-number correction and corrected implementation plan after Claude Code stopped at the
+  active L3 scope, migration partition and safe-local-environment gates.
+- **Decision:** permit local source implementation, tests and commits for Tasks 1–8 of
+  `platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md` only in worktree
+  `/Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav` on branch
+  `codex/jataka-chart-workspace`, subject to the exact allowlist and stop conditions in
+  `briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md`.
+- **Migration:** reserve `1120_jataka_conversation_archive_context.sql` through
+  `JATAKA-REQ-01` on authoritative `origin/campaign-coordination`, after a fresh protected-main and
+  complete open-PR migration sweep found no `1120+` claimant. Recheck immediately before creating
+  the file; the coordination record, not the numeric guard alone, governs the partition.
+- **Environment boundary:** Task 9 and browser/full-recompute acceptance remain blocked until a
+  non-production Firebase Admin credential, workstream-owned disposable local PostgreSQL database,
+  and approved L0 seed/snapshot are available. Do not copy the shared `.env.local`, use production,
+  reuse another session's database, or add a Firebase emulator path without a successor decision.
+- **Ceiling:** no push, PR, merge, deployment, production/shared migration application, database or
+  chart mutation, real-user edit, credential/secret/IAM/infrastructure action, frozen orchestrator
+  change, or foreign campaign/worktree/state mutation. Tasks 1–8 evidence cannot be represented as
+  completed local-browser acceptance.
+- **Coordination:** governance lease
+  `MADHAV-JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927`; migration request `JATAKA-REQ-01`;
+  reservation commit `ed5f52294` on `origin/campaign-coordination`.
+- **Supersession:** none. L3 Kāla, Pūrṇa Anveṣaṇa and all prior CCD decisions remain in force.

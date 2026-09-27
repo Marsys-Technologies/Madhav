@@ -1,9 +1,12 @@
 ---
 artifact: CLAUDECODE_BRIEF_L3_KALA
 type: CLAUDECODE_BRIEF (governing scope for execution sessions)
-version: 1.0
+version: 1.1
 status: ACTIVE
 authored_by: L3 Kāla autonomous conductor session (Claude Code, Sonnet 5, run 2), 2026-09-20
+changelog:
+  - v1.1 (2026-09-27): Native-authorized Jātaka chart-workspace parallel local-execution
+      exception added through CCD-013 and JATAKA-REQ-01; L3 authority and status unchanged.
 supersedes: >
   CLAUDECODE_BRIEF_PURNATA (this file's prior content, status COMPLETE, 2026-08-01). That arc is
   closed and its record remains at 00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md —
@@ -14,7 +17,10 @@ authority: >
   DP-SD-017/018/019/020/021 (00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md
   §9-§13) and MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md. Native authorization for autonomous
   overnight execution recorded in MADHAV_L3_AUTONOMOUS_EXECUTION_PACKAGE_v1_0.md frontmatter,
-  2026-09-20.
+  2026-09-20. Native authorization on 2026-09-27 adds one narrow parallel local-execution
+  exception for the Jātaka chart workspace through JATAKA-REQ-01 and
+  00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md;
+  it does not supersede or close L3.
 ---
 
 # L3 Kāla data-plane elevation — ACTIVE
@@ -31,6 +37,20 @@ conductor's operating instructions), `MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.m
 campaign platform split), `MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` +
 `..._EXECUTION_BRIEF_v1_0.md` (the frozen L3 strategy/brief content, DP-SD-017), `..._ASTRA_REVIEW_RECORD_v1_0.md`,
 `..._UNBLOCK_AND_RESUME_AMENDMENT_v1_0.md` (DP-SD-018).
+
+## Native-authorized parallel local exception — Jātaka chart workspace
+
+Claude Code may execute the separately governed Jātaka chart-workspace workstream only when the
+checkout, branch, ancestry and handshake conditions in
+`00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md` all
+pass. That amendment's exact allowlist applies instead of the L3 `may_touch` list for that session;
+it does not add Jātaka files to L3 territory or give an L3 session permission to edit them.
+
+Current ceiling: local source implementation, tests and commits for plan Tasks 1–8. Task 9 remains
+blocked until the amendment's non-production Firebase, disposable PostgreSQL and L0 seed/snapshot
+gate passes. No push, PR, merge, deploy, production/shared mutation, migration application,
+credential action or real-user chart correction is authorized. Migration `1120` is reserved through
+`JATAKA-REQ-01`; `1080` must not be used.
 
 ## may_touch
 
@@ -112,3 +132,4 @@ outcome evaluation excluded. `L4` and `L5` remain `WAITING_FOR_STRATEGIC_BRIEF`.
 Per CLAUDE.md §C item 0: this brief flips to `status: COMPLETE` when the L3 data-plane elevation
 campaign closes (22/22 accepted, or an honestly-scoped native-ruled partial close per the
 governing plan's Phase 3 exit). Until then it stays `ACTIVE` and every session reads it first.
+The Jātaka exception has its own close condition and never flips this L3 status.
