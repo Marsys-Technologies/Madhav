@@ -574,3 +574,61 @@ def test_live_r43_every_writer_backed_active_asset_is_recognised():
         missing = sorted(a for a, r in reg.items() if r["has_writer"] and a not in regd)
         assert not missing, (layer, missing)
     assert counts["L4"] == 9 and counts["L5"] == 14, counts
+
+
+# ─────────────────────────── R46: a view asset is counted by the view ───────────────────────────
+
+def _view_measure(monkeypatch, ctrl, view_rows, floor=None, relkind_view=True, cols=("chart_id", "n")):
+    reg = {"bo_v": w1._reg_row("bo_v", "vw_x", count_sql="SELECT 0 AS count", target_floor=floor)}
+    w1._stub_layer(monkeypatch, ctrl, reg, thru={"bo_v": {CANONICAL: w1._rec(1, state="stale")}})
+    monkeypatch.setattr(ac, "catalog", lambda ts: dict(exists={"vw_x"}, cols={"vw_x": list(cols)}, keys={},
+                                                       views=({"vw_x"} if relkind_view else set())))
+    seen = []
+    fake = w1._pg_like_psql({"vw_x": lambda part: (seen.append(part), view_rows)[1]})
+    monkeypatch.setattr(ac, "psql", fake)
+    c = ac.measure("L2")
+    return next(a for a in c["assets"] if a["asset_id"] == "bo_v"), seen
+
+
+def test_r46_a_view_is_counted_by_the_view_chart_scoped(monkeypatch, tmp_path):
+    """bo_samvada's shape: count_sql `SELECT 0 AS count` over a view that returns rows. live_rows is
+    the view's count for the bound chart (5), not the constant 0; Build.completion says why the
+    comparison cannot be made (NO_DETECTOR). Fails without the fix: live_rows read 0 (the constant)."""
+    a, seen = _view_measure(monkeypatch, tmp_path, 5)
+    assert a["live_rows"] == 5, a["live_rows"]
+    assert any("FROM vw_x WHERE chart_id = '482012f1" in s for s in seen), seen
+    bc = a["measurements"]["Build.completion"]
+    assert bc["v"] == ac.NO_DET and "view: live=5" in bc["measured"], bc
+
+
+@pytest.mark.parametrize("floor, verdict", [("3", ac.PASS), ("10", ac.FAIL)])
+def test_r46_a_declared_floor_is_graded_against_the_view_count(monkeypatch, tmp_path, floor, verdict):
+    """With the view counted, a declared floor is measured against it (it read NO_DETECTOR against
+    the constant). Fails without the fix for both: Count.floor was NO_DETECTOR."""
+    a, _ = _view_measure(monkeypatch, tmp_path, 5, floor=floor)
+    assert a["measurements"]["Count.floor"]["v"] == verdict, a["measurements"]["Count.floor"]
+
+
+def test_r46_an_empty_view_fails_emptiness(monkeypatch, tmp_path):
+    """A view serving no rows for this chart FAILs (no floor=0 declaration). Fails without the fix:
+    NO_DETECTOR (the constant could not be measured)."""
+    a, _ = _view_measure(monkeypatch, tmp_path, 0)
+    assert a["measurements"]["Build.completion"]["v"] == ac.FAIL, a["measurements"]["Build.completion"]
+
+
+def test_r46_only_a_view_is_substituted_a_table_with_a_constant_stays_no_detector(monkeypatch, tmp_path):
+    """Positive control on scope: a TABLE target with a constant count_sql is not re-counted."""
+    a, seen = _view_measure(monkeypatch, tmp_path, 5, relkind_view=False)
+    assert a["live_rows"] == 0 and not seen, (a["live_rows"], seen)
+    assert a["measurements"]["Build.completion"]["v"] == ac.NO_DET
+
+
+@LIVE
+def test_live_r46_bo_samvada_is_counted_by_its_view():
+    reg, _ = ac.registry("L2")
+    cat = ac.catalog([reg["bo_samvada"]["target_table"]])
+    assert "vw_chart_digest" in cat["views"]
+    vc = {"bo_samvada": ac._view_count_sql("vw_chart_digest", cat["cols"]["vw_chart_digest"])}
+    counts, errs = ac.live_counts({"bo_samvada": reg["bo_samvada"]}, CANONICAL, vc)
+    direct = int(ac.scalar(f"SELECT count(*)::text FROM vw_chart_digest WHERE chart_id = '{CANONICAL}'"))
+    assert not errs and counts["bo_samvada"] == direct > 0, (counts, errs, direct)

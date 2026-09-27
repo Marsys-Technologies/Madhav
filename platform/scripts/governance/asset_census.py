@@ -111,6 +111,12 @@ _PARAM_1 = re.compile(r"\$1(?!\d)")
 _ANY_PARAM = re.compile(r"\$\d+")
 
 
+def _view_count_sql(view: str, cols: list[str]) -> str:
+    """R46: the census's count of a view target — its rows for the bound chart when the view carries
+    `chart_id` (bound like any `$1` count), else the whole view."""
+    return f"SELECT count(*) FROM {view}" + (" WHERE chart_id = $1" if "chart_id" in cols else "")
+
+
 def _chart_scoped(count_sql: str) -> bool:
     return bool(_PARAM_1.search(count_sql or ""))
 
@@ -492,7 +498,8 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
     return out, population
 
 
-def live_counts(reg: dict, chart_id: str | None = None) -> tuple[dict[str, int | None], dict[str, str]]:
+def live_counts(reg: dict, chart_id: str | None = None,
+                view_counts: dict[str, str] | None = None) -> tuple[dict[str, int | None], dict[str, str]]:
     """Each asset's OWN count_sql — the cockpit instrument, not a table count.
 
     F2 (A_REVIEW.md, Lane A gate REJECT): a `count_sql` that RAISES (statement timeout, missing
@@ -512,6 +519,8 @@ def live_counts(reg: dict, chart_id: str | None = None) -> tuple[dict[str, int |
     parts, ids, bound = [], [], {}
     for aid, r in reg.items():
         q = " ".join(re.sub(r"--[^\n]*", "", r["count_sql"]).replace("\n", " ").rstrip(" ;").split())
+        if view_counts and aid in view_counts:
+            q = view_counts[aid]       # R46: the census's own count of the view (see _view_count_sql)
         if not q:
             out[aid] = None
             if r["count_sql"].strip():                     # R222: comments only is not "no count_sql"
@@ -655,7 +664,10 @@ def catalog(tables: list[str]) -> dict:
         m = re.search(r"\((.*?)\)", defn)
         if m:
             keys.setdefault(tn, []).append([c.strip().strip('"') for c in m.group(1).split(",")])
-    return dict(exists=exists, cols=cols, keys=keys)
+    # R46: which targets are VIEWS (or materialized views) — a view is counted by the view itself.
+    views = {r[0] for r in psql("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                                f"WHERE n.nspname='public' AND c.relkind IN ('v','m') AND c.relname IN ({lit})")}
+    return dict(exists=exists | views, cols=cols, keys=keys, views=views)
 
 
 def build_history(prefix: str, ids=None) -> dict:
@@ -1266,7 +1278,13 @@ def measure(layer_key: str) -> dict:
     reg, population = _layer_read("registry", registry, layer_key)
     cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()])
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
-    counts, count_errors = _layer_read("live_counts", live_counts, reg, CHART_ID)
+    # R46 (L2 handverify): a view asset whose registry count_sql is a constant (bo_samvada: `SELECT 0`
+    # over vw_chart_digest, which returns 15 rows) is counted by the VIEW — chart-scoped where the view
+    # carries chart_id — instead of reading the constant as its live rows.
+    view_counts = {aid: _view_count_sql(r["target_table"], cat["cols"].get(r["target_table"], []))
+                   for aid, r in reg.items()
+                   if r["target_table"] in cat.get("views", set()) and not _count_tables(r["count_sql"])}
+    counts, count_errors = _layer_read("live_counts", live_counts, reg, CHART_ID, view_counts)
     ids = sorted(reg)                                      # R224: the layer's measured population
     # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
     # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
@@ -1328,15 +1346,20 @@ def measure(layer_key: str) -> dict:
             measured=f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}")
 
         live = counts.get(aid)
-        ctables = _count_tables(r["count_sql"])
+        is_view = aid in view_counts                                       # R46
+        ctables = [r["target_table"]] if is_view else _count_tables(r["count_sql"])
         multi = len(ctables) > 1 or (bool(ctables) and r["target_table"] not in ctables)
         # R42: say what the live figure IS. On a multi-table asset it is the count_sql total across
         # every table it reads — compared like-for-like with rows_written (the writer's own total
         # across the same tables, e.g. mi_kula.py:302 `len(_FAMILIES) + len(_CONTROLS)`) — and never
         # presented as the target table's own rows (that figure is appended below, as context).
-        basis = (f"count_sql total over {len(ctables)} table(s): {', '.join(ctables)}" if multi
+        basis = (f"counted by the census from the view {r['target_table']} "
+                 f"({'chart-scoped' if _chart_scoped(view_counts[aid]) else 'whole view'}); the registry "
+                 f"count_sql is a constant ({' '.join(r['count_sql'].split())})" if is_view
+                 else f"count_sql total over {len(ctables)} table(s): {', '.join(ctables)}" if multi
                  else "count_sql over the target table")
-        t, rec_scope = _build_record(thru.get(aid, {}), _chart_scoped(r["count_sql"]), CHART_ID)
+        t, rec_scope = _build_record(thru.get(aid, {}),
+                                     _chart_scoped(view_counts[aid] if is_view else r["count_sql"]), CHART_ID)
         if t.get("n_rows", 1) > 1 and not t.get("ambiguous"):
             rec_scope += f"; latest of {t['n_rows']} rows, last_built {t.get('last_built') or 'NULL'}"   # R44
         rw = t.get("rows_written", "")
@@ -1358,6 +1381,20 @@ def measure(layer_key: str) -> dict:
                 m["Build.completion"] = dict(
                     v=NO_DET, measured="NO_DETECTOR — no count_sql registered for a writer-backed asset with "
                                        f"asset_kind='{r['asset_kind']}'; completion cannot be measured")
+        elif is_view:
+            # R46: the view is now counted — but a view has no written rows: the writer creates or
+            # preserves the view object (bo_samvada: rows_written=1 "the VIEW itself counts as 1
+            # object", WriterResult rows_inserted=0), so rows_written<->live consistency is not
+            # measurable. Emptiness still is: a view serving no rows for this chart FAILs unless the
+            # registry declares zero rows complete. Never PASS on a comparison that cannot be made.
+            if live == 0 and (r["target_floor"] or "").strip() != "0":
+                m["Build.completion"] = dict(v=FAIL, measured=f"empty: live=0 ({basis}; {rec_scope}) and the registry "
+                                                             "does not declare zero rows complete")
+            else:
+                m["Build.completion"] = dict(v=NO_DET, measured=f"NO_DETECTOR — view: live={live} ({basis}; {rec_scope}); "
+                                                               f"build record rows_written={rw or 'none'} counts the "
+                                                               "view object, not rows — completion consistency is not "
+                                                               "measurable for a view")
         elif not ctables:
             # R42: a count_sql that reads no relation is a constant — it cannot disagree with anything.
             m["Build.completion"] = dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant "
