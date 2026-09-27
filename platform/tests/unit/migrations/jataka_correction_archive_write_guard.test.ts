@@ -37,4 +37,17 @@ describe('1121_jataka_correction_archive_write_guard.sql', () => {
   it('changes no data and drops no table, column or constraint', () => {
     expect(statements).not.toMatch(/DROP\s+(TABLE|COLUMN|CONSTRAINT|INDEX|FUNCTION)|TRUNCATE|DELETE\s+FROM|UPDATE\s+public\.|ALTER\s+TABLE/i)
   })
+
+  it('uses invoker rights — no SECURITY DEFINER — with the determination documented in the file (Jātaka Phase-A2 item 5)', () => {
+    // The executable SQL (comments stripped) must carry no actual DEFINER
+    // clause; the prose explaining that absence is expected to name it.
+    expect(statements).not.toMatch(/SECURITY\s+DEFINER/i)
+    // The disposition is a determination, not an assumption: it must cite the
+    // grant this trigger actually relies on (role_web_serve's SELECT on
+    // conversations, migration 576) and name the role that inserts the guarded
+    // tables, so a future reader never has to re-derive it from scratch.
+    expect(sql).toMatch(/Security disposition/i)
+    expect(sql).toMatch(/role_web_serve/)
+    expect(sql).toMatch(/576/)
+  })
 })

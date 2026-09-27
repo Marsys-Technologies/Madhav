@@ -24,6 +24,26 @@
 -- Idempotent: CREATE OR REPLACE FUNCTION, DROP TRIGGER IF EXISTS + CREATE
 -- TRIGGER (the repository's trigger idiom). No data is read or changed; manual
 -- archives (archive_reason NULL) keep their existing behaviour.
+--
+-- Security disposition (Jātaka Phase-A2 item 5, determined not assumed): this
+-- function runs SECURITY INVOKER (the default — no SECURITY DEFINER clause).
+-- Invoker rights CAN safely perform the required check: `role_web_serve` is
+-- the only role migration 576 (576_pariprashna_roles_rls_arm3.sql) grants
+-- INSERT on `conversation_messages`/`conversation_branches` (§3d, "conversation
+-- store R/W"), and that same migration's blanket `GRANT SELECT ON ALL TABLES
+-- IN SCHEMA public TO role_web_serve` (§3a) is never revoked for
+-- `conversations` — it names `conversations` in neither the C3 FULL WALL list
+-- (§3b: the calibration surfaces) nor the C3 WRITE WALL list (§3c: the
+-- prediction ledgers) — so the trigger's own `SELECT archive_reason FROM
+-- public.conversations` runs under the inserting role's own, already-adequate
+-- privilege. No other role writes either guarded table: `role_sidecar` is
+-- walled from every conversation-store table entirely (§3h), and `role_jobs`
+-- writes only `conversation_summaries` (§3i), never these two. A DEFINER
+-- function would therefore add privilege escalation this trigger does not
+-- need. If the running database's actual grants ever diverge from migration
+-- 576's own text (verified only by re-reading the applied grants, not
+-- assumed), this determination must be re-made before this migration is
+-- applied — not silently trusted.
 
 CREATE OR REPLACE FUNCTION public.jataka_refuse_write_to_correction_archive()
 RETURNS trigger
