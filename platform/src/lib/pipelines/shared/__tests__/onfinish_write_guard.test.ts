@@ -117,4 +117,3 @@ describe('runOnFinishWriteThrough — write guard', () => {
     expect(result).toEqual({ persisted: true })
   })
 })
-

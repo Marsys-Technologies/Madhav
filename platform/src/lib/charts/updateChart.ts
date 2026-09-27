@@ -292,4 +292,3 @@ function isTimezonePlausible(inputs: NormalizedChartInputs): boolean {
   const gap = Math.abs(offset - inputs.birth_lng * 4) % 1440
   return Math.min(gap, 1440 - gap) <= MAX_ZONE_SOLAR_GAP_MINUTES
 }
-

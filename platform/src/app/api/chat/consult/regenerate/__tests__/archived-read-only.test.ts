@@ -61,4 +61,3 @@ describe('POST /api/chat/consult/regenerate — shared readiness gate', () => {
     expect(mockQuery.mock.calls.some(([sql]) => /DELETE/i.test(sql))).toBe(false)
   })
 })
-

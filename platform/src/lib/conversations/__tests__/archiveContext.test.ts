@@ -107,4 +107,3 @@ describe('updateConversationTitle — atomic correction-history lock', () => {
     expect(params).toEqual(['New title', 'conv-1'])
   })
 })
-

@@ -237,4 +237,3 @@ describe('EditClientForm — computation-safe birthplace', () => {
     expect(screen.getByLabelText(/^birth place/i)).toHaveAttribute('aria-invalid', 'true')
   })
 })
-

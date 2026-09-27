@@ -690,4 +690,3 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
     restoreSynthesis()
   })
 })
-

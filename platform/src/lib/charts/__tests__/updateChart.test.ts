@@ -278,4 +278,3 @@ describe('validateLocationChange — birthplace edits are computation-safe', () 
     })
   })
 })
-

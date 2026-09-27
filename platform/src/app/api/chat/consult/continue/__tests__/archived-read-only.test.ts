@@ -70,4 +70,3 @@ describe('POST /api/chat/consult/continue — shared readiness gate', () => {
     expect(mockStreamText).not.toHaveBeenCalled()
   })
 })
-
