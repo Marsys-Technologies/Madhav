@@ -1,0 +1,1 @@
+{"old": "    never = set(c.lower() for c in dc.get(\"never\", [])) if dc.get(\"rows\") else set()", "new": "    never = set()"}

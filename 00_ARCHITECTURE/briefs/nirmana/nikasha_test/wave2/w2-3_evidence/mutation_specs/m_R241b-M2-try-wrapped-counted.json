@@ -1,0 +1,1 @@
+{"old": "        tried = {id(c) for t in ast.walk(f) if isinstance(t, ast.Try) and t.handlers\n", "new": "        tried = {id(c) for t in ast.walk(f) if False and isinstance(t, ast.Try) and t.handlers\n"}

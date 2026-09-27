@@ -1,0 +1,1 @@
+{"old": "    if unreplaced and covered:\n", "new": "    if False and unreplaced and covered:\n"}

@@ -1,0 +1,1 @@
+{"old": "                if tb in tset or tb == \"{?}\":\n                    return True", "new": "                if True:\n                    return True"}

@@ -1,0 +1,1 @@
+{"old": "if name.lower() in lower and (not q or q.lower() in {m.lower() for m in mine}):", "new": "if name.lower() in lower:"}

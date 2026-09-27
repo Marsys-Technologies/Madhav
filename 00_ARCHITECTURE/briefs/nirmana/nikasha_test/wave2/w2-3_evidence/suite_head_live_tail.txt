@@ -1,0 +1,8 @@
+E        +  where 0 = len([])
+
+platform/scripts/governance/__tests__/test_drift_detector_h35_h38.py:186: AssertionError
+=========================== short test summary info ============================
+FAILED platform/scripts/governance/__tests__/test_drift_detector_h35_h38.py::test_f163_current_row_flagged_predecessor_row_is_not
+FAILED platform/scripts/governance/__tests__/test_drift_detector_h35_h38.py::test_h35_critical_when_canonical_artifacts_missing
+2 failed, 343 passed in 529.51s (0:08:49)
+exit=1

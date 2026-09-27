@@ -1,0 +1,1 @@
+{"old": "                    if k2 < 0 or re.search(r\"\\bFROM\\b\", prev[k2:], re.I):\n                        continue", "new": "                    if False:\n                        continue"}

@@ -1,0 +1,1 @@
+{"old": "    return PARTIAL, [\"; \".join(reasons) + f\" [resolved scope: {scope}]\"]", "new": "    return (NA if not any(own.values()) else PARTIAL), [\"; \".join(reasons) + f\" [resolved scope: {scope}]\"]"}

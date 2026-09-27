@@ -1,0 +1,1 @@
+{"old": "            if stop is None and deletes(on_path) and not deletes(", "new": "            if False and deletes(on_path) and not deletes("}

@@ -1,0 +1,1 @@
+{"old": "    unresolved = bool(beyond or facts[\"dynamic\"])", "new": "    unresolved = False"}
