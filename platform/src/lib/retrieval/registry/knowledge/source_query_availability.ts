@@ -4209,6 +4209,41 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:150-170',
     ],
   },
+  {
+    // R3 proof typing (review §4, per-mode facets): get_av_transit_gating has two modes
+    // sharing one binding — sav_bav_gating (chart_facts, this probe) and kakshya_windows (a
+    // live tropical-transit sidecar fetch this static contract cannot attest to). "Available"
+    // here means the default sav_bav_gating mode is provable; the Kakshya mode's live
+    // reachability is disclosed by the handler at request time, honestly outside this
+    // contract's scope (matching pact_query's TRIGGER stage precedent above).
+    contract_id: 'source-query:get-av-transit-gating:v1',
+    descriptor_name: 'get_av_transit_gating',
+    capability_uri: 'marsys://tool/L1/get_av_transit_gating',
+    scope: 'chart',
+    parameter_binding: 'chart_and_served_builds',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH lagna AS (
+            SELECT fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'
+               AND build_id = ANY($2::uuid[])
+             LIMIT 0
+          ), bindu AS (
+            SELECT fact_id, fact_subject, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND fact_category = 'ashtakavarga_bindu_sign'
+               AND build_id = ANY($2::uuid[])
+             ORDER BY fact_subject
+             LIMIT 0
+          )
+          SELECT lagna.fact_value_num, bindu.fact_id, bindu.fact_subject, bindu.fact_value_num
+            FROM lagna CROSS JOIN bindu`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

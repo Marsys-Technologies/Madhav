@@ -1386,6 +1386,16 @@ describe('first-slice availability coverage', () => {
       sqlMarker: "'graha_shadbala_cheshta'",
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES',
     },
+    {
+      // R3 proof typing (review §4, per-mode facets): "available" here means the default
+      // sav_bav_gating mode is provable; kakshya_windows is a live sidecar fetch outside this
+      // contract's scope (see the contract's own review note).
+      scuId: 'scu.catalog.get_av_transit_gating',
+      bindingId: 'registry:marsys://tool/L1/get_av_transit_gating',
+      contractId: 'source-query:get-av-transit-gating:v1',
+      sqlMarker: 'FROM lagna CROSS JOIN bindu',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating',
+    },
   ])('probes $scuId against the selected chart and its served build set, with honest zero-row availability', async ({
     scuId, bindingId, contractId, sqlMarker, handlerRef,
   }) => {

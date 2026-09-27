@@ -38,6 +38,7 @@
  */
 import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildFenceIds, type BuildFence } from '../../generation/served_generation'
 
 const SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
@@ -216,6 +217,7 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
     ayanamsha_id: { type: 'string', description: "Ayanamsha for the chart_facts lookup (default 'lahiri_chitrapaksha')." },
     mode:         { type: 'string', description: "'sav_bav_gating' (default) or 'kakshya_windows'.", enum: ['sav_bav_gating', 'kakshya_windows'] },
+    build_id:     { type: 'string', description: "RC-7: served-generation build fence for sav_bav_gating (generation/served_generation.ts). Omit for the chart's current unfenced rows." },
     // sav_bav_gating facets
     sign_number:  { type: 'number', description: 'sav_bav_gating: filter to one sidereal sign (1=Aries..12=Pisces). Omit for all 12.' },
     house:        { type: 'number', description: 'sav_bav_gating: filter by house number (1-12) instead of sign; resolved via the chart LAGNA sign.' },
@@ -257,21 +259,23 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     if (mode === 'kakshya_windows') {
       return handleKakshyaWindows(chart_id, ayanamsha_id, args)
     }
-    return handleSavBavGating(chart_id, ayanamsha_id, args)
+    return handleSavBavGating(chart_id, ayanamsha_id, args, args['build_id'] as BuildFence)
   },
 }
 
 async function handleSavBavGating(
-  chart_id: string, ayanamsha_id: string, args: Record<string, unknown>,
+  chart_id: string, ayanamsha_id: string, args: Record<string, unknown>, buildId?: BuildFence,
 ): Promise<ToolResult> {
   try {
+    const buildIds = buildFenceIds(buildId)
     // 1. LAGNA sign number (for house resolution).
     const lagnaRes = await query<{ fact_value_num: number }>(
       `SELECT fact_value_num FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2
          AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'
+         ${buildIds ? 'AND build_id = ANY($3::uuid[])' : ''}
        LIMIT 1`,
-      [chart_id, ayanamsha_id],
+      buildIds ? [chart_id, ayanamsha_id, buildIds] : [chart_id, ayanamsha_id],
     )
     const lagnaSignNumber = lagnaRes.rows[0]?.fact_value_num ?? null
 
@@ -280,8 +284,9 @@ async function handleSavBavGating(
       `SELECT fact_id, fact_subject, fact_value_num
        FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3
+         ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}
        ORDER BY fact_subject`,
-      [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY],
+      buildIds ? [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY, buildIds] : [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY],
     )
 
     if (rowsRes.rows.length === 0) {
