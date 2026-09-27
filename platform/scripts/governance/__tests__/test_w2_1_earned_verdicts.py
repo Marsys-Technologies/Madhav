@@ -34,6 +34,8 @@ sys.path.insert(0, str(HERE.parent))
 import asset_census as ac  # noqa: E402
 
 CANONICAL = "482012f1-710e-4a25-994a-93821f5871aa"
+# The real functions, captured at import before any test monkeypatches them.
+_REAL = {n: getattr(ac, n) for n in ("depth_census", "capability_scan", "live_counts", "throughput")}
 
 
 def _db_reachable() -> bool:
@@ -235,3 +237,41 @@ def test_live_r231_every_l4_count_sql_is_measured_for_the_canonical_chart():
     counts, errored = ac.live_counts(reg, CANONICAL)
     assert not errored, errored
     assert all(isinstance(counts[a], int) for a in reg), counts
+
+
+# ─────────────────────────── R223: a real client-side timeout degrades the check ───────────────────────────
+
+@pytest.fixture
+def sleeping_psql(tmp_path, monkeypatch):
+    """A `psql` on PATH that never answers, and a 1 s client timeout: `subprocess.run` raises the
+    REAL `subprocess.TimeoutExpired` — not a stand-in built from the census's own error type (the
+    defect A_REVIEW2 G3 found in the R41 tests)."""
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    fake = bindir / "psql"
+    fake.write_text("#!/bin/sh\nexec sleep 30\n", encoding="utf-8")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setattr(ac, "PSQL_TIMEOUT_SECONDS", 1)
+    return fake
+
+
+def test_r223_psql_converts_the_real_timeout_expired(sleeping_psql):
+    with pytest.raises(ac.Unknown) as ei:
+        ac.psql("SELECT pg_sleep(60)")
+    assert isinstance(ei.value, ac.CheckTimeout)
+    assert isinstance(ei.value.__cause__, subprocess.TimeoutExpired), "must be the real exception, converted"
+    assert "timeout after 1s" in str(ei.value)
+
+
+def test_r223_a_real_timeout_in_one_check_grades_errored_and_the_layer_completes(sleeping_psql, monkeypatch, tmp_path):
+    """measure() end to end: the depth query of one asset times out for real. Fails without the fix:
+    `TimeoutExpired` escapes the per-check `except Unknown` and aborts measure() (exit 5 in main)."""
+    reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
+    _stub_layer(monkeypatch, tmp_path, reg, tables={"bg_t": (["a"], [])})
+    monkeypatch.setattr(ac, "depth_census", _REAL["depth_census"])   # the real query path
+    c = ac.measure("L0")
+    res = _m(c, "bg_x", "Complete.depth")
+    assert res["v"] == ac.ERRORED and "timeout after 1s" in res["measured"], res
+    assert _m(c, "bg_x", "Build.registered")["v"] == ac.NA, "the other checks must still be measured"
+

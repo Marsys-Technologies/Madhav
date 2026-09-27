@@ -134,12 +134,25 @@ class Unknown(Exception):
     """The instrument could not run. Never reported as clean."""
 
 
+class CheckTimeout(Unknown):
+    """R223 (A_REVIEW2 G3): the client-side psql timeout fired. Production's `statement_timeout`
+    (30 min) is far above the census's client timeout (180 s), so a real timeout arrives as
+    `subprocess.TimeoutExpired` — which is not an `Unknown`, escaped every per-check guard, and
+    ended the whole run with exit 5. It is converted here, at the one place every query passes
+    through, so a timed-out check degrades to ERRORED exactly like any other failed query (and a
+    timed-out layer-wide read still aborts the layer, fail-closed, naming the read)."""
+
+
 def psql(sql: str, sep: str = "\x1f", timeout: int | None = None) -> list[list[str]]:
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
-    p = subprocess.run(["psql", "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1", "-c", sql],
-                       capture_output=True, text=True, env=env,
-                       timeout=(timeout if timeout is not None else PSQL_TIMEOUT_SECONDS))
+    limit = timeout if timeout is not None else PSQL_TIMEOUT_SECONDS
+    try:
+        p = subprocess.run(["psql", "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1", "-c", sql],
+                           capture_output=True, text=True, env=env, timeout=limit)
+    except subprocess.TimeoutExpired as exc:
+        raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
+                           f"{' '.join(sql.split())[:120]}") from exc
     if p.returncode != 0:
         raise Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
     return [ln.split(sep) for ln in p.stdout.strip().split("\n") if ln.strip()]
