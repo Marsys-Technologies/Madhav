@@ -5,7 +5,7 @@
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
 import type {
-  ProducerOutputAvailabilityRequirement,
+  AvailabilityRequirement,
   ProducerOutputClaim,
   SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
@@ -43,13 +43,26 @@ export interface DescriptorAvailabilityReview {
  */
 export interface DescriptorAvailabilityContractReview {
   readonly producer_output_claims: readonly ProducerOutputClaim[]
-  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
+  readonly requirements: readonly AvailabilityRequirement[]
 }
 
 const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
   'registry:marsys://tool/L2/query_domain_reading',
   'registry:marsys://tool/L3/query_temporal_activation',
   'registry:marsys://tool/L2/query_contradictions',
+] as const
+
+// query_spine_bundle delegates its full result to these exact four handlers.
+// The materialized row is only a cache of that composition: the serving path
+// lazily recomputes and persists it when absent or stale, so a probe of the
+// cache alone cannot establish the whole route. Every material leg is required
+// in the same chart scope, alongside the route's own cache-read source probe
+// (source-query:query-spine-bundle:v1, attached automatically by descriptor).
+const SPINE_BUNDLE_MANDATORY_BINDINGS = [
+  'registry:marsys://tool/L2/query_signals',
+  'registry:marsys://tool/L3/query_temporal_activation',
+  'registry:marsys://tool/L4/query_predictive_anchors',
+  'registry:marsys://tool/L5/query_calibration',
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
@@ -123,6 +136,15 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  query_spine_bundle: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: SPINE_BUNDLE_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/spine/compute_spine_bundle.ts:79-124 | platform/src/lib/retrieval/spine/materialize.ts:137-167',
+    }],
+  },
   query_classical_texts: {
     producer_output_claims: [{
       asset_id: 'bg_texts',

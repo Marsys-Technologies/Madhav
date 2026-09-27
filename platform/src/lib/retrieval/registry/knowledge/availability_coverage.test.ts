@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge } from './compiler'
 import { loadChartCapabilityOverlay, type OverlayQueryRow } from './overlay_loader'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
+import { SPINE_SOURCE_ASSET_IDS } from '../../spine/constants'
 import type { CapabilityKnowledgeSnapshot, ProducerOutputAvailabilityRequirement } from './types'
 
 const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-17T00:00:00.000Z') as CapabilityKnowledgeSnapshot
@@ -218,6 +220,75 @@ describe('first-slice availability coverage', () => {
         'registry:marsys://tool/L2/query_contradictions',
       ],
     })])
+  })
+
+  it('requires every source-backed spine leg plus its own cache-read probe because a stale or missing cache recomputes the full chain', () => {
+    const scu = findScu('scu.catalog.query_spine_bundle')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-SPINE/query_spine_bundle',
+      requirements: [
+        expect.objectContaining({
+          kind: 'derived',
+          scope: 'chart',
+          required_binding_ids: [
+            'registry:marsys://tool/L2/query_signals',
+            'registry:marsys://tool/L3/query_temporal_activation',
+            'registry:marsys://tool/L4/query_predictive_anchors',
+            'registry:marsys://tool/L5/query_calibration',
+          ],
+        }),
+        expect.objectContaining({
+          kind: 'source_query',
+          contract_id: 'source-query:query-spine-bundle:v1',
+          capability_uri: 'marsys://tool/L-SPINE/query_spine_bundle',
+          scope: 'chart',
+        }),
+      ],
+    })])
+    const contract = getSourceQueryAvailabilityContract('source-query:query-spine-bundle:v1')!
+    expect(contract.parameter_binding).toBe('chart_with_active_build_context')
+    expect(contract.sql).toContain('FROM bodha_spine_bundles')
+    expect(contract.sql).toContain('FROM asset_throughput')
+    expect(contract.sql).not.toContain('$2')
+    for (const assetId of SPINE_SOURCE_ASSET_IDS) expect(contract.sql).toContain(`'${assetId}'`)
+  })
+
+  it('keeps query_spine_bundle dark when its persisted-bundle source cannot be read even though every leg can', async () => {
+    const healthy = await loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [transitProbeAnchor()] }), new Date('2026-09-17T00:05:00.000Z'))
+    expect(healthy.availability.find((entry) => entry.scu_id === 'scu.catalog.query_spine_bundle')).toMatchObject({
+      available_binding_ids: ['registry:marsys://tool/L-SPINE/query_spine_bundle'],
+    })
+    const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('FROM bodha_spine_bundles')) throw new Error('spine cache unavailable')
+      return { rows: [transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(overlay.availability.find((entry) => entry.scu_id === 'scu.catalog.query_spine_bundle')).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+    })
+  })
+
+  it('probes both the ontology and chart-scoped coverage sources for LEL intake without reading either payload', () => {
+    const scu = findScu('scu.catalog.lel_intake_checklist')
+    const requirement = scu.availability_contracts?.[0]?.requirements[0]
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: 'source-query:lel-intake-checklist:v1',
+      capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+      scope: 'chart',
+    })
+    const contract = getSourceQueryAvailabilityContract('source-query:lel-intake-checklist:v1')
+    expect(contract?.empty_semantics).toBe('query_success_is_available')
+    expect(contract?.sql).toContain('FROM brahma_event_ontology')
+    expect(contract?.sql).toContain('FROM life_events')
+    expect(contract?.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(contract?.sql).toContain('LIMIT 0')
+  })
+
+  it('leaves query_sutravali_rules_for_planet uncontracted while its sidecar route mis-binds parameters', () => {
+    const scu = findScu('scu.catalog.query_sutravali_rules_for_planet')
+    expect(scu.availability_contracts ?? []).toEqual([])
   })
 
   it('admits query_domain_reading only through its complete active-build-context source-query contract', async () => {

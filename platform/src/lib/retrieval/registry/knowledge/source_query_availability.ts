@@ -4140,6 +4140,40 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/migrations/457_lel_schema_v2_event_shapes.sql',
     ],
   },
+  {
+    contract_id: 'source-query:query-spine-bundle:v1',
+    descriptor_name: 'query_spine_bundle',
+    capability_uri: 'marsys://tool/L-SPINE/query_spine_bundle',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    // getOrMaterializeSpineBundle always reads the persisted bundle row and, when
+    // one exists, the source-asset freshness marker (MAX(last_built_at) across
+    // SPINE_SOURCE_ASSET_IDS). Both reads are probed here with zero rows; the four
+    // recompute legs are covered by the derived requirement in editorial_review.ts.
+    // The lazy-refresh DELETE/INSERT on bodha_spine_bundles is a write path that a
+    // read-only availability probe cannot exercise.
+    sql: `WITH persisted AS (
+            SELECT bundle_jsonb, top_k, computed_at, source_asset_marker
+              FROM bodha_spine_bundles
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULL::text AND domain = NULL::text
+             LIMIT 0
+          ), marker AS (
+            SELECT MAX(last_built_at) AS latest
+              FROM asset_throughput
+             WHERE chart_id = $1::uuid
+               AND asset_id = ANY(ARRAY['bo_laksana', 'ka_kalasutra', 'ph_nimitta', 'mi_pramana']::text[])
+          )
+          SELECT persisted.top_k, persisted.computed_at, persisted.source_asset_marker, marker.latest
+            FROM persisted CROSS JOIN marker`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts:98-123',
+      'platform/src/lib/retrieval/spine/materialize.ts:75-83',
+      'platform/src/lib/retrieval/spine/materialize.ts:137-167',
+      'platform/src/lib/retrieval/spine/constants.ts#SPINE_SOURCE_ASSET_IDS',
+      'platform/supabase/migrations/463_bodha_spine_bundles.sql:36-50',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))
