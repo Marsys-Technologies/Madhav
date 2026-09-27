@@ -71,6 +71,10 @@ function setupMocks(opts: { role: 'guest' | 'super_admin'; isOwner: boolean; has
     if (sql.includes('FROM chart_grants WHERE chart_id=$1')) {
       return Promise.resolve({ rows: hasGrant ? [{ permission: 'view' }] : [] })
     }
+    if (sql.includes('UPDATE mimamsa_calibration_snapshot') && sql.includes("publication_status = 'live'")) {
+      // Default: the snapshot is current (not chart-context-stale), so approval succeeds.
+      return Promise.resolve({ rows: [{ snapshot_id: 's1' }] })
+    }
     return Promise.resolve({ rows: [] })
   })
 }
@@ -141,6 +145,51 @@ describe('POST /api/clients/[id]/learning — write-gated mutating actions (V3-E
     mockGetServerUser.mockResolvedValue(null)
     const res = await POST(makeReq({ action: 'cosign', snapshot_id: 's1', cosign_action: 'approved' }), paramsFor())
     expect(res.status).toBe(401)
+  })
+
+  it('DENY: approving a chart-context-stale calibration snapshot is refused with 409, and no cosign row is inserted (Jātaka Phase-A3)', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
+    setupMocks({ role: 'guest', isOwner: true, hasGrant: false })
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('LEFT JOIN chart_grants g')) return Promise.resolve({ rows: [{ id: CHART_ID }] })
+      if (sql.includes('FROM profiles')) return Promise.resolve({ rows: [{ role: 'guest' }] })
+      if (sql.includes('SELECT owner_id FROM charts WHERE id=$1')) return Promise.resolve({ rows: [{ owner_id: OWNER_UID }] })
+      if (sql.includes('UPDATE mimamsa_calibration_snapshot') && sql.includes("publication_status = 'live'")) {
+        // The guarded UPDATE finds no matching, non-stale row.
+        return Promise.resolve({ rows: [] })
+      }
+      return Promise.resolve({ rows: [] })
+    })
+
+    const res = await POST(makeReq({ action: 'cosign', snapshot_id: 's1', cosign_action: 'approved' }), paramsFor())
+
+    expect(res.status).toBe(409)
+    const insertCalls = mockQuery.mock.calls.filter(
+      (call: unknown[]) => /^\s*INSERT INTO mimamsa_snapshot_cosign/i.test(String(call[0]))
+    )
+    expect(insertCalls.length).toBe(0)
+  })
+
+  it('the approve UPDATE is scoped to chart_context_stale_at IS NULL (Jātaka Phase-A3)', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
+    setupMocks({ role: 'guest', isOwner: true, hasGrant: false })
+
+    await POST(makeReq({ action: 'cosign', snapshot_id: 's1', cosign_action: 'approved' }), paramsFor())
+
+    const updateCall = mockQuery.mock.calls.find(
+      (call: unknown[]) => /^\s*UPDATE mimamsa_calibration_snapshot/i.test(String(call[0])) && String(call[0]).includes("publication_status = 'live'")
+    )
+    expect(updateCall, 'expected the approve UPDATE').toBeDefined()
+    expect(updateCall![0] as string).toMatch(/chart_context_stale_at\s+IS\s+NULL/)
+  })
+
+  it('revoking a chart-context-stale calibration snapshot remains allowed', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
+    setupMocks({ role: 'guest', isOwner: true, hasGrant: false })
+
+    const res = await POST(makeReq({ action: 'cosign', snapshot_id: 's1', cosign_action: 'revoked' }), paramsFor())
+
+    expect(res.status).toBe(200)
   })
 
   it('DENY: a caller with no relationship to the chart at all gets 403 from the existing guardChartAccess check (unchanged)', async () => {

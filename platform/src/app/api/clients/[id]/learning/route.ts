@@ -221,6 +221,28 @@ async function handleCosign(chartId: string, uid: string, body: unknown) {
     return NextResponse.json({ error: 'snapshot_id and cosign_action (approved|revoked) required' }, { status: 400 })
   }
 
+  if (action === 'approved') {
+    // Jātaka Phase-A3 (migration 1123): a snapshot a correction has marked
+    // chart_context_stale_at was proposed under former birth details and must
+    // never be approved as live current calibration. The guard is the UPDATE
+    // itself (one round trip, race-free) — the cosign row is inserted only
+    // when it actually finds and updates a live, non-stale row. Revoking a
+    // stale snapshot remains allowed (below).
+    const approved = await query<{ snapshot_id: string }>(
+      `UPDATE mimamsa_calibration_snapshot
+       SET two_key_complete = true, publication_status = 'live'
+       WHERE snapshot_id = $1 AND chart_id = $2 AND chart_context_stale_at IS NULL
+       RETURNING snapshot_id`,
+      [snapshot_id, chartId],
+    )
+    if (approved.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'CHART_CONTEXT_STALE: this snapshot cannot be approved — it was not found, or a chart correction has since superseded the birth details it was proposed under' },
+        { status: 409 },
+      )
+    }
+  }
+
   await query(
     `INSERT INTO mimamsa_snapshot_cosign
        (snapshot_id, chart_id, action, cosigner_uid, judgment_ledger_ref, notes)
@@ -232,14 +254,7 @@ async function handleCosign(chartId: string, uid: string, body: unknown) {
     [snapshot_id, chartId, action, uid, judgment_ledger_ref ?? null, notes ?? null],
   )
 
-  if (action === 'approved') {
-    await query(
-      `UPDATE mimamsa_calibration_snapshot
-       SET two_key_complete = true, publication_status = 'live'
-       WHERE snapshot_id = $1 AND chart_id = $2`,
-      [snapshot_id, chartId],
-    )
-  } else {
+  if (action !== 'approved') {
     await query(
       `UPDATE mimamsa_calibration_snapshot
        SET publication_status = 'revoked'
