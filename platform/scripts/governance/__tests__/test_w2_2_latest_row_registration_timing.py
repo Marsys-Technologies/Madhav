@@ -547,10 +547,11 @@ def test_r43_package_and_shim_imported_writers_are_recognised(monkeypatch, tmp_p
 def test_r43_the_resolved_writer_is_measured_not_no_detector(monkeypatch, tmp_path, aid, layer):
     """End to end through the REAL registered_ids()/contract_scan()/idem_scan(): the writer is
     registered, its contract is scanned (PASS: WriterBase, run(), no commit) and its idempotency
-    pattern is read (PASS: DELETE FROM). Fails without the fix: Build.registered FAIL "no @register
-    found" and both scans NO_DETECTOR "never scanned"."""
+    pattern is read (PASS: DELETE FROM its own table t_x — since C-KSHETRA a counted DELETE must name the
+    asset's table, so the fixture declares it). Fails without the fix: Build.registered FAIL "no
+    @register found" and both scans NO_DETECTOR "never scanned"."""
     _use_tree(monkeypatch, tmp_path)
-    reg = {aid: w1._reg_row(aid, None, has_writer=True, asset_kind="service")}
+    reg = {aid: w1._reg_row(aid, "t_x", has_writer=True, asset_kind="service")}
     w1._stub_layer(monkeypatch, tmp_path, reg)
     monkeypatch.setattr(ac, "registered_ids", _REAL_REGISTERED_IDS)
     c = ac.measure(layer)
@@ -853,3 +854,104 @@ def test_r232_an_open_dens_served_gap_does_not_close_on_a_comment(monkeypatch, t
     assert w1._m(c, "bg_x", "Dens.served")["v"] == verdict
     assert ac.emit_gaps(c)[2] == closed
 
+
+
+# ─────────── C-KSHETRA (W2-2 gate review §4.1): Idem.pattern — a counted DELETE names the asset's own
+# table and is reachable on a POPULATED rebuild; a refused rebuild never PASSes ───────────
+
+_KSH_GUARD = '''
+    def _prepare(self, conn, chart_id):
+        populated = self._populated(conn, chart_id)
+        if populated is not None:
+            raise ReplacementHeld(f"held: output exists in {populated}")
+        self._delete_prior(conn, chart_id)
+'''
+_KSH_NO_GUARD = '''
+    def _prepare(self, conn, chart_id):
+        self._delete_prior(conn, chart_id)
+'''
+_KSH_EMPTY_POLARITY = '''
+    def _prepare(self, conn, chart_id):
+        upstream = self._populated(conn, chart_id)
+        if upstream is None:
+            raise RuntimeError("upstream missing")
+        self._delete_prior(conn, chart_id)
+'''
+
+
+def _ksh_writer(tmp_path, prepare, delete_sql='f"DELETE FROM {table} WHERE chart_id = %s"'):
+    """A ka_kshetra-shaped writer: `_OWNED_TABLES` module sequence, an output-existence probe, a prepare
+    step (the variant under test) and a per-table delete loop over `_OWNED_TABLES`."""
+    w = tmp_path / "writers"
+    w.mkdir(exist_ok=True)
+    (w / "ka_x.py").write_text(
+        "from pipeline.orchestrator.writers import WriterBase, register\n"
+        "class ReplacementHeld(RuntimeError):\n    pass\n"
+        "_OWNED_TABLES = (('t_owned_a', None), ('t_x', 'lel_derived = FALSE'))\n"
+        '@register("ka_x")\nclass KaX(WriterBase):\n'
+        "    def run(self, ctx):\n        self._prepare(ctx.db_conn, 1)\n"
+        + prepare +
+        "    @staticmethod\n    def _populated(conn, chart_id):\n"
+        "        for table, predicate in _OWNED_TABLES:\n"
+        "            conn.execute(f'SELECT EXISTS (SELECT 1 FROM {table} WHERE chart_id = %s LIMIT 1)', (chart_id,))\n"
+        "        return None\n"
+        "    @staticmethod\n    def _delete_prior(conn, chart_id):\n"
+        "        for table, predicate in _OWNED_TABLES:\n"
+        f"            conn.execute({delete_sql}, (chart_id,))\n"
+        "        conn.execute('DELETE FROM build_substep_progress WHERE chart_id = %s', (chart_id,))\n",
+        encoding="utf-8")
+    return w
+
+
+@pytest.mark.parametrize("prepare, verdict, text", [
+    (_KSH_GUARD, ac.FAIL, "rebuild refused when target is populated: ka_x.py:"),       # the ka_kshetra shape
+    (_KSH_NO_GUARD, ac.PASS, "t_x (ka_x.py:"),                                         # control: replaces on a populated chart
+    (_KSH_EMPTY_POLARITY, ac.PASS, "t_x (ka_x.py:"),                                   # a raise on EMPTY upstream is no refusal
+])
+def test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes(monkeypatch, tmp_path, prepare, verdict, text):
+    """Through the REAL idem_scan(): the guarded writer reads FAIL naming the raise; without the guard the
+    same loop-resolved delete-then-insert on its own table t_x PASSes. Fails without the fix: the guarded
+    writer PASSed on 'DELETE FROM present' (build_substep_progress + the bare f-string fragment)."""
+    monkeypatch.setattr(ac, "WRITERS", _ksh_writer(tmp_path, prepare))
+    v, notes = ac.idem_scan("ka_x", ["ka_x.py"], "delete_then_insert", ["t_x"])
+    assert v == verdict and text in notes[0], (v, notes)
+
+
+@pytest.mark.parametrize("delete_sql, targets, verdict", [
+    ("'DELETE FROM build_substep_progress WHERE chart_id = %s'", ["t_x"], ac.PARTIAL),  # sibling table only
+    ('f"DELETE FROM {unresolved} WHERE chart_id = %s"', ["t_x"], ac.PARTIAL),            # a bare fragment names nothing
+    ("'DELETE FROM public.t_x WHERE chart_id = %s'", ["t_x"], ac.PASS),                 # literal, schema-qualified, own table
+    ('f"DELETE FROM {table} WHERE chart_id = %s"', [], ac.PARTIAL),                      # no declared table to check against
+])
+def test_ckshetra_a_counted_delete_must_name_the_assets_own_table(monkeypatch, tmp_path, delete_sql, targets, verdict):
+    """(a): a DELETE counts only when it NAMES one of the asset's own tables (target_table ∪ count_sql
+    tables) — literally or through a resolved constant / loop sequence. Fails without the fix: the
+    sibling-only and fragment-only writers PASSed."""
+    monkeypatch.setattr(ac, "WRITERS", _ksh_writer(tmp_path, _KSH_NO_GUARD, delete_sql))
+    v, notes = ac.idem_scan("ka_x", ["ka_x.py"], "delete_then_insert", targets)
+    assert v == verdict, (v, notes)
+
+
+def test_ckshetra_an_open_idem_gap_does_not_close_on_a_refused_rebuild(monkeypatch, tmp_path):
+    """measure() + emit_gaps() on a ledger copy: the guarded writer's OPEN Idem.pattern gap stays OPEN."""
+    _use_tree(monkeypatch, tmp_path)
+    monkeypatch.setattr(ac, "WRITERS", _ksh_writer(tmp_path, _KSH_GUARD))
+    reg = {"ka_x": w1._reg_row("ka_x", "t_x", has_writer=True)}
+    w1._stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "registered_ids", lambda prefix: {"ka_x": ["ka_x.py"]} if prefix == "ka_" else {})
+    w1._open_gap(tmp_path, "ka_x", "Idem.pattern")
+    c = ac.measure("L3")
+    assert w1._m(c, "ka_x", "Idem.pattern")["v"] == ac.FAIL
+    assert ac.emit_gaps(c)[2] == 0
+
+
+def test_ckshetra_the_real_ka_kshetra_does_not_pass_and_a_real_replacing_writer_does():
+    """Real source (no database; targets are the registry's, verified live 2026-09-27): ka_kshetra's
+    writer raises KshetraReplacementHeld on any populated chart (services/ka_kshetra/writer.py
+    _run_prepare_replace) — FAIL naming that file; ka_kota_chakra deletes kala_kota_chakra per chart
+    before insert — PASS. Fails without the fix: ka_kshetra read PASS."""
+    ks = ac.registered_ids("ka_")
+    v, notes = ac.idem_scan("ka_kshetra", ks["ka_kshetra"], "delete_then_insert", ["kala_field"])
+    assert v == ac.FAIL and "rebuild refused when target is populated: services/ka_kshetra/writer.py:" in notes[0], notes
+    v2, notes2 = ac.idem_scan("ka_kota_chakra", ks["ka_kota_chakra"], "delete_then_insert", ["kala_kota_chakra"])
+    assert v2 == ac.PASS and "kala_kota_chakra" in notes2[0], notes2

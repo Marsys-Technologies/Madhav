@@ -386,23 +386,175 @@ def contract_scan(asset_id: str, files: list[str]) -> tuple[str, list[str]]:
     return (PASS if not hard else FAIL), (notes or ["conformant"])
 
 
-def idem_scan(asset_id: str, files: list[str], convention: str) -> tuple[str, list[str]]:
+_DELETE_TABLE = re.compile(r"DELETE\s+FROM\s+(?:ONLY\s+)?(?:public\.)?\"?([A-Za-z_][A-Za-z_0-9]*)", re.I)
+_DELETE_OPEN = re.compile(r"DELETE\s+FROM\s+(?:ONLY\s+)?(?:public\.)?\"?$", re.I)
+_EXISTS_PROBE = re.compile(r"SELECT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM|SELECT\s+1\s+FROM\s+\S+\s+WHERE\s+chart_id", re.I)
+
+
+def _docstring_ids(tree: ast.AST) -> set[int]:
+    docs = set()
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            body = getattr(n, "body", [])
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
+                    and isinstance(body[0].value.value, str):
+                docs.add(id(body[0].value))
+    return docs
+
+
+def _module_sequences(tree: ast.AST) -> dict[str, list[str]]:
+    """C-KSHETRA: a module's top-level list/tuple literals of table names (`_OWNED_TABLES = (('kala_field',
+    None), …)`, annotated or not) -> the first string of each element. Assigned twice -> dropped."""
+    seen: dict[str, list] = {}
+    for node in getattr(tree, "body", []):
+        if isinstance(node, ast.Assign):
+            for tg in node.targets:
+                if isinstance(tg, ast.Name):
+                    seen.setdefault(tg.id, []).append(node.value)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value is not None:
+            seen.setdefault(node.target.id, []).append(node.value)
+    return {k: out for k, v in seen.items() if len(v) == 1 and (out := _literal_names(v[0]))}
+
+
+def _literal_names(node: ast.AST) -> list[str]:
+    """The table names a literal list/tuple enumerates: each string element, or each tuple element's first
+    string. Anything else yields nothing (never guessed)."""
+    if not isinstance(node, (ast.List, ast.Tuple)):
+        return []
+    out = []
+    for e in node.elts:
+        if isinstance(e, ast.Constant) and isinstance(e.value, str):
+            out.append(e.value)
+        elif isinstance(e, ast.Tuple) and e.elts and isinstance(e.elts[0], ast.Constant) \
+                and isinstance(e.elts[0].value, str):
+            out.append(e.elts[0].value)
+    return out
+
+
+def _deleted_tables(tree: ast.AST) -> list[tuple[str, int]]:
+    """C-KSHETRA (W2-2 gate): every table a DELETE in this module NAMES, with its line — a literal
+    `DELETE FROM <t>`, or an f-string `DELETE FROM {X}` whose X resolves to a module-level string constant
+    (`TABLE = "kala_gochara_windows_v2"`) or to the enclosing `for X in <literal / module-level sequence>`
+    (`for table, predicate in _OWNED_TABLES`). A bare `'DELETE FROM '` fragment names nothing and counts
+    for nothing; an unresolvable `{X}` names nothing (never guessed). Docstrings are prose, not SQL."""
+    docs, consts, seqs = _docstring_ids(tree), _module_constants(tree), _module_sequences(tree)
+    out: list[tuple[str, int]] = []
+
+    def resolve(n: ast.AST, loops: dict[str, list[str]]) -> list[str]:
+        if isinstance(n, ast.Name):
+            if n.id in loops:
+                return loops[n.id]
+            if n.id in consts:
+                return [consts[n.id]]
+        return []
+
+    def visit(n: ast.AST, loops: dict[str, list[str]]) -> None:
+        if isinstance(n, (ast.For, ast.AsyncFor)):
+            it = n.iter
+            names = _literal_names(it) or (seqs.get(it.id, []) if isinstance(it, ast.Name) else [])
+            tg = n.target.elts[0] if isinstance(n.target, ast.Tuple) and n.target.elts else n.target
+            if names and isinstance(tg, ast.Name):
+                loops = dict(loops, **{tg.id: names})
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs:
+            out.extend((m.group(1), n.lineno) for m in _DELETE_TABLE.finditer(n.value))
+        elif isinstance(n, ast.JoinedStr):
+            vals = n.values
+            for i, v in enumerate(vals[:-1]):
+                if isinstance(v, ast.Constant) and isinstance(v.value, str) and _DELETE_OPEN.search(v.value) \
+                        and isinstance(vals[i + 1], ast.FormattedValue):
+                    out.extend((t, n.lineno) for t in resolve(vals[i + 1].value, loops))
+        for c in ast.iter_child_nodes(n):
+            visit(c, loops)
+    visit(tree, {})
+    return out
+
+
+def _call_name(c: ast.AST) -> str | None:
+    if isinstance(c, ast.Call):
+        f = c.func
+        return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+    return None
+
+
+def _populated_refusal_guard(tree: ast.AST) -> tuple[int, str, str] | None:
+    """C-KSHETRA (W2-2 gate, review §4.1): a rebuild that REFUSES when the chart's output already exists is
+    not an idempotent replacement, whatever DELETE sits behind the refusal. Found structurally: a function
+    that (1) takes the result of an output-existence probe (a function whose SQL is `SELECT EXISTS (SELECT 1
+    FROM …` / `SELECT 1 FROM <t> WHERE chart_id …`), (2) RAISES in an `if` on its POPULATED polarity (`if
+    x`, `if x is not None`, `if probe(...)`), and (3) only AFTER that `if` reaches a DELETE (its own, or a
+    call to a function holding one). Returns (raise line, exception, probe) or None. ka_kshetra
+    (services/ka_kshetra/writer.py): `_run_prepare_replace` raises KshetraReplacementHeld when
+    `_populated_owned_table` finds output, and only then calls `_delete_prior_rows`."""
+    funcs = [f for f in ast.walk(tree) if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    probes = {f.name for f in funcs if any(_EXISTS_PROBE.search(s) for s in _code_strings(f))}
+    deleters = {f.name for f in funcs if _deleted_tables(f) or any(_DELETE_OPEN.search(s) or
+                                                                  _DELETE_TABLE.search(s) for s in _code_strings(f))}
+    if not probes:
+        return None
+    for f in funcs:
+        probed = {t.id for a in ast.walk(f) if isinstance(a, ast.Assign) and _call_name(a.value) in probes
+                  for t in a.targets if isinstance(t, ast.Name)}
+        for node in ast.walk(f):
+            if not isinstance(node, ast.If):
+                continue
+            t = node.test
+            populated = (_call_name(t) in probes
+                         or (isinstance(t, ast.Name) and t.id in probed)
+                         or (isinstance(t, ast.Compare) and isinstance(t.left, ast.Name) and t.left.id in probed
+                             and len(t.ops) == 1 and isinstance(t.ops[0], ast.IsNot)
+                             and isinstance(t.comparators[0], ast.Constant) and t.comparators[0].value is None))
+            raise_ = next((b for b in node.body if isinstance(b, ast.Raise)), None)
+            if not (populated and raise_):
+                continue
+            later = [c for c in ast.walk(f) if getattr(c, "lineno", 0) > node.end_lineno]
+            if any(_call_name(c) in deleters for c in later) or \
+                    any(isinstance(c, ast.Constant) and isinstance(c.value, str) and _DELETE_TABLE.search(c.value)
+                        for c in later):
+                exc = _call_name(raise_.exc) or (raise_.exc.id if isinstance(raise_.exc, ast.Name) else "an exception")
+                probe = next(iter(sorted(probes)))
+                return raise_.lineno, exc, probe
+    return None
+
+
+def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> tuple[str, list[str]]:
     """§N.3, over real SQL strings (docstrings excluded). A writer that delegates to a seeder shows no
-    pattern here; that is PARTIAL — look in the seeder — never FAIL."""
+    pattern here; that is PARTIAL — look in the seeder — never FAIL.
+
+    C-KSHETRA (W2-2 gate review §4.1): the delete-then-insert PASS is a claim that a REBUILD REPLACES the
+    asset's own rows. It used to be read off any `DELETE FROM` text in the writer — ka_kshetra PASSed on
+    `DELETE FROM build_substep_progress` and a bare f-string fragment, while its writer refuses
+    (KshetraReplacementHeld) to rebuild any populated chart. Now (a) a counted DELETE must NAME one of the
+    asset's own tables (`targets`: target_table ∪ the count_sql tables), and (b) a rebuild refused when the
+    output is populated (`_populated_refusal_guard`) reads FAIL with the refusal's location, never PASS."""
     if not files:
         return NO_DET, ["no writer file recognised — nothing scanned"]   # R222 / N2, as contract_scan
-    sqls = []
+    sqls, deleted, guard = [], [], None
     for name in files:
-        sqls += _code_strings(_parse(_writer_path(name)))
+        tree = _parse(_writer_path(name))
+        sqls += _code_strings(tree)
+        deleted += [(t.lower(), name, ln) for t, ln in _deleted_tables(tree)]
+        g = _populated_refusal_guard(tree)
+        if g and guard is None:
+            guard = (name, *g)
     blob = "\n".join(sqls)
     upsert = bool(re.search(r"ON CONFLICT", blob, re.I))
-    delete = bool(re.search(r"DELETE\s+FROM", blob, re.I))
+    if guard:
+        name, ln, exc, probe = guard
+        return FAIL, [f"rebuild refused when target is populated: {name}:{ln} (raise {exc} after the output-existence "
+                      f"probe {probe}) — the delete-then-insert path runs only on an output-empty chart, so a rebuild "
+                      "of a populated chart does not replace (§N.3 'rebuild replaces' not met)"]
     if convention == "upsert":
         if upsert:
             return PASS, ["ON CONFLICT present in the writer"]
         return PARTIAL, ["no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there"]
-    if delete:
-        return PASS, ["DELETE FROM present (delete-then-insert)"]
+    tset = {t.lower() for t in targets if t}
+    on_target = sorted({f"{t} ({n}:{ln})" for t, n, ln in deleted if t in tset})
+    if on_target:
+        return PASS, [f"DELETE FROM the asset's own table(s) (delete-then-insert): {', '.join(on_target)}"]
+    if deleted:
+        return PARTIAL, [f"DELETE FROM present but none names the asset's own table(s) {sorted(tset) or '(none declared)'} "
+                         f"— it deletes {sorted({t for t, _, _ in deleted})}; the replacement of its own rows is not "
+                         "measured here (it may delegate; verify there)"]
     if upsert:
         return PARTIAL, ["ON CONFLICT where the layer convention is delete-then-insert"]
     return PARTIAL, ["no idempotency pattern in the writer's own SQL — it likely delegates; verify there"]
@@ -1173,12 +1325,13 @@ def _measure_contract(aid: str, files: list[str], has_writer: bool) -> dict:
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
-def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool) -> dict:
-    """R41 fault isolation for Idem.pattern — same discipline as `_measure_contract`."""
+def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool, targets=()) -> dict:
+    """R41 fault isolation for Idem.pattern — same discipline as `_measure_contract`. `targets`
+    (C-KSHETRA): the asset's own tables — target_table ∪ count_sql tables — a counted DELETE must name."""
     if not files:
         return _no_writer_scanned(aid, has_writer, "the idempotency pattern")
     try:
-        v, notes = idem_scan(aid, files, convention)
+        v, notes = idem_scan(aid, files, convention, targets)
         return dict(v=v, measured="; ".join(notes))
     except Unknown as exc:
         return dict(v=ERRORED, measured=f"check errored: {exc}")
@@ -1418,7 +1571,8 @@ def measure(layer_key: str) -> dict:
 
         # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
         m["Build.contract"] = _measure_contract(aid, files, r["has_writer"])
-        m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"])
+        m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"],
+                                          [r["target_table"]] + _count_tables(r["count_sql"]))
 
         # Build.target
         if r["target_table"]:

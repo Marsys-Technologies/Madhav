@@ -47,7 +47,7 @@ def test_contract_scan_exception_degrades_to_errored_not_layer_abort(monkeypatch
 
 def test_idem_scan_exception_degrades_to_errored_not_layer_abort(monkeypatch):
     """Same proof as above, for `_measure_idem` / Idem.pattern."""
-    def _boom(asset_id, files, convention):
+    def _boom(asset_id, files, convention, targets=()):
         raise ac.Unknown("bg_broken.py: unparseable (SyntaxError)")
     monkeypatch.setattr(ac, "idem_scan", _boom)
     result = ac._measure_idem("bg_broken", ["bg_broken.py"], "upsert", True)
@@ -61,7 +61,8 @@ def test_measure_calls_the_extracted_guarded_helpers(monkeypatch):
     import inspect
     src = inspect.getsource(ac.measure)
     assert 'm["Build.contract"] = _measure_contract(aid, files, r["has_writer"])' in src
-    assert 'm["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"])' in src
+    # W2-2 C-KSHETRA: the call now also passes the asset's own tables (a counted DELETE must name one).
+    assert 'm["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"],' in src
 
 
 def test_errored_never_closes_a_gap_and_never_opens_one(tmp_path, monkeypatch):
