@@ -876,6 +876,17 @@ async function runAssessDomain(
     )
 
     const contraContent = contraResult.content as Record<string, unknown>
+    // query_contradictions resolves the served generation itself. If a build landed between its
+    // resolution and ours, this response would mix two generations — disclose it, never hide it.
+    const contraGeneration = (contraContent['generation_provenance'] as Record<string, unknown> | undefined)?.['generation_hash']
+    if (!contraResult.is_error && typeof contraGeneration === 'string' && contraGeneration !== generation.generation_hash) {
+      generationFlags.push(judgmentFlag(
+        'served_generation_changed_mid_request',
+        `contradictions were read from served generation ${contraGeneration}, the rest of this ` +
+          `assessment from ${generation.generation_hash}; a build landed mid-request — re-run for one generation.`,
+        'warning',
+      ))
+    }
 
     // EL-57: domain filter on the contradiction surface. bodha_contradictions rows carry
     // domains_affected_array (query_contradictions.ts SELECT) but query_contradictions itself

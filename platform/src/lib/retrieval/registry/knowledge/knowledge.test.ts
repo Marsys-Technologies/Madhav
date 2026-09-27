@@ -5,6 +5,7 @@ import { compileChartCapabilityOverlay, assertOverlayCompatibility } from './ove
 import { inspectSemanticCapability, searchSemanticCapabilities } from './query'
 import type { CapabilityKnowledgeSnapshot, SemanticCapabilityUnit } from './types'
 import { getDescriptorEditorialReview, getDescriptorPrimaryBindingDetails } from './editorial_review'
+import { ASSESS_DOMAIN_AVAILABILITY_LEGS } from './editorial'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 import type { CapabilityDescriptor } from '../types'
 import { buildPlannerCapabilityKnowledgeProjection } from './planner_projection'
@@ -157,13 +158,23 @@ describe('planner capability knowledge', () => {
       const primaryContract = scu.availability_contracts?.find((contract) => contract.binding_id === primary.binding_id)
       expect(primaryContract).toEqual({
         binding_id: primary.binding_id,
-        requirements: reviewedClaims.map((claim) => ({
-          kind: 'producer_output',
-          asset_id: claim.asset_id,
-          spec_sha256: claim.output_digest_spec_sha256,
-          scope: 'chart_build',
-          source_ref: claim.evidence,
-        })),
+        requirements: [
+          // assess_wealth shares runAssessDomain with the other assess_* routes, so its own
+          // executable legs gate it before (not instead of) its reviewed producer receipts.
+          ...(scuId === 'scu.finance.prosperity_assessment' ? [{
+            kind: 'derived',
+            scope: 'chart',
+            required_binding_ids: [...ASSESS_DOMAIN_AVAILABILITY_LEGS],
+            source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+          }] : []),
+          ...reviewedClaims.map((claim) => ({
+            kind: 'producer_output',
+            asset_id: claim.asset_id,
+            spec_sha256: claim.output_digest_spec_sha256,
+            scope: 'chart_build',
+            source_ref: claim.evidence,
+          })),
+        ],
       })
     }
 

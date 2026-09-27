@@ -14,6 +14,7 @@ import type {
 } from './types'
 import { JUDGMENT_READING_CHECKLIST_V2_CONTRACT } from '../layers/reading_checklist'
 import { sourceQueryAvailabilityRequirement } from './source_query_availability'
+import { ASSESS_DOMAIN_AVAILABILITY_LEGS } from './editorial'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -48,25 +49,6 @@ export interface DescriptorAvailabilityContractReview {
   readonly producer_output_claims: readonly ProducerOutputClaim[]
   readonly requirements: readonly AvailabilityRequirement[]
 }
-
-const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
-  'registry:marsys://tool/L2/query_domain_reading',
-  'registry:marsys://tool/L3/query_temporal_activation',
-  'registry:marsys://tool/L2/query_contradictions',
-] as const
-
-// assess_* is available only when every leg its served evidence rests on can earn its own
-// exact availability: the three mandatory legs above, plus the two served-generation-fenced
-// evidence legs the verdict is assembled from — the firings-authoritative bearing yogas
-// (§N.6) and the composite-ranked signal surface. Those two degrade non-fatally inside the
-// handler, so without them here a composite could be promoted while serving an empty
-// confirmed-finding layer. Direct chart_facts/bodha reads in the handler are fenced to the
-// served generation (register_d8_assess_domain.ts runAssessDomain).
-const ASSESS_DOMAIN_AVAILABILITY_LEGS = [
-  ...ASSESS_DOMAIN_MANDATORY_BINDINGS,
-  'registry:marsys://tool/L1/get_yoga_firings',
-  'registry:marsys://tool/L2/query_signals',
-] as const
 
 const ASSESS_DOMAIN_AVAILABILITY_CONTRACT: DescriptorAvailabilityContractReview = {
   producer_output_claims: [],

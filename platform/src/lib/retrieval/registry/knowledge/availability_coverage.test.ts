@@ -232,6 +232,53 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('makes every assess_* route available only while each of its legs earns its own evidence, and names the leg that fails', async () => {
+    const legReceipts = [
+      adjacentProducerReceipt('bo_drishti', 'fd76f79e2f1b6a6659ef5d7bad4f5a422515fee85ab9245ac0e52fc58f9b81d2'),
+      adjacentProducerReceipt('bo_sangati', 'f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc'),
+      adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
+      // assess_wealth's own reviewed producer receipts (required in addition to the legs).
+      adjacentProducerReceipt('bo_cdlm_summary', 'f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497'),
+      adjacentProducerReceipt('bo_vargottama_dhana', '8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec'),
+    ]
+    const gaYoga = adjacentProducerReceipt('ga_yoga', 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246')
+    const load = (failingSql: string | null, receipts = [...legReceipts, gaYoga]) =>
+      loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (failingSql && sql.includes(failingSql)) throw new Error('leg source unavailable')
+        return { rows: [...receipts] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+    const assessScus = ['scu.catalog.assess_career', 'scu.catalog.assess_health', 'scu.catalog.assess_marriage']
+
+    const wealthBinding = 'registry:marsys://tool/L-DOMAIN/assess_wealth'
+    const wealthAvailable = (overlay: Awaited<ReturnType<typeof load>>) => overlay.availability
+      .find((entry) => entry.scu_id === 'scu.finance.prosperity_assessment')!.available_binding_ids.includes(wealthBinding)
+
+    const baseline = await load(null)
+    for (const scuId of assessScus) {
+      expect(baseline.availability.find((entry) => entry.scu_id === scuId), scuId).toMatchObject({ state: 'available', gaps: [] })
+    }
+    expect(wealthAvailable(baseline)).toBe(true)
+
+    const failures = [
+      { leg: 'registry:marsys://tool/L2/query_domain_reading', overlay: await load('FROM bodha_question_lenses') },
+      { leg: 'registry:marsys://tool/L3/query_temporal_activation', overlay: await load('FROM kala_activation') },
+      { leg: 'registry:marsys://tool/L2/query_contradictions', overlay: await load('FROM bodha_contradictions') },
+      { leg: 'registry:marsys://tool/L2/query_signals', overlay: await load('FROM information_schema') },
+      { leg: 'registry:marsys://tool/L1/get_yoga_firings', overlay: await load(null, legReceipts) },
+    ]
+    for (const { leg, overlay } of failures) {
+      for (const scuId of assessScus) {
+        const entry = overlay.availability.find((candidate) => candidate.scu_id === scuId)!
+        expect(entry.state, `${scuId} with ${leg} failing`).toBe('dark')
+        expect(entry.gaps.length).toBeGreaterThan(0)
+        // Only the failing leg is named: every other leg still earns its evidence.
+        for (const gap of entry.gaps) expect(gap).toContain(`Derived availability leg ${leg}:`)
+      }
+      // assess_wealth runs the same handler: its producer receipts alone never promote it.
+      expect(wealthAvailable(overlay), `assess_wealth with ${leg} failing`).toBe(false)
+    }
+  })
+
   it('attaches the existing exact source-query contract to the yoga-dasha bridge', () => {
     const scu = findScu('scu.catalog.yoga_activation_by_dasha')
     expect(scu.availability_dispositions ?? []).toEqual([])

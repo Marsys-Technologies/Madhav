@@ -1,10 +1,14 @@
 /**
  * assess_* mandatory served-generation fence (Pūrṇa R3 / review RC-1, RC-2).
  *
- * assess_* composes L1 chart facts and L2 derived stores. Every read it makes — directly or
- * through a composed handler that accepts a fence — must be restricted to the chart's served
+ * assess_* composes L1 chart facts and L2 derived stores. Every read it makes directly, and
+ * every read of a composed handler that accepts a fence, must be restricted to the chart's served
  * generation (each asset's own writing run), and a chart with no resolvable generation must
  * fail closed instead of falling through to unfenced reads.
+ *
+ * Known residual (L3 Kāla ownership, deliberately untouched): query_temporal_activation reads
+ * bodha_msr_signals without a fence. The temporal handler is mocked here, so these tests do not
+ * cover it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -139,6 +143,26 @@ describe('assess_* served-generation fence', () => {
       selection: 'per_asset_served_generation',
       served_build_ids: [SERVED],
     })
+  })
+
+  it('flags a contradictions leg that resolved a different served generation mid-request', async () => {
+    installRouter([receiptRow('ga_structural')])
+    contradictionsHandler.mockResolvedValue({
+      is_error: false,
+      content: { contradictions: [], discoveries: [], generation_provenance: { generation_hash: 'sha256:a-newer-generation' } },
+    })
+    const mixed = await run()
+    const flags = mixed.content['judgment_flags'] as Array<{ code: string }>
+    expect(flags.map((entry) => entry.code)).toContain('served_generation_changed_mid_request')
+
+    const sameGeneration = (mixed.content['generation_provenance'] as { generation_hash: string }).generation_hash
+    contradictionsHandler.mockResolvedValue({
+      is_error: false,
+      content: { contradictions: [], discoveries: [], generation_provenance: { generation_hash: sameGeneration } },
+    })
+    const consistent = await run()
+    expect((consistent.content['judgment_flags'] as Array<{ code: string }>).map((entry) => entry.code))
+      .not.toContain('served_generation_changed_mid_request')
   })
 
   it('discloses unresolved and withheld assets instead of reading their runs', async () => {
