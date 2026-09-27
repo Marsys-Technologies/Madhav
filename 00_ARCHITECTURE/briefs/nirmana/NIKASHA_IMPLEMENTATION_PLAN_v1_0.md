@@ -64,6 +64,7 @@ acts are the review of the R218 planner-test output per P-need (D5 rev. 2.1 — 
 
 ## P4 · Inspector detector fixes (the C1–C4 clusters)
 
+- **Wave 3 (2026-09-28): LANDED.** Ledger crosswalk (R78/R79/R80/R81-partial/R15/R29 CLOSED), inspector leftovers (R60 CLOSED, R99 PARTIAL), doc/tracker cleanup (R63/R64/R66/R69/R70/R77 CLOSED; R65/R68 non-sealed halves only), the planner test (R218 CLOSED, informational). R99 and R81 folded honestly as PARTIAL, not overclaimed. Carries R248-R252. Deliberately excluded every sealed-tier edit (D2 reopen work — a separate campaign).
 - **Wave 2 W2-3 (2026-09-28): LANDED — WAVE 2 COMPLETE.** R20, R21, R23, R240, R241, R242 CLOSED. bo_upaya (R244) surfaced as a real unearned closure during the corrections pass itself; withheld from production, native ruling pending. R243 (6 chart-conditional PASSes), R245/R246/R247 carried forward — none blocks the inspector's continued operation.
 - **Wave 2 W2-2 (2026-09-27): LANDED.** R233, R44, R49, R45, R43, R46, R50, R51, R53, R54, R232 CLOSED; D6 item 2 landed (R55 stays OPEN on migration 1094); the C-KSHETRA correction re-graded ka_kshetra's Idem.pattern to FAIL (found by the fix itself, not planned). W2-3 carries R20, R21, R23, R240, R241, R242.
 - **Wave 2 W2-1 (2026-09-27): LANDED.** R222 (precondition MET), R224, R231, R223, R225, R42, R52, R56, R48 CLOSED; W2-2 carries R43–R46, R49–R51, R53, R54, D6 item 2, plus R232/R233; W2-3 carries R20, R21, R23.

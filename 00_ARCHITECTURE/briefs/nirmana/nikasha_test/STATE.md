@@ -187,3 +187,13 @@ One real defect (bo_upaya, R244) was found by the wave's own corrections pass an
 production pending a native ruling; six PASSes are correctly chart-conditional by database design
 (R243), not a defect. Details: `wave2/STATE.md`.
 
+## 2026-09-28 · Wave 3 folded
+
+Register v2.7: CLOSED R78, R79, R80, R60, R63, R64, R66, R69, R70, R77, R218, R15, R29; PARTIAL R99, R81
+(honestly scoped, not overclaimed); R65/R68 half-closed (non-sealed halves only). The one authorized
+production-ledger write (R81) verified append-only across two independent gate passes: 830 -> 857 lines.
+A real defect in the hand/machine ownership rule (R15/R29) was found and fixed during the wave's own
+correction pass, the same pattern as bo_upaya and ka_kshetra before it. Added R248-R252 for every carried
+finding. No sealed tier touched. Details: `wave3/W3-1_REPORT.md` (v1.2), `wave3/W3-1_REVIEW.md`,
+`wave3/W3-1_C1_REVIEW.md`.
+

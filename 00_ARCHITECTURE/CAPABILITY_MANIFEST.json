@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-28T02:11:10+05:30",
+  "generated_at": "2026-09-28T04:49:48+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "1812a4ede55e0b69",
+  "fingerprint": "39af5b9600c58ed7",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1965,13 +1965,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "4927436c177602541dbeed4aea949074682e8c9f87313f0c6002770ac2003f41",
+      "fingerprint": "ff91138491b75ca0eb2134e6f5e8a05d7f874a59b72d3f8f50bfeb9bcd82f574",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-VERIFY-20260927",
-      "last_verified_on": "2026-09-27",
+      "last_verified_session": "NIKASHA-WAVE3-FOLD-20260928",
+      "last_verified_on": "2026-09-28",
       "tier": 4,
       "note": "tier-4 template; produces one instance per asset",
-      "fingerprint_sha256": "4927436c177602541dbeed4aea949074682e8c9f87313f0c6002770ac2003f41",
+      "fingerprint_sha256": "ff91138491b75ca0eb2134e6f5e8a05d7f874a59b72d3f8f50bfeb9bcd82f574",
       "doc_status": "DRAFT_PENDING_REVIEW",
       "supersedes": "00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v1_0.md"
     },
@@ -1986,13 +1986,13 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "2233d00ad48d389da0cded71dfece336fe83b21fd1bde9243af9118540ece569",
+      "fingerprint": "e577ffe34f90a0ba0ee0f105095f4fba9de1a96cba393daa3539bcd52f744d88",
       "native_id": "project",
-      "last_verified_session": "L0-PILOT-BUILD-GATE-20260926",
-      "last_verified_on": "2026-09-26",
+      "last_verified_session": "NIKASHA-WAVE3-FOLD-20260928",
+      "last_verified_on": "2026-09-28",
       "tier": 3,
       "note": "tier-3 instance for L0; ACCEPT_WITH_CORRECTIONS. doc_status mirrors the document's own frontmatter (REVISED_PENDING_REVIEW as of 2026-09-25); status=CURRENT means only that this is the current artefact at this path, not that its review has closed. Rebuilt fresh at v3.0 (2026-09-26, native instruction) from the sealed tier-3 template; v2.1 retained as the historical instance. Briefs derived from it are PILOTS until it is accepted.",
-      "fingerprint_sha256": "2233d00ad48d389da0cded71dfece336fe83b21fd1bde9243af9118540ece569",
+      "fingerprint_sha256": "e577ffe34f90a0ba0ee0f105095f4fba9de1a96cba393daa3539bcd52f744d88",
       "doc_status": "DRAFT_PENDING_ACCEPTANCE",
       "supersedes": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v2_1.md"
     },
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "01b5d80a71fd3f2e5f4009282de0394e9ac8b04e62d2c7ac48b5bb1f275f8cf8",
+      "fingerprint": "5b40ebbd2a3b493c8b1ca68217061a34ac37bfbe8b29d7e8aadea944d86b782d",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-R244-R246-RULINGS-20260928",
+      "last_verified_session": "NIKASHA-WAVE3-FOLD-20260928",
       "last_verified_on": "2026-09-28",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
@@ -2024,9 +2024,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "0b69889ee3427e100da3a522d897b68d148f102080fbd1c863d3c7fbce388a91",
+      "fingerprint": "ed84813f9ad442f4a6d9aef6782578ab00a3d8a86d537f9cb7cff06dbb65e67a",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-W2-3-FOLD-20260928",
+      "last_verified_session": "NIKASHA-WAVE3-FOLD-20260928",
       "last_verified_on": "2026-09-28",
       "note": "10 ordered packets from the nikasha-test campaign, ~365h"
     },
