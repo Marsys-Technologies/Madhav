@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "36ca8ddccc36779402ddec3383994da7e82881ca057a7cfbf1517e9609c8dfad",
+  "content_sha256": "7900b9678fe93c53499c1ae3df475052b5137974b5a1c774b08d22586027adb7",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -69,7 +69,7 @@
     "public_registrar_resolution": {
       "ambiguous": 0,
       "descriptor_denominator": 186,
-      "literal_public_names": 129,
+      "literal_public_names": 131,
       "method": "authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions",
       "name_only_unverified": 0,
       "not_exposed": 115,
@@ -842,6 +842,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts"
         ],
         "output_contract": null,
@@ -1252,6 +1253,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -2860,6 +2862,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -6084,7 +6087,6 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-          "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
         "output_contract": null,
@@ -9462,6 +9464,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts"
         ],
         "output_contract": null,
@@ -20803,7 +20806,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-27T15:00:00.000Z",
+  "generated_at": "2026-09-27T16:30:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21318,7 +21321,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_inquiry_lifecycle.ts",
-            "sha256": "6a0a672462655d3ad026c94d9c83f2de604a99fc98848a39aa494ea135d823a7"
+            "sha256": "a436f00f28e0f714775d8710a057c8e68a8b30f411875e92d6155b6c829b0d75"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
@@ -21390,7 +21393,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "1eb48857a46fe7d228f4940c93c57e59614b70c75283d23a564c38d41bcd979a"
+        "sha256": "e7b25ff99632c3b55a8b2dff82f18026a8a04367ec793bd40d33b233905a2103"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21400,7 +21403,7 @@
       {
         "id": "reviewed_full_profile_route_authority",
         "path": "platform-mcp/src/lib/mcp_full_route_authority.ts",
-        "sha256": "bca779f23a666f5beab92556f67e53e761d60660a97e3733d659a7db9b09ca2d"
+        "sha256": "40d428c36b0e4f23f9170dcd7a746efc8e2927e61ce3a5a5659dbec2abf65a65"
       },
       {
         "id": "runtime_registry_source_set",
@@ -21440,15 +21443,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "7fc95176d5a0ba270dbc7aad8c6bfdee8efdcb1f39e9e49ac1ba51fd13a96d55"
+            "sha256": "801a1209b2f4700d318586bd414028a68d7e040d04f21733c9b11ffe6bc1f09a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "3cc54c35a91fe1c85481d4f80bb83676ecffa5ef8a243585484c0bd76cd720f7"
+            "sha256": "a7f7e0bec6d32c6bf2a2d370d857f5213b4861b3286532f59c4018583250bb70"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "33ed6e4a945879c3b91d3521be04137a2547191d70bb1e0cb11af44147b86545"
+            "sha256": "887f92425ba10b389094d88ccc362714b1693f20e35ef1167964e68cabed926d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21456,7 +21459,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "58b6472253e334c039cb8c096383c61c3cada97f93d323b6cf54756422fb5846"
+            "sha256": "86cab03ba0ad1baec0b200b0284df4ce76f123d7484ad78f94fdc7db74046236"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
@@ -21484,7 +21487,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "d4940ac482bc1a7ee3b0fed7320aef42dea0f7e9cf06ed83e5fb4ec248df0ea6"
+            "sha256": "1edc94226a1ad032c1338b96165b9fef56acc91e8b5b9709f19b4acf83dc5a0b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21492,7 +21495,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "371801d1047348cbb85714784a3fb9767c35628f289826381ce9a6243c72dde4"
+            "sha256": "a3d192ee08948919467a98fc6fcb133133fdc58a3dd30c1b3e962668b8637a90"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21892,7 +21895,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
-            "sha256": "b67b91fe0b77f6957876d330522934ee75df69e14b1ea4960151c383355aea82"
+            "sha256": "07da9fe74e17a40979b6c28d773c587633a58435d000b9983c5bf0c46e519c9c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
@@ -22136,11 +22139,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "dc3012d90c88941e9a3c12513d383c821feda23c4b5bb32f18f065f7f9a8cbb9"
+            "sha256": "ac9290c8582fd3dcc26869323c332b4c2c1bae40cc272a537e2023f8f5761ce3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "c07a1fe9b83c98034d5e6c80397face2d2ec5445b51a9f08ca903a60e63ac615"
+            "sha256": "02dc02a085fe4aacae71e605bde9c570b5bf8e2337634b4670e63371f7c994ff"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
@@ -22156,7 +22159,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/significator_condition.ts",
-            "sha256": "d911507022afae8564053ce26bb3c60ebb4989302dbcd43d5ba9ba79f5ee8e67"
+            "sha256": "46eee6e9a5d941e2ccae1c360a2e29024adf596a72f111f9ba335ab16359f0ee"
           },
           {
             "path": "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts",
@@ -22212,7 +22215,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "4e52e8978c2c93fc1b27b77bfe8a1cd32ac779bfb2a6f93bbc2fb1d6ed1b6904"
+        "sha256": "0e1dc890312fedc93cb317fee16ee0f498b70e6c4a249259f9a3d33751f947b8"
       },
       {
         "id": "service_effect_contracts",
@@ -22237,5 +22240,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "08adb0838eebbe27358bda4bd5bbd3cf27efd4f6"
+  "source_revision": "96fa7f4c91780d4960d71e20c5aa76280d3b1eb1"
 }

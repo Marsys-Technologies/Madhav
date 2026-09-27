@@ -14,9 +14,16 @@ describe('Purna capability coverage projection', () => {
     expect(rows).toHaveLength(186)
     expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(186)
     expect(new Set(rows.map((row) => row.scu_id)).size).toBe(182)
-    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(24)
-    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(158)
-    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(4)
+    // R3 boundary regen: RC-7 proof typing (7 plan/resource/discovery bindings) and the
+    // assess_* derived contracts moved 14 bindings off "missing"; channel_chat_dispatch moved
+    // from missing to deliberately_dark (RC-9 legacy-route disposition). Remaining missing: the
+    // seven required-product proof-typing bindings still open (strength group, sidecar probes,
+    // direct-DB composites) plus classical_attribution_lookup (fails closed by design, RC-9),
+    // query_muhurat and query_sutravali_rules_for_planet (both explicitly out of scope, review
+    // §4 / R0 salvage matrix).
+    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(10)
+    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(173)
+    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(3)
   })
 
   it('keeps semantic outputs, bindings, and exact evidence dependencies together', () => {

@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-27T15:00:00.000Z",
-  "content_hash": "sha256:be8f246c32f9caddd19403e92d2d17a6f275c2b3a2abbb4e366276b95a5bb046",
-  "source_catalog_fingerprint": "sha256:a2dc562a9e342aed081076dcf098aa78b4372e0a834f172cc3c05c50010e5da6",
-  "semantic_review_fingerprint": "sha256:7423c3dbfeb58f380a1b4c88784698b0137413faca3615d4688360ddec3b9b96",
+  "generated_at": "2026-09-27T16:30:00.000Z",
+  "content_hash": "sha256:f632da65c9bb86ae9a474816577fc49628f84428072a55c77060d91cf6bcdee6",
+  "source_catalog_fingerprint": "sha256:b098a0ff1ca563e3fe24f37b2a09e9c691c2f2e0ba6030d734faca0bf5e63424",
+  "semantic_review_fingerprint": "sha256:6a8105211d133f6155e0957055a8951a301c972aa890b8fa8ffcc07f4bb43ff5",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -288,11 +288,6 @@
         },
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_contradictions",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -318,21 +313,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "producer_output_claims": [],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_career",
-          "status": "deliberately_dark",
-          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
-          "missing_binding_ids": [
-            "registry:marsys://tool/L2/query_domain_reading",
-            "registry:marsys://tool/L3/query_temporal_activation",
-            "registry:marsys://tool/L2/query_contradictions"
-          ],
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            }
           ]
         }
       ],
@@ -438,7 +435,6 @@
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children"
         ]
       },
@@ -496,11 +492,6 @@
         },
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_contradictions",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -526,6 +517,26 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_health",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -628,7 +639,6 @@
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children"
         ]
       },
@@ -686,11 +696,6 @@
         },
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_contradictions",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -716,21 +721,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "producer_output_claims": [],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_marriage",
-          "status": "deliberately_dark",
-          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
-          "missing_binding_ids": [
-            "registry:marsys://tool/L2/query_domain_reading",
-            "registry:marsys://tool/L3/query_temporal_activation",
-            "registry:marsys://tool/L2/query_contradictions"
-          ],
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            }
           ]
         }
       ],
@@ -833,7 +840,6 @@
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
@@ -2362,6 +2368,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/channel/chat_dispatch",
+          "status": "deliberately_dark",
+          "reason": "The descriptor promises the legacy Consume chat route (/api/chat/consult) as a registry migration target. That route is not a governed inquiry door: the Portal door is /api/pariprashna, which carries the inquiry contract and accountability envelope (review RC-6). The descriptor answers nothing about a chart and must not be offered as a route.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts#chatDispatchTool",
+            "platform/src/app/api/pariprashna/route.ts"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -2474,6 +2491,7 @@
       "label": "Channel Mcp Wiring",
       "description": "D7 MCP channel wiring descriptor. Describes the bridge between the retrieval registry (platform/src/lib/retrieval/registry) and the MCP server tool surface (platform-mcp/src/server.ts). Returns the current wiring state: which registry URIs are surfaced via MCP tools, which MCP tools map back to registry URIs via mcp_capability_bridge.ts, and which registry capabilities are not yet MCP-surfaced. Used by the D8 eval harness for channel-parity verification. Not LLM-facing for end-user queries — internal channel introspection only. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "resource",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -2512,6 +2530,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/channel/mcp_wiring",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:channel_mcp_wiring"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3001,7 +3032,7 @@
       "scu_id": "scu.catalog.classical_attribution_lookup",
       "version": 1,
       "label": "Classical Attribution Lookup",
-      "description": "Fetch classical text attributions for MSR signals in a chart. Each attribution links an MSR signal (signal_id) to a classical text passage (text_key, title, author, chapter, verse_range, content) with an attribution_type (confirms | contradicts | partial | extends | silent) and confidence score. Provides the classical grounding for Bodha layer signals. Required: chart_id + signal_ids (array of signal_id strings). Optional: attribution_type filter, confidence_tier filter (HIGH|MEDIUM|LOW). emits_references: returns signal_id + attribution_id references. No audience-tier gating — tier gating is serve-time only. Registry equivalent of lib/retrieve/classical_attribution_lookup_tool.ts (D7 gap fill). Evidence use: ground a claim in retrievable classical source material.",
+      "description": "UNAVAILABLE — fails closed. Per-signal classical attributions (an MSR signal linked to a classical passage with an attribution_type and confidence) were read from the classical_attributions store, which was dropped in WS-0 with no queryable replacement. Every call therefore returns CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE instead of an unmeasured \"silent\" verdict for each signal. For classical grounding use the classical corpus surface (query_classical_texts; MCP ref_classical_citation_get), which returns verse text with receipt-pinned pagination. Input contract retained for callers: chart_id + signal_ids; optional attribution_type and confidence_tier (HIGH|MEDIUM|LOW). Evidence use: ground a claim in retrievable classical source material.",
       "kind": "citation",
       "domains": [
         "classical_grounding"
@@ -3138,13 +3169,11 @@
       ],
       "gap_dispositions": [],
       "graph_disposition": {
-        "status": "connected",
-        "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children"
+          "CapabilityDescriptor:marsys://tool/L2/classical_attribution_lookup",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:classical_attribution_lookup"
         ]
       },
       "producer_semantic_disposition": {
@@ -10892,6 +10921,7 @@
       "label": "Intent Classify",
       "description": "System prompt template for fast query intent classification. Used by the Bulk Context adapter (bulk_context/intent_classifier.ts) as LLM fallback when regex confidence is low. Returns a structured intent tag from the canonical QueryIntent enum. Evidence use: discover available evidence surfaces and choose a bounded retrieval route.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -10929,6 +10959,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://prompt/intent-classify",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:intent_classify"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -11371,6 +11414,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L5/lel_intake_checklist",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:lel-intake-checklist:v1",
+              "capability_uri": "marsys://tool/L5/lel_intake_checklist",
+              "contract_sha256": "sha256:297f34be409fe1bbe4daecd2c213634aa3d18d34d7b36b226c20e9bf146b1993",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:246-302 | platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql | platform/supabase/migrations/423_ba_lel_r2_2_step1_chart_scope.sql:19 | platform/migrations/457_lel_schema_v2_event_shapes.sql"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12058,6 +12116,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/list_sutravali_rules_by_text",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:list-sutravali-rules-by-text:v1",
+              "capability_uri": "marsys://tool/L0/list_sutravali_rules_by_text",
+              "contract_sha256": "sha256:2ac8db1e8fa35763eb4972332b0d4269c265f38d283582f798361e95852601e5",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12182,6 +12255,7 @@
       "label": "Maro Mcp Surface",
       "description": "MARO MCP channel surface resolver. Returns the surface spec for the BYO-MCP channel given a declared (or undeclared) model family. Declared family → serve that family's profiled surface (max_tools, tool_name_pattern, transport). Undeclared → serve the universal-best surface (10–15 consolidated tools, cross-family valid names, dual structuredContent+text output). DeepSeek on MCP: strip_mcp_constructs=true; serve as plain tool-calling backend only. All tool names are cross-family valid: snake_case, no hyphens, ≤64 chars, [A-Za-z0-9_.]. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -12219,6 +12293,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/maro/mcp_surface",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:maro_mcp_surface"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12333,6 +12420,7 @@
       "label": "Maro Orchestrate",
       "description": "MARO core: resolves the per-family normalization parameters for a retrieval request. Takes a chart_id (required, never defaulted), query, model_family, and capability URI. Returns the full normalization spec: tool_arg_format, cache_strategy, validate_and_repair, prompt_structure, context_budget_tokens, and reasoning_round_trip mode for the resolved family. Consumed by both the chat channel (MARO owns loop) and the MCP adapter (surface shaping). Families: anthropic / gemini / openai / deepseek / universal (undeclared fallback). NVIDIA NIM: use openai family + is_nvidia_model=true to apply cache_strategy:none override. Not LLM-facing for end-user queries — internal orchestration layer only. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -12377,6 +12465,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/maro/orchestrate",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:maro_orchestrate"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12497,6 +12598,7 @@
       "label": "Maro Profiles",
       "description": "MARO behavioral profiles — read-only dossier for all four LLM families. Returns the v1 profile for each family (anthropic / gemini / openai / deepseek) plus the universal fallback profile. Values tagged UNMEASURED are v1 hypotheses from RETRIEVAL_GROUNDTRUTH_LLM_PROVIDER_SPEC_v1_0.md awaiting D8 eval-harness measurement against the MARSYS corpus. Used by the D8 eval harness for profile validation and by the integration smoke test for roster-completeness checks. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "resource",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -12532,6 +12634,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://resource/maro/profiles",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:maro_profiles"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28006,6 +28121,33 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-SPINE/query_spine_bundle",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L4/query_predictive_anchors",
+                "registry:marsys://tool/L5/query_calibration"
+              ],
+              "source_ref": "platform/src/lib/retrieval/spine/compute_spine_bundle.ts:79-124 | platform/src/lib/retrieval/spine/materialize.ts:137-167"
+            },
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-spine-bundle:v1",
+              "capability_uri": "marsys://tool/L-SPINE/query_spine_bundle",
+              "contract_sha256": "sha256:f54378368ab9125849fe901bf2c20ff83d59d10e44c663312929c32bcd6e8b32",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts:98-123 | platform/src/lib/retrieval/spine/materialize.ts:75-83 | platform/src/lib/retrieval/spine/materialize.ts:137-167 | platform/src/lib/retrieval/spine/constants.ts#SPINE_SOURCE_ASSET_IDS | platform/supabase/migrations/463_bodha_spine_bundles.sql:36-50"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28362,6 +28504,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules",
+              "contract_sha256": "sha256:0487558c23cc4ce96cfd704b4f695cd4fe9a465092d08ef22391eb78af2083d4",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:368-394 | platform/python-sidecar/routers/sutravali.py:87-124 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -31846,6 +32003,7 @@
       "label": "Route",
       "description": "Internal D2 query router. Classifies a query into one of five route classes (numeric_exact, relational, narrative, simple, multi_hop) and selects the appropriate tool chain from the registry. chart_id must be supplied per call. Not LLM-facing — consumed by the grounding spine (D3) and eval harness (D8). Evidence use: discover available evidence surfaces and choose a bounded retrieval route.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -31888,6 +32046,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/router/route",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:route"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32322,6 +32493,7 @@
       "label": "Tool search",
       "description": "Keyword search over the full MARSYS tool/resource/prompt catalog (~120 capabilities across L0-L5). Returns matching tool names, descriptions, and layer/domain tags — NOT the full catalog. Use this before assuming a needed capability does not exist, or when the exact tool name is unknown (e.g. query=\"dasha activation\", \"muhurta\", \"yoga firings\", \"remedies\"). Case-insensitive keyword/substring match across name, description, layer, and domain tags — not fuzzy or semantic search; a query with zero token overlap against every catalog entry returns an honest empty result, not a fabricated best-effort guess. Evidence use: discover available evidence surfaces and choose a bounded retrieval route.",
       "kind": "datum",
+      "proof_kind": "discovery",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -32361,6 +32533,19 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/tool_search",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "index_compiled_from_pinned_catalog",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:tool_search"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -32728,11 +32913,6 @@
       "edges": [
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_signals",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -32754,6 +32934,22 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-TIMING/yoga_activation_by_dasha",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:yoga-activation-by-dasha:v1",
+              "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+              "contract_sha256": "sha256:c49df0f4f9d47fbd11dca0a694a06f523edb5b5b3e7d48becee083b2f0fe6a5b",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -32866,7 +33062,6 @@
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children",
           "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children",
           "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children"
         ]
@@ -33033,6 +33228,18 @@
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_wealth",
           "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            },
             {
               "kind": "producer_output",
               "asset_id": "bo_cdlm_summary",
@@ -33943,14 +34150,6 @@
     {
       "from_scu_id": "scu.catalog.assess_career",
       "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.assess_career",
-      "relation": "enables",
       "to_scu_id": "scu.catalog.query_contradictions",
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
@@ -33983,14 +34182,6 @@
     {
       "from_scu_id": "scu.catalog.assess_health",
       "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.assess_health",
-      "relation": "enables",
       "to_scu_id": "scu.catalog.query_contradictions",
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
@@ -34016,14 +34207,6 @@
       "from_scu_id": "scu.catalog.assess_marriage",
       "relation": "enables",
       "to_scu_id": "scu.catalog.chart_facts_query",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.assess_marriage",
-      "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
       "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children"
@@ -34211,14 +34394,6 @@
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
       "source_ref": "CapabilityDescriptor:marsys://tool/L2/query_ucd#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.yoga_activation_by_dasha",
-      "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children"
     },
     {
       "from_scu_id": "scu.catalog.yoga_activation_by_dasha",
@@ -38477,9 +38652,9 @@
     "reviewed_output_claims": 14,
     "typed_concepts": 259,
     "unbound_concepts": 0,
-    "isolated_scus": 156,
-    "graph_components": 157,
-    "dispositioned_isolated_scus": 156,
+    "isolated_scus": 157,
+    "graph_components": 158,
+    "dispositioned_isolated_scus": 157,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 128,
     "directly_served_producer_outputs": 127,
