@@ -487,10 +487,15 @@ def _grade_build_history(h: dict) -> dict:
 def duration_instrument_present() -> bool | None:
     """D6 item 1 (feature detection): does `asset_throughput.duration_seconds` exist yet
     (migration 1094)? Returns None (not False) when the check itself cannot run — that is
-    "instrument unreachable", a distinct NO_DETECTOR reason from "instrument absent"."""
+    "instrument unreachable", a distinct NO_DETECTOR reason from "instrument absent".
+
+    F11 (A_REVIEW.md, tested against the engine at 8edba0533): schema-qualified exactly as the
+    engine's own `_duration_columns_present` is (gate review R-7 there) — a same-named table in
+    another schema must never make the instrument read as present in `public`."""
     try:
         return (scalar("SELECT (EXISTS(SELECT 1 FROM information_schema.columns "
-                       "WHERE table_name='asset_throughput' AND column_name='duration_seconds'))::text")
+                       "WHERE table_schema='public' AND table_name='asset_throughput' "
+                       "AND column_name='duration_seconds'))::text")
                or "f") in ("t", "true")
     except Unknown:
         return None
