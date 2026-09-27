@@ -106,6 +106,20 @@ export async function POST(request: NextRequest) {
   if (!conversation || conversation.chart_id !== body.chartId) return res.notFound('conversation')
   if (isCorrectionArchived(conversation)) return archivedReadOnlyResponse()
 
+  // The ledger row is keyed by message part, not conversation: a part from any
+  // other conversation (including correction history) would bypass the lock
+  // above, so it must belong to the conversation that was just authorized.
+  if (body.messagePartId) {
+    const owner = await query<{ conversation_id: string }>(
+      `SELECT cm.conversation_id
+         FROM message_parts mp
+         JOIN conversation_messages cm ON cm.id = mp.message_id
+        WHERE mp.id = $1`,
+      [body.messagePartId],
+    )
+    if (owner.rows[0]?.conversation_id !== body.conversationId) return res.notFound('message part')
+  }
+
   const candidate = body.candidate as StructuredPredictionCandidate
 
   try {

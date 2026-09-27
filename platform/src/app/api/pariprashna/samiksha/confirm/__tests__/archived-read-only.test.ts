@@ -14,6 +14,8 @@ vi.mock('server-only', () => ({}))
 const CHART = '482012f1-0000-4000-8000-0000000000aa'
 const OTHER_CHART = '482012f1-0000-4000-8000-0000000000bb'
 const CONV = '6b0f4c2e-1111-4222-8333-4444555566aa'
+const ARCHIVED_CONV = '6b0f4c2e-1111-4222-8333-4444555566bb'
+const PART = '7c1f5d3f-2222-4333-8444-5555666677aa'
 
 const { mockQuery, mockGetConversation, mockConfirm, mockDismiss, mockAuthorize } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
@@ -36,11 +38,9 @@ const CANDIDATE = {
   direction: 'positive', technique_refs: [], grounding_fact_ids: [], score: 0.8, horizon_text: null,
 }
 
-function req(action: 'confirm' | 'dismiss', chartId = CHART) {
-  const body =
-    action === 'confirm'
-      ? { action, chartId, conversationId: CONV, candidate: CANDIDATE, confidence: { low: 0.4, high: 0.6 } }
-      : { action, chartId, conversationId: CONV, candidate: CANDIDATE, reason: 'not relevant' }
+function req(action: 'confirm' | 'dismiss', chartId = CHART, messagePartId?: string) {
+  const base = { action, chartId, conversationId: CONV, candidate: CANDIDATE, ...(messagePartId ? { messagePartId } : {}) }
+  const body = action === 'confirm' ? { ...base, confidence: { low: 0.4, high: 0.6 } } : { ...base, reason: 'not relevant' }
   return new NextRequest('http://localhost/api/pariprashna/samiksha/confirm', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -116,5 +116,47 @@ describe('POST /api/pariprashna/samiksha/confirm — correction-history lock', (
     const res = await POST(req('confirm'))
     expect(res.status).toBe(200)
     expect(mockConfirm).toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/pariprashna/samiksha/confirm — message part is bound to the conversation', () => {
+  const partOwner = (conversationId: string | null) => {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (/FROM profiles/.test(sql)) return { rows: [{ role: 'guest' }] }
+      if (/FROM message_parts/.test(sql)) return { rows: conversationId ? [{ conversation_id: conversationId }] : [] }
+      return { rows: [] }
+    })
+  }
+
+  it.each(['confirm', 'dismiss'] as const)(
+    'refuses %s for a message part from another (correction-archived) conversation, with a non-enumerating 404',
+    async (action) => {
+      mockGetConversation.mockResolvedValue(conversation(null))
+      partOwner(ARCHIVED_CONV)
+      const res = await POST(req(action, CHART, PART))
+      expect(res.status).toBe(404)
+      expect((await res.json()).error.code).toBe('DATA_NOT_FOUND')
+      expect(mockConfirm).not.toHaveBeenCalled()
+      expect(mockDismiss).not.toHaveBeenCalled()
+      expect(writes()).toHaveLength(0)
+    },
+  )
+
+  it('refuses a message part that does not exist', async () => {
+    mockGetConversation.mockResolvedValue(conversation(null))
+    partOwner(null)
+    const res = await POST(req('dismiss', CHART, PART))
+    expect(res.status).toBe(404)
+    expect(mockDismiss).not.toHaveBeenCalled()
+  })
+
+  it.each(['confirm', 'dismiss'] as const)('accepts %s for a message part of the named conversation', async (action) => {
+    mockGetConversation.mockResolvedValue(conversation(null))
+    partOwner(CONV)
+    const res = await POST(req(action, CHART, PART))
+    expect(res.status).toBe(200)
+    const lookup = mockQuery.mock.calls.find(([sql]) => /FROM message_parts/.test(sql))!
+    expect(lookup[1]).toEqual([PART])
+    expect(action === 'confirm' ? mockConfirm : mockDismiss).toHaveBeenCalled()
   })
 })
