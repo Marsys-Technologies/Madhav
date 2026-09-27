@@ -10,7 +10,7 @@ kind: template          # fixes shape; never cited as authority for content
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["one asset instance per registered asset or service — 129 across L0-L5; 40 in L0"]
 inherits:                                                                            # what THIS TEMPLATE inherits — all three SEALED 2026-09-25
-  - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md    # tier 3, FINAL — §4.4 is the hook §0.1 receives; §5.2 the eight gates; §5.3 the record shape
+  - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md    # tier 3, FINAL — §4.4 is the hook §0.1 receives; §5.2 the nine gates; §5.3 the record shape
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md     # tier 2, FINAL — §13.3 asset-brief sentence; §4.1 vocabulary; §12.2 tests
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md                               # tier 1, FINAL — §16 what every brief states; §14 obligations
 instance_inherits:                                                                   # what EACH ASSET INSTANCE inherits — four, not three
@@ -208,10 +208,10 @@ An obligation inherited but not specialised is an obligation nobody can test.
 
 ---
 
-## §4 · Asset conformance — the eight gates
+## §4 · Asset conformance — the nine gates
 
 ```
-inherits:    layer §5.2 (a) — the eight gates; CLAUDE.md §N.3, §N.6-§N.8
+inherits:    layer §5.2 (a) — the nine gates; CLAUDE.md §N.3, §N.6-§N.8
 measured_by: one detector per gate, evaluated against the ASSET, each able to return false
 traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured against
 ```
@@ -496,7 +496,7 @@ Accepted entries are how the layer instance's Part 3 grows its "beyond" half.
 
 ## Adapting per layer
 
-What changes per layer is the *content*, never the headings, the three lines, the eight gates or the
+What changes per layer is the *content*, never the headings, the three lines, the nine gates or the
 ledger fields.
 
 | layer | what is distinctive |
