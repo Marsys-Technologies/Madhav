@@ -1406,6 +1406,36 @@ def test_check_fails_when_a_real_claim_is_copied_onto_the_wrong_scu(tmp_path, mo
     assert wrong_target in out
 
 
+def test_check_fails_when_a_real_service_probe_is_copied_onto_the_wrong_scu(tmp_path, monkeypatch, capsys):
+    """T (review-4 corrections), probe half of the per-SCU pin: `ka_graha_sancara`
+    is genuinely probed — but only by `scu.catalog.call_ephemeris_at_t`'s own
+    service_probe requirement. Copied as a `derived_from_service_probe` producer
+    onto NO_DETECTOR `scu.catalog.assess_career` it must fail. Mutation this
+    catches: replacing the per-SCU `probe_assets_by_scu.get(scu_id, set())`
+    lookup with a union across all SCUs."""
+    payload = _load_real_committed_artifact()
+    source = "scu.catalog.call_ephemeris_at_t"
+    wrong_target = "scu.catalog.assess_career"
+    real = [
+        p
+        for p in payload["scus"][source]["producers"]
+        if p.get("disposition") == "derived_from_service_probe" and p.get("asset_id") == "ka_graha_sancara"
+    ]
+    assert len(real) == 1, "expected the real probe producer on its own SCU"
+    assert payload["scus"][wrong_target].get("no_detector")
+    payload["scus"][wrong_target]["producers"] = [dict(real[0])]
+    payload["scus"][wrong_target]["no_detector"] = None
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert any(wrong_target in ln and "'ka_graha_sancara'" in ln for ln in out.splitlines())
+
+
 def test_check_fails_on_a_no_detector_reason_containing_a_trigger_substring_but_no_exact_prefix(
     tmp_path, monkeypatch, capsys
 ):
