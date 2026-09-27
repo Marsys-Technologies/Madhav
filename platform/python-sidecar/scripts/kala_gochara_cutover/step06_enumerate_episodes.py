@@ -29,10 +29,12 @@ branch-local by ADK-0011(i). It produces the `--episodes-json` /
   * dedupes the payload to one row per physical contact (ADK-0020 option (i):
     keyed by the pinned WP1 §3.2 contact_id; highest-weight map row survives,
     weight ties break to the lexicographically smallest target_ref, deeper
-    weight ties are surfaced in the report as map defects, divergent non-null
-    classical_citation values refuse the run with exit 5; dropped target_refs
-    are recoverable via the `<episodes-out>.dropped_refs.json` artifact keyed
-    by contact_id).
+    weight ties are surfaced in the report as map defects; per ADK-0021
+    option (A) classical_citation follows the surviving weight-selected map
+    row — disclosed, with dropped citations recoverable — while divergence in
+    any other field refuses the run with exit 5; dropped target_refs and
+    citations are recoverable via the `<episodes-out>.dropped_refs.json`
+    artifact keyed by contact_id).
 
 Orb regime (disclosed synthesis, recorded in the review packet): WP1 §7's
 orb_conj_*/orb_drishti_* values are "practice pending M-1"; M-1 is now
@@ -76,9 +78,10 @@ Usage:
         --episodes-out eps.json --coverage-out cov.json [--evidence]
 
 Exit codes: 0 enumerated; 3 cannot proceed; 4 production refusal (inherited
-from common.connect, step 6 -> tranche 2); 5 refused: ADK-0020 dedupe found a
-duplicate group with divergent non-null citations; 7 refused: the chart's
-overlay rows are not FRESH against the reference tables (§12.9).
+from common.connect, step 6 -> tranche 2); 5 refused: ADK-0020/ADK-0021
+dedupe found a duplicate group diverging beyond target_ref and
+classical_citation; 7 refused: the chart's overlay rows are not FRESH
+against the reference tables (§12.9).
 """
 from __future__ import annotations
 
@@ -662,8 +665,16 @@ def enumerate_body(
 
 class DedupeRefusal(Exception):
     """A duplicate group the ruled survival rule cannot decide honestly —
-    divergent NON-NULL classical_citation values. Refuse and escalate; no
-    citation-selection rule is invented (ADK-0020, §N.7)."""
+    divergence in a field BEYOND target_ref (handled by the survival rule)
+    and classical_citation (ADK-0021 option (A): the surviving row's citation
+    follows, with disclosure). Refuse and escalate; no merge rule is invented
+    (ADK-0020 §N.7; ADK-0021 narrows, never removes, this refusal)."""
+
+
+# Fields the survival rule legitimately resolves (selection inputs/outputs);
+# every OTHER payload field must be identical inside a duplicate group or the
+# run refuses. _map_weight is the selection input itself.
+_SURVIVAL_FIELDS = frozenset({"target_ref", "classical_citation", "_map_weight"})
 
 
 def _contact_id_of(ep: dict, chart_id: str, convention_id: str,
@@ -699,35 +710,50 @@ def dedupe_episodes(
     Survival rule (deterministic, disclosed): the row from the highest-weight
     map row wins; weight ties break to the lexicographically smallest
     target_ref; a tie beyond that (same weight AND same target_ref) is a map
-    defect — surfaced in the report, never silently resolved. A duplicate
-    group carrying divergent NON-NULL classical_citation values refuses the
-    whole run (DedupeRefusal). Dropped target_refs are recoverable via the
-    dropped-refs artifact keyed by contact_id (dropped_refs_path).
+    defect — surfaced in the report, never silently resolved. Citations
+    (ADK-0021 option (A)): classical_citation follows the surviving
+    weight-selected map row — it is that row's event-class provenance, not a
+    synthesis of the duplicate group; groups with divergent non-null
+    citations are counted and disclosed, and dropped citations are
+    recoverable in the dropped-refs artifact keyed by contact_id. Divergence
+    in any OTHER field refuses the whole run (DedupeRefusal, exit 5) — the
+    ADK-0020 refusal's residual domain. Dropped target_refs are recoverable
+    via the dropped-refs artifact keyed by contact_id (dropped_refs_path).
     """
     groups: dict[str, list[dict]] = {}
     for ep in episodes:
         cid = _contact_id_of(ep, chart_id, convention_id, method_version)
         groups.setdefault(cid, []).append(ep)
 
+    # Residual refusal: divergence beyond target_ref / classical_citation.
     divergent: list[dict] = []
     for cid, group in groups.items():
         if len(group) < 2:
             continue
-        citations = {str(e.get("classical_citation"))
-                     for e in group if e.get("classical_citation")}
-        if len(citations) > 1:
+        by_field: dict[str, set] = {}
+        all_keys = set().union(*(e.keys() for e in group)) - _SURVIVAL_FIELDS
+        for e in group:
+            for k in all_keys:
+                # missing-vs-present is divergence too
+                by_field.setdefault(k, set()).add(
+                    json.dumps(e.get(k), sort_keys=True, default=str)
+                    if k in e else "<ABSENT>")
+        bad = sorted(k for k, vals in by_field.items() if len(vals) > 1)
+        if bad:
             divergent.append({
                 "contact_id": cid,
                 "relation": group[0]["relation"],
                 "target_refs": sorted({str(e["target_ref"]) for e in group}),
-                "citations": sorted(citations),
+                "divergent_fields": bad,
             })
     if divergent:
         raise DedupeRefusal(
-            f"{len(divergent)} duplicate group(s) carry divergent non-null "
-            f"classical_citation values — ADK-0020 invents no citation-"
-            f"selection rule: {json.dumps(divergent[:5], default=str)}"
+            f"{len(divergent)} duplicate group(s) diverge beyond target_ref / "
+            f"classical_citation — ADK-0020/ADK-0021 invent no merge rule for "
+            f"other fields: {json.dumps(divergent[:5], default=str)}"
         )
+
+    divergent_citation_groups = 0
 
     survivors: list[dict] = []
     per_relation: dict[str, int] = {}
@@ -775,11 +801,19 @@ def dedupe_episodes(
         dropped_total += len(dropped)
         rel = survivor["relation"]
         per_relation[rel] = per_relation.get(rel, 0) + len(dropped)
+        citations = {str(e["classical_citation"])
+                     for e in group if e.get("classical_citation")}
+        if len(citations) > 1:
+            divergent_citation_groups += 1
         refs = sorted({str(e["target_ref"]) for e in dropped})
         if refs:
             dropped_refs[cid] = {
                 "survivor_target_ref": str(survivor["target_ref"]),
+                "survivor_citation": survivor.get("classical_citation"),
                 "dropped_target_refs": refs,
+                "dropped_citations": sorted(
+                    {str(e["classical_citation"]) for e in dropped
+                     if e.get("classical_citation")}),
                 "dropped_rows": len(dropped),
             }
         survivors.append(survivor)
@@ -798,7 +832,16 @@ def dedupe_episodes(
         "rule": "ADK-0020 option (i): pinned WP1 §3.2 contact_id; highest-weight "
                 "map row survives; weight ties -> lexicographically smallest "
                 "target_ref; deeper weight ties surfaced as map defects; "
-                "divergent non-null citations refuse (none invented)",
+                "divergence beyond target_ref/classical_citation refuses "
+                "(residual ADK-0020 domain)",
+        "citation_rule": (
+            "ADK-0021 option (A): classical_citation follows the surviving "
+            "weight-selected map row; it is that row's event-class provenance, "
+            "not a synthesis of the duplicate group; "
+            f"{divergent_citation_groups} groups had divergent non-null "
+            "citations; dropped citations are recoverable in "
+            ".dropped_refs.json keyed by contact_id"),
+        "groups_with_divergent_citations": divergent_citation_groups,
         "episodes_before": len(episodes),
         "episodes_after": len(survivors),
         "rows_dropped": dropped_total,

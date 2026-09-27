@@ -387,3 +387,74 @@ amended ruling (e.g. citation follows the surviving weight-selected row, or
 an explicit citation-merge rule). The weight/tie survival tiers are verified
 by unit + e2e tests but were never exercised on real data — the refusal
 fires first, by design. Production was NOT touched.
+
+## ADK-0021 option (A) — citation-only divergence survives; Link 2 rehearsal GREEN
+
+ADK-0021 (`00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md`) amends ADK-0020:
+a duplicate group whose rows diverge ONLY in `classical_citation` SURVIVES —
+the surviving weight-selected row's citation is kept as that row's
+event-class provenance (not a synthesis of the group), with disclosure in
+both the run report and the episodes payload evidence. Exit-5 refusal is
+retained for divergence in ANY other field (residual field-divergence check
+over every payload key except `target_ref`, `classical_citation`,
+`_map_weight`; missing-vs-present counts as divergence). Dropped citations
+are recoverable in `.dropped_refs.json` (each entry now carries
+`survivor_citation` and sorted-unique `dropped_citations`). No new
+contact-row field; no schema change. Implemented in
+`step06_enumerate_episodes.py` (`_SURVIVAL_FIELDS`, residual check,
+`groups_with_divergent_citations` report count, `citation_rule` string).
+
+### Disclosure wording as shipped (substance-verbatim in report AND payload)
+
+> ADK-0021 option (A): classical_citation follows the surviving weight-selected map row; it is that row's event-class provenance, not a synthesis of the duplicate group; {N} groups had divergent non-null citations; dropped citations are recoverable in .dropped_refs.json keyed by contact_id
+
+N = 46,353 (chart 482012f1), 46,354 (chart 1c826d5a) — matching the
+ADK-0020-era refusal counts exactly.
+
+### Tests (driver unit + e2e, `tests/l3/gochara/test_step06_enumeration.py`)
+
+- `test_dedupe_divergent_citations_survive_with_disclosure` (replaces the
+  ADK-0020 refusal test) — survivor keeps its own citation, N=1 disclosure
+  substrings present in report and artifact, dropped citations recorded.
+- `test_dedupe_non_citation_divergence_refuses` — divergence in
+  `orb_max_deg` → `DedupeRefusal` (exit-5 domain intact).
+- `test_dedupe_deeper_tie_with_divergent_citations_surfaces_defect` —
+  deeper tie + divergent citations → surfaced AND survives.
+- `test_dedupe_two_map_rows_one_physical_target` (mandatory e2e) — gained
+  assertion that `citation_rule` embeds the N count.
+
+### Battery
+
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+(disposable pg16 containers): **376 passed, 0 failed, 0 skipped**.
+
+### Rehearsal (disposable DB `wp10_rehearsal` on :55434, rebuilt from retained production dumps; candidate-1 flags: linear_no_box, orb 5.0°, refine ON)
+
+| chart | enumeration | dedupe | divergent-citation groups | candidate build |
+|---|---|---|---|---|
+| `482012f1-…871aa` | exit **0** (~32 min) | 1,353,278 → 138,837; 138,767 dup groups; 1,214,441 dropped | **46,353** | exit **0**; contacts_written **138,837**; coverage 48; zero UniqueViolation |
+| `1c826d5a-…5f75a` | exit **0** (~13 min) | 1,353,288 → 138,836; 138,766 dup groups; 1,214,452 dropped | **46,354** | exit **0**; contacts_written **138,836**; coverage 48; zero UniqueViolation |
+
+Per-relation dropped (chart 1): kakshya 826,893 / nakshatra 257,382 /
+sign_ingress 113,198 / drishti 9,462 / conjunction 6,801 / return 705.
+Survival tiers: **all duplicate groups resolved at the `deeper_tie` tier**
+(weight 0, lexicographic 0) — on this map, duplicate rows carry identical
+weight AND identical target_ref across event classes, so only the
+deeper-tie tier fires; the full 138,767/138,766-entry `deeper_tie_groups`
+list is surfaced in each run report as mandated (report ~32 MB; observed
+behavior, not a defect). Ledger cross-check: `kala_gochara_contacts` holds
+exactly 138,837 / 138,836 generation-4.0 rows per chart, coverage 48 each.
+Freshness fresh; vedha/moorti fingerprints b78cd26f…/6b4ee79a…/6d3c0d58…
+both charts. Logs: `.run/wp10_tranche2/adk0021_rehearsal_{enum,build}_*.log`
+(zero-length stderr throughout).
+
+Retained-payload validation (`.run/wp10_tranche2/validate_adk0021_on_prod_payload.py`
+against `prod_episodes_482012f1.json`): amended dedupe — no refusal,
+138,837 survivors, 46,353 divergent-citation groups disclosed, multi-IG 0,
+`_map_weight` stripped. Matches the rehearsal exactly.
+
+### Verdict
+
+Link 2 (enumeration + candidate build) is GREEN on both rehearsal charts
+under ADK-0021 option (A). Production was NOT touched; the production
+Link 2 re-run proceeds only after PRAMĀṆIN re-verifies naming this run.
