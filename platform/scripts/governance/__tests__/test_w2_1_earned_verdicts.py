@@ -275,3 +275,127 @@ def test_r223_a_real_timeout_in_one_check_grades_errored_and_the_layer_completes
     assert res["v"] == ac.ERRORED and "timeout after 1s" in res["measured"], res
     assert _m(c, "bg_x", "Build.registered")["v"] == ac.NA, "the other checks must still be measured"
 
+
+
+# ─────────────────────────── R222: the four latent unmeasured → closable paths (A_REVIEW2 G2) ───────────────────────────
+
+def _open_gap(ctrl, aid, crit):
+    (ctrl / "asset_gaps.jsonl").open("a", encoding="utf-8").write(json.dumps(dict(
+        asset=aid, gap_id=f"{aid}-{crit}", kind="gap", criterion=crit, what="w", change="", detector="d",
+        owner="asset_census", gate="g", state="OPEN", ts="t0")) + "\n")
+
+
+def _emit_closes(ctrl, census) -> int:
+    return ac.emit_gaps(census)[2]
+
+
+def test_r222_n1_a_count_sql_returning_null_is_errored_and_closes_nothing(monkeypatch, tmp_path):
+    """Fails without the fix: NULL mapped to `None` with no error, Build.completion read N/A "no
+    count_sql" (false text) and the open gap CLOSED."""
+    reg = {"bg_x": _reg_row("bg_x", "bg_t", count_sql="SELECT NULL::bigint")}
+    _stub_layer(monkeypatch, tmp_path, reg, thru={"bg_x": {"": _rec(3)}})
+    monkeypatch.setattr(ac, "psql", lambda sql, sep="\x1f", timeout=None: [["bg_x", ""]])
+    _open_gap(tmp_path, "bg_x", "Build.completion")
+    c = ac.measure("L0")
+    res = _m(c, "bg_x", "Build.completion")
+    assert res["v"] == ac.ERRORED and "returned NULL" in res["measured"], res
+    assert "no count_sql" not in res["measured"]
+    assert _emit_closes(tmp_path, c) == 0
+
+
+def test_r222_n1_a_genuinely_absent_count_sql_is_na_only_when_nothing_is_built(monkeypatch, tmp_path):
+    """The genuine N/A survives for a declared service with no target_table (the six live cases);
+    a writer-backed data asset with no count_sql is NO_DETECTOR — completion unmeasurable."""
+    reg = {"bg_svc": _reg_row("bg_svc", None, has_writer=True, asset_kind="service"),
+           "bg_data": _reg_row("bg_data", "bg_t", has_writer=True, asset_kind="data")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    c = ac.measure("L0")
+    assert _m(c, "bg_svc", "Build.completion")["v"] == ac.NA
+    assert _m(c, "bg_data", "Build.completion")["v"] == ac.NO_DET
+
+
+def test_r222_n2_an_unrecognised_writer_is_no_detector_and_closes_nothing(monkeypatch, tmp_path):
+    """has_writer=true, no recognised @register: Build.contract / Idem.pattern were never scanned.
+    Fails without the fix: both read N/A "no writer file" and the open Idem.pattern gap CLOSED."""
+    reg = {"bg_reference": _reg_row("bg_reference", None, has_writer=True, asset_kind="service")}
+    _stub_layer(monkeypatch, tmp_path, reg, writers={})
+    _open_gap(tmp_path, "bg_reference", "Idem.pattern")
+    _open_gap(tmp_path, "bg_reference", "Build.contract")
+    c = ac.measure("L0")
+    for crit in ("Build.contract", "Idem.pattern"):
+        res = _m(c, "bg_reference", crit)
+        assert res["v"] == ac.NO_DET and "never scanned" in res["measured"], (crit, res)
+    assert _emit_closes(tmp_path, c) == 0
+
+
+def test_r222_n2_no_writer_with_registry_agreement_stays_a_genuine_na(monkeypatch, tmp_path):
+    reg = {"bg_svc": _reg_row("bg_svc", None, has_writer=False, asset_kind="service")}
+    _stub_layer(monkeypatch, tmp_path, reg, writers={})
+    c = ac.measure("L0")
+    assert _m(c, "bg_svc", "Build.contract")["v"] == ac.NA
+    assert _m(c, "bg_svc", "Idem.pattern")["v"] == ac.NA
+    assert ac.contract_scan("bg_svc", [])[0] == ac.NO_DET, "the raw scan never claims N/A for itself"
+
+
+def test_r222_n3_a_missing_capability_directory_is_no_detector_and_closes_nothing(monkeypatch, tmp_path):
+    """The REAL capability_scan against a directory that does not exist. Fails without the fix:
+    Dens.served read N/A and the open gap CLOSED (24 of them in A_REVIEW2's live run)."""
+    reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "capability_scan", _REAL["capability_scan"])
+    monkeypatch.setitem(ac.LAYERS["L0"], "caps", str(tmp_path / "no_such_caps_dir"))
+    _open_gap(tmp_path, "bg_x", "Dens.served")
+    c = ac.measure("L0")
+    res = _m(c, "bg_x", "Dens.served")
+    assert res["v"] == ac.NO_DET and "never scanned" in res["measured"], res
+    assert _emit_closes(tmp_path, c) == 0
+
+
+def test_r222_n3_a_scanned_directory_with_no_referencing_module_is_a_genuine_na(monkeypatch, tmp_path):
+    caps = tmp_path / "caps"
+    caps.mkdir()
+    (caps / "other.ts").write_text("export const T = 'bg_unrelated';\n", encoding="utf-8")
+    reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "capability_scan", _REAL["capability_scan"])
+    monkeypatch.setitem(ac.LAYERS["L0"], "caps", str(caps))
+    assert _m(ac.measure("L0"), "bg_x", "Dens.served")["v"] == ac.NA
+
+
+def _empty_table_psql(sql, sep="\x1f", timeout=None):
+    if sql.startswith("SELECT count(*)::text FROM bg_t"):
+        return [["0"]]
+    if "HAVING count(*) > 1)::text" in sql:
+        return [["f"]]                                        # no duplicate group — on no rows
+    if sql.startswith("SELECT EXISTS(SELECT 1 FROM bg_t)"):
+        return [["f"]]
+    raise AssertionError(f"unexpected query: {sql[:100]}")
+
+
+def test_r222_n5_an_empty_table_is_no_detector_on_depth_and_closes_nothing(monkeypatch, tmp_path):
+    """The REAL depth_census over a table with 0 rows. Fails without the fix: Complete.depth read
+    PASS ("table empty") and the open gap CLOSED — truncating a table 'fixed' its depth."""
+    reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
+    _stub_layer(monkeypatch, tmp_path, reg, tables={"bg_t": (["a", "b"], [["a", "b"]])})
+    monkeypatch.setattr(ac, "depth_census", _REAL["depth_census"])
+    monkeypatch.setattr(ac, "psql", _empty_table_psql)
+    _open_gap(tmp_path, "bg_x", "Complete.depth")
+    _open_gap(tmp_path, "bg_x", "Vocab.identity")
+    c = ac.measure("L0")
+    res = _m(c, "bg_x", "Complete.depth")
+    assert res["v"] == ac.NO_DET and "0 rows" in res["measured"], res
+    ident = _m(c, "bg_x", "Vocab.identity")
+    assert ident["v"] == ac.NO_DET and "vacuous" in ident["measured"], ident
+    assert _emit_closes(tmp_path, c) == 0
+
+
+def test_r222_n5_identity_on_an_empty_table_probes_when_depth_errored(monkeypatch, tmp_path):
+    """With the depth census errored there is no row count in hand; the identity check probes
+    emptiness itself rather than reading '0 duplicates' on a table it never saw a row of."""
+    reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
+    _stub_layer(monkeypatch, tmp_path, reg, tables={"bg_t": (["a", "b"], [["a", "b"]])})
+    monkeypatch.setattr(ac, "depth_census", lambda t, c: (_ for _ in ()).throw(ac.Unknown("SIMULATED")))
+    monkeypatch.setattr(ac, "psql", _empty_table_psql)
+    c = ac.measure("L0")
+    assert _m(c, "bg_x", "Complete.depth")["v"] == ac.ERRORED
+    assert _m(c, "bg_x", "Vocab.identity")["v"] == ac.NO_DET

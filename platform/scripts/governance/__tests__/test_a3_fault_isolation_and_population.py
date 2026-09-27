@@ -40,7 +40,7 @@ def test_contract_scan_exception_degrades_to_errored_not_layer_abort(monkeypatch
     def _boom(asset_id, files):
         raise ac.Unknown("bg_broken.py: unparseable (SyntaxError)")
     monkeypatch.setattr(ac, "contract_scan", _boom)
-    result = ac._measure_contract("bg_broken", ["bg_broken.py"])
+    result = ac._measure_contract("bg_broken", ["bg_broken.py"], True)
     assert result["v"] == ac.ERRORED, f"expected ERRORED, got {result}"
     assert "unparseable" in result["measured"]
 
@@ -50,7 +50,7 @@ def test_idem_scan_exception_degrades_to_errored_not_layer_abort(monkeypatch):
     def _boom(asset_id, files, convention):
         raise ac.Unknown("bg_broken.py: unparseable (SyntaxError)")
     monkeypatch.setattr(ac, "idem_scan", _boom)
-    result = ac._measure_idem("bg_broken", ["bg_broken.py"], "upsert")
+    result = ac._measure_idem("bg_broken", ["bg_broken.py"], "upsert", True)
     assert result["v"] == ac.ERRORED, f"expected ERRORED, got {result}"
 
 
@@ -60,8 +60,8 @@ def test_measure_calls_the_extracted_guarded_helpers(monkeypatch):
     here rather than silently reintroducing the untestable shape F3 fixes."""
     import inspect
     src = inspect.getsource(ac.measure)
-    assert 'm["Build.contract"] = _measure_contract(aid, files)' in src
-    assert 'm["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"])' in src
+    assert 'm["Build.contract"] = _measure_contract(aid, files, r["has_writer"])' in src
+    assert 'm["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"])' in src
 
 
 def test_errored_never_closes_a_gap_and_never_opens_one(tmp_path, monkeypatch):

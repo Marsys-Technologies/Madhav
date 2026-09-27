@@ -233,7 +233,9 @@ def contract_scan(asset_id: str, files: list[str]) -> tuple[str, list[str]]:
     violation would fail a conformant heavy writer."""
     notes: list[str] = []
     if not files:
-        return NA, ["no writer file"]
+        # R222 / N2: nothing was scanned — never N/A here. `_measure_contract` decides whether the
+        # registry makes this genuinely not-applicable (has_writer=false) or an unmeasured writer.
+        return NO_DET, ["no writer file recognised — nothing scanned"]
     found = False
     for name in files:
         f = WRITERS / name
@@ -269,7 +271,7 @@ def idem_scan(asset_id: str, files: list[str], convention: str) -> tuple[str, li
     """§N.3, over real SQL strings (docstrings excluded). A writer that delegates to a seeder shows no
     pattern here; that is PARTIAL — look in the seeder — never FAIL."""
     if not files:
-        return NA, ["no writer file"]
+        return NO_DET, ["no writer file recognised — nothing scanned"]   # R222 / N2, as contract_scan
     sqls = []
     for name in files:
         sqls += _code_strings(_parse(WRITERS / name))
@@ -290,7 +292,8 @@ def idem_scan(asset_id: str, files: list[str], convention: str) -> tuple[str, li
 def capability_scan(caps_dir: str, tables: list[str]) -> dict:
     d = ROOT / caps_dir
     if not d.is_dir():
-        return dict(modules=[], density=0, note=f"no capability directory at {caps_dir}")
+        # R222 / N3: `scanned=False` — "no module references the table" was never established.
+        return dict(modules=[], density=0, note=f"no capability directory at {caps_dir}", scanned=False)
     hits, density = [], 0
     for f in sorted(d.glob("*.ts")):
         if f.name.endswith(".test.ts"):
@@ -300,7 +303,7 @@ def capability_scan(caps_dir: str, tables: list[str]) -> dict:
             hits.append(f.name)
             if "density_contract" in txt:
                 density += 1
-    return dict(modules=hits, density=density, note="")
+    return dict(modules=hits, density=density, note="", scanned=True)
 
 
 def local_map_candidates(prefix: str) -> int:
@@ -398,6 +401,8 @@ def live_counts(reg: dict, chart_id: str | None = None) -> tuple[dict[str, int |
         q = " ".join(re.sub(r"--[^\n]*", "", r["count_sql"]).replace("\n", " ").rstrip(" ;").split())
         if not q:
             out[aid] = None
+            if r["count_sql"].strip():                     # R222: comments only is not "no count_sql"
+                errored[aid] = "count_sql is empty once its comments are stripped — nothing to run"
             continue
         try:
             q = _bind_chart(q, chart_id)
@@ -410,15 +415,27 @@ def live_counts(reg: dict, chart_id: str | None = None) -> tuple[dict[str, int |
         ids.append(aid)
     if not parts:
         return out, errored
+    def _take(aid: str, v: str | None) -> None:
+        # R222 / N1 (A_REVIEW2 G2): a count_sql that RAN but returned NULL or a non-integer used to
+        # map to `None` with no error recorded — indistinguishable from an asset with no count_sql,
+        # so measure() read the closable N/A "no count_sql" (false text; one live ledger-copy run
+        # closed bg_ontology's gap on `SELECT NULL::bigint`). It is recorded as errored, with what
+        # the query actually returned.
+        if v is not None and v.strip().lstrip("-").isdigit():
+            out[aid] = int(v)
+        else:
+            out[aid] = None
+            errored[aid] = (f"count_sql returned {'NULL' if not (v or '').strip() else repr(v)}, "
+                            "not an integer count")
+
     try:
         for a, n in psql(" UNION ALL ".join(parts)):
-            out[a] = int(n) if n.strip().lstrip("-").isdigit() else None
+            _take(a, n)
     except Unknown:
         for aid in ids:                                    # one bad count_sql must not blind the rest
             q = bound[aid]
             try:
-                v = scalar(f"SELECT ({q})::text")
-                out[aid] = int(v) if v and v.strip().lstrip("-").isdigit() else None
+                _take(aid, scalar(f"SELECT ({q})::text"))
             except Unknown as exc:
                 out[aid] = None
                 errored[aid] = str(exc)
@@ -725,13 +742,27 @@ def alias_census(table: str, cols: list[str]) -> dict | None:
     return {r[0]: dict(rows=int(r[1]), no_alias=int(r[2])) for r in rows}
 
 
-def _measure_contract(aid: str, files: list[str]) -> dict:
+def _no_writer_scanned(aid: str, has_writer: bool, check: str) -> dict:
+    """R222 / N2 (A_REVIEW2 G2): no writer file was recognised for this asset. That is a genuine
+    N/A only when the registry agrees there is no writer. With `has_writer=true` the writer exists
+    but its `@register` was not recognised (e.g. `@register(ASSET_ID)`, R43), so the scan never ran:
+    NO_DETECTOR, never the closable N/A (one live ledger-copy run closed bg_reference-Idem.pattern
+    on exactly this; live today on L3/L4/L5, where 13 writer-backed assets are unrecognised)."""
+    if not has_writer:
+        return dict(v=NA, measured="no writer, and the registry agrees (has_writer=false) — nothing to scan")
+    return dict(v=NO_DET, measured=f"NO_DETECTOR — registry says has_writer=true but no @register('{aid}') "
+                                   f"was recognised in writers/; {check} was never scanned (see Build.registered)")
+
+
+def _measure_contract(aid: str, files: list[str], has_writer: bool) -> dict:
     """R41 fault isolation for Build.contract, extracted as its own pure-ish function (F3,
     A_REVIEW.md: the inline try/except could only be proven by grepping measure()'s source text,
     which survives a mutation that makes the guard re-raise instead of catching. Extracting it
     lets a test call it directly with `contract_scan` monkeypatched to raise, and assert the
     RETURN VALUE is ERRORED — a mutation that removes or breaks the try/except now fails that
     assertion instead of surviving on source text alone)."""
+    if not files:
+        return _no_writer_scanned(aid, has_writer, "the contract")
     try:
         v, notes = contract_scan(aid, files)
         return dict(v=v, measured="; ".join(notes) or "conformant")
@@ -739,8 +770,10 @@ def _measure_contract(aid: str, files: list[str]) -> dict:
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
-def _measure_idem(aid: str, files: list[str], convention: str) -> dict:
+def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool) -> dict:
     """R41 fault isolation for Idem.pattern — same discipline as `_measure_contract`."""
+    if not files:
+        return _no_writer_scanned(aid, has_writer, "the idempotency pattern")
     try:
         v, notes = idem_scan(aid, files, convention)
         return dict(v=v, measured="; ".join(notes))
@@ -846,8 +879,8 @@ def measure(layer_key: str) -> dict:
             m["Build.registered"] = dict(v=NA, measured="no writer, and the registry agrees (service or static)")
 
         # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
-        m["Build.contract"] = _measure_contract(aid, files)
-        m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"])
+        m["Build.contract"] = _measure_contract(aid, files, r["has_writer"])
+        m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"])
 
         # Build.target
         if r["target_table"]:
@@ -876,8 +909,19 @@ def measure(layer_key: str) -> dict:
             # reading is CLOSABLE and a live demonstration (bg_ephemeris) closed the gap on a query
             # that in fact errored. D4 case 1 ("never on an errored check") requires ERRORED here.
             m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}")
+        elif live is None and r["count_sql"].strip():
+            # R222 / N1: a count_sql exists but produced no value that live_counts recorded. Never
+            # "no count_sql" — that text would be false, and N/A would close a gap.
+            m["Build.completion"] = dict(v=ERRORED, measured="check errored: count_sql produced no value")
         elif live is None:
-            m["Build.completion"] = dict(v=NA, measured=f"no count_sql; build state='{t.get('state','-')}'")
+            if not r["has_writer"] or (r["asset_kind"] == "service" and not r["target_table"]):
+                m["Build.completion"] = dict(
+                    v=NA, measured=f"no count_sql and nothing to count: has_writer={r['has_writer']}, "
+                                   f"asset_kind='{r['asset_kind']}', no target_table; build state='{t.get('state','-')}'")
+            else:
+                m["Build.completion"] = dict(
+                    v=NO_DET, measured="NO_DETECTOR — no count_sql registered for a writer-backed asset with "
+                                       f"asset_kind='{r['asset_kind']}'; completion cannot be measured")
         elif rw == "":
             m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all ({rec_scope})")
         elif int(rw) == 0 and live > 0:
@@ -915,10 +959,19 @@ def measure(layer_key: str) -> dict:
             # slow/failing query must degrade only its OWN criterion, never blind the other three.
             try:
                 dc = depth_census(tbl, cat["cols"].get(tbl, []))
-                m["Complete.depth"] = dict(v=(PASS if not dc.get("never") else PARTIAL),
-                                           measured=(f"{dc.get('rows',0)} rows, {dc['columns']} cols; "
-                                                     f"fully populated {len(dc.get('full',[]))}; NEVER populated "
-                                                     f"{dc.get('never',[])}" if not dc.get("note") else dc["note"]))
+                if dc.get("note") or not dc.get("rows"):
+                    # R222 / N5 (A_REVIEW2 G2): an empty table (or one with no readable columns) has
+                    # no column population to measure. It read PASS ("never populated: []" is
+                    # vacuously empty), so truncating a table closed its open depth gap.
+                    # Non-emptiness is Build.completion's / Count.floor's claim, not depth's.
+                    m["Complete.depth"] = dict(v=NO_DET, measured=f"NO_DETECTOR — {dc.get('note') or 'no rows'} "
+                                               f"({dc.get('rows', 0)} rows, {dc.get('columns', 0)} cols): column "
+                                               "population cannot be measured on no rows")
+                else:
+                    m["Complete.depth"] = dict(v=(PASS if not dc.get("never") else PARTIAL),
+                                               measured=(f"{dc.get('rows',0)} rows, {dc['columns']} cols; "
+                                                         f"fully populated {len(dc.get('full',[]))}; NEVER populated "
+                                                         f"{dc.get('never',[])}"))
             except Unknown as exc:
                 dc = {}
                 m["Complete.depth"] = dict(v=ERRORED, measured=f"check errored: {exc}")
@@ -954,6 +1007,17 @@ def measure(layer_key: str) -> dict:
                             figure = f"duplicate group(s) exist; the count errored ({exc})"
                     m["Vocab.identity"] = dict(v=(FAIL if has_dup else PASS),
                                                measured=f"declared key ({kd}): {figure}")
+                    if not has_dup:
+                        # R222 / N5, same class: "0 duplicates" on a table with NO rows is vacuous —
+                        # truncating a table would close its open identity gap. Row count from the
+                        # depth census when it ran; otherwise one EXISTS probe.
+                        nrows = dc.get("rows")
+                        if nrows is None:
+                            nrows = 1 if (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl})::text") or "f") \
+                                in ("t", "true") else 0
+                        if nrows == 0:
+                            m["Vocab.identity"] = dict(v=NO_DET, measured=f"NO_DETECTOR — table empty: uniqueness "
+                                                                          f"under ({kd}) is vacuous on 0 rows")
                 except Unknown as exc:
                     m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
@@ -982,9 +1046,16 @@ def measure(layer_key: str) -> dict:
             m["Complete.depth"] = dict(v=FAIL, measured=f"target_table '{tbl}' does not exist in production")
 
         cap = capability_scan(cfg["caps"], [t for t in ([tbl] if tbl else []) + [aid]])
-        m["Dens.served"] = dict(v=(NA if not cap["modules"] else (PASS if cap["density"] else FAIL)),
-                                measured=(cap["note"] or f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "
-                                          f"declaring density_contract: {cap['density']}"))
+        if cap.get("scanned") is not True:
+            # R222 / N3 (A_REVIEW2 G2): the capability directory was not scanned (missing), so "no
+            # module serves this table" was never established. It read the closable N/A — one live
+            # ledger-copy run closed all 24 open L0 Dens.served gaps with the dir pointed elsewhere.
+            m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — {cap.get('note') or 'capability scan did not run'}; "
+                                                       "the served surface was never scanned")
+        else:
+            m["Dens.served"] = dict(v=(NA if not cap["modules"] else (PASS if cap["density"] else FAIL)),
+                                    measured=(f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "
+                                              f"declaring density_contract: {cap['density']}"))
 
         h = hist["per"].get(aid)
         if not h:
