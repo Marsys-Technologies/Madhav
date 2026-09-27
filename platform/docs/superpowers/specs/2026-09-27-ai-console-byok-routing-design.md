@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** REVIEW_PENDING — conversational design approved; written-spec review required
+**Status:** APPROVED — written spec approved with the Paripraśna visual-design amendment
 
 **Scope:** Local-first implementation of user-owned AI credentials, named model configurations, local subscription-backed CLI connections, mandatory per-user defaults, Paripraśna routing, and MCP synthesis handoff.
 
@@ -346,6 +346,19 @@ Each CLI card distinguishes:
 
 Validated model rows receive the same exact-choice default control used by provider models.
 
+### 9.4 Visual-design contract
+
+AI Console must look and behave like a native part of the existing Madhav portal, specifically the current Paripraśna experience. It must not introduce a separate generic settings-dashboard aesthetic.
+
+- Reuse the existing AppShell, navigation behaviour, typography hierarchy, ink surfaces, gold accents, borders, spacing rhythm, focus treatment, motion discipline, and shared controls already used by Paripraśna and the Madhav design system.
+- Reuse or extend existing shared components and design tokens before creating AI-Console-specific primitives.
+- Provider, custom-configuration, and CLI states should use the same restrained cards, menus, badges, empty states, loading states, and error language as the current portal.
+- Default selection must read as part of each existing model/configuration row, not as an unrelated form control pasted onto the interface.
+- The Paripraśna AI picker must preserve the present compact composer treatment, persona controls, answer-style controls, keyboard behaviour, and fixed-size composer. Only the model-stack portion changes to AI choice.
+- Responsive and mobile layouts must retain the same information hierarchy rather than collapsing into a different interaction model.
+- Existing accessibility behaviour remains binding: labelled controls, keyboard navigation, visible focus, sufficient contrast, screen-reader status text, reduced-motion support, and no status communicated by colour alone.
+- The three approved information sections remain Provider connections, Custom configurations, and Local CLIs. Visual grouping may adapt responsively, but it may not create a fourth Default section.
+
 ---
 
 ## 10. Paripraśna Experience
@@ -687,6 +700,7 @@ The local feature is accepted only when all of the following are demonstrated:
 18. User-facing runtime routing no longer reads the shared server key after cutover.
 19. Logs, audit records, Observatory, errors, fixtures, and snapshots contain no credential material.
 20. Existing environment credentials are neither imported, deleted, nor rotated automatically.
+21. AI Console and the revised Paripraśna picker visibly reuse the existing Madhav/Paripraśna design system and shared interaction patterns; no parallel visual language is introduced.
 
 ---
 
@@ -697,6 +711,7 @@ The local feature is accepted only when all of the following are demonstrated:
 | Product name | AI Console |
 | Console placement | Top-level, after Cockpit and before AIOps/Observatory for super-admins; visible to active guests |
 | Console sections | Provider connections; Custom configurations; Local CLIs |
+| Visual design | Reuse the current Madhav design system and Paripraśna visual/interaction language |
 | Default placement | Radio/action attached to each exact usable model/configuration; no separate section |
 | Default cardinality | Exactly one per user, explicitly selected |
 | Direct providers | OpenAI, Anthropic, Gemini, xAI, DeepSeek, Kimi/Moonshot |
