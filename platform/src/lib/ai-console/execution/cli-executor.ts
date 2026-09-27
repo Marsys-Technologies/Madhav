@@ -10,6 +10,7 @@ import type { ResolvedRoleExecution } from './types'
 import type {
   RoleExecutionEvent, RoleExecutionRequest, RoleExecutionResult, RoleExecutor, SafeCliExecutorDescriptor,
 } from './provider-executor'
+import { isStructuredOutputValidationError, StructuredOutputValidationError } from './structured-output-error'
 
 interface Dependencies {
   runner?: CliRunner
@@ -64,16 +65,17 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
       if (request.responseSchema) {
         if (structured === undefined) {
           try { structured = JSON.parse(parsed.text) as unknown }
-          catch { throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role) }
+          catch { throw new StructuredOutputValidationError(execution.role, parsed.text) }
         }
         if (!validator.compile(request.responseSchema)(structured)) {
-          throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+          throw new StructuredOutputValidationError(execution.role, parsed.text)
         }
       }
       return { text: parsed.text, ...(request.responseSchema ? { structured } : {}), toolCalls: [],
         finishReason: 'stop', usage: parsed.usage, retryCount }
     } catch (error) {
       if (request.abortSignal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+      if (isStructuredOutputValidationError(error)) throw error
       const safe = normalizeAiError(error, { source: 'cli', role: execution.role })
       if (retryCount === 0 && TRANSIENT.has(safe.code)) { retryCount = 1; continue }
       throw new AiConsoleError(safe.code, execution.role)

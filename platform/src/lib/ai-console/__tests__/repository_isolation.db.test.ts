@@ -17,6 +17,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
   const other = 'repository-bob'
   const admin = 'repository-admin'
   const conversation = randomUUID()
+  const chart = randomUUID()
   const encrypted = () => ({ ciphertext: randomBytes(24), nonce: randomBytes(12), authTag: randomBytes(16),
     wrappedDataKey: randomBytes(32), wrapNonce: randomBytes(12), wrapAuthTag: randomBytes(16),
     keyVersion: 'test', mask: '••••1234', fingerprint: randomBytes(32).toString('hex') })
@@ -97,7 +98,9 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     pool = new Pool({ connectionString: databaseUrl, options: `-c search_path=${schema},public -c statement_timeout=5000`, max: 6 })
     await pool.query(`CREATE SCHEMA ${schema}`)
     await pool.query(`CREATE TABLE profiles(id text PRIMARY KEY, status text NOT NULL DEFAULT 'active',role text NOT NULL DEFAULT 'guest');
-      CREATE TABLE conversations(id uuid PRIMARY KEY,user_id text NOT NULL REFERENCES profiles(id));
+      CREATE TABLE charts(id uuid PRIMARY KEY,owner_id text REFERENCES profiles(id));
+      CREATE TABLE chart_grants(chart_id uuid REFERENCES charts(id),principal_id text REFERENCES profiles(id),permission text);
+      CREATE TABLE conversations(id uuid PRIMARY KEY,user_id text NOT NULL REFERENCES profiles(id),chart_id uuid REFERENCES charts(id),module text,title text);
       CREATE TABLE admin_audit_log(actor_id text,action text,target_user_id text,detail jsonb);`)
     const migration = readFileSync(resolve(__dirname, '../../../../migrations/1120_ai_console_byok_routing.sql'), 'utf8')
     const client = await pool.connect()
@@ -105,7 +108,8 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     catch (error) { await client.query('ROLLBACK'); throw error }
     finally { client.release() }
     await pool.query("INSERT INTO profiles(id,role) VALUES($1,'guest'),($2,'guest'),($3,'super_admin')", [user, other, admin])
-    await pool.query('INSERT INTO conversations(id,user_id) VALUES($1,$2)', [conversation, user])
+    await pool.query('INSERT INTO charts(id,owner_id) VALUES($1,$2)', [chart, user])
+    await pool.query('INSERT INTO conversations(id,user_id,chart_id) VALUES($1,$2,$3)', [conversation, user, chart])
     previousPool = poolGlobal.__pgPool
     poolGlobal.__pgPool = pool
     connectionId = (await repo.createConnection(user, { providerId: 'openai', name: 'Personal' }, encrypted())).id
@@ -223,6 +227,31 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await repo.insertRoleInvocationReceipt({ ...second, phase: 'terminal', status: 'succeeded' })
     await expect(repo.insertRoleInvocationReceipt({ ...start, phase: 'terminal', status: 'failed' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect((await pool.query('SELECT * FROM ai_turn_role_invocations WHERE snapshot_id=$1', [ids[0]])).rowCount).toBe(4)
+  })
+  it('atomically pins selection, resolution and snapshot against a concurrent picker update', async () => {
+    await repo.setUserDefault(user, choice())
+    await repo.setConversationSelection(user, conversation, { kind: 'default' })
+    const correlationId = randomUUID()
+    await blockedUntilCommit(
+      () => repo.prepareTurnRouting({ userId: user, role: 'guest', chartId: chart,
+        conversationId: conversation, isFirstTurn: false, turnId: correlationId,
+        source: 'pariprashna', selection: { kind: 'default' } }),
+      () => repo.setConversationSelection(user, conversation, { kind: 'explicit', choice: choice() }),
+    )
+    const persisted = (await pool.query(`SELECT selection,resolved_choice FROM ai_turn_routing_snapshots
+      WHERE user_id=$1 AND correlation_id=$2`, [user, correlationId])).rows[0]
+    expect(persisted.selection).toEqual({ kind: 'default' })
+    expect(persisted.resolved_choice).toEqual(choice())
+    expect(await repo.getConversationSelection(user, conversation)).toEqual({ kind: 'explicit', choice: choice() })
+  })
+  it('rolls back every first-turn row when exact routing cannot resolve', async () => {
+    const conversationId = randomUUID()
+    await expect(repo.prepareTurnRouting({ userId: user, role: 'guest', chartId: chart,
+      conversationId, isFirstTurn: true, turnId: randomUUID(), source: 'consult',
+      selection: { kind: 'explicit', choice: { ...choice(), modelId: 'missing-model' } } }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    expect((await pool.query('SELECT id FROM conversations WHERE id=$1', [conversationId])).rowCount).toBe(0)
+    expect((await pool.query('SELECT conversation_id FROM ai_conversation_selections WHERE conversation_id=$1', [conversationId])).rowCount).toBe(0)
   })
   it('pins in-flight credentials and rejects stale validation/catalog completion after replacement', async () => {
     const pinned = await repo.loadConnectionCredential(user, connectionId, 1)

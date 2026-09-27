@@ -5,7 +5,7 @@ import type {
   ProviderRuntimeFailure, ResolvedExecutionPlan, ResolvedRoleExecution, SafeRoutingSnapshot,
 } from './execution/types'
 import { createConnectionRuntimeBinding } from './providers'
-import { loadRoutingResolution, markConnectionForRevalidation, type RoutingTarget } from './repository'
+import { loadRoutingResolution, markConnectionForRevalidation, type RoutingResolution, type RoutingTarget } from './repository'
 import {
   AI_ROLES, AiChoiceRefSchema, ConversationAiSelectionSchema, RoutingSnapshotSchema,
   type AiRole, type AiSource, type ResolvedRoleTarget,
@@ -76,8 +76,17 @@ export async function resolveUserRouting(input: {
     throw new AiConsoleError('AI_PERMISSION_DENIED')
   }
   const parsed = ResolverInputSchema.parse(input)
-  const source: AiSource = parsed.source === 'consult' ? 'pariprashna' : parsed.source
   const resolution = await loadRoutingResolution(parsed.userId, parsed.selection, parsed.conversationId)
+  return buildResolvedExecutionPlan(parsed, resolution)
+}
+
+/** Build executable bindings from the safe resolution captured by an atomic repository decision. */
+export function buildResolvedExecutionPlan(
+  input: z.infer<typeof ResolverInputSchema>,
+  resolution: RoutingResolution,
+): ResolvedExecutionPlan {
+  const parsed = ResolverInputSchema.parse(input)
+  const source: AiSource = parsed.source === 'consult' ? 'pariprashna' : parsed.source
   const parsedSelection = ConversationAiSelectionSchema.parse(parsed.selection)
   const selection = parsedSelection.kind === 'default'
     ? Object.freeze({ kind: 'default' as const })

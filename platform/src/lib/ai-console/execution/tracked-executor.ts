@@ -8,6 +8,7 @@ import type {
   RoleExecutionResult,
   RoleExecutor,
 } from './provider-executor'
+import { isStructuredOutputValidationError } from './structured-output-error'
 
 export interface InvocationReceiptContext {
   readonly userId: string
@@ -69,6 +70,7 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
         const failure = publicFailure(executor, cause)
         await terminalReceipt(executor, context, invocationId,
           request.abortSignal?.aborted ? 'cancelled' : 'failed', failure.code)
+        if (isStructuredOutputValidationError(cause)) throw cause
         throw failure
       }
       // A receipt-commit failure is not an executor failure and must never be
@@ -80,28 +82,43 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
       const invocationId = crypto.randomUUID()
       let reader: ReadableStreamDefaultReader<RoleExecutionEvent> | undefined
       let started = false
-      let terminal = false
+      let cancelRequested = false
       let pulling: Promise<void> | undefined
+      let beginning: Promise<boolean> | undefined
+      let terminalCommit: Promise<void> | undefined
 
       const finish = async (status: 'succeeded' | 'failed' | 'cancelled', errorCode?: AiConsoleError['code']) => {
-        if (terminal || !started) return
-        terminal = true
-        await terminalReceipt(executor, context, invocationId, status, errorCode)
+        if (terminalCommit) return terminalCommit
+        if (!started) return
+        terminalCommit = terminalReceipt(executor, context, invocationId, status, errorCode)
+        await terminalCommit
       }
 
       const begin = async () => {
-        if (started) return
-        await startReceipt(executor, context, invocationId)
-        started = true
-        reader = executor.stream(request).getReader()
+        if (started) return !cancelRequested
+        beginning ??= (async () => {
+          await startReceipt(executor, context, invocationId)
+          started = true
+          if (cancelRequested) {
+            await finish('cancelled', 'AI_EXECUTION_FAILED')
+            return false
+          }
+          reader = executor.stream(request).getReader()
+          return true
+        })()
+        return beginning
       }
 
       return new ReadableStream<RoleExecutionEvent>({
         async pull(controller) {
           pulling ??= (async () => {
             try {
-              await begin()
+              if (!await begin()) return
               const next = await reader!.read()
+              if (cancelRequested) {
+                await finish('cancelled', 'AI_EXECUTION_FAILED')
+                return
+              }
               if (next.done) {
                 await finish('succeeded')
                 controller.close()
@@ -122,7 +139,11 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
           return pulling
         },
         async cancel() {
-          try { await reader?.cancel() } finally {
+          cancelRequested = true
+          try {
+            await reader?.cancel()
+            await beginning
+          } finally {
             await finish('cancelled', 'AI_EXECUTION_FAILED')
           }
         },

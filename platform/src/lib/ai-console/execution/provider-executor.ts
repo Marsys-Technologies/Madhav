@@ -9,6 +9,7 @@ import type {
 import { AiConsoleError, normalizeAiError, type PublicAiError } from '../errors'
 import type { AiRole, ProviderId } from '../types'
 import type { ProviderRuntimeFailure, ResolvedRoleExecution } from './types'
+import { StructuredOutputValidationError } from './structured-output-error'
 
 export interface SafeProviderExecutorDescriptor extends SafeRuntimeModelDescriptor {
   readonly role: AiRole
@@ -113,13 +114,11 @@ async function generate(execution: ResolvedRoleExecution, descriptor: SafeProvid
   }
   let structured: unknown
   if (request.responseSchema) {
-    try {
-      structured = JSON.parse(text) as unknown
-      if (!structuredOutputValidator.compile(request.responseSchema)(structured)) {
-        throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
-      }
+    try { structured = JSON.parse(text) as unknown }
+    catch { throw new StructuredOutputValidationError(execution.role, text) }
+    if (!structuredOutputValidator.compile(request.responseSchema)(structured)) {
+      throw new StructuredOutputValidationError(execution.role, text)
     }
-    catch { throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role) }
   }
   return { text, ...(request.responseSchema ? { structured } : {}), toolCalls, finishReason, usage, retryCount }
 }

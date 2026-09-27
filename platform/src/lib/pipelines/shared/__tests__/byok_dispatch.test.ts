@@ -66,10 +66,37 @@ describe('runAdapterDispatch BYOK branch', () => {
     expect(mocks.getAdapter).not.toHaveBeenCalled()
     expect(stream).toHaveBeenCalledOnce()
     expect(received[0]).not.toHaveProperty('tools')
+    expect(received[0]).toMatchObject({ maxOutputTokens: 16_384 })
     expect(events.map(event => event.type)).toContain('text-start')
     expect(events).toContainEqual({ type: 'text-delta', id: 'text-0', delta: 'Answer' })
     expect(events.map(event => event.type)).toContain('finish')
     expect(mocks.onFinish).toHaveBeenCalledOnce()
+    expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('releases admission exactly once when initial writer setup fails before synthesis', async () => {
+    const release = vi.fn()
+    const executor = { descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,
+      connectionId: 'connection', modelId: 'model' }, generate: vi.fn(), stream: vi.fn() }
+    const runtime = { kind: 'byok', selection: { kind: 'default' }, plan: {}, safeSnapshot: {},
+      snapshotId: crypto.randomUUID(), executors: { synthesizer: executor, planner: executor,
+        deep_planner: executor, worker: executor }, displayModelId: 'model', releaseAdmission: release,
+    } as unknown as ByokTurnRuntime
+    const response = await runAdapterDispatch({
+      requestStartedAt: 0, userUid: 'alice', finalConversationId: 'conversation', chartId: 'chart',
+      audienceTier: 'client', selectedStack: 'byok', isFirstTurn: false, lelContextEnabled: true,
+      style: 'acharya', modelId: 'model', modelMeta: { provider: 'openai', maxInputTokens: 128_000 },
+      plannerModelId: 'planner', plan: { query_class: 'predictive', synthesis_guidance: '' },
+      bundle: { assets: [] }, queryPlan: { tools_authorized: [] }, validToolResults: [], toolEventLog: [],
+      plannerLatencyMs: 1, composeBundleMs: 1, toolFetchMs: 1, queryId: 'query',
+      trimmedConversationHistory: [], queryText: 'Question', messages: [], emit: vi.fn(),
+      nextSeq: () => 1, pendingStreamWriter: { onEvent: vi.fn(), onTextDelta: vi.fn(), clear: vi.fn() },
+      fetchMsrSnippets: vi.fn(async () => new Map()), byokRuntime: runtime,
+    }) as unknown as { stream: { execute(args: { writer: { write(event: unknown): void } }): Promise<void> } }
+
+    await expect(response.stream.execute({ writer: { write: () => { throw new Error('writer failed') } } }))
+      .rejects.toThrow('writer failed')
+    expect(executor.stream).not.toHaveBeenCalled()
     expect(release).toHaveBeenCalledOnce()
   })
 })

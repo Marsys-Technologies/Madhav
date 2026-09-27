@@ -2,9 +2,9 @@ import 'server-only'
 
 import { checkRpm } from '@/lib/mcp/rate_limiter_core'
 
-const MAX_QUESTION_CHARS = 32_000
-const MAX_EVIDENCE_CHARS = 2_000_000
-const MAX_OUTPUT_TOKENS = 16_384
+export const BYOK_MAX_QUESTION_CHARS = 32_000
+export const BYOK_MAX_EVIDENCE_CHARS = 2_000_000
+export const BYOK_MAX_OUTPUT_TOKENS = 16_384
 const MAX_CONCURRENT_TURNS_PER_USER = 2
 
 const activeTurns = new Map<string, number>()
@@ -24,9 +24,9 @@ export function admitByokTurn(input: {
   evidenceChars?: number
   outputTokens?: number
 }): ByokAdmission {
-  if (input.questionChars < 0 || input.questionChars > MAX_QUESTION_CHARS
-    || (input.evidenceChars ?? 0) > MAX_EVIDENCE_CHARS
-    || (input.outputTokens ?? MAX_OUTPUT_TOKENS) > MAX_OUTPUT_TOKENS) {
+  if (input.questionChars < 0 || input.questionChars > BYOK_MAX_QUESTION_CHARS
+    || (input.evidenceChars ?? 0) > BYOK_MAX_EVIDENCE_CHARS
+    || (input.outputTokens ?? BYOK_MAX_OUTPUT_TOKENS) > BYOK_MAX_OUTPUT_TOKENS) {
     return { allowed: false, code: 'AI_EXECUTION_FAILED' }
   }
 
@@ -49,4 +49,10 @@ export function admitByokTurn(input: {
       else activeTurns.set(input.userId, next)
     },
   }
+}
+
+/** Post-hydration cap check; this deliberately does not consume a second admission. */
+export function isByokEvidenceWithinLimit(evidenceChars: number): boolean {
+  return Number.isSafeInteger(evidenceChars) && evidenceChars >= 0
+    && evidenceChars <= BYOK_MAX_EVIDENCE_CHARS
 }

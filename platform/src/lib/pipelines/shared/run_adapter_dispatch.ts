@@ -89,6 +89,7 @@ import { traceEmitter } from '@/lib/trace/emitter'
 
 import { runOnFinishWriteThrough } from './onfinish_writethrough'
 import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
+import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 
 // ---------------------------------------------------------------------------
@@ -558,6 +559,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   const adapterStartMs = Date.now()
   const adapterStream = createUIMessageStream({
     execute: async ({ writer }) => {
+      try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'start', messageId: adapterMsgId } as any)
       // W4 core step 5 / W5 L9 — S-1 orientation front-door: emit ONCE near the start, before any
@@ -598,6 +600,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
               ? [{ role: message.role, content: message.content }]
               : []),
           abortSignal,
+          maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
         }).getReader()
         let completed = false
         try {
@@ -683,7 +686,6 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           const safe = adapterErr instanceof AiConsoleError
             ? adapterErr : new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
           writer.write({ type: 'error', errorText: safe.message } as never)
-          byokRuntime.releaseAdmission()
           return
         }
       }
@@ -829,7 +831,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           },
         }
         const byokTitle = isFirstTurn && byokRuntime && !abortSignal?.aborted
-          ? await generateConversationTitle(persistMsgs, undefined, byokRuntime.executors.worker)
+          ? await generateConversationTitle(persistMsgs, undefined, byokRuntime.executors.worker, abortSignal)
           : undefined
         await runOnFinishWriteThrough(
           {
@@ -956,7 +958,9 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
         data: observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` }),
       })
       emit({ event: 'done', query_id: queryId })
-      byokRuntime?.releaseAdmission()
+      } finally {
+        byokRuntime?.releaseAdmission()
+      }
     },
   })
   return createUIMessageStreamResponse({ stream: adapterStream })

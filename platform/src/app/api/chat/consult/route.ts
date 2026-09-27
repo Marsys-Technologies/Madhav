@@ -127,6 +127,7 @@ import { runAdapterDispatch } from '@/lib/pipelines/shared'
 import { getConversationSelection } from '@/lib/ai-console/repository'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
+import { BYOK_MAX_OUTPUT_TOKENS, isByokEvidenceWithinLimit } from '@/lib/limits/byok_admission'
 import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
@@ -399,12 +400,14 @@ export async function POST(request: Request) {
     // BUG-1: eager insert before streaming so turn-2 can always find the row.
     // ON CONFLICT DO NOTHING makes this idempotent on retry.
     try {
-      await insertConversationWithId({
-        id: conversationId,
-        chartId,
-        userId: user.uid,
-        module: 'consume',
-      })
+      if (!byokEnabled) {
+        await insertConversationWithId({
+          id: conversationId,
+          chartId,
+          userId: user.uid,
+          module: 'consume',
+        })
+      }
     } catch (err) {
       const msg = String(err).toLowerCase()
       if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) {
@@ -444,6 +447,7 @@ export async function POST(request: Request) {
         maxOutputTokens: 16_384,
       }
     } catch (error) {
+      byokRuntime?.releaseAdmission()
       const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
       return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
     }
@@ -457,6 +461,9 @@ export async function POST(request: Request) {
   const attachmentParts = body.attachments?.length
     ? await resolveAttachments(body.attachments)
     : []
+  if (byokRuntime && !isByokEvidenceWithinLimit(JSON.stringify({ messages, attachmentParts }).length)) {
+    throw new AiConsoleError('AI_EXECUTION_FAILED')
+  }
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
 
@@ -541,6 +548,7 @@ export async function POST(request: Request) {
     console.warn('[consume:v2] safety gate withheld the reading:', safetyDecision.action)
     const safetyStream = createUIMessageStream({
       execute: ({ writer }) => {
+        try {
         const textId = 'text-0'
         writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
         writer.write({ type: 'text-start', id: textId } as never)
@@ -561,9 +569,11 @@ export async function POST(request: Request) {
           }),
         } as never)
         writer.write({ type: 'finish', finishReason: 'stop' } as never)
+        } finally {
+          byokRuntime?.releaseAdmission()
+        }
       },
     })
-    byokRuntime?.releaseAdmission()
     return createUIMessageStreamResponse({ stream: safetyStream })
   }
 
@@ -626,6 +636,7 @@ export async function POST(request: Request) {
       deepPlannerExecutor: byokRuntime.executors.deep_planner,
       workerExecutor: byokRuntime.executors.worker,
       abortSignal: request.signal,
+      maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
     } : undefined,
   )
 
@@ -635,6 +646,7 @@ export async function POST(request: Request) {
     // uses (data-clarification custom part). No plan is built; no LLM synthesis runs.
     const clarStream = createUIMessageStream({
       execute: ({ writer }) => {
+        try {
         writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
         writer.write({
           type: 'data-clarification',
@@ -645,9 +657,11 @@ export async function POST(request: Request) {
           }),
         } as never)
         writer.write({ type: 'finish', finishReason: 'stop' } as never)
+        } finally {
+          byokRuntime?.releaseAdmission()
+        }
       },
     })
-    byokRuntime?.releaseAdmission()
     return createUIMessageStreamResponse({ stream: clarStream })
   }
 
@@ -689,7 +703,6 @@ export async function POST(request: Request) {
 
   // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.
   request.signal.addEventListener('abort', () => {
-    byokRuntime?.releaseAdmission()
     emit({
       event: 'step_done',
       query_id: queryId,
@@ -1311,6 +1324,10 @@ export async function POST(request: Request) {
   // Unit 4.refactor_pipeline_shim — adapter dispatch body now lives in
   // `lib/pipelines/shared/run_adapter_dispatch.ts`. The route is a thin
   // selector: auth + chart resolution + planner-context + dispatch().
+  if (byokRuntime) {
+    const evidenceChars = JSON.stringify({ messages, attachmentParts, bundle, validToolResults }).length
+    if (!isByokEvidenceWithinLimit(evidenceChars)) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  }
   return await runAdapterDispatch({
     requestStartedAt: setupStart,
     userUid: user.uid,

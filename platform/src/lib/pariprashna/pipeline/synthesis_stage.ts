@@ -67,6 +67,7 @@ import { isVoiceEnforcementEnabled } from '@/lib/pariprashna/voice/flag'
 import { lintVoiceProse } from '@/lib/pariprashna/voice/voice_lint'
 import { isDifficultFindingActive, shouldForceDifficultBlockBreak } from '@/lib/pariprashna/voice/pacing'
 import type { LengthTier } from '@/lib/pariprashna/protocol/events'
+import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 import {
   buildEntitlementScanRules,
   containRetrievedEvidence,
@@ -206,6 +207,8 @@ export async function assembleSynthesisContext(args: {
   /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
   lengthTier?: LengthTier
   workerExecutor?: RoleExecutor
+  abortSignal?: AbortSignal
+  maxOutputTokens?: number
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
@@ -278,8 +281,11 @@ export async function assembleSynthesisContext(args: {
   let conversationSummaryText: string | null = null
   try {
     const { getConversationSummaryForSplice } = await import('@/lib/pariprashna/summaries/splice')
-    conversationSummaryText = await getConversationSummaryForSplice(conversationId, args.workerExecutor)
+    conversationSummaryText = await getConversationSummaryForSplice(conversationId, args.workerExecutor, {
+      abortSignal: args.abortSignal, maxOutputTokens: args.maxOutputTokens,
+    })
   } catch (err) {
+    if (args.abortSignal?.aborted) throw err
     console.error('[pariprashna] durable-summary splice failed (non-fatal):', err)
   }
   const { assembleSynthesisPrefix } = await import('@/lib/pariprashna/summaries/assemble')
@@ -759,6 +765,7 @@ export async function runSynthesisStage(args: {
         ? [{ role: message.role, content: message.content }]
         : []),
       abortSignal: request.signal,
+      maxOutputTokens: Math.min(params.modelMeta.maxOutputTokens, BYOK_MAX_OUTPUT_TOKENS),
     }).getReader()
     let completed = false
     try {

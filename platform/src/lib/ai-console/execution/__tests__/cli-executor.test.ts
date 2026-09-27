@@ -3,6 +3,7 @@ import { createCliRoleExecutor } from '../cli-executor'
 import { createRoleExecutor } from '../index'
 import type { ResolvedRoleExecution } from '../types'
 import type { CliRunner } from '../../cli/runner'
+import { StructuredOutputValidationError } from '../structured-output-error'
 
 function execution(overrides: Partial<ResolvedRoleExecution> = {}): ResolvedRoleExecution {
   return {
@@ -53,6 +54,19 @@ describe('CLI role executor', () => {
     const schema = { type: 'object' as const, properties: { ok: { type: 'boolean' as const } }, required: ['ok'] }
     await expect(executor.generate({ ...request, responseSchema: schema })).resolves.toMatchObject({ structured: { ok: true } })
     expect(runExecution.mock.calls[0][2]).toMatchObject({ responseSchema: schema })
+  })
+
+  it('preserves only the internal typed structured failure for same-executor repair', async () => {
+    const runExecution = vi.fn().mockResolvedValue({ stdout:
+      '{"type":"result","subtype":"success","is_error":false,"result":"{\\"ok\\":\\"secret-bad\\"}","structured_output":{"ok":"secret-bad"},"usage":{}}',
+    exitCode: 0, signal: null })
+    const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
+    const schema = { type: 'object' as const, properties: { ok: { type: 'boolean' as const } }, required: ['ok'] }
+
+    const failure = await executor.generate({ ...request, responseSchema: schema }).catch(error => error)
+    expect(failure).toBeInstanceOf(StructuredOutputValidationError)
+    expect(failure.candidateText()).toContain('secret-bad')
+    expect(String(failure)).not.toContain('secret-bad')
   })
 
   it('retries only the identical target once for a transient pre-output failure', async () => {

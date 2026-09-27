@@ -47,6 +47,7 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import type { RoleExecutor } from '@/lib/ai-console/execution'
+import { isStructuredOutputValidationError } from '@/lib/ai-console/execution/structured-output-error'
 import {
   buildPlannerCapabilityKnowledgeProjection,
   getPinnedCapabilityKnowledgeSnapshot,
@@ -352,6 +353,7 @@ export async function callPipelinePlanner(
     deepPlannerExecutor: RoleExecutor
     workerExecutor: RoleExecutor
     abortSignal?: AbortSignal
+    maxOutputTokens?: number
   },
 ): Promise<PlannerOutcome> {
   // ── Step 1: deterministic scope classification (BEFORE the LLM call) ────────
@@ -425,7 +427,8 @@ export async function callPipelinePlanner(
     0,
   )
 
-  const ctx = await buildPlannerContext(query, conversationHistory, selectedPlannerModelId, queryId, byok?.workerExecutor)
+  const ctx = await buildPlannerContext(query, conversationHistory, selectedPlannerModelId, queryId,
+    byok?.workerExecutor, byok?.abortSignal)
 
   const userPayload = {
     native_id: nativeId,
@@ -476,6 +479,7 @@ export async function callPipelinePlanner(
   let fallbackWasUsed = false
   if (selectedExecutor) {
     try {
+      if (byok?.abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
       const result = await selectedExecutor.generate({
         systemPrompt: getSystemPrompt(),
         messages: [
@@ -486,10 +490,15 @@ export async function callPipelinePlanner(
         reasoning: planningPolicy.reasoning,
         responseSchema: PipelinePlanInputJsonSchema,
         abortSignal: byok?.abortSignal,
+        maxOutputTokens: byok?.maxOutputTokens,
       })
       interaction = { finalText: result.text, usage: result.usage }
-    } catch {
+    } catch (error) {
+      if (isStructuredOutputValidationError(error)) {
+        interaction = { finalText: error.candidateText(), usage: { inputTokens: 0, outputTokens: 0 } }
+      } else {
       return { outcome: 'fault', reason: 'Selected planner execution failed.', retryable: false }
+      }
     }
   }
   for (let attempt = 0; !selectedExecutor && attempt <= MAX_PLANNER_RETRIES; attempt++) {
@@ -737,6 +746,9 @@ export async function callPipelinePlanner(
     let repairInteraction: { finalText?: string } | undefined
     try {
       if (selectedExecutor) {
+        if (byok?.abortSignal?.aborted) {
+          return { outcome: 'fault', reason: 'Selected planner execution cancelled.', retryable: false }
+        }
         const result = await selectedExecutor.generate({
           systemPrompt: getSystemPrompt(),
           messages: [
@@ -749,6 +761,7 @@ export async function callPipelinePlanner(
           reasoning: planningPolicy.reasoning,
           responseSchema: PipelinePlanInputJsonSchema,
           abortSignal: byok?.abortSignal,
+          maxOutputTokens: byok?.maxOutputTokens,
         })
         repairInteraction = { finalText: result.text }
       } else {

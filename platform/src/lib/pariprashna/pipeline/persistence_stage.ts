@@ -156,6 +156,7 @@ export async function runPersistenceStage(args: {
   validToolResults: ToolBundle[]
   citationGate: CitationGateOutcome
   synthesisStartedAt: number
+  abortSignal?: AbortSignal
   /** Lane G1-A. Enforced → the turn's predictive output is sampled (HS-6). */
   safetyDecision?: import('@/lib/pariprashna/safety').SafetyDecision
   /**
@@ -246,7 +247,8 @@ export async function runPersistenceStage(args: {
   // the shared on-finish helper receives only the settled value and cannot
   // start an untracked global worker after runtime authority disappears.
   const byokTitle = isFirstTurn && args.runtime?.kind === 'byok'
-    ? await generateConversationTitle(persistMsgs, undefined, args.runtime.executors.worker)
+    && !args.abortSignal?.aborted
+    ? await generateConversationTitle(persistMsgs, undefined, args.runtime.executors.worker, args.abortSignal)
     : undefined
   const lastUserText = ((lastUserMessage?.parts ?? []) as Array<{ type: string; text?: string }>)
     .filter((p) => p.type === 'text')
@@ -548,7 +550,10 @@ export async function runPersistenceStage(args: {
                     // comment on this field).
                     semanticBlocksEnabled: isSemanticBlocksEnabled(),
                     ...(args.runtime?.kind === 'byok'
-                      ? { caller: createInterpretationCaller(args.runtime.executors.worker) }
+                      ? { caller: createInterpretationCaller(args.runtime.executors.worker, {
+                          abortSignal: args.abortSignal,
+                          maxOutputTokens: args.params.modelMeta.maxOutputTokens,
+                        }) }
                       : {}),
                   })
                   if ((interpretationSets.truncated_count ?? 0) > 0) {

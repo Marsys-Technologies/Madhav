@@ -27,6 +27,7 @@ export async function generateConversationTitle(
   messages: UIMessage[],
   monCtx?: { queryId?: string; conversationId?: string | null; userId?: string },
   workerExecutor?: RoleExecutor,
+  abortSignal?: AbortSignal,
 ): Promise<string | null> {
   const firstUser = messages.find(m => m.role === 'user')
   if (!firstUser) return null
@@ -39,14 +40,17 @@ export async function generateConversationTitle(
 
   if (workerExecutor) {
     try {
+      if (abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
       const result = await workerExecutor.generate({
         systemPrompt: 'Summarize the user question as a concise 3-6 word chat title. No quotes, no trailing punctuation, Title Case.',
         messages: [{ role: 'user', content: text.slice(0, 500) }],
         maxOutputTokens: 40,
+        abortSignal,
       })
       const cleaned = result.text.replace(/^["']|["']$/g, '').trim().slice(0, 80)
       return cleaned || fallbackTitle(text)
-    } catch {
+    } catch (error) {
+      if (abortSignal?.aborted) throw error
       return fallbackTitle(text)
     }
   }

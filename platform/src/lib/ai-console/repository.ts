@@ -174,6 +174,13 @@ export interface RoutingResolution {
   roles: Record<AiRole, RoutingTarget>
 }
 
+export interface PreparedTurnRouting {
+  selection: z.infer<typeof ConversationAiSelectionSchema>
+  resolution: RoutingResolution
+  safeSnapshot: z.infer<typeof RoutingSnapshotSchema>
+  snapshotId: string
+}
+
 function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readonly AiRole[]): AiRole | undefined {
   return roles.find(role => !compatibleRoles.includes(role))
 }
@@ -247,20 +254,11 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
  * AI Console mutations. The returned graph contains only safe identity and
  * capability metadata; executable bindings are constructed outside the DB transaction.
  */
-export async function loadRoutingResolution(userId: string, input: unknown, conversationId?: string): Promise<RoutingResolution> {
-  if (typeof userId !== 'string' || userId.trim().length === 0) throw new AiConsoleError('AI_PERMISSION_DENIED')
-  if (conversationId !== undefined && !uuidSchema.safeParse(conversationId).success) {
-    throw new AiConsoleError('AI_PERMISSION_DENIED')
-  }
-  const parsedSelection = ConversationAiSelectionSchema.safeParse(input)
-  if (!parsedSelection.success) throw notFound()
-  const selection = parsedSelection.data
-  if (selection.kind === 'explicit') assertChoiceUuid(selection.choice)
-  return withUserTransaction(userId, async client => {
-    const owner = (await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [userId])).rows
-    if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
-    if (conversationId !== undefined) await ownedConversation(client, userId, conversationId)
-
+async function loadRoutingResolutionWithClient(
+  client: Client,
+  userId: string,
+  selection: z.infer<typeof ConversationAiSelectionSchema>,
+): Promise<RoutingResolution> {
     let resolvedChoice: AiChoiceRef
     if (selection.kind === 'default') {
       const row = (await client.query(`SELECT kind,connection_id,model_id,configuration_id,cli_id
@@ -312,6 +310,22 @@ export async function loadRoutingResolution(userId: string, input: unknown, conv
       return [role, resolvedByKey.get(key)!]
     })) as Record<AiRole, RoutingTarget>
     return { resolvedChoice, configurationVersion, roles }
+}
+
+export async function loadRoutingResolution(userId: string, input: unknown, conversationId?: string): Promise<RoutingResolution> {
+  if (typeof userId !== 'string' || userId.trim().length === 0) throw new AiConsoleError('AI_PERMISSION_DENIED')
+  if (conversationId !== undefined && !uuidSchema.safeParse(conversationId).success) {
+    throw new AiConsoleError('AI_PERMISSION_DENIED')
+  }
+  const parsedSelection = ConversationAiSelectionSchema.safeParse(input)
+  if (!parsedSelection.success) throw notFound()
+  const selection = parsedSelection.data
+  if (selection.kind === 'explicit') assertChoiceUuid(selection.choice)
+  return withUserTransaction(userId, async client => {
+    const owner = (await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [userId])).rows
+    if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    if (conversationId !== undefined) await ownedConversation(client, userId, conversationId)
+    return loadRoutingResolutionWithClient(client, userId, selection)
   })
 }
 
@@ -805,9 +819,10 @@ export async function setCliGrant(actorId: string, userId: string, cliId: string
   })
 }
 
-export async function insertRoutingSnapshot(input: unknown): Promise<string> {
-  const snapshot = RoutingSnapshotSchema.parse(input)
-  return withUserTransaction(snapshot.userId, async client => {
+async function insertRoutingSnapshotWithClient(
+  client: Client,
+  snapshot: z.infer<typeof RoutingSnapshotSchema>,
+): Promise<string> {
     if (snapshot.conversationId) await ownedConversation(client, snapshot.userId, snapshot.conversationId)
     const inserted = await client.query(`INSERT INTO ai_turn_routing_snapshots
       (user_id,correlation_id,source,conversation_id,selection,resolved_choice,configuration_version,roles)
@@ -824,6 +839,90 @@ export async function insertRoutingSnapshot(input: unknown): Promise<string> {
       resolvedChoice: snapshot.resolvedChoice, configurationVersion: snapshot.configurationVersion, roles: snapshot.roles }
     if (!isDeepStrictEqual(persisted, expected)) throw notFound()
     return row.id
+}
+
+export async function insertRoutingSnapshot(input: unknown): Promise<string> {
+  const snapshot = RoutingSnapshotSchema.parse(input)
+  return withUserTransaction(snapshot.userId, client => insertRoutingSnapshotWithClient(client, snapshot))
+}
+
+const PrepareTurnRoutingSchema = z.object({
+  userId: z.string().min(1).regex(/\S/),
+  role: z.enum(['super_admin', 'guest']),
+  chartId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  isFirstTurn: z.boolean(),
+  turnId: z.string().min(1).regex(/\S/),
+  source: z.enum(['pariprashna', 'consult']),
+  selection: ConversationAiSelectionSchema,
+}).strict()
+
+/**
+ * One serializable authority decision for a routed turn. The user advisory lock
+ * covers chart/owner authority, first-turn initialization or stale-selection
+ * comparison, exact target resolution, and the immutable snapshot. A concurrent
+ * picker/default mutation therefore happens wholly before or after this decision.
+ */
+export async function prepareTurnRouting(input: unknown): Promise<PreparedTurnRouting> {
+  const parsed = PrepareTurnRoutingSchema.parse(input)
+  if (parsed.selection.kind === 'explicit') assertChoiceUuid(parsed.selection.choice)
+  return withUserTransaction(parsed.userId, async client => {
+    const owner = (await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [parsed.userId])).rows
+    if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
+
+    const chart = (await client.query('SELECT owner_id FROM charts WHERE id=$1 FOR SHARE', [parsed.chartId])).rows[0]
+    if (!chart) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    if (parsed.role !== 'super_admin' && chart.owner_id !== parsed.userId) {
+      const grant = (await client.query(`SELECT permission FROM chart_grants
+        WHERE chart_id=$1 AND principal_id=$2 AND permission='view' LIMIT 1 FOR SHARE`,
+      [parsed.chartId, parsed.userId])).rows[0]
+      if (!grant) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    }
+
+    let authoritativeSelection: z.infer<typeof ConversationAiSelectionSchema>
+    if (parsed.isFirstTurn) {
+      const inserted = await client.query(`INSERT INTO conversations(id,chart_id,user_id,module,title)
+        VALUES($1,$2,$3,'consume',NULL) ON CONFLICT(id) DO NOTHING RETURNING id`,
+      [parsed.conversationId, parsed.chartId, parsed.userId])
+      if (!inserted.rows.length) throw new AiConsoleError('AI_CHOICE_BROKEN')
+      await client.query(`INSERT INTO ai_conversation_selections
+        (conversation_id,user_id,kind,connection_id,model_id,configuration_id,cli_id)
+        VALUES($1,$2,$3,$4,$5,$6,$7)`,
+      [parsed.conversationId, parsed.userId, ...choiceParams(
+        parsed.selection.kind === 'default' ? parsed.selection : parsed.selection.choice,
+      )])
+      await writeAiAudit(client, parsed.userId, { event: 'conversation_selected' })
+      authoritativeSelection = parsed.selection
+    } else {
+      const conversation = (await client.query(`SELECT id,chart_id FROM conversations
+        WHERE user_id=$1 AND id=$2 FOR NO KEY UPDATE`, [parsed.userId, parsed.conversationId])).rows[0]
+      if (!conversation || conversation.chart_id !== parsed.chartId) throw new AiConsoleError('AI_PERMISSION_DENIED')
+      const row = (await client.query(`SELECT kind,connection_id,model_id,configuration_id,cli_id
+        FROM ai_conversation_selections WHERE user_id=$1 AND conversation_id=$2 FOR SHARE`,
+      [parsed.userId, parsed.conversationId])).rows[0]
+      authoritativeSelection = ConversationAiSelectionSchema.parse(!row || row.kind === 'default'
+        ? { kind: 'default' } : { kind: 'explicit', choice: rowChoice(row) })
+      if (!isDeepStrictEqual(authoritativeSelection, parsed.selection)) throw new AiConsoleError('AI_CHOICE_BROKEN')
+    }
+
+    const resolution = await loadRoutingResolutionWithClient(client, parsed.userId, authoritativeSelection)
+    const safeSnapshot = RoutingSnapshotSchema.parse({
+      source: 'pariprashna',
+      userId: parsed.userId,
+      correlationId: parsed.turnId,
+      conversationId: parsed.conversationId,
+      selection: authoritativeSelection,
+      resolvedChoice: resolution.resolvedChoice,
+      configurationVersion: resolution.configurationVersion,
+      roles: Object.fromEntries(AI_ROLES.map(role => {
+        const target = resolution.roles[role]
+        return [role, target.kind === 'provider_model'
+          ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId, modelId: target.modelId }
+          : { kind: target.kind, cliId: target.cliId, modelId: target.modelId }]
+      })),
+    })
+    const snapshotId = await insertRoutingSnapshotWithClient(client, safeSnapshot)
+    return { selection: authoritativeSelection, resolution, safeSnapshot, snapshotId }
   })
 }
 const ReceiptSchema = z.object({ userId: z.string().min(1), snapshotId: z.string().uuid(), invocationId: z.string().uuid(), role: AiRoleSchema,

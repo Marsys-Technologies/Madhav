@@ -94,4 +94,49 @@ describe('trackRoleExecutor', () => {
     await expect(wrapped.generate({ systemPrompt: 'secret', messages: [] })).rejects.toThrow('db unavailable')
     expect(spy).not.toHaveBeenCalled()
   })
+
+  it('commits a cancelled terminal and never starts the delegate when cancelled during the start receipt', async () => {
+    let releaseStart!: () => void
+    insertReceipt.mockImplementationOnce(() => new Promise<void>(resolve => { releaseStart = resolve }))
+      .mockResolvedValue(undefined)
+    const delegate = executor()
+    const streamSpy = vi.spyOn(delegate, 'stream')
+    const reader = trackRoleExecutor(delegate, {
+      userId: 'user-1', snapshotId: crypto.randomUUID(),
+    }).stream({ systemPrompt: 'secret', messages: [] }).getReader()
+
+    const pendingRead = reader.read()
+    await vi.waitFor(() => expect(insertReceipt).toHaveBeenCalledTimes(1))
+    const cancellation = reader.cancel()
+    releaseStart()
+    await cancellation
+    await pendingRead
+
+    expect(streamSpy).not.toHaveBeenCalled()
+    expect(insertReceipt).toHaveBeenCalledTimes(2)
+    expect(insertReceipt.mock.calls[1][0]).toMatchObject({
+      invocationId: insertReceipt.mock.calls[0][0].invocationId,
+      phase: 'terminal', status: 'cancelled',
+    })
+  })
+
+  it('cancels an in-flight delegate pull and records one cancelled terminal', async () => {
+    let delegateCancelled = false
+    const delegate = executor()
+    delegate.stream = () => new ReadableStream<RoleExecutionEvent>({
+      pull: () => new Promise<void>(() => undefined),
+      cancel: () => { delegateCancelled = true },
+    })
+    const reader = trackRoleExecutor(delegate, {
+      userId: 'user-1', snapshotId: crypto.randomUUID(),
+    }).stream({ systemPrompt: 'secret', messages: [] }).getReader()
+
+    void reader.read()
+    await vi.waitFor(() => expect(insertReceipt).toHaveBeenCalledTimes(1))
+    await reader.cancel()
+
+    expect(delegateCancelled).toBe(true)
+    expect(insertReceipt).toHaveBeenCalledTimes(2)
+    expect(insertReceipt.mock.calls[1][0]).toMatchObject({ phase: 'terminal', status: 'cancelled' })
+  })
 })

@@ -76,6 +76,7 @@ import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stag
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
 import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
 import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
+import { isByokEvidenceWithinLimit } from '@/lib/limits/byok_admission'
 
 export const maxDuration = 120
 
@@ -141,6 +142,7 @@ export async function POST(request: Request): Promise<Response> {
       })
       params = bindByokTurnParams(body, runtime)
     } catch (error) {
+      if (runtime.kind === 'byok') runtime.releaseAdmission()
       const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
       return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
     }
@@ -159,28 +161,42 @@ export async function POST(request: Request): Promise<Response> {
       // finds turn metadata. Awaited (not fire-and-forget) for exactly that
       // reason — the write is a single Redis SET (or in-memory Map.set) and
       // is not on the model-latency critical path.
-      await openTurnBuffer({ turnId, chartId, conversationId })
+      try {
+        await openTurnBuffer({ turnId, chartId, conversationId })
+      } catch (error) {
+        if (runtime.kind === 'byok') runtime.releaseAdmission()
+        controller.error(error)
+        return
+      }
       // SAMĀPTI/B-PB8-BYTEEQ: opt-in, sampled, durable capture of this turn's
       // raw wire stream so BRIEF_PB-2 §G-1's "byte-equality against one real
       // deployed reading" can actually be run (see
       // protocol/stream_capture.ts). OFF unless PARIPRASHNA_STREAM_CAPTURE=1;
       // decided ONCE here so a turn is captured whole or not at all.
-      beginTurnCapture({ turnId, conversationId, chartId })
-      const em = new PariprashnaEmitter(controller, (event) => {
-        void appendBufferedEvent(turnId, event)
-        void captureEvent(turnId, event)
-      })
+      let em: PariprashnaEmitter
+      try {
+        beginTurnCapture({ turnId, conversationId, chartId })
+        em = new PariprashnaEmitter(controller, (event) => {
+          void appendBufferedEvent(turnId, event)
+          void captureEvent(turnId, event)
+        })
 
-      // FIRST BYTES — before the planner, before any DB/LLM work.
-      em.turnOpen({
-        turn_id: turnId,
-        conversation_id: conversationId,
-        chart_id: chartId,
-        model_id: params.modelId,
-        reading_depth: params.readingDepth,
-        length_tier: params.lengthTier,
-      })
-      em.phase({ phase: 'plan', status: 'start' })
+        // FIRST BYTES — before the planner, before any DB/LLM work.
+        em.turnOpen({
+          turn_id: turnId,
+          conversation_id: conversationId,
+          chart_id: chartId,
+          model_id: params.modelId,
+          reading_depth: params.readingDepth,
+          length_tier: params.lengthTier,
+        })
+        em.phase({ phase: 'plan', status: 'start' })
+      } catch (error) {
+        if (runtime.kind === 'byok') runtime.releaseAdmission()
+        endTurnCapture(turnId)
+        controller.error(error)
+        return
+      }
 
       const finish = (status: 'ok' | 'error' | 'aborted'): void => {
         if (runtime.kind === 'byok') runtime.releaseAdmission()
@@ -258,6 +274,11 @@ export async function POST(request: Request): Promise<Response> {
           orientationPromise,
           inquiryContract,
         })
+        if (runtime.kind === 'byok') {
+          const evidenceChars = JSON.stringify({ messages, bundle: evidence.bundle,
+            toolResults: evidence.validToolResults }).length
+          if (!isByokEvidenceWithinLimit(evidenceChars)) throw new AiConsoleError('AI_EXECUTION_FAILED')
+        }
 
         // ── Synthesis: prompt assembly, then the streaming interpretation. ───
         const synthesisContext = await assembleSynthesisContext({
@@ -268,7 +289,11 @@ export async function POST(request: Request): Promise<Response> {
           conversationId,
           safetyDecision: postPlanSafety,
           lengthTier: params.lengthTier,
-          ...(runtime.kind === 'byok' ? { workerExecutor: runtime.executors.worker } : {}),
+          ...(runtime.kind === 'byok' ? {
+            workerExecutor: runtime.executors.worker,
+            abortSignal: request.signal,
+            maxOutputTokens: params.modelMeta.maxOutputTokens,
+          } : {}),
         })
         const synthesized = await runSynthesisStage({
           em,
@@ -361,6 +386,7 @@ export async function POST(request: Request): Promise<Response> {
           validToolResults: evidence.validToolResults,
           citationGate,
           synthesisStartedAt,
+          abortSignal: request.signal,
           safetyDecision: postPlanSafety,
           citationRewriteEnabled: synthesized.value.citationRewriteEnabled,
           resolvedCitations: synthesized.value.resolvedCitations,

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({ streamAdapterRaw: vi.fn() }))
 vi.mock('@/lib/adapters/raw', () => ({ streamAdapterRaw: mocks.streamAdapterRaw }))
 
 import { AiConsoleError } from '../../errors'
+import { StructuredOutputValidationError } from '../structured-output-error'
 import { createProviderRoleExecutor, type RoleExecutionRequest } from '../provider-executor'
 import type { ResolvedRoleExecution } from '../types'
 
@@ -82,7 +83,11 @@ describe('provider-backed RoleExecutor', () => {
       { type: 'finish', finishReason: 'stop', totalUsage: { inputTokens: 1, outputTokens: 1 } },
     ]))
     const owned = execution()
-    await expect(createProviderRoleExecutor(owned.value).generate(request)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    const failure = await createProviderRoleExecutor(owned.value).generate(request).catch(error => error)
+    expect(failure).toBeInstanceOf(StructuredOutputValidationError)
+    expect(failure.candidateText()).toBe('{"ok":"not-a-boolean"}')
+    expect(() => JSON.stringify(failure)).toThrow()
+    expect(String(failure)).not.toContain('not-a-boolean')
   })
 
   it.each<[string, Partial<ResolvedRoleExecution>, RoleExecutionRequest]>([

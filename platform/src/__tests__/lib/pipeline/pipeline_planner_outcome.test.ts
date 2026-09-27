@@ -72,6 +72,7 @@ import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
 // deterministic classifier rather than restated as a literal.
 import { classifyScope } from '@/lib/vidhi/scope_classifier'
 import type { RoleExecutor } from '@/lib/ai-console/execution'
+import { StructuredOutputValidationError } from '@/lib/ai-console/execution/structured-output-error'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
@@ -151,6 +152,31 @@ describe('callPipelinePlanner — exact BYOK role injection', () => {
     expect(outcome.outcome).toBe('plan')
     expect(planner.generate).toHaveBeenCalledTimes(2)
     expect(runAdapter).not.toHaveBeenCalled()
+  })
+
+  it('repairs a typed executor validation failure on the same Planner only', async () => {
+    const planner = fakeExecutor('planner', [VALID_PLAN_JSON])
+    vi.mocked(planner.generate)
+      .mockRejectedValueOnce(new StructuredOutputValidationError('planner', 'not json secret'))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: fakeExecutor('deep_planner', []),
+        workerExecutor: fakeExecutor('worker', []), maxOutputTokens: 1234 })
+    expect(outcome.outcome).toBe('plan')
+    expect(planner.generate).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(planner.generate).mock.calls[1][0]).toMatchObject({ maxOutputTokens: 1234 })
+    expect(JSON.stringify(vi.mocked(planner.generate).mock.calls[1][0])).toContain('not json secret')
+  })
+
+  it('never repairs provider or cancellation failures', async () => {
+    const planner = fakeExecutor('planner', [])
+    vi.mocked(planner.generate).mockRejectedValueOnce(new Error('provider unavailable'))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: fakeExecutor('deep_planner', []),
+        workerExecutor: fakeExecutor('worker', []) })
+    expect(outcome.outcome).toBe('fault')
+    expect(planner.generate).toHaveBeenCalledOnce()
   })
 })
 

@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const checkRpm = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/mcp/rate_limiter_core', () => ({ checkRpm }))
-import { admitByokTurn } from '../byok_admission'
+import { admitByokTurn, isByokEvidenceWithinLimit } from '../byok_admission'
 
 describe('admitByokTurn', () => {
+  it('enforces the same evidence ceiling after hydration without consuming admission', () => {
+    expect(isByokEvidenceWithinLimit(2_000_000)).toBe(true)
+    expect(isByokEvidenceWithinLimit(2_000_001)).toBe(false)
+    expect(isByokEvidenceWithinLimit(-1)).toBe(false)
+  })
   beforeEach(() => checkRpm.mockReset().mockReturnValue({ allowed: true }))
 
   it('rejects hard-cap violations before consuming the rate counter', () => {

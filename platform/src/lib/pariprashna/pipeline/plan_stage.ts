@@ -42,6 +42,7 @@ import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryPr
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 import type { TurnRuntime } from './turn_runtime'
+import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 
 /**
  * Lane P2-C (PPR-09/16) — honest depth disclosure. Maps the CLASSIFIER's own
@@ -228,6 +229,7 @@ export async function runPlanStage(args: {
           deepPlannerExecutor: runtime.executors.deep_planner,
           workerExecutor: runtime.executors.worker,
           abortSignal: request.signal,
+          maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
         }
       : undefined,
   )

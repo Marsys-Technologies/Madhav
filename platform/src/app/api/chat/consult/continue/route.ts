@@ -14,6 +14,8 @@ import { configService } from '@/lib/config'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 import { getConversationSelection } from '@/lib/ai-console/repository'
 import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
+import { BYOK_MAX_OUTPUT_TOKENS, isByokEvidenceWithinLimit } from '@/lib/limits/byok_admission'
+import type { RoleExecutionEvent } from '@/lib/ai-console/execution'
 
 export const maxDuration = 120
 
@@ -91,26 +93,33 @@ export async function POST(request: Request) {
         questionChars: CONTINUATION_INSTRUCTION.length,
         source: 'consult',
       })
+      try {
       const history = uiMessages.map(message => ({
         role: message.role as 'user' | 'assistant',
         content: message.parts
           .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
           .map(part => part.text).join(''),
       }))
+      if (!isByokEvidenceWithinLimit(JSON.stringify({ uiMessages, history }).length)) {
+        throw new AiConsoleError('AI_EXECUTION_FAILED')
+      }
       const uiStream = createUIMessageStream({
         execute: async ({ writer }) => {
-          const id = crypto.randomUUID()
-          writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
-          writer.write({ type: 'text-start', id } as never)
-          const reader = runtime.executors.synthesizer.stream({
-            systemPrompt: CONTINUATION_INSTRUCTION,
-            messages: history,
-            abortSignal: request.signal,
-          }).getReader()
+          let reader: ReadableStreamDefaultReader<RoleExecutionEvent> | undefined
+          let completed = false
           try {
+            const id = crypto.randomUUID()
+            writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
+            writer.write({ type: 'text-start', id } as never)
+            reader = runtime.executors.synthesizer.stream({
+              systemPrompt: CONTINUATION_INSTRUCTION,
+              messages: history,
+              abortSignal: request.signal,
+              maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
+            }).getReader()
             while (true) {
               const next = await reader.read()
-              if (next.done) break
+              if (next.done) { completed = true; break }
               if (next.value.type === 'text_delta') {
                 writer.write({ type: 'text-delta', id, delta: next.value.text } as never)
               }
@@ -122,12 +131,14 @@ export async function POST(request: Request) {
               ? error : new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
             writer.write({ type: 'error', errorText: safe.message } as never)
           } finally {
+            if (reader && !completed) await reader.cancel().catch(() => undefined)
             runtime.releaseAdmission()
-            reader.releaseLock()
+            reader?.releaseLock()
           }
         },
       })
       return createUIMessageStreamResponse({ stream: uiStream })
+      } catch (error) { runtime.releaseAdmission(); throw error }
     } catch (error) {
       const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
       return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })

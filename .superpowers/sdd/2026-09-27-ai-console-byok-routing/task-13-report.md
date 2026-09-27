@@ -6,17 +6,24 @@ Implemented the private `AI_CONSOLE_BYOK` serving branch for native Paripraśna,
 authenticated Consult, and Consult continuation while preserving legacy paths
 when the flag is off.
 
-The flag-on authority order is server-owned: active authentication; strict
-selection identity; owner and chart authorization; first-turn selection insert
-or existing-turn persisted-selection equality; one resolution; safe immutable
-snapshot commit; one non-price BYOK admission; four nonoptional tracked
-executors; then streaming. Snapshot or admission failure creates no executor.
+The flag-on authority order is server-owned. One per-user advisory-lock
+transaction now covers active-owner and chart authority, first-turn
+conversation/selection initialization or existing-selection equality, exact
+resolution, and immutable snapshot insert. A concurrent picker/default update
+therefore occurs wholly before or after the turn decision; a failed first-turn
+resolution rolls back the conversation and selection together. Only after that
+transaction commits does one non-price BYOK admission create four nonoptional
+tracked executors.
 
 ## Role routing
 
 - Planner and deterministic Deep Planner receive distinct injected executors.
 - Planner structured repair reuses the same selected executor as a separate
-  invocation. There is no cross-target retry or fallback.
+  invocation. AIC-R031 is implemented as one server-only typed validation
+  failure with a private bounded candidate: only that discriminator or a local
+  parse/schema failure may enter repair. Provider, authorization, rate, billing,
+  and abort failures never repair. The candidate cannot be serialized, logged,
+  audited, persisted, or returned.
 - Worker is injected into long-history planner compression, durable summary,
   interpretation generation/repair, and title generation. Optional failures
   retain their existing explicit omission, waiver, or deterministic title
@@ -26,6 +33,22 @@ executors; then streaming. Snapshot or admission failure creates no executor.
   the same exact executor into its existing AI-SDK wire and shared on-finish
   contract. A flag-on synthesis failure is fatal and cannot become empty
   success.
+
+## Lifecycle hardening
+
+- One request `AbortSignal` reaches planner-history compression, Planner/Deep
+  Planner primary and repair, durable summary, interpretation primary and
+  repair, title, and Synthesizer/Consult/continuation. Every optional model call
+  checks cancellation before it starts; cancellation does not trigger repair.
+- Every flag-on role request carries an explicit governed `maxOutputTokens`.
+  Hydrated evidence plus attachments are measured against the hard evidence cap
+  before a consuming stage, without taking a second admission.
+- The admission release is idempotent and attached to all pre-stream setup,
+  writer/on-finish, persistence, stream error, cancellation, and normal terminal
+  paths. It remains held while streaming.
+- Tracked stream cancellation marks intent before waiting for the start receipt,
+  prevents a late delegate start, cancels an in-flight pull, and commits one
+  cancelled terminal. Continuation cancels every unfinished reader in `finally`.
 
 ## Invocation receipts and persistence
 
@@ -43,24 +66,23 @@ routing metadata.
 
 ## Verification
 
-- Focused preflight, receipt, repository and migration-contract tests: 101 pass.
-- Planner/Deep Planner/repair exact-injection plus Consult wire/on-finish tests:
-  21 pass.
-- Chat/shared/native focused regression aggregate: 107 pass.
-- Planner, summaries, interpretation, title and route-port aggregate: 125 pass,
-  2 skipped.
-- Full Vitest aggregate: 13,148 pass, 730 skipped, 2 todo, with one unrelated
-  five-second cache-wiring timeout under aggregate load; the timed-out file
-  passed 5/5 immediately in isolation.
-- TypeScript: `npx tsc --noEmit` passes.
-- Scoped changed-file ESLint (excluding the pre-existing warning-heavy Consult
-  monolith): zero warnings. The Consult route retains its pre-existing 63 lint
-  warnings; this task introduced no additional scoped warning.
+- Focused AI Console, atomic preflight, typed validation, receipts, planner,
+  interpretation, native, Consult and continuation aggregate: 528 pass, 25
+  prerequisite-skipped.
+- Full Vitest aggregate: 13,158 pass, 732 skipped, 2 todo.
+- TypeScript: `npx tsc --noEmit --skipLibCheck` passes.
+- Full ESLint: zero errors and 587 repository-baseline warnings. Scoped
+  changed-file ESLint excluding the pre-existing warning-heavy Consult monolith
+  has zero warnings; Consult retains 62 pre-existing warnings and gained none.
 - `git diff --check`: passes.
 - Migration number guard: passes with repository baseline warnings only; next
-  allocatable migration remains 1121.
+  allocatable migration remains 1121. Migration contract: 9 pass; disposable
+  PostgreSQL migration/isolation suites: 25 prerequisite-skipped.
+- Added real-client concurrency tests for picker serialization and first-turn
+  rollback; they are present but remain unqualified until the disposable local
+  PostgreSQL prerequisite is supplied.
 - Credential/log scan: no new credential value, prompt/output, runtime binding,
-  or raw provider error persistence/logging path found.
+  structured candidate, or raw provider error persistence/logging path found.
 
 ## Unqualified
 

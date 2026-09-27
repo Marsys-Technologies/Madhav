@@ -35,7 +35,9 @@ import type { RoleExecutor } from '@/lib/ai-console/execution'
 export async function getConversationSummaryForSplice(
   conversationId: string,
   workerExecutor?: RoleExecutor,
+  options?: { abortSignal?: AbortSignal; maxOutputTokens?: number },
 ): Promise<string | null> {
+  if (options?.abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
   const messageRefs = await listCanonicalMessagesForConversation(conversationId)
   if (messageRefs.length === 0) return null
 
@@ -48,7 +50,7 @@ export async function getConversationSummaryForSplice(
   )
 
   const result = await getOrCreateSummary(
-    { store: new PgSummaryStore(), worker: new LlmSummarizerWorker(workerExecutor) },
+    { store: new PgSummaryStore(), worker: new LlmSummarizerWorker(workerExecutor, options) },
     { conversationId, turns },
   )
   return result.summary?.summary_text ?? null

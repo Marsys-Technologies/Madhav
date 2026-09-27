@@ -64,6 +64,7 @@ async function summarizeHistory(
   workerModelId: string,
   queryId?: string,
   workerExecutor?: RoleExecutor,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const dialogue = turns
     .map(t => `${t.role.toUpperCase()}: ${t.content}`)
@@ -83,10 +84,12 @@ async function summarizeHistory(
   let errorCode: string | null = null
   try {
     if (workerExecutor) {
+      if (abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
       const result = await workerExecutor.generate({
         systemPrompt: '',
         messages: [{ role: 'user', content: prompt }],
         maxOutputTokens: SUMMARY_TARGET_TOKENS,
+        abortSignal,
       })
       return truncateToTokens(result.text.trim(), SUMMARY_TARGET_TOKENS)
     }
@@ -173,6 +176,7 @@ export async function buildPlannerContext(
   workerModelId: string,
   queryId?: string,
   workerExecutor?: RoleExecutor,
+  abortSignal?: AbortSignal,
 ): Promise<PlannerContext> {
   const queryTokens = estimateTokens(query)
 
@@ -196,7 +200,7 @@ export async function buildPlannerContext(
   const rawCombined = turnsTokens(recent)
 
   if (rawCombined > HISTORY_BUDGET_TOKENS) {
-    const summary = await summarizeHistory(recent, workerModelId, queryId, workerExecutor)
+    const summary = await summarizeHistory(recent, workerModelId, queryId, workerExecutor, abortSignal)
     const summaryTokens = estimateTokens(summary)
     return {
       query,
