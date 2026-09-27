@@ -92,7 +92,9 @@ CREATE TABLE kala_gochara_windows (
   source TEXT NOT NULL DEFAULT 'live',
   computed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   generation TEXT NOT NULL DEFAULT 'v1',
-  era_slice_key TEXT
+  era_slice_key TEXT,
+  parent_window_id BIGINT,
+  resolution TEXT
 );
 DROP TABLE IF EXISTS kala_gochara_windows_v2 CASCADE;
 CREATE TABLE kala_gochara_windows_v2 (
@@ -152,10 +154,20 @@ CREATE TABLE asset_output_digest_specs (
   PRIMARY KEY (asset_id, spec_sha256)
 );
 DROP TABLE IF EXISTS gochara_resonance_map CASCADE;
+-- Full migration-459 shape + 1080's columns (1080 applies IF NOT EXISTS on top).
 CREATE TABLE gochara_resonance_map (
   id BIGSERIAL PRIMARY KEY,
   chart_id UUID NOT NULL,
-  event_class TEXT NOT NULL
+  event_class TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_ref TEXT NOT NULL,
+  weight NUMERIC NOT NULL,
+  classical_citation TEXT,
+  uncited_extension BOOLEAN NOT NULL DEFAULT FALSE,
+  target_resolution_state TEXT NOT NULL DEFAULT 'resolved'
+    CHECK (target_resolution_state IN ('resolved','unavailable','unqualified')),
+  target_qualifier TEXT,
+  UNIQUE(chart_id, event_class, target_type, target_ref)
 );
 DROP TABLE IF EXISTS kala_vedha_gochara CASCADE;
 CREATE TABLE kala_vedha_gochara (id BIGSERIAL PRIMARY KEY);
@@ -199,8 +211,13 @@ INSERT INTO asset_registry (asset_id, target_table, count_sql, integrity_check_s
   ('ka_sangam', NULL, NULL, NULL, ARRAY['ka_gochara'], true),
   ('ka_gochara_sweep', 'kala_gochara_windows',
    'SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1', NULL, NULL, false);
-INSERT INTO gochara_resonance_map (chart_id, event_class) VALUES
-  ('{CHART_A}', 'marriage'), ('{CHART_B}', 'career');
+-- (karaka, SUN) lets step 6's --rehearse-synthetic contact (karaka SUN,
+-- 2026-06-15 12:00 ±2h) join a class so the step06b windows projection
+-- (E-012 writer) has a real input to project in the steps 7/8 rehearsal.
+INSERT INTO gochara_resonance_map (chart_id, event_class, target_type, target_ref,
+  weight, uncited_extension) VALUES
+  ('{CHART_A}', 'marriage', 'karaka', 'SUN', 0.9, true),
+  ('{CHART_B}', 'career', 'karaka', 'SAT', 0.8, true);
 INSERT INTO kala_gochara_windows (chart_id, event_class, temporal_shape,
   window_start, window_end, peak_date, signed_intensity, raw_intensity, valence,
   is_adverse, generation) VALUES
@@ -472,28 +489,26 @@ def test_step06_candidate_build_and_rebuild(db):
                        "WHERE generation='3.0'") == 2
 
 
-def _seed_synthetic_4_0_window(conn, chart: str) -> None:
-    """A stand-in for the '4.0' windows PROJECTION, which has no writer yet.
+def _write_4_0_windows(chart: str) -> None:
+    """The E-012 '4.0' windows projection, built by the real writer.
 
-    Plan §2.2/§4.7 says ka_gochara writes the windows projection into
-    kala_gochara_windows under '4.0'; no code does (ka_gochara.py still writes '2.0' to
-    kala_gochara_windows_v2, and step 6 drives only the contact ledger and coverage). Steps 7
-    and 8 now REFUSE without window rows (E-012), so the rehearsal must seed one — and says so,
-    rather than let the rehearsal imply the pipeline produced it.
+    step06b_windows_projection.py projects the candidate contact ledger into
+    kala_gochara_windows under '4.0' (plan §2.2/§4.7). The synthetic contact
+    (karaka SUN, 2026-06-15 12:00 ±2h) joins the seeded map row (marriage,
+    karaka, SUN, 0.9); the rehearsal-synthetic class context is recorded as
+    such on every row (source='fixture'). The 4h span yields one era-tier
+    row (a single above-threshold series point admits no month/day peaks —
+    honest, and the windows_present gate only needs rows to exist).
     """
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO kala_gochara_windows (chart_id, event_class, temporal_shape,"
-            " window_start, window_end, peak_date, signed_intensity, raw_intensity,"
-            " valence, is_adverse, generation) VALUES (%s,'marriage','point',"
-            " '2026-06-15','2026-06-15','2026-06-15',1,1,'gain',false,'4.0')",
-            (chart,))
+    r = _run_script("step06b_windows_projection.py", "--dsn", DSN,
+                    "--chart-id", chart, "--rehearse-synthetic")
+    assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
 
 
 def test_step07_flip_gates(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
     assert _step06(CHART_A).returncode == 0
-    _seed_synthetic_4_0_window(db, CHART_A)  # stand-in for the unbuilt projection (E-012)
+    _write_4_0_windows(CHART_A)  # the E-012 writer's real projection
     r = _run_script("step07_flip_gates.py", "--dsn", DSN, "--chart-id", CHART_A)
     assert r.returncode == 0, r.stderr
     assert '"pass": true' in r.stdout
@@ -527,7 +542,7 @@ def test_step08_refuses_to_flip_without_window_rows(db):
 def test_step08_flip_and_reverse(db):
     _run_script("step04_apply_verify.py", "--dsn", DSN)
     assert _step06(CHART_A).returncode == 0
-    _seed_synthetic_4_0_window(db, CHART_A)  # stand-in for the unbuilt projection (E-012)
+    _write_4_0_windows(CHART_A)  # the E-012 writer's real projection
     r = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,
                     "--flipped-by", "wp10-rehearsal")
     assert r.returncode == 0, r.stderr
