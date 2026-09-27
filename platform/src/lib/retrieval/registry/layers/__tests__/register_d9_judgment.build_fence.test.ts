@@ -19,9 +19,19 @@ beforeEach(() => {
   queryMock.mockReset()
 })
 
-describe('judgment mandatory completed-build fence', () => {
-  it('fails closed before fact reads when no completed build exists', async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] })
+function receiptRow(asset_id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    asset_id, chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_version: 'v1',
+    receipt_build_id: BUILD_ID, rows_build_id: BUILD_ID, receipt_state: 'proven', freshness_state: 'fresh',
+    output_digest_spec_sha256: 'a'.repeat(64), spec_active: true, receipt_run_state: 'completed',
+    receipt_asset_present: true, receipt_disposition: 'build', observed_at: '2026-09-07T00:00:00Z',
+    ...overrides,
+  }
+}
+
+describe('judgment mandatory served-generation fence', () => {
+  it('fails closed before fact reads when no chart receipt resolves to a served generation', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [receiptRow('ga_structural', { freshness_state: 'stale' })] })
 
     const result = await judgmentQueryCapability.handler(
       { chart_id: CHART_ID, domain: 'wealth' },
@@ -30,18 +40,21 @@ describe('judgment mandatory completed-build fence', () => {
 
     expect(result.is_error).toBe(true)
     expect(result.content).toMatchObject({
-      code: 'no_active_completed_build',
+      code: 'no_served_generation',
       chart_id: CHART_ID,
+      unresolved_assets: [{ asset_id: 'ga_structural', reason: 'receipt_not_fresh' }],
     })
     expect(queryMock).toHaveBeenCalledTimes(1)
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain("state = 'completed'")
-    expect(String(sql)).toContain('ORDER BY ended_at DESC NULLS LAST, id DESC')
-    expect(params).toEqual([CHART_ID])
+    // RC-1: the fence never consults which run finished last for the chart.
+    expect(String(sql)).not.toMatch(/FROM build_runs\s+WHERE chart_id = \$1::uuid AND state = 'completed'/)
+    expect(String(sql)).not.toContain('ORDER BY ended_at DESC')
+    expect(String(sql)).toContain('FROM asset_provenance_receipts receipt')
+    expect(params).toEqual([CHART_ID, null])
   })
 
-  it('fails closed when completed-build selection itself errors', async () => {
-    queryMock.mockRejectedValueOnce(new Error('build_runs unavailable'))
+  it('fails closed when served-generation resolution itself errors', async () => {
+    queryMock.mockRejectedValueOnce(new Error('receipts unavailable'))
 
     const result = await judgmentQueryCapability.handler(
       { chart_id: CHART_ID, domain: 'wealth' },
@@ -50,22 +63,23 @@ describe('judgment mandatory completed-build fence', () => {
 
     expect(result.is_error).toBe(true)
     expect(result.content).toMatchObject({
-      code: 'active_build_selection_failed',
+      code: 'served_generation_resolution_failed',
       chart_id: CHART_ID,
     })
     expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
-  it('uses only the selected build for score-bearing dignity and shadbala inputs', async () => {
+  it('uses only the served build set for score-bearing dignity and shadbala inputs', async () => {
     queryMock.mockImplementation(async (sql: string, params: unknown[] = []) => {
-      const selectedBuild = params.at(-1)
+      const fence = params.at(-1) as unknown[]
+      const served = Array.isArray(fence) && fence.includes(BUILD_ID)
       if (sql.includes("fact_category = 'graha_dignity_per_varga'")) {
-        return selectedBuild === BUILD_ID
+        return served
           ? { rows: [{ fact_id: 'active-dignity', fact_value_text: 'exalted' }] }
           : { rows: [{ fact_id: 'stale-dignity', fact_value_text: 'debilitated' }] }
       }
       if (sql.includes("fact_category = 'graha_shadbala_total'")) {
-        return selectedBuild === BUILD_ID
+        return served
           ? { rows: [{ fact_id: 'active-shadbala', fact_value_num: 5 }] }
           : { rows: [{ fact_id: 'stale-shadbala', fact_value_num: 1 }] }
       }
@@ -76,7 +90,7 @@ describe('judgment mandatory completed-build fence', () => {
       house: 9, varga: 'D1', fact_ids: ['active-placement'],
     }
 
-    const active: GrahaCondition = await gradeGraha(CHART_ID, AYANAMSHA, graha, BUILD_ID)
+    const active: GrahaCondition = await gradeGraha(CHART_ID, AYANAMSHA, graha, [BUILD_ID, '33333333-3333-4333-8333-333333333333'])
     const stale: GrahaCondition = await gradeGraha(CHART_ID, AYANAMSHA, graha, STALE_BUILD_ID)
 
     expect(active).toMatchObject({ dignity_state: 'exalted', dignity_weight: 2, shadbala_rupa: 5 })
@@ -85,9 +99,9 @@ describe('judgment mandatory completed-build fence', () => {
     expect(stale).toMatchObject({ dignity_state: 'debilitated', dignity_weight: -2, shadbala_rupa: 1 })
 
     for (const [sql, params] of queryMock.mock.calls) {
-      expect(String(sql)).toContain('build_id = $4::uuid')
+      expect(String(sql)).toContain('build_id = ANY($4::uuid[])')
       expect(String(sql)).not.toContain('build_id = $4::text')
-      expect([BUILD_ID, STALE_BUILD_ID]).toContain((params as unknown[]).at(-1))
+      expect(Array.isArray((params as unknown[]).at(-1))).toBe(true)
     }
   })
 })

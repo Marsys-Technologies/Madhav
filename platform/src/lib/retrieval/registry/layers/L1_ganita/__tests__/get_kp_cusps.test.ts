@@ -49,9 +49,9 @@ describe('getKpCuspsCapability', () => {
     const result = await getKpCuspsCapability.handler({ chart_id: CHART_ID, build_id: buildId }, undefined)
 
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    expect(sql).toContain('AND build_id = $4::uuid')
+    expect(sql).toContain('AND build_id = ANY($4::uuid[])')
     expect(sql).not.toContain('AND build_id = $4::text')
-    expect(params).toEqual([CHART_ID, 'krishnamurti', expect.any(Array), buildId])
+    expect(params).toEqual([CHART_ID, 'krishnamurti', expect.any(Array), [buildId]])
     expect((result.content as Record<string, unknown>)['build_id']).toBe(buildId)
   })
 

@@ -359,7 +359,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-      "line": 134,
+      "line": 137,
       "justification": "AUDITED multi-key assembler. The query returns the full deterministically ordered row set (`ORDER BY fact_category, fact_subject, fact_key`) for every requested KP category; it does not reduce or choose a category-only row. The downstream dispatcher preserves and routes the distinct keys into the cusp lord chain, cuspal significators plus cross-source integrity checks, bhava degree map, ruling-planet roles, and optional per-graha KP chains. A single fact_key predicate would incorrectly discard required sibling measurements from this composite serving contract."
     },
     {

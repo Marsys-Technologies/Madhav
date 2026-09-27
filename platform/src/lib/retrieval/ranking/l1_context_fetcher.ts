@@ -26,6 +26,7 @@ import { query } from '@/lib/db/client'
 import type { L1ChartContext, GrahaStrength } from './composite_ranker'
 import { COMPOSITE_CACHE_TTL_MS } from './priors_config'
 import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
+import { buildFenceIds, type BuildFence } from '@/lib/retrieval/registry/generation/served_generation'
 
 // Ranking-layer cache (separate from 60s retrieval cache — needs 30d TTL)
 const _rankingCache = new Map<string, { data: unknown; expiresAt: number }>()
@@ -34,9 +35,10 @@ function rankingCacheKey(
   chart_id: string,
   ayanamsha_id: string,
   as_of_date: string,
-  build_id?: string,
+  build_id?: BuildFence,
 ): string {
-  return `l1ctx::${chart_id}::${ayanamsha_id}::${as_of_date}::${build_id ?? 'unfenced'}`
+  const fence = buildFenceIds(build_id)
+  return `l1ctx::${chart_id}::${ayanamsha_id}::${as_of_date}::${fence ? [...fence].sort().join(',') : 'unfenced'}`
 }
 function rankingCacheGet(key: string): unknown {
   const e = _rankingCache.get(key)
@@ -65,15 +67,16 @@ const L1_GRAHA_TO_CODE: Record<string, string> = Object.fromEntries(
  * @param chart_id - chart UUID
  * @param ayanamsha_id - ayanamsha filter
  * @param as_of_date - ISO date string to resolve current dasha period
- * @param build_id - optional immutable chart-build generation; omitted callers retain
- * historical unfenced behaviour
+ * @param build_id - optional build fence (one build id or a served build set); omitted
+ * callers retain historical unfenced behaviour
  */
 export async function fetchL1Context(
   chart_id: string,
   ayanamsha_id: string,
   as_of_date: string,
-  build_id?: string,
+  build_id?: BuildFence,
 ): Promise<L1ChartContext> {
+  const buildIds = buildFenceIds(build_id)
   const ck = rankingCacheKey(chart_id, ayanamsha_id, as_of_date, build_id)
   const cached = rankingCacheGet(ck)
   if (cached !== undefined) return cached as L1ChartContext
@@ -99,9 +102,9 @@ export async function fetchL1Context(
            (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa')
            OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state')
          )
-       ${build_id ? 'AND build_id = $3::uuid' : ''}
+       ${buildIds ? 'AND build_id = ANY($3::uuid[])' : ''}
        LIMIT 100`,
-      build_id ? [chart_id, ayanamsha_id, build_id] : [chart_id, ayanamsha_id]
+      buildIds ? [chart_id, ayanamsha_id, buildIds] : [chart_id, ayanamsha_id]
     )
 
     for (const row of l1Result.rows) {
@@ -148,11 +151,11 @@ export async function fetchL1Context(
          AND level IN (1, 2)
          AND start_date <= $3::date
          AND end_date > $3::date
-         ${build_id ? 'AND build_id = $4::uuid' : ''}
+         ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}
        ORDER BY level ASC
        LIMIT 2`,
-      build_id
-        ? [chart_id, ayanamsha_id, as_of_date, build_id]
+      buildIds
+        ? [chart_id, ayanamsha_id, as_of_date, buildIds]
         : [chart_id, ayanamsha_id, as_of_date]
     )
     for (const row of dashaResult.rows) {

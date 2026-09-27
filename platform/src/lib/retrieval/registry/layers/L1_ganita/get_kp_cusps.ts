@@ -30,6 +30,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildFenceIds } from '../../generation/served_generation'
 
 const KP_CATEGORIES = [
   'cusp_kp_lords',
@@ -123,7 +124,9 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-    const build_id = args['build_id'] ? String(args['build_id']) : null
+    // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
+    const build_ids = buildFenceIds(args['build_id'])
+    const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
     const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA
     const includeGraha = args['include_graha_kp_lords'] === true || args['include_graha_kp_lords'] === 'true'
@@ -136,12 +139,12 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
              fact_value_text, fact_value_num, fact_value_jsonb
       FROM chart_facts
       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = ANY($3::text[])
-      ${build_id ? 'AND build_id = $4::uuid' : ''}
+      ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}
       ORDER BY fact_category, fact_subject, fact_key`
 
     try {
-      const res = await query<FactRow>(sql, build_id
-        ? [chart_id, ayanamsha_id, categories, build_id]
+      const res = await query<FactRow>(sql, build_ids
+        ? [chart_id, ayanamsha_id, categories, build_ids]
         : [chart_id, ayanamsha_id, categories])
       const rows = res.rows ?? []
 

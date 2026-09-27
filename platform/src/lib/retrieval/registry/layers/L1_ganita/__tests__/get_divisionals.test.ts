@@ -71,9 +71,9 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(contentOf(result)['build_id']).toBe(BUILD_ID)
     expect(mockQuery).toHaveBeenCalledTimes(2)
     for (const [sql, params] of mockQuery.mock.calls) {
-      expect(String(sql)).toMatch(/build_id = \$\d+::text/)
-      expect(String(sql)).toMatch(/build_id_uuid = \$\d+::uuid/)
-      expect(params).toContain(BUILD_ID)
+      expect(String(sql)).toMatch(/build_id = ANY\(\$\d+::text\[\]\)/)
+      expect(String(sql)).toMatch(/build_id_uuid = ANY\(\$\d+::uuid\[\]\)/)
+      expect(params).toContainEqual([BUILD_ID])
     }
   })
 

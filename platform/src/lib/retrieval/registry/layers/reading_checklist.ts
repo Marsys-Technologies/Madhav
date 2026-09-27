@@ -24,6 +24,7 @@
 import { query } from '@/lib/db/client'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
+import { buildFenceIds, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
 
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -106,9 +107,9 @@ export function checklistExhaustiveness(units: ChecklistUnit[]): {
 
 /**
  * The finite producer set behind the Batch 5A wealth pivots.  Every served
- * cross-varga, Ashtakavarga, special-lagna, or yogi/avayogi row must be from
- * the judgment's exact selected build and each producer must still have its
- * current output-digest receipt.  This is a consumption boundary only: it
+ * cross-varga, Ashtakavarga, special-lagna, or yogi/avayogi row must belong to
+ * the chart's served generation (each producer's own writing run) and each
+ * producer must still have its current output-digest receipt.  This is a consumption boundary only: it
  * neither dispatches nor repairs a producer.
  */
 export const WEALTH_READING_REQUIRED_ASSETS = [
@@ -121,15 +122,19 @@ export const WEALTH_READING_REQUIRED_ASSETS = [
 
 export interface WealthReadingSourceFenceAsset {
   asset_id: typeof WEALTH_READING_REQUIRED_ASSETS[number]
+  /** The asset's receipt resolves to the chart's served generation (proven, fresh, current
+   *  spec, completed run, provable writing run). Name retained for wire compatibility. */
   receipt_matches_selected_build: boolean
+  /** The typed served-generation refusal when the receipt does not resolve, else null. */
+  served_generation_reason: UnresolvedGenerationReason | null
   replacement_in_progress: boolean
 }
 
 export interface WealthReadingSourceFence {
   /** False only when the snapshot query itself failed. */
   ok: boolean
-  /** True only when every named producer has a fresh/proven current-spec receipt for this
-   * exact build and no replacement can have invalidated it. */
+  /** True only when every named producer resolves to the chart's served generation and no
+   * replacement can have invalidated it. */
   ready: boolean
   assets: WealthReadingSourceFenceAsset[]
 }
@@ -137,6 +142,7 @@ export interface WealthReadingSourceFence {
 interface SourceReceiptFenceAsset {
   asset_id: string
   receipt_matches_selected_build: boolean
+  served_generation_reason: UnresolvedGenerationReason | null
   replacement_in_progress: boolean
 }
 
@@ -156,7 +162,7 @@ interface SourceReceiptFence {
  */
 async function fetchSourceReceiptFence(
   chart_id: string,
-  build_id: string,
+  generation: ChartServedGeneration,
   requiredAssets: readonly string[],
 ): Promise<SourceReceiptFence> {
   const unavailable = (ok: boolean): SourceReceiptFence => ({
@@ -165,6 +171,7 @@ async function fetchSourceReceiptFence(
     assets: requiredAssets.map(asset_id => ({
       asset_id,
       receipt_matches_selected_build: false,
+      served_generation_reason: null,
       replacement_in_progress: false,
     })),
   })
@@ -192,7 +199,6 @@ async function fetchSourceReceiptFence(
             AND digest_spec.retired_at IS NULL
           WHERE receipt.asset_id = ANY($1::text[])
             AND receipt.chart_id = $2::uuid
-            AND receipt.build_id = $3::uuid
             AND receipt.receipt_state = 'proven'
             AND freshness.freshness_state = 'fresh'
           ORDER BY receipt.asset_id, receipt.observed_at DESC
@@ -237,14 +243,19 @@ async function fetchSourceReceiptFence(
          FROM required_assets required_asset
          LEFT JOIN selected_receipts selected ON selected.asset_id = required_asset.asset_id
         ORDER BY required_asset.asset_id ASC`,
-      [[...requiredAssets], chart_id, build_id],
+      [[...requiredAssets], chart_id],
     )
     const byAsset = new Map(res.rows.map(row => [row.asset_id, row]))
     const assets = requiredAssets.map(asset_id => {
       const row = byAsset.get(asset_id)
+      // Each producer is fenced to its OWN served generation, never to one chart-wide run:
+      // the five wealth producers are routinely rebuilt by separate single-asset runs.
+      const binding = generation.assets[asset_id]
       return {
         asset_id,
-        receipt_matches_selected_build: row?.receipt_matches_selected_build === true,
+        receipt_matches_selected_build: row?.receipt_matches_selected_build === true && binding?.state === 'resolved',
+        served_generation_reason: binding === undefined ? 'no_chart_receipt' as const
+          : binding.state === 'unresolved' ? binding.reason : null,
         replacement_in_progress: row?.replacement_in_progress === true,
       }
     })
@@ -260,9 +271,9 @@ async function fetchSourceReceiptFence(
 
 export async function fetchWealthReadingSourceFence(
   chart_id: string,
-  build_id: string,
+  generation: ChartServedGeneration,
 ): Promise<WealthReadingSourceFence> {
-  const fence = await fetchSourceReceiptFence(chart_id, build_id, WEALTH_READING_REQUIRED_ASSETS)
+  const fence = await fetchSourceReceiptFence(chart_id, generation, WEALTH_READING_REQUIRED_ASSETS)
   return {
     ...fence,
     assets: fence.assets.map(asset => ({
@@ -276,9 +287,9 @@ export async function fetchWealthReadingSourceFence(
  * fence rather than borrowing the natal wealth pivot's five-producer fence. */
 export async function fetchTajakaSourceFence(
   chart_id: string,
-  build_id: string,
+  generation: ChartServedGeneration,
 ): Promise<SourceReceiptFence> {
-  return fetchSourceReceiptFence(chart_id, build_id, ['ga_tajaka'])
+  return fetchSourceReceiptFence(chart_id, generation, ['ga_tajaka'])
 }
 
 // ── Leg 1: fired sensitive-degree checks (MC-030) ─────────────────────────────
@@ -328,7 +339,7 @@ export interface SensitiveDegreeResult {
 export async function fetchSensitiveDegreeFirings(
   chart_id: string,
   ayanamsha_id: string,
-  build_id?: string,
+  build_id?: BuildFence,
 ): Promise<SensitiveDegreeResult> {
   const out: SensitiveDegreeResult = { firings: [], checked: 0, available: false, fact_ids: [] }
   try {
@@ -341,9 +352,9 @@ export async function fetchSensitiveDegreeFirings(
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND fact_category = 'sensitive_degree_check'
           AND fact_key = ANY($3)
-          ${build_id ? 'AND build_id = $4::uuid' : ''}`,
+          ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       build_id
-        ? [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS], build_id]
+        ? [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS], buildFenceIds(build_id)]
         : [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS]],
     )
     out.available = res.rows.length > 0
@@ -568,7 +579,7 @@ export async function fetchVargaRatification(
   signalDomain: string,
   varga: string,
   subjects: Array<{ role: string; code: string }>,
-  build_id?: string,
+  build_id?: BuildFence,
 ): Promise<VargaRatificationResult> {
   const per_subject: VargaRatificationSubjectResult[] = subjects.map(s => ({
     role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation,
@@ -583,9 +594,9 @@ export async function fetchVargaRatification(
         `SELECT subject, value_jsonb FROM chart_vichara
          WHERE chart_id = $1 AND ayanamsha_id = $2 AND vichara_family = 'varga_ratification'
            AND domain = $3 AND subject = ANY($4)
-           ${build_id ? 'AND build_id = $5::uuid' : ''}`,
+           ${build_id ? 'AND build_id = ANY($5::uuid[])' : ''}`,
         build_id
-          ? [chart_id, ayanamsha_id, vicharaDomain, subjectCodes, build_id]
+          ? [chart_id, ayanamsha_id, vicharaDomain, subjectCodes, buildFenceIds(build_id)]
           : [chart_id, ayanamsha_id, vicharaDomain, subjectCodes],
       )
       const bySubject = new Map(res.rows.map(r => [r.subject, r.value_jsonb]))
@@ -650,7 +661,7 @@ export async function fetchWealthCorroboratingVargas(
   chart_id: string,
   ayanamsha_id: string,
   subjects: Array<{ role: string; code: string }>,
-  build_id: string,
+  build_id: BuildFence,
 ): Promise<WealthCorroboratingVargaResult> {
   const uniqueSubjects = [...new Map(subjects.map(subject => [subject.code, subject])).values()]
   const codes = uniqueSubjects.map(subject => subject.code)
@@ -660,10 +671,10 @@ export async function fetchWealthCorroboratingVargas(
       `SELECT id::text AS id, subject, value_jsonb, constituent_fact_ids
          FROM chart_vichara
         WHERE chart_id = $1 AND ayanamsha_id = $2
-          AND build_id = $3::uuid AND vichara_family = 'varga_ratification'
+          AND build_id = ANY($3::uuid[]) AND vichara_family = 'varga_ratification'
           AND domain = 'wealth' AND subject = ANY($4)
         ORDER BY subject ASC, id ASC`,
-      [chart_id, ayanamsha_id, build_id, codes],
+      [chart_id, ayanamsha_id, buildFenceIds(build_id), codes],
     )
     const bySubject = new Map<string, typeof res.rows>()
     for (const row of res.rows) bySubject.set(row.subject, [...(bySubject.get(row.subject) ?? []), row])
@@ -699,7 +710,7 @@ export async function fetchWealthAshtakavarga(
   chart_id: string,
   ayanamsha_id: string,
   actor_codes: string[],
-  build_id: string,
+  build_id: BuildFence,
 ): Promise<WealthAshtakavargaResult> {
   const actors = [...new Set(actor_codes)]
   if (actors.length === 0) return { state: 'source_incomplete', rows: [] }
@@ -707,7 +718,7 @@ export async function fetchWealthAshtakavarga(
     const res = await query<WealthAshtakavargaResult['rows'][number]>(
       `SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num
          FROM chart_facts
-        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
           AND (
             (fact_category = 'ashtakavarga_bindu_per_varga'
              AND fact_subject = ANY($4) AND fact_key = ANY($5))
@@ -716,7 +727,7 @@ export async function fetchWealthAshtakavarga(
              AND fact_subject = ANY($6) AND fact_key = ANY($5))
           )
         ORDER BY fact_category ASC, fact_subject ASC, fact_key ASC, fact_id ASC`,
-      [chart_id, ayanamsha_id, build_id,
+      [chart_id, ayanamsha_id, buildFenceIds(build_id),
         WEALTH_ASHTAKAVARGA_HOUSES.map(house => `SARVA-HOUSE_${house}`),
         [...WEALTH_ASHTAKAVARGA_VARGAS], actors],
     )
@@ -757,17 +768,17 @@ export interface WealthSpecialLagnaResult {
 export async function fetchWealthSpecialLagnas(
   chart_id: string,
   ayanamsha_id: string,
-  build_id: string,
+  build_id: BuildFence,
 ): Promise<WealthSpecialLagnaResult> {
   try {
     const res = await query<WealthSpecialLagnaResult['rows'][number] & { verification_pass_status: string | null }>(
       `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
          FROM chart_facts
-        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
           AND fact_category = 'special_lagna'
           AND fact_subject = ANY($4) AND fact_key = ANY($5)
         ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
-      [chart_id, ayanamsha_id, build_id, [...WEALTH_SPECIAL_LAGNAS], [...WEALTH_SPECIAL_LAGNA_KEYS]],
+      [chart_id, ayanamsha_id, buildFenceIds(build_id), [...WEALTH_SPECIAL_LAGNAS], [...WEALTH_SPECIAL_LAGNA_KEYS]],
     )
     const expected = new Set<string>()
     for (const lagna of WEALTH_SPECIAL_LAGNAS) {
@@ -811,7 +822,7 @@ export interface WealthYogiAvayogiResult {
 export async function fetchWealthYogiAvayogi(
   chart_id: string,
   ayanamsha_id: string,
-  build_id: string,
+  build_id: BuildFence,
 ): Promise<WealthYogiAvayogiResult> {
   const subjects = Object.keys(WEALTH_YOGI_SUBJECT_KEYS) as Array<keyof typeof WEALTH_YOGI_SUBJECT_KEYS>
   const keys = [...new Set(subjects.flatMap(subject => WEALTH_YOGI_SUBJECT_KEYS[subject]))]
@@ -819,11 +830,11 @@ export async function fetchWealthYogiAvayogi(
     const res = await query<WealthYogiAvayogiResult['rows'][number] & { verification_pass_status: string | null }>(
       `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
          FROM chart_facts
-        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
           AND fact_category = 'sensitive_point_yogi'
           AND fact_subject = ANY($4) AND fact_key = ANY($5)
         ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
-      [chart_id, ayanamsha_id, build_id, subjects, keys],
+      [chart_id, ayanamsha_id, buildFenceIds(build_id), subjects, keys],
     )
     const expected = new Set<string>()
     for (const subject of subjects) {
@@ -872,7 +883,7 @@ export interface WealthTajakaResult {
 export async function fetchWealthTajaka(
   chart_id: string,
   ayanamsha_id: string,
-  build_id: string,
+  build_id: BuildFence,
   as_of_date: string,
 ): Promise<WealthTajakaResult> {
   try {
@@ -881,10 +892,10 @@ export async function fetchWealthTajaka(
               year_lord_method, year_lord, candidate_lord_jsonb, muntha_position_jsonb,
               applicable_tajik_yogas_array, verification_pass_status, citation_ref, citation_human
          FROM l1_tajik_varsha_year_lords
-        WHERE chart_id = $1::uuid AND ayanamsha_id = $2 AND build_id = $3::uuid
+        WHERE chart_id = $1::uuid AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
           AND varsha_start_iso <= $4::date AND varsha_end_iso > $4::date
         ORDER BY varsha_year ASC, varsha_id ASC`,
-      [chart_id, ayanamsha_id, build_id, as_of_date],
+      [chart_id, ayanamsha_id, buildFenceIds(build_id), as_of_date],
     )
     if (res.rows.length !== 1) return { state: 'source_incomplete', row: null }
     const row = res.rows[0]!
@@ -930,7 +941,7 @@ export async function fetchKpCuspChain(
   chart_id: string,
   ayanamsha_id: string,
   houses: number[],
-  build_id?: string,
+  build_id?: BuildFence,
 ): Promise<KpCuspResult> {
   const out: KpCuspResult = {
     cusps: [], available: false, fact_ids: [],
@@ -946,7 +957,9 @@ export async function fetchKpCuspChain(
     )
     if (res.is_error) return out
     const c = res.content as Record<string, unknown>
-    if (build_id && c['build_id'] !== build_id) return out
+    // The child echoes the fence it applied; refuse a payload fenced to anything else.
+    if (build_id && JSON.stringify(buildFenceIds(c['build_id'])?.slice().sort() ?? null)
+      !== JSON.stringify(buildFenceIds(build_id)?.slice().sort() ?? null)) return out
     const allCusps = Array.isArray(c['cusps']) ? (c['cusps'] as Record<string, unknown>[]) : []
     out.available = allCusps.length > 0
     const want = new Set(houses)
@@ -1137,7 +1150,7 @@ export async function fetchDomainStructuralCoverage(
   chart_id: string,
   ayanamsha_id: string,
   signal_domain: string,
-  build_id?: string,
+  build_id?: BuildFence,
 ): Promise<DomainStructuralCoverageResult> {
   const out: DomainStructuralCoverageResult = {
     msr_signals: 0,
@@ -1152,22 +1165,22 @@ export async function fetchDomainStructuralCoverage(
       `WITH msr AS (
          SELECT count(*)::int AS c FROM bodha_msr_signals
           WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
-            ${build_id ? 'AND build_id = $4::uuid' : ''}
+            ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}
        ), mech AS (
          SELECT count(*)::int AS c FROM bodha_mechanisms
           WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
-            ${build_id ? 'AND build_id = $4::uuid' : ''}
+            ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}
        ), mech_domains AS (
          SELECT count(DISTINCT d)::int AS c FROM (
            SELECT unnest(domains_affected_array) AS d FROM bodha_mechanisms
             WHERE chart_id = $1 AND ayanamsha_id = $2
-              ${build_id ? 'AND build_id = $4::uuid' : ''}
+              ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}
          ) s
        )
        SELECT msr.c AS msr_count, mech.c AS mech_count, mech_domains.c AS mech_domain_coverage
          FROM msr, mech, mech_domains`,
       build_id
-        ? [chart_id, ayanamsha_id, signal_domain, build_id]
+        ? [chart_id, ayanamsha_id, signal_domain, buildFenceIds(build_id)]
         : [chart_id, ayanamsha_id, signal_domain],
     )
     const row = res.rows[0]

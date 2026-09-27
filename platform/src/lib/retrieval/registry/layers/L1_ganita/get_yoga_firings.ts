@@ -32,6 +32,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { YOGA_SCUS } from '../../knowledge/editorial'
+import { buildFenceIds } from '../../generation/served_generation'
 
 const MAX_LIMIT = 50
 
@@ -158,7 +159,9 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-    const build_id = args['build_id'] ? String(args['build_id']) : null
+    // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
+    const build_ids = buildFenceIds(args['build_id'])
+    const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
     const all               = args['all'] === true
     const fired             = args['fired'] === undefined ? true : args['fired'] === true
@@ -172,7 +175,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     const filters: string[] = ['f.chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
-    if (build_id)                    { filters.push(`f.build_id = $${p++}::uuid`);    params.push(build_id) }
+    if (build_ids)                   { filters.push(`f.build_id = ANY($${p++}::uuid[])`); params.push(build_ids) }
     if (!all)                       { filters.push(`f.fired = $${p++}`);             params.push(fired) }
     if (ayanamsha_id)               { filters.push(`f.ayanamsha_id = $${p++}`);      params.push(ayanamsha_id) }
     if (bhanga_active !== null)     { filters.push(`f.bhanga_active = $${p++}`);     params.push(bhanga_active) }

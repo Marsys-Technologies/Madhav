@@ -21,6 +21,7 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
+import { buildFenceIds } from '../../generation/served_generation'
 
 function isZodiacSign(v: unknown): v is ZodiacSign {
   return typeof v === 'string' && (ZODIAC_SIGNS as readonly string[]).includes(v)
@@ -71,7 +72,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
-      const buildId = args.build_id ? String(args.build_id) : null
+      // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
+      const buildIds = buildFenceIds(args.build_id)
+      const buildId = buildIds && buildIds.length === 1 ? buildIds[0]! : buildIds
       const requestedLimit = Number(args.limit ?? 300)
       const limit = Number.isFinite(requestedLimit)
         ? Math.min(Math.max(Math.floor(requestedLimit), 1), 2000)
@@ -83,9 +86,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, limit + 1, offset]
       let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1`
 
-      if (buildId) {
-        sql += ` AND build_id = $${params.length + 1}::text AND build_id_uuid = $${params.length + 1}::uuid`
-        params.push(buildId)
+      if (buildIds) {
+        sql += ` AND build_id = ANY($${params.length + 1}::text[]) AND build_id_uuid = ANY($${params.length + 1}::uuid[])`
+        params.push(buildIds)
       }
 
       if (args.ayanamsha_id) {
@@ -121,8 +124,8 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
         const lagnaResult = await query<{ varga: string; ayanamsha_id: string; sign: string | null }>(
           `SELECT varga, ayanamsha_id, sign FROM chart_divisionals
            WHERE chart_id = $1 AND graha = 'Lagna' AND formula_provenance_text = 'whole_sign'
-           ${buildId ? 'AND build_id = $2::text AND build_id_uuid = $2::uuid' : ''}`,
-          buildId ? [chartId, buildId] : [chartId],
+           ${buildIds ? 'AND build_id = ANY($2::text[]) AND build_id_uuid = ANY($2::uuid[])' : ''}`,
+          buildIds ? [chartId, buildIds] : [chartId],
         )
         const vargaLagnaSign = new Map<string, ZodiacSign>()
         for (const r of lagnaResult.rows ?? []) {

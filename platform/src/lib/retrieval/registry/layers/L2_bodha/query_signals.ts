@@ -65,6 +65,7 @@ import {
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
+import { buildFenceIds } from '../../generation/served_generation'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -367,7 +368,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
     }
 
     const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
-    const build_id        = args['build_id'] ? String(args['build_id']) : null
+    // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
+    const build_ids       = buildFenceIds(args['build_id'])
+    const build_id        = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
     const frame           = ((args['frame'] as string | undefined) ?? 'lagna') as ReferenceFrame
     if (!FRAME_VALUES.includes(frame)) {
       return {
@@ -426,9 +429,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
       const params: unknown[] = [chart_id, ayanamsha_id]
       let p = 3
 
-      if (build_id) {
-        filters.push(`m.build_id = $${p++}::uuid`)
-        params.push(build_id)
+      if (build_ids) {
+        filters.push(`m.build_id = ANY($${p++}::uuid[])`)
+        params.push(build_ids)
       }
 
       if (domain) {
@@ -544,7 +547,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
       if (useComposite && rawRows.length > 0) {
         const as_of_date = new Date().toISOString().split('T')[0]
-        const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_id ?? undefined)
+        const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_ids ?? undefined)
         // Cast through unknown: rawRows carries bodha_msr_signals columns; MsrSignalRow is satisfied at runtime.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const scoredAll = applyCompositeRanking(rawRows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain)
@@ -635,14 +638,14 @@ export const querySignalsCapability: CapabilityDescriptor = {
       if (frame !== 'lagna') {
         try {
           const { sign: referenceSign, ayanamsha_frame_sensitivity } =
-            await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id, ...(build_id ? { build_id } : {}) })
+            await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id, ...(build_ids ? { build_id: build_ids } : {}) })
           const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
           const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
             `SELECT fact_subject, fact_value_text FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
                AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'
-               ${build_id ? 'AND build_id = $4::uuid' : ''}`,
-            build_id ? [chart_id, ayanamsha_id, grahaCodes, build_id] : [chart_id, ayanamsha_id, grahaCodes],
+               ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+            build_ids ? [chart_id, ayanamsha_id, grahaCodes, build_ids] : [chart_id, ayanamsha_id, grahaCodes],
           )
           const activeHouseByGraha: Record<string, number> = {}
           for (const r of signRes.rows) {

@@ -68,8 +68,8 @@ describe('getYogaFiringsCapability — F-D1 classical citation join', () => {
     expect((result.content as Record<string, unknown>)['build_id']).toBe(BUILD_ID)
     expect(mockQuery).toHaveBeenCalledTimes(2)
     for (const [sql, params] of mockQuery.mock.calls) {
-      expect(String(sql)).toContain('f.build_id = $2::uuid')
-      expect(params).toContain(BUILD_ID)
+      expect(String(sql)).toContain('f.build_id = ANY($2::uuid[])')
+      expect(params).toContainEqual([BUILD_ID])
     }
   })
 })

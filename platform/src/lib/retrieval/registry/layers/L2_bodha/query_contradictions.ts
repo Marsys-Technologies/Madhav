@@ -12,6 +12,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { sourceQueryAvailabilityRequirement } from '../../knowledge/source_query_availability'
+import { resolveChartServedGeneration, servedGenerationIdentity } from '../../generation/served_generation'
 
 const DEFAULT_DISCOVERY_LIMIT = 20
 const MAX_DISCOVERY_LIMIT = 200
@@ -29,9 +30,9 @@ function normalizeMinimumNovelty(value: unknown): number {
   return Math.min(Math.max(parsed, 0), 1)
 }
 
-function rowsMatchSelectedBuild(rows: readonly unknown[], buildId: string): boolean {
+function rowsMatchServedBuilds(rows: readonly unknown[], buildIds: readonly string[]): boolean {
   return rows.every((row) => typeof row === 'object' && row !== null
-    && !Array.isArray(row) && (row as Record<string, unknown>)['build_id'] === buildId)
+    && !Array.isArray(row) && buildIds.includes(String((row as Record<string, unknown>)['build_id'])))
 }
 
 export const queryContradictionsCapability: CapabilityDescriptor = {
@@ -153,19 +154,17 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
 
     void _ctx
     try {
-      const activeBuildResult = await query<{ build_id: string }>(`
-        SELECT id::text AS build_id
-          FROM build_runs
-         WHERE chart_id = $1::uuid AND state = 'completed'
-         ORDER BY ended_at DESC NULLS LAST, id DESC
-         LIMIT 1
-      `, [chart_id])
-      const build_id = activeBuildResult.rows[0]?.build_id
+      // Contradictions, discoveries, and anomalies are written by different L2 assets under
+      // their own runs; they are fenced to the chart's served generation, never to the chart's
+      // latest completed run (RC-1).
+      const generation = await resolveChartServedGeneration(chart_id, null)
+      const build_id = servedGenerationIdentity(generation)
+      const build_ids = [...generation.served_build_ids]
       if (!build_id) {
         return {
           content: {
-            code: 'active_completed_build_unavailable',
-            error: 'No active completed build is available for this chart; contradiction evidence cannot be selected safely.',
+            code: 'served_generation_unavailable',
+            error: 'No chart receipt resolves to a served generation; contradiction evidence cannot be selected safely.',
             chart_id,
           },
           is_error: true,
@@ -177,18 +176,18 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
                tension_class, domains_affected_array, combined_salience,
                resolution_hint_jsonb, ayanamsha_id, build_id
         FROM bodha_contradictions
-        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+        WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
         ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC
       `
 
       const promises: Array<Promise<{ rows: unknown[] }>> = [
-        query<Record<string, unknown>>(contraSql, [chart_id, ayanamsha_id, build_id]),
+        query<Record<string, unknown>>(contraSql, [chart_id, ayanamsha_id, build_ids]),
       ]
 
       // Discoveries
       if (include_discoveries) {
-        const discoveryFilters = ['chart_id = $1', 'ayanamsha_id = $2', 'build_id = $3::uuid']
-        const discParams: unknown[] = [chart_id, ayanamsha_id, build_id]
+        const discoveryFilters = ['chart_id = $1', 'ayanamsha_id = $2', 'build_id = ANY($3::uuid[])']
+        const discParams: unknown[] = [chart_id, ayanamsha_id, build_ids]
         let dp = 4
         if (min_novelty > 0) {
           discoveryFilters.push(`non_obviousness_score >= $${dp++}`)
@@ -216,11 +215,11 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
                  chart_baseline_value, sigma_from_baseline,
                  meaningfulness_gate_result, computed_at, build_id
           FROM bodha_anomalies
-          WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = $3::uuid
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
           ORDER BY sigma_from_baseline DESC NULLS LAST, computed_at DESC
           LIMIT 100
         `
-        promises.push(query<Record<string, unknown>>(anomSql, [chart_id, ayanamsha_id, build_id]))
+        promises.push(query<Record<string, unknown>>(anomSql, [chart_id, ayanamsha_id, build_ids]))
       }
 
       const results = await Promise.all(promises)
@@ -230,11 +229,11 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
         ...(include_discoveries ? [results[1]?.rows ?? []] : []),
         ...(include_anomalies ? [results[include_discoveries ? 2 : 1]?.rows ?? []] : []),
       ]
-      if (!selectedRows.every((rows) => rowsMatchSelectedBuild(rows, build_id))) {
+      if (!selectedRows.every((rows) => rowsMatchServedBuilds(rows, build_ids))) {
         return {
           content: {
             code: 'active_build_provenance_mismatch',
-            error: 'A contradiction source row did not match the selected active completed build.',
+            error: 'A contradiction source row did not belong to the chart\'s served generation.',
             chart_id,
             build_id,
           },
@@ -253,7 +252,10 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
         content: {
           chart_id,
           build_id,
-          generation_provenance: { build_id, relation_scope: 'selected_active_completed_build' },
+          generation_provenance: {
+            build_id, relation_scope: 'per_asset_served_generation',
+            generation_hash: generation.generation_hash, served_build_ids: build_ids,
+          },
           ayanamsha_id,
           contradictions:         contraRows,
           contradiction_count:    contraRows.length,

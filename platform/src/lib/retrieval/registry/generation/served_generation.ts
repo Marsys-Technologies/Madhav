@@ -317,3 +317,16 @@ export function resolvedRowsBuildId(generation: ChartServedGeneration, assetId: 
   const asset = generation.assets[assetId]
   return asset?.state === 'resolved' ? asset.rows_build_id : null
 }
+
+/**
+ * A row fence: one build id (legacy/public callers) or a served build set. Chart-level
+ * consumers pass the set; single-writer tools may pass their own asset's rows build.
+ */
+export type BuildFence = string | readonly string[]
+
+/** Normalize a build fence argument to a uuid[] query parameter; null means "no fence". */
+export function buildFenceIds(value: unknown): string[] | null {
+  if (typeof value === 'string') return value.length ? [value] : null
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+  return null
+}
