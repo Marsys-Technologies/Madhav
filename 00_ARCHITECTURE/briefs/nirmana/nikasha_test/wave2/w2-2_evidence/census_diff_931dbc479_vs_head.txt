@@ -1,0 +1,150 @@
+L0: assets 40 -> 40
+   931dbc479 PASS=406 N/A=69 FAIL=43 PARTIAL=50 NO_DETECTOR=122 ERRORED=0 NOT_GENERIC=80
+   HEAD      PASS=407 N/A=68 FAIL=42 PARTIAL=50 NO_DETECTOR=123 ERRORED=0 NOT_GENERIC=80
+L1: assets 19 -> 19
+   931dbc479 PASS=212 N/A=5 FAIL=7 PARTIAL=45 NO_DETECTOR=61 ERRORED=0 NOT_GENERIC=38
+   HEAD      PASS=213 N/A=3 FAIL=7 PARTIAL=45 NO_DETECTOR=62 ERRORED=0 NOT_GENERIC=38
+L2: assets 23 -> 23
+   931dbc479 PASS=265 N/A=5 FAIL=15 PARTIAL=51 NO_DETECTOR=70 ERRORED=0 NOT_GENERIC=46
+   HEAD      PASS=259 N/A=5 FAIL=15 PARTIAL=57 NO_DETECTOR=70 ERRORED=0 NOT_GENERIC=46
+L3: assets 21 -> 21
+   931dbc479 PASS=174 N/A=13 FAIL=55 PARTIAL=28 NO_DETECTOR=83 ERRORED=0 NOT_GENERIC=42
+   HEAD      PASS=197 N/A=13 FAIL=39 PARTIAL=41 NO_DETECTOR=63 ERRORED=0 NOT_GENERIC=42
+L4: assets 9 -> 9
+   931dbc479 PASS=87 N/A=0 FAIL=27 PARTIAL=16 NO_DETECTOR=29 ERRORED=0 NOT_GENERIC=18
+   HEAD      PASS=89 N/A=0 FAIL=18 PARTIAL=25 NO_DETECTOR=27 ERRORED=0 NOT_GENERIC=18
+L5: assets 15 -> 15
+   931dbc479 PASS=122 N/A=29 FAIL=31 PARTIAL=15 NO_DETECTOR=57 ERRORED=0 NOT_GENERIC=30
+   HEAD      PASS=126 N/A=29 FAIL=28 PARTIAL=18 NO_DETECTOR=53 ERRORED=0 NOT_GENERIC=30
+
+VERDICT CHANGES: 71; UNEXPLAINED: 0
+
+### R43 writer recognised (constant / package / shim import) — FAIL->PASS: 13
+    L3 ka_dasha_kala Build.registered: FAIL -> PASS | @register in services/ka_dasha_kala/writer.py; registry agrees
+    L3 ka_gochara_resonance Build.registered: FAIL -> PASS | @register in services/ka_gochara_resonance/writer.py; registry agrees
+    L3 ka_kota_chakra Build.registered: FAIL -> PASS | @register in services/ka_kota_chakra/writer.py; registry agrees
+    L3 ka_kshetra Build.registered: FAIL -> PASS | @register in services/ka_kshetra/writer.py; registry agrees
+    L3 ka_moorti_nirnaya Build.registered: FAIL -> PASS | @register in services/ka_moorti_nirnaya/writer.py; registry agrees
+    L3 ka_muhurta_seva Build.registered: FAIL -> PASS | @register in services/ka_muhurta_seva/writer.py; registry agrees
+    L3 ka_sudarshana_varsha Build.registered: FAIL -> PASS | @register in services/ka_sudarshana_varsha/writer.py; registry agrees
+    L3 ka_tithi_pravesha Build.registered: FAIL -> PASS | @register in services/ka_tithi_pravesha/writer.py; registry agrees
+    L3 ka_tulana Build.registered: FAIL -> PASS | @register in services/ka_tulana/writer.py; registry agrees
+    L3 ka_vedha_gochara Build.registered: FAIL -> PASS | @register in services/ka_vedha_gochara/writer.py; registry agrees
+    L4 ph_rectification Build.registered: FAIL -> PASS | @register in ph_rectification/__init__.py; registry agrees
+    L5 mi_bhara Build.registered: FAIL -> PASS | @register in mi_bhara.py; registry agrees
+    L5 mi_sankalpa Build.registered: FAIL -> PASS | @register in mi_sankalpa.py; registry agrees
+### R43 writer recognised, contract scan now runs — NO_DETECTOR->PASS: 13
+    L3 ka_dasha_kala Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_gochara_resonance Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_kota_chakra Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_kshetra Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_moorti_nirnaya Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_muhurta_seva Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_sudarshana_varsha Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_tithi_pravesha Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_tulana Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_vedha_gochara Build.contract: NO_DETECTOR -> PASS | conformant
+    L4 ph_rectification Build.contract: NO_DETECTOR -> PASS | conformant
+    L5 mi_bhara Build.contract: NO_DETECTOR -> PASS | conformant
+    L5 mi_sankalpa Build.contract: NO_DETECTOR -> PASS | conformant
+### R43 writer recognised, idempotency scan now runs — NO_DETECTOR->PARTIAL: 5
+    L3 ka_dasha_kala Idem.pattern: NO_DETECTOR -> PARTIAL | no idempotency pattern in the writer's own SQL — it likely delegates; verify there
+    L3 ka_muhurta_seva Idem.pattern: NO_DETECTOR -> PARTIAL | no idempotency pattern in the writer's own SQL — it likely delegates; verify there
+    L3 ka_tulana Idem.pattern: NO_DETECTOR -> PARTIAL | no idempotency pattern in the writer's own SQL — it likely delegates; verify there
+    L5 mi_bhara Idem.pattern: NO_DETECTOR -> PARTIAL | no idempotency pattern in the writer's own SQL — it likely delegates; verify there
+    L5 mi_sankalpa Idem.pattern: NO_DETECTOR -> PARTIAL | no idempotency pattern in the writer's own SQL — it likely delegates; verify there
+### R43 writer recognised, idempotency scan now runs — NO_DETECTOR->PASS: 8
+    L3 ka_gochara_resonance Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_kota_chakra Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_kshetra Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_moorti_nirnaya Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_sudarshana_varsha Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_tithi_pravesha Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_vedha_gochara Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L4 ph_rectification Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+### R45 chart-scoped liveness, stale dependency — FAIL->PARTIAL: 16
+    L3 ka_bhavishya_lekha Build.dep_liveness: FAIL -> PARTIAL | 1/4 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_kala_darshana (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_sangam (stal
+    L3 ka_jivana_parva Build.dep_liveness: FAIL -> PARTIAL | 2/5 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_kala_darshana (stale, chart 482012f1)', 'ka_sangam (stale, chart 482012f1)', 'ka_yojaka (stale, c
+    L3 ka_kala_darshana Build.dep_liveness: FAIL -> PARTIAL | 0/3 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_sangam (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_kalasutra (stale, c
+    L3 ka_kalasutra Build.dep_liveness: FAIL -> PARTIAL | 1/3 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_yojaka (stale, chart 482012f1)', 'ka_sangam (stale, chart 482012f1)'] — built, but an upstream ha
+    L3 ka_tulana Build.dep_liveness: FAIL -> PARTIAL | 0/3 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_sangam (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_kala_darshana (stal
+    L3 ka_vighnakara Build.dep_liveness: FAIL -> PARTIAL | 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_sangam (stale, chart 482012f1)', 'ka_yojaka (stale, chart 482012f1)'] — built, but an upstream ha
+    L4 ph_muhurta Build.dep_liveness: FAIL -> PARTIAL | 4/8 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ka_kalasutra (stale, chart 482012f1)', 'ka_vighnakara (stale, 
+    L4 ph_nimitta Build.dep_liveness: FAIL -> PARTIAL | 5/9 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_sangam (stale, chart 482012f1)', 'ka_bhavishya_lekha (stale, chart 482012f1)', 'bo_anveshana (sta
+    L4 ph_phaladesa Build.dep_liveness: FAIL -> PARTIAL | 1/7 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ph_muhurta (stale, chart 482012f1)', 'ph_pratikara (stale, cha
+    L4 ph_pramana Build.dep_liveness: FAIL -> PARTIAL | 0/6 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ph_sankrama (stale, chart 482012f1)', 'ph_muhurta (stale, char
+    L4 ph_pratikara Build.dep_liveness: FAIL -> PARTIAL | 0/4 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'bo_upaya (stale, chart 482012f1)', 'ka_vighnakara (stale, char
+    L4 ph_rectification Build.dep_liveness: FAIL -> PARTIAL | 0/1 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L4 ph_sankrama Build.dep_liveness: FAIL -> PARTIAL | 1/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L4 ph_sodhana Build.dep_liveness: FAIL -> PARTIAL | 1/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L4 ph_suddha_sodhana Build.dep_liveness: FAIL -> PARTIAL | 0/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_sodhana (stale, chart 482012f1)', 'ph_nimitta (stale, chart 482012f1)'] — built, but an upstream 
+    L5 mi_bhavisya Build.dep_liveness: FAIL -> PARTIAL | 3/6 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_pramana (stale, chart 482012f1)', 'ph_nimitta (stale, chart 482012f1)', 'ph_phaladesa (stale, cha
+### R45 chart-scoped liveness, stale dependency — PASS->PARTIAL: 10
+    L2 bo_anveshana Build.dep_liveness: PASS -> PARTIAL | 5/6 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_drishti (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L2 bo_chart_gestalt Build.dep_liveness: PASS -> PARTIAL | 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_paths (stale, chart 482012f1)', 'bo_anveshana (stale, chart 482012f1)'] — built, but an upstr
+    L2 bo_pramana_mapa Build.dep_liveness: PASS -> PARTIAL | 5/8 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_upaya (stale, chart 482012f1)', 'bo_drishti (stale, chart 482012f1)', 'bo_anveshana (stale, chart
+    L2 bo_samvada Build.dep_liveness: PASS -> PARTIAL | 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_upaya (stale, chart 482012f1)', 'bo_pramana_mapa (stale, chart 482012f1)'] — built, but an upstre
+    L2 bo_upaya Build.dep_liveness: PASS -> PARTIAL | 4/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_motifs (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L2 bo_yantra_mechanism Build.dep_liveness: PASS -> PARTIAL | 1/3 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_motifs (stale, chart 482012f1)', 'bo_cgm_paths (stale, chart 482012f1)'] — built, but an upst
+    L3 ka_avadhi Build.dep_liveness: PASS -> PARTIAL | 2/3 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L3 ka_kshetra Build.dep_liveness: PASS -> PARTIAL | 7/9 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)', 'bo_upaya (stale, chart 482012f1)'] — built, but an upstream h
+    L3 ka_sangam Build.dep_liveness: PASS -> PARTIAL | 10/11 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_yojaka (stale, chart 482012f1)'] — built, but an upstream has moved since
+    L3 ka_yojaka Build.dep_liveness: PASS -> PARTIAL | 6/7 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)'] — built, but an upstream has moved since
+### R51 comment-only attribution — FAIL->NO_DETECTOR: 1
+    L0 bg_dignity_reference Dens.served: FAIL -> NO_DETECTOR | NO_DETECTOR — no capability module's code references bg_dignity_reference; named in comments only in: index.ts, query_avastha_schemes.ts, query_combustion_orbs.ts, query_
+### R51 comment-only attribution — PASS->NO_DETECTOR: 1
+    L1 ga_strength Dens.served: PASS -> NO_DETECTOR | NO_DETECTOR — no capability module's code references ga_strength; named in comments only in: get_dasha_lord_capability.ts — the served surface cannot be attributed by cod
+### R51 module attribution by code (the only declaring module named the table in a comment) — PASS->FAIL: 1
+    L4 ph_nimitta Dens.served: PASS -> FAIL | 2 module(s): query_phala_calibration.ts, query_predictive_anchors.ts; declaring density_contract: 0
+### R53 target-less writer graded on the engine's produced-table rule — N/A->PASS: 3
+    L0 bg_prashna_rules Build.target: N/A -> PASS | no single target_table: a multi-table asset whose count_sql declares the 5 tables it produces (bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators,
+    L1 ga_strength Build.target: N/A -> PASS | no target_table: writes a partition of chart_facts, the declared target of ga_ayurdaya, ga_nakshatra, ga_panchanga, ga_positions, ga_sade_sati, ga_sensitive, ga_sensitive
+    L1 ga_structural Build.target: N/A -> PASS | no single target_table: a multi-table asset whose count_sql declares the 2 tables it produces (chart_facts, fact_category_ownership) — the engine's produced-table rule
+
+### FAVOURABLE flips (-> PASS or N/A): 37
+    (closable->closable) L0 bg_prashna_rules Build.target: N/A -> PASS | no single target_table: a multi-table asset whose count_sql declares the 5 tables it produces (bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators,
+    (closable->closable) L1 ga_strength Build.target: N/A -> PASS | no target_table: writes a partition of chart_facts, the declared target of ga_ayurdaya, ga_nakshatra, ga_panchanga, ga_positions, ga_sade_sati, ga_sensitive, ga_sensitive
+    (closable->closable) L1 ga_structural Build.target: N/A -> PASS | no single target_table: a multi-table asset whose count_sql declares the 2 tables it produces (chart_facts, fact_category_ownership) — the engine's produced-table rule
+    L3 ka_dasha_kala Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_dasha_kala Build.registered: FAIL -> PASS | @register in services/ka_dasha_kala/writer.py; registry agrees
+    L3 ka_gochara_resonance Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_gochara_resonance Build.registered: FAIL -> PASS | @register in services/ka_gochara_resonance/writer.py; registry agrees
+    L3 ka_gochara_resonance Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_kota_chakra Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_kota_chakra Build.registered: FAIL -> PASS | @register in services/ka_kota_chakra/writer.py; registry agrees
+    L3 ka_kota_chakra Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_kshetra Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_kshetra Build.registered: FAIL -> PASS | @register in services/ka_kshetra/writer.py; registry agrees
+    L3 ka_kshetra Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_moorti_nirnaya Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_moorti_nirnaya Build.registered: FAIL -> PASS | @register in services/ka_moorti_nirnaya/writer.py; registry agrees
+    L3 ka_moorti_nirnaya Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_muhurta_seva Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_muhurta_seva Build.registered: FAIL -> PASS | @register in services/ka_muhurta_seva/writer.py; registry agrees
+    L3 ka_sudarshana_varsha Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_sudarshana_varsha Build.registered: FAIL -> PASS | @register in services/ka_sudarshana_varsha/writer.py; registry agrees
+    L3 ka_sudarshana_varsha Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_tithi_pravesha Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_tithi_pravesha Build.registered: FAIL -> PASS | @register in services/ka_tithi_pravesha/writer.py; registry agrees
+    L3 ka_tithi_pravesha Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L3 ka_tulana Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_tulana Build.registered: FAIL -> PASS | @register in services/ka_tulana/writer.py; registry agrees
+    L3 ka_vedha_gochara Build.contract: NO_DETECTOR -> PASS | conformant
+    L3 ka_vedha_gochara Build.registered: FAIL -> PASS | @register in services/ka_vedha_gochara/writer.py; registry agrees
+    L3 ka_vedha_gochara Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L4 ph_rectification Build.contract: NO_DETECTOR -> PASS | conformant
+    L4 ph_rectification Build.registered: FAIL -> PASS | @register in ph_rectification/__init__.py; registry agrees
+    L4 ph_rectification Idem.pattern: NO_DETECTOR -> PASS | DELETE FROM present (delete-then-insert)
+    L5 mi_bhara Build.contract: NO_DETECTOR -> PASS | conformant
+    L5 mi_bhara Build.registered: FAIL -> PASS | @register in mi_bhara.py; registry agrees
+    L5 mi_sankalpa Build.contract: NO_DETECTOR -> PASS | conformant
+    L5 mi_sankalpa Build.registered: FAIL -> PASS | @register in mi_sankalpa.py; registry agrees
+
+### text-only changes (verdict unchanged): 500
+   D6 item 2: NO_DETECTOR text now names the linked attempt: 254  {('L0', 'Cost.baseline'): 40, ('L0', 'Earn.build_record'): 40, ('L1', 'Cost.baseline'): 19, ('L1', 'Earn.build_record'): 19, ('L2', 'Cost.baseline'): 23, ('L2', 'Earn.build_record'): 23, ('L3', 'Cost.baseline'): 21, ('L3', 'Earn.build_record'): 21, ('L4', 'Cost.baseline'): 9, ('L4', 'Earn.build_record'): 9, ('L5', 'Cost.baseline'): 15, ('L5', 'Earn.build_record'): 15}
+   R233: executed count now newline-safe (was undercounted): 29  {('L1', 'Build.exercised'): 6, ('L2', 'Build.exercised'): 7, ('L3', 'Build.exercised'): 8, ('L4', 'Build.exercised'): 4, ('L5', 'Build.exercised'): 4}
+   R45: text names the chart scope measured: 73  {('L0', 'Build.dep_liveness'): 16, ('L1', 'Build.dep_liveness'): 18, ('L2', 'Build.dep_liveness'): 17, ('L3', 'Build.dep_liveness'): 10, ('L5', 'Build.dep_liveness'): 12}
+   R46: bo_samvada counted by its view: 2  {('L2', 'Build.completion'): 1, ('L2', 'Count.floor'): 1}
+   R49 latest dated error / R233+R50 exact tallies: 79  {('L0', 'Build.history'): 8, ('L1', 'Build.history'): 14, ('L2', 'Build.history'): 20, ('L3', 'Build.history'): 17, ('L4', 'Build.history'): 9, ('L5', 'Build.history'): 11}
+   R51: module list attributed by code: 62  {('L0', 'Dens.served'): 7, ('L1', 'Dens.served'): 10, ('L2', 'Dens.served'): 13, ('L3', 'Dens.served'): 17, ('L4', 'Dens.served'): 8, ('L5', 'Dens.served'): 7}
+   R54: measured fraction stated: 1  {('L0', 'Vocab.alias'): 1}

@@ -1,0 +1,4 @@
+R51 (text-mention attribution -> code attribution), six layers: module list changed on 65 assets; Dens.served verdict moved on 3
+  L0 bg_dignity_reference: FAIL -> NO_DETECTOR | removed ['index.ts', 'query_avastha_schemes.ts', 'query_combustion_orbs.ts', 'query_graha_naisargika_friendship.ts', 'query_motion_state_thresholds.ts'] | declaring 0->0
+  L1 ga_strength: PASS -> NO_DETECTOR | removed ['get_dasha_lord_capability.ts'] | declaring 1->0
+  L4 ph_nimitta: PASS -> FAIL | removed ['index.ts', 'query_prospective_ledger.ts', 'salience_order.ts'] | declaring 1->0
