@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE1_B3_BUILD_DEPENDENCIES_READER_SCAN
 version: "1.0"
-generated_at: 2026-09-27T05:59:29.398965+00:00
+generated_at: 2026-09-27T06:24:27.355446+00:00
 generator: platform/scripts/governance/catalog_provenance.py --reader-scan
 ---
 
@@ -174,12 +174,12 @@ Total hits: **76**
 
 ## `platform/scripts/governance/__tests__/test_catalog_provenance.py`
 
-- L294: `scan finds its own prior report (which lists 'build_dependencies' on every hit`
-- L303: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
-- L309: `stale_report.write_text("\n".join(f"- L{i}: `build_dependencies`" for i in range(50)))`
-- L322: `line mentioning 'build_dependencies' while describing the scan itself`
-- L332: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
-- L337: `"\n".join(f"mentions build_dependencies on line {i}" for i in range(20))`
+- L295: `scan finds its own prior report (which lists 'build_dependencies' on every hit`
+- L304: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
+- L310: `stale_report.write_text("\n".join(f"- L{i}: `build_dependencies`" for i in range(50)))`
+- L323: `line mentioning 'build_dependencies' while describing the scan itself`
+- L333: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
+- L338: `"\n".join(f"mentions build_dependencies on line {i}" for i in range(20))`
 
 ## `platform/scripts/governance/catalog_provenance.py`
 
@@ -188,8 +188,8 @@ Total hits: **76**
 - L1116: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
 - L1127: `which both discuss 'build_dependencies' at length while describing this very`
 - L1129: `previous output file listing 'build_dependencies' on every line, and hit`
-- L1267: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
-- L1441: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
+- L1310: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
+- L1516: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
 
 ## `platform/src/generated/harvest/e2_db_truth.json`
 
