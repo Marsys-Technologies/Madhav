@@ -3,7 +3,7 @@ import { createConnection, listAiConsoleState } from '@/lib/ai-console/repositor
 import { encryptCredential } from '@/lib/ai-console/crypto'
 import { validateConnection } from '@/lib/ai-console/validation'
 import { ProviderIdSchema } from '@/lib/ai-console/types'
-import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, projectConnection, projectState, projectValidation, readBody, withAiConsole } from '../_shared'
+import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, projectConnection, projectState, projectValidation, readBody, withAiConsole, withAiConsoleMutation, withValidationAdmission } from '../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +18,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => withValidationAdmission(userId, 'create', async () => {
     const input = await readBody(request, CreateSchema)
     const connection = projectConnection(await createConnection(userId,
       { name: input.name, providerId: input.providerId }, encryptCredential(input.apiKey)))
     const validation = projectValidation(await validateConnection(userId, connection.id, { credentialVersion: 1, signal: request.signal }))
     return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE }, 201)
-  })
+  }))
 }

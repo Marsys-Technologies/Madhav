@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { deleteConfiguration, saveConfiguration } from '@/lib/ai-console/repository'
 import { AssignmentsInputSchema, DeleteSchema, NameSchema, dependencyPreview, json, ownedConfiguration, projectConfiguration,
-  readBody, readId, withAiConsole, type IdContext } from '../../_shared'
+  readBody, readId, withAiConsole, withAiConsoleMutation, type IdContext } from '../../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: IdContext) {
 }
 
 export async function PATCH(request: Request, context: IdContext) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => {
     const id = await readId(context)
     const input = await readBody(request, EditSchema)
     await ownedConfiguration(userId, id)
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, context: IdContext) {
 }
 
 export async function DELETE(request: Request, context: IdContext) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => {
     const id = await readId(context)
     const input = await readBody(request, DeleteSchema, true)
     await ownedConfiguration(userId, id)

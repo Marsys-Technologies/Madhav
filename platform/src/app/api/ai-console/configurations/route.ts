@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { duplicateConfiguration, listAiConsoleState, saveConfiguration } from '@/lib/ai-console/repository'
-import { AssignmentsInputSchema, IdSchema, NameSchema, json, ownedConfiguration, projectConfiguration, projectState, readBody, withAiConsole } from '../_shared'
+import { AssignmentsInputSchema, IdSchema, NameSchema, json, ownedConfiguration, projectConfiguration, projectState, readBody, withAiConsole, withAiConsoleMutation } from '../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => {
     const input = await readBody(request, CreateSchema)
     if ('duplicateFrom' in input) {
       await ownedConfiguration(userId, input.duplicateFrom)

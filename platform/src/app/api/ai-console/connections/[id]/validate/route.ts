@@ -1,5 +1,5 @@
 import { validateConnection } from '@/lib/ai-console/validation'
-import { ChargeSchema, VALIDATION_DISCLOSURE, json, ownedConnection, projectValidation, readBody, readId, withAiConsole, type IdContext } from '../../../_shared'
+import { ChargeSchema, VALIDATION_DISCLOSURE, json, ownedConnection, projectValidation, readBody, readId, withAiConsole, withAiConsoleMutation, withValidationAdmission, type IdContext } from '../../../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,11 +11,13 @@ export async function GET(_request: Request, context: IdContext) {
 }
 
 export async function POST(request: Request, context: IdContext) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => {
     const id = await readId(context)
-    await readBody(request, ChargeSchema)
-    const { credentialVersion } = await ownedConnection(userId, id)
-    const validation = projectValidation(await validateConnection(userId, id, { credentialVersion, signal: request.signal }))
-    return json({ validation, validationDisclosure: VALIDATION_DISCLOSURE })
+    return withValidationAdmission(userId, id, async () => {
+      await readBody(request, ChargeSchema)
+      const { credentialVersion } = await ownedConnection(userId, id)
+      const validation = projectValidation(await validateConnection(userId, id, { credentialVersion, signal: request.signal }))
+      return json({ validation, validationDisclosure: VALIDATION_DISCLOSURE })
+    })
   })
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiConsoleError } from '@/lib/ai-console/errors'
+import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), flag: vi.fn(), listAiConsoleState: vi.fn(), encrypt: vi.fn(), validate: vi.fn(),
   createConnection: vi.fn(), renameConnection: vi.fn(), replaceConnectionCredential: vi.fn(), saveConfiguration: vi.fn(),
@@ -36,6 +37,7 @@ const routes = [
 
 beforeEach(() => {
   vi.resetAllMocks()
+  __resetRpmCountersForTest()
   mocks.flag.mockReturnValue(true)
   mocks.auth.mockResolvedValue({ user: { uid: 'owner' }, profile: { id: 'owner', status: 'active', role: 'guest' } })
   mocks.listAiConsoleState.mockResolvedValue({ connections: [], models: [], configurations: [], roles: [], defaultChoice: null, clis: [], cliModels: [] })

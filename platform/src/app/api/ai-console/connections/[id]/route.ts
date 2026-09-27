@@ -3,7 +3,7 @@ import { deleteConnection, renameConnection, replaceConnectionCredential } from 
 import { encryptCredential } from '@/lib/ai-console/crypto'
 import { validateConnection } from '@/lib/ai-console/validation'
 import { CredentialSchema, DeleteSchema, NameSchema, VALIDATION_DISCLOSURE, dependencyPreview, json, ownedConnection,
-  projectConnection, projectValidation, readBody, readId, withAiConsole, type IdContext } from '../../_shared'
+  projectConnection, projectValidation, readBody, readId, withAiConsole, withAiConsoleMutation, withValidationAdmission, type IdContext } from '../../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,20 +22,25 @@ export async function GET(_request: Request, context: IdContext) {
 }
 
 export async function PATCH(request: Request, context: IdContext) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => {
     const id = await readId(context)
     const input = await readBody(request, PatchSchema)
-    await ownedConnection(userId, id)
-    if (!('apiKey' in input)) return json({ connection: projectConnection(await renameConnection(userId, id, input.name)) })
-    const replaced = await replaceConnectionCredential(userId, id, encryptCredential(input.apiKey))
-    const validation = projectValidation(await validateConnection(userId, id, { credentialVersion: replaced.credentialVersion, signal: request.signal }))
-    const connection = projectConnection(replaced.connection)
-    return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE })
+    if (!('apiKey' in input)) {
+      await ownedConnection(userId, id)
+      return json({ connection: projectConnection(await renameConnection(userId, id, input.name)) })
+    }
+    return withValidationAdmission(userId, id, async () => {
+      await ownedConnection(userId, id)
+      const replaced = await replaceConnectionCredential(userId, id, encryptCredential(input.apiKey))
+      const validation = projectValidation(await validateConnection(userId, id, { credentialVersion: replaced.credentialVersion, signal: request.signal }))
+      const connection = projectConnection(replaced.connection)
+      return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE })
+    })
   })
 }
 
 export async function DELETE(request: Request, context: IdContext) {
-  return withAiConsole(async userId => {
+  return withAiConsoleMutation(async userId => {
     const id = await readId(context)
     const input = await readBody(request, DeleteSchema, true)
     await ownedConnection(userId, id)

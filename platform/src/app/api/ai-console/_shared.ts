@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { getFlag } from '@/lib/config'
+import { checkRpm } from '@/lib/mcp/rate_limiter_core'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError, type AiErrorCode } from '@/lib/ai-console/errors'
 import { listAiConsoleState, previewChoiceDependencies } from '@/lib/ai-console/repository'
 import {
@@ -31,7 +32,28 @@ type Row = Record<string, unknown>
 type ConsoleState = Awaited<ReturnType<typeof listAiConsoleState>>
 
 class RequestError extends Error {
-  constructor(readonly status: number, readonly publicCode: string) { super(publicCode) }
+  constructor(readonly status: number, readonly publicCode: string, readonly retryAfter?: number) { super(publicCode) }
+}
+
+const MUTATION_RPM_LIMIT = 30
+const VALIDATION_RPM_LIMIT = 3
+const MAX_BODY_BYTES = 16 * 1024
+// Both checkRpm and this admission set are process-local: restart resets them;
+// multi-instance deployment requires shared coordination for a global guarantee.
+const validationFlights = new Set<string>()
+
+function checkRate(key: string, limit: number) {
+  const result = checkRpm(key, limit)
+  if (!result.allowed) throw new RequestError(429, 'rate_limited', result.retry_after_seconds ?? 60)
+}
+
+/** Covers the entire mutation plus probe, so rejection cannot leave a changed key. */
+export async function withValidationAdmission<T>(userId: string, target: string, work: () => Promise<T>): Promise<T> {
+  const key = JSON.stringify([userId, target])
+  if (validationFlights.has(key)) throw new RequestError(429, 'rate_limited', 30)
+  checkRate(`ai-console:validation:${userId}`, VALIDATION_RPM_LIMIT)
+  validationFlights.add(key)
+  try { return await work() } finally { validationFlights.delete(key) }
 }
 
 export function json(body: unknown, status = 200) {
@@ -48,15 +70,20 @@ const ERROR_STATUS: Record<AiErrorCode, number> = {
 }
 
 /** All handlers, including failures in authentication, share this non-logging boundary. */
-export async function withAiConsole(work: (userId: string) => Promise<NextResponse>) {
+export async function withAiConsole(work: (userId: string) => Promise<NextResponse>, mutation = false) {
   try {
     if (!getFlag('AI_CONSOLE_BYOK')) return json({ error: 'not_found' }, 404)
     const auth = await getServerUserWithProfile()
     if (!auth) return json({ error: 'unauthorized' }, 401)
     if (auth.profile.status !== 'active') return json({ error: 'account_inactive' }, 403)
+    if (mutation) checkRate(`ai-console:mutation:${auth.user.uid}`, MUTATION_RPM_LIMIT)
     return await work(auth.user.uid)
   } catch (error) {
-    if (error instanceof RequestError) return json({ error: error.publicCode }, error.status)
+    if (error instanceof RequestError) {
+      const response = json({ error: error.publicCode }, error.status)
+      if (error.retryAfter !== undefined) response.headers.set('Retry-After', String(Math.max(1, Math.ceil(error.retryAfter))))
+      return response
+    }
     if (error instanceof AiConsoleError) {
       const safe = normalizeAiError(error, { source: 'provider' })
       return json({ error: safe }, ERROR_STATUS[safe.code])
@@ -69,13 +96,57 @@ export async function withAiConsole(work: (userId: string) => Promise<NextRespon
   }
 }
 
+export function withAiConsoleMutation(work: (userId: string) => Promise<NextResponse>) {
+  return withAiConsole(work, true)
+}
+
+/** Count raw bytes (including whitespace), never trusting a declared length alone. */
+async function readBoundedText(request: Request): Promise<string> {
+  const declared = request.headers.get('content-length')
+  let expected: number | undefined
+  if (declared !== null) {
+    expected = Number(declared)
+    // A syntactically valid huge integer is oversize even beyond JS's safe range.
+    const valid = /^\d+$/.test(declared)
+    if (!valid || expected > MAX_BODY_BYTES) {
+      await request.body?.cancel().catch(() => {})
+      throw new RequestError(valid ? 413 : 400, valid ? 'request_too_large' : 'invalid_request')
+    }
+  }
+  const reader = request.body?.getReader()
+  if (!reader) {
+    if (expected !== undefined && expected !== 0) throw new RequestError(400, 'invalid_request')
+    return ''
+  }
+  try {
+    const bytes = new Uint8Array(MAX_BODY_BYTES)
+    let size = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (value.byteLength > MAX_BODY_BYTES - size) throw new RequestError(413, 'request_too_large')
+      bytes.set(value, size)
+      size += value.byteLength
+    }
+    if (expected !== undefined && expected !== size) throw new RequestError(400, 'invalid_request')
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, size))
+  } catch (error) {
+    await reader.cancel().catch(() => {})
+    if (error instanceof RequestError) throw error
+    throw new RequestError(400, 'invalid_request')
+  } finally { reader.releaseLock() }
+}
+
 /** Zod issues can contain user-supplied values/field names; never serialize them. */
 export async function readBody<T>(request: Request, schema: z.ZodType<T>, allowEmpty = false): Promise<T> {
   let value: unknown
   try {
-    const text = await request.text()
+    const text = await readBoundedText(request)
     value = allowEmpty && text.length === 0 ? {} : JSON.parse(text)
-  } catch { throw new RequestError(400, 'invalid_request') }
+  } catch (error) {
+    if (error instanceof RequestError) throw error
+    throw new RequestError(400, 'invalid_request')
+  }
   const parsed = schema.safeParse(value)
   if (!parsed.success) throw new RequestError(400, 'invalid_request')
   return parsed.data

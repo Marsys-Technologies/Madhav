@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 import { AI_ROLES } from '@/lib/ai-console/types'
+import { checkRpm, __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(), flag: vi.fn(), encrypt: vi.fn(), validate: vi.fn(),
@@ -43,6 +44,7 @@ const request = (method: string, body?: unknown) => new Request('http://localhos
 
 beforeEach(() => {
   vi.resetAllMocks()
+  __resetRpmCountersForTest()
   mocks.auth.mockResolvedValue({ user: { uid: 'owner' }, profile: { id: 'owner', status: 'active', role: 'guest' } })
   mocks.flag.mockReturnValue(true)
   mocks.listAiConsoleState.mockResolvedValue(makeState())
@@ -55,6 +57,210 @@ beforeEach(() => {
   mocks.duplicateConfiguration.mockResolvedValue({ id: configId, name: 'Copy', version: 1, roles })
   mocks.previewChoiceDependencies.mockResolvedValue({ configurations: [{ id: configId, name: 'Four roles' }],
     defaultAffected: true, conversations: [{ conversation_id: '33333333-3333-4333-8333-333333333333' }] })
+})
+
+describe('bounded request bodies', () => {
+  const limit = 16 * 1024
+  const payload = JSON.stringify({ name: 'Personal', providerId: 'openai', apiKey: 'test-only', acknowledgeCharge: true })
+  function streamed(chunks: Uint8Array[], contentLength?: string) {
+    const cancel = vi.fn()
+    let index = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) { if (index < chunks.length) controller.enqueue(chunks[index++]); else controller.close() }, cancel,
+    })
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (contentLength !== undefined) headers['Content-Length'] = contentLength
+    return { req: new Request('http://localhost/api/ai-console', { method: 'POST', headers, body, duplex: 'half' } as RequestInit), cancel }
+  }
+  const bytes = (value: string) => new TextEncoder().encode(value)
+
+  it.each([String(limit + 1), '9007199254740992', '9'.repeat(30)])('rejects declared oversize %s before reading or parsing and cancels the body', async length => {
+    const { req, cancel } = streamed([bytes(payload)], length)
+    const response = await connections.POST(req)
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({ error: 'request_too_large' })
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+    expect(mocks.validate).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, '1'])('bounds chunked input even with missing or understated length %s', async contentLength => {
+    const { req, cancel } = streamed([bytes(' '.repeat(limit)), bytes(payload), bytes('unread')], contentLength)
+    const response = await connections.POST(req)
+    expect(response.status).toBe(413)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+    expect(mocks.validate).not.toHaveBeenCalled()
+  })
+
+  it('counts whitespace padding and accepts exactly the byte budget', async () => {
+    const padded = payload + ' '.repeat(limit - bytes(payload).byteLength)
+    expect((await connections.POST(streamed([bytes(padded)], String(limit)).req)).status).toBe(201)
+    mocks.encrypt.mockClear()
+    expect((await connections.POST(streamed([bytes(padded + ' ')]).req)).status).toBe(413)
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+  })
+
+  it.each(['invalid', '-1', '1.2', '1e3', '1, 1'])('rejects invalid Content-Length %s safely', async length => {
+    const { req, cancel } = streamed([bytes(payload)], length)
+    expect((await connections.POST(req)).status).toBe(400)
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+  })
+
+  it('rejects fatal UTF-8 instead of silently replacing invalid bytes', async () => {
+    const { req } = streamed([bytes('{"name":"'), new Uint8Array([0xff]), bytes('","providerId":"openai","apiKey":"test-only","acknowledgeCharge":true}')])
+    const response = await connections.POST(req)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: 'invalid_request' })
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+  })
+
+  it('decodes split multibyte UTF-8 correctly and preserves empty DELETE preview', async () => {
+    const input = bytes(JSON.stringify({ name: 'Personal क', providerId: 'openai', apiKey: 'test-only', acknowledgeCharge: true }))
+    const split = input.indexOf(0xe0) + 1
+    expect((await connections.POST(streamed([input.slice(0, split), input.slice(split)]).req)).status).toBe(201)
+    expect((await connection.DELETE(request('DELETE'), context())).status).toBe(409)
+    expect((await connection.DELETE(new Request('http://localhost', { method: 'DELETE', body: '   ' }), context())).status).toBe(400)
+  })
+
+  it('rejects truncated UTF-8 and mismatched declared lengths without echoing input', async () => {
+    for (const req of [
+      streamed([bytes(payload)], '1').req,
+      streamed([bytes(payload)], String(bytes(payload).byteLength + 1)).req,
+      streamed([bytes('{"name":"'), new Uint8Array([0xe0, 0xa4])]).req,
+    ]) {
+      const response = await connections.POST(req)
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({ error: 'invalid_request' })
+    }
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+  })
+})
+
+describe('mutation and validation admission', () => {
+  const validCreate = () => request('POST', { name: 'Personal', providerId: 'openai', apiKey: randomUUID(), acknowledgeCharge: true })
+  const validReplace = () => request('PATCH', { apiKey: randomUUID(), acknowledgeCharge: true })
+  const validTest = () => request('POST', { acknowledgeCharge: true })
+  const fill = (key: string, limit: number) => { for (let i = 0; i < limit; i++) expect(checkRpm(key, limit).allowed).toBe(true) }
+  const expect429 = async (response: Response) => {
+    expect(response.status).toBe(429)
+    expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(await response.json()).toEqual({ error: 'rate_limited' })
+  }
+
+  it('limits mutations to thirty per minute with the shared counter', async () => {
+    for (let i = 0; i < 30; i++) expect((await defaults.PUT(request('PUT', { choice: target }))).status).toBe(200)
+    await expect429(await defaults.PUT(request('PUT', { choice: target })))
+    expect(mocks.setUserDefault).toHaveBeenCalledTimes(30)
+    expect((await root.GET()).status).toBe(200)
+  })
+
+  it('rejects all mutation methods before parsing, encryption or repository/provider calls', async () => {
+    fill('ai-console:mutation:owner', 30)
+    const body = () => {
+      const req = request('POST', {})
+      vi.spyOn(req.body!, 'getReader').mockImplementation(() => { throw new Error('must not read') })
+      return req
+    }
+    for (const run of [
+      () => connections.POST(body()), () => connection.PATCH(body(), context()), () => connection.DELETE(body(), context()),
+      () => validation.POST(body(), context()), () => configurations.POST(body()),
+      () => configuration.PATCH(body(), context(configId)), () => configuration.DELETE(body(), context(configId)), () => defaults.PUT(body()),
+    ]) await expect429(await run())
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+    expect(mocks.listAiConsoleState).not.toHaveBeenCalled()
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+    expect(mocks.replaceConnectionCredential).not.toHaveBeenCalled()
+    expect(mocks.validate).not.toHaveBeenCalled()
+  })
+
+  it('uses a stricter three-per-minute validation budget shared across create, replace and test', async () => {
+    expect((await connections.POST(validCreate())).status).toBe(201)
+    expect((await connection.PATCH(validReplace(), context())).status).toBe(200)
+    expect((await validation.POST(validTest(), context())).status).toBe(200)
+    mocks.encrypt.mockClear()
+    mocks.createConnection.mockClear()
+    mocks.replaceConnectionCredential.mockClear()
+    for (const run of [() => connections.POST(validCreate()), () => connection.PATCH(validReplace(), context()), () => validation.POST(validTest(), context())]) {
+      await expect429(await run())
+    }
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+    expect(mocks.replaceConnectionCredential).not.toHaveBeenCalled()
+    expect(mocks.validate).toHaveBeenCalledTimes(3)
+    expect((await connection.PATCH(request('PATCH', { name: 'Renamed' }), context())).status).toBe(200)
+  })
+
+  it('keeps mutation counters per user and checks active authentication first', async () => {
+    fill('ai-console:mutation:owner', 30)
+    mocks.auth.mockResolvedValueOnce(null)
+    expect((await defaults.PUT(request('PUT', { choice: target }))).status).toBe(401)
+    mocks.auth.mockResolvedValueOnce({ user: { uid: 'other' }, profile: { id: 'other', status: 'active', role: 'guest' } })
+    expect((await defaults.PUT(request('PUT', { choice: target }))).status).toBe(200)
+    expect(mocks.setUserDefault).toHaveBeenCalledWith('other', target)
+  })
+
+  it.each(['create', 'replace', 'test'])('blocks overlapping %s validation and releases after completion', async kind => {
+    let release!: (value: unknown) => void
+    let entered!: () => void
+    const started = new Promise<void>(resolve => { entered = resolve })
+    mocks.validate.mockImplementationOnce(() => { entered(); return new Promise(resolve => { release = resolve }) })
+    const run = kind === 'create' ? () => connections.POST(validCreate())
+      : kind === 'replace' ? () => connection.PATCH(validReplace(), context()) : () => validation.POST(validTest(), context())
+    const first = run()
+    await started
+    mocks.encrypt.mockClear()
+    mocks.createConnection.mockClear()
+    mocks.replaceConnectionCredential.mockClear()
+    await expect429(await run())
+    if (kind !== 'create') await expect429(await connection.PATCH(validReplace(), context()))
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+    expect(mocks.replaceConnectionCredential).not.toHaveBeenCalled()
+    expect(mocks.validate).toHaveBeenCalledTimes(1)
+    release({ state: 'validated', modelCount: 1 })
+    expect((await first).status).toBe(kind === 'create' ? 201 : 200)
+    expect((await run()).status).toBe(kind === 'create' ? 201 : 200)
+  })
+
+  it.each(['create', 'replace', 'test'])('releases the %s flight after validation errors', async kind => {
+    const run = kind === 'create' ? () => connections.POST(validCreate())
+      : kind === 'replace' ? () => connection.PATCH(validReplace(), context()) : () => validation.POST(validTest(), context())
+    mocks.validate.mockRejectedValueOnce(new AiConsoleError('AI_EXECUTION_FAILED'))
+    expect((await run()).status).toBe(500)
+    expect((await run()).status).toBe(kind === 'create' ? 201 : 200)
+  })
+
+  it('releases create admission after parsing and encryption failures', async () => {
+    expect((await connections.POST(request('POST', {}))).status).toBe(400)
+    mocks.encrypt.mockImplementationOnce(() => { throw new Error('test-only failure') })
+    expect((await connections.POST(validCreate())).status).toBe(500)
+    expect((await connections.POST(validCreate())).status).toBe(201)
+    expect(mocks.createConnection).toHaveBeenCalledOnce()
+    expect(mocks.validate).toHaveBeenCalledOnce()
+  })
+
+  it('keeps flights scoped to the exact user and connection', async () => {
+    let release!: (value: unknown) => void
+    let entered!: () => void
+    const started = new Promise<void>(resolve => { entered = resolve })
+    mocks.validate.mockImplementationOnce(() => { entered(); return new Promise(resolve => { release = resolve }) })
+    const first = validation.POST(validTest(), context())
+    await started
+    try {
+      const secondId = '44444444-4444-4444-8444-444444444444'
+      mocks.listAiConsoleState.mockResolvedValueOnce({ ...makeState(), connections: [{ ...row, id: secondId }] })
+      expect((await validation.POST(validTest(), context(secondId))).status).toBe(200)
+      mocks.auth.mockResolvedValueOnce({ user: { uid: 'other' }, profile: { id: 'other', status: 'active', role: 'guest' } })
+      expect((await validation.POST(validTest(), context())).status).toBe(200)
+      expect(mocks.validate).toHaveBeenCalledWith('other', id, expect.anything())
+    } finally { release({ state: 'validated', modelCount: 1 }); await first }
+  })
 })
 
 describe('AI Console safe API contracts', () => {
