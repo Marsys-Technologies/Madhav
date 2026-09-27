@@ -3489,6 +3489,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM mimamsa_calibration c
               LEFT JOIN mimamsa_predictions p
                 ON p.chart_id = c.chart_id AND p.prediction_id = c.prediction_id
+               AND p.chart_context_stale_at IS NULL
              WHERE c.chart_id = $1::uuid
                AND c.leakage_status != 'held_out'
                AND (NULL::text IS NULL OR p.domain = NULL::text)
@@ -3758,13 +3759,19 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  p.as_of, p.generator_class, p.configuration_signature,
                  p.lifecycle_status, p.matched_event_id, p.matched_at, p.match_note,
                  p.filed_by, p.filing_method, p.source_citation, p.created_at,
+                 p.chart_context_stale_at, p.chart_context_stale_reason, p.chart_context_superseded_by_run_id,
                  o.domain AS ontology_domain
             FROM brahma_prospective_ledger p
             LEFT JOIN brahma_event_ontology o ON o.event_class_id = p.event_class
            WHERE p.chart_id = $1::uuid AND p.lifecycle_status = NULLIF(NULL::text, '')
+             AND p.chart_context_stale_at IS NULL
            ORDER BY p.as_of DESC
            LIMIT 0`,
-    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226'],
+    // Jātaka Phase-A3 (independent-review Important finding #6): mirrors the
+    // real handler's default (include_stale=false) SQL shape, incl. the
+    // chart_context_stale_at exclusion added for migration 1123's deferred
+    // surfaces. Line range corrected to the handler's actual SELECT.
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:197-211'],
   },
   {
     contract_id: 'source-query:query-signals:v1',

@@ -181,13 +181,38 @@ export async function transitionLifecycle(
     params.push(outcome, value, extras.outcome_note ?? null)
   }
 
+  // Jātaka Phase-A3 (migration 1123, independent-review finding): a row a
+  // correction has marked chart_context_stale_at reflects former birth
+  // details. Advancing it to `confirmed` (which also copies the D-16 stamp,
+  // misattributing it to the CORRECTED chart's build provenance) or `open`
+  // (which puts a historical claim back into the live review lifecycle) is
+  // refused. `window_closed` → `outcome_recorded`/`unverifiable` is
+  // deliberately left unguarded — recording an eventual historical outcome
+  // remains permitted, matching every other outcome-recording path in this
+  // ledger.
+  const guardStaleness = to === 'confirmed' || to === 'open'
+  const staleClause = guardStaleness ? ' AND chart_context_stale_at IS NULL' : ''
+
   const { rows, rowCount } = await exec<LedgerRow>(
     `UPDATE ${LEDGER_TABLE} SET ${sets.join(', ')}
-      WHERE id = $1 AND lifecycle_status = '${from}'
+      WHERE id = $1 AND lifecycle_status = '${from}'${staleClause}
       RETURNING ${RETURNING_COLS}`,
     params,
   )
   if (!rows.length || rowCount === 0) {
+    if (guardStaleness) {
+      // Disambiguate a stale-row refusal from an ordinary concurrent change,
+      // so the caller (and the human reading the error) knows which it is.
+      const check = await exec<{ chart_context_stale_at: string | null }>(
+        `SELECT chart_context_stale_at FROM ${LEDGER_TABLE} WHERE id = $1 AND lifecycle_status = '${from}'`,
+        [id],
+      )
+      if (check.rows[0]?.chart_context_stale_at != null) {
+        throw new Error(
+          `CHART_CONTEXT_STALE: ledger row ${id} was superseded by a chart-details correction; transition to ${to} refused`,
+        )
+      }
+    }
     throw new Error(`ledger row ${id} changed concurrently (expected ${from}); transition aborted`)
   }
   return rows[0]

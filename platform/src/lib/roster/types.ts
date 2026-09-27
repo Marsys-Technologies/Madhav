@@ -1,5 +1,6 @@
 import type { Chart } from '@/lib/db/types'
 import type { BrahmaLayerId } from '@/lib/brahma/lexicon'
+import type { ChartReadiness } from '@/lib/charts/readiness'
 
 export interface RosterStats {
   total: number
@@ -25,6 +26,8 @@ export interface ChartBuildState {
 }
 
 export interface ChartWithMeta extends Chart {
+  /** Shared readiness authority (lib/charts/readiness) — the only source for state labels. */
+  readiness: ChartReadiness
   pyramidPercent: number
   lastLayerActivity: string | null
   buildState: ChartBuildState | null

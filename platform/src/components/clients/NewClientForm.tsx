@@ -295,7 +295,7 @@ function GenderSelect({
 // popup would be clipped. The container uses position:relative with no overflow
 // constraint so the popup can escape.
 
-function PlacesAutocompleteNew({
+export function PlacesAutocompleteNew({
   hasError,
   onTextChange,
   onPlaceResolved,

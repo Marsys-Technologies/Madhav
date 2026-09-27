@@ -20,7 +20,8 @@ const SELECT_COLS = `
   build_id, priors_version, formula_versions, ranking_config,
   now_context_date::text AS now_context_date, stamp_copied_at,
   outcome, outcome_value, outcome_note, outcome_recorded_at,
-  confirmed_at, dismissed_reason, created_at, updated_at
+  confirmed_at, dismissed_reason, created_at, updated_at,
+  chart_context_stale_at, chart_context_stale_reason, chart_context_superseded_by_run_id
 `
 
 export async function getLedgerRow(
@@ -36,15 +37,22 @@ export async function getLedgerRow(
 
 export async function listLedgerRowsForChart(
   chartId: string,
-  opts: { status?: LifecycleState } = {},
+  opts: { status?: LifecycleState; includeStale?: boolean } = {},
   exec: LedgerExecutor = defaultExecutor,
 ): Promise<LedgerRow[]> {
   const params: unknown[] = [chartId]
   let where = 'chart_id = $1'
   if (opts.status) {
-    where += ' AND lifecycle_status = $2'
+    where += ` AND lifecycle_status = $${params.length + 1}`
     params.push(opts.status)
   }
+  // Jātaka Phase-A3 (migration 1123): the current-actionable review lists
+  // (Awaiting / Open / Resolve) exclude a claim a correction has marked
+  // chart_context_stale_at by default — it was detected under former birth
+  // details. includeStale opts into seeing it, still carrying the explicit
+  // chart_context_* columns above (never silently indistinguishable from a
+  // current row) — Samīkṣā history remains readable on request.
+  if (!opts.includeStale) where += ' AND chart_context_stale_at IS NULL'
   const { rows } = await exec<LedgerRow>(
     `SELECT ${SELECT_COLS} FROM ${LEDGER_TABLE} WHERE ${where} ORDER BY created_at DESC`,
     params,

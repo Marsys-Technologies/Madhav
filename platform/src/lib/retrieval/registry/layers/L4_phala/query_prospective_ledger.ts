@@ -67,6 +67,17 @@ function toServed(row: LedgerRowWithDomain) {
   const win = deriveWindowFields(row)
   return {
     prediction_id: row.prediction_id,
+    // Jātaka Phase-A3. Explicit historical-context metadata — a stale row
+    // (included only via include_stale) is never silently indistinguishable
+    // from a current one.
+    chart_context: row.chart_context_stale_at == null
+      ? { current: true }
+      : {
+          current: false,
+          stale_at: row.chart_context_stale_at,
+          stale_reason: row.chart_context_stale_reason,
+          superseded_by_run_id: row.chart_context_superseded_by_run_id,
+        },
     claim: row.claim,
     event_class: row.event_class,
     ontology_domain: row.ontology_domain,
@@ -138,6 +149,14 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Max predictions to scan (default 100).',
     },
+    include_stale: {
+      type: 'boolean',
+      description:
+        'A chart correction marks a filed prediction chart-context-stale (superseded by former ' +
+        'birth details) rather than deleting it. Default false serves only current predictions. ' +
+        'true also includes stale rows, each stamped with chart_context historical-context ' +
+        'metadata — never silently indistinguishable from a current row.',
+    },
   },
 
   density_contract: {
@@ -166,6 +185,13 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
     const status = (args['status'] as string | undefined) ?? 'open'
     const limit  = Math.min(Number(args['limit'] ?? 100), 500)
     const cluster = clusterFor(domain)
+    // Jātaka Phase-A3 (migration 1123): a prediction a correction has marked
+    // chart_context_stale_at was filed under former birth details — excluded
+    // from this current-serving "standing predictions" surface by default.
+    // include_stale opts into seeing it, still stamped with the explicit
+    // chart_context_* columns selected below.
+    const includeStale = args['include_stale'] === true
+    const staleFilter = includeStale ? '' : 'AND p.chart_context_stale_at IS NULL '
 
     try {
       const sql = `
@@ -175,10 +201,11 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
                p.as_of, p.generator_class, p.configuration_signature,
                p.lifecycle_status, p.matched_event_id, p.matched_at, p.match_note,
                p.filed_by, p.filing_method, p.source_citation, p.created_at,
+               p.chart_context_stale_at, p.chart_context_stale_reason, p.chart_context_superseded_by_run_id,
                o.domain AS ontology_domain
           FROM brahma_prospective_ledger p
           LEFT JOIN brahma_event_ontology o ON o.event_class_id = p.event_class
-         WHERE p.chart_id = $1::uuid AND p.lifecycle_status = $2
+         WHERE p.chart_id = $1::uuid AND p.lifecycle_status = $2 ${staleFilter}
          ORDER BY p.as_of DESC
          LIMIT $3
       `
@@ -192,13 +219,31 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
       const other   = cluster == null ? [] : rows.filter((r) => !inCluster(r)).map(toServed)
 
       // §N.6 / B.10 — never a bare silent empty. When nothing matches, say why explicitly.
+      // Jātaka Phase-A3 (independent-review finding, §N.6/§N.7): the default
+      // exclusion means an empty result here is no longer proof that nothing
+      // was ever filed — a correction may have staled every match. Checking
+      // first keeps the honest "none filed" claim honest, and reports the
+      // withheld count (with the include_stale pointer) when that's the
+      // real reason instead.
       let empty_reason: string | null = null
       if (matched.length === 0) {
         if (rows.length === 0) {
-          empty_reason =
-            `No filed prospective predictions with lifecycle_status='${status}' exist for this ` +
-            `chart in brahma_prospective_ledger. Predictions enter the ledger by EXPLICIT FILING ` +
-            `only (§11) — an empty result means none has been filed, not that data was withheld.`
+          let staleCount = 0
+          if (!includeStale) {
+            const staleCheck = await query<{ count: string }>(
+              `SELECT count(*)::text AS count FROM brahma_prospective_ledger
+                WHERE chart_id = $1::uuid AND lifecycle_status = $2 AND chart_context_stale_at IS NOT NULL`,
+              [chart_id, status],
+            )
+            staleCount = Number(staleCheck.rows[0]?.count ?? 0)
+          }
+          empty_reason = staleCount > 0
+            ? `${staleCount} prediction(s) with lifecycle_status='${status}' exist for this chart but ` +
+              `are chart-context-stale (filed under birth details a correction has since superseded) ` +
+              `and are excluded by default — pass include_stale:true to see them.`
+            : `No filed prospective predictions with lifecycle_status='${status}' exist for this ` +
+              `chart in brahma_prospective_ledger. Predictions enter the ledger by EXPLICIT FILING ` +
+              `only (§11) — an empty result means none has been filed, not that data was withheld.`
         } else if (cluster != null) {
           empty_reason =
             `${rows.length} open prediction(s) exist for this chart but none resolves into the ` +
@@ -221,6 +266,7 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
             domain_cluster: cluster ? Array.from(cluster) : null,
             status,
             limit,
+            include_stale: includeStale,
           },
           governance: PROSPECTIVE_LEDGER_GOVERNANCE_TEXT,
           provenance: { tables: ['brahma_prospective_ledger', 'brahma_event_ontology'] },

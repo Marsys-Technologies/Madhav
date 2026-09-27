@@ -50,6 +50,25 @@ async function assertCanWrite(chartId: string): Promise<void> {
 }
 
 /**
+ * Jātaka Phase-A3 (independent-review finding): `assertCanWrite` authorizes
+ * the CHART; every mutation below then acts on `rowId` alone through the
+ * shared DAL (transitionLifecycle / confirmDetectedCandidate /
+ * recordConversationalOutcome), none of which take a chart_id to bind
+ * against. Without this check, a caller with write access to chart A could
+ * mutate chart B's ledger row by supplying its id. Called after
+ * `assertCanWrite` and before any DAL call.
+ */
+async function assertRowBelongsToChart(rowId: string, chartId: string): Promise<void> {
+  const { rows } = await query<{ chart_id: string }>(
+    `SELECT chart_id FROM ${LEDGER_TABLE} WHERE id = $1`,
+    [rowId],
+  )
+  if (rows[0]?.chart_id !== chartId) {
+    throw new Error(`samiksha: ledger row ${rowId} does not belong to chart ${chartId}`)
+  }
+}
+
+/**
  * Resolve the D-16 stamp to COPY at confirmation. Prefers the most recent persisted turn stamp
  * for the row's originating conversation (D-16(d): copy the turn's own stamp). Falls back to the
  * live computed stamp for the chart when the row has no originating turn (W-6 scripted claim) or
@@ -93,6 +112,7 @@ export async function confirmCandidateAction(input: {
   probability: number
 }): Promise<void> {
   await assertCanWrite(input.chartId)
+  await assertRowBelongsToChart(input.rowId, input.chartId)
   const stamp = await resolveStampForRow(input.rowId, input.chartId)
   await confirmDetectedCandidate({ rowId: input.rowId, probability: input.probability, stamp })
   revalidatePath(`/clients/${input.chartId}/samiksha`)
@@ -105,10 +125,16 @@ export async function editCandidateAction(input: {
 }): Promise<void> {
   await assertCanWrite(input.chartId)
   // A `detected` candidate is still editable (freeze trigger only bites past `detected`).
+  // Jātaka Phase-A3 (independent-review finding): bound to the caller's own
+  // chart (a raw query, not the shared DAL, so it binds chart_id directly
+  // rather than via a separate ownership check) and excludes a
+  // chart-context-stale row — editing a claim a correction has already
+  // superseded would silently mutate historical evidence.
   await query(
     `UPDATE ${LEDGER_TABLE} SET claim_text = $2
-      WHERE id = $1 AND lifecycle_status = 'detected'`,
-    [input.rowId, input.claimText],
+      WHERE id = $1 AND chart_id = $3 AND lifecycle_status = 'detected'
+        AND chart_context_stale_at IS NULL`,
+    [input.rowId, input.claimText, input.chartId],
   )
   revalidatePath(`/clients/${input.chartId}/samiksha`)
 }
@@ -119,6 +145,7 @@ export async function dismissCandidateAction(input: {
   reason?: string
 }): Promise<void> {
   await assertCanWrite(input.chartId)
+  await assertRowBelongsToChart(input.rowId, input.chartId)
   await transitionLifecycle(input.rowId, 'dismissed', { dismissed_reason: input.reason })
   revalidatePath(`/clients/${input.chartId}/samiksha`)
 }
@@ -144,6 +171,7 @@ export async function resolvePredictionAction(input: {
   partialValue?: number
 }): Promise<void> {
   await assertCanWrite(input.chartId)
+  await assertRowBelongsToChart(input.rowId, input.chartId)
   await recordConversationalOutcome(input.rowId, {
     outcome: input.outcome,
     outcome_note: input.note ?? null,
@@ -158,6 +186,7 @@ export async function batchResolveAction(input: {
 }): Promise<void> {
   await assertCanWrite(input.chartId)
   for (const { rowId, outcome } of input.items) {
+    await assertRowBelongsToChart(rowId, input.chartId)
     await recordConversationalOutcome(rowId, { outcome })
   }
   revalidatePath(`/clients/${input.chartId}/samiksha`)

@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "bb1de78236810ab9c17e547dd156ccbc6be87e99ffa9440f45aad46db966f113",
+  "content_sha256": "10733cb24f46c6db1f1f4836df0d97f7b12ed73676a90f181ec9604d70143270",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -9239,6 +9239,10 @@
             "description": "Question domain (e.g. wealth, career, spirituality, residence). Predictions whose event_class resolves into this domain (wealth clusters {wealth, residence}) lead the response; all other open predictions are still returned under other_domain_predictions.",
             "type": "string"
           },
+          "include_stale": {
+            "description": "A chart correction marks a filed prediction chart-context-stale (superseded by former birth details) rather than deleting it. Default false serves only current predictions. true also includes stale rows, each stamped with chart_context historical-context metadata — never silently indistinguishable from a current row.",
+            "type": "boolean"
+          },
           "limit": {
             "description": "Max predictions to scan (default 100).",
             "type": "number"
@@ -10195,6 +10199,10 @@
           "domain": {
             "description": "Filter by domain (career, wealth, relationship, health, character, spirituality, other).",
             "type": "string"
+          },
+          "include_stale": {
+            "description": "A chart correction marks a preserved prediction chart-context-stale (superseded by former birth details) rather than deleting it. Default false serves only current predictions. true also includes stale rows, each stamped with chart_context historical-context metadata — never silently indistinguishable from a current row.",
+            "type": "boolean"
           },
           "lifecycle_status": {
             "description": "Filter by lifecycle status.",
@@ -20803,14 +20811,14 @@
       ]
     }
   },
-  "generated_at": "2026-09-24T08:30:00.000Z",
+  "generated_at": "2026-09-27T19:02:09.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
       {
         "id": "analysis_layer_pins",
         "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
-        "sha256": "93f1e4d1653108c8042fb8d2c64fc71962a9318d38f00799efeac90391d14505"
+        "sha256": "b2ab5aed9bcde68f6545b1dcccaab56bf8eaf33bbf9e08369bb6b15e1d03e14e"
       },
       {
         "id": "canonical_public_faces",
@@ -20825,7 +20833,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "5249fd5f74bdfe6d9b96fd4db594ebaee01b5c6d892b97001dc0c3dd69bc6c7e"
+        "sha256": "8442be6cfb7703b311c94c180607ecb94d8a791faaa851caa8944b9e1d5c1693"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21322,7 +21330,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "4cdf3362c2dd80887dd954d0b675c126b3c9048ddf6f2487eafd136e1321f120"
+            "sha256": "4b16f99f35c42f4f049b0a2ea580084498d6058fd9910a3de2dbe599b21409c3"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -21390,7 +21398,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "1eb48857a46fe7d228f4940c93c57e59614b70c75283d23a564c38d41bcd979a"
+        "sha256": "4be07a2a77f6034df16c9d7937e3fd9ffbd13274ae6c330061b34c9fa9526207"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21480,7 +21488,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "f60268b91533058f2c4ce367ce1d7360db2fa0292269bbabbecc66b1fd1fc415"
+            "sha256": "71fb02ac0f6a556bf2f62ca93a9aeeeb330a793ace936c4121773d36afe8196f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22044,7 +22052,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
-            "sha256": "01b0a02ba3e715128804882044a18ce34cde35e20d7a4cc5dab6a575b25c6cfb"
+            "sha256": "d7468e39b70e6c8d459c79ef41e937a34d02352979abd17425381b5874efda35"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts",
@@ -22060,7 +22068,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts",
-            "sha256": "d295d381fca00f52324ac12e3c0fe8116f8e1240caf248384a5cd146334a992b"
+            "sha256": "62494adeda0d4d75fb583e61e8b19fc36317411b3e852a3810559f4a1519d69c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts",
@@ -22068,7 +22076,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts",
-            "sha256": "fd968465ecff6e2e3342773dac5c00254294f26d934d8b9226b4958338a43bed"
+            "sha256": "d91bca4a45e12e1df13f946f940d442ff1a2073e11d247c2dc986eda4a19451e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts",
@@ -22108,7 +22116,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
-            "sha256": "a8d3c8da20529c12a41c43c799aaf7bd2bc734f3f573e0000d4b9d046e078be6"
+            "sha256": "b389ea2e268732e51cddd5898f7be9f35c8b6bf01ca24239726276f8d86943f4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts",
@@ -22208,7 +22216,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "51ecec5902029b78706b2b74e8d7c8f59c4c970cbf16f13d1dca421256a72eb7"
+        "sha256": "5ae06a4a49eb07b1edd11874c3940f9e5cfa219b7c668f715be6220aac3e2d7d"
       },
       {
         "id": "service_effect_contracts",
@@ -22228,10 +22236,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "b05888db3248155fbab85a5f857d8b43376d48ef90806fdc19c6847e10b3c573"
+        "sha256": "fded9f0feb1f72b189e053c3a26ea681029738c962912e8b110b10d48c81194d"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "8f16b6e3a305d53a3ae38dbe3c09f983795c990d"
+  "source_revision": "31d8707a4864aa9fc52b6f1826f23d5f173d72f2"
 }

@@ -63,6 +63,16 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => {
   }
 })
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
+// Jātaka chart workspace: every reading door admits only a Ready chart (shared
+// readiness gate). This harness exercises a Ready chart unless a test says otherwise.
+const { readinessState } = vi.hoisted(() => ({ readinessState: { value: 'ready' as string | 'throw' } }))
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => {
+    if (readinessState.value === 'throw') throw new Error('db down')
+    return new Map(ids.map((id) => [id, { state: readinessState.value }]))
+  }),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn().mockResolvedValue('fake-model') }))
@@ -218,6 +228,7 @@ function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  readinessState.value = 'ready'
   managedInquiry.getJob.mockResolvedValue(null)
   knowledgeState.snapshot = null
   knowledgeState.overlay = null
@@ -1487,5 +1498,37 @@ describe('PPR-12 safety gate (MCP door)', () => {
     expect(safetyDecision.decision_id).toMatch(UUID_RE)
     expect(safetyDecision.review_id).toBeNull()
     expect(typeof safetyDecision.audit_written).toBe('boolean')
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — shared chart readiness gate (Jātaka Phase-A2)', () => {
+  it.each([
+    ['building', true],
+    ['needs-rebuild', false],
+    ['failed', false],
+    ['partially-built', false],
+    ['not-built', false],
+    ['throw', true],
+  ])('a %s chart is refused before planning, retrieval, synthesis or spend (retryable=%s)', async (state, retryable) => {
+    readinessState.value = state
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What does my career look like?' }))
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error.class).toBe('chart_not_ready')
+    expect(body.error.code).toBe('CHART_RECOMPUTE_REQUIRED')
+    // The code survives a durable job store that keeps only the message.
+    expect(body.error.message).toMatch(/^CHART_RECOMPUTE_REQUIRED: /)
+    expect(body.error.retryable).toBe(retryable)
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(mockGetToolByName).not.toHaveBeenCalled()
+  })
+
+  it('a denied chart is still refused by authorization first, without consulting readiness', async () => {
+    ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('deny')
+    readinessState.value = 'failed'
+    const res = await POST(makeReq({ chart_id: CHART, question: 'q' }))
+    expect(res.status).toBe(401)
   })
 })

@@ -208,6 +208,14 @@ export interface LedgerRow {
   dismissed_reason: string | null
   created_at: string
   updated_at: string
+  /**
+   * Jātaka Phase-A3 (migration 1123). NULL while this claim reflects the
+   * chart's current birth details; set once a correction supersedes them.
+   * Orthogonal to lifecycle_status/outcome — never a substitute for either.
+   */
+  chart_context_stale_at?: string | null
+  chart_context_stale_reason?: string | null
+  chart_context_superseded_by_run_id?: string | null
 }
 
 export const LEDGER_TABLE = 'brahma_mimamsa_prediction_ledger' as const

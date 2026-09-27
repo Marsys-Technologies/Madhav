@@ -165,6 +165,12 @@ vi.mock('@/lib/config/index', () => ({
 // ── DB read boundary (MSR snippet fetch, prediction-part lookups). Nothing in
 //    this test's fixture text triggers either path, but the mock exists so an
 //    unexpected query never reaches a real pg pool in CI. ──
+// Jātaka chart workspace: reading doors admit — and the persistence boundary
+// re-checks — only a Ready chart; this harness exercises a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/db/client', () => ({
   query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
 }))

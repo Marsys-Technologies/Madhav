@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { Sigil } from '@/components/brand/Sigil'
 import type { ThreadSummary } from './types'
@@ -40,6 +41,19 @@ function groupByChart(threads: ThreadSummary[]): { chartId: string; chartName: s
 function RenameableTitle({ thread, onRename }: { thread: ThreadSummary; onRename?: (id: string, title: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(thread.title)
+
+  // Chart-correction history is read-only: no rename affordance at all.
+  if (thread.href) {
+    return (
+      <span
+        className="pp-band-label"
+        style={{ fontFamily: 'var(--pp-font-sans)', fontSize: 13, color: 'var(--pp-ink-dim)' }}
+        title={thread.title}
+      >
+        {thread.title}
+      </span>
+    )
+  }
 
   if (!editing) {
     return (
@@ -189,7 +203,42 @@ export function Sidebar({ threads, onSelect, onRename }: SidebarProps) {
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.chartName}</span>
               </div>
             )}
-            {group.threads.map((thread) => (
+            {group.threads.map((thread) => thread.href ? (
+              <div
+                key={thread.id}
+                role="listitem"
+                data-testid="pp-sidebar-row"
+                data-thread-id={thread.id}
+                data-historical="true"
+              >
+                <Link
+                  href={thread.href}
+                  aria-label={`${thread.title} — historical, read-only`}
+                  className="flex min-h-11 items-center gap-2 rounded-md"
+                  style={{
+                    padding: collapsed ? '8px 0' : '7px 8px',
+                    justifyContent: collapsed ? 'center' : undefined,
+                    borderLeft: '2px solid transparent',
+                  }}
+                >
+                  {collapsed ? (
+                    <Sigil size={16} style={{ color: 'var(--pp-ink-dim)', opacity: 0.6 }} />
+                  ) : (
+                    <>
+                      <span className="flex-1 min-w-0">
+                        <RenameableTitle thread={thread} />
+                      </span>
+                      <span
+                        className="flex-none"
+                        style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--pp-gold-tertiary)', border: '1px solid var(--pp-rule)', borderRadius: 4, padding: '1px 4px' }}
+                      >
+                        Historical
+                      </span>
+                    </>
+                  )}
+                </Link>
+              </div>
+            ) : (
               <div
                 key={thread.id}
                 role="listitem"

@@ -1634,10 +1634,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "fb35d3abcd9336dc749d49ba459288316af0b1d0adb500177c950cdb435143dc",
+      "fingerprint": "dbe44c43c8df047d8e0de560aa5584217b4c0ffbaa963efed8c282dbcbf672a5",
       "native_id": "project",
-      "last_verified_session": "MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915",
-      "last_verified_on": "2026-09-15"
+      "last_verified_session": "JATAKA-CONTROLLED-PROD-ROLLOUT-20260927",
+      "last_verified_on": "2026-09-27"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",

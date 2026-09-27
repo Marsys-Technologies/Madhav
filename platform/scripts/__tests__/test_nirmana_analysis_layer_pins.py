@@ -482,12 +482,13 @@ def test_historical_pin_and_writer_rewrites_are_rejected() -> None:
     assert any("protected baseline generation" in failure for failure in failures)
 
 
-def test_fabricated_unversioned_convergence_identity_is_rejected() -> None:
+def test_fabricated_versioned_convergence_identity_is_rejected() -> None:
     fabricated = copy.deepcopy(CURRENT_PINS)
     fabricated["layers"]["L5"]["convergence_commit"] = "0" * 40
     failures = check_current(fabricated)
     assert any(
-        "unversioned active pin differs from immutable definition snapshot" in failure
+        "active generation id does not match its pin" in failure
+        or "source commit does not match convergence pin" in failure
         for failure in failures
     )
 
