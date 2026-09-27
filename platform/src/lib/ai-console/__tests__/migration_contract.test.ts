@@ -8,6 +8,16 @@ const tables = ['ai_provider_connections', 'ai_connection_models', 'ai_custom_co
   'ai_cli_grants', 'ai_conversation_selections', 'ai_turn_routing_snapshots',
   'ai_turn_role_invocations', 'ai_configuration_audit_log']
 
+function constraintAllowlist(text: string, name: string, column: string): string[] {
+  const start = text.indexOf(`ADD CONSTRAINT ${name}`)
+  if (start < 0) throw new Error(`Missing constraint ${name}`)
+  const statement = text.slice(start, text.indexOf(';', start))
+  const body = statement.match(new RegExp(
+    `CHECK\\s*\\(\\s*${column}\\s+IN\\s*\\(([^)]*)\\)\\s*\\)`, 's'))?.[1]
+  if (!body) throw new Error(`Missing exact ${column} IN body for ${name}`)
+  return [...body.matchAll(/'([^']+)'/g)].map(match => match[1])
+}
+
 describe('AI Console governed persistence contract', () => {
   const sql = () => readFileSync(path, 'utf8')
   it('retains distinct audit identities for rename, credential replacement, and duplication', () => {
@@ -99,8 +109,16 @@ describe('AI Console governed persistence contract', () => {
   })
   it('widens Observatory vocabulary without turning external synthesis into usage', () => {
     const text = sql()
-    for (const provider of ['xai', 'kimi', 'openrouter', 'cli']) expect(text).toContain(`'${provider}'`)
-    for (const stage of ['synthesizer', 'deep_planner', 'worker']) expect(text).toContain(`'${stage}'`)
+    expect(constraintAllowlist(text, 'llm_usage_events_provider_check', 'provider')).toEqual([
+      'anthropic', 'openai', 'gemini', 'deepseek', 'nim', 'xai', 'kimi', 'openrouter', 'cli',
+    ])
+    expect(constraintAllowlist(text, 'llm_usage_events_pipeline_stage_check', 'pipeline_stage')).toEqual([
+      'classify', 'compose', 'retrieve', 'synthesize', 'synthesizer', 'audit', 'other',
+      'planner', 'deep_planner', 'worker', 'title', 'history_summary', 'interpretation_sets',
+    ])
+    expect(constraintAllowlist(text, 'llm_usage_events_status_check', 'status')).toEqual([
+      'success', 'error', 'timeout', 'cancelled',
+    ])
     expect(text).toContain("call_stage='external_synthesis_handoff'")
     expect(text).toContain('ALTER COLUMN model_id DROP NOT NULL')
     expect(text).toContain('ALTER COLUMN provider DROP NOT NULL')

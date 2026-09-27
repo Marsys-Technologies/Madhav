@@ -145,6 +145,35 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
       await pool.query('DELETE FROM public.llm_call_log WHERE query_id=ANY($1::uuid[])', [[marker, regular]])
     }
   })
+  it('accepts every usage vocabulary value and rejects values outside each named CHECK', async context => {
+    const usage = await pool.query("SELECT to_regclass('public.llm_usage_events') AS relation")
+    if (!usage.rows[0].relation) {
+      context.skip()
+      return
+    }
+    const providers = ['anthropic', 'openai', 'gemini', 'deepseek', 'nim', 'xai', 'kimi', 'openrouter', 'cli']
+    const stages = ['classify', 'compose', 'retrieve', 'synthesize', 'synthesizer', 'audit', 'other',
+      'planner', 'deep_planner', 'worker', 'title', 'history_summary', 'interpretation_sets']
+    const statuses = ['success', 'error', 'timeout', 'cancelled']
+    const promptIds: string[] = []
+    const insert = async (provider: string, stage: string, status: string) => {
+      const promptId = `ai-console-vocabulary-${randomUUID()}`
+      promptIds.push(promptId)
+      return pool.query(`INSERT INTO public.llm_usage_events
+        (conversation_id,prompt_id,user_id,provider,model,pipeline_stage,status,started_at)
+        VALUES(NULL,$1,$2,$3,'model-a',$4,$5,now())`, [promptId, user, provider, stage, status])
+    }
+    try {
+      for (const provider of providers) await expect(insert(provider, 'other', 'success')).resolves.toBeDefined()
+      for (const stage of stages) await expect(insert('openai', stage, 'success')).resolves.toBeDefined()
+      for (const status of statuses) await expect(insert('openai', 'other', status)).resolves.toBeDefined()
+      await expect(insert('unknown-provider', 'other', 'success')).rejects.toMatchObject({ code: '23514' })
+      await expect(insert('openai', 'unknown-stage', 'success')).rejects.toMatchObject({ code: '23514' })
+      await expect(insert('openai', 'other', 'unknown-status')).rejects.toMatchObject({ code: '23514' })
+    } finally {
+      await pool.query('DELETE FROM public.llm_usage_events WHERE prompt_id=ANY($1::text[])', [promptIds])
+    }
+  })
   it('rejects duplicate case-insensitive connection/configuration names', async () => {
     await expect(pool.query('UPDATE ai_provider_connections SET name=$1 WHERE id=$2', ['PRIMARY', connection])).resolves.toBeDefined()
     await expect(pool.query(`INSERT INTO ai_provider_connections SELECT $1,user_id,provider_id,name,

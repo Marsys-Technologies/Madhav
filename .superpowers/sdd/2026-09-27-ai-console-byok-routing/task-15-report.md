@@ -57,6 +57,18 @@ code; database and Zod checks reject raw details.
   row, public list/detail types, both OpenAPI event schemas, endpoint JSON, and
   the Observatory UI's null handling.
 
+## Independent-review fix round 2
+
+- Migration contract tests now extract each exact named Observatory CHECK
+  statement and compare the complete provider, pipeline-stage, and status
+  allowlists in order. Values merely appearing elsewhere in migration 1120 can
+  no longer create a false pass.
+- The disposable-DB lane inserts an accepted usage row for every allowed
+  provider, stage, and status, then proves one unknown value in each dimension
+  is rejected with CHECK violation `23514`. Safe prompt ids are deleted in the
+  test cleanup. This behavior remains runtime-unqualified when the guarded
+  database prerequisite is absent.
+
 ## Verification
 
 - Focused AI Console/execution/MCP/synthesis/observability/migration aggregate:
@@ -78,6 +90,8 @@ code; database and Zod checks reject raw details.
   full-suite run.
 - Review-fix TypeScript, scoped zero-warning ESLint, `git diff --check`,
   migration-number guard, and credential/environment/raw-error scans passed.
+- Review-fix round 2 migration focus: 11 passed, 15 DB-gated skipped;
+  TypeScript, scoped zero-warning ESLint, and whitespace checks passed.
 
 ## Unqualified
 
@@ -88,5 +102,6 @@ code; database and Zod checks reject raw details.
   principal, provider pricing/billing result, or external subscription was used.
 - No browser acceptance, deployment, push, PR, merge, shared database, or
   production mutation occurred.
-- The DB-gated constraint/replay test was authored but did not execute because
-  no approved localhost `ai_console_test_*` database was provided.
+- The DB-gated constraint/replay and complete-vocabulary tests were authored
+  but did not execute because no approved localhost `ai_console_test_*`
+  database was provided.
