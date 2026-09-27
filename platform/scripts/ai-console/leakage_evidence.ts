@@ -33,7 +33,7 @@ export async function readFreshLeakageEvidence(
   const changed = !prefixUnchanged || status.size !== baseline.size || status.mtimeMs > baseline.mtimeMs
   const marked = expected.markers.some(marker => marker.length > 0 && fresh.includes(marker))
   if (!changed || !fresh.trim() || !marked) throw new Error('AIC_E2E_LEAKAGE_INPUT_STALE')
-  return fresh
+  return bytes.toString('utf8')
 }
 
 const CREDENTIAL_PATTERN = /(?:authorization\s*[:=]\s*bearer\s+\S+|\bsk-(?:proj-|ant-)?[a-z0-9_-]{8,}|\bAIza[0-9A-Za-z_-]{20,}|\bxox[baprs]-[0-9A-Za-z-]{8,}|\bgh[pousr]_[0-9A-Za-z]{20,}|\beyJ[a-zA-Z0-9_-]{8,}\.eyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,})/i

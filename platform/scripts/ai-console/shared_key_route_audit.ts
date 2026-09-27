@@ -175,7 +175,7 @@ function usesSharedProviderEnvironment(source: string, path: string): { found: b
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
   const strings = collectStaticStrings(sourceFile)
   const flows = assignments(sourceFile)
-  const globalAliases = new Set(['globalThis'])
+  const globalAliases = new Set(['globalThis', 'global'])
   const processAliases = new Set(['process'])
   const environmentAliases = new Set<string>()
   let found = false

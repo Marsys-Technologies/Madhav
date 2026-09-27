@@ -59,6 +59,21 @@ describe('current-run leakage evidence', () => {
     })).rejects.toThrow('AIC_E2E_LEAKAGE_INPUT_STALE')
   })
 
+  it('returns the complete current file for secret scanning after fresh marker validation', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aic-leakage-complete-'))
+    directories.push(directory)
+    const path = join(directory, 'server.log')
+    await writeFile(path, 'clientSecret=pre-baseline-value\n')
+    await chmod(path, 0o600)
+    const baseline = await captureLeakageBaseline(path)
+    await appendFile(path, 'correlation=turn-current\n')
+
+    const evidence = await readFreshLeakageEvidence(baseline, {
+      runStartedAtMs: Date.parse('2026-09-28T00:00:00.000Z'), markers: ['turn-current'],
+    })
+    expect(containsForbiddenLeakage(evidence, [])).toBe(true)
+  })
+
   it('detects forbidden fields and broader credential formats without returning a match', () => {
     expect(containsForbiddenLeakage('{"wrapped_data_key":"redacted"}', [])).toBe(true)
     expect(containsForbiddenLeakage('{"request":{"path":"/private/file"}}', [])).toBe(true)
