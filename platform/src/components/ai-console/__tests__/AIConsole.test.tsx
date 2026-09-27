@@ -6,7 +6,7 @@ import axe from 'axe-core'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { AIConsole } from '../AIConsole'
-import type { AiConsoleStateDto } from '../types'
+import type { AiConsoleStateDto, CliStateDto } from '../types'
 
 const CONNECTION_ID = '11111111-1111-4111-8111-111111111111'
 const CONFIG_ID = '22222222-2222-4222-8222-222222222222'
@@ -29,7 +29,7 @@ const state: AiConsoleStateDto = {
   validationDisclosure: 'Testing this connection makes a tiny generation request and may incur a tiny provider charge.',
 }
 
-const cliState = { clis: [
+const cliState: CliStateDto = { clis: [
   { cliId: 'codex', productName: 'Codex CLI', state: 'needs_attention', detectedProduct: 'Codex CLI', detectedVersion: '0.155.1', lastCheckedAt: '2026-09-27T10:00:00.000Z', models: [] },
   { cliId: 'claude_code', productName: 'Claude Code', state: 'reachable', detectedProduct: 'Claude Code', detectedVersion: '2.1.56', lastCheckedAt: '2026-09-27T10:00:00.000Z', models: [{ modelId: null, displayName: 'Built-in default', compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false, supportsStructuredOutput: true, isBuiltinDefault: true }] },
   { cliId: 'gemini_antigravity', productName: 'Gemini / Antigravity', state: 'not_granted' },
@@ -45,6 +45,7 @@ interface SetupOptions {
   aggregatePending?: boolean
   cliError?: boolean
   cliPending?: boolean
+  cliResponse?: CliStateDto
   duplicateNameError?: boolean
 }
 
@@ -56,7 +57,7 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
     if (String(url) === '/api/ai-console/clis' && options.cliPending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console/clis') return options.cliError
       ? response({ error: 'AI_CLI_UNREACHABLE' }, 503)
-      : response(cliState)
+      : response(options.cliResponse ?? cliState)
     if (String(url) === '/api/ai-console' && options.aggregatePending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
@@ -357,6 +358,27 @@ describe('AI Console', () => {
     expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
     expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')
     expect(within(dialog).getByText(/saved model choices are no longer available or compatible/i)).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
+  })
+
+  it('labels a stale CLI built-in default without exposing its client-only draft encoding', async () => {
+    const user = userEvent.setup()
+    const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
+    const cliConfiguration = { ...state.configurations[0], roles: {
+      synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget,
+    } }
+    const cliResponse: CliStateDto = { clis: cliState.clis.map(cli => cli.cliId === 'claude_code' && cli.state !== 'not_granted'
+      ? { ...cli, models: cli.models.map(model => ({ ...model, compatibleRoles: ['planner', 'deep_planner', 'worker'] })) }
+      : cli) }
+    setup({ configurations: [cliConfiguration] }, { cliResponse })
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog')
+    const synthesizerModel = dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement
+    expect(synthesizerModel.value).toBe('__builtin__')
+    expect(within(synthesizerModel).getByRole('option', { name: /built-in default.*no longer available/i })).toBeDisabled()
+    expect(dialog).not.toHaveTextContent('__builtin__')
+    expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
+    expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')
     expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
   })
 
