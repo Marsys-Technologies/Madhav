@@ -176,3 +176,7 @@ Both lanes accepted with corrections (A_REVIEW2, B_REVIEW5). Register v2.2: 10 r
 
 Register v2.3: R222 closed with its precondition MET (the inspector may write to the production ledger — not yet run, awaiting the native), plus R224, R231, R223, R225, R42, R52, R56, R48. R232–R239 added. R45 and R232 gate every emit after the first. Details: `wave2/STATE.md`.
 
+## 2026-09-27 · Wave 2 W2-2 folded
+
+Register v2.4: CLOSED R233, R44, R49, R45, R43, R46, R50, R51, R53, R54, R232 (12 rows via 12 commits + 1 correction). R55 annotated. Added R240–R242. The gate caught a wrong verdict (ka_kshetra) inside a packet already otherwise sound; the fix then surfaced two more real findings on its own. Both blockers on a second production ledger write are now resolved. Details: `wave2/STATE.md`.
+

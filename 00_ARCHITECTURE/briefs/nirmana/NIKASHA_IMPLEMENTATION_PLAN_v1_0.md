@@ -64,6 +64,7 @@ acts are the review of the R218 planner-test output per P-need (D5 rev. 2.1 — 
 
 ## P4 · Inspector detector fixes (the C1–C4 clusters)
 
+- **Wave 2 W2-2 (2026-09-27): LANDED.** R233, R44, R49, R45, R43, R46, R50, R51, R53, R54, R232 CLOSED; D6 item 2 landed (R55 stays OPEN on migration 1094); the C-KSHETRA correction re-graded ka_kshetra's Idem.pattern to FAIL (found by the fix itself, not planned). W2-3 carries R20, R21, R23, R240, R241, R242.
 - **Wave 2 W2-1 (2026-09-27): LANDED.** R222 (precondition MET), R224, R231, R223, R225, R42, R52, R56, R48 CLOSED; W2-2 carries R43–R46, R49–R51, R53, R54, D6 item 2, plus R232/R233; W2-3 carries R20, R21, R23.
 - **Wave 1 (2026-09-27): PARTLY LANDED.** R216, R40, R41, R220 CLOSED; D6 classifier landed but R55 stays OPEN until **R225** (G1). Remaining: R20–R23, R42–R56 (the second P4 lane, incl. the attempt adapter D6 item 2 needs), plus carries **R223**, **R224**, **R231**.
 
