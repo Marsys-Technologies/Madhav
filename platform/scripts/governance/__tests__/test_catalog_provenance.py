@@ -664,6 +664,49 @@ def test_compute_segment_resolution_counts_distinguishes_full_partial_none(tmp_p
     assert "1 lines" in stale[0]
 
 
+def test_out_of_range_handler_segment_wins_priority_over_a_still_resolving_migration_segment(tmp_path):
+    """R2 (B_REVIEW2 finding 2): the production shape behind ALL 7 real
+    `source_ref_out_of_range` outcomes (`get_ashtakavarga`, `get_aspects`,
+    `get_avasthas`, `get_dignity`, `get_eclipse_flags`, `get_panchanga`,
+    `get_structural`) — an out-of-bounds HANDLER segment sitting alongside a
+    migration segment (commonly `204_chart_facts.sql:...`) that still resolves.
+    Because migration-kind segments are excluded from producing relation
+    candidates (C-3(b)), `resolved_any` is True (the migration segment
+    resolved) but `known` ends up empty — this is a DIFFERENT code path from
+    the 'nothing resolved at all' case (`test_unresolvable_range_yields_no_
+    detector_with_reason`'s case 2a, where `resolved_any` is False because the
+    ONLY segment is the OOB one). The priority branch (the `if oob_reasons:`
+    check reached after `if not known:`) must still report
+    `source_ref_out_of_range` here, not the generic 'resolved, no relation'
+    message. Mutation this catches: commenting out that branch (`if
+    oob_reasons:` -> `if False:`) leaves this test red, and reverts all 7
+    production outcomes back to `no_relation_in_range` (recorded separately
+    against production in B_REPORT.md)."""
+    handler = tmp_path / "get_something.ts"
+    handler.write_text("const sql = `SELECT 1`\n")  # 1 line only; declared range below is OOB
+
+    migrations_dir = tmp_path / "supabase" / "migrations"
+    migrations_dir.mkdir(parents=True)
+    migration = migrations_dir / "204_chart_facts.sql"
+    migration.write_text("CREATE TABLE chart_facts (id int);\n")
+
+    req = {
+        "kind": "source_query",
+        "source_ref": f"{handler.name}:50-60 | supabase/migrations/{migration.name}:1-1",
+    }
+    known_tables = {"chart_facts"}
+    table_to_assets = {"chart_facts": [_asset("ga_real", "chart_facts")]}
+
+    producers, reason = cp.derive_from_source_query(
+        "scu.test.oob_plus_migration", req, known_tables, table_to_assets, tmp_path
+    )
+    assert producers == []
+    assert reason is not None
+    assert cp.classify_no_detector_reason(reason) == "source_ref_out_of_range"
+    assert "1 lines" in reason
+    assert "50-60" in reason
+
+
 # ── C-6: table_unregistered distinct from no_unit_names_it ──────────────────
 
 
