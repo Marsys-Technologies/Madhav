@@ -75,17 +75,26 @@ revert (a regression guard on the pre-existing plural/other names stays green, p
 is additive); byte-identical restore; 2/2 green.
 
 ### R99 — the empty-table-with-agreeing-build-record third case (ga_prashna)
-Commit `95a5fdfc4` (+ follow-up `a1272b79c`, updating the pre-existing R52 test whose own
-assertion this row's intended behaviour change legitimately supersedes). `has_writer` is the one
-existing registry signal (no new field invented) distinguishing a writer-backed, persistently-
-empty asset (ga_prashna: 51 runs, 0 rows → now PARTIAL) from a genuinely no-writer, empty-by-
-design one (bg_sarvatobhadra_grid: PASS, unchanged). Tests:
+**Corrected after gate review (C3) — see "Corrections after gate review" below: this row folds as
+PARTIAL, not CLOSED.** Commit `95a5fdfc4` (+ follow-up `a1272b79c`, updating the pre-existing R52
+test whose own assertion this row's intended behaviour change legitimately supersedes).
+`has_writer` is the one existing registry signal (no new field invented) distinguishing a
+*no-writer* asset (bg_sarvatobhadra_grid: PASS, unchanged) from a *writer-backed* one — it moves a
+former blanket PASS to the honest PARTIAL for any writer-backed, persistently-empty asset
+(ga_prashna: 51 runs, 0 rows; plus 3 L5 assets the census independently surfaced: mi_abhilekha,
+mi_seva, mi_vistara). **It does not, and the row does not claim to, distinguish a *legitimately*
+empty writer-backed asset from a *broken* one** — both still read the identical PARTIAL sentence
+(the reviewer demonstrated this: ga_prashna's emptiness is explainable by one query against
+`prashna_charts`, 0 rows for the canonical chart; mi_abhilekha's emptiness is an upstream build
+failure, 26 errors — both PARTIAL, same text). That finer distinction — "empty by design is a
+layer-instance claim with its own detector" — was not built this wave; it is a named, carried
+finding for a future row (§3). Tests:
 `test_r99_empty_table_agreeing_build_record.py` (3 tests, both shapes + a non-empty regression
 guard) — mutation 2/3 red, byte-identical restore, 3/3 green; the R52 test file's own update was
 independently mutation-tested too (documented in its own commit).
 
 ### R78 — the declarative criterion registry (D4 ruling re-scope)
-Commit `64b7310bb`. `CRITERION_REGISTRY` in `asset_census.py`: all 20 criteria `measure()`
+Commit `64b7310bb`. `CRITERION_REGISTRY` in `asset_census.py`: all 21 criteria `measure()`
 actually assigns (cross-checked by parsing the source, not a second hardcoded list) plus 5 new
 hand-only criteria (`Carr.D1`/`D2`/`D3`, `Completeness.depth.dasha_link`, `Earn.service_state`)
 registered with `detector: "NONE"`. Honest scope note recorded in the commit and repeated below
@@ -117,8 +126,11 @@ the 11 pairs is re-keyed to a registered, derived `<asset>-<Gate>.<check>` crite
 hand G-numbered id kept as survivor): 5 pairs preserve the census's own already-derived id
 (same criterion, or a family-alias match — folded, enriched); 6 mint a genuinely new derived id
 from the hand row's own more specific, now-registered criterion (5 specific-vs-generic pairs +
-group 8's partial overlap). Group 8 (bg_panchanga): `G01` re-keyed to its own criterion
-`Earn.service_state`, never folded onto a timing id — its census siblings untouched.
+group 8's partial overlap). **10 of the 11 pairs fold the other side's `measured:` reading into
+the surviving row's `what`; group 8 (bg_panchanga) folds none** — its hand row `G01` is re-keyed
+to its own criterion `Earn.service_state` and, per D4's explicit instruction, is never folded onto
+a timing id; its two census siblings (`Earn.build_record`, `Cost.baseline`) are left untouched and
+unsuperseded, each still its own live row.
 
 **The real write** (`67d5d1aa2`): before 830 lines, md5 `7f2257a8d4f0d6a7a21c0648b4101f85`; after
 857 lines, md5 `f6b1d3c5eeff7ec5d56d45448df69d80`; delta +27 lines (11 content + 16 superseding),
@@ -139,17 +151,27 @@ three R81-related test files when `OVERLAP_PAIRS` is renamed. Byte-identical res
 throughout; full suites green after restore.
 
 ### R15 + R29 — the hand/machine rule: hand rows carry `census_run_id`
-Commit `02182bf2c`. Documents (comment in `asset_census.py`, at `generated`'s assignment) that
-the census's own `generated` ISO timestamp IS the census_run_id — no second identifier invented.
-Enforces (`hand_row_provenance.py`): `missing_census_run_id(rows)` flags hand-written,
-judgemental rows missing the field, scoped to `ts >= CUTOFF_TS` (2026-09-29, the day AFTER this
-wave) — the same grandfather pattern the ledger's own `_schema` doc already uses for `kind`.
-R81's own 22 hand-owned migration rows (`ts` = this wave's date) are honestly grandfathered
-rather than either silently exempt forever or falsely flagged, since retroactively adding
-`census_run_id` to them would need a second real write this wave's hard constraint forbids. Test:
-`test_r15_r29_hand_row_census_run_id.py`, 8 tests including a real-ledger packet-proof (zero
-violations against all 857 current rows). Mutation: 2/8 red on an always-empty regression;
-byte-identical restore; 8/8 green.
+Commit `02182bf2c` (+ gate-review correction `68044d4c8`, C2 — see below). Documents (comment in
+`asset_census.py`, at `generated`'s assignment) that the census's own `generated` ISO timestamp IS
+the census_run_id — no second identifier invented. Enforces (`hand_row_provenance.py`):
+`missing_census_run_id(rows)` flags hand-written, judgemental rows missing the field, scoped to
+`ts >= CUTOFF_TS` (2026-09-29, the day AFTER this wave) — the same grandfather pattern the
+ledger's own `_schema` doc already uses for `kind`. R81's own 22 hand-owned migration rows (`ts` =
+this wave's date) are honestly grandfathered rather than either silently exempt forever or falsely
+flagged, since retroactively adding `census_run_id` to them would need a second real write this
+wave's hard constraint forbids. Test: `test_r15_r29_hand_row_census_run_id.py`, 8 tests (9 after
+C2) including a real-ledger packet-proof (zero violations against all 857 current rows). Mutation:
+2/8 red on an always-empty regression; byte-identical restore; 8/8 green.
+
+**C2 correction (commit `68044d4c8`):** the landed `is_hand_written()` keyed on `owner !=
+"asset_census"`, but `emit_gaps()` deliberately carries a hand-owned id's `owner` forward onto its
+own machine-written CLOSED/RE-OPENED transition rows (R81 made five census-derived ids hand-owned
+this way). The independent reviewer demonstrated this misreads a census-written transition row as
+hand-written from 2026-09-29 onward. Fixed to discriminate on `detector` (every row `emit_gaps`
+itself writes sets `detector="asset_census.py --layer … (…)"`, regardless of the carried owner).
+New test `test_owner_only_discriminator_would_have_flagged_a_census_transition_on_a_hand_owned_id`
+reproduces the reviewer's exact fixture. Mutation: reverting to the owner-only check → 1/9 red
+(isolates exactly this scenario); byte-identical restore; 9/9 green.
 
 ### R218 — the planner P-need test (D5 rev. 2.1)
 Commit `48efa19ea`. D5 rev. 2.1 replaced the withdrawn static necessity matrix with a live
@@ -186,13 +208,27 @@ they were never attempted.
    (Ldgr/Idem/Earn/Null/Vocab/Carr/Narr/Dens/Build). Cataloged as-is by the new registry, not
    reconciled — that would be a taxonomy change, not a registration of what exists.
 3. **bg_sarvatobhadra_grid's missing `integrity_check_sql`** (surfaced by R77's real Build-gate
-   measurement: Build.count_integrity reads PARTIAL) is a genuinely new finding, not previously
-   registered as a ledger row. Not registered this wave — minting a new ledger identity is R78/
-   R81's domain (a registered criterion first), and this wave's one authorized real write was
-   already spent on R80+R81's fold.
+   measurement: Build.count_integrity reads PARTIAL). **Corrected after gate review (C1c) — this
+   is NOT a new finding.** `bg_sarvatobhadra_grid-Build.count_integrity` ("count_sql=yes,
+   integrity_check_sql=no") has been a live, `OPEN` census ledger row since 2026-09-26 (pre-write
+   ledger line 183, predating this wave entirely) — R77's Build row simply reports a pre-existing,
+   already-registered gap, correctly, not a new one. No new ledger identity was needed or minted.
 4. **T5_LEDGER_DRIFT.md's own proposed register rows L4/L5** (rotate `ASSET_ELEVATION_TEMPLATE`'s
    fingerprint; dispose the two `schema_db_unreachable` LOWs) are not part of this wave's named
    row list (R78–R81, R15, R29, R60, R99, R63/64/65/66/68/69/70/77, R218) and were not actioned.
+5. **F6 (W3-1_REVIEW.md §2, demonstrated on a copy): superseding a *generic* census criterion
+   permanently mutes it for that asset.** Once `bg_rules-Carr.detector` (or any of the four other
+   Carr-superseded assets' generic ids) is superseded onto a specific id (`bg_rules-Carr.D1`), a
+   FUTURE regression on the generic criterion — e.g. `bg_rules-Complete.depth` newly FAILing on a
+   *different* column than the one folded — is never recorded: the gid is `ever_superseded` and
+   `emit_gaps` skips it, uncounted, forever. This is the designed effect of the D4 crosswalk
+   (§N.8's "the honest form" for a specific criterion superseding its generic placeholder), not a
+   builder defect, but it is a real coverage loss the native should see before relying on the
+   generic criteria for the five superseded assets going forward. Raised as a D4 follow-up, not
+   fixed this wave.
+6. **F7 (W3-1_REVIEW.md §7): L0 v3.0 line 526 ("5. **Briefs and gates** — 40 briefs, **320
+   gates**") is the same "0/320" self-contradiction R69 fixed at 4 other locations, missed at this
+   fifth one.** Fixed in this correction pass — see "Corrections after gate review" below.
 
 ## §4 — R218 per-P-need report
 
@@ -227,10 +263,21 @@ the interpretation independently. 17 of 24 PASS.
 | P23 | FAIL | `scu.catalog.compose_large_n` | 18/32 | no named producer |
 | P24 | PASS | `scu.finance.prosperity_assessment` | 23/32 | `bo_cdlm_summary, bo_vargottama_dhana` |
 
-All 7 FAILs resolve to `editorial=false` registry-derived routing stubs (`assess_career`,
-`assess_marriage`, `compose_large_n`, `graha_portrait`, `call_priority_ranking`) — a real,
-consistent finding (not scattered noise: the same 3 stub capabilities account for all 7 FAILs),
-naming a concrete future producer-provenance wave's worklist, not a defect in this test.
+**Corrected after gate review (C1a) — this paragraph was wrong on both count and editorial
+status; see below.** All 7 FAILs resolve to exactly **5** distinct capabilities — `assess_career`
+(P01, P18), `assess_marriage` (P05), `compose_large_n` (P07, P23), `graha_portrait` (P13),
+`call_priority_ranking` (P21) — and every one of the 5 is measured **`editorial: true`** (reviewed,
+served capabilities), not `editorial: false` routing stubs. The real cause, per Lane B's
+`producer_provenance.derived.json`: `assess_career`, `assess_marriage`, `compose_large_n` and
+`graha_portrait` each carry `NO_DETECTOR — no_contract: no availability_contracts requirement and
+no reviewed_output claim` — they are composite orchestrators (`assess_career`'s own description:
+"Orchestrates query_domain_reading … query_temporal_activation … query_contradictions"), and their
+real producers sit one composition hop away that the current provenance derivation does not
+traverse. `call_priority_ranking` carries `NO_DETECTOR — no_relation_in_range` — it is a service
+wrapper (`ka_tulana`) with no table in the resolved source range. This is a real, consistent
+finding (the same 5 reviewed capabilities account for all 7 FAILs), naming a concrete future
+worklist — "producer provenance through composition and service edges" — not "review 3 unreviewed
+stubs".
 
 ## §5 — Packet proof (§4 of the wave prompt)
 
@@ -271,13 +318,16 @@ naming a concrete future producer-provenance wave's worklist, not a defect in th
    - `drift_detector.py`: exit **2** (not the packet's stated 0/3 floor) — **explained, not
      silent**: 2 HIGH `fingerprint_mismatch` findings, both *expected* consequences of this
      wave's own legitimate content edits, not caught by anything this wave broke:
-     - `ASSET_ELEVATION_TEMPLATE` (edited by R63/R64/R66/R68/R77) — the SAME finding
-       `T5_LEDGER_DRIFT.md` already documented as expected/pre-existing (a v1.1→v2.0 edit that
-       never rotated its fingerprint); still unrotated, now with a further content change on top.
-     - `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY` (edited by R69/R70) — NEW this wave, same
+     - `ASSET_ELEVATION_TEMPLATE` (edited by R63/R64/R66/R68/R77). **Corrected after gate review
+       (C1b) — this finding is NEW this wave, not pre-existing.** By base commit `c8cdc0242` the
+       row's declared fingerprint (`4927436c…`) already MATCHED the file's own sha256 at base —
+       the earlier, v1.1→v2.0-era mismatch T5_LEDGER_DRIFT.md documented (declared `bb341cc1…`)
+       had already been rotated and closed before this wave opened. This wave's own R63/R64/R66/
+       R68/R77 edits are what produced the new mismatch (observed `ff911384…` at HEAD).
+     - `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY` (edited by R69/R70) — also new this wave, same
        cause: a legitimate content edit whose `CANONICAL_ARTIFACTS` fingerprint row has not been
        rotated. Fingerprint rotation is explicitly the executor's job at fold-time, not the
-       builder's (CLAUDE.md §D / wave prompt §5: "fingerprints rotated last"), so this HIGH is
+       builder's (CLAUDE.md §D / wave prompt §5: "fingerprints rotated last"), so both HIGHs are
        expected to persist until the executor folds this wave's rows — named here, not fixed.
      - The 1 LOW (`a3_category_not_yet_populated`) is a pre-existing, unrelated soft check.
    - Production ledger (`asset_gaps.jsonl`) md5: unchanged at `7f2257a8d4f0d6a7a21c0648b4101f85`
