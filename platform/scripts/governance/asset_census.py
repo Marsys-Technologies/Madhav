@@ -534,18 +534,38 @@ def build_history(prefix: str, ids=None) -> dict:
 
     The static checks say an asset *should* be dispatchable. Only this says whether it ever was, and what
     happened. Native context (2026-09-26): a global build skips L0 and walks L1->L5, so an L0 asset is
-    only ever exercised by a layer- or asset-scope run — measured here rather than assumed."""
+    only ever exercised by a layer- or asset-scope run — measured here rather than assumed.
+
+    C1 (W2-1_REVIEW §2 A8): a `build_run_assets` ROW is not an EXECUTION. The engine inserts every
+    planned asset as `queued` and sets `started_at` at exactly one site — the 'building' transition in
+    `asset_runner.py` (INSERT … state 'building', started_at NOW()). Rows that never reach it keep
+    `started_at` NULL whatever their final state: `queued` leftovers in finished runs, `aborted` rows
+    the runner's preflight/guardian terminalised straight from `queued` (runner.py
+    `_terminalize_preflight_failure`), and `error` rows written by `_mark_asset_blocked` ("BLOCKED: …
+    The asset is NOT executed"). Measured 2026-09-27: queued 1 465 (0 started), aborted 649 (8
+    started), error 1 515 (319 started), complete 3 133 (3 133 started). So the executed set is
+    `started_at IS NOT NULL`, not a list of states — a state list ({complete, error, aborted}) would
+    count 1 837 never-started rows as runs. `executed` counts those rows; `runs` stays the raw row
+    count and is reported beside it."""
     per: dict[str, dict] = {}
     rows = psql("SELECT a.asset_id, r.scope, a.state, coalesce(a.disposition,''), "
-                "coalesce(r.created_at::date::text,''), coalesce(left(a.error,200),'') "
+                "coalesce(r.created_at::date::text,''), coalesce(left(a.error,200),''), "
+                "(a.started_at IS NOT NULL)::text "
                 "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
                 f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} ORDER BY a.asset_id, r.created_at")
-    for aid, scope, state, disp, when, err in ((x + [""] * 6)[:6] for x in rows):
+    for aid, scope, state, disp, when, err, started in ((x + [""] * 7)[:7] for x in rows):
         d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
                                      blocked=0, scopes=set(), last_state="", last_when="",
-                                     last_disposition="", sample_error="", sample_blocked=""))
+                                     last_disposition="", sample_error="", sample_blocked="",
+                                     executed=0, executed_scopes=set(), last_executed_when="",
+                                     states={}))
         d["runs"] += 1
         d[state] = d.get(state, 0) + 1
+        d["states"][state] = d["states"].get(state, 0) + 1
+        if started in ("t", "true"):
+            d["executed"] += 1
+            d["executed_scopes"].add(scope)
+            d["last_executed_when"] = when
         if disp == "skip_no_delta":
             d["skipped"] += 1
         # Packet B1: 'blocked_dependency' (migration 1095) marks a row whose writer never
@@ -616,6 +636,15 @@ def _grade_build_history(h: dict) -> dict:
         if h["complete"] == 0:
             return dict(v=PARTIAL, measured=f"0 complete — this asset has NEVER once finished a build; {h['blocked']} blocked_dependency row(s) were all downstream cascade ({h['sample_blocked']}), not a defect of this asset, but a history with zero completions cannot grade PASS on the strength of 'no genuine error' alone; {h['skipped']} skip_no_delta")
         return dict(v=PASS, measured=f"{h['complete']} complete, no genuine error or abort; {h['blocked']} blocked_dependency row(s) were all downstream cascade from an upstream failure, not a defect of this asset ({h['sample_blocked']}); {h['skipped']} skip_no_delta (healthy)")
+    if h["complete"] == 0:
+        # C1 (W2-1_REVIEW §2 A3/A8): zero completions and zero errors/aborts means no attempt ever
+        # reached an outcome (e.g. only `queued` rows left in finished runs). "No error" there is the
+        # absence of a measurement, not a clean history — PASS would close a gap on nothing, and the
+        # delegating N/A would too. NO_DETECTOR (non-closable, opens a gap) with the reason; the
+        # missing execution itself is Build.exercised's FAIL.
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — 0 complete and no error or abort across {h['runs']} "
+                                       f"build_run_assets row(s) (states: {h.get('states') or 'n/a'}): no "
+                                       "attempt reached an outcome to grade")
     return dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
 
 
@@ -1165,8 +1194,22 @@ def measure(layer_key: str) -> dict:
                 measured=("registered with a writer and the orchestrator has NEVER run it (no build_run_assets row)"
                           if r["has_writer"] else "never run, and it has no writer — consistent"))
             m["Build.history"] = dict(v=NA, measured="never run; check 7 owns this")
+        elif not h.get("executed", 0):
+            # C1 (W2-1_REVIEW §2 A8): rows exist but none was ever STARTED (queued leftovers, aborted or
+            # BLOCKED before start) — the orchestrator never executed this asset. Not a PASS; the
+            # history is still graded (its own zero-completion guard keeps it non-closable).
+            m["Build.exercised"] = dict(
+                v=(FAIL if r["has_writer"] else NA),
+                measured=(f"registered with a writer and the orchestrator has NEVER executed it: {h['runs']} "
+                          f"build_run_assets row(s), none ever started (states: {h.get('states') or 'n/a'})"
+                          if r["has_writer"] else f"never executed ({h['runs']} unstarted row(s)), and it has no "
+                                                  "writer — consistent"))
+            m["Build.history"] = _grade_build_history(h)
         else:
-            m["Build.exercised"] = dict(v=PASS, measured=f"{h['runs']} run(s), scope(s): {', '.join(sorted(h['scopes']))}, last {h['last_when']}")
+            m["Build.exercised"] = dict(
+                v=PASS, measured=f"{h['executed']} executed run(s) of {h['runs']} build_run_assets row(s), "
+                                 f"scope(s): {', '.join(sorted(h['executed_scopes']))}, last executed "
+                                 f"{h['last_executed_when']}")
             m["Build.history"] = _grade_build_history(h)
 
         dead = [d for d in r["depends_on"] if d not in hist["lit"]]

@@ -35,7 +35,8 @@ import asset_census as ac  # noqa: E402
 
 CANONICAL = "482012f1-710e-4a25-994a-93821f5871aa"
 # The real functions, captured at import before any test monkeypatches them.
-_REAL = {n: getattr(ac, n) for n in ("depth_census", "capability_scan", "live_counts", "throughput")}
+_REAL = {n: getattr(ac, n) for n in ("depth_census", "capability_scan", "live_counts", "throughput",
+                                     "build_history")}
 
 
 def _db_reachable() -> bool:
@@ -602,3 +603,90 @@ def test_live_r48_every_l3_asset_declaring_a_floor_gets_a_verdict():
     for aid in declared:
         cf = ac._grade_count_floor(reg[aid], counts.get(aid), errored.get(aid), ac._count_tables(reg[aid]["count_sql"]))
         assert cf is not None and cf["v"] in (ac.PASS, ac.FAIL, ac.NA, ac.NO_DET, ac.ERRORED), (aid, cf)
+
+
+# ─────────────────────────── C1 (W2-1_REVIEW §2 A8): a queued row is not an execution ───────────────────────────
+
+REPO = HERE.parents[3]
+PROD_LEDGER = REPO / "00_ARCHITECTURE" / "control" / "asset_gaps.jsonl"
+
+
+def _history_psql(rows):
+    """Answers build_history()'s own three reads: the attempts (7 columns, the last being
+    `started_at IS NOT NULL`), the global-run counts, and the lit set."""
+    def fake(sql, sep="\x1f", timeout=None):
+        if "FROM build_run_assets a JOIN build_runs r" in sql:
+            return [list(r) for r in rows]
+        if sql.startswith("SELECT count(*)::text FROM build_runs"):
+            return [["0"]]
+        if "FROM asset_throughput WHERE state='lit'" in sql:
+            return []
+        raise AssertionError(f"unexpected query: {sql[:100]}")
+    return fake
+
+
+def _with_real_history(monkeypatch, rows):
+    monkeypatch.setattr(ac, "build_history", _REAL["build_history"])
+    fake = _history_psql(rows)
+    monkeypatch.setattr(ac, "psql", fake)
+    monkeypatch.setattr(ac, "scalar", lambda sql: (lambda r: r[0][0] if r and r[0] else None)(fake(sql)))
+
+
+def test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass(monkeypatch, tmp_path):
+    """(a) The REAL build_history() fed three never-started `queued` rows. Fails without the fix:
+    Build.exercised read PASS "3 run(s)" and Build.history PASS "0 complete, no error or abort"."""
+    reg = {"bg_x": _reg_row("bg_x", None, has_writer=True, asset_kind="service")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    _with_real_history(monkeypatch, [("bg_x", "layer", "queued", "", f"2026-09-2{i}", "", "f") for i in range(3)])
+    c = ac.measure("L0")
+    ex, hi = _m(c, "bg_x", "Build.exercised"), _m(c, "bg_x", "Build.history")
+    assert ex["v"] == ac.FAIL and "none ever started" in ex["measured"], ex
+    assert hi["v"] == ac.NO_DET and "0 complete" in hi["measured"], hi
+    assert ex["v"] not in ac.CLOSABLE and hi["v"] not in ac.CLOSABLE
+
+
+def test_c1_history_never_passes_with_zero_completions():
+    h = dict(runs=2, error=0, aborted=0, complete=0, queued=2, skipped=0, blocked=0, last_state="queued",
+             last_when="2026-09-27", last_disposition="", sample_error="", sample_blocked="")
+    assert ac._grade_build_history(h)["v"] == ac.NO_DET
+
+
+def test_c1_an_executed_row_still_exercises(monkeypatch, tmp_path):
+    """Positive control: one started, completed row keeps Build.exercised PASS and history PASS; the
+    queued leftover beside it is reported, not counted."""
+    reg = {"bg_x": _reg_row("bg_x", None, has_writer=True, asset_kind="service")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    _with_real_history(monkeypatch, [("bg_x", "layer", "complete", "build", "2026-09-20", "", "t"),
+                                     ("bg_x", "global", "queued", "", "2026-09-21", "", "f")])
+    c = ac.measure("L0")
+    ex = _m(c, "bg_x", "Build.exercised")
+    assert ex["v"] == ac.PASS and "1 executed run(s) of 2" in ex["measured"], ex
+    assert _m(c, "bg_x", "Build.history")["v"] == ac.PASS
+
+
+@pytest.mark.skipif(not PROD_LEDGER.exists(), reason="production ledger not present in this checkout")
+def test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open(monkeypatch, tmp_path):
+    """(b) W2-1_REVIEW A8, exactly: a COPY of the production ledger (holding the OPEN
+    bg_sign_medical-Build.exercised gap), the REAL build_history()/measure()/emit_gaps(), and one
+    `queued` row for bg_sign_medical. Fails without the fix: emit_gaps CLOSED the gap on a row that
+    never executed. The production ledger itself is never opened for writing."""
+    ctrl = tmp_path / "ctrl"
+    ctrl.mkdir()
+    (ctrl / "asset_gaps.jsonl").write_bytes(PROD_LEDGER.read_bytes())
+    gid = "bg_sign_medical-Build.exercised"
+    latest = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines()
+              if l.strip() and json.loads(l).get("gap_id") == gid]
+    assert latest and latest[-1]["state"] == "OPEN", "the reproduction needs the gap OPEN on the copy"
+    reg = {"bg_sign_medical": _reg_row("bg_sign_medical", "bg_sign_medical", has_writer=True)}
+    _stub_layer(monkeypatch, ctrl, reg)
+    # The real capability scan over the real L0 directory — the stub's "scanned, no module" N/A would
+    # close the (also OPEN) bg_sign_medical-Dens.served gap, an artefact of the harness, not of C1.
+    monkeypatch.setattr(ac, "capability_scan", _REAL["capability_scan"])
+    _with_real_history(monkeypatch, [("bg_sign_medical", "layer", "queued", "", "2026-09-28", "", "f")])
+    c = ac.measure("L0")
+    assert _m(c, "bg_sign_medical", "Build.exercised")["v"] == ac.FAIL
+    assert _m(c, "bg_sign_medical", "Build.history")["v"] not in ac.CLOSABLE
+    added, skipped, closed, reopened = ac.emit_gaps(c)
+    assert closed == 0, "a never-executed queued row must not close the open Build.exercised gap"
+    rows = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert [r for r in rows if r.get("gap_id") == gid][-1]["state"] == "OPEN"
