@@ -261,6 +261,24 @@ describe('availability proof typing', () => {
         })])
       })
 
+      // Independent review finding: the first version of this contract listed only 6 legs,
+      // omitting query_convergence_windows and query_life_arc — runTemporalStep
+      // (synergy/orchestrator.ts) dispatches all THREE L3 temporal legs for queryClass
+      // 'holistic' (the mode synergy_pipeline's executed binding actually runs), not
+      // query_temporal_activation alone. A contract under-declaring real dependencies would
+      // certify the executed binding 'available' even while two of its three temporal legs
+      // were dark — exactly the availability/reality mismatch a derived contract exists to
+      // prevent.
+      it("the executed mode's derived contract names all three L3 temporal legs runTemporalStep actually dispatches for queryClass 'holistic', not query_temporal_activation alone", () => {
+        const contract = synergyPipeline.availability_contracts!.find((c) => c.binding_id === executedBindingId)!
+        const requirement = contract.requirements[0] as { required_binding_ids: readonly string[] }
+        expect(requirement.required_binding_ids).toEqual(expect.arrayContaining([
+          'registry:marsys://tool/L3/query_temporal_activation',
+          'registry:marsys://tool/L3/query_convergence_windows',
+          'registry:marsys://tool/L3/query_life_arc',
+        ]))
+      })
+
       it('dry_run (plan) reads resource_ok and is NEVER admitted as answer evidence, even with zero chart evidence', async () => {
         const overlay = await overlayWithNoEvidence()
         const availability = overlay.availability.find((entry) => entry.scu_id === synergyPipeline.scu_id)!

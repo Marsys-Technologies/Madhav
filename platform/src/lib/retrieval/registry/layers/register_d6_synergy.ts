@@ -107,15 +107,22 @@ const synergyPipelineTool: CapabilityDescriptor = {
   // dry_run returns static, always-available route/plan metadata computed with zero I/O
   // (proof_kind 'plan', proven by snapshot registration alone, exactly like intent_classify/
   // route); the executed mode dispatches runWholeChartRead('holistic', ...) — genuinely
-  // chart-scoped answer evidence composed from the same six legs dry_run's own `stages` list
-  // above documents (query_ucd, query_domain_reading, query_signals, traverse_chart_graph,
-  // query_contradictions, query_temporal_activation — the last only because 'holistic' gates
-  // it, unlike synergy_cross_layer's 'cross_domain' mode, which this same file's derived
-  // contract for synergy_cross_layer correctly excludes it from). Authored directly (bypassing
-  // auto-derivation, which supports exactly one proof_kind per descriptor) so the two modes
-  // can carry independent proof — content below matches the fields deriveDeclaration() would
-  // have produced for the single-binding v1 shape (previously entirely uncontracted, always
-  // dark — see the R3 boundary review), plus the new per-mode structure.
+  // chart-scoped answer evidence composed from query_ucd, query_domain_reading,
+  // query_signals, traverse_chart_graph, query_contradictions (dry_run's own `stages` list
+  // above), PLUS query_convergence_windows and query_life_arc — runTemporalStep
+  // (synergy/orchestrator.ts) dispatches all THREE L3 temporal legs
+  // (query_temporal_activation, query_convergence_windows, query_life_arc) for
+  // queryClass 'holistic'/'predictive', not query_temporal_activation alone (an
+  // independent review of the first version of this contract caught the two-leg omission —
+  // re-derived directly from runTemporalStep's own source rather than trusting dry_run's
+  // `stages` list, which only ever documented the non-temporal legs). This is unlike
+  // synergy_cross_layer's 'cross_domain' mode, which this same file's derived contract for
+  // synergy_cross_layer correctly excludes the whole temporal step from. Authored directly
+  // (bypassing auto-derivation, which supports exactly one proof_kind per descriptor) so the
+  // two modes can carry independent proof — content below matches the fields
+  // deriveDeclaration() would have produced for the single-binding v1 shape (previously
+  // entirely uncontracted, always dark — see the R3 boundary review), plus the new per-mode
+  // structure.
   semantic_capabilities: [{
     scu_id: 'scu.catalog.synergy_pipeline',
     version: 2,
@@ -165,8 +172,10 @@ const synergyPipelineTool: CapabilityDescriptor = {
             'registry:marsys://tool/L2/traverse_chart_graph',
             'registry:marsys://tool/L2/query_contradictions',
             'registry:marsys://tool/L3/query_temporal_activation',
+            'registry:marsys://tool/L3/query_convergence_windows',
+            'registry:marsys://tool/L3/query_life_arc',
           ],
-          source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead (queryClass=holistic)',
+          source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead:runTemporalStep (queryClass=holistic)',
         }],
       },
       {

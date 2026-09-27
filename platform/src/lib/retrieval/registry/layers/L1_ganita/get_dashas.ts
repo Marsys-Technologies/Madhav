@@ -1033,7 +1033,11 @@ export const getDashasCapability: CapabilityDescriptor = {
           // serve time (the denormalized chart_dashas columns are NULL/wrong; §N.5 — L1 is the
           // authority). Compact always-on provenance marker (envelope-budget safe); the exhaustive
           // served==chart_facts cross-check is CI-enforced (wp18_cross_path_fidelity.integration).
-          natal_condition_provenance: 'chart_facts:re-derived@serve (WP-1.8/R-43)',
+          // R3 boundary review follow-up: this envelope-level marker must reflect the SAME
+          // natalConditionSource every row's own field reports (§N.7/§N.8 — a verification flag
+          // needs a real detector behind it) — it must never assert a successful re-derivation
+          // happened when the served generation could not be resolved.
+          natal_condition_provenance: natalConditionSource,
           ...(narration ? { narration } : {}),
           ...(drill_pointers.length > 0 ? { drill_pointers } : {}),
           ...(temporalContext ? { temporal_context: temporalContext } : {}),

@@ -38,7 +38,8 @@ vi.mock('../L1_ganita/get_yoga_firings', () => ({
 }))
 
 import { clearRegistry, getCapability } from '../../index'
-import { registerD8AssessDomainCapabilities } from '../register_d8_assess_domain'
+import { registerD8AssessDomainCapabilities, buildVargaAnalysisDirect } from '../register_d8_assess_domain'
+import { ExplicitEmptyBuildFenceError } from '@/lib/retrieval/registry/generation/served_generation'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const SERVED = '11111111-1111-4111-8111-111111111111'
@@ -179,5 +180,21 @@ describe('assess_* served-generation fence', () => {
     expect(flag?.detail).toContain('ga_vichara')
     for (const read of derivedReads()) expect(read.fence).toEqual([SERVED])
     expect(domainReadingHandler.mock.calls[0]![0]).toMatchObject({ build_id: [SERVED] })
+  })
+
+  // Independent review finding: buildVargaAnalysisDirect's outer catch was the one composite
+  // caller in this session's build-fence migration whose catch block did NOT rethrow
+  // ExplicitEmptyBuildFenceError (fetchInduLagna's own catch, a few lines up in the same file,
+  // already did) — structurally unreachable through the full assess_* handler (its own
+  // served-generation gate above already guarantees a non-empty build_id by the time this
+  // runs), so this calls the exported function directly, per the R3 boundary ruling's "at
+  // least one judgment/checklist caller" test requirement.
+  it('throws (never degrades to a generic "direct consumption failed" note) on an explicit-empty build fence', async () => {
+    installRouter([receiptRow('ga_structural')])
+    // Warm the module-level DOMAIN_DIRECT_VARGAS cache via the full handler once, then call
+    // buildVargaAnalysisDirect directly with an explicit-empty fence.
+    await run()
+    await expect(buildVargaAnalysisDirect(CHART_ID, 'lahiri_chitrapaksha', 'wealth', []))
+      .rejects.toThrow(ExplicitEmptyBuildFenceError)
   })
 })

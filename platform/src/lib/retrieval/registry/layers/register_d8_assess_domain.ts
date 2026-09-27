@@ -433,6 +433,14 @@ export async function buildVargaAnalysisDirect(
       drill_uri: 'marsys://tool/L1/chart_facts_query',
     }
   } catch (err) {
+    // Independent review finding: this catch block was the one composite caller in this
+    // session's build-fence migration that did NOT rethrow an explicit-empty fence violation
+    // (fetchInduLagna's own catch, a few lines up in this same file, already does) —
+    // structurally unreachable today (runAssessDomain's own served-generation gate guarantees
+    // build_id is never empty by the time it reaches fetchVargaDignity/fetchVargaAvPindaSarva),
+    // but the invariant must not silently degrade into a generic "direct consumption failed"
+    // note if that guarantee is ever violated.
+    if (err instanceof ExplicitEmptyBuildFenceError) throw err
     return {
       direct_consumption: false,
       consumed_vargas: vargas,

@@ -249,6 +249,13 @@ describe('get_dashas build-pinned cursor pagination', () => {
     expect(servedRow['lord_natal_shadbala_total']).toBeNull()
     expect(servedRow['natal_condition_source']).toBe('unavailable:no_served_generation')
     expect(servedRow['natal_condition_source']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
+    // Independent review finding: the envelope-level `natal_condition_provenance` marker
+    // (emitted once per response, distinct from each row's own `natal_condition_source`) had
+    // been left as a hardcoded literal, so a budget-constrained caller reading only the
+    // envelope would see a false "successfully re-derived" claim even though every row was
+    // actually unavailable. It must track the same real state as the per-row field.
+    expect(content['natal_condition_provenance']).toBe('unavailable:no_served_generation')
+    expect(content['natal_condition_provenance']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
   })
 
   it('discloses (never silently claims re-derived) when served-generation resolution itself throws', async () => {
@@ -277,6 +284,8 @@ describe('get_dashas build-pinned cursor pagination', () => {
     expect(servedRow['lord_natal_dignity_d1']).toBeNull()
     expect(servedRow['natal_condition_source']).toBe('unavailable:resolution_failed')
     expect(servedRow['natal_condition_source']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
+    expect(content['natal_condition_provenance']).toBe('unavailable:resolution_failed')
+    expect(content['natal_condition_provenance']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
   })
 
   it('rejects fractional and huge finite pagination before issuing SQL, while safely flooring usable values', async () => {
