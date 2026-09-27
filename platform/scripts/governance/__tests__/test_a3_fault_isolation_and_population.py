@@ -84,7 +84,17 @@ def test_live_e2e_one_simulated_query_timeout_degrades_not_aborts(monkeypatch):
     to ERRORED, while the SAME monkeypatch against the pre-A3 code (no per-check guard) aborts
     `measure()` outright — reproduced here against `_naive_measure_has_no_guard` below, a
     transcription of the pre-fix call site, so the failing-without-the-fix half of this proof
-    does not depend on git history being available in whatever environment runs this suite."""
+    does not depend on git history being available in whatever environment runs this suite.
+
+    Note (post-F2 fix, discovered running this test live): L1's own `count_sql` values are
+    chart-scoped (`WHERE chart_id = $1`, a real parameter placeholder — confirmed live against
+    every L1 asset's registered `count_sql`), which `live_counts()` cannot bind when run
+    standalone, so EVERY L1 asset's `Build.completion` also (and correctly, per F2) grades
+    ERRORED here, independent of the simulated Vocab.identity fault. That is F2 doing its job —
+    a real, pre-existing masked defect (count_sql that cannot run this way was previously
+    silently reported as N/A "no count_sql"), not a regression this test should paper over. This
+    test's actual claim is narrower: the SIMULATED fault must degrade only Vocab.identity, and
+    must never blind Build.registered (or anything else) for the SAME asset."""
     real_psql = ac.psql
 
     def flaky_psql(sql, sep="\x1f", timeout=None):
@@ -98,10 +108,15 @@ def test_live_e2e_one_simulated_query_timeout_degrades_not_aborts(monkeypatch):
     c = ac.measure("L1")
     errored = [(a["asset_id"], k) for a in c["assets"] for k, v in a["measurements"].items() if v["v"] == ac.ERRORED]
     assert c["n_assets"] > 0, "the layer must still be fully measured, not aborted"
-    assert errored, "at least one asset must show the simulated failure as ERRORED, not silently PASS"
-    assert all(k == "Vocab.identity" for _, k in errored), "only the targeted query shape should degrade"
+    identity_errored = [(aid, k) for aid, k in errored if k == "Vocab.identity"]
+    assert identity_errored, "at least one asset must show the simulated failure as ERRORED, not silently PASS"
+    # Every OTHER criterion that degrades here must be independently explained (F2's own
+    # Build.completion finding, confirmed above) — the simulated fault itself must degrade only
+    # Vocab.identity, never spill into an unrelated criterion for the same asset.
+    unexplained = [(aid, k) for aid, k in errored if k not in ("Vocab.identity", "Build.completion")]
+    assert not unexplained, f"the simulated fault spilled into an unrelated criterion: {unexplained}"
     # Every asset that errored on Vocab.identity must still have OTHER criteria measured normally.
-    errored_ids = {aid for aid, _ in errored}
+    errored_ids = {aid for aid, _ in identity_errored}
     for a in c["assets"]:
         if a["asset_id"] in errored_ids:
             others = {k: v["v"] for k, v in a["measurements"].items() if k != "Vocab.identity"}
@@ -122,6 +137,73 @@ def test_depth_census_timeout_does_not_block_vocab_or_ldgr_checks_from_running()
     # all four (which would still let e.g. a depth_census timeout swallow the identity/alias/ldgr
     # results for the SAME asset).
     assert src.count("except Unknown as exc:") >= 6  # contract, idem, depth, identity, alias, ldgr
+
+
+# ── F2 (A_REVIEW.md): an errored count_sql must never be read as "no count_sql" ──
+
+def test_live_counts_distinguishes_errored_query_from_no_count_sql(monkeypatch):
+    """A failing count_sql must be reported in a distinct `errored` map, never collapsed into the
+    same `None` a genuinely-absent count_sql produces. Pre-fix, `live_counts` returned a single
+    dict, and both cases mapped to `out[aid] = None` — measure() then wrote
+    `Build.completion = N/A "no count_sql"` for a query that in fact raised, and N/A is CLOSABLE
+    (a live demonstration on bg_ephemeris closed the gap on exactly this path, per A_REVIEW.md F2).
+    This test fails today (before the fix) because `live_counts` returns one value, not a
+    (counts, errored) pair — unpacking it as a 2-tuple raises."""
+    reg = {
+        "bg_ok": dict(count_sql="SELECT 1"),
+        "bg_no_count_sql": dict(count_sql=""),
+        "bg_broken": dict(count_sql="SELECT boom_this_relation_does_not_exist"),
+    }
+
+    def fake_psql(sql, sep="\x1f", timeout=None):
+        if "UNION ALL" in sql:
+            raise ac.Unknown("SIMULATED: batch query failed")
+        if "boom_this_relation_does_not_exist" in sql:
+            raise ac.Unknown("SIMULATED: relation \"boom_this_relation_does_not_exist\" does not exist")
+        return [["1"]]
+
+    monkeypatch.setattr(ac, "psql", fake_psql)
+    counts, errored = ac.live_counts(reg)
+    assert counts["bg_no_count_sql"] is None
+    assert "bg_no_count_sql" not in errored, "a genuinely-absent count_sql must never appear in errored"
+    assert counts["bg_broken"] is None
+    assert "bg_broken" in errored and "does not exist" in errored["bg_broken"]
+    assert counts["bg_ok"] == 1
+    assert "bg_ok" not in errored
+
+
+def _db_reachable_f2() -> bool:
+    try:
+        ac.scalar("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(not _db_reachable_f2(), reason="no live DB in this environment (PGHOST/PGPORT/etc.)")
+def test_live_e2e_a_broken_count_sql_grades_errored_not_na(monkeypatch):
+    """Live reproduction of A_REVIEW.md F2's bg_ephemeris demonstration, via monkeypatch rather
+    than depending on production having a broken count_sql at run time: force one asset's
+    live_counts entry into the errored path and confirm Build.completion grades ERRORED, never
+    the closable N/A."""
+    real_live_counts = ac.live_counts
+    picked: dict[str, str] = {}
+
+    def broken(reg):
+        counts, errored = real_live_counts(reg)
+        target = next(iter(reg), None)
+        if target is not None:
+            counts[target] = None
+            errored[target] = "SIMULATED: count_sql query failed (F2 reproduction)"
+            picked["id"] = target
+        return counts, errored
+
+    monkeypatch.setattr(ac, "live_counts", broken)
+    c = ac.measure("L0")
+    assert "id" in picked, "live_counts was never called — the layer must have at least one asset"
+    target = next(a for a in c["assets"] if a["asset_id"] == picked["id"])
+    assert target["measurements"]["Build.completion"]["v"] == ac.ERRORED
+    assert target["measurements"]["Build.completion"]["v"] not in ac.CLOSABLE
 
 
 # ── R220: active population scoping ──

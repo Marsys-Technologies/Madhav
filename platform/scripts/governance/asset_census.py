@@ -318,9 +318,18 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
     return out, population
 
 
-def live_counts(reg: dict) -> dict[str, int | None]:
-    """Each asset's OWN count_sql — the cockpit instrument, not a table count."""
+def live_counts(reg: dict) -> tuple[dict[str, int | None], dict[str, str]]:
+    """Each asset's OWN count_sql — the cockpit instrument, not a table count.
+
+    F2 (A_REVIEW.md, Lane A gate REJECT): a `count_sql` that RAISES (statement timeout, missing
+    relation) must be distinguishable from an asset that simply HAS no `count_sql` at all — both
+    used to collapse to `out[aid] = None`, and `measure()` then wrote `Build.completion = N/A "no
+    count_sql"` for a query that in fact errored. N/A is CLOSABLE; a live demonstration
+    (bg_ephemeris) closed the gap on a query that never returned a clean answer. Returns
+    `(counts, errored)`: `errored[aid]` is set only when that asset's own `count_sql` was
+    non-empty and its query raised `Unknown` — never for a genuinely absent `count_sql`."""
     out: dict[str, int | None] = {}
+    errored: dict[str, str] = {}
     parts, ids = [], []
     for aid, r in reg.items():
         q = " ".join(re.sub(r"--[^\n]*", "", r["count_sql"]).replace("\n", " ").rstrip(" ;").split())
@@ -330,7 +339,7 @@ def live_counts(reg: dict) -> dict[str, int | None]:
         parts.append(f"SELECT '{aid}' a,({q})::text n")
         ids.append(aid)
     if not parts:
-        return out
+        return out, errored
     try:
         for a, n in psql(" UNION ALL ".join(parts)):
             out[a] = int(n) if n.strip().lstrip("-").isdigit() else None
@@ -340,9 +349,10 @@ def live_counts(reg: dict) -> dict[str, int | None]:
             try:
                 v = scalar(f"SELECT ({q})::text")
                 out[aid] = int(v) if v and v.strip().lstrip("-").isdigit() else None
-            except Unknown:
+            except Unknown as exc:
                 out[aid] = None
-    return out
+                errored[aid] = str(exc)
+    return out, errored
 
 
 def throughput(prefix: str) -> dict[str, dict]:
@@ -615,7 +625,7 @@ def measure(layer_key: str) -> dict:
     reg, population = registry(layer_key)
     cat = catalog([r["target_table"] for r in reg.values()])
     regd = registered_ids(cfg["prefix"])
-    counts = live_counts(reg)
+    counts, count_errors = live_counts(reg)
     thru = throughput(cfg["prefix"])
     hist = build_history(cfg["prefix"])
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
@@ -675,7 +685,12 @@ def measure(layer_key: str) -> dict:
         live = counts.get(aid)
         t = thru.get(aid, {})
         rw = t.get("rows_written", "")
-        if live is None:
+        if aid in count_errors:
+            # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
+            # reading is CLOSABLE and a live demonstration (bg_ephemeris) closed the gap on a query
+            # that in fact errored. D4 case 1 ("never on an errored check") requires ERRORED here.
+            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}")
+        elif live is None:
             m["Build.completion"] = dict(v=NA, measured=f"no count_sql; build state='{t.get('state','-')}'")
         elif rw == "":
             m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all")
