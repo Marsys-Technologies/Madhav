@@ -1761,3 +1761,157 @@ finding_entry:
     (MARSYS_DEFECT_GAP_REGISTER_v2_0.md); the D-4b B-1 re-run that superseded the quarantined
     branch]
 ```
+
+---
+
+## DIS.031 (L3 Kāla campaign ref: D-6 / N-14) — Node dṛṣṭi: Saṅgam binds it off, the Gochara family applies it live — RESOLVED
+
+*Referred to this session by the Saṅgam stream (madhav-d9) on a Kimi K3 adversarial-review
+condition (K2-09). That session declined to edit a shared governance artifact at the end of its own
+close, which is the correct boundary; the entry is recorded here by the strategic session under its
+own hand. Evidentiary grading below is deliberate: grounds I verified myself are marked CONFIRMED,
+grounds taken from other sessions are marked ATTRIBUTED and are NOT yet independently checked by
+me. Per DIS.031's own lesson (see `KALA_ELEVATION_BLUEPRINT_v1_0.md` §11.23), a peer's confirmation
+is not verification the recording session has not itself performed.*
+
+```yaml
+finding_entry:
+  logged_by: "L3 Kāla strategic session (madhav-fc), l3/kala-elevation-readiness, 2026-09-23"
+  dr_id: DIS.031
+  campaign_ref: D-6 / N-14
+  question: >
+    The instrument holds two incompatible positions on whether Rāhu and Ketu cast graha-dṛṣṭi.
+    Saṅgam binds "no graha-dṛṣṭi for Rāhu/Ketu" as an author decision under native delegation
+    (SANGAM_RULING_SHEET_v1_0.md §CLOSE D-6, following the native's M-1 line). The Gochara family
+    applies nodal dṛṣṭi live in the served scoring path. Until the Gochara stream's N-14 is ruled,
+    the two streams compute different answers from the same chart, and the contradiction is
+    recorded in only one packet — where it can close silently when that packet closes.
+  grounds_confirmed_by_recording_session:
+    - "`_W30_NODAL_DRISHTI_ENABLED: bool = True` — services/gochara_v3/engine.py:107. Live, not dormant."
+    - "`raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates`
+       — services/gochara_v3/engine.py:632. w30_modifier is a MULTIPLICATIVE term in the served λ,
+       stored at :668 and :778. Disabling the toggle is therefore a formula change that invalidates
+       every stored λ, not a record filter — the engine's own comment at :132 says so."
+    - "The module's docstring (mechanisms/w30_nodal_drishti.py:1-21) concedes the textual gap in its
+       own words: the 5/7/9 nodal aspect is 'NOT found in the original Brihat Parashara Hora Shastra
+       (BPHS) text itself', is 'later tradition', and the module is labelled a CANDIDATE — while
+       running enabled on the served path. A candidate that is live is not a candidate."
+    - "That same docstring names its actual sources as Phaladīpikā and Sārāvalī. Both are in the
+       served corpus (564 and 471 chunks). CORRECTED 2026-09-23 by the Saṅgam stream: this entry
+       first said neither had been read against this question. That was WRONG — the table-level
+       query behind the attributed absence ground did include both in scope and returned only
+       non-granting rows from them (Phaladīpikā PG429:C1 is an index entry on Jupiter in transit;
+       Sārāvalī PG129:C2 is 7th-house relations). See the amended grading below for why the
+       objection nevertheless survives."
+  grounds_attributed_not_yet_verified_by_recording_session:
+    - "ATTRIBUTED (Gochara stream, reproduced by Saṅgam): the 'BPHS Ch.26' citation is refuted at
+       source — the chapter names Saturn, Jupiter and Mars for the specials and the 7th for all,
+       with zero rāhu/ketu occurrences in its span."
+    - "ATTRIBUTED (Saṅgam): a table-level regex across the 15-text corpus finds no nodal 5/7/9
+       grant. Stated by its author as 'not found at table level', NOT as absent."
+    - "ATTRIBUTED (Kimi K3): graded `[U] do not implement by default`."
+  amendment_2026_09_23_conjunctive_query_limit:
+    logged_by: "recording session, after the Saṅgam stream's correction (1b33c2780)"
+    note: >
+      The attributed absence ground is downgraded, by its own author, from "not found in the
+      corpus" to "NOT FOUND BY A CONJUNCTIVE REGEX THAT INCLUDED BOTH TEXTS". The query required an
+      aspect term AND a 5th/9th term IN THE SAME CHUNK. A grant phrased "Rāhu, like Jupiter, sees
+      the trines", or split across a chunk boundary, or degraded by OCR — and these chunks are
+      badly degraded — is invisible to it. The weaker claim is now stated as the weaker claim in
+      the Saṅgam sheet, and the stronger check remains undone: read EVERY rāhu/ketu chunk in
+      Phaladīpikā and Sārāvalī for the predicate, with NO aspect term conjoined. The SQL is written
+      into SANGAM_RULING_SHEET_v1_0.md ready to run.
+    also_attempted_and_failed: >
+      Both the Saṅgam stream and this recording session hit `ECONNREFUSED 127.0.0.1:5433` on the
+      direct DB path and could not discharge the check. The Saṅgam stream then ran the remote
+      search path, which responded and returned nothing from either text, and recorded that as a
+      NON-RESULT rather than as evidence — because this same campaign measured that same tool
+      returning zero rows for a predicate with seventeen in the table. That refusal is correct and
+      is noted here as the behaviour the register wants, not as a gap.
+    unaffected: >
+      D-6's other three grounds are untouched by this amendment: the refuted Ch.26 citation, the
+      w30 docstring's own concession, and Kimi's independent [U] grade.
+  recording_session_caveat: >
+    The two attributed corpus grounds are exactly the class of claim that failed catastrophically
+    across four sessions on this same day (see §11.21/§11.24 of the blueprint: a four-name corpus
+    list read off a SOURCE_DATA directory listing propagated into three analyses and a native
+    ruling inside 24 hours). They are recorded as attributed rather than confirmed, and the
+    recording session's live DB access was down at the time of entry, so it could not run its own
+    count(*). BEFORE N-14 IS RULED, the corpus grounds must be re-checked by query — and critically,
+    checked BY PREDICATE, NOT BY TERM, against Phaladīpikā and Sārāvalī specifically, which the
+    module's own docstring names and which nobody has read. A term-search for "nodal aspect" that
+    returns nothing is not evidence; the retrieval layer demonstrably ranked the load-bearing
+    Adhyāya XXVI chunk 7th of 12 on a vedha query the same day.
+  status: RESOLVED
+  resolved_on: 2026-09-23
+  resolved_by_session: "L3 Kāla strategic session (madhav-fc), on the native's N-14 ruling"
+  resolution: >
+    RESOLVED 2026-09-23 — N-14 ruled by the native and verified at source by the recording session
+    before closing this entry: GOCHARA_RULING_SHEET_v1_0.md on origin/l3/gochara-elevation at
+    50b5e1822, `status: RULED`, `ruled_by: Native (Abhisek Mohanty), by explicit delegated
+    instruction to session madhav-e6, recorded verbatim in §0`. N-14 EXTENDS "no graha-dṛṣṭi for
+    Rāhu/Ketu" to the Gochara family: `drishti_contact` casts no dṛṣṭi from the nodes (not the 7th
+    either, for consistency with the instrument-wide statement); `w30_nodal_drishti` leaves the λ
+    product; the nodes REMAIN full gochara agents and targets. Three conditions adopted —
+    same-generation regeneration inside a new candidate rather than a patch over live rows (which
+    engine.py:132 already demands), the absence declared as `completeness_state`, and the removed
+    term kept one generation as a labelled non-scoring annotation so every dependent claim has an
+    authorized successor. The λ-invalidation cost this entry identified is named in the ruling and
+    "accepted knowingly". The instrument now holds ONE doctrine on node dṛṣṭi across both streams,
+    by the native's ruling on both sheets — the divergence is resolved, not merely recorded.
+  resolution_caveats_recorded_honestly:
+    - "GROUND STRENGTH AT THE TIME OF RULING. The ruling's cited grounds include F-29, 'practice
+       unfound at table level across 15 texts'. That is the same ground this entry graded
+       ATTRIBUTED, and which its own author downgraded HOURS LATER to 'not found by a conjunctive
+       regex' (see the amendment above). So the native ruled partly on a ground subsequently
+       weakened by the session that produced it. This is recorded, not hidden. It is mitigated —
+       not erased — by direction: the ruling declines to apply a rule whose support is uncertain,
+       which is the conservative side of an uncertain ground, and the other three grounds (the
+       refuted Ch.26 citation, w30's own docstring concession, the independent reviewer's [U])
+       are unaffected."
+    - "ONE CLAIM NOT ADOPTED. The referring session reported that the corpus ground had been
+       independently discharged by a stage-3 executor (100 chunks, predicate-level, no grant) and
+       that this was 'recorded in DIS.031's own amendment'. IT IS NOT. The recording session wrote
+       that amendment and it contains no such record, and `git log` confirms no edit to this file
+       between the amendment (68b0fd09d) and this resolution. The 100-chunk check may well have
+       been run; the recording session could not verify it (direct DB access still refusing at
+       127.0.0.1:5433) and does not restate it as fact. The grounds are therefore NOT all upgraded
+       to CONFIRMED, contrary to the suggested closing line. The entry closes because the
+       DIVERGENCE is resolved by a verified native ruling, not because every ground was discharged."
+  status_note: "Closed on the ruling, with ground strength recorded as it actually stood."
+  resolution_shape: >
+    If N-14 rules to KEEP nodal dṛṣṭi, the instrument holds a NATIVE-RULED divergence between two
+    streams rather than an accidental one, and that is what this register exists to make visible.
+    If N-14 rules to DROP it, the cost is a gochara_v3 rebuild, not a record trim, and that cost
+    belongs in the ruling rather than being discovered after it. Either way the ruling should be
+    made on re-checked corpus grounds, not on the grounds as currently stated.
+  amendment_2026_09_23_predicate_level_recheck:
+    logged_by: "Saṅgam stage-3 executor (sangam/stage3 session, 2026-09-23), direct table read"
+    note: >
+      The stronger check this entry demanded has now been RUN. The exact SQL staged in
+      SANGAM_RULING_SHEET_v1_0.md §Corrections item 4 (predicate-level, NO aspect term conjoined,
+      text_id IN ('phaladeepika','saravali')) was executed against classical_text_chunks via the
+      read-only amjis_app path (127.0.0.1:5434 Cloud SQL proxy; the 5433 local endpoint remains
+      down). count(*) = 100 chunks (phaladeepika 89, saravali 11). Every one of the 100 chunks was
+      read for the predicate. FINDING: NO chunk in either text grants Rāhu or Ketu graha-dṛṣṭi —
+      no 5th/9th (Jupiter-like) grant, no special-aspect grant of any kind. Rāhu/Ketu appear as
+      occupants, dāsa lords, transit agents (Phaladīpikā Adh. XXVI 12th-house transit table,
+      laṭṭā, SBC vedha-direction), and as targets of OTHER planets' aspects in generic
+      "aspected by malefics" language — never as aspect-grantors. The w30 docstring's attribution
+      of the 5/7/9 nodal aspect to Phaladīpikā and Sārāvalī is NOT supported at the page level of
+      either text on this read. This discharges the "not read by anyone" objection as far as the
+      table permits: the check was run exactly as staged, all rows read. Honest limits: (i) the
+      read is of the OCR'd translations as ingested (cleaned_translation_text/content_en,
+      first 400 chars per chunk); a grant in the Devanagari content_sanskrit column or beyond the
+      400-char window would not be caught by this query as written — the staged SQL itself
+      truncates; (ii) "not found" remains a table-level finding, not a proof of absence from the
+      tradition. GRADING of the attributed absence ground: upgraded from ATTRIBUTED to CONFIRMED
+      (predicate-level, both named texts, read-only, this session's own query), subject to limits
+      (i)-(ii). D-6's corpus ground now stands on: refuted BPHS Ch.26 citation (confirmed),
+      w30 docstring concession (confirmed), predicate-level read of both texts w30 names
+      (confirmed this amendment), Kimi K3 [U] grade (independent). N-14 remains OPEN — this
+      amendment supplies the re-checked corpus grounds the resolution_shape asked for; the ruling
+      belongs to the Gochara stream's native.
+  consumed_by: [Gochara stream N-14; Saṅgam SANGAM_RULING_SHEET_v1_0.md §CLOSE D-6;
+    KALA_ELEVATION_BLUEPRINT_v1_0.md §11.22; any stage-3 execution session touching gochara_v3]
+```

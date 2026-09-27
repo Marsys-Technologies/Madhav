@@ -22,6 +22,7 @@ from datetime import date
 from typing import Any, Optional, Set
 
 from .eligibility import EligibilityBand
+from .intersection import intersect_segments, agreement_for
 from .tree_walk import DashaInterval, walk_eligible_intervals, ALL_DASHA_SYSTEMS
 
 logger = logging.getLogger(__name__)
@@ -71,11 +72,6 @@ class KaDashaKalaResult:
     kp_windows: list[EligibleWindow] = field(default_factory=list)
     total_windows: int = 0
     high_agreement_count: int = 0   # windows where cross_dasha_agreement.count >= 2
-
-
-def _build_overlap_key(interval: DashaInterval) -> tuple[date, date]:
-    """Key for grouping overlapping intervals across systems."""
-    return (interval.start_date, interval.end_date)
 
 
 class KaDashaKalaService:
@@ -191,25 +187,24 @@ class KaDashaKalaService:
                     f"ka_dasha_kala system {sys_id} failed: {exc}"
                 ) from exc
 
-        # -- Cross-dasa agreement --------------------------------------------
-        # For each (start_date, end_date) pair, count how many systems agree
-        window_systems: dict[tuple[date, date], set[str]] = {}
-        for iv in all_intervals:
-            key = _build_overlap_key(iv)
-            if key not in window_systems:
-                window_systems[key] = set()
-            window_systems[key].add(iv.system_id)
+        # -- Cross-dasa agreement (R-2) --------------------------------------
+        # Atomic simultaneous intersection over ALL intervals (every level,
+        # every system). A window's agreement = the number of DISTINCT systems
+        # directly co-supporting at least one atomic segment of its span —
+        # never the exact-(start,end)-pair key (F-13) and never transitive
+        # merging of chained overlappers. Boundary convention: [start, end)
+        # (S-H), declared in intersection.py.
+        segments = intersect_segments(all_intervals)
 
         # -- Build result windows --------------------------------------------
         windows: list[EligibleWindow] = []
         kp_windows: list[EligibleWindow] = []
 
         for iv in all_intervals:
-            key = _build_overlap_key(iv)
-            agreeing = sorted(window_systems.get(key, {iv.system_id}))
+            summary = agreement_for(iv.start_date, iv.end_date, segments)
             agreement = CrossDashaAgreement(
-                count=len(agreeing),
-                systems_agreeing=agreeing,
+                count=summary.count,
+                systems_agreeing=list(summary.systems_agreeing),
             )
 
             is_prana = (iv.level_n == 5)

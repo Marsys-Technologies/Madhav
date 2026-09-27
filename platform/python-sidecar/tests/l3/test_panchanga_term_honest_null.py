@@ -90,42 +90,41 @@ def test_an_absent_supporting_key_contributes_nothing_and_a_zero_is_different() 
     )
 
 
-# ── C7 ashtakavarga: the same shape, with a second defect that makes a naive fix dangerous ──
+# ── C7 ashtakavarga verdict (E2) ─────────────────────────────────────────────
 
 
-class _Ctx:
-    def __init__(self, bindu): self.ashtakavarga_bindu = bindu
-
-
-def test_c7_returns_None_when_the_planet_key_does_not_match() -> None:
-    """
-    The live case: the map is keyed by the stored L1 vocabulary (JUP/MAR/MER/...), the caller
-    passes Title-case ("Jupiter"), so the lookup never matches. Measured: 0.0 on 4,729 of 4,729
-    rows carrying the key. It must now report not-evaluated, not a zero score.
-    """
-    ctx = _Ctx({"JUP": {5: 6}})
-    assert eng._c7_ashtakavarga_potency("Jupiter", 5, ctx) is None
-
-
-def test_c7_returns_None_rather_than_a_repaired_number() -> None:
-    """
-    Deliberately NOT fixed here, and this test pins that decision so a later reader does not
-    'complete' it by accident.
-
-    The stored facts are keyed `<GRAHA>-HOUSE_<N>`; this function looks up by `transit_sign`
-    (rāśi). Those are different frames. **Both canonical charts have Āries lagna**, where
-    house N ≡ sign N — so a vocabulary-only fix would look perfectly correct on every chart the
-    campaign builds and be silently wrong for any non-Āries-lagna chart. The frame question is an
-    adjudication, not an inference.
-    """
-    ctx = _Ctx({"JUP": {5: 6}})
-    # Even with the canonical key spelled exactly as stored, the term stays unevaluated.
-    assert eng._c7_ashtakavarga_potency("JUP", 5, ctx) is None, (
-        "c7 must remain held until the HOUSE-vs-SIGN frame is ruled; producing a number here "
-        "would be plausible on both Āries-lagna charts and wrong elsewhere"
+def _av_ctx(bindu: dict, computed: set[str] | None = None) -> eng.EnrichmentContext:
+    if computed is None:
+        computed = set(bindu.keys())
+    return eng.EnrichmentContext(
+        ashtakavarga_bindu=bindu,
+        ashtakavarga_computed_planets=computed,
     )
 
 
-def test_c7_is_None_when_there_is_nothing_to_look_up() -> None:
-    assert eng._c7_ashtakavarga_potency("JUP", None, _Ctx({"JUP": {5: 6}})) is None
-    assert eng._c7_ashtakavarga_potency("JUP", 5, _Ctx({})) is None
+def test_c7_verdict_unavailable_when_planet_not_in_receipt() -> None:
+    """
+    E2: a planet not listed in the producer's computed_planets receipt is
+    unavailable (None), not a measured zero — even if bindu rows exist.
+    """
+    ctx = _av_ctx({"Jupiter": {5: 6}}, computed=set())
+    assert eng._c7_ashtakavarga_verdict("Jupiter", 5, ctx) is None
+
+
+def test_c7_verdict_maps_bindus_to_support_indeterminate_obstruct() -> None:
+    """E2: own-BAV verdict bands: ≥5 support, 4 indeterminate, ≤3 obstruct."""
+    ctx = _av_ctx({"Jupiter": {5: 6, 4: 4, 3: 3, 2: 2}})
+    assert eng._c7_ashtakavarga_verdict("Jupiter", 5, ctx)['verdict'] == 'support'
+    assert eng._c7_ashtakavarga_verdict("Jupiter", 4, ctx)['verdict'] == 'indeterminate'
+    assert eng._c7_ashtakavarga_verdict("Jupiter", 3, ctx)['verdict'] == 'obstruct'
+    assert eng._c7_ashtakavarga_verdict("Jupiter", 2, ctx)['verdict'] == 'obstruct'
+
+
+def test_c7_verdict_unavailable_when_sign_missing() -> None:
+    ctx = _av_ctx({"Jupiter": {5: 6}})
+    assert eng._c7_ashtakavarga_verdict("Jupiter", 2, ctx) is None
+
+
+def test_c7_verdict_unavailable_when_no_transit_sign() -> None:
+    ctx = _av_ctx({"Jupiter": {5: 6}})
+    assert eng._c7_ashtakavarga_verdict("Jupiter", None, ctx) is None

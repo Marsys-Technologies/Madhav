@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 from datetime import date
+from typing import Optional
 
 import psycopg
 
@@ -31,11 +32,22 @@ from services.ka_sangam.engine import (
     NativeChartContext,
     derive_sade_sati_signs,
     derive_sade_sati_severity,
+    group_station_loop_episodes,
 )
+from services.ka_sangam.exposure import build_scan_coverage, compute_exposure_manifest
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+from brahmagyan.graha_vocabulary import norm_graha
+from pipeline.orchestrator.birth_params import fetch_birth_params
+from services.ka_sangam.identity import (
+    contact_uuid as _contact_uuid,
+    frame_vector as _frame_vector,
+    frame_dict as _frame_dict,
+    independence_group as _independence_group,
+)
+from ga_writers.ga_sensitive_writer import _derive_is_day_birth
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
 # wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
@@ -70,7 +82,7 @@ def apply_trigger_suppression(windows: list[dict], *, chart_id: str, target_lon,
     gochara_service serves the pre-TRIGGER convergence_score unchanged, never
     raises.
     """
-    if gochara_service is None:
+    if gochara_service is None or target_lon is None:
         return windows
     for w in windows:
         try:
@@ -133,6 +145,31 @@ _LAGNA_SIGN_NUM: dict[str, int] = {
 # Raised from 5y → 7y: provides ~40% more actionable near-term windows while
 # remaining within the 15-min orphan watchdog budget.
 _HORIZON_YEARS = 7
+
+
+def _notes_with_coverage(manifest, coverage) -> str:
+    """Compose the exposure manifest and the scan coverage into WriterResult.notes.
+
+    The frozen WriterBase contract gives a writer no side-channel; `notes` is the
+    sanctioned carrier, so both objects travel there under named keys rather than
+    one silently replacing the other.
+    """
+    return json.dumps({
+        'exposure_manifest': json.loads(manifest.to_json()),
+        'scan_coverage': coverage.to_dict(),
+    })
+
+
+def _add_years(d: date, years: int) -> date:
+    """Add whole years, clamping 29 Feb to 28 Feb in non-leap target years.
+
+    `date(d.year + years, d.month, d.day)` raises ValueError on 29 February.
+    Synergy audit #3.
+    """
+    try:
+        return date(d.year + years, d.month, d.day)
+    except ValueError:
+        return date(d.year + years, d.month, 28)
 _MAX_PREDICATES = 200  # raised from 60: covers ~0.3% of 66,738 signals at full breadth
 
 # U2 lifetime tier: dāśā-boundary-anchored convergence over the native's full life.
@@ -376,7 +413,17 @@ class KaSangamWriter(WriterBase):
                 pd['graha_name'] = graha_name_map.get(sid)
             if 'DISPOSITOR_RELATIONAL' in sc:
                 hn = house_num_map.get(sid)
+                pd['house_num'] = hn
                 pd['dispositor_lord'] = house_lord_map.get(hn) if hn else None
+
+        # R-1 (RR-03): stamp each predicate's transit trigger with a sourced
+        # target_longitude_deg + provenance from L1 chart_facts. This is the
+        # ONLY place target defaulting is allowed; after this, the engine
+        # refuses to scan a trigger that still lacks both a coordinate and
+        # provenance.
+        self._target_facts = self._fetch_target_fact_cache(conn, chart_id)
+        for pd in pred_dicts:
+            self._enrich_predicate_target(pd)
 
         # D-3 FIX-PSEL: near and lifetime tiers each get their own
         # independently quota-diversified selection out of the enriched
@@ -388,8 +435,10 @@ class KaSangamWriter(WriterBase):
         self._pred_dicts = _select_top_predicates_with_class_quota(pred_dicts, _MAX_PREDICATES)
         self._lt_preds   = _select_top_predicates_with_class_quota(pred_dicts, _LIFETIME_MAX_PREDICATES)
 
-        # Build U3 enrichment context (C7/C11/C12/C13 currents)
-        self._enrichment_ctx = self._build_enrichment_context(conn, chart_id)
+        # Build U3 + E4 enrichment context (C7/C11/C12/C13 currents + typed natal/clock conditioning)
+        self._enrichment_ctx = self._build_enrichment_context(
+            conn, chart_id, ctx.config.get('birth_params')
+        )
 
         # CR-87: resolve THIS chart's janma nakshatra, Moon sign, and birth
         # location — never another chart's hardcoded values.
@@ -538,7 +587,9 @@ class KaSangamWriter(WriterBase):
                 )
 
         today        = date.today()
-        horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
+        # Synergy audit #3: date(y+N, m, d) raises on 29 Feb whenever the target
+        # year is not a leap year. Clamp to the last valid day of that month.
+        horizon_end  = _add_years(today, _HORIZON_YEARS)
         def _keepalive():
             with conn.cursor() as _cur:
                 _cur.execute("SELECT 1")
@@ -558,12 +609,26 @@ class KaSangamWriter(WriterBase):
         near_deduped = self._dedup(near_windows)
         logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
 
+        # E6 exposure manifest: measured window-issuance rates by stratum,
+        # attached to WriterResult.notes as JSON (the frozen WriterBase
+        # contract has no side-channel; notes is the sanctioned carrier).
+        manifest = compute_exposure_manifest(near_deduped, today, horizon_end)
+        # Synergy audit #4: what was SEARCHED. Without it, 0 windows reads the same
+        # whether nothing was in scope, nothing fired, or everything deduped away.
+        coverage = build_scan_coverage(
+            today, horizon_end,
+            predicates_scanned=len(self._pred_dicts),
+            windows_generated=len(near_windows),
+            windows_emitted=len(near_deduped),
+        )
+
         rows = 0
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
             self._record_substep(conn, chart_id, 'near', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows,
+                            notes=_notes_with_coverage(manifest, coverage))
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
         pred      = self._lt_preds[idx]
@@ -603,12 +668,22 @@ class KaSangamWriter(WriterBase):
         logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
                     idx, len(self._lt_preds) - 1, len(deduped), chart_id)
 
+        # E6 exposure manifest for this lifetime substep's slice.
+        manifest = compute_exposure_manifest(deduped, horizon_start, horizon_end)
+        coverage = build_scan_coverage(
+            horizon_start, horizon_end,
+            predicates_scanned=1,
+            windows_generated=len(windows),
+            windows_emitted=len(deduped),
+        )
+
         rows = 0
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
             self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows,
+                            notes=_notes_with_coverage(manifest, coverage))
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -659,7 +734,10 @@ class KaSangamWriter(WriterBase):
 
             # D-3 T-6: target_lon feeds TRIGGER's mechanism_lon/target_lon below —
             # same longitude mode_a_search/mode_b_sweep already scan against.
-            target_lon = float((pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg', 0.0))
+            # R-1 (RR-03): no silent default; unresolved targets leave this None and
+            # TRIGGER suppression is skipped (the engine already refused to scan).
+            raw_target = (pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg')
+            target_lon = float(raw_target) if raw_target is not None else None
             moon_sign_idx = _SIGN_NAME_TO_IDX.get(native_ctx.moon_sign)
             vedha_rules = (enrichment_context.vedha_rules if enrichment_context else None) or None
 
@@ -679,11 +757,13 @@ class KaSangamWriter(WriterBase):
                 )
                 # D-3 T-6: TRIGGER suppressive term at the ADMITTED 0.2/0.2 weights
                 # (wave/D-3/ADMIT, receipted ACCEPT) — see apply_trigger_suppression docstring.
-                new_windows_a = apply_trigger_suppression(
-                    new_windows_a, chart_id=chart_id, target_lon=target_lon,
-                    gochara_service=gochara_service, vedha_rules=vedha_rules,
-                    moon_sign_idx=moon_sign_idx,
-                )
+                # R-1: suppression is only meaningful when a sourced target exists.
+                if target_lon is not None:
+                    new_windows_a = apply_trigger_suppression(
+                        new_windows_a, chart_id=chart_id, target_lon=target_lon,
+                        gochara_service=gochara_service, vedha_rules=vedha_rules,
+                        moon_sign_idx=moon_sign_idx,
+                    )
                 for w in new_windows_a:
                     w['primary_domain'] = primary_domain
                 all_windows.extend(new_windows_a)
@@ -739,6 +819,16 @@ class KaSangamWriter(WriterBase):
                     logger.warning("ka_sangam: Mode D failed for signal %s: %s", sig_id, exc)
                 if keepalive:
                     keepalive()
+
+        # E5: group contacts linked by a station loop into episodes.  This runs
+        # once per horizon call so loops are discovered over the full tier horizon.
+        all_windows = group_station_loop_episodes(
+            all_windows,
+            gochara_service,
+            horizon_start_jd,
+            horizon_end_jd,
+            chart_id=chart_id,
+        )
         return all_windows
 
     def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':
@@ -851,9 +941,22 @@ class KaSangamWriter(WriterBase):
         try:
             from datetime import datetime
             from zoneinfo import ZoneInfo
-            offset = ZoneInfo(tzid).utcoffset(datetime.now())
+            # Synergy audit #3: the offset must be taken AT THE BIRTH INSTANT.
+            # datetime.now() gives today's offset, which differs from the birth
+            # offset wherever the zone's rules have changed (India moved to a
+            # single +05:30 in 1955; DST zones change twice a year). The birth
+            # instant is the only correct evaluation point for a natal chart.
+            _at = self._birth_instant_for_offset(conn, chart_id) if hasattr(
+                self, '_birth_instant_for_offset') else None
+            offset = ZoneInfo(tzid).utcoffset(_at or datetime.now())
             if offset is None:
                 raise ValueError(f"no utcoffset for {tzid!r}")
+            if _at is None:
+                logger.warning(
+                    "ka_sangam: birth instant unavailable for chart %s; tz offset "
+                    "taken at run time. Declared, not silent (synergy audit #3).",
+                    chart_id,
+                )
             tz_offset_minutes = int(offset.total_seconds() / 60)
         except Exception as exc:
             raise RuntimeError(
@@ -862,6 +965,33 @@ class KaSangamWriter(WriterBase):
             ) from exc
 
         return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
+
+    def _birth_instant_for_offset(self, conn, chart_id: str):
+        """Birth instant (naive local) for evaluating the zone's UTC offset.
+
+        Returns None when the chart carries no birth timestamp — the caller then
+        falls back to run time and logs that it did (B.10: declare, never invent).
+        Synergy audit #3.
+        """
+        from datetime import datetime as _dt
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT birth_date, birth_time
+                    FROM public.charts
+                    WHERE id = %s OR chart_id = %s
+                    LIMIT 1
+                    """,
+                    (chart_id, chart_id),
+                )
+                row = cur.fetchone()
+            if not row or row[0] is None:
+                return None
+            bd, bt = row[0], row[1]
+            return _dt.combine(bd, bt) if bt is not None else _dt.combine(bd, _dt.min.time())
+        except Exception:
+            return None
 
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
@@ -877,10 +1007,19 @@ class KaSangamWriter(WriterBase):
 
     @staticmethod
     def _dedup(all_windows: list[dict]) -> list[dict]:
-        """Deduplicate by (mode, peak_date, signal_id) — keep highest score."""
+        """Deduplicate by (mode, peak_date, signal_id, episode_uuid) — keep highest score.
+
+        E5: episode rows share peak_date=None and signal_id; episode_uuid keeps
+        distinct episodes from collapsing into one another.
+        """
         seen: dict[tuple, dict] = {}
         for w in all_windows:
-            key = (w.get('mode'), w.get('peak_date'), str(w.get('signal_id', '')))
+            key = (
+                w.get('mode'),
+                w.get('peak_date'),
+                str(w.get('signal_id', '')),
+                str(w.get('episode_uuid', '')) if w.get('is_episode') else '',
+            )
             if key not in seen or w['convergence_score'] > seen[key]['convergence_score']:
                 seen[key] = w
         return sorted(seen.values(), key=lambda w: w['convergence_score'], reverse=True)
@@ -917,10 +1056,10 @@ class KaSangamWriter(WriterBase):
                     'benefic_dristi': bool(cf.get('c_benefic_dristi', 0) > 0.0),
                     'cross_dasha_agreement': bool(cf.get('c_cross_dasha_agreement', 0) > 0.0),
                     'nakshatra_subsystem': bool(cf.get('c_nakshatra_subsystem', 0) > 0.0),
-                    # U3 C7-C12 currents (Mode D: ashtakavarga_transit_potency from sav_bindhu)
+                    # U3 C7-C12 currents (E2: verdict-based, not raw bindus)
                     'ashtakavarga_transit_potency': (
-                        bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0)
-                        or (mode == 'D' and bool(cf.get('sav_bindhu', 0) >= 28))
+                        bool(cf.get('c7_ashtakavarga_verdict', {}).get('verdict') == 'support')
+                        or (mode == 'D' and bool(cf.get('sav_verdict', {}).get('verdict') == 'support'))
                     ),
                     'eclipse_proximity': bool(cf.get('c8_eclipse_proximity', 0) > 0.0),
                     'transit_to_transit': bool(cf.get('c9_transit_to_transit', 0) > 0.0),
@@ -929,6 +1068,54 @@ class KaSangamWriter(WriterBase):
                     'school_consensus': bool(cf.get('c13_school_consensus', 0) > 0.0),
                 }
                 icc = independent_current_count(currents)
+
+                target_provenance = cf.get('target_provenance')
+                availability = w.get('availability')
+                # Synergy audit #1: R-6's separation reaches the table. Persisted as
+                # data, never re-derived; §4.5's never-pool rule needs them as columns.
+                applicability = w.get('applicability')
+
+                # Synergy audit #6/#10: R-5 identity + R-3 convention frame.
+                # contact_uuid is defined OVER the frame, so both land together or
+                # neither does. Identity needs a target_fact_id and a graha; when
+                # either is absent the row says WHY rather than carrying a NULL with
+                # no reason (B.10 / §N.8).
+                _prov = target_provenance if isinstance(target_provenance, dict) else {}
+                _fv = _frame_vector(_prov.get('ayanamsha_id') or w.get('ayanamsha_id'))
+                _graha = cf.get('planet')
+                _tfid = _prov.get('target_fact_id')
+                if _tfid is None:
+                    _identity_state, _cuuid = 'no_target_fact_id', None
+                elif not _graha:
+                    _identity_state, _cuuid = 'no_graha', None
+                else:
+                    _identity_state = 'computed'
+                    _cuuid = _contact_uuid(
+                        chart_id,
+                        w.get('kernel_version'),
+                        _graha,
+                        _tfid,
+                        cf.get('aspect_deg'),
+                        _fv,
+                        cf.get('orb_deg'),
+                        w.get('mode'),
+                    )
+                # Synergy audit #5: witness-independence BETWEEN rows. ICC discounts
+                # correlated currents WITHIN a row; nothing exposed correlation across
+                # rows, so seven named readers could double-count the same testimony.
+                _indep_group = _independence_group(w.get('signal_id'), _graha, _tfid)
+
+                # Synergy audit #2/#8: the layer's comparability RELATION
+                # (WP1_CONTRACTS.md §6, read at source). DERIVED, never defaulted:
+                # the layer ruled mean node; while this row's own frame says the
+                # scanner gave true_node, the convention_id differs and WP1 §6
+                # makes the comparison NOT_RUN. It flips automatically when the
+                # node convention unifies — nothing has to remember to change it.
+                _comparable_with = (
+                    'same_convention_same_inputs'
+                    if _frame_dict(_fv).get('node_convention') == 'mean'
+                    else 'different_convention'
+                )
 
                 cur.execute(
                     """
@@ -939,7 +1126,13 @@ class KaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis
+                        confidence_label_relative, tier_basis,
+                        target_provenance, availability,
+                        is_episode, episode_uuid, episode_children, episode_hull, perfected,
+                        activity, valence, applicability, comparability_class,
+                        kernel_version, independence_group,
+                        contact_uuid, convention_frame, identity_state,
+                        comparable_with
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -947,7 +1140,13 @@ class KaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s
+                        %s, %s,
+                        %s::jsonb, %s::jsonb,
+                        %s, %s, %s::jsonb, %s::jsonb, %s,
+                        %s, %s, %s::jsonb, %s,
+                        %s, %s,
+                        %s, %s::jsonb, %s,
+                        %s
                     )
                     """,
                     (
@@ -972,13 +1171,31 @@ class KaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        json.dumps(target_provenance) if target_provenance is not None else None,
+                        json.dumps(availability) if availability is not None else None,
+                        w.get('is_episode', False),
+                        str(w.get('episode_uuid')) if w.get('episode_uuid') else None,
+                        json.dumps(w.get('episode_children')) if w.get('episode_children') is not None else None,
+                        json.dumps(w.get('episode_hull')) if w.get('episode_hull') is not None else None,
+                        w.get('perfected'),
+                        w.get('activity'),
+                        w.get('valence'),
+                        json.dumps(applicability) if applicability is not None else None,
+                        w.get('comparability_class'),
+                        w.get('kernel_version'),
+                        _indep_group,
+                        _cuuid,
+                        json.dumps(_frame_dict(_fv)),
+                        _identity_state,
+                        _comparable_with,
                     ),
                 )
                 rows_inserted += 1
         return rows_inserted
 
-    def _build_enrichment_context(self, conn, chart_id: str) -> 'EnrichmentContext':
-        """Pre-fetch U3 enrichment data from DB for C7/C11/C12/C13 currents.
+    def _build_enrichment_context(self, conn, chart_id: str, birth_params=None) -> 'EnrichmentContext':
+        """Pre-fetch U3 + E4 enrichment data from DB for C7/C11/C12/C13 currents
+        and typed natal/clock conditioning.
 
         All fetches are SAVEPOINT-guarded soft dependencies — partial context
         is better than empty. Returns EnrichmentContext.empty() if all fail.
@@ -988,42 +1205,48 @@ class KaSangamWriter(WriterBase):
         tajika_year_lords: list[dict] = []
         # school_consensus_by_domain: pre-U4 default — not yet built; stays empty
 
+        ashtakavarga_computed_planets: set[str] = set()
+        ashtakavarga_school_primary: Optional[str] = None
+
         # C7: ashtakavarga bindus from chart_facts
-        # Schema: fact_category='ashtakavarga_bindu', fact_subject='<Planet>-HOUSE_<N>',
-        # fact_key='bindus', fact_value_num=bindu_count, ayanamsha_id='lahiri_chitrapaksha'
-        # B6 fix: stored value is 'lahiri_chitrapaksha', not bare 'lahiri'.
+        # Schema (E2 fix): fact_category='ashtakavarga_bindu_sign',
+        # fact_subject='<Planet>-SIGN_<N>', fact_key='bindus',
+        # fact_value_num=bindu_count, ayanamsha_id='lahiri_chitrapaksha'.
+        # Legacy 'ashtakavarga_bindu' HOUSE_<N> rows are also read for backward
+        # compatibility, but SIGN-keyed rows take precedence (the sign-keyed value
+        # is authoritative; the HOUSE label was a misnomer for the same rāśi index).
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_ashtak")
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT fact_subject, fact_value_num
+                    SELECT fact_category, fact_subject, fact_value_num
                     FROM chart_facts
                     WHERE chart_id = %s
-                      AND fact_category = 'ashtakavarga_bindu'
                       AND ayanamsha_id = 'lahiri_chitrapaksha'
                       AND fact_key = 'bindus'
+                      AND fact_category IN ('ashtakavarga_bindu', 'ashtakavarga_bindu_sign')
                     """,
                     (chart_id,),
                 )
                 for row in cur.fetchall():
-                    # fact_subject like 'Sun-HOUSE_3' or 'SARVA-HOUSE_3'
                     subj = row['fact_subject'] or ''
-                    if '-HOUSE_' not in subj:
-                        continue
-                    parts = subj.rsplit('-HOUSE_', 1)
-                    if len(parts) != 2:
-                        continue
-                    planet, house_str = parts
-                    try:
-                        house_num = int(house_str)
-                        bindus = int(row['fact_value_num']) if row['fact_value_num'] is not None else 0
-                        if planet not in ashtakavarga_bindu:
-                            ashtakavarga_bindu[planet] = {}
-                        ashtakavarga_bindu[planet][house_num] = bindus
-                    except (ValueError, TypeError):
-                        continue
+                    for delim in ('-SIGN_', '-HOUSE_'):
+                        if delim in subj:
+                            parts = subj.rsplit(delim, 1)
+                            if len(parts) != 2:
+                                continue
+                            planet, num_str = parts
+                            try:
+                                sign_num = int(num_str)
+                                bindus = int(row['fact_value_num']) if row['fact_value_num'] is not None else 0
+                                if planet not in ashtakavarga_bindu:
+                                    ashtakavarga_bindu[planet] = {}
+                                ashtakavarga_bindu[planet][sign_num] = bindus
+                            except (ValueError, TypeError):
+                                continue
+                            break
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_ashtak")
         except Exception as exc:
@@ -1031,6 +1254,49 @@ class KaSangamWriter(WriterBase):
             try:
                 with conn.cursor() as sp:
                     sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_ashtak")
+            except Exception:
+                pass
+
+        # E2: completeness/validity receipt so missing-planet zeros are
+        # distinguishable from measured zeros.
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_av_receipt")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_category, fact_value_jsonb, fact_value_text
+                    FROM chart_facts
+                    WHERE chart_id = %s
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND fact_category IN ('ashtakavarga_completeness_receipt', 'ashtakavarga_school_primary')
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    cat = row['fact_category']
+                    if cat == 'ashtakavarga_completeness_receipt':
+                        val = row['fact_value_jsonb']
+                        if isinstance(val, str):
+                            try:
+                                val = json.loads(val)
+                            except Exception:
+                                val = None
+                        if isinstance(val, list):
+                            ashtakavarga_computed_planets.update(val)
+                    elif cat == 'ashtakavarga_school_primary':
+                        text = row['fact_value_text'] or ''
+                        if text.startswith('BPHS'):
+                            ashtakavarga_school_primary = 'BPHS'
+                        elif text.startswith('Phaladīpikā') or text.startswith('Phaladeepika'):
+                            ashtakavarga_school_primary = 'Phaladīpikā'
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_av_receipt")
+        except Exception as exc:
+            logger.debug("ka_sangam: ashtakavarga receipt fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_av_receipt")
             except Exception:
                 pass
 
@@ -1126,41 +1392,282 @@ class KaSangamWriter(WriterBase):
             except Exception:
                 pass
 
-        if ashtakavarga_bindu or vedha_rules or tajika_year_lords:
+        # E4: typed natal/clock conditioning inputs.
+        d1_dignity_by_graha: dict[str, str] = {}
+        lagna_sign: Optional[str] = None
+        is_day_birth: Optional[bool] = None
+
+        # E4(a): natal D1 dignity per graha from chart_divisionals.
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_d1_dignity")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT graha, fact_value_text
+                    FROM chart_divisionals
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND varga = 'D1' AND fact_category = 'varga_dignity' AND fact_key = 'dignity'
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    dignity = (row['fact_value_text'] or '').strip()
+                    if dignity:
+                        d1_dignity_by_graha[(row['graha'] or '').capitalize()] = dignity.capitalize()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_d1_dignity")
+        except Exception as exc:
+            logger.debug("ka_sangam: D1 dignity fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_d1_dignity")
+            except Exception:
+                pass
+
+        # E4(b): natal lagna sign from chart_facts.
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_lagna")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_text
+                    FROM chart_facts
+                    WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign'
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    lagna_sign = row['fact_value_text']
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_lagna")
+        except Exception as exc:
+            logger.debug("ka_sangam: lagna sign fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_lagna")
+            except Exception:
+                pass
+
+        # E4(c): day-birth classification (local sunrise/sunset containment).
+        # Prefer orchestrator-supplied birth_params; fall back to public.charts.
+        # Soft-fail to None so a missing birth-time never blocks convergence scoring.
+        try:
+            bp = birth_params
+            if not bp:
+                bp = fetch_birth_params(conn, chart_id)
+            is_day_birth = _derive_is_day_birth(bp)
+        except Exception as exc:
+            logger.debug("ka_sangam: is_day_birth derivation skipped: %s", exc)
+            is_day_birth = None
+
+        if ashtakavarga_bindu or vedha_rules or tajika_year_lords or d1_dignity_by_graha or lagna_sign is not None:
             logger.info(
-                "ka_sangam: EnrichmentContext built — ashtak_planets=%d, vedha_rules=%d, tajika_years=%d",
-                len(ashtakavarga_bindu), len(vedha_rules), len(tajika_year_lords),
+                "ka_sangam: EnrichmentContext built — ashtak_planets=%d "
+                "(computed=%d, school=%s), vedha_rules=%d, tajika_years=%d, "
+                "d1_dignity_grahas=%d, lagna_sign=%s, is_day_birth=%s",
+                len(ashtakavarga_bindu),
+                len(ashtakavarga_computed_planets),
+                ashtakavarga_school_primary,
+                len(vedha_rules),
+                len(tajika_year_lords),
+                len(d1_dignity_by_graha),
+                lagna_sign,
+                is_day_birth,
             )
         else:
-            logger.warning("ka_sangam: EnrichmentContext is empty — C7/C11/C12 will score 0.0")
+            logger.warning("ka_sangam: EnrichmentContext is empty — C7/C11/C12/E4 will score 0.0")
 
         return EnrichmentContext(
             ashtakavarga_bindu=ashtakavarga_bindu if ashtakavarga_bindu else None,
+            ashtakavarga_computed_planets=ashtakavarga_computed_planets if ashtakavarga_computed_planets else None,
+            ashtakavarga_school_primary=ashtakavarga_school_primary,
             vedha_rules=vedha_rules if vedha_rules else None,
             tajika_year_lords=tajika_year_lords if tajika_year_lords else None,
+            d1_dignity_by_graha=d1_dignity_by_graha if d1_dignity_by_graha else None,
+            lagna_sign=lagna_sign,
+            is_day_birth=is_day_birth,
         )
 
     def _build_house_lord_map(self, conn, chart_id: str) -> dict[int, str]:
         """
         Build {house_num: lord_name} for DISPOSITOR_RELATIONAL predicate enrichment.
-        Derives lords from lagna sign via classical whole-sign house assignment.
-        Falls back to Aries (this native's lagna) on any query failure.
+        Derives lords from this chart's lagna sign via classical whole-sign house
+        assignment. CR-87/R-3(b): fail-loud — any missing or unreadable lagna sign
+        raises; there is no Aries fallback.
         """
-        lagna_sign = 'Aries'
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT fact_value_text FROM chart_facts "
-                    "WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign' LIMIT 1",
-                    (chart_id,),
-                )
-                row = cur.fetchone()
-                if row and row['fact_value_text']:
-                    lagna_sign = row['fact_value_text']
-        except Exception as exc:
-            logger.warning("ka_sangam: could not fetch lagna sign for %s: %s", chart_id, exc)
-        lagna_num = _LAGNA_SIGN_NUM.get(lagna_sign, 1)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT fact_value_text FROM chart_facts "
+                "WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign' "
+                "AND ayanamsha_id = 'lahiri_chitrapaksha' LIMIT 1",
+                (chart_id,),
+            )
+            row = cur.fetchone()
+
+        lagna_sign = row['fact_value_text'] if row else None
+        if not lagna_sign:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve lagna sign for chart {chart_id} "
+                "from chart_facts (fact_subject='LAGNA', fact_key='sign', "
+                "ayanamsha_id='lahiri_chitrapaksha'). Refusing to fall back to "
+                "Aries or any other chart's lagna (CR-87/R-3(b))."
+            )
+        if lagna_sign not in _LAGNA_SIGN_NUM:
+            raise RuntimeError(
+                f"ka_sangam: resolved lagna sign {lagna_sign!r} for chart {chart_id} "
+                "is not a recognised sign name. Refusing to derive house lords."
+            )
+        lagna_num = _LAGNA_SIGN_NUM[lagna_sign]
         return {
             house: _SIGN_LORDS[(lagna_num + house - 2) % 12 + 1]
             for house in range(1, 13)
         }
+
+    # ── R-1 target provenance resolution ───────────────────────────────────────
+
+    def _fetch_target_fact_cache(self, conn, chart_id: str) -> list[dict]:
+        """
+        Fetch the L1 chart_facts rows that can serve as a sourced transit target:
+          - graha_position / <GRAHA> / longitude_sidereal
+          - bhava_cusps / BHAVA_01..12 / sripati_madhya
+        Returns a list of dict rows for in-memory lookup while enriching predicates.
+        """
+        ayanamsha_id = 'lahiri_chitrapaksha'
+        try:
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT fact_id, fact_category, fact_subject, fact_key,
+                           fact_value_num, ayanamsha_id
+                    FROM chart_facts
+                    WHERE chart_id = %s AND ayanamsha_id = %s
+                      AND (
+                          (fact_category = 'graha_position'
+                           AND fact_key = 'longitude_sidereal')
+                       OR (fact_category = 'bhava_cusps'
+                           AND fact_key = 'sripati_madhya')
+                      )
+                    """,
+                    (chart_id, ayanamsha_id),
+                )
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as exc:
+            logger.warning("ka_sangam: could not fetch target facts for %s: %s", chart_id, exc)
+            return []
+
+    def _enrich_predicate_target(self, pd: dict) -> None:
+        """
+        Mutate a predicate's transit_trigger_jsonb with a sourced
+        target_longitude_deg + provenance keys from L1 chart_facts.
+        If no resolvable target exists the trigger is left untouched; the engine
+        will then refuse the scan rather than default to 0.0.
+        """
+        trig = pd.get('transit_trigger_jsonb') or {}
+        # Already stamped by a previous enrichment pass — do not overwrite.
+        if 'target_longitude_deg' in trig and any(
+            trig.get(k) for k in ('target_fact_id', 'target_type', 'frame', 'ayanamsha_id', 'derivation')
+        ):
+            return
+        resolved = self._resolve_target_for_predicate(pd)
+        if not resolved:
+            return
+        trig['target_longitude_deg'] = resolved['target_longitude_deg']
+        trig['target_fact_id'] = resolved['target_fact_id']
+        trig['target_type'] = resolved['target_type']
+        trig['frame'] = resolved['frame']
+        trig['ayanamsha_id'] = resolved['ayanamsha_id']
+        trig['derivation'] = resolved['derivation']
+        pd['transit_trigger_jsonb'] = trig
+
+    def _resolve_target_for_predicate(self, pd: dict) -> dict | None:
+        """
+        Best-effort resolution of a single transit target per predicate class.
+        Returns a provenance dict or None when no unambiguous target exists.
+
+        Current coverage:
+          - DIGNITY: the graha's own natal sidereal longitude.
+          - DISPOSITOR_RELATIONAL: the cusp longitude of the house whose lord is
+            the transiting planet.
+          - YOGA: first resolvable constituent lord's natal longitude (the
+            trigger is multi-target; this is an explicit partial target).
+        All other classes return None — the engine will treat them as
+        target-unavailable for this pass.
+        """
+        sig_class = (pd.get('signature_class') or '').upper()
+        ayanamsha_id = pd.get('ayanamsha_id') or 'lahiri_chitrapaksha'
+
+        def _graha_fact(graha: str | None) -> dict | None:
+            if not graha:
+                return None
+            subject = norm_graha(graha)
+            for f in self._target_facts:
+                if (
+                    f['fact_category'] == 'graha_position'
+                    and f['fact_subject'] == subject
+                    and f['fact_key'] == 'longitude_sidereal'
+                    and f['fact_value_num'] is not None
+                ):
+                    return f
+            return None
+
+        def _bhava_fact(house_num: int | None) -> dict | None:
+            if not house_num:
+                return None
+            subject = f'BHAVA_{int(house_num):02d}'
+            for f in self._target_facts:
+                if (
+                    f['fact_category'] == 'bhava_cusps'
+                    and f['fact_subject'] == subject
+                    and f['fact_key'] == 'sripati_madhya'
+                    and f['fact_value_num'] is not None
+                ):
+                    return f
+            return None
+
+        def _provenance(fact: dict, frame: str, derivation: str) -> dict:
+            return {
+                'target_longitude_deg': float(fact['fact_value_num']),
+                'target_fact_id': fact['fact_id'],
+                'target_type': fact['fact_category'],
+                'frame': frame,
+                'ayanamsha_id': fact.get('ayanamsha_id') or ayanamsha_id,
+                'derivation': derivation,
+            }
+
+        if 'DIGNITY' in sig_class:
+            fact = _graha_fact(pd.get('graha_name'))
+            if fact:
+                return _provenance(
+                    fact,
+                    frame='longitude_sidereal',
+                    derivation='ka_sangam:writer:graha_position:DIGNITY',
+                )
+
+        if 'DISPOSITOR_RELATIONAL' in sig_class:
+            fact = _bhava_fact(pd.get('house_num'))
+            if fact:
+                return _provenance(
+                    fact,
+                    frame='sripati_madhya',
+                    derivation='ka_sangam:writer:bhava_cusps:DISPOSITOR_RELATIONAL',
+                )
+
+        if 'YOGA' in sig_class:
+            lords = (
+                (pd.get('dasha_eligibility_rule_jsonb') or {}).get('constituent_lords') or []
+            )
+            for lord in lords:
+                fact = _graha_fact(lord)
+                if fact:
+                    return _provenance(
+                        fact,
+                        frame='longitude_sidereal',
+                        derivation='ka_sangam:writer:graha_position:YOGA:first_constituent_lord',
+                    )
+
+        return None

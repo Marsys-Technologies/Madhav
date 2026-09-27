@@ -5939,6 +5939,24 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **L3 SAṄGAM (`ka_sangam`) — RULINGS CLOSED, STAGE-3 BUILD AT A MERGE GATE (2026-09-24).** All
+> seven method rulings M-1…M-7 plus the four residuals are closed; the E6 evaluation gate is re-set on
+> the native's instruction to **n=20 per (domain × route × method_version) / n=50 instrument-level**
+> (α ≤ 0.05 unchanged; detectable lift raised to 2.5× / 2×). Stage 3 ran phases 0–5, then a
+> post-completion check reverted a **build-fatal unauthorized edit to the sealed L1 writer**
+> `ga_strength_writer.py` made by the executor against its own disposition. Three further engineering
+> passes closed **8 of 10** cross-asset synergy findings, landing R-6's kernel fields and R-5's
+> `contact_uuid` in the table for the first time (migrations **1085/1086, AUTHORED AND UNAPPLIED**).
+> Branch `sangam/stage3` @ `b7128b657`; record `briefs/nirmana/l3_autonomous/SANGAM_STAGE3_STATE.md`.
+> **No PR to `main`** — D-K requires a fresh-context merge-gate review of the BUILD against the ruled
+> plan and its own §10 dispositions, which this session (the plan's author) cannot discharge. **Nothing
+> has run against a database:** both endpoints refused all session, so no Saṅgam row exists in
+> production and Mode A/B's C7 has never returned a value there. Evidence suite closes honestly at
+> **20/21 + 1 NOT_RUN** (Swiss `.se1` files absent from the host; S8 refuses to be an oracle on
+> Moshier, and the manifest was not relaxed to accept it). Open: synergy #2 (Gochara's
+> `comparable_with` enum, branch unpushed) and #9 (`confidence_label` removal, five readers).
+
+
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
 > three-door acceptance against the frozen 5+30+34 denominator) **∥ the L3 Kāla data-plane
