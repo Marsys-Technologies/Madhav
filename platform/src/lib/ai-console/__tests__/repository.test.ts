@@ -24,6 +24,7 @@ beforeEach(() => {
 const connectionId = '00000000-0000-4000-8000-000000000001'
 const configurationId = '00000000-0000-4000-8000-000000000002'
 const conversationId = '00000000-0000-4000-8000-000000000003'
+const mcpCorrelationId = '00000000-0000-4000-8000-000000000004'
 const choice = { kind: 'provider_model' as const, connectionId, modelId: 'model-a' }
 const assignments = { synthesizer: choice, planner: choice, deep_planner: choice, worker: choice }
 const safeConnection = { id: connectionId, provider_id: 'openai', name: 'Personal', masked_suffix: '••••1234', validation_state: 'validated', credential_version: '1', credential_validity: 'valid', deleted_at: null }
@@ -48,6 +49,84 @@ function validTransport() {
 const calls = () => execute.mock.calls.map(([sql, params]) => ({ sql: String(sql).replace(/\s+/g, ' ').trim(), params: params as unknown[] }))
 
 describe('owned AI configuration repository', () => {
+  it.each([
+    ['api_key', 'mcp_test_KEY001'],
+    ['oauth', `oauth_sha256:${'a'.repeat(64)}`],
+  ] as const)('atomically verifies %s MCP mapping before Default resolution and snapshot', async (authKind, keyId) => {
+    respond((sql, params) => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice', role: 'guest' }]
+      if (sql.includes('FROM mcp_api_keys')) return [{ key_id: params[0] }]
+      if (sql.includes('FROM mcp_oauth_tokens')) return [{ access_token_hash: params[0] }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'alice' }]
+      if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model', connection_id: connectionId, model_id: 'model-a' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, provider_id: 'openai' }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'A', compatible_roles: AI_ROLES,
+        supports_tools: true, supports_structured_output: true, available: true }]
+      if (sql.startsWith('INSERT INTO ai_turn_routing_snapshots')) return [{ id: configurationId }]
+      return undefined
+    })
+    const prepared = await repository.prepareMcpRouting({
+      userId: 'alice', keyId, authKind, chartId: conversationId, correlationId: mcpCorrelationId,
+    })
+    expect(prepared.safeSnapshot).toMatchObject({
+      source: 'mcp', userId: 'alice', correlationId: mcpCorrelationId,
+      conversationId: null, selection: { kind: 'default' },
+    })
+    const statements = calls()
+    const credentialIndex = statements.findIndex(call => call.sql.includes(authKind === 'api_key' ? 'FROM mcp_api_keys' : 'FROM mcp_oauth_tokens'))
+    const profileIndex = statements.findIndex(call => call.sql.includes('FROM profiles'))
+    const defaultIndex = statements.findIndex(call => call.sql.includes('FROM ai_user_defaults'))
+    const snapshotIndex = statements.findIndex(call => call.sql.startsWith('INSERT INTO ai_turn_routing_snapshots'))
+    expect(credentialIndex).toBeGreaterThan(0)
+    expect(profileIndex).toBeGreaterThan(credentialIndex)
+    expect(defaultIndex).toBeGreaterThan(profileIndex)
+    expect(snapshotIndex).toBeGreaterThan(defaultIndex)
+    if (authKind === 'oauth') expect(statements[credentialIndex].params[0]).toBe('a'.repeat(64))
+    expect(statements.at(-1)?.sql).toBe('COMMIT')
+  })
+
+  it.each([
+    ['api_key', 'mcp_test_OTHER', 'revoked_at IS NULL'],
+    ['oauth', `oauth_sha256:${'b'.repeat(64)}`, 'expires_at>now()'],
+  ] as const)('rejects a mismatched, revoked, or expired %s mapping before reading the user Default', async (authKind, keyId, predicate) => {
+    await expect(repository.prepareMcpRouting({
+      userId: 'alice', keyId, authKind, chartId: conversationId,
+      correlationId: mcpCorrelationId,
+    })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    expect(calls().some(call => call.sql.includes(predicate))).toBe(true)
+    expect(calls().some(call => call.sql.includes('FROM profiles'))).toBe(false)
+    expect(calls().some(call => call.sql.includes('FROM ai_user_defaults'))).toBe(false)
+    expect(calls().at(-1)?.sql).toBe('ROLLBACK')
+  })
+
+  it('rejects a wrong chart before reading the user Default', async () => {
+    respond(sql => {
+      if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
+      if (sql.includes('FROM profiles')) return [{ id: 'alice', role: 'guest' }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'another-user' }]
+      return undefined
+    })
+    await expect(repository.prepareMcpRouting({
+      userId: 'alice', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: conversationId,
+      correlationId: mcpCorrelationId,
+    })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    expect(calls().some(call => call.sql.includes('FROM chart_grants'))).toBe(true)
+    expect(calls().some(call => call.sql.includes('FROM ai_user_defaults'))).toBe(false)
+  })
+
+  it('fails a missing Default before snapshot insertion', async () => {
+    respond(sql => {
+      if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
+      if (sql.includes('FROM profiles')) return [{ id: 'alice', role: 'guest' }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'alice' }]
+      return undefined
+    })
+    await expect(repository.prepareMcpRouting({
+      userId: 'alice', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: conversationId,
+      correlationId: mcpCorrelationId,
+    })).rejects.toMatchObject({ code: 'AI_DEFAULT_REQUIRED' })
+    expect(calls().some(call => call.sql.startsWith('INSERT INTO ai_turn_routing_snapshots'))).toBe(false)
+  })
   it('lists only safe columns and isolates every user-owned list', async () => {
     expect(repository).toHaveProperty('listAiConsoleState')
     await repository.listAiConsoleState('alice')

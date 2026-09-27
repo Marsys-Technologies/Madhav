@@ -171,7 +171,11 @@ export async function resumeManagedPrashnaJob(
         inquiryId: jobRequest.inquiry_id,
         jobId,
         question: jobRequest.question,
-        principal: { userUid: principal.user_uid, keyId: principal.key_id },
+        principal: {
+          userUid: principal.user_uid,
+          keyId: principal.key_id,
+          authKind: principal.key_id.startsWith('oauth_sha256:') ? 'oauth' : 'api_key',
+        },
         responseFormat: jobRequest.response_format,
         scopeTuple: jobRequest.scope_tuple,
       },

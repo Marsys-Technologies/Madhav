@@ -89,6 +89,8 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
   mockGetToolByName: vi.fn(),
 }))
+const { mockPrepareMcpByokRuntime } = vi.hoisted(() => ({ mockPrepareMcpByokRuntime: vi.fn() }))
+vi.mock('@/lib/mcp/prashna_ask/byok_preflight', () => ({ prepareMcpByokRuntime: mockPrepareMcpByokRuntime }))
 const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
 vi.mock('@/lib/vidhi/inquiry/managed_job_store', () => ({ getManagedPrashnaJob: managedInquiry.getJob }))
@@ -223,6 +225,7 @@ beforeEach(() => {
   knowledgeState.overlay = null
   knowledgeState.overlaySequence = []
   knowledgeState.overlayLoadCount = 0
+  configService.setFlag('AI_CONSOLE_BYOK', false)
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -326,6 +329,56 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
     expect(body.persistence.status).toBe('caller_required')
 
     safetyFlagState.on = false
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
+  it('uses the mapped Default executors and returns evidence without invoking Madhav synthesis', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const releaseAdmission = vi.fn()
+    const executors = {
+      planner: { execute: vi.fn() },
+      deep_planner: { execute: vi.fn() },
+      worker: { execute: vi.fn() },
+    }
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors, releaseAdmission,
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'Give me the evidence.' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    const lines = await readNdjson(res)
+    const final = lines.at(-1)
+
+    expect(mockPrepareMcpByokRuntime).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'owner-uid', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: CHART,
+    }))
+    expect(mockCallPipelinePlanner.mock.calls[0]?.[10]).toEqual({
+      plannerExecutor: executors.planner,
+      deepPlannerExecutor: executors.deep_planner,
+      workerExecutor: executors.worker,
+      abortSignal: expect.any(AbortSignal),
+    })
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(final).toMatchObject({
+      event: 'final', schema_version: 'madhav.evidence.v1',
+      synthesis: { mode: 'external', performed_by_madhav: false },
+      question: 'Give me the evidence.',
+    })
+    expect(final).not.toHaveProperty('reading')
+    expect((final?.routing as { roles: object }).roles).not.toHaveProperty('synthesizer')
+    expect(releaseAdmission).toHaveBeenCalledTimes(1)
   })
 })
 

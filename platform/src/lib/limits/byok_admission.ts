@@ -7,6 +7,8 @@ import { AiConsoleError } from '@/lib/ai-console/errors'
 export const BYOK_MAX_QUESTION_CHARS = 32_000
 export const BYOK_MAX_EVIDENCE_CHARS = 2_000_000
 export const BYOK_MAX_OUTPUT_TOKENS = 16_384
+/** MCP's external host synthesizes; this ceiling is wire-size, not model context. */
+export const MCP_BYOK_EVIDENCE_ENVELOPE_MAX_BYTES = 1800 * 1024
 const MAX_CONCURRENT_TURNS_PER_USER = 2
 
 const activeTurns = new Map<string, number>()
@@ -63,6 +65,14 @@ export function isByokEvidenceWithinLimit(evidenceChars: number): boolean {
 export function isByokEvidencePayloadWithinLimit(payload: unknown): boolean {
   try {
     return isByokEvidenceWithinLimit(Buffer.byteLength(JSON.stringify(payload), 'utf8'))
+  } catch {
+    return false
+  }
+}
+
+export function isMcpEvidenceEnvelopeWithinLimit(payload: unknown): boolean {
+  try {
+    return Buffer.byteLength(JSON.stringify(payload), 'utf8') <= MCP_BYOK_EVIDENCE_ENVELOPE_MAX_BYTES
   } catch {
     return false
   }

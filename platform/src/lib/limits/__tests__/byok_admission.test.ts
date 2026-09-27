@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const checkRpm = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/mcp/rate_limiter_core', () => ({ checkRpm }))
 import {
-  admitByokTurn, isByokEvidencePayloadWithinLimit, isByokEvidenceWithinLimit, validateByokUiMessages,
+  admitByokTurn, isByokEvidencePayloadWithinLimit, isByokEvidenceWithinLimit,
+  isMcpEvidenceEnvelopeWithinLimit, MCP_BYOK_EVIDENCE_ENVELOPE_MAX_BYTES, validateByokUiMessages,
 } from '../byok_admission'
 
 describe('admitByokTurn', () => {
@@ -54,6 +55,15 @@ describe('admitByokTurn', () => {
   it('measures hydrated evidence as UTF-8 bytes rather than JavaScript characters', () => {
     expect(isByokEvidencePayloadWithinLimit({ text: 'a'.repeat(1_999_980) })).toBe(true)
     expect(isByokEvidencePayloadWithinLimit({ text: '🙏'.repeat(500_000) })).toBe(false)
+  })
+
+  it('caps the MCP evidence wire envelope independently of model context metadata', () => {
+    const prefixBytes = Buffer.byteLength(JSON.stringify({ evidence: '' }), 'utf8')
+    expect(isMcpEvidenceEnvelopeWithinLimit({
+      evidence: 'a'.repeat(MCP_BYOK_EVIDENCE_ENVELOPE_MAX_BYTES - prefixBytes),
+      model_context_tokens: 1,
+    })).toBe(false)
+    expect(isMcpEvidenceEnvelopeWithinLimit({ evidence: 'concise', model_context_tokens: 1 })).toBe(true)
   })
   beforeEach(() => checkRpm.mockReset().mockReturnValue({ allowed: true }))
 

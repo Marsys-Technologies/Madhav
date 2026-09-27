@@ -181,6 +181,10 @@ export interface PreparedTurnRouting {
   snapshotId: string
 }
 
+export interface PreparedMcpRouting extends PreparedTurnRouting {
+  role: 'super_admin' | 'guest'
+}
+
 function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readonly AiRole[]): AiRole | undefined {
   return roles.find(role => !compatibleRoles.includes(role))
 }
@@ -923,6 +927,74 @@ export async function prepareTurnRouting(input: unknown): Promise<PreparedTurnRo
     })
     const snapshotId = await insertRoutingSnapshotWithClient(client, safeSnapshot)
     return { selection: authoritativeSelection, resolution, safeSnapshot, snapshotId }
+  })
+}
+
+const PrepareMcpRoutingSchema = z.object({
+  userId: z.string().min(1).regex(/\S/),
+  keyId: z.string().min(1).max(256),
+  authKind: z.enum(['api_key', 'oauth']),
+  chartId: z.string().uuid(),
+  correlationId: z.string().uuid(),
+}).strict().superRefine((value, context) => {
+  if (value.authKind === 'oauth' && !/^oauth_sha256:[0-9a-f]{64}$/.test(value.keyId)) {
+    context.addIssue({ code: 'custom', path: ['keyId'], message: 'Invalid OAuth principal identity' })
+  }
+  if (value.authKind === 'api_key' && value.keyId.startsWith('oauth_sha256:')) {
+    context.addIssue({ code: 'custom', path: ['keyId'], message: 'Invalid API-key principal identity' })
+  }
+})
+
+/**
+ * Re-verify the authenticated MCP credential mapping, active user, chart authority,
+ * live Default, full four-role resolution and immutable snapshot under one user lock.
+ * No executor or decrypted binding exists until this transaction commits.
+ */
+export async function prepareMcpRouting(input: unknown): Promise<PreparedMcpRouting> {
+  const parsed = PrepareMcpRoutingSchema.parse(input)
+  return withUserTransaction(parsed.userId, async client => {
+    const credential = parsed.authKind === 'api_key'
+      ? (await client.query(`SELECT key_id FROM mcp_api_keys
+          WHERE key_id=$1 AND user_uid=$2 AND revoked_at IS NULL FOR SHARE`,
+        [parsed.keyId, parsed.userId])).rows[0]
+      : (await client.query(`SELECT access_token_hash FROM mcp_oauth_tokens
+          WHERE access_token_hash=$1 AND uid=$2 AND expires_at>now() FOR SHARE`,
+        [parsed.keyId.slice('oauth_sha256:'.length), parsed.userId])).rows[0]
+    if (!credential) throw new AiConsoleError('AI_PERMISSION_DENIED')
+
+    const profile = (await client.query(`SELECT id,role FROM profiles
+      WHERE id=$1 AND status='active' FOR SHARE`, [parsed.userId])).rows[0]
+    if (!profile) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    const role = profile.role === 'super_admin' ? 'super_admin' as const : 'guest' as const
+
+    const chart = (await client.query('SELECT owner_id FROM charts WHERE id=$1 FOR SHARE', [parsed.chartId])).rows[0]
+    if (!chart) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    if (role !== 'super_admin' && chart.owner_id !== parsed.userId) {
+      const grant = (await client.query(`SELECT permission FROM chart_grants
+        WHERE chart_id=$1 AND principal_id=$2 AND permission='view' LIMIT 1 FOR SHARE`,
+      [parsed.chartId, parsed.userId])).rows[0]
+      if (!grant) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    }
+
+    const selection = ConversationAiSelectionSchema.parse({ kind: 'default' })
+    const resolution = await loadRoutingResolutionWithClient(client, parsed.userId, selection)
+    const safeSnapshot = RoutingSnapshotSchema.parse({
+      source: 'mcp',
+      userId: parsed.userId,
+      correlationId: parsed.correlationId,
+      conversationId: null,
+      selection,
+      resolvedChoice: resolution.resolvedChoice,
+      configurationVersion: resolution.configurationVersion,
+      roles: Object.fromEntries(AI_ROLES.map(roleName => {
+        const target = resolution.roles[roleName]
+        return [roleName, target.kind === 'provider_model'
+          ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId, modelId: target.modelId }
+          : { kind: target.kind, cliId: target.cliId, modelId: target.modelId }]
+      })),
+    })
+    const snapshotId = await insertRoutingSnapshotWithClient(client, safeSnapshot)
+    return { role, selection, resolution, safeSnapshot, snapshotId }
   })
 }
 const ReceiptSchema = z.object({ userId: z.string().min(1), snapshotId: z.string().uuid(), invocationId: z.string().uuid(), role: AiRoleSchema,
