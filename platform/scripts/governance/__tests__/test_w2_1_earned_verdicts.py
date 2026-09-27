@@ -442,8 +442,9 @@ _KULA_SQL = ("SELECT (SELECT count(*) FROM mimamsa_signal_families) + "
              "(SELECT count(*) FROM mimamsa_negative_controls) AS count")
 
 
-def _completion(monkeypatch, tmp_path, count_sql, live, rec, target="t_main", depth_rows=3, floor=None):
-    reg = {"mi_x": _reg_row("mi_x", target, count_sql=count_sql, target_floor=floor)}
+def _completion(monkeypatch, tmp_path, count_sql, live, rec, target="t_main", depth_rows=3, floor=None,
+                has_writer=True):
+    reg = {"mi_x": _reg_row("mi_x", target, count_sql=count_sql, target_floor=floor, has_writer=has_writer)}
     _stub_layer(monkeypatch, tmp_path, reg, tables={target: (["a"], [])} if target else None,
                 thru={"mi_x": {"": rec}} if rec is not None else {})
     monkeypatch.setattr(ac, "depth_census",
@@ -520,10 +521,23 @@ def test_r52_the_truncate_plant_flips_toward_fail_never_toward_pass(monkeypatch,
 
 def test_r52_zero_rows_pass_only_under_the_registry_declaration(monkeypatch, tmp_path):
     """target_floor=0 is the registry's (and the engine's) declaration that zero rows is a complete
-    build — the one place an empty result may read PASS, and it says so."""
-    res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(0), floor="0"),
+    build — but (R99, this wave: the previously-uncovered third case, ga_prashna's own shape) that
+    declaration alone is only enough for PASS when the asset has no writer at all (has_writer=false
+    — bg_sarvatobhadra_grid's shape, genuinely empty by design, nothing ever attempted). A
+    writer-backed asset (has_writer=true — the default `_reg_row`/mi_x shape here, and ga_prashna's
+    own shape) that has actually run and still produced zero rows is indistinguishable from a
+    writer that has never worked, and reads the honest PARTIAL R99 introduces instead."""
+    res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(0), floor="0",
+                        has_writer=False),
              "mi_x", "Build.completion")
     assert res["v"] == ac.PASS and "declared complete by target_floor=0" in res["measured"], res
+    res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(0), floor="0",
+                        has_writer=True),
+             "mi_x", "Build.completion")
+    assert res["v"] == ac.PARTIAL and "has_writer=true" in res["measured"], (
+        "R99: a writer-backed data asset that ran and produced zero rows is PARTIAL, not the R52-era "
+        "blanket PASS — target_floor=0 alone is not a layer-plan claim that the emptiness is by design"
+    )
     res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(5), floor="0"),
              "mi_x", "Build.completion")
     assert res["v"] == ac.FAIL, "a declared-empty asset whose build wrote rows that are now gone still fails"
