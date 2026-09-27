@@ -25,7 +25,14 @@ branch-local by ADK-0011(i). It produces the `--episodes-json` /
     not be enumerated on stale overlay rows — the same refusal step06 applies
     at consume time, exit 7), and stamps the current upstream fingerprints
     (logic.upstream_fingerprint / moorti_upstream_fingerprint through the
-    writers' own fetch functions) in the build report.
+    writers' own fetch functions) in the build report,
+  * dedupes the payload to one row per physical contact (ADK-0020 option (i):
+    keyed by the pinned WP1 §3.2 contact_id; highest-weight map row survives,
+    weight ties break to the lexicographically smallest target_ref, deeper
+    weight ties are surfaced in the report as map defects, divergent non-null
+    classical_citation values refuse the run with exit 5; dropped target_refs
+    are recoverable via the `<episodes-out>.dropped_refs.json` artifact keyed
+    by contact_id).
 
 Orb regime (disclosed synthesis, recorded in the review packet): WP1 §7's
 orb_conj_*/orb_drishti_* values are "practice pending M-1"; M-1 is now
@@ -69,8 +76,9 @@ Usage:
         --episodes-out eps.json --coverage-out cov.json [--evidence]
 
 Exit codes: 0 enumerated; 3 cannot proceed; 4 production refusal (inherited
-from common.connect, step 6 -> tranche 2); 7 refused: the chart's overlay
-rows are not FRESH against the reference tables (§12.9).
+from common.connect, step 6 -> tranche 2); 5 refused: ADK-0020 dedupe found a
+duplicate group with divergent non-null citations; 7 refused: the chart's
+overlay rows are not FRESH against the reference tables (§12.9).
 """
 from __future__ import annotations
 
@@ -204,6 +212,7 @@ class ResolvedTarget:
     owner_graha: str | None = None    # return-relation gate (point targets)
     agent: str | None = None          # body restriction (interval targets)
     target_fact_id: str | None = None
+    weight: float | None = None       # source map row's weight (ADK-0020 dedupe)
 
 
 @dataclass
@@ -286,6 +295,7 @@ def _base(row: dict) -> dict:
         "qualifier": row.get("target_qualifier"),
         "classical_citation": row.get("classical_citation"),
         "uncited_extension": bool(row.get("uncited_extension")),
+        "weight": (None if row.get("weight") is None else float(row["weight"])),
     }
 
 
@@ -570,6 +580,8 @@ def _episode_to_dict(ep: gk_episodes.Episode, target: ResolvedTarget,
         "classical_citation": target.classical_citation,
         "uncited_extension": target.uncited_extension,
         "corpus_verifiable": None,
+        # ADK-0020 dedupe bookkeeping; stripped from the payload before write.
+        "_map_weight": target.weight,
     }
 
 
@@ -643,6 +655,162 @@ def enumerate_body(
     out.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
     stats["searched"] = {k: sorted(v) for k, v in stats["searched"].items()}
     return out, stats
+
+
+# ── ADK-0020 dedupe: one ledger row per physical contact (WP1 §3.3 H-6) ──────
+
+
+class DedupeRefusal(Exception):
+    """A duplicate group the ruled survival rule cannot decide honestly —
+    divergent NON-NULL classical_citation values. Refuse and escalate; no
+    citation-selection rule is invented (ADK-0020, §N.7)."""
+
+
+def _contact_id_of(ep: dict, chart_id: str, convention_id: str,
+                   method_version: str) -> str:
+    """The pinned WP1 §3.2 id, exactly as the ledger will compute it."""
+    t_exact = ep["t_exact"]
+    t_exact_jd = t_exact.timestamp() / 86400.0 + 2440587.5
+    return gk_ids.contact_id(
+        chart_id=chart_id, convention_id=convention_id,
+        body=ep["body"], target_type=ep["target_type"],
+        relation=ep["relation"],
+        aspect_deg=float(ep.get("aspect_deg") or 0.0),
+        t_exact_jd=t_exact_jd,
+        target_fact_id=ep.get("target_fact_id"),
+        target_ref=ep.get("target_ref"),
+        method_version=method_version,
+    )
+
+
+def dedupe_episodes(
+    episodes: list[dict],
+    *,
+    chart_id: str,
+    convention_id: str,
+    method_version: str,
+    dropped_refs_path: str | None = None,
+) -> tuple[list[dict], dict]:
+    """ADK-0020 option (i): the driver emits per (map row × level); the pinned
+    §3.2 contact_id identities per PHYSICAL contact and H-6 says one physical
+    contact counts ONCE. Dedupe the payload, keyed by the pinned contact_id,
+    before it is written.
+
+    Survival rule (deterministic, disclosed): the row from the highest-weight
+    map row wins; weight ties break to the lexicographically smallest
+    target_ref; a tie beyond that (same weight AND same target_ref) is a map
+    defect — surfaced in the report, never silently resolved. A duplicate
+    group carrying divergent NON-NULL classical_citation values refuses the
+    whole run (DedupeRefusal). Dropped target_refs are recoverable via the
+    dropped-refs artifact keyed by contact_id (dropped_refs_path).
+    """
+    groups: dict[str, list[dict]] = {}
+    for ep in episodes:
+        cid = _contact_id_of(ep, chart_id, convention_id, method_version)
+        groups.setdefault(cid, []).append(ep)
+
+    divergent: list[dict] = []
+    for cid, group in groups.items():
+        if len(group) < 2:
+            continue
+        citations = {str(e.get("classical_citation"))
+                     for e in group if e.get("classical_citation")}
+        if len(citations) > 1:
+            divergent.append({
+                "contact_id": cid,
+                "relation": group[0]["relation"],
+                "target_refs": sorted({str(e["target_ref"]) for e in group}),
+                "citations": sorted(citations),
+            })
+    if divergent:
+        raise DedupeRefusal(
+            f"{len(divergent)} duplicate group(s) carry divergent non-null "
+            f"classical_citation values — ADK-0020 invents no citation-"
+            f"selection rule: {json.dumps(divergent[:5], default=str)}"
+        )
+
+    survivors: list[dict] = []
+    per_relation: dict[str, int] = {}
+    per_tier = {"weight": 0, "weight_tie_lexicographic": 0, "deeper_tie": 0}
+    deeper_tie_groups: list[dict] = []
+    multi_ig = 0
+    dropped_refs: dict[str, dict] = {}
+    dropped_total = 0
+
+    for cid, group in groups.items():
+        if len(group) == 1:
+            survivors.append(group[0])
+            continue
+        if len({e["independence_group"] for e in group}) > 1:
+            multi_ig += 1
+        # tier 1: highest map-row weight (None sorts below every number)
+        def _w(e: dict) -> float:
+            w = e.get("_map_weight")
+            return float("-inf") if w is None else float(w)
+        top_w = max(_w(e) for e in group)
+        top = [e for e in group if _w(e) == top_w]
+        if len(top) == 1:
+            survivor, tier = top[0], "weight"
+        else:
+            # tier 2: lexicographically smallest target_ref
+            top.sort(key=lambda e: str(e["target_ref"]))
+            min_ref = str(top[0]["target_ref"])
+            tied = [e for e in top if str(e["target_ref"]) == min_ref]
+            if len(tied) == 1:
+                survivor, tier = top[0], "weight_tie_lexicographic"
+            else:
+                # deeper tie: same weight AND same ref — a map defect;
+                # deterministic pick, surfaced in the report
+                tied.sort(key=lambda e: json.dumps(e, sort_keys=True, default=str))
+                survivor, tier = tied[0], "deeper_tie"
+                deeper_tie_groups.append({
+                    "contact_id": cid,
+                    "relation": survivor["relation"],
+                    "target_ref": survivor["target_ref"],
+                    "weight": None if top_w == float("-inf") else top_w,
+                    "rows": len(tied),
+                })
+        per_tier[tier] += 1
+        dropped = [e for e in group if e is not survivor]
+        dropped_total += len(dropped)
+        rel = survivor["relation"]
+        per_relation[rel] = per_relation.get(rel, 0) + len(dropped)
+        refs = sorted({str(e["target_ref"]) for e in dropped})
+        if refs:
+            dropped_refs[cid] = {
+                "survivor_target_ref": str(survivor["target_ref"]),
+                "dropped_target_refs": refs,
+                "dropped_rows": len(dropped),
+            }
+        survivors.append(survivor)
+
+    for ep in survivors:
+        ep.pop("_map_weight", None)
+    survivors.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
+
+    artifact = None
+    if dropped_refs and dropped_refs_path:
+        Path(dropped_refs_path).write_text(
+            json.dumps(dropped_refs, indent=2, default=str) + "\n")
+        artifact = dropped_refs_path
+
+    report = {
+        "rule": "ADK-0020 option (i): pinned WP1 §3.2 contact_id; highest-weight "
+                "map row survives; weight ties -> lexicographically smallest "
+                "target_ref; deeper weight ties surfaced as map defects; "
+                "divergent non-null citations refuse (none invented)",
+        "episodes_before": len(episodes),
+        "episodes_after": len(survivors),
+        "rows_dropped": dropped_total,
+        "duplicate_groups": sum(1 for g in groups.values() if len(g) > 1),
+        "per_relation_dropped": dict(sorted(per_relation.items())),
+        "per_survival_tier": per_tier,
+        "deeper_tie_groups": deeper_tie_groups,
+        "groups_with_multiple_independence_groups": multi_ig,
+        "dropped_refs_artifact": artifact,
+        "dropped_refs_contacts": len(dropped_refs),
+    }
+    return survivors, report
 
 
 def build_body_index(body: str, start: date, end: date,
@@ -812,6 +980,22 @@ def main(argv: list[str] | None = None) -> int:
         args.chart_id, args.generation, targets, searched, horizon_text,
         convention_id, backends.get("Saturn", {}))
 
+    # ADK-0020: dedupe to one row per physical contact BEFORE the payload is
+    # written — the ledger keys on the pinned §3.2 contact_id and refuses
+    # duplicates at insert (the 2026-09-28 Link 2 halt).
+    from step06_candidate_build import CONVENTION_VECTOR
+    try:
+        episodes, dedupe_report = dedupe_episodes(
+            episodes,
+            chart_id=args.chart_id,
+            convention_id=convention_id,
+            method_version=CONVENTION_VECTOR["method_version"],
+            dropped_refs_path=args.episodes_out + ".dropped_refs.json",
+        )
+    except DedupeRefusal as exc:
+        print(f"REFUSED (ADK-0020): {exc}", file=sys.stderr)
+        return 5
+
     Path(args.episodes_out).write_text(
         json.dumps(episodes, indent=2, default=str) + "\n")
     Path(args.coverage_out).write_text(
@@ -831,6 +1015,7 @@ def main(argv: list[str] | None = None) -> int:
         "target_resolution_state_counts": state_counts,
         "episodes_emitted": len(episodes),
         "episodes_without_exact_excluded": no_exact_total,
+        "dedupe": dedupe_report,
         "coverage_partitions": len(coverage),
         "upstream_fingerprints": fingerprints,
         "ephemeris_backends": backends,

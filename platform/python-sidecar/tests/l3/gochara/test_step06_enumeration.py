@@ -21,7 +21,13 @@ consumes. What this file proves:
     and the ledger _normalize_episode shape;
   * end-to-end on the disposable WP6 Postgres (NOT_RUN when unreachable):
     §12.9 overlay-freshness gate (exit 7 on stale, 0 on fresh), the
-    produced JSON feeding step06_candidate_build.py to real candidate rows.
+    produced JSON feeding step06_candidate_build.py to real candidate rows;
+  * ADK-0020 dedupe (one ledger row per pinned WP1 §3.2 physical contact):
+    weight-order survival, weight-tie → lexicographic target_ref, deeper ties
+    surfaced as map defects, divergent non-null citations refusing
+    (DedupeRefusal), _map_weight stripped from the payload, dropped-refs
+    artifact content, and the mandatory e2e regression — two map rows on one
+    physical target yield one emitted row and one ledger row per contact_id.
 
 DB tests use ONLY the disposable WP6 Postgres (env WP6_LEDGER_DSN, default
 postgresql://wp6:disposable@localhost:55433/wp6) and skip NOT_RUN otherwise —
@@ -632,6 +638,11 @@ def _seed_e2e(conn) -> None:
             " (1,'swarna',1,'x','Phaladeepika Ch.26')")
         map_rows = [
             ("marriage", "karaka", "Venus", 0.9, None, False, "resolved", None),
+            # ADK-0020 e2e: a second map row (another event_class) resolving
+            # to the SAME physical target (VEN longitude fact) at lower weight
+            # — the driver must dedupe it to one row per physical contact.
+            ("career_advancement", "karaka", "Venus", 0.6, None, False,
+             "resolved", None),
             ("marriage", "lord", "7L", 0.8, None, False, "resolved", None),
             ("property_acquisition", "bhava", "8", 0.7, None, False, "resolved", None),
             ("career_advancement", "mechanism_node", "jupiter:double_transit:h11",
@@ -769,6 +780,200 @@ def test_end_to_end_enumerate_and_consume(wp6_enum_schema, tmp_path):
     assert n_contacts == len(episodes)
     assert n_cov == len(coverage)
     assert status == "candidate"
+
+
+@requires_swieph
+def test_dedupe_two_map_rows_one_physical_target(wp6_enum_schema, tmp_path):
+    """ADK-0020 mandatory e2e regression: two map rows (marriage/karaka/Venus
+    @0.9, career_advancement/karaka/Venus @0.6) resolve to the SAME physical
+    target (the VEN longitude fact) → the driver emits ONE row per physical
+    contact (the higher-weight row survives), the dedupe count is disclosed in
+    the enumeration report, the dropped-refs artifact records the dropped
+    target_ref, and the ledger lands exactly one contact row with one
+    independence_group per pinned §3.2 contact_id."""
+    r = _run_driver(tmp_path)
+    assert r.returncode == 0, r.stderr
+    report = json.loads(r.stdout)
+    dedupe = report["dedupe"]
+    assert dedupe["episodes_before"] > dedupe["episodes_after"]
+    assert dedupe["rows_dropped"] == (
+        dedupe["episodes_before"] - dedupe["episodes_after"])
+    assert dedupe["rows_dropped"] > 0
+    assert dedupe["duplicate_groups"] > 0
+    # the Venus pair shares both citations (null) → no refusal; survival came
+    # from the weight tier
+    assert dedupe["per_survival_tier"]["weight"] > 0
+    assert dedupe["deeper_tie_groups"] == []
+
+    episodes = json.loads((tmp_path / "eps.json").read_text())
+    # no dasha-duplicate: every physical contact appears once per contact_id
+    from collections import Counter
+
+    sys.path.insert(0, str(DRIVER_PATH.parent))
+    from step06_candidate_build import CONVENTION_VECTOR
+
+    conv_id = gk_convention.canonical_convention_id()
+
+    def _cid(e):
+        return drv._contact_id_of(
+            {**e, "t_exact": datetime.fromisoformat(e["t_exact"])},
+            E2E_CHART, conv_id, CONVENTION_VECTOR["method_version"])
+
+    counts = Counter(_cid(e) for e in episodes)
+    assert all(v == 1 for v in counts.values()), \
+        "a pinned §3.2 contact_id still appears twice after dedupe"
+    # the duplicate pair is Venus-referenced on BOTH rows; its contacts survived
+    venus_eps = [e for e in episodes if e["target_ref"] == "Venus"]
+    assert venus_eps
+    assert len({_cid(e) for e in venus_eps}) == len(venus_eps)
+    # dropped refs recoverable, keyed by contact_id; the Venus pair's entries
+    # show survivor and dropped rows both naming target_ref "Venus"
+    dropped = json.loads((tmp_path / "eps.json.dropped_refs.json").read_text())
+    assert dropped
+    assert any(v["survivor_target_ref"] == "Venus"
+               and v["dropped_target_refs"] == ["Venus"]
+               for v in dropped.values())
+    # the survivor/dropped rows belong to duplicate groups: exactly one ledger
+    # row per contact after the build consumes the deduped payload
+    r2 = subprocess.run(
+        [sys.executable, str(STEP06_PATH), "--dsn", WP6_DSN,
+         "--chart-id", E2E_CHART,
+         "--horizon-start", "2026-01-01T00:00:00+00:00",
+         "--horizon-end", "2026-04-01T00:00:00+00:00",
+         "--episodes-json", str(tmp_path / "eps.json"),
+         "--coverage-json", str(tmp_path / "cov.json")],
+        capture_output=True, text=True, timeout=300)
+    assert r2.returncode == 0, r2.stderr
+
+    import psycopg
+
+    with psycopg.connect(WP6_DSN) as conn:
+        rows = conn.execute(
+            "SELECT contact_id, count(*) FROM kala_gochara_contacts"
+            " WHERE chart_id=%s AND generation='4.0' GROUP BY contact_id"
+            " HAVING count(*) > 1", (E2E_CHART,)).fetchall()
+        venus_rows = conn.execute(
+            "SELECT count(*) FROM kala_gochara_contacts"
+            " WHERE chart_id=%s AND generation='4.0'"
+            " AND target_ref='Venus'", (E2E_CHART,)).fetchone()[0]
+    assert rows == [], f"duplicate contact_id rows in the ledger: {rows[:3]}"
+    # exactly one ledger row per surviving Venus contact (the deduped payload)
+    assert venus_rows == len([e for e in episodes if e["target_ref"] == "Venus"])
+
+
+# ── ADK-0020 dedupe unit tests (no DB) ───────────────────────────────────────
+
+DEDUPE_CHART = "dedupe-chart"
+DEDUPE_CONV = "sha256:test-convention"
+DEDUPE_MV = "1.0.0"
+
+
+def _dedupe_ep(target_ref: str, weight, citation=None,
+               target_fact_id: str = "fact.X",
+               t_exact: datetime = datetime(2026, 2, 1, tzinfo=UTC)) -> dict:
+    """A minimal episode dict in the driver's post-_episode_to_dict shape;
+    same chart/body/relation/aspect/t_exact/target_fact_id ⇒ same pinned
+    §3.2 contact_id (a physical duplicate from a second map row)."""
+    return {
+        "independence_group": "sha256:ig-" + str(target_ref),
+        "body": "Saturn",
+        "relation": "conjunction",
+        "aspect_deg": 0,
+        "target_type": "karaka",
+        "target_ref": target_ref,
+        "target_fact_id": target_fact_id,
+        "t_in": t_exact,
+        "t_exact": t_exact,
+        "t_out": t_exact,
+        "classical_citation": citation,
+        "_map_weight": weight,
+    }
+
+
+def test_dedupe_weight_order_wins(tmp_path):
+    eps = [_dedupe_ep("low", 0.6), _dedupe_ep("high", 0.9)]
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV,
+        dropped_refs_path=str(tmp_path / "dropped.json"))
+    assert [e["target_ref"] for e in survivors] == ["high"]
+    assert report["episodes_before"] == 2 and report["episodes_after"] == 1
+    assert report["rows_dropped"] == 1 and report["duplicate_groups"] == 1
+    assert report["per_survival_tier"]["weight"] == 1
+    assert report["per_relation_dropped"] == {"conjunction": 1}
+    dropped = json.loads((tmp_path / "dropped.json").read_text())
+    (cid, entry), = dropped.items()
+    assert cid.startswith("sha256:")
+    assert entry["survivor_target_ref"] == "high"
+    assert entry["dropped_target_refs"] == ["low"]
+    assert entry["dropped_rows"] == 1
+    assert report["dropped_refs_artifact"] == str(tmp_path / "dropped.json")
+    assert report["dropped_refs_contacts"] == 1
+
+
+def test_dedupe_weight_tie_breaks_lexicographic():
+    eps = [_dedupe_ep("Beta", 0.7), _dedupe_ep("Alpha", 0.7)]
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV)
+    assert [e["target_ref"] for e in survivors] == ["Alpha"]
+    assert report["per_survival_tier"]["weight_tie_lexicographic"] == 1
+    assert report["deeper_tie_groups"] == []
+
+
+def test_dedupe_deeper_tie_surfaced_not_silent():
+    # same weight AND same target_ref — a map defect: deterministic survivor,
+    # surfaced in the report (never silently resolved)
+    eps = [_dedupe_ep("same", 0.7), _dedupe_ep("same", 0.7)]
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV)
+    assert len(survivors) == 1
+    assert report["per_survival_tier"]["deeper_tie"] == 1
+    (group,) = report["deeper_tie_groups"]
+    assert group["target_ref"] == "same" and group["weight"] == 0.7
+    assert group["rows"] == 2 and group["contact_id"].startswith("sha256:")
+
+
+def test_dedupe_none_weight_loses_to_any_number():
+    eps = [_dedupe_ep("unweighted", None), _dedupe_ep("weighted", 0.1)]
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV)
+    assert [e["target_ref"] for e in survivors] == ["weighted"]
+    assert report["per_survival_tier"]["weight"] == 1
+
+
+def test_dedupe_divergent_citations_refuse():
+    eps = [_dedupe_ep("a", 0.9, citation="BPHS ch.4"),
+           _dedupe_ep("b", 0.8, citation="BPHS ch.7")]
+    with pytest.raises(drv.DedupeRefusal):
+        drv.dedupe_episodes(
+            eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+            method_version=DEDUPE_MV)
+
+
+def test_dedupe_identical_null_citations_do_not_refuse():
+    eps = [_dedupe_ep("a", 0.9), _dedupe_ep("b", 0.8, citation=None)]
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV)
+    assert len(survivors) == 1 and report["duplicate_groups"] == 1
+
+
+def test_dedupe_strips_map_weight_and_keeps_singletons():
+    solo = _dedupe_ep("solo", 0.5, target_fact_id="fact.Y",
+                      t_exact=datetime(2026, 3, 1, tzinfo=UTC))
+    dup_a = _dedupe_ep("a", 0.9)
+    dup_b = _dedupe_ep("b", 0.8)
+    survivors, report = drv.dedupe_episodes(
+        [dup_b, solo, dup_a], chart_id=DEDUPE_CHART,
+        convention_id=DEDUPE_CONV, method_version=DEDUPE_MV)
+    assert len(survivors) == 2
+    assert all("_map_weight" not in e for e in survivors)
+    # sorted by t_in: the Feb duplicate-survivor before the March singleton
+    assert [e["target_ref"] for e in survivors] == ["a", "solo"]
+    assert report["episodes_before"] == 3 and report["episodes_after"] == 2
 
 
 @requires_swieph

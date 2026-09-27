@@ -290,3 +290,100 @@ step 1 for chart 1 only.
 rehearsal-exact; candidate-ledger write impossible under the current pinned
 contact-id contract at production multiplicity; production left untouched and
 verified clean.**
+
+## 2026-09-28 — ADK-0020 option (i) dedupe implemented + rehearsed — driver REFUSES on real data (ruling premise falsified; Link 2 stays HALTED)
+
+ADK-0020 (commit `d58e8c171`) ruled option (i): dedupe at enumeration in
+`step06_enumerate_episodes.py`, keyed by the pinned WP1 §3.2 contact_id;
+survival = highest-weight map row, weight ties → lexicographically smallest
+target_ref, deeper ties surfaced as map defects; a duplicate group carrying
+divergent NON-NULL classical_citation values REFUSES the run (the ruling's
+own escalation clause); dedupe counts disclosed (total / per relation / per
+survival tier); dropped target_refs recoverable via a dropped-refs artifact
+keyed by contact_id.
+
+### Patch (enumeration driver only — ledger, ids, schema, flags, gates, M-1 orb untouched)
+
+`step06_enumerate_episodes.py`:
+- `ResolvedTarget` gains `weight` (the source map row's weight, carried for
+  the survival rule); `_episode_to_dict` stamps it as `_map_weight`, stripped
+  from survivors before the payload is written.
+- New `DedupeRefusal` exception, `_contact_id_of` (the pinned §3.2 id exactly
+  as the ledger computes it — verified equal to
+  `ledger.convention_id_for(CONVENTION_VECTOR)` /
+  `gk_convention.canonical_convention_id()` =
+  `sha256:38218e65c6f918eaaa5cbb814235c624a65e888e6f838d5942fe0ea815c10296`,
+  method_version `1.0.0`), and `dedupe_episodes()` implementing the ruled
+  survival tiers, the divergent-citation refusal, the disclosure report
+  (`episodes_before/after`, `rows_dropped`, `duplicate_groups`,
+  `per_relation_dropped`, `per_survival_tier`, `deeper_tie_groups`,
+  `groups_with_multiple_independence_groups`, `dropped_refs_contacts`), and
+  the dropped-refs artifact `<episodes-out>.dropped_refs.json`
+  (contact_id → {survivor_target_ref, dropped_target_refs, dropped_rows}).
+- `main()` dedupes after enumeration, before payload write; refusal prints
+  `REFUSED (ADK-0020): …` and exits **5** (documented in the module docstring).
+
+### Tests
+
+`tests/l3/gochara/test_step06_enumeration.py` (all pass):
+- `test_dedupe_weight_order_wins` — higher weight survives; counts, per-tier
+  and per-relation disclosure, dropped-refs artifact content verified.
+- `test_dedupe_weight_tie_breaks_lexicographic` — equal weights → smallest
+  target_ref.
+- `test_dedupe_deeper_tie_surfaced_not_silent` — same weight AND same ref →
+  deterministic survivor + `deeper_tie_groups` populated (map defect
+  surfaced, never silent).
+- `test_dedupe_none_weight_loses_to_any_number` — NULL weight sorts last.
+- `test_dedupe_divergent_citations_refuse` — `pytest.raises(DedupeRefusal)`.
+- `test_dedupe_identical_null_citations_do_not_refuse`.
+- `test_dedupe_strips_map_weight_and_keeps_singletons` — `_map_weight`
+  stripped, singletons untouched, output sorted.
+- `test_dedupe_two_map_rows_one_physical_target` (mandatory e2e regression,
+  disposable DB): two map rows (`marriage`/karaka/Venus @0.9,
+  `career_advancement`/karaka/Venus @0.6) resolving to the SAME physical
+  target → one emitted row per pinned contact_id (Counter check over the
+  whole payload), dedupe count disclosed in the report, dropped-refs
+  artifact records the Venus pair, and after `step06_candidate_build`
+  consumes the payload the ledger holds exactly one row per contact_id
+  (`GROUP BY contact_id HAVING count(*)>1` → empty) with the surviving
+  Venus contacts present exactly once.
+
+### Battery
+
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+(disposable pg16 containers `gochara-wp6-disposable` :55435,
+`gochara-wp6-remainder` :55434): **374 passed, 0 failed, 0 skipped**
+(incl. all 8 new dedupe tests; both pre-existing e2e tests still green with
+the duplicate map row added to the shared seed).
+
+### Rehearsal (disposable DB `wp10_rehearsal` on :55434, rebuilt from retained production dumps; candidate-1 flags: linear_no_box, orb 5.0°, refine ON)
+
+| chart | enumeration exit | result |
+|---|---|---|
+| `482012f1-…871aa` (~32 min enumerate) | **5 (REFUSED)** | 46,353 duplicate groups carry divergent non-null citations |
+| `1c826d5a-…5f75a` (~31 min enumerate) | **5 (REFUSED)** | 46,354 duplicate groups carry divergent non-null citations |
+
+Logs: `.run/wp10_tranche2/adk0020_rehearsal_enum_{482012f1,1c826d5a}.stderr`.
+No payload was written (refusal precedes the write); per the ruling the
+candidate build was NOT attempted.
+
+### The ruling's premise is falsified on real data — escalation
+
+ADK-0020 states citations are null on every duplicate row (recount: 92,775
+fully-identical + 45,992 target_ref-only groups, zero citation-divergent).
+Against the retained production payload
+`.run/wp10_tranche2/prod_episodes_482012f1.json` (1,353,278 episodes), an
+independent re-scan keyed by the driver's own `_contact_id_of` finds
+**138,767 duplicate groups** (matching the prior census exactly): 92,414
+citation-identical-or-null and **46,353 with divergent NON-NULL
+classical_citation values**. Sample group `sha256:3df8c585…`
+(Sun/kakshya_cell_crossing/karaka/Mercury) carries citations from different
+event classes ("BPHS ch.1 (lagna, temperament) — inherited from
+chronic_onset…", "BPHS ch.2,11 (dhana-bhava)", "BPHS ch.10 (karma-bhava)…",
+…). The driver therefore REFUSES exactly as the ruling mandates — no
+citation-selection rule was invented (§N.7/§N.8). Consequence: **Link 2
+cannot go green under ADK-0020 as written**; it remains HALTED pending an
+amended ruling (e.g. citation follows the surviving weight-selected row, or
+an explicit citation-merge rule). The weight/tie survival tiers are verified
+by unit + e2e tests but were never exercised on real data — the refusal
+fires first, by design. Production was NOT touched.
