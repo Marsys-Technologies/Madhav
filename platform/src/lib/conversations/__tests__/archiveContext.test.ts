@@ -12,7 +12,7 @@ const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('server-only', () => ({}))
 
-import { getConversation, isCorrectionArchived, listConversations } from '@/lib/conversations'
+import { getConversation, isCorrectionArchived, listConversations, updateConversationTitle } from '@/lib/conversations'
 import type { ChartInputSnapshot } from '@/lib/charts/types'
 
 const SNAPSHOT: ChartInputSnapshot = {
@@ -98,3 +98,13 @@ describe('conversation projections carry archive context', () => {
     expect(c).toMatchObject({ archive_reason: 'chart_details_changed', archived_by_run_id: 'run-1' })
   })
 })
+
+describe('updateConversationTitle — atomic correction-history lock', () => {
+  it('never retitles a correction-archived conversation, even from a background title job racing a correction', async () => {
+    await updateConversationTitle('conv-1', 'New title')
+    const [sql, params] = mockQuery.mock.calls[0]
+    expect(sql).toMatch(/UPDATE conversations SET title=\$1 WHERE id=\$2 AND archive_reason IS DISTINCT FROM 'chart_details_changed'/)
+    expect(params).toEqual(['New title', 'conv-1'])
+  })
+})
+

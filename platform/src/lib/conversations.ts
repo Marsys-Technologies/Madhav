@@ -163,7 +163,12 @@ export async function getConversation(params: {
 }
 
 export async function updateConversationTitle(id: string, title: string) {
-  await query('UPDATE conversations SET title=$1 WHERE id=$2', [title, id])
+  // Atomic correction-history lock: a background title job racing a chart
+  // correction can never retitle a conversation that is now read-only history.
+  await query(
+    "UPDATE conversations SET title=$1 WHERE id=$2 AND archive_reason IS DISTINCT FROM 'chart_details_changed'",
+    [title, id],
+  )
 }
 
 export async function deleteConversation(id: string) {
