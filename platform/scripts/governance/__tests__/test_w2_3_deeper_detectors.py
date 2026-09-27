@@ -612,3 +612,125 @@ def test_live_r21_the_radius_agrees_with_an_independent_recursive_query():
     assert len(sql) == len(r) and all(r[a]["transitive"] == sql[a] for a in sql), \
         [(a, r[a]["transitive"], sql[a]) for a in sql if r[a]["transitive"] != sql[a]][:5]
     assert max(v["transitive"] for v in r.values()) > 0
+
+
+# ─────────── R23: field-level reachability over capability modules (width / depth), reported not graded ───────────
+
+_REAL_CAPABILITY_SQL = getattr(ac, "capability_sql", None)
+
+
+def _caps_tree(tmp_path, files: dict[str, str]) -> str:
+    d = tmp_path / "caps"
+    for rel, body in files.items():
+        p = d / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(body, encoding="utf-8")
+    return str(d)
+
+
+_READS_T_R = {
+    "L1_x/get_r.ts": ("import { query } from '@/lib/db/client'\n"
+                      "// SELECT d FROM t_r  <- a comment, not a query\n"
+                      "export const cap = { description: 'Retrieve rows from t_r for a chart.',\n"
+                      "  handler: () => query(`SELECT a, b, coalesce(c, 0) AS c2 FROM t_r WHERE chart_id = $1 AND kind = $2`) }\n"),
+    "L1_x/__tests__/get_r.test.ts": "query(`SELECT * FROM t_r`)\n",                       # a test is not a capability
+    "L4_y/get_other.ts": "query(`SELECT o.d FROM t_other o JOIN t_r r ON r.a = o.a WHERE o.k = 'x'`)\n",
+}
+
+
+def _reach_measure(monkeypatch, tmp_path, caps: dict[str, str] | None, never=("e",), psql_fake=None):
+    cols = ["chart_id", "a", "b", "c", "d", "e"]
+    reg = {"ga_r": w1._reg_row("ga_r", "t_r", count_sql="SELECT count(*) FROM t_r WHERE chart_id = $1")}
+    w1._stub_layer(monkeypatch, tmp_path, reg, tables={"t_r": (cols, [])})
+    monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=3, full=[], never=list(never), note=""))
+    if caps is None:
+        monkeypatch.setattr(ac, "capability_sql", lambda: _REAL_CAPABILITY_SQL(str(tmp_path / "no_such_dir")), raising=False)
+    else:
+        root = _caps_tree(tmp_path, caps)
+        monkeypatch.setattr(ac, "capability_sql", lambda: _REAL_CAPABILITY_SQL(root), raising=False)
+    monkeypatch.setattr(ac, "psql", psql_fake or w1._pg_like_psql({"t_r": 3}))
+    c = ac.measure("L1")
+    return w1._m(c, "ga_r", "Reach.fields"), next(a for a in c["assets"] if a["asset_id"] == "ga_r").get("reach"), c
+
+
+def test_r23_width_counts_the_built_columns_some_capability_selects_and_names_the_dark_ones(monkeypatch, tmp_path):
+    """t_r has 6 columns, `e` never populated, so 5 are built. get_r.ts selects a, b and c (inside
+    coalesce); get_other.ts joins t_r but selects only its OWN alias's column (o.d); a comment and a
+    description that say "from t_r" and a __tests__ module are not capabilities reading it. Width 3/5,
+    dark [chart_id, d]; a parameter-bound predicate pins no row, so depth 1.0 (upper bound). Reported, not
+    graded: the verdict stays NOT_GENERIC and no gap row is emitted for it. Fails without the fix: the
+    criterion read "not generic" with no measurement and no `reach`."""
+    rf, reach, c = _reach_measure(monkeypatch, tmp_path, _READS_T_R)
+    assert rf["v"] == ac.NOT_GENERIC and reach is not None, rf
+    assert reach["exposed"] == ["a", "b", "c"] and reach["dark"] == ["chart_id", "d"], reach
+    assert reach["width"] == 0.6 and reach["depth"] == 1.0 and reach["columns_built"] == 5, reach
+    assert sorted(reach["modules"]) == ["L1_x/get_r.ts", "L4_y/get_other.ts"], reach
+    assert "width 3/5 built column(s) (60.0%)" in rf["measured"] and "dark: ['chart_id', 'd']" in rf["measured"], rf
+    ac.emit_gaps(c)
+    assert "Reach.fields" not in (tmp_path / "asset_gaps.jsonl").read_text()
+
+
+def test_r23_depth_is_the_share_of_rows_the_literal_pins_reach_counted_read_only(monkeypatch, tmp_path):
+    """Every query that reads t_r pins rows by literal values (d = 'x'; d IN ('y','z')): depth is the
+    chart's rows matching the union of the pins, counted read-only (3 of 10 -> 30%), the count scoped to
+    the bound chart. Fails without the fix: no depth was measured."""
+    seen = []
+
+    def fake(sql, sep="\x1f", timeout=None):
+        if "FILTER (WHERE" in sql:
+            seen.append(sql)
+            return [["3", "10"]]
+        return w1._pg_like_psql({"t_r": 3})(sql, sep, timeout)
+    caps = {"L1_x/get_r.ts": ("const description = 'Pinned rows from t_r, by d.'\n"          # prose: not a query
+                              "query(`SELECT a FROM t_r WHERE d = 'x' AND chart_id = $1`)\n"
+                              "query(`SELECT b FROM t_r WHERE d IN ('y', 'z') AND chart_id = $1`)\n")}
+    rf, reach, _ = _reach_measure(monkeypatch, tmp_path, caps, psql_fake=fake)
+    assert reach["depth"] == 0.3 and reach["exposed"] == ["a", "b"], reach
+    assert len(seen) == 1 and "d::text IN ('x')" in seen[0] and "d::text IN ('y', 'z')" in seen[0] \
+        and f"WHERE chart_id = '{w1.CANONICAL}'" in seen[0], seen
+
+
+@pytest.mark.parametrize("q", [
+    "query(`SELECT a FROM t_r WHERE d = 'x' OR d = 'y'`)\n",                             # an OR: not analysable
+    "query(`SELECT a FROM t_r WHERE d = 'x'`)\nquery(`SELECT b FROM t_r WHERE chart_id = $1`)\n",       # one unpinned
+])
+def test_r23_depth_is_never_narrowed_by_a_predicate_it_cannot_read(monkeypatch, tmp_path, q):
+    """An OR predicate, or any one unpinned query, leaves depth at its upper bound 1.0 — no count is run and
+    no narrowing is invented."""
+    def fake(sql, sep="\x1f", timeout=None):
+        assert "FILTER (WHERE" not in sql, sql
+        return w1._pg_like_psql({"t_r": 3})(sql, sep, timeout)
+    _, reach, _ = _reach_measure(monkeypatch, tmp_path, {"L1_x/get_r.ts": q}, psql_fake=fake)
+    assert reach["depth"] == 1.0 and "upper bound" in reach["depth_basis"], reach
+
+
+def test_r23_a_run_time_column_list_makes_width_a_lower_bound(monkeypatch, tmp_path):
+    """ga_yoga_firings' shape: `SELECT ${cols} FROM t_r f …` — the columns are chosen at run time. Width is
+    reported as a lower bound naming the module, never as 'every column dark'."""
+    rf, reach, _ = _reach_measure(monkeypatch, tmp_path, {"L1_x/get_r.ts": "query(`SELECT ${cols} FROM t_r f WHERE ${where}`)\n"})
+    assert reach["width_is_lower_bound"] is True and reach["dynamic_select"] == ["L1_x/get_r.ts"], reach
+    assert "≥ 0/5 built column(s)" in rf["measured"] and "a lower bound" in rf["measured"], rf
+
+
+def test_r23_no_capability_reading_the_table_is_width_and_depth_zero_and_a_missing_directory_is_unmeasured(
+        monkeypatch, tmp_path):
+    """A scanned directory where nothing reads t_r: every built column dark, depth 0. A directory that does not
+    exist: unmeasured, said so — never 'all dark' inferred from a scan that did not run."""
+    _, reach, _ = _reach_measure(monkeypatch, tmp_path, {"L1_x/other.ts": "query(`SELECT a FROM t_other`)\n"})
+    assert reach["width"] == 0.0 and reach["depth"] == 0.0 and reach["modules"] == [], reach
+    rf, reach2, _ = _reach_measure(monkeypatch, tmp_path, None)
+    assert reach2 is None and "unmeasured: no capability directory" in rf["measured"], rf
+
+
+@LIVE
+def test_live_r23_real_capabilities_read_as_hand_verified():
+    """Live catalog + real capability modules: chart_divisionals is served whole (get_divisionals.ts
+    `SELECT *`) -> width 1.0; ga_yoga_firings is selected through a run-time list (get_yoga_firings.ts
+    `SELECT ${cols}`) -> lower bound flagged; mimamsa_export_log is read by no capability -> depth 0."""
+    caps = ac.capability_sql()
+    cat = ac.catalog(["chart_divisionals", "ga_yoga_firings", "mimamsa_export_log"])
+    div = ac.field_reach("chart_divisionals", cat["cols"]["chart_divisionals"], caps)
+    assert "L1_ganita/get_divisionals.ts" in div["modules"] and div["exposed"] == {c.lower() for c in cat["cols"]["chart_divisionals"]}
+    yf = ac.field_reach("ga_yoga_firings", cat["cols"]["ga_yoga_firings"], caps)
+    assert "L1_ganita/get_yoga_firings.ts" in yf["dynamic_select"], yf
+    assert ac.field_reach("mimamsa_export_log", cat["cols"]["mimamsa_export_log"], caps)["modules"] == []

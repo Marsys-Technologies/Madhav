@@ -32,8 +32,10 @@ WHAT IT MEASURES, per asset, against the tier-4 template's nine gates:
   Cost.baseline         rows_written / rows_per_second / last_built_at
 
 WHAT IT DOES NOT MEASURE, and says so rather than guessing: carriage detectors (D1/D2/D3 are per-asset
-semantics), width universes that are not declared anywhere, and reachability at field level. Those come
-out as `NOT_GENERIC` — a prompt for the brief author, never a pass.
+semantics) and width universes that are not declared anywhere. Those come out as `NOT_GENERIC` — a prompt
+for the brief author, never a pass. Reachability at field level (`Reach.fields`, R23) is MEASURED — width
+and depth over every capability module's SQL — but REPORTED, not graded: it stays `NOT_GENERIC`, so it
+never opens or closes a gap.
 
 FAIL-CLOSED. No database, no psql, or an unreadable registry exits 4 UNKNOWN and reports nothing clean.
 An unreachable instrument is not a passing result (CLAUDE.md §N.8).
@@ -990,6 +992,214 @@ def capability_scan(caps_dir: str, tables: list[str]) -> dict:
             if _DENSITY_DECL.search(_ts_code(txt, blank_strings=True)):
                 density += 1
     return dict(modules=hits, density=density, note="", scanned=True, comment_only=mentions)
+
+
+# ─────────── R23 (W2-3): field-level reachability over capability modules ───────────
+
+# Every layer's capability modules: a field is dark only if NO retrieval capability, of any layer, reads it
+# (an L4 capability reads chart_facts as readily as an L1 one). Tests and `__tests__` are not capabilities.
+CAPS_ROOT = "platform/src/lib/retrieval/registry/layers"
+_SQL_STOP = re.compile(r"\b(?:ORDER\s+BY|GROUP\s+BY|LIMIT|OFFSET|UNION|RETURNING|FROM|WINDOW|HAVING)\b|;", re.I)
+_ALIAS_STOP = {"where", "join", "left", "right", "inner", "outer", "full", "cross", "on", "order", "group", "limit",
+               "offset", "union", "as", "using", "natural", "lateral", "window", "having", "returning", "for"}
+
+
+def _ts_literals(src: str) -> list[str]:
+    """R23: the CONTENTS of a TypeScript module's string and template literals, in order — comments skipped
+    (the same scanner discipline as `_ts_code`, R51: `//` inside a string is not a comment)."""
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c, nx = src[i], src[i + 1] if i + 1 < n else ""
+        if c == "/" and nx == "/":
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "/" and nx == "*":
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                j += 2 if src[j] == "\\" else 1
+            out.append(src[i + 1:min(j, n)])
+            i = j + 1
+        else:
+            i += 1
+    return out
+
+
+_CAPS_LITERALS: dict[tuple, list[str]] = {}
+
+
+def capability_sql(caps_root: str = CAPS_ROOT) -> dict[str, list[str]]:
+    """R23: capability module (path under `caps_root`) -> its SQL-bearing literals (a FROM or JOIN in them).
+    A missing directory raises `Unknown`: "no capability reads it" is never inferred from a scan that did
+    not run (R222 / N3's rule, at field grain)."""
+    d = ROOT / caps_root
+    if not d.is_dir():
+        raise Unknown(f"no capability directory at {caps_root}")
+    out: dict[str, list[str]] = {}
+    for f in sorted(d.rglob("*.ts")):
+        if f.name.endswith(".test.ts") or "__tests__" in f.parts:
+            continue
+        st = f.stat()
+        key = (str(f), st.st_mtime_ns, st.st_size)          # re-read only a module that changed
+        if key not in _CAPS_LITERALS:
+            _CAPS_LITERALS[key] = [x for x in _ts_literals(f.read_text(encoding="utf-8", errors="replace"))
+                                   if re.search(r"\b(?:FROM|JOIN)\b", x, re.I)]
+        lits = _CAPS_LITERALS[key]
+        if lits:
+            out[str(f.relative_to(d))] = lits
+    return out
+
+
+def _split_top(s: str) -> list[str]:
+    parts, depth, cur = [], 0, []
+    for ch in s:
+        depth += ch == "("
+        depth -= ch == ")"
+        if ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    return parts + ["".join(cur)]
+
+
+def _selected_columns(sel: str, cols: list[str], alias: str | None, table: str) -> set[str]:
+    """The table's columns a SELECT list reads: `*` / `<alias>.*` -> every column; `<alias>.col` or a bare
+    `col` (also inside an expression, `coalesce(col, …)`, `jsonb_build_object('k', col)`) -> that column;
+    `<other_alias>.col` -> not this table's. String literal contents never count."""
+    lower = {c.lower() for c in cols}
+    mine = {x for x in (alias, table) if x}
+    got: set[str] = set()
+    sel = re.sub(r"'[^']*'", "''", sel)
+    for item in _split_top(sel):
+        it = item.strip()
+        if it == "*" or re.fullmatch(r"(?:DISTINCT\s+)?\*", it, re.I) or \
+                any(re.fullmatch(rf"{re.escape(m)}\.\*", it, re.I) for m in mine):
+            return set(lower)
+        for q, name in re.findall(r"(?:\b([A-Za-z_][A-Za-z_0-9]*)\s*\.\s*)?\b([A-Za-z_][A-Za-z_0-9]*)\b", it):
+            if name.lower() in lower and (not q or q.lower() in {m.lower() for m in mine}):
+                got.add(name.lower())
+    return got
+
+
+def _literal_pins(where: str, cols: list[str]) -> dict[str, set[str]] | None:
+    """Row-level: the literal equality / IN pins a query's predicate puts on the table's own columns
+    (`fact_category = 'dasha'`, `varga IN ('D9','D10')`). Parameters (`= $2`) pin nothing — the caller may
+    ask for any value. An OR anywhere makes the predicate unanalysable here: None (read as unpinned, so
+    depth stays an UPPER bound, never an invented narrowing)."""
+    if re.search(r"\bOR\b", where, re.I):
+        return None
+    lower = {c.lower() for c in cols}
+    pins: dict[str, set[str]] = {}
+    for c, v in re.findall(r"(?:\b\w+\.)?\b(\w+)\s*=\s*'([^']*)'", where):
+        if c.lower() in lower:
+            pins.setdefault(c.lower(), set()).add(v)
+    for c, vs in re.findall(r"(?:\b\w+\.)?\b(\w+)\s+IN\s*\(\s*('[^)]*')\s*\)", where, re.I):
+        if c.lower() in lower:
+            pins.setdefault(c.lower(), set()).update(re.findall(r"'([^']*)'", vs))
+    return pins
+
+
+def field_reach(table: str, cols: list[str], sql_by_module: dict[str, list[str]]) -> dict:
+    """R23: which of `table`'s columns any capability module's SQL selects (width), and whether its
+    queries pin rows by literal values (depth). Static and syntactic: see `_selected_columns` /
+    `_literal_pins`; SQL a capability reaches through an imported helper is not followed. A FROM counts
+    only with a SELECT in front of it (prose that says "from <table>" is not a query); a `${…}` select
+    list is recorded in `dynamic_select` (its columns are unknown — width becomes a lower bound)."""
+    exposed: set[str] = set()
+    modules, pinned, unpinned, dynamic = [], [], False, []
+    rx = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:public\.)?\"?" + re.escape(table) +
+                    r"\b\"?(?:\s+(?:AS\s+)?([A-Za-z_][A-Za-z_0-9]*))?", re.I)
+    for mod, lits in sql_by_module.items():
+        hit = False
+        for i, lit in enumerate(lits):
+            for m in rx.finditer(lit):
+                alias = m.group(1) if m.group(1) and m.group(1).lower() not in _ALIAS_STOP else None
+                head = lit[:m.start()]
+                k = head.upper().rfind("SELECT")
+                if k >= 0:
+                    sel = head[k + 6:]
+                else:                                         # `'SELECT a, b ' + 'FROM t'`: an unterminated list before
+                    prev = lits[i - 1] if i else ""
+                    k2 = prev.upper().rfind("SELECT")
+                    if k2 < 0 or re.search(r"\bFROM\b", prev[k2:], re.I):
+                        continue                              # prose ("… rows from ga_yoga_firings"), not a query
+                    sel = prev[k2 + 6:]
+                hit = True
+                if "${" in sel:                               # `SELECT ${cols}`: the list is built at run time
+                    dynamic.append(mod)
+                exposed |= _selected_columns(sel, cols, alias, table)
+                # a keyword read as the alias (`FROM t WHERE …`) belongs to the tail, not the alias
+                tail = lit[m.end() if alias or not m.group(1) else m.start(1):]
+                w = re.search(r"\bWHERE\b", tail, re.I)
+                where = ""
+                if w:
+                    where = tail[w.end():]
+                    stop = _SQL_STOP.search(where)
+                    where = where[:stop.start()] if stop else where
+                p = _literal_pins(where, cols)
+                if p:
+                    pinned.append(p)
+                else:
+                    unpinned = True
+        if hit:
+            modules.append(mod)
+    return dict(modules=modules, exposed=exposed, pinned=pinned, unpinned=unpinned,
+                dynamic_select=sorted(set(dynamic)))
+
+
+def _pin_predicate(pins: list[dict[str, set[str]]]) -> str:
+    def lit(v):
+        return "'" + v.replace("'", "''") + "'"
+    return " OR ".join("(" + " AND ".join(f"{c}::text IN ({', '.join(lit(v) for v in sorted(vs))})"
+                                          for c, vs in sorted(p.items())) + ")" for p in pins)
+
+
+def _grade_reach(tbl: str, cols: list[str], dc: dict, caps: dict | None, caps_note: str | None,
+                 chart_id: str) -> tuple[dict, dict | None]:
+    """R23: `Reach.fields` for an asset's target table — REPORTED, NOT GRADED (verdict stays NOT_GENERIC:
+    a static SQL parse is a proxy for exposure, and a grading threshold is a decision above the census).
+    Width = built columns some capability selects / built columns, where "built" is the depth census's
+    populated columns (every column when depth did not measure rows — said so). Depth = the fraction of the
+    table's rows (the bound chart's, when it has chart_id) some capability query can return: 1.0 when any
+    query reads it with no literal row pin (an upper bound), else the rows matching the union of the pins,
+    counted read-only; 0.0 when no capability reads the table at all."""
+    if caps is None:
+        return dict(v=NOT_GENERIC, measured=f"field reachability unmeasured: {caps_note}"), None
+    fr = field_reach(tbl, cols, caps)
+    never = set(c.lower() for c in dc.get("never", [])) if dc.get("rows") else set()
+    built = [c.lower() for c in cols if c.lower() not in never]
+    basis_b = "populated columns (depth census)" if dc.get("rows") else "all columns (depth census measured no rows)"
+    exp = sorted(set(built) & fr["exposed"])
+    dark = sorted(set(built) - fr["exposed"])
+    width = (len(exp) / len(built)) if built else None
+    if not fr["modules"]:
+        depth, dbasis = 0.0, "no capability module reads this table"
+    elif fr["unpinned"]:
+        depth, dbasis = 1.0, "a capability query reads it with no literal row pin (upper bound)"
+    else:
+        scoped = " WHERE chart_id = '" + chart_id + "'" if "chart_id" in [c.lower() for c in cols] else ""
+        try:
+            hitn, total = psql(f"SELECT (count(*) FILTER (WHERE {_pin_predicate(fr['pinned'])}))::text, count(*)::text "
+                               f"FROM {tbl}{scoped}")[0]
+            depth = (int(hitn) / int(total)) if int(total) else None
+            dbasis = (f"{hitn}/{total} rows{' of chart ' + chart_id[:8] if scoped else ''} match the capability "
+                      f"queries' literal pins {_pin_predicate(fr['pinned'])[:160]}")
+        except Unknown as exc:
+            depth, dbasis = None, f"unmeasured: the pin count errored ({exc})"
+    reach = dict(table=tbl, modules=fr["modules"], columns_built=len(built), built_basis=basis_b,
+                 exposed=exp, dark=dark, width=(round(width, 4) if width is not None else None),
+                 width_is_lower_bound=bool(fr["dynamic_select"]), dynamic_select=fr["dynamic_select"],
+                 depth=(round(depth, 4) if depth is not None else None), depth_basis=dbasis)
+    wtxt = (("≥ " if fr["dynamic_select"] else "") + f"{len(exp)}/{len(built)} built column(s) ({width:.1%})"
+            + (f", a lower bound: {', '.join(fr['dynamic_select'])} select(s) a run-time column list"
+               if fr["dynamic_select"] else "")) if width is not None else "no built column"
+    dtxt = f"{depth:.1%}" if depth is not None else "unmeasured"
+    return dict(v=NOT_GENERIC, measured=(f"reported, not graded — width {wtxt} selected by {len(fr['modules'])} "
+                                         f"capability module(s); dark: {dark[:12]}{' …' if len(dark) > 12 else ''}; "
+                                         f"depth {dtxt} ({dbasis})")), reach
 
 
 def local_map_candidates(prefix: str) -> int:
@@ -1964,6 +2174,11 @@ def measure(layer_key: str) -> dict:
         radius, radius_note = blocking_radius(dependency_graph()), None
     except Unknown as exc:
         radius, radius_note = {}, f"unmeasured: the dependency read failed ({exc})"
+    # R23: every capability module's SQL, read once per layer run.
+    try:
+        caps_sql, caps_note = capability_sql(), None
+    except Unknown as exc:
+        caps_sql, caps_note = None, str(exc)
 
     known = set(reg)
     owners: dict = {}                                     # R53: read lazily, at most once per layer
@@ -2120,6 +2335,8 @@ def measure(layer_key: str) -> dict:
             m["Count.floor"] = cf
 
         tbl = r["target_table"]
+        reach = None
+        dc = {}
         if tbl and tbl in cat["exists"]:
             # R41: each of these four checks queries the target table independently (one of them,
             # on the estate's largest tables, is exactly R40's kala_field timeout case) — a single
@@ -2212,6 +2429,9 @@ def measure(layer_key: str) -> dict:
             except Unknown as exc:
                 m["Vocab.alias"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
+            # R23: field-level reachability of the target table (reported, not graded).
+            m["Reach.fields"], reach = _grade_reach(tbl, cat["cols"].get(tbl, []), dc, caps_sql, caps_note, CHART_ID)
+
             tcols = set(cat["cols"].get(tbl, []))
             cit = [c for c in ("source_citation", "source_text_id", "classical_citations", "citation_ref")
                    if c in tcols]
@@ -2277,10 +2497,14 @@ def measure(layer_key: str) -> dict:
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         m["Carr.detector"] = _run_carriage_detector(aid)
-        m["Reach.fields"] = dict(v=NOT_GENERIC, measured="field-level exposure census is per-capability; not generic")
+        if "Reach.fields" not in m:
+            m["Reach.fields"] = dict(v=NOT_GENERIC, measured=("no target table in production to census at field level"
+                                                              if tbl else "no target_table declared: no table to census "
+                                                                          "at field level"))
 
         br = radius.get(aid)
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
+                           reach=reach,
                            blocking_radius=(dict(br, basis="active assets depending on it, transitively, every layer")
                                             if br else dict(transitive=None, direct=None, severity_weight=None,
                                                             basis=radius_note or "unmeasured: not in the active "
