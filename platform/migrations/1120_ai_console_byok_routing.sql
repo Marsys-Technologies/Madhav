@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS ai_configuration_audit_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id text NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   actor_user_id text NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
-  event text NOT NULL CHECK (event IN ('connection_created','connection_updated','connection_validated','connection_deleted','configuration_created','configuration_updated','configuration_deleted','default_selected','cli_granted','cli_revoked','conversation_selected')),
+  event text NOT NULL CHECK (event IN ('connection_created','connection_updated','connection_renamed','connection_credential_replaced','connection_validated','connection_deleted','configuration_created','configuration_updated','configuration_duplicated','configuration_deleted','default_selected','cli_granted','cli_revoked','conversation_selected')),
   connection_id uuid,
   configuration_id uuid,
   cli_id text REFERENCES ai_cli_installations(cli_id) ON DELETE RESTRICT,

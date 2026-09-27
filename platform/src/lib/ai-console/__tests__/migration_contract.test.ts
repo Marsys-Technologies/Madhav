@@ -10,6 +10,11 @@ const tables = ['ai_provider_connections', 'ai_connection_models', 'ai_custom_co
 
 describe('AI Console governed persistence contract', () => {
   const sql = () => readFileSync(path, 'utf8')
+  it('retains distinct audit identities for rename, credential replacement, and duplication', () => {
+    for (const event of ['connection_renamed', 'connection_credential_replaced', 'configuration_duplicated']) {
+      expect(sql()).toContain(`'${event}'`)
+    }
+  })
   it('creates twelve idempotent relations inside the canonical runner transaction', () => {
     const text = sql()
     expect(text).not.toMatch(/^\s*(?:BEGIN|START TRANSACTION|COMMIT|ROLLBACK|END)\s*;/im)
