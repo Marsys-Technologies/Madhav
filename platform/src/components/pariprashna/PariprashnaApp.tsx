@@ -19,6 +19,7 @@ import { OverlayLayer } from './overlay/OverlayLayer'
 import { DockControllerProvider } from './dock/DockController'
 import { useFixtureStream } from './state/useFixtureStream'
 import { useLiveStream } from './hooks/useLiveStream'
+import { useAiChoices } from './hooks/useAiChoices'
 import { FIXTURE_ARRIVAL_LINE } from './fixtures/arrival'
 import { useVisualViewport } from './hooks/useVisualViewport'
 import type { FixtureMode } from './fixtures'
@@ -39,6 +40,7 @@ export interface PariprashnaStream {
   state: ThreadState
   submit: (text: string, mode: FixtureMode, controls?: SubmitControls) => string | void
   stop: (turnId: string) => void
+  conversationId?: string | null
 }
 
 /** Truncates a user question into a sidebar-row-length auto-generated title (§10.1). */
@@ -126,9 +128,11 @@ function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId
         live.submit(text, {
           reading_depth: controls?.readingDepth ?? 'auto',
           model_id: controls?.modelId,
+          ai_selection: controls?.aiSelection,
           length_tier: controls?.lengthTier ?? 'standard',
         }),
       stop: live.stop,
+      conversationId: live.conversationId,
     }),
     [live],
   )
@@ -156,6 +160,8 @@ function PariprashnaSurface({
   isFixtureHost: boolean
 }) {
   const { state, submit, stop } = stream
+  const aiChoicesEnabled = !isFixtureHost && process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
+  const aiChoices = useAiChoices(stream.conversationId ?? null, aiChoicesEnabled)
   const activeTurn = state.turns[state.turns.length - 1]
   const streaming = !!activeTurn && !['settled', 'interrupted', 'errored'].includes(activeTurn.status)
 
@@ -177,7 +183,7 @@ function PariprashnaSurface({
   const [titleOverride, setTitleOverride] = useState<string | null>(null)
   const [pastReadings, setPastReadings] = useState<ThreadSummary[]>([])
   const [unavailableNotice, setUnavailableNotice] = useState(false)
-  const threadId = useMemo(() => `session-${chartId}`, [chartId])
+  const threadId = useMemo(() => stream.conversationId ?? `session-${chartId}`, [stream.conversationId, chartId])
 
   useEffect(() => {
     if (isFixtureHost) return
@@ -250,8 +256,8 @@ function PariprashnaSurface({
               },
             ]
           })()
-    return [...live, ...pastReadings]
-  }, [state.turns, threadId, chartId, chartPin.name, titleOverride, streaming, pastReadings])
+    return [...live, ...pastReadings.filter(thread => thread.id !== stream.conversationId)]
+  }, [state.turns, threadId, chartId, chartPin.name, titleOverride, streaming, pastReadings, stream.conversationId])
 
   const handleSidebarSelect = useCallback(
     (id: string) => {
@@ -310,9 +316,18 @@ function PariprashnaSurface({
 
   const handleSubmit = useCallback(
     (text: string, mode: FixtureMode, controls?: SubmitControls) => {
+      if (aiChoicesEnabled && !controls) {
+        if (!aiChoices.canSubmit) return
+        submit(text, mode, {
+          aiSelection: aiChoices.selection,
+          readingDepth: 'auto',
+          lengthTier: 'standard',
+        })
+        return
+      }
       submit(text, mode, controls)
     },
-    [submit],
+    [submit, aiChoicesEnabled, aiChoices.canSubmit, aiChoices.selection],
   )
 
   const handleStop = useCallback(() => {
@@ -387,6 +402,7 @@ function PariprashnaSurface({
               onStop={handleStop}
               depthReceived={activeTurn?.readingDepthReceived}
               autoFocus={state.turns.length === 0}
+              aiChoices={aiChoices}
             />
           </div>
           <RightDock turns={state.turns} />

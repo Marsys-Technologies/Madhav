@@ -13,6 +13,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { makeInitialTurnState } from '../state/reducer'
+import type { ThreadState } from '../state/types'
 
 vi.mock('../ThreadHeader', () => ({ ThreadHeader: () => null }))
 vi.mock('../Transcript', () => ({ Transcript: () => null }))
@@ -28,9 +30,10 @@ vi.mock('../hooks/useVisualViewport', () => ({ useVisualViewport: () => ({ suppo
 
 const { mockUseLiveStream } = vi.hoisted(() => ({
   mockUseLiveStream: vi.fn(() => ({
-    state: { turns: [], surfaceStatus: 'idle' },
+    state: { turns: [], surfaceStatus: 'idle' } as ThreadState,
     submit: vi.fn(),
     stop: vi.fn(),
+    conversationId: null as string | null,
   })),
 }))
 vi.mock('../hooks/useLiveStream', () => ({ useLiveStream: mockUseLiveStream }))
@@ -41,7 +44,7 @@ const CHART_PIN = { name: 'Abhinandan Mohanty', bornLine: '02 Mar 1985 · 09:40 
 
 beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '1')
-  mockUseLiveStream.mockReturnValue({ state: { turns: [], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn() })
+  mockUseLiveStream.mockReturnValue({ state: { turns: [], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn(), conversationId: null })
 })
 
 afterEach(() => {
@@ -140,6 +143,29 @@ describe('PariprashnaApp history merge (V3-E-012a)', () => {
     await waitFor(() => expect(screen.getByText('Genuinely old reading')).toBeInTheDocument())
     expect(screen.queryByText('Just-completed turn racing the fetch')).not.toBeInTheDocument()
     expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
+  })
+
+  it('uses the server conversation ID for the live row and excludes that same ID from fetched history', async () => {
+    const liveTurn = { ...makeInitialTurnState('turn-live', 'Current server-backed reading'),
+      status: 'settled' as const, openedAtMs: Date.now() - 1_000 }
+    mockUseLiveStream.mockReturnValue({
+      state: { turns: [liveTurn], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn(), conversationId: 'conv-live',
+    })
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ conversations: [
+        { id: 'conv-live', chart_id: 'c-1', title: 'Duplicate live row', first_message_snippet: null,
+          updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
+        { id: 'conv-past-1', chart_id: 'c-1', title: 'Independent old reading', first_message_snippet: null,
+          updated_at: '2026-08-19T00:00:00Z', created_at: '2026-08-19T00:00:00Z' },
+      ] }),
+    } as Response)
+
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getByText('Independent old reading')).toBeInTheDocument())
+    expect(screen.getByText('Current server-backed reading')).toBeInTheDocument()
+    expect(screen.queryByText('Duplicate live row')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2)
   })
 
   it('does not fetch on the fixture host (no chartId / live flag off)', () => {

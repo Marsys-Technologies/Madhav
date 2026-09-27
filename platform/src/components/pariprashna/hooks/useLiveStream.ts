@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { threadReducer, initialThreadState } from '../state/reducer'
 import type { ThreadAction } from '../state/reducer'
 import { decodeEvent } from '@/lib/pariprashna/protocol/events'
 import { makeS1LiveAdapter, type S1LiveAdapter } from '../state/s1LiveAdapter'
 import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
+import type { ConversationAiSelection } from '@/lib/ai-console/types'
 
 let turnSeq = 0
 function nextTurnId(): string {
@@ -16,6 +17,7 @@ function nextTurnId(): string {
 export interface LiveSubmitOptions {
   reading_depth?: 'auto' | 'deep_dive'
   model_id?: string
+  ai_selection?: ConversationAiSelection
   length_tier?: 'brief' | 'standard' | 'exhaustive'
 }
 
@@ -77,6 +79,8 @@ function sleep(ms: number): Promise<void> {
  */
 export function useLiveStream(chartId: string) {
   const [state, dispatch] = useReducer(threadReducer, initialThreadState)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const conversationIdRef = useRef<string | null>(null)
   const controllers = useRef(new Map<string, AbortController>())
   const connState = useRef(new Map<string, TurnConnState>())
   const dispatchTyped = dispatch as (a: ThreadAction) => void
@@ -110,7 +114,24 @@ export function useLiveStream(chartId: string) {
 
           cs.lastSeq = decoded.seq
           cs.lastFrameAtMs = Date.now()
-          if (decoded.type === 'turn.open') cs.serverTurnId = decoded.turn_id
+          if (decoded.type === 'turn.open') {
+            cs.serverTurnId = decoded.turn_id
+            const currentConversationId = conversationIdRef.current
+            if (currentConversationId !== null && currentConversationId !== decoded.conversation_id) {
+              cs.terminal = true
+              dispatchTyped({
+                type: 'error', turnId,
+                error: classifyPariprashnaError('CONVERSATION_ID_MISMATCH'),
+                eventId: `${turnId}-conversation-mismatch`,
+              })
+              await reader.cancel().catch(() => {})
+              return
+            }
+            if (currentConversationId === null) {
+              conversationIdRef.current = decoded.conversation_id
+              setConversationId(decoded.conversation_id)
+            }
+          }
           if (decoded.type === 'turn.close' || decoded.type === 'error') cs.terminal = true
 
           for (const wire of adapter.map(decoded)) {
@@ -202,22 +223,27 @@ export function useLiveStream(chartId: string) {
 
       void (async () => {
         try {
+          const byokEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
+          const requestBody = byokEnabled
+            ? {
+                chartId,
+                ...(conversationIdRef.current ? { conversation_id: conversationIdRef.current } : {}),
+                reading_depth: opts.reading_depth ?? 'auto',
+                ai_selection: opts.ai_selection ?? { kind: 'default' as const },
+                length_tier: opts.length_tier ?? 'standard',
+                messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
+              }
+            : {
+                chartId,
+                reading_depth: opts.reading_depth ?? 'auto',
+                model_id: opts.model_id,
+                length_tier: opts.length_tier,
+                messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
+              }
           const resp = await fetch('/api/pariprashna', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              chartId,
-              reading_depth: opts.reading_depth ?? 'auto',
-              model_id: opts.model_id,
-              length_tier: opts.length_tier,
-              messages: [
-                {
-                  id: `${turnId}-user`,
-                  role: 'user',
-                  parts: [{ type: 'text', text: userText }],
-                },
-              ],
-            }),
+            body: JSON.stringify(requestBody),
             signal: ac.signal,
           })
 
@@ -279,5 +305,5 @@ export function useLiveStream(chartId: string) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [reconnectLoop])
 
-  return useMemo(() => ({ state, submit, stop }), [state, submit, stop])
+  return useMemo(() => ({ state, submit, stop, conversationId }), [state, submit, stop, conversationId])
 }

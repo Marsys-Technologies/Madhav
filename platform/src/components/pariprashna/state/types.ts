@@ -21,6 +21,7 @@
 import type { StructuredPredictionCandidate } from '@/lib/pariprashna/samiksha/detector'
 import type { ReceiptInterpretationSets } from '@/lib/pariprashna/interpretation/schema'
 import type { AcharyaReadingReceipt } from '@/lib/pariprashna/receipt/schema'
+import type { ConversationAiSelection } from '@/lib/ai-console/types'
 
 // ── Roles / grades / block kinds ────────────────────────────────────────────
 
@@ -447,8 +448,12 @@ export interface ModelOption {
  * state rather than smuggled through the dev-fixture `mode` the live host
  * used to reuse for this.
  */
-export interface SubmitControls {
-  modelId?: string
+interface SharedSubmitControls {
   readingDepth: 'auto' | 'deep_dive'
   lengthTier: 'brief' | 'standard' | 'exhaustive'
 }
+
+export type SubmitControls = SharedSubmitControls & (
+  | { modelId?: string; aiSelection?: never }
+  | { aiSelection: ConversationAiSelection; modelId?: never }
+)
