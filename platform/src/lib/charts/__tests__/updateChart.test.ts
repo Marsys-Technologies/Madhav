@@ -11,6 +11,7 @@ import {
   resolveTimezoneOffsetMinutes,
   type NormalizedChartInputs,
   type NormalizedChartUpdate,
+  validateLocationChange,
 } from '../updateChart'
 
 const VALID = {
@@ -211,3 +212,38 @@ describe('classifyChartChanges', () => {
     expect(classifyChartChanges(legacy, same)).toEqual({ mode: 'recompute', changedFields: ['timezone_id'] })
   })
 })
+
+describe('validateLocationChange — birthplace edits are computation-safe', () => {
+  const same = ok(VALID)
+
+  it('accepts an unchanged place', () => {
+    expect(validateLocationChange(stored, same)).toBeNull()
+  })
+
+  it('accepts a new place that arrives with its own coordinates and timezone', () => {
+    expect(validateLocationChange(stored, { ...same, birth_place: 'Cuttack, Odisha', birth_lat: 20.4625, birth_lng: 85.883 })).toBeNull()
+  })
+
+  it('rejects a new place that keeps the former coordinates, naming what to reselect', () => {
+    const fields = validateLocationChange(stored, { ...same, birth_place: 'Cuttack, Odisha' })
+    expect(fields).not.toBeNull()
+    expect(Object.keys(fields!).sort()).toEqual(['birth_place', 'lat', 'lon'])
+    expect(fields!.birth_place).toMatch(/reselect/i)
+    expect(fields!.lat).toMatch(/new place/i)
+  })
+
+  it('rejects a new place that changes only one coordinate', () => {
+    const fields = validateLocationChange(stored, { ...same, birth_place: 'Cuttack, Odisha', birth_lat: 20.4625 })
+    expect(fields).not.toBeNull()
+    expect(Object.keys(fields!)).toContain('lon')
+  })
+
+  it('treats whitespace-only place differences as unchanged', () => {
+    expect(validateLocationChange(stored, ok({ ...VALID, birth_place: ' Bhubaneswar,  Odisha ' }))).toBeNull()
+  })
+
+  it('allows correcting coordinates for the same place', () => {
+    expect(validateLocationChange(stored, { ...same, birth_lat: 20.3 })).toBeNull()
+  })
+})
+

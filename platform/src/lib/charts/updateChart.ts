@@ -240,3 +240,26 @@ export function classifyChartChanges(
   if (changedFields.length === 0) return { mode: 'noop', changedFields: [] }
   return { mode: computation.length > 0 ? 'recompute' : 'display-only', changedFields }
 }
+
+/**
+ * Birthplace edits are computation-safe: a new place must arrive with its own
+ * coordinates (and the timezone the form resolved with them), never with the
+ * former place's coordinates silently kept. Returns field errors naming what to
+ * reselect, or null. Correcting coordinates for the same place is allowed.
+ */
+export function validateLocationChange(
+  stored: NormalizedChartInputs,
+  submitted: NormalizedChartInputs,
+): Record<string, string> | null {
+  if (stored.birth_place === submitted.birth_place) return null
+  const latChanged = stored.birth_lat !== submitted.birth_lat
+  const lonChanged = stored.birth_lng !== submitted.birth_lng
+  if (latChanged && lonChanged) return null
+  const reselect = 'The birth place changed but its coordinates did not — reselect the new place so its latitude, longitude and timezone update together.'
+  return {
+    birth_place: reselect,
+    lat: 'Enter the latitude of the new place.',
+    lon: 'Enter the longitude of the new place.',
+  }
+}
+

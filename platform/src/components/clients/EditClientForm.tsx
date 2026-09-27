@@ -7,7 +7,8 @@ import { EditRebuildConfirmDialog, type ChangedField } from '@/components/dialog
 import { resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/date'
-import { AYANAMSHA_OPTIONS, TIMEZONES, type AyanamshaId } from './NewClientForm'
+import { AYANAMSHA_OPTIONS, PlacesAutocompleteNew, TIMEZONES, type AyanamshaId } from './NewClientForm'
+import { isGoogleMapsKeyConfigured, type PlacesResult } from './usePlacesAutocomplete'
 
 /**
  * Chart-details correction form (Jātaka chart workspace, Task 7).
@@ -107,6 +108,15 @@ function formatOffset(minutes: number): string {
   return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`
 }
 
+function isKnownZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: zone }).format(0)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function effectiveOffsetMinutes(form: FormState): number | null {
   if (!form.timezone_id || !form.birth_date || !form.birth_time) return null
   try {
@@ -169,6 +179,7 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
   )
   const [loading, setLoading] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [placesUnavailable, setPlacesUnavailable] = useState(false)
 
   const changed = (key: FieldKey) => comparable(key, initial[key]) !== comparable(key, form[key])
   const requiresRecompute = COMPUTATION_KEYS.some(changed)
@@ -179,6 +190,11 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
     after: describe(key, form[key]),
   }))
   const offsetMinutes = effectiveOffsetMinutes(form)
+  // Birthplace edits are computation-safe (mirrors the server rule): a new place
+  // must bring its own coordinates and timezone, never the former place's.
+  const placeChanged = changed('birth_place')
+  const locationIncomplete = placeChanged && !(changed('latitude') && changed('longitude'))
+  const usePlaces = isGoogleMapsKeyConfigured() && !placesUnavailable
   const timezoneOptions = TIMEZONES.some((t) => t.value === form.timezone_id) || !form.timezone_id
     ? TIMEZONES.map((t) => t.value)
     : [form.timezone_id, ...TIMEZONES.map((t) => t.value)]
@@ -195,6 +211,19 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
     )
   }
 
+  function handlePlaceResolved(result: PlacesResult) {
+    // Place, coordinates and timezone come from the one selected location, together.
+    const zone = result.timezone_id && isKnownZone(result.timezone_id) ? result.timezone_id : ''
+    setForm((prev) => ({
+      ...prev,
+      birth_place: result.description,
+      latitude: String(result.lat),
+      longitude: String(result.lng),
+      timezone_id: zone,
+    }))
+    setErrors((prev) => ({ ...prev, birth_place: undefined, latitude: undefined, longitude: undefined, timezone_id: undefined, api: undefined }))
+  }
+
   function validate(): FormErrors {
     const errs: FormErrors = {}
     if (!form.full_name.trim()) errs.full_name = 'Full name is required.'
@@ -207,6 +236,11 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
       errs.timezone_id = 'Choose the birth timezone before saving — it is missing or unrecognised.'
     }
     if (form.ayanamshas.length === 0) errs.ayanamshas = 'Select at least one ayanāṃśa.'
+    if (locationIncomplete) {
+      errs.birth_place = 'The birth place changed but its coordinates did not — reselect the new place so its latitude, longitude and timezone update together.'
+      errs.latitude ??= 'Enter the latitude of the new place.'
+      errs.longitude ??= 'Enter the longitude of the new place.'
+    }
     return errs
   }
 
@@ -336,11 +370,27 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
                 <FieldError id="birth_time-error" msg={errors.birth_time} />
               </div>
             </div>
+            {usePlaces && (
+              <div className="grid gap-1.5">
+                <span className="text-sm text-[var(--jw-ink-dim)]">Search for a new birth place</span>
+                <PlacesAutocompleteNew
+                  hasError={!!errors.birth_place}
+                  onTextChange={() => undefined}
+                  onPlaceResolved={handlePlaceResolved}
+                  onLoadError={() => setPlacesUnavailable(true)}
+                />
+              </div>
+            )}
             <div className="grid gap-1.5">
               <label htmlFor="birth_place" className="text-sm text-[var(--jw-ink-dim)]">Birth place</label>
               <input type="text" maxLength={300} aria-required="true" value={form.birth_place}
                 onChange={(e) => setField('birth_place', e.target.value)} {...fieldProps('birth_place')} />
               <FieldError id="birth_place-error" msg={errors.birth_place} />
+              {locationIncomplete && !errors.birth_place && (
+                <p role="note" aria-label="Reselect location" className="text-xs text-amber-200/80">
+                  Birth place changed — reselect it{usePlaces ? ' above' : ''} or enter the new place’s latitude, longitude and timezone.
+                </p>
+              )}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">

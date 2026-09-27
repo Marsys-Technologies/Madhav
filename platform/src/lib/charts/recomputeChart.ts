@@ -20,6 +20,7 @@ import {
   type ChartChangeField,
   type NormalizedChartInputs,
   type StoredChartRow,
+  validateLocationChange,
 } from '@/lib/charts/updateChart'
 
 /**
@@ -165,6 +166,13 @@ export async function updateChartAndMaybeRecompute(args: {
       throw new ChartUpdateError('RUN_ACTIVE', 'A build is already in progress for this chart', undefined, {
         existing_run_id: activeRunId,
       })
+    }
+
+    // A new birth place must bring its own coordinates and timezone (never the
+    // former place's), so the recompute cannot silently use the old location.
+    const locationFields = validateLocationChange(stored, submitted)
+    if (locationFields) {
+      throw new ChartUpdateError('VALIDATION_FAILED', 'Reselect the new birth place.', locationFields)
     }
 
     const classification = classifyChartChanges(stored, submitted)

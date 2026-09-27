@@ -128,6 +128,26 @@ describe('updateChartAndMaybeRecompute — validation', () => {
   })
 })
 
+describe('updateChartAndMaybeRecompute — birthplace safety', () => {
+  it('rejects a place change that keeps the former coordinates, inside the transaction, with no mutation', async () => {
+    setup()
+    const err = await run({ ...INPUT, birth_place: 'Cuttack' }).catch((e) => e)
+    expect(err).toBeInstanceOf(ChartUpdateError)
+    expect(err.code).toBe('VALIDATION_FAILED')
+    expect(err.status).toBe(422)
+    expect(Object.keys(err.fields).sort()).toEqual(['birth_place', 'lat', 'lon'])
+    expect(statements.some((s) => MUTATION.test(s.sql))).toBe(false)
+    expect(events).toEqual(['BEGIN', 'ROLLBACK'])
+    expect(mockDispatch).not.toHaveBeenCalled()
+  })
+
+  it('recomputes when the place, coordinates and timezone change together', async () => {
+    setup()
+    const result = await run({ ...INPUT, birth_place: 'Cuttack', lat: 20.4625, lon: 85.883 })
+    expect(result.mode).toBe('recompute-started')
+  })
+})
+
 describe('updateChartAndMaybeRecompute — no-op and display-only', () => {
   it('no-op: locks the row, commits, and mutates nothing', async () => {
     setup()

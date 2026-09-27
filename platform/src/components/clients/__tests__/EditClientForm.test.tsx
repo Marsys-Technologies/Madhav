@@ -15,6 +15,19 @@ vi.mock('next/link', () => ({
   ),
 }))
 
+vi.mock('../NewClientForm', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../NewClientForm')>()),
+  // Stand-in for the shared Google Places element: one button resolves a place.
+  PlacesAutocompleteNew: ({ onPlaceResolved }: { onPlaceResolved: (r: unknown) => void }) => (
+    <button
+      type="button"
+      onClick={() => onPlaceResolved({ description: 'Cuttack, Odisha, India', lat: 20.4625, lng: 85.883, utcOffsetMinutes: 330, timezone_id: 'Asia/Kolkata', tz_offset: '5.5' })}
+    >
+      Pick Cuttack
+    </button>
+  ),
+}))
+
 import { EditClientForm, type EditableChart } from '../EditClientForm'
 
 const CHART: EditableChart = {
@@ -82,7 +95,6 @@ describe('EditClientForm — computation-affecting edits', () => {
   it.each([
     ['birth date', /^date of birth/i, '1984-02-06'],
     ['birth time', /^time of birth/i, '10:44'],
-    ['birth place', /^birth place/i, 'Cuttack'],
     ['latitude', /^latitude/i, '20.4625'],
     ['longitude', /^longitude/i, '85.883'],
   ])('a %s change asks to Save and recompute and confirms first', async (_label, field, value) => {
@@ -177,3 +189,52 @@ describe('EditClientForm — server refusals keep the form', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
+
+describe('EditClientForm — computation-safe birthplace', () => {
+  it('refuses a new place typed without new coordinates, naming what to reselect, and sends nothing', async () => {
+    render(<EditClientForm chart={CHART} />)
+    fireEvent.change(screen.getByLabelText(/^birth place/i), { target: { value: 'Cuttack, Odisha' } })
+    expect(screen.getByRole('note', { name: /reselect/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
+    expect(await screen.findByText(/reselect the new place/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^latitude/i)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^longitude/i)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts a new place entered with its own coordinates', async () => {
+    render(<EditClientForm chart={CHART} />)
+    fireEvent.change(screen.getByLabelText(/^birth place/i), { target: { value: 'Cuttack, Odisha' } })
+    fireEvent.change(screen.getByLabelText(/^latitude/i), { target: { value: '20.4625' } })
+    fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.883' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('a selected place updates place, coordinates and timezone together', async () => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', 'test-key')
+    respond(202, { data: { mode: 'recompute-started', chartId: 'c1', changedFields: ['birth_place'], runId: 'r2' } })
+    render(<EditClientForm chart={{ ...CHART, timezone_id: 'Asia/Dhaka', tz_offset_hours: 6 }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Pick Cuttack' }))
+    expect(screen.getByLabelText(/^birth place/i)).toHaveValue('Cuttack, Odisha, India')
+    expect(screen.getByLabelText(/^latitude/i)).toHaveValue(20.4625)
+    expect(screen.getByLabelText(/^longitude/i)).toHaveValue(85.883)
+    expect(screen.getByLabelText(/^timezone/i)).toHaveValue('Asia/Kolkata')
+    fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save and recompute' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(sentBody()).toMatchObject({ birth_place: 'Cuttack, Odisha, India', lat: 20.4625, lon: 85.883, timezone_id: 'Asia/Kolkata', tz_offset: 5.5 })
+    vi.unstubAllEnvs()
+  })
+
+  it('shows the server’s birthplace field errors when it refuses the change', async () => {
+    respond(422, { error: 'Reselect the new birth place.', code: 'VALIDATION_FAILED', fields: { birth_place: 'Server says reselect the place.', lat: 'Enter the latitude of the new place.' } })
+    render(<EditClientForm chart={CHART} />)
+    fireEvent.change(screen.getByLabelText(/^full name/i), { target: { value: 'Renamed Native' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText('Server says reselect the place.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^birth place/i)).toHaveAttribute('aria-invalid', 'true')
+  })
+})
+
