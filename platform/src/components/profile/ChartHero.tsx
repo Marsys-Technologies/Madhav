@@ -1,7 +1,7 @@
-import { ZoneRoot } from '@/components/shared/ZoneRoot'
-import { Mandala } from '@/components/brand/Mandala'
+import type { ReactNode } from 'react'
 import { RasiChartSVG } from '@/components/charts/RasiChartSVG'
 import type { ForensicChart } from '@/lib/forensic/snapshot'
+import { formatDate } from '@/lib/utils/date'
 
 interface ChartHeroProps {
   chart: ForensicChart
@@ -9,64 +9,74 @@ interface ChartHeroProps {
   birthDate: string
   birthTime: string
   birthPlace: string
+  /** IANA timezone identifier stored on the chart; omitted from the line when absent. */
+  timezoneId?: string | null
+  /** Slot for the understated secondary-actions control (ChartActionsMenu). */
+  actions?: ReactNode
 }
 
+/**
+ * Chart identity + D1/Rāśi hero for the Jātaka workspace.
+ *
+ * D1 is the dominant element and precedes identity in source order, so on
+ * mobile the chart comes first; from `md` up the two sit side by side.
+ * The D1 value passed in must belong to this chart — an uncomputed chart
+ * arrives with `isEmpty` and RasiChartSVG renders its honest empty state.
+ */
 export function ChartHero({
   chart,
   nativeName,
   birthDate,
   birthTime,
   birthPlace,
+  timezoneId,
+  actions,
 }: ChartHeroProps) {
+  const time = birthTime ? birthTime.slice(0, 5) : ''
+  const birthLine = [formatDate(birthDate), [time, timezoneId].filter(Boolean).join(' '), birthPlace]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <ZoneRoot zone="ink" className="relative w-full overflow-hidden" style={{ minHeight: 480 }}>
-      {/* Mandala backdrop at 6% opacity */}
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-        aria-hidden="true"
-      >
-        <Mandala size={760} opacity={0.06} rotate className="shrink-0" />
+    <section
+      aria-labelledby="jw-identity-name"
+      className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 pb-6 pt-8 sm:px-6 md:grid-cols-[minmax(0,420px)_minmax(0,1fr)] md:gap-12 md:pt-12"
+    >
+      <div className="jw-panel mx-auto w-full max-w-[420px] p-3" data-testid="d1-chart">
+        <RasiChartSVG chart={chart} size={400} className="h-auto w-full" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center gap-6 px-6 py-10 md:flex-row md:items-start md:gap-10 md:px-12">
-        {/* Rasi chart SVG — capped at 360px, shrinks on narrow viewports */}
-        <div className="w-full max-w-[360px] shrink-0 md:w-auto">
-          <RasiChartSVG
-            chart={chart}
-            size={360}
-            className="h-auto w-full"
-          />
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <p className="jw-eyebrow">Jātaka</p>
+          {actions}
         </div>
-
-        {/* Name + meta */}
-        <div className="flex flex-col justify-center gap-3 pt-0 md:pt-8">
-          <h1
-            className="font-heading text-4xl font-semibold leading-tight tracking-wide"
-            style={{
-              fontFamily: "var(--font-serif, 'Source Serif 4', Georgia, serif)",
-              color: 'var(--brand-gold-cream)',
-              fontSize: 'clamp(2rem, 4vw, 2.75rem)',
-            }}
-          >
-            {nativeName}
-          </h1>
-          <p
-            className="text-sm tracking-wider"
-            style={{ color: 'var(--brand-gold)', opacity: 0.85 }}
-          >
-            {birthDate}&ensp;·&ensp;{birthTime} IST&ensp;·&ensp;{birthPlace}
-          </p>
-          {!chart.isEmpty && (
-            <p
-              className="mt-1 text-xs tracking-widest uppercase"
-              style={{ color: 'var(--brand-gold)', opacity: 0.7 }}
-            >
-              Lagna&ensp;{chart.lagnaSign}&ensp;{chart.lagnaDegreeDms}
-            </p>
-          )}
-        </div>
+        <h1 id="jw-identity-name" className="jw-display break-words text-[clamp(2.25rem,5vw,3.5rem)]">
+          {nativeName}
+        </h1>
+        <div className="h-px w-16 bg-[var(--jw-rule-strong)]" aria-hidden="true" />
+        <dl className="grid gap-2 text-sm">
+          <div>
+            <dt className="sr-only">Birth</dt>
+            <dd className="text-[var(--jw-ink-dim)]">{birthLine}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="jw-eyebrow self-center">Lagna</dt>
+            <dd className="text-[var(--jw-ink)]">
+              {chart.isEmpty || !chart.lagnaSign ? (
+                <span className="text-[var(--jw-ink-dim)]">Not yet computed</span>
+              ) : (
+                <>
+                  {chart.lagnaSign}
+                  {chart.lagnaDegreeDms && (
+                    <span className="ml-2 font-mono text-xs text-[var(--jw-gold)]">{chart.lagnaDegreeDms}</span>
+                  )}
+                </>
+              )}
+            </dd>
+          </div>
+        </dl>
       </div>
-    </ZoneRoot>
+    </section>
   )
 }
