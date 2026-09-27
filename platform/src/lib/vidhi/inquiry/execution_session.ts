@@ -125,6 +125,9 @@ export class ManagedInquiryExecutionSession {
     pagination: InquiryPaginationReceipt
     gap_reason?: string
     invocation_args: Readonly<Record<string, unknown>>
+    /** The binding's pagination request path. Without it a proven continuation cannot be
+     *  re-readied, and the managed door would stop after the first page (RC-5.5). */
+    request_position_path?: string
   }): Promise<void> {
     const observed = recordInquiryExecution(this.contract, {
       item_id: args.plan_item_id,
@@ -132,6 +135,7 @@ export class ManagedInquiryExecutionSession {
       evidence_refs: [`managed:${stableFingerprint(args.bundle)}`],
       ...(args.gap_reason ? { gap_reason: args.gap_reason } : {}),
       pagination: args.pagination,
+      ...(args.request_position_path ? { request_position_path: args.request_position_path } : {}),
     })
     const nextHash = `managed:${stableFingerprint(randomUUID())}`
     await commitInquiryObservation({

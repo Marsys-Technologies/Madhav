@@ -85,6 +85,27 @@ describe('managed inquiry execution session', () => {
     expect(lifecycle.commit).toHaveBeenCalledTimes(1)
   })
 
+  it('forwards the binding request position so a managed continuation page is re-readied (RC-5.5)', async () => {
+    const { recordInquiryExecution } = await import('./index')
+    lifecycle.get.mockResolvedValueOnce(null)
+    const session = await ManagedInquiryExecutionSession.open({
+      inquiry_id: inquiryId, principal_uid: 'user-1', contract, expires_at: '2026-09-18T00:00:00.000Z',
+    })
+    expect(await session.beginAction('item-001')).toBe('acquired')
+    await session.persistAcceptedObservation({
+      plan_item_id: 'item-001', obligation_ids: ['obligation-1'], scu_id: 'scu.test',
+      binding_id: 'registry:marsys://tool/L1/test', tool_name: 'test_tool', bundle: { results: [{ id: 'one' }] },
+      disposition: 'served', pagination: { semantics: 'offset', exhausted: false, next: 50 }, invocation_args: { offset: 0 },
+      request_position_path: 'offset',
+    })
+
+    expect(recordInquiryExecution).toHaveBeenCalledWith(contract, expect.objectContaining({
+      item_id: 'item-001',
+      pagination: { semantics: 'offset', exhausted: false, next: 50 },
+      request_position_path: 'offset',
+    }))
+  })
+
   it('reuses an already-finalized lifecycle after an outer-job completion gap without a second finalization CAS', async () => {
     const terminal = { ...contract, status: 'COMPLETE' as const, plan_items: [{ ...contract.plan_items[0], state: 'observed' as const }] } as unknown as InquiryContract
     lifecycle.get.mockResolvedValueOnce(row('terminal', terminal))

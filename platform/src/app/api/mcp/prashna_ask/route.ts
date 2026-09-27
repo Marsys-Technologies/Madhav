@@ -911,6 +911,7 @@ export async function POST(request: Request) {
               disposition: classifyInquiryResult(managedBinding, bundle),
               pagination: deriveInquiryPaginationReceipt(managedBinding, bundle, managedItem.args),
               invocation_args: managedItem.args,
+              request_position_path: managedBinding.pagination_contract?.request_position_path,
             })
           }
           toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - toolStart })
@@ -991,6 +992,7 @@ export async function POST(request: Request) {
               disposition: classifyInquiryResult(binding, bundle),
               pagination: deriveInquiryPaginationReceipt(binding, bundle, item.args),
               invocation_args: item.args,
+              request_position_path: binding.pagination_contract?.request_position_path,
             })
             toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
             if (!retainToolResult(toolName, bundle)) {
