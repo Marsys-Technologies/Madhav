@@ -11,13 +11,13 @@ vi.mock('server-only', () => ({}))
 import { writeLegacyTurnTail } from '../run_adapter_dispatch'
 
 function collect() {
-  const chunks: Array<Record<string, any>> = []
-  const events: Array<Record<string, any>> = []
+  const chunks: Array<Record<string, unknown>> = []
+  const events: Array<Record<string, unknown>> = []
   return {
     chunks,
     events,
-    writer: { write: (c: Record<string, any>) => chunks.push(c) },
-    emit: (e: Record<string, any>) => events.push(e),
+    writer: { write: (c: Record<string, unknown>) => chunks.push(c) },
+    emit: (e: Record<string, unknown>) => events.push(e),
   }
 }
 
@@ -37,7 +37,7 @@ describe('writeLegacyTurnTail', () => {
     })
     const error = c.chunks.find((k) => k.type === 'error')
     expect(error).toBeDefined()
-    expect(JSON.parse(error!.errorText)).toEqual({
+    expect(JSON.parse(error!.errorText as string)).toEqual({
       code: 'CONVERSATION_ARCHIVED_READ_ONLY',
       message: 'This reading was not saved.',
       retry: false,

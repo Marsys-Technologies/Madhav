@@ -1532,4 +1532,3 @@ describe('POST /api/mcp/prashna_ask — shared chart readiness gate (Jātaka Pha
     expect(res.status).toBe(401)
   })
 })
-

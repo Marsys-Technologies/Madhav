@@ -537,7 +537,7 @@ describe('Jātaka chart workspace — Paripraśna write gates', () => {
 describe('Jātaka chart workspace — persistence-boundary race (deterministic)', () => {
   // The refused turn's terminal sequence: the refusal error, then exactly one
   // turn.close with status 'error' as the last event — never a successful finish.
-  function expectRefusedTerminal(events: Array<Record<string, any>>) {
+  function expectRefusedTerminal(events: Array<Record<string, unknown>>) {
     const errorIdx = events.findIndex((e) => e.type === 'error' && e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')
     const closes = events.filter((e) => e.type === 'turn.close')
     expect(closes).toHaveLength(1)
