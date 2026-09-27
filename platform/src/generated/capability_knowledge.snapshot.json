@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-27T16:30:00.000Z",
-  "content_hash": "sha256:f632da65c9bb86ae9a474816577fc49628f84428072a55c77060d91cf6bcdee6",
-  "source_catalog_fingerprint": "sha256:b098a0ff1ca563e3fe24f37b2a09e9c691c2f2e0ba6030d734faca0bf5e63424",
-  "semantic_review_fingerprint": "sha256:6a8105211d133f6155e0957055a8951a301c972aa890b8fa8ffcc07f4bb43ff5",
+  "generated_at": "2026-09-27T17:20:00.000Z",
+  "content_hash": "sha256:7f9b800042f9f84d5d2c7441948ccbccb2759cc932eb7475a833c71675273300",
+  "source_catalog_fingerprint": "sha256:ed97ba89becc99d6320e98430c6e4028949ebd765f5499efec72a9499c54227e",
+  "semantic_review_fingerprint": "sha256:55f6b5b3f1d1d1566c6472cf012af06d444a69f76a98087fa316631c26ddb625",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -3235,6 +3235,25 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/synthesis/compose_large_n",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_chart_gestalt",
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L2/query_cgm_paths",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/synthesis/surface_gateway.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -4621,6 +4640,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "end_date",
         "graha",
@@ -4649,6 +4669,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_av_transit_gating",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-av-transit-gating:v1",
+              "capability_uri": "marsys://tool/L1/get_av_transit_gating",
+              "contract_sha256": "sha256:e626c3cfafd6a1d6685f59cb53f02f784f649630f9dbd187647fa3b633a19041",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating | platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -4658,6 +4693,7 @@
           "capability_uri": "marsys://tool/L1/get_av_transit_gating",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "end_date": "string:optional",
             "graha": "string:optional",
@@ -9232,6 +9268,7 @@
       "inputs": [
         "all",
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "frame",
@@ -9259,16 +9296,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L1/get_strength",
-          "status": "deliberately_dark",
-          "reason": "The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40",
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145",
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202",
-            "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-strength:v1",
+              "capability_uri": "marsys://tool/L1/get_strength",
+              "contract_sha256": "sha256:ecfe361ee1a1d1d6bd055f470ddf7335c4217b89c2563c22e4747ed6f57036dd",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES | platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:150-170"
+            }
           ]
         }
       ],
@@ -9282,6 +9321,7 @@
           "input_contract": {
             "all": "boolean:optional",
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "frame": "string:optional",
@@ -10799,6 +10839,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/graha_portrait",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L1/get_positions",
+                "registry:marsys://tool/L1/get_dignity",
+                "registry:marsys://tool/L1/get_strength",
+                "registry:marsys://tool/L1/get_avasthas",
+                "registry:marsys://tool/L1/get_yoga_dosha",
+                "registry:marsys://tool/L1/get_dashas",
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L2/traverse_chart_graph"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12828,6 +12891,22 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-PACT/pact_query",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L-JUDGMENT/judgment_query"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -21967,6 +22046,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/query_planet",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L1/get_positions",
+                "registry:marsys://tool/L1/get_dignity",
+                "registry:marsys://tool/L1/get_strength",
+                "registry:marsys://tool/L1/get_avasthas",
+                "registry:marsys://tool/L1/get_aspects",
+                "registry:marsys://tool/L1/get_yoga_dosha",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L1/get_dispositors"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32194,7 +32296,7 @@
         "current",
         "natal"
       ],
-      "scope": "global",
+      "scope": "chart",
       "inputs": [
         "chart_id",
         "layers",
@@ -32218,6 +32320,26 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/cross_layer",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_ucd",
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L2/traverse_chart_graph",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

@@ -14,16 +14,21 @@ describe('Purna capability coverage projection', () => {
     expect(rows).toHaveLength(186)
     expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(186)
     expect(new Set(rows.map((row) => row.scu_id)).size).toBe(182)
-    // R3 boundary regen: RC-7 proof typing (7 plan/resource/discovery bindings) and the
-    // assess_* derived contracts moved 14 bindings off "missing"; channel_chat_dispatch moved
-    // from missing to deliberately_dark (RC-9 legacy-route disposition). Remaining missing: the
-    // seven required-product proof-typing bindings still open (strength group, sidecar probes,
-    // direct-DB composites) plus classical_attribution_lookup (fails closed by design, RC-9),
-    // query_muhurat and query_sutravali_rules_for_planet (both explicitly out of scope, review
-    // §4 / R0 salvage matrix).
-    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(10)
-    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(173)
-    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(3)
+    // R3 boundary regen 2: the seven required-product proof-typing bindings landed
+    // (get_strength, get_av_transit_gating, graha_portrait, query_planet, pact_query,
+    // compose_large_n moved off "missing"; synergy_cross_layer moved off "deliberately_dark"
+    // once its scope bug was fixed). Remaining missing: classical_attribution_lookup (fails
+    // closed by design, RC-9), query_muhurat and query_sutravali_rules_for_planet (both
+    // explicitly out of scope, review §4 / R0 salvage matrix), and synergy_pipeline
+    // (deliberately left uncontracted — its dry_run vs executed modes need a genuine
+    // per-mode proof-kind type-system extension the current model cannot express without
+    // either wrongly barring the executed mode from evidence use or under-constraining the
+    // dry-run stub; see the boundary commit report). Remaining deliberately_dark:
+    // call_transit_search (L3 Kāla campaign ownership boundary) and channel_chat_dispatch
+    // (RC-9 legacy-route disposition).
+    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(4)
+    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(180)
+    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(2)
   })
 
   it('keeps semantic outputs, bindings, and exact evidence dependencies together', () => {
