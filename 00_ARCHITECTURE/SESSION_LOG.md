@@ -40459,7 +40459,7 @@ session_close:
     performed: true
     verdict: PASS
     artifact_path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: null, divergences_found: 79}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: "00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260927T224444Z.md", divergences_found: 79}
   schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: null, violations_found: 42}
   current_state_updated: true
   session_log_appended: true
@@ -41818,7 +41818,7 @@ session_open:
   agent_name: claude-opus-5-5
   agent_version: claude-opus-5-5
   tool: "Claude Code"
-  tool_profile: null
+  tool_profile: madhav-safe
   worktree_path: /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
   step_number_or_layer: "Jātaka chart workspace — corrected-plan Tasks 1–8 (local implementation, mock-tested)"
   predecessor_session: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
@@ -43663,4 +43663,137 @@ session_close:
   unblocks:
     - "Both nirmana-analysis-receipts.test.ts failures the Jātaka Phase-A3 close reported are resolved; the Nirmāṇa L5 layer record is current. A separately-authorized session may still want to investigate the 7 pre-existing test_nirmana_analysis_layer_pins.py failures and --check's branch-topology limitation, both recorded above as residuals, not fixed under this narrow authority."
   handoff_notes: "Local branch codex/jataka-chart-workspace only; not pushed, no PR, not deployed, production/shared database not mutated beyond one narrowly-authorized, read-only-enforced SELECT for the frozen campaign manifest (no chart data, no write of any kind). No L0 accepted membership, hash, generation or receipt evidence changed. No further L5 re-pin beyond this one, genuinely-source-identity-changed successor. Task 9 remains BLOCKED."
+```
+
+## JATAKA-CONTROLLED-PROD-ROLLOUT-20260927 — 2026-09-28
+
+```yaml
+session_open:
+  session_id: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  cowork_thread_name: "Madhav — Jātaka Controlled Production Rollout"
+  agent_name: gpt-5
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
+  step_number_or_layer: "Jātaka chart workspace — controlled production rollout"
+  predecessor_session: NIRMANA-L0-L5-COUPLING-FIX-20260927
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+    lease_status_verified: true
+    lease_verified_at: 2026-09-27T23:40:00+05:30
+    coordination_commit: e209baf50e9988524390abf70710e4a8ae73fec6
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    ccd_consumed: [CCD-013, CCD-014, CCD-015, CCD-016, CCD-017, CCD-018, CCD-019]
+    ccd_appended: []
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md]
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_CONTROLLED_PRODUCTION_ROLLOUT_ADDENDUM_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_OPEN.yaml
+      - 00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_CLOSE.yaml
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+      - .github/workflows/deploy.yml
+      - platform/tests/unit/governance/deploy_protected_jataka_migrations.test.ts
+    must_not_touch:
+      - platform/src/**
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - platform/supabase/migrations/**
+      - CLAUDECODE_BRIEF.md
+      - existing production charts and conversations
+      - shared production asset rebuilds or data repairs
+  red_team_due: false
+  notes: "Native authorized the controlled production rollout and CCD-019 temporary schema capability."
+```
+
+The reviewed Jātaka workspace source passed its full platform suite (4,199 suites / 13,654 tests;
+12,945 passed, 707 skipped, 2 todo, 0 failed), TypeScript, scoped lint, actionlint, migration guard,
+diff check and independent review. PRs #2739 and #2740 merged through protected main at
+`acf8d2baed6345097dd28a34e533329be52046ec`; post-merge CI run `36351244072` passed.
+
+Fresh backup `1790545434667` completed before mutation. Automatic run `36352071291` failed closed
+without service mutation as designed. Manual protected run `36352926415` applied exact migrations
+1120–1123, revoked the CCD-019 temporary schema capability and passed the ordinary no-privilege
+gate. Read-only attestation found all expected receipts and objects and confirmed `amjis_app`
+retains `USAGE` but not `CREATE`. Audited force-all run `36354240706` corrected the sidecar change
+detector's zero-traffic-ready-revision blind spot. Web, sidecar, MCP and pipeline are healthy and
+bound to the accepted SHA.
+
+Live acceptance is deliberately recorded as PARTIAL/BLOCKED. Disposable synthetic chart route
+`a0fa7e08-c758-4167-846b-b38054e5f768` verified minimal dashboard cards, dedicated workspace,
+responsive layout, action menu, name-only edit and truthful capability gates. The preferred name
+is `Rollout Verified`; birth time remains 12:34; no build run was created. One confirmed
+computation-affecting edit refused before mutation because the inherited shared
+`bg_transit_engine` asset cannot replace `bg_transit_rules.id=133` while
+`gochara_resonance_map_source_rule_id_fkey` references it. No existing chart or conversation was
+mutated and no broad shared rebuild was attempted. D1 rendering was verified read-only on an
+existing workspace; the synthetic chart's own recompute, historical-context transition and final
+readiness proof remain BLOCKED/NOT_RUN under this authority. No rollback was required because the
+release is healthy and the refused correction rolled back transactionally.
+
+### Next session objective
+
+Optional, separately authorized repair/rebuild of the shared `bg_transit_engine` dependency,
+followed by only the blocked live-acceptance steps. The synthetic chart remains conspicuously named
+in production; deletion requires separate destructive-action authorization.
+
+```yaml
+session_close:
+  session_id: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  closed_at: 2026-09-28T04:15:00+05:30
+  tool: Codex
+  files_touched:
+    - {path: "00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_CONTROLLED_PRODUCTION_ROLLOUT_ADDENDUM_v1_0.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_LOG.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_OPEN.yaml", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_CLOSE.yaml", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+  registry_updates_made:
+    current_state:
+      - change: rollout_close_recorded
+        rationale: "v6.86 separates successful deployment from partial/blocked live acceptance."
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: null, divergences_found: 79}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: null, violations_found: 42}
+  handshake_validator_run: {script: platform/scripts/governance/schema_validator.py, tool_profile: madhav-safe, exit_code: 0, report_path: "00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_OPEN.yaml", violations_found: 0}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    ccd_consumed: [CCD-018, CCD-019]
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    migration_request: "JATAKA-REQ-01 through JATAKA-REQ-04"
+    migration_file: "1120-1123"
+    migration_applied: true
+    lease_id: MADHAV-JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+    lease_claim_commit: e209baf50e9988524390abf70710e4a8ae73fec6
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: d315dfd21
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_CONTROLLED_PRODUCTION_ROLLOUT_ADDENDUM_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - {override_id: CCD-018, description: "Native authorized controlled production rollout using production Firebase and database."}
+    - {override_id: CCD-019, description: "Native authorized temporary schema CREATE only for migrations 1120-1123 with mandatory revocation."}
+  halts_encountered:
+    - {halt_id: bg_transit_engine_shared_data_failure, reason: "The confirmed recompute refused before mutation because rule 133 remains referenced; shared-data repair is outside authority."}
+  native_directive_per_step_verification:
+    - {directive_id: ND.2, step: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927, obligation_addressed: true, evidence: "No Macro Plan or health-crisis serving change occurred."}
+  known_residuals:
+    - {finding_id: jataka_task9_partial, severity: MEDIUM, booking_reference: "Deployment healthy; synthetic recompute/context-transition proof blocked by inherited bg_transit_engine FK failure."}
+    - {finding_id: synthetic_chart_disposition, severity: LOW, booking_reference: "Synthetic chart remains clearly named; deletion needs separate destructive-action authorization."}
+  close_criteria_met: true
+  unblocks: ["Normal use of the deployed release; separately authorized shared-asset repair may resume only blocked acceptance steps."]
+  handoff_notes: "Production rollout succeeded at acf8d2baed6345097dd28a34e533329be52046ec. Full Task 9 did not; one recompute attempt rolled back cleanly before chart mutation."
 ```
