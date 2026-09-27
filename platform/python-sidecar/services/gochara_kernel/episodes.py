@@ -233,16 +233,26 @@ def build_episodes(
     roots: list[ContactRoot],
     horizon: tuple[float, float],
     orb_source: str,
+    orb_override_deg: float | None = None,
 ) -> list[Episode]:
     """Episodes for one (body, target, relation) at the declared orb.
 
     `roots` are the Swiss-refined exact-separation roots (contacts.find_roots
     with refine=True); every root must come from the arc index (the candidate
     set is auditable, not a black box).
+
+    `orb_override_deg` (additive, default None): enumerate the in-orb band at
+    this width instead of ORB_TABLE[orb_source]. The pinned table is NEVER
+    mutated; the override rides the episode's orb_max_deg stamp while
+    orb_source still names the §7 relation-class row id. WP10 step-6 use:
+    M-1's ratified candidate-1 enumeration orb (linear_no_box × 5.0°) is a
+    build parameter, not a re-pin of the table (brief §12.2).
     """
     if orb_source not in ORB_TABLE:
         raise ValueError(f"unknown orb_source {orb_source!r}")
     stamps = _episode_stamps(body, relation, orb_source)
+    if orb_override_deg is not None:
+        stamps["orb_max_deg"] = float(orb_override_deg)
     orb = stamps["orb_max_deg"]
 
     # Group roots by their effective level (dṛṣṭi angles each own a level).
@@ -340,14 +350,18 @@ def solve_episodes(
     orb_source: str,
     ephe_path: str | None = None,
     refine: bool = True,
+    orb_override_deg: float | None = None,
 ) -> list[Episode]:
     """End-to-end: bracket roots on the arc index, refine by direct Swiss
     bisection at the instant, assemble episodes at the declared orb.
 
     `refine=False` keeps the spline-stage instants (synthetic-fixture use:
-    the cubic is reproduced exactly, so the spline root IS the exact root)."""
+    the cubic is reproduced exactly, so the spline root IS the exact root).
+    `orb_override_deg` passes through to build_episodes (additive; the pinned
+    ORB_TABLE is never mutated)."""
     roots = find_roots(index, body, relation, target_deg, ephe_path, refine=refine)
-    return build_episodes(index, body, relation, target_deg, roots, horizon, orb_source)
+    return build_episodes(index, body, relation, target_deg, roots, horizon,
+                          orb_source, orb_override_deg=orb_override_deg)
 
 
 def solve_boundary_episodes(
@@ -356,13 +370,18 @@ def solve_boundary_episodes(
     relation: str,
     horizon: tuple[float, float],
     ephe_path: str | None = None,
+    refine: bool = True,
 ) -> list[Episode]:
     """Boundary-exact ingress episodes (WP1 §7 orb_ingress): t_in = t_exact =
     t_out at the grid edge, no orb, never dropped at the horizon edge when the
-    root falls inside it (closed interval)."""
+    root falls inside it (closed interval).
+
+    `refine=False` keeps the spline-stage instants (synthetic-fixture use —
+    the same additive escape hatch solve_episodes/residence_spans already
+    carry; the pinned default stays Swiss-refined)."""
     if relation not in BOUNDARY_RELATIONS:
         raise ValueError(f"{relation!r} is not a boundary relation")
-    roots = find_boundary_roots(index, body, relation, ephe_path, refine=True)
+    roots = find_boundary_roots(index, body, relation, ephe_path, refine=refine)
     stamps = _episode_stamps(body, relation, "orb_ingress")
     h0, h1 = horizon
     episodes: list[Episode] = []
