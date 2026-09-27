@@ -25,6 +25,7 @@ import {
   getDescriptorAvailabilityReview,
   getDescriptorEditorialReview,
   getDescriptorPrimaryBindingDetails,
+  getDescriptorProofKindReview,
   getReviewedDescriptorNames,
 } from './editorial_review'
 import { getProducerSemanticReview } from './producer_editorial_review'
@@ -185,6 +186,12 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
   const availabilityContractReview = getDescriptorAvailabilityContractReview(cap.name)
   const sourceQueryAvailabilityReview = getDescriptorSourceQueryAvailabilityReview(cap.name)
   const availabilityReview = getDescriptorAvailabilityReview(cap.name)
+  const proofKindReview = getDescriptorProofKindReview(cap.name)
+  if (proofKindReview && (availabilityContractReview || sourceQueryAvailabilityReview || availabilityReview)) {
+    // A non-answer capability is proven only by its snapshot registration; mixing that proof with
+    // an evidence contract or a dark disposition would make its availability ambiguous.
+    throw new Error(`AMBIGUOUS_PROOF_KIND_REVIEW:${cap.name}`)
+  }
   const sourceDescription = cap.description.trim().replace(/[.。]+$/, '')
   const primaryBindingDetails = getDescriptorPrimaryBindingDetails(cap.name)
   return {
@@ -193,6 +200,7 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
     label: cap.display?.short_label ?? cap.name.replaceAll('_', ' '),
     description: `${sourceDescription}. Evidence use: ${review.evidence_use}.`,
     kind,
+    ...(proofKindReview ? { proof_kind: proofKindReview.proof_kind } : {}),
     domains: review.domains,
     concepts: [cap.name, ...review.concepts],
     intents: review.intents,
@@ -230,6 +238,17 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
           ...(availabilityContractReview?.requirements ?? []),
           ...(sourceQueryAvailabilityReview ? [sourceQueryAvailabilityReview.requirement] : []),
         ],
+      }],
+    } : {}),
+    ...(proofKindReview ? {
+      availability_contracts: [{
+        binding_id: `registry:${cap.uri}`,
+        requirements: [{
+          kind: 'snapshot_resource' as const,
+          proof: proofKindReview.proof,
+          scope: 'global' as const,
+          source_ref: `platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:${cap.name}`,
+        }],
       }],
     } : {}),
     ...(availabilityReview ? {
@@ -794,6 +813,12 @@ export function inspectCapabilityKnowledge(
         findings.push({ code: 'BAD_PAGINATION_CONTRACT', severity: 'warning', subject: binding.binding_id, detail: 'Editorial SCU uses a bounded route whose response/exhaustion contract is not yet source-reviewed.' })
       }
     }
+    if (scu.proof_kind !== undefined && !(['answer', 'plan', 'resource', 'discovery'] as readonly unknown[]).includes(scu.proof_kind)) {
+      findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'proof_kind must be answer, plan, resource or discovery.' })
+    }
+    if (scu.proof_kind !== undefined && scu.proof_kind !== 'answer' && (scu.availability_dispositions?.length ?? 0) > 0) {
+      findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'A non-answer capability is proven by snapshot registration and is never deliberately dark.' })
+    }
     const contracts = scu.availability_contracts
     const contractArray = Array.isArray(contracts) ? contracts : []
     if (contracts !== undefined && !Array.isArray(contracts)) {
@@ -813,6 +838,10 @@ export function inspectCapabilityKnowledge(
       for (const requirement of contract.requirements) {
         if (!isRecord(requirement) || typeof requirement.kind !== 'string') {
           findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'An availability requirement must declare a supported kind.' })
+          continue
+        }
+        if (scu.proof_kind !== undefined && scu.proof_kind !== 'answer' && requirement.kind !== 'snapshot_resource') {
+          findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `A ${scu.proof_kind} capability is proven only by its snapshot registration, never by chart evidence.` })
           continue
         }
         if (requirement.kind === 'producer_output') {
@@ -872,6 +901,10 @@ export function inspectCapabilityKnowledge(
           for (const requiredBindingId of requiredBindingIds) {
             const target = executableBindingById.get(requiredBindingId)
             const targetContract = explicitContractForBinding(requiredBindingId)
+            if (target && target.scu.proof_kind !== undefined && target.scu.proof_kind !== 'answer') {
+              findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} is a ${target.scu.proof_kind} capability and cannot evidence a composite answer.` })
+              continue
+            }
             if (!target || !targetContract || target.scu.scope !== scope || scu.scope !== scope) {
               findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} must be an executable binding with an existing exact availability contract in the same ${scope} scope.` })
               continue
@@ -879,6 +912,18 @@ export function inspectCapabilityKnowledge(
             if (derivedCycle(requiredBindingId)) {
               findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} creates an availability-contract cycle.` })
             }
+          }
+          continue
+        }
+        if (requirement.kind === 'snapshot_resource') {
+          const nonAnswer = scu.proof_kind === 'plan' || scu.proof_kind === 'resource' || scu.proof_kind === 'discovery'
+          const proofMatches = scu.proof_kind === 'discovery'
+            ? requirement.proof === 'index_compiled_from_pinned_catalog'
+            : requirement.proof === 'registered_in_pinned_snapshot'
+          if (!nonAnswer || !proofMatches || requirement.scope !== 'global' || scu.scope !== 'global'
+            || typeof requirement.source_ref !== 'string' || !requirement.source_ref
+            || contract.requirements.length !== 1) {
+            findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A snapshot-resource requirement is the sole proof of a global plan, resource or discovery capability, with the proof its kind requires; an answer capability must earn evidence.' })
           }
           continue
         }

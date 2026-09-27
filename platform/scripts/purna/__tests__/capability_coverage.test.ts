@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import snapshotJson from '../../../src/generated/capability_knowledge.snapshot.json'
 import type { CapabilityKnowledgeSnapshot } from '../../../src/lib/retrieval/registry/knowledge/types'
 import { buildCapabilityCoverage } from '../capability_coverage'
+import { getCatalog } from '../../../src/lib/retrieval/registry/catalog'
+import { compileCapabilityKnowledge } from '../../../src/lib/retrieval/registry/knowledge/compiler'
+import { loadChartCapabilityOverlay } from '../../../src/lib/retrieval/registry/knowledge/overlay_loader'
 
 const snapshot = snapshotJson as CapabilityKnowledgeSnapshot
 
@@ -41,5 +44,20 @@ describe('Purna capability coverage projection', () => {
       'scu.catalog.query_current_transit_snapshot',
       'scu.catalog.query_planet_transit',
     ]))
+  })
+
+  it('reports plan/resource/discovery capabilities as resource_ok, never as dark answer routes (RC-7)', async () => {
+    const compiled = compileCapabilityKnowledge(getCatalog(), '2026-09-27T00:00:00.000Z') as CapabilityKnowledgeSnapshot
+    const overlay = await loadChartCapabilityOverlay(compiled, '482012f1-710e-4a25-994a-93821f5871aa', async () => ({ rows: [] }))
+    const rows = buildCapabilityCoverage(compiled, overlay)
+    const resources = rows.filter((row) => row.proof_kind !== 'answer')
+    expect(resources.map((row) => row.scu_id).sort()).toEqual([
+      'scu.catalog.channel_mcp_wiring', 'scu.catalog.intent_classify', 'scu.catalog.maro_mcp_surface',
+      'scu.catalog.maro_orchestrate', 'scu.catalog.maro_profiles', 'scu.catalog.route', 'scu.catalog.tool_search',
+    ])
+    for (const row of resources) {
+      expect(row).toMatchObject({ readiness: 'resource_ok', blocker: 'resource_not_answer', availability_contract: 'authored' })
+      expect(row.source_dependencies[0]).toMatch(/^snapshot:/)
+    }
   })
 })

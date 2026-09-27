@@ -372,7 +372,11 @@ function planFor(
         : unresolvedRequired.length > 0
           ? `Required binding arguments are unresolved: ${unresolvedRequired.join(', ')}.`
           : !overlayAllowsBinding
-            ? availability?.gaps.join('; ') || 'The chart/build overlay does not prove this binding available.'
+            ? availability?.state === 'resource_ok'
+              // RC-7: a plan/resource/discovery capability is available as a resource but carries
+              // no chart evidence, so it can never satisfy an answer obligation.
+              ? `${scuId} is a ${scu.proof_kind ?? 'non-answer'} capability: available as a resource, never admitted as answer evidence.`
+              : availability?.gaps.join('; ') || 'The chart/build overlay does not prove this binding available.'
             : null
       if (executable && binding) {
         const duplicateIndex = plan.findIndex((item) => item.binding_id === binding.binding_id

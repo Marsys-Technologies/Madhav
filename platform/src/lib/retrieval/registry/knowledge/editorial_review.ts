@@ -6,6 +6,8 @@
  */
 import type {
   AvailabilityRequirement,
+  CapabilityProofKind,
+  SnapshotResourceAvailabilityRequirement,
   ProducerOutputClaim,
   SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
@@ -90,6 +92,13 @@ const SPINE_BUNDLE_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  channel_chat_dispatch: {
+    reason: 'The descriptor promises the legacy Consume chat route (/api/chat/consult) as a registry migration target. That route is not a governed inquiry door: the Portal door is /api/pariprashna, which carries the inquiry contract and accountability envelope (review RC-6). The descriptor answers nothing about a chart and must not be offered as a route.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts#chatDispatchTool',
+      'platform/src/app/api/pariprashna/route.ts',
+    ],
+  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [
@@ -250,6 +259,54 @@ export function getDescriptorAvailabilityReview(name: string): DescriptorAvailab
 
 export function getDescriptorAvailabilityContractReview(name: string): DescriptorAvailabilityContractReview | undefined {
   return AVAILABILITY_CONTRACT_REVIEWS[name]
+}
+
+/**
+ * Capabilities whose correct availability proof is not chart evidence (RC-7 / review §4): prompt
+ * resources, routers, orchestration metadata, static dossiers, wiring projections and catalog
+ * discovery. They are proven by registration in the pinned snapshot, reported `resource_ok`,
+ * and excluded from answer readiness — never dark for want of an evidence receipt they cannot
+ * have, and never admissible as answer evidence.
+ */
+export interface DescriptorProofKindReview {
+  readonly proof_kind: Exclude<CapabilityProofKind, 'answer'>
+  readonly proof: SnapshotResourceAvailabilityRequirement['proof']
+  readonly rationale: string
+}
+
+const PROOF_KIND_REVIEWS: Readonly<Record<string, DescriptorProofKindReview>> = {
+  intent_classify: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Renders the intent-classification prompt template with its schema; it classifies a question and reads no chart evidence.',
+  },
+  route: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Selects a retrieval route over registered capabilities; routing metadata, not an answer.',
+  },
+  maro_orchestrate: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Returns orchestration metadata for registered capabilities; planning metadata, not chart evidence.',
+  },
+  maro_mcp_surface: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Describes the MCP surface of registered capabilities; planning metadata, not chart evidence.',
+  },
+  maro_profiles: {
+    proof_kind: 'resource', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Static capability dossier, labelled unmeasured; a reference resource, not chart evidence.',
+  },
+  channel_mcp_wiring: {
+    proof_kind: 'resource', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Static wiring map of registered bindings; a projection of the catalog, not chart evidence.',
+  },
+  tool_search: {
+    proof_kind: 'discovery', proof: 'index_compiled_from_pinned_catalog',
+    rationale: 'Searches an index built from the live catalog at call time; every door asserts that catalog compiles to the pinned snapshot, so the index cannot diverge from it.',
+  },
+}
+
+export function getDescriptorProofKindReview(name: string): DescriptorProofKindReview | undefined {
+  return PROOF_KIND_REVIEWS[name]
 }
 
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {

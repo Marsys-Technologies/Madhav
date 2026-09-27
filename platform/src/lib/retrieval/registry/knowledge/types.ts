@@ -18,6 +18,16 @@ export type SemanticCapabilityKind =
   | 'intervention'
   | 'synthesis_support'
 
+/**
+ * What an SCU's availability must prove (RC-7). Availability is typed by capability kind, not
+ * only by evidence source: an `answer` capability returns chart or corpus evidence and must earn
+ * it; a `plan` (prompt, router or orchestration metadata), `resource` (static dossier or wiring
+ * projection) or `discovery` (index over the capability catalog) capability returns no evidence
+ * about the chart, so its correct proof is that it is registered, executable and consistent with
+ * the pinned snapshot — and it never counts toward answer readiness. Absent means `answer`.
+ */
+export type CapabilityProofKind = 'answer' | 'plan' | 'resource' | 'discovery'
+
 export type CapabilityRelation =
   | 'primary'
   | 'requires'
@@ -194,11 +204,26 @@ export interface DerivedAvailabilityRequirement {
   readonly source_ref: string
 }
 
+/**
+ * Proof for a non-answer capability (`proof_kind` plan/resource/discovery): the binding is
+ * registered and executable in the pinned snapshot. For `discovery`, the index the handler
+ * searches is compiled from the live catalog, which every door asserts compiles to the pinned
+ * snapshot before use (assertPinnedCapabilityKnowledgeCurrent), so the index and the snapshot
+ * cannot diverge. It carries no chart evidence and is never admissible for an answer.
+ */
+export interface SnapshotResourceAvailabilityRequirement {
+  readonly kind: 'snapshot_resource'
+  readonly proof: 'registered_in_pinned_snapshot' | 'index_compiled_from_pinned_catalog'
+  readonly scope: 'global'
+  readonly source_ref: string
+}
+
 export type AvailabilityRequirement =
   | ProducerOutputAvailabilityRequirement
   | ServiceProbeAvailabilityRequirement
   | SourceQueryAvailabilityRequirement
   | DerivedAvailabilityRequirement
+  | SnapshotResourceAvailabilityRequirement
 
 /** Source-authored requirements for one known executable binding. */
 export interface BindingAvailabilityContract {
@@ -268,6 +293,8 @@ export interface SemanticCapabilityDeclaration {
   readonly label: string
   readonly description: string
   readonly kind: SemanticCapabilityKind
+  /** Absent means `answer`. See CapabilityProofKind. */
+  readonly proof_kind?: CapabilityProofKind
   readonly domains: readonly string[]
   readonly concepts: readonly string[]
   readonly intents: readonly string[]
@@ -376,7 +403,11 @@ export interface CapabilityKnowledgeSnapshot {
 
 export interface ChartCapabilityAvailability {
   readonly scu_id: string
-  readonly state: 'available' | 'partial' | 'empty' | 'dark' | 'incompatible'
+  /**
+   * `resource_ok`: a non-answer capability (plan/resource/discovery) proven registered in the
+   * pinned snapshot. It lists no available bindings and is never admitted as answer evidence.
+   */
+  readonly state: 'available' | 'partial' | 'empty' | 'dark' | 'incompatible' | 'resource_ok'
   readonly build_status: string | null
   readonly build_id: string | null
   readonly freshness: string | null

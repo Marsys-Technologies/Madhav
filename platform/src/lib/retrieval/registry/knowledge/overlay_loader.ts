@@ -12,6 +12,7 @@ import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
   ServiceProbeAvailabilityRequirement,
+  SnapshotResourceAvailabilityRequirement,
   SourceQueryAvailabilityRequirement,
   SemanticCapabilityBinding,
   SemanticCapabilityUnit,
@@ -173,6 +174,19 @@ function sourceQueryRequirement(requirement: unknown): requirement is SourceQuer
     && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
 
+function snapshotResourceRequirement(requirement: unknown): requirement is SnapshotResourceAvailabilityRequirement {
+  return isRecord(requirement)
+    && requirement.kind === 'snapshot_resource'
+    && (requirement.proof === 'registered_in_pinned_snapshot' || requirement.proof === 'index_compiled_from_pinned_catalog')
+    && requirement.scope === 'global'
+    && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
+}
+
+/** Non-answer capabilities (RC-7): proven by snapshot registration, never admitted as answer evidence. */
+function isNonAnswerScu(scu: SemanticCapabilityUnit): boolean {
+  return scu.proof_kind !== undefined && scu.proof_kind !== 'answer'
+}
+
 function derivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
   return isRecord(requirement) && requirement.kind === 'derived'
 }
@@ -248,11 +262,22 @@ function bindingContractIntegrityGap(
       }
       continue
     }
+    if (snapshotResourceRequirement(requirement)) {
+      if (!isNonAnswerScu(scu) || scu.scope !== 'global' || contract.requirements.length !== 1) {
+        gap = 'A snapshot-resource proof is valid only as the sole proof of a global plan, resource or discovery capability.'
+        break
+      }
+      continue
+    }
     if (usableDerivedRequirement(requirement)) {
       for (const childBindingId of requirement.required_binding_ids) {
         const childTarget = bindingIndex.get(childBindingId)
         if (!childTarget || childTarget.scu.scope !== requirement.scope || scu.scope !== requirement.scope) {
           gap = `Derived availability leg ${childBindingId} has no scope-compatible executable binding.`
+          break
+        }
+        if (isNonAnswerScu(childTarget.scu)) {
+          gap = `Derived availability leg ${childBindingId} is a ${childTarget.scu.proof_kind} capability and cannot evidence a composite answer.`
           break
         }
         if (!contractForBinding(childTarget.scu, childTarget.binding)) {
@@ -615,8 +640,18 @@ function evidenceForBinding(
     const serviceRequirements = contract.requirements.filter(serviceProbeRequirement)
     const sourceQueryRequirements = contract.requirements.filter(sourceQueryRequirement)
     const derivedRequirements = contract.requirements.filter(usableDerivedRequirement)
+    const snapshotResourceRequirements = contract.requirements.filter(snapshotResourceRequirement)
+    // The snapshot proof is valid only as the sole proof of a global non-answer capability, and
+    // never as a derived leg of an answer composite (the snapshot compiler rejects both).
+    const snapshotResourceGaps = snapshotResourceRequirements.length === 0 ? [] : [
+      ...(!isNonAnswerScu(scu) || scu.scope !== 'global' || contract.requirements.length !== 1 || requireExplicitContract
+        ? ['A snapshot-resource proof is valid only as the sole proof of a global plan, resource or discovery capability.'] : []),
+      ...(bindingIndex.get(binding.binding_id)?.binding !== binding
+        ? ['Binding is not uniquely registered and executable in the pinned snapshot.'] : []),
+    ]
     const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement)
-      && !serviceProbeRequirement(requirement) && !sourceQueryRequirement(requirement) && !usableDerivedRequirement(requirement))
+      && !serviceProbeRequirement(requirement) && !sourceQueryRequirement(requirement) && !usableDerivedRequirement(requirement)
+      && !snapshotResourceRequirement(requirement))
     const receipts = producerRequirements.map((requirement) => receiptForRequirement(requirement, rows, generation))
     const derivedEvidence = derivedRequirements.flatMap((requirement) => requirement.required_binding_ids.map((bindingId) => {
       const target = bindingIndex.get(bindingId)
@@ -641,10 +676,12 @@ function evidenceForBinding(
       ...sourceQueryRequirements.flatMap((requirement) => sourceQueryEvidence.get(sourceQueryEvidenceKey(requirement))
         ?? ['Source-query availability evidence was not evaluated.']),
       ...derivedGaps,
+      ...snapshotResourceGaps,
     ]
     return {
       binding_id: binding.binding_id,
-      passed: contract.requirements.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed')
+      passed: contract.requirements.length > 0 && !unsupported.length && snapshotResourceGaps.length === 0
+        && receipts.every((receipt) => receipt.state === 'passed')
         && serviceRequirements.every((requirement) => serviceProbeGaps(requirement, probeRows, now).length === 0)
         && sourceQueryRequirements.every((requirement) => sourceQueryEvidence.get(sourceQueryEvidenceKey(requirement))?.length === 0)
         && derivedEvidence.every((evidence) => evidence.passed),
@@ -715,6 +752,18 @@ function evidenceForSnapshot(
     const hasSourceQueryRequirement = executableBindings.some((binding) =>
       requirementsForBindingTree(binding.binding_id, bindingIndex).some(sourceQueryRequirement),
     )
+    if (isNonAnswerScu(scu)) return {
+      scu_id: scu.scu_id,
+      build_status: build.status,
+      build_id: build.build_id,
+      freshness: null,
+      // Never listed as available: a plan/resource/discovery capability carries no chart
+      // evidence, so no door may admit it for an answer.
+      available_binding_ids: [],
+      state: allPassed && gaps.length === 0 ? 'resource_ok' as const : 'dark' as const,
+      gaps,
+      asset_receipts: [],
+    }
     const hasPartialReceipt = assetReceipts.some((receipt) => receipt.state === 'partial')
     const hasFailedReceipt = assetReceipts.some((receipt) => receipt.state === 'failed')
     const state = availableBindingIds.length > 0
