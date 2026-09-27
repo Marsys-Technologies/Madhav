@@ -690,3 +690,113 @@ def test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open(monk
     assert closed == 0, "a never-executed queued row must not close the open Build.exercised gap"
     rows = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     assert [r for r in rows if r.get("gap_id") == gid][-1]["state"] == "OPEN"
+
+
+# ─────────────────────────── C4 (W2-1_C1_REVIEW §7): pin the executed marker to started_at ───────────────────────────
+
+def _column_evaluating_psql(rows):
+    """build_history()'s attempt read answered by EVALUATING whichever `(a.<col> IS NOT NULL)` the
+    census's SQL asks for against row dicts that carry both `started_at` and `ended_at` — so a census
+    that tests the wrong column (or a state list) gets the wrong answer, exactly as PostgreSQL would."""
+    def fake(sql, sep="\x1f", timeout=None):
+        if "FROM build_run_assets a JOIN build_runs r" in sql:
+            m = re.search(r"\(a\.(\w+) IS NOT NULL\)", sql)
+            assert m, "build_history() must select an IS NOT NULL execution marker"
+            col = m.group(1)
+            return [[r["asset_id"], "layer", r["state"], r.get("disposition", ""), "2026-09-28",
+                     r.get("error", ""), "t" if r.get(col) is not None else "f"] for r in rows]
+        if sql.startswith("SELECT count(*)::text FROM build_runs"):
+            return [["0"]]
+        if "FROM asset_throughput WHERE state='lit'" in sql:
+            return []
+        raise AssertionError(f"unexpected query: {sql[:100]}")
+    return fake
+
+
+_UNSTARTED = [
+    dict(asset_id="bg_sign_medical", state="aborted", started_at=None, ended_at="2026-09-28T01:00",
+         error="guardian_cleanup"),
+    dict(asset_id="bg_sign_medical", state="error", started_at=None, ended_at="2026-09-28T02:00",
+         error="BLOCKED: upstream dependency(ies) bg_x did not complete in this run; skipped"),
+]
+
+
+def _measure_with_rows(monkeypatch, ctrl, rows):
+    reg = {"bg_sign_medical": _reg_row("bg_sign_medical", "bg_sign_medical", has_writer=True)}
+    _stub_layer(monkeypatch, ctrl, reg)
+    monkeypatch.setattr(ac, "capability_scan", _REAL["capability_scan"])
+    monkeypatch.setattr(ac, "build_history", _REAL["build_history"])
+    fake = _column_evaluating_psql(rows)
+    monkeypatch.setattr(ac, "psql", fake)
+    monkeypatch.setattr(ac, "scalar", lambda sql: (lambda r: r[0][0] if r and r[0] else None)(fake(sql)))
+    return ac.measure("L0")
+
+
+@pytest.mark.skipif(not PROD_LEDGER.exists(), reason="production ledger not present in this checkout")
+def test_c4_a_unstarted_aborted_and_blocked_error_rows_do_not_exercise_or_close(monkeypatch, tmp_path):
+    """(a) Only an `aborted` row (terminalised from queued) and a BLOCKED `error` row, both with
+    started_at NULL. Fails under the state-list design ({complete, error, aborted} = executed —
+    mutation C4-M2): Build.exercised reads PASS and the OPEN bg_sign_medical-Build.exercised gap on
+    the ledger COPY closes."""
+    ctrl = tmp_path / "ctrl"
+    ctrl.mkdir()
+    (ctrl / "asset_gaps.jsonl").write_bytes(PROD_LEDGER.read_bytes())
+    c = _measure_with_rows(monkeypatch, ctrl, _UNSTARTED)
+    ex = _m(c, "bg_sign_medical", "Build.exercised")
+    assert ex["v"] == ac.FAIL and "none ever started" in ex["measured"], ex
+    added, skipped, closed, reopened = ac.emit_gaps(c)
+    assert closed == 0
+    gid = "bg_sign_medical-Build.exercised"
+    rows = [json.loads(l) for l in (ctrl / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert [r for r in rows if r.get("gap_id") == gid][-1]["state"] == "OPEN"
+
+
+def test_c4_b_an_ended_but_never_started_row_is_not_executed(monkeypatch, tmp_path):
+    """(b) A row with ended_at set and started_at NULL, beside one genuinely started row. Only the
+    started row counts. Fails if build_history() reads ended_at (mutation C4-M5): both would count."""
+    rows = [dict(asset_id="bg_sign_medical", state="aborted", started_at=None, ended_at="2026-09-28T01:00"),
+            dict(asset_id="bg_sign_medical", state="complete", started_at="2026-09-27T01:00",
+                 ended_at="2026-09-27T01:05", disposition="build")]
+    monkeypatch.setattr(ac, "build_history", _REAL["build_history"])
+    fake = _column_evaluating_psql(rows)
+    monkeypatch.setattr(ac, "psql", fake)
+    monkeypatch.setattr(ac, "scalar", lambda sql: (lambda r: r[0][0] if r and r[0] else None)(fake(sql)))
+    h = ac.build_history("bg_", ["bg_sign_medical"])["per"]["bg_sign_medical"]
+    assert h["runs"] == 2 and h["executed"] == 1, h
+
+
+def _live_started_counts(layer, prefix, parse_safe_only):
+    reg, _ = ac.registry(layer)
+    hist = ac.build_history(prefix, sorted(reg))["per"]
+    ids = ", ".join(f"'{a}'" for a in sorted(reg))
+    where = " AND coalesce(left(a.error,200),'') !~ E'[\\n\\r]'" if parse_safe_only else ""
+    direct = {r[0]: (int(r[1]), int(r[2])) for r in ac.psql(
+        "SELECT a.asset_id, count(a.started_at)::text, count(a.ended_at)::text FROM build_run_assets a "
+        f"JOIN build_runs r ON r.id = a.run_id WHERE a.asset_id IN ({ids}){where} GROUP BY 1")}
+    return hist, direct
+
+
+@LIVE
+def test_live_c4_executed_equals_the_started_at_count():
+    """Live, read-only: for every L4 asset, build_history()'s executed tally equals a direct count of
+    build_run_assets rows with started_at set — over the rows build_history() parses intact (see the
+    xfail twin below) — and at least one asset has ended-but-unstarted rows, so reading ended_at or
+    counting by state would disagree."""
+    hist, direct = _live_started_counts("L4", "ph_", parse_safe_only=True)
+    assert any(s != e for s, e in direct.values()), "need an asset whose ended and started counts differ"
+    for aid, (started, _ended) in direct.items():
+        # A split row's started flag is lost (F-C4), so over the intact rows the tally is exact.
+        assert hist[aid]["executed"] == started, (aid, hist[aid]["executed"], started)
+
+
+@LIVE
+@pytest.mark.xfail(strict=True, reason="F-C4 (found by this test, NOT fixed — W2-1 C4 is tests-only): "
+                   "build_history() reads left(a.error,200) raw; an error text containing a newline "
+                   "splits one psql row into several lines, so that row's started flag is lost "
+                   "(executed undercounted — fail-safe) and traceback fragments appear as phantom "
+                   "per-asset keys (57 rows / 29 assets live on 2026-09-27; ph_sodhana 39 vs 41). "
+                   "strict=True: this test starts failing the day the read is made newline-safe.")
+def test_live_c4_executed_equals_the_started_at_count_over_all_rows():
+    hist, direct = _live_started_counts("L4", "ph_", parse_safe_only=False)
+    for aid, (started, _ended) in direct.items():
+        assert hist[aid]["executed"] == started, (aid, hist[aid]["executed"], started)
