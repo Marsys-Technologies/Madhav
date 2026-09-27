@@ -214,6 +214,12 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // null = nothing to clear, skip cleanly (avoids a spurious failed_tables entry).
   bo_samvada: null,
 
+  // Kāla service-health writers: each runs a self-test, updates only the global
+  // asset_registry health fields, and returns rows_inserted=0. Neither owns a
+  // chart-scoped data surface, so a chart clear has deliberately nothing to do.
+  ka_dasha_kala: null,
+  ka_tulana: null,
+
   // JL-020 / BA_FULL_ASSET_AUDIT: mi_abhilekha's registered target_table is
   // mimamsa_journal, count_sql is null, so it fell through to the target_table
   // fallback DELETE — wiping native_answer/answered_at rows (the native's real,

@@ -51,7 +51,7 @@ describe('correction preservation boundary', () => {
       expect(CORRECTION_PRESERVATION[id as keyof typeof CORRECTION_PRESERVATION].length).toBeGreaterThan(10)
     }
     expect(EXPLICIT_CLEAR_OPS.bo_samvada).toBeNull()
-    expect(Object.keys(CORRECTION_NOTHING_TO_CLEAR)).toEqual(['bo_samvada'])
+    expect(Object.keys(CORRECTION_NOTHING_TO_CLEAR).sort()).toEqual(['bo_samvada', 'ka_dasha_kala', 'ka_tulana'])
   })
 
   it('every null clear op is classified — a new skip-clean asset cannot slip through unclassified', () => {
@@ -69,6 +69,22 @@ describe('correction preservation boundary', () => {
     const { db, calls } = recorder()
     await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy: 'chart-correction-strict' })
     expect(calls.map((c) => c.sql)).toEqual((EXPLICIT_CLEAR_OPS.mi_bhavisya ?? []).map((op) => op.sql))
+  })
+
+  it('service-only writers with no chart rows require no destructive clear', async () => {
+    const { db, calls } = recorder()
+    const result = await invalidateAssets({
+      db,
+      chartId: CHART,
+      assets: [
+        asset('ka_dasha_kala', { asset_kind: 'service', asset_type: 'service' }),
+        asset('ka_tulana', { asset_kind: 'service', asset_type: 'service' }),
+      ],
+      policy: 'chart-correction-strict',
+    })
+    expect(calls).toHaveLength(0)
+    expect(result.clearedAssetIds).toEqual([])
+    expect(result.preservedAssetIds).toEqual([])
   })
 
   it('attested intervention filings survive: mi_sankalpa clears only the writer\'s own unresolved-elected rows, never a blanket per-chart wipe', async () => {

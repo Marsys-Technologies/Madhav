@@ -34,6 +34,11 @@ export const CORRECTION_PRESERVATION = {
 
 export const CORRECTION_NOTHING_TO_CLEAR = {
   bo_samvada: 'derived view over other bodha tables; owns no rows',
+  // Both Kāla assets are service-health writers. Their WriterBase implementations
+  // update only asset_registry.service_health/last_selftest_at/selftest_detail and
+  // return rows_inserted=0; they own no chart-scoped output to invalidate.
+  ka_dasha_kala: 'service self-test writer; owns no chart-scoped rows',
+  ka_tulana: 'service self-test writer; owns no chart-scoped rows',
 } as const
 
 export type InvalidationErrorCode = 'CLEAR_SPEC_MISSING' | 'INVALID_TABLE'
