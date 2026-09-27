@@ -10,6 +10,11 @@ status: HELD — awaiting consolidation merge; do not resume without explicit re
      (owed backfill)" section (docs-only verification, read-only production probes,
      zero production writes) and corrected the "Security follow-up" line from
      repository-scope to transcript-scope. No other content changed. -->
+<!-- Changelog: amended 2026-09-27 — the owed ledger backfill was EXECUTED under the
+     native's scoped PRODUCTION_LEDGER_BACKFILL_AUTHORIZED ruling: seven rows inserted
+     into _migrations_applied (1080–1084/1087/1091, 1086 excluded), verified, and the
+     seven files declared FROZEN at their recorded sha256 per the native's freeze
+     ruling. See the "BACKFILL EXECUTED 2026-09-27" paragraph in the gap section. -->
 
 # HOLD STATE — Gochara WP0-7 session (2026-09-24)
 
@@ -120,6 +125,33 @@ stop)** — owed for the seven applied files (1080, 1081, 1082, 1083, 1084, 1087
 lands, `migrate.ts` treats the seven as unapplied: any runner invocation would
 attempt re-apply (safe per the idempotency verification above, but a write) — keep
 the runner out of production until the native rules.
+
+**BACKFILL EXECUTED 2026-09-27** under the native's scoped authorization
+("PRODUCTION_LEDGER_BACKFILL_AUTHORIZED. Insert the seven `_migrations_applied`
+rows (1080, 1081, 1082, 1083, 1084, 1087, 1091) from the HOLD_STATE triples.
+1086 stays excluded — never applied."). Executed as `amjis_app` over a dedicated
+cloud-sql-proxy on 127.0.0.1:55440 (the native's 5433 proxy session untouched),
+with the password re-read fresh from Secret Manager (`amjis-db-password`, latest
+version) immediately before connecting — no cached connection string. One
+transaction: `BEGIN; INSERT INTO _migrations_applied (filename, applied_at,
+sha256, sql_identity) VALUES …7 rows…; COMMIT;` → `INSERT 0 7`. Pre-insert state
+verified: 0 rows for the eight filenames, 869 total rows, max id 871
+(`1079_…`). Post-insert verification: exactly 7 rows, filename/sha256/
+sql_identity matching the triples above digit-for-digit, **0 rows for 1086**,
+total 876. `applied_at` uses the historical apply timestamps recovered from the
+step evidence headers — 1080/1081: `2026-09-24T10:56:19Z` (step-4 first GREEN);
+1082/1083/1084/1087: `2026-09-24T11:46:25Z` (E-016-scope full APPLY_SET GREEN);
+1091: `2026-09-24T11:39:01Z` — the resume-window start (the apply is bounded in
+11:39:01Z–11:44:50Z by the ruling timestamp and commit `3fcf6a586`; no finer
+source exists, so the window start was recorded rather than inventing
+precision). `npx tsx scripts/migrate.ts --dry-run` against production after the
+backfill: **none of the seven listed as pending** (the only "would apply"
+entries are 1071, 1072 — cherry-picked-but-unapplied, do NOT apply; conjunct-(j)
+note stands — and 1086, correctly excluded).
+
+**FREEZE (per the native's ruling):** the seven migration files are FROZEN at
+their recorded sha256. Any later edit to one will fail the next deploy with
+`MigrationHashMismatchError`.
 
 ## Open gates / escalations awaiting the native
 

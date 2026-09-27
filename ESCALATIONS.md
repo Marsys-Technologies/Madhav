@@ -691,3 +691,20 @@ pre-computed (filename, sha256, sql_identity) triples live in
 section "Migration-ledger gap (owed backfill)" — cited, not duplicated here.
 Until the backfill lands, `migrate.ts` treats the seven as unapplied; keep the
 runner out of production.
+
+**RESOLVED 2026-09-27.** Under the native's scoped authorization
+("PRODUCTION_LEDGER_BACKFILL_AUTHORIZED … 1086 stays excluded — never applied"),
+the seven rows were inserted into `_migrations_applied` in one transaction
+(`INSERT 0 7`) as `amjis_app` over a dedicated proxy on 127.0.0.1:55440, password
+re-read fresh from Secret Manager immediately before connecting. Verified:
+exactly 7 rows with filename/sha256/sql_identity matching the HOLD_STATE triples
+digit-for-digit; 0 rows for 1086; table total 869 → 876. `applied_at` carries the
+historical apply timestamps from the step evidence (1080/1081
+2026-09-24T10:56:19Z; 1082/1083/1084/1087 2026-09-24T11:46:25Z; 1091
+2026-09-24T11:39:01Z, the resume-window start — the apply is bounded in
+11:39:01Z–11:44:50Z and no finer source exists). Post-backfill
+`npx tsx scripts/migrate.ts --dry-run` against production lists **none of the
+seven as pending** (only 1071/1072 — cherry-picked-but-unapplied, do not apply —
+and 1086 remain). **Per the native's ruling the seven migration files are FROZEN
+at their recorded sha256: any later edit fails the next deploy with
+`MigrationHashMismatchError`.**
