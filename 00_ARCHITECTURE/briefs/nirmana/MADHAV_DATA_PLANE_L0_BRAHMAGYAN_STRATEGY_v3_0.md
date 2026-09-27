@@ -143,7 +143,11 @@ traces_to:   0.3
 
 **40 assets.** The registry says 34 writer-backed and 6 not; **the code registers 36** — `bg_nakshatra_medical` and `bg_transit_engine` each carry a live `@register(...)` while the registry declares `has_writer = false`. Found 2026-09-26 by the new `Build` gate's first check (native ruling, decision 17); the two rows below are corrected and the registry itself is now a gap. 38 carry a `count_sql`; 2 are services with no table by design.
 1 is `catalog_status = DRAFT` (`bg_vidhi_floors`); the other 39 are CURRENT. Tracker state:
-**NO_BRIEF = 40/40, ELEVATED 0/40, gates certified 0/360.**
+**NO_BRIEF = 40/40, ELEVATED 0/40, gates certified 0/360** (pre-census-emission snapshot,
+2026-09-26 — `asset_census.py --emit-gaps` had not yet run against this layer; R70, DEGRADES
+per NIKASHA_CHANGE_REGISTER_v2_0.md, restates this section's own figures as a historical count
+rather than a live one, which drifts every run and is re-measured from the live ledger, not
+re-derived here).
 
 | asset | target table(s) | live (own count_sql) | floor | Δ | writer | integrity |
 |---|---|---|---|---|---|---|
@@ -726,8 +730,13 @@ C-8's three inherited rows are corrected above; the parent's detector is a reope
    asked the architectural question no gate would have asked — the key contract, the ephemeris grain, and
    a service's health signal.
 
-**Ledger after five pilots:** 30 gap rows, 18 opportunity rows, 5 assets at `GAPS_REGISTERED`, 35 at
-`NO_BRIEF`, 0/360 gates certified. The opportunities correctly do not withhold elevation.
+**Ledger after five pilots (pre-census-emission snapshot, 2026-09-26 — before
+`asset_census.py --emit-gaps` first ran against this layer; R70):** 30 gap rows, 18 opportunity
+rows, 5 assets at `GAPS_REGISTERED`, 35 at `NO_BRIEF`, 0/360 gates certified. The opportunities
+correctly do not withhold elevation. This count does not reproduce against the live ledger — the
+census's own `emit_gaps` additions and every later hand row grow `asset_gaps.jsonl` past this
+snapshot on every subsequent run; re-measure from the live ledger (`asset_gaps.jsonl`) and the
+tracker's own count, never restate a fresher figure here, which would only go stale again.
 
 **Three findings are layer-scope, not asset-scope, and belong to packets rather than briefs:** D1 source
 correspondence (absent, and pilot 2 is where it matters most), the undeclared normalisation at the
