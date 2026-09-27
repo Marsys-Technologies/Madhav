@@ -15,6 +15,7 @@ Run:
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 
@@ -130,5 +131,59 @@ def test_case_unclassified_null_grades_no_detector_never_pass():
 # ── Never-attempted asset (no attempt row at all) ──
 
 def test_case_never_attempted_grades_na():
+    """This is the LEGITIMATE case — attempt linkage genuinely wired (`attempt_linkage_wired`
+    defaults True) and the query genuinely found no attempt row. Distinct from F1 below, where
+    `attempt=None` means 'never queried', not 'confirmed absent'."""
     earn, _ = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None)
     assert earn["v"] == ac.NA and "Build.exercised" in earn["measured"]
+
+
+# ── F1 (A_REVIEW.md, Lane A gate REJECT): the unwired path must never read N/A ──
+
+def test_case_instrument_present_attempt_linkage_unwired_grades_no_detector_not_na():
+    """F1: `measure()` never queries build_run_assets for a real attempt (that wiring is
+    R42-R56, out of scope this lane — see §A-4) — it always calls `_grade_earn_cost` with
+    `attempt=None, attempt_linkage_wired=False`. Before this fix, `attempt=None` alone graded
+    N/A "never attempted", which is CLOSABLE: the moment migration 1094 lands, every one of the
+    ~40 L0 assets that DO have a build history would have its Earn.build_record gap wrongly
+    closed on a fact this run never measured. The unwired path must read NO_DETECTOR — never
+    N/A — regardless of instrument presence."""
+    earn, cost = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None,
+                                      attempt_linkage_wired=False)
+    assert earn["v"] == ac.NO_DET, f"expected NO_DETECTOR, got {earn['v']}: {earn['measured']}"
+    assert "attempt linkage not wired" in earn["measured"]
+    assert earn["v"] not in ac.CLOSABLE, "NO_DETECTOR must never be a closable verdict"
+    assert cost["v"] == ac.NO_DET, "Cost.baseline is equally unwired — same fix, same reason"
+    assert "attempt linkage not wired" in cost["measured"]
+
+
+def test_case_attempt_linkage_unwired_is_the_default_measure_call_shape(monkeypatch):
+    """Locks in the actual `measure()` call site shape so this test fails if the call site
+    regresses back to the pre-F1 form (attempt=None with no attempt_linkage_wired argument,
+    which would silently fall back to the default True and grade N/A again)."""
+    import inspect
+    src = inspect.getsource(ac.measure)
+    assert "attempt_linkage_wired=False" in src, (
+        "measure() must pass attempt_linkage_wired=False explicitly — attempt querying (R42-R56) "
+        "is not wired at this call site"
+    )
+
+
+def test_emit_gaps_does_not_close_on_the_unwired_no_detector(tmp_path, monkeypatch):
+    """F1's closure-side proof: simulate a previously-OPEN Earn.build_record gap, then run
+    emit_gaps against exactly the measurement `_grade_earn_cost` now produces for the unwired
+    path with the instrument present. The gap must stay OPEN, not close."""
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    ledger = tmp_path / "asset_gaps.jsonl"
+    ledger.write_text(
+        '{"asset": "bg_x", "gap_id": "bg_x-Earn.build_record", "kind": "gap", '
+        '"criterion": "Earn.build_record", "what": "w", "change": "", "detector": "d", '
+        '"owner": "asset_census", "gate": "this asset\'s certification", "state": "OPEN", '
+        '"ts": "t0"}\n', encoding="utf-8")
+    earn, _ = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None,
+                                   attempt_linkage_wired=False)
+    census = dict(layer="L0", assets=[dict(asset_id="bg_x", measurements={"Earn.build_record": earn})])
+    added, skipped, closed, reopened = ac.emit_gaps(census)
+    assert closed == 0, "the unwired NO_DETECTOR path must never close a gap"
+    rows = [json.loads(ln) for ln in ledger.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    assert rows[-1]["state"] == "OPEN"

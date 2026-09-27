@@ -481,7 +481,8 @@ def duration_instrument_present() -> bool | None:
         return None
 
 
-def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, baseline: dict | None) -> tuple[dict, dict]:
+def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, baseline: dict | None,
+                      attempt_linkage_wired: bool = True) -> tuple[dict, dict]:
     """D6 (DECISIONS_RECOMMENDATIONS_v2_0.md D6, R55 re-specified): grade `Earn.build_record` and
     `Cost.baseline` — two SEPARATE measurements, neither certifying the whole Earn gate, Cost not
     one of the nine gates at all (tier 4 §1's build-cost baseline only).
@@ -491,11 +492,23 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
     `asset_throughput.duration_seconds` column to test against — which does not exist in this
     environment (migration 1094 not applied, confirmed 2026-09-27 in both production and the
     nikasha_sandbox proof DB) or in production, so this function is EXERCISED here only through
-    its own test suite; `measure()` calls it with `instrument_present=False` today and will grade
-    for real the moment migration 1094 lands, without any further code change.
+    its own test suite.
+
+    F1 (Lane A gate review, `nikasha_test/wave1/A_REVIEW.md`): `measure()` does NOT query
+    `build_run_assets` for a real attempt today — that wiring is R42–R56, a separate lane this
+    packet stops short of (§A-4). So `measure()` always calls this with `attempt=None` AND
+    `attempt_linkage_wired=False`, regardless of whether the instrument (migration 1094) is
+    present. This is deliberately NOT the same claim as "genuinely never attempted": the fixed
+    call site's earlier docstring said this "will grade for real the moment migration 1094 lands,
+    without any further code change" — that was false. Grading for real needs the attempt query
+    (R42–R56) to land too; until then, an instrument-present-but-unwired run must read
+    `NO_DETECTOR — attempt linkage not wired`, not the closable `N/A "never attempted"` a genuine
+    no-attempt-row case would use — the latter would falsely CLOSE every `Earn.build_record` gap
+    for every asset that was in fact built, the instant the column exists.
 
     `attempt` is the latest build_run_assets row for (asset, chart scope), or None if the asset
-    has never been attempted. Expected keys: `state` ("complete"/"error"/"aborted"/"queued"),
+    has never been attempted (only a meaningful "None" when `attempt_linkage_wired` is True — see
+    above). Expected keys: `state` ("complete"/"error"/"aborted"/"queued"),
     `disposition` ("skip_no_delta"/"probe_green"/"" ), `reached_completion_write` (bool — did
     execution get far enough that a duration WOULD have been recorded if the instrument were
     working), `duration_seconds` (float/None), `rows_written` (int/None), `is_legacy_telemetry`
@@ -520,6 +533,12 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
         return dict(nd), dict(nd)
 
     # From here, the instrument genuinely exists — grade Earn.build_record for the latest attempt.
+    if attempt is None and not attempt_linkage_wired:
+        # F1: the instrument exists but this call site never queried build_run_assets for an
+        # attempt at all — `attempt=None` here means "unknown", never "confirmed absent". Reading
+        # N/A would close a gap on a fact this run never actually measured.
+        nd = dict(v=NO_DET, measured="NO_DETECTOR — attempt linkage not wired")
+        return dict(nd), dict(nd)
     if attempt is None:
         earn = dict(v=NA, measured="never attempted — see Build.exercised")
     elif attempt.get("disposition") in ("skip_no_delta", "probe_green") or not attempt.get("has_writer", True):
@@ -671,10 +690,17 @@ def measure(layer_key: str) -> dict:
         # migration 1094 not applied) and grades NO_DETECTOR for both measurements when it is —
         # never the naive "rows_per_second populated => PASS" this replaces, which could not tell
         # a genuinely-measured build from a stale/never-cleared column (R44/R55). `attempt`/
-        # `baseline` are unused while the instrument is absent, so None is honest here; the
-        # per-attempt wiring lands with migration 1094 (see `_grade_earn_cost`'s own docstring).
+        # `baseline` are unused here because THIS call site never queries build_run_assets for a
+        # real attempt — that wiring is R42-R56 (a separate lane, see §A-4), not landed by this
+        # packet. `attempt_linkage_wired=False` says so explicitly, so `_grade_earn_cost` reads
+        # NO_DETECTOR — attempt linkage not wired instead of the closable N/A "never attempted"
+        # once the instrument is present (F1, `nikasha_test/wave1/A_REVIEW.md`): the moment
+        # migration 1094 lands, grading for REAL still needs the attempt query to land too, and
+        # until it does this call site must not claim "never attempted" for assets that plainly
+        # were.
         m["Earn.build_record"], m["Cost.baseline"] = _grade_earn_cost(
-            attempt=None, instrument_present=instrument_present, baseline=None)
+            attempt=None, instrument_present=instrument_present, baseline=None,
+            attempt_linkage_wired=False)
 
         floor = r["target_floor"]
         if live is not None and floor and floor.isdigit():
