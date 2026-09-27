@@ -1220,6 +1220,49 @@ def write_closure_report_md(closure: dict, out_path: Path = CLOSURE_REPORT_PATH)
         "the documented population of 127."
     )
     lines.append("")
+    lines.append("## How this closure is computed (R6)")
+    lines.append("")
+    lines.append(
+        "**Seed sets** — `reviewed_seed` is every `asset_id` carried by a `disposition: "
+        "reviewed_output` producer across all 182 SCUs (the \"before\" seed, 14 assets); "
+        "`all_seed` is every `asset_id` carried by ANY producer of any disposition "
+        "(`reviewed_output` ∪ `derived_from_source_query` ∪ `derived_from_service_probe` ∪ "
+        "`route_evidence_only`) across all 182 SCUs (the \"after\" seed, 94 assets)."
+    )
+    lines.append("")
+    lines.append(
+        "**Edges** — `asset_registry.depends_on` (a `text[]` column on each asset row), read "
+        "once via `load_asset_registry()`'s single SELECT and never re-queried per traversal step."
+    )
+    lines.append("")
+    lines.append(
+        "**Traversal** — `transitive_upstream_closure(seeds, depends_on)` (pure Python, no DB "
+        "access after the initial load): a worklist walk starting from `seeds`, at each step "
+        "adding every `asset_id` in the current asset's `depends_on` array not already visited, "
+        "until the frontier is empty. This is the in-process equivalent of the recursive CTE "
+        "below, which the wave1 gate re-review independently ran directly against production to "
+        "confirm the same 111/127 and the same 16 still-outside assets:"
+    )
+    lines.append("")
+    lines.append("```sql")
+    lines.append("WITH RECURSIVE closure(asset_id) AS (")
+    lines.append("  SELECT unnest(<seed_asset_ids>::text[])")
+    lines.append("  UNION")
+    lines.append("  SELECT unnest(ar.depends_on)")
+    lines.append("  FROM asset_registry ar")
+    lines.append("  JOIN closure c ON ar.asset_id = c.asset_id")
+    lines.append(")")
+    lines.append("SELECT count(DISTINCT c.asset_id)")
+    lines.append("  FROM closure c")
+    lines.append("  JOIN asset_registry ar2 ON ar2.asset_id = c.asset_id")
+    lines.append(" WHERE ar2.is_active AND ar2.dead_flag IS NOT TRUE;")
+    lines.append("```")
+    lines.append("")
+    lines.append(
+        "**Necessary** = `closure ∩ active population` (the population query above). "
+        "**Still outside** = `active population − necessary` (§\"Still outside the closure\" below)."
+    )
+    lines.append("")
     lines.append("## Before (reviewed producers only — the D5 rev. 2.1 ruling's own baseline)")
     lines.append("")
     lines.append(f"- Named producer assets: **{closure['before']['named_producers']}**")

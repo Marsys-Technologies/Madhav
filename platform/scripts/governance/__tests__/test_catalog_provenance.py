@@ -854,3 +854,27 @@ def test_check_fails_when_the_artifact_carries_an_unknown_scu_through_the_real_e
     out = capsys.readouterr().out
     assert exit_code != 0
     assert "scu.test.not_in_catalog" in out
+
+
+# ── R6: CLOSURE_REPORT.md must state the closure computation itself ─────────
+
+
+def test_write_closure_report_md_states_the_closure_computation(tmp_path):
+    """R6 (B_REVIEW2, C-6 'not landed' half): `CLOSURE_REPORT.md` previously
+    stated only the population query — never the closure computation itself
+    (seed sets, edges, the recursive `depends_on` traversal or its SQL
+    equivalent). Mutation this catches: removing the 'How this closure is
+    computed' section from `write_closure_report_md` reddens this test."""
+    closure = {
+        "population_active_count": 1,
+        "before": {"named_producers": 0, "necessary_count": 0},
+        "after": {"named_producers": 0, "necessary_count": 0},
+        "still_outside_by_layer": {},
+        "still_outside_reason_class_counts": {},
+    }
+    out_path = tmp_path / "CLOSURE_REPORT.md"
+    cp.write_closure_report_md(closure, out_path=out_path)
+    text = out_path.read_text()
+    assert "How this closure is computed" in text
+    assert "depends_on" in text
+    assert "RECURSIVE" in text
