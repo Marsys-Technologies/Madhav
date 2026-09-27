@@ -1,8 +1,8 @@
 /**
- * RosterTableView — Nirmāṇa affordance access control (Phase 2B).
+ * RosterTableView — minimal Jātaka directory table (Jātaka chart workspace, Task 2).
  *
- * When canBuild=true  → Nirmāṇa renders as a navigable link.
- * When canBuild=false → Nirmāṇa renders as a disabled button.
+ * Each row opens the chart workspace through one accessible name link. There
+ * is no Actions column and no placeholder Current dasha column.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -53,44 +53,53 @@ function makeChart(overrides: Partial<ChartWithMeta> = {}): ChartWithMeta {
   }
 }
 
-describe('RosterTableView — Nirmāṇa affordance (Phase 2B canBuild gate)', () => {
-  it('canBuild=true → Nirmāṇa is a link', () => {
-    render(<RosterTableView charts={[makeChart({ canBuild: true })]} />)
-    const link = screen.getByRole('link', { name: /nirmāṇa \(build\)/i })
-    expect(link).toBeTruthy()
-    expect((link as HTMLAnchorElement).href).toContain('/clients/chart-xyz/nirmana')
-    expect(screen.queryByTestId('nirmana-disabled')).toBeNull()
+describe('RosterTableView — minimal directory contract', () => {
+  it('has exactly the truthful roster columns', () => {
+    render(<RosterTableView charts={[makeChart()]} />)
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[↑↓]/g, '').trim())
+    expect(headers).toEqual(['Name', 'Birth details', 'Build', 'Last activity'])
+    expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: /current dasha/i })).not.toBeInTheDocument()
   })
 
-  it('canBuild=false → Nirmāṇa is a disabled button with tooltip', () => {
-    render(<RosterTableView charts={[makeChart({ canBuild: false })]} />)
-    const btn = screen.getByTestId('nirmana-disabled')
-    expect(btn.tagName).toBe('BUTTON')
-    expect(btn).toHaveAttribute('disabled')
-    expect(btn).toHaveAttribute('title', 'View-only — build restricted')
-    const links = screen.getAllByRole('link')
-    const nirmanaLink = links.find((el) => (el as HTMLAnchorElement).href?.includes('nirmana'))
-    expect(nirmanaLink).toBeUndefined()
+  it('makes each chart name the row link to its workspace', () => {
+    render(<RosterTableView charts={[makeChart()]} />)
+    expect(screen.getByRole('link', { name: 'Roster Chart' })).toHaveAttribute('href', '/clients/chart-xyz')
   })
 
-  it('canBuild=false → Pariprashna link still present', () => {
-    render(<RosterTableView charts={[makeChart({ canBuild: false })]} />)
-    const link = screen.getByRole('link', { name: /pariprashna \(consult\)/i })
-    expect(link).toBeTruthy()
-  })
-
-  it('mixed roster — owner canBuild=true, grantee canBuild=false', () => {
+  it('renders no Nirmāṇa or Paripraśna actions for owners or grantees', () => {
     const charts = [
       makeChart({ id: 'owner-chart', name: 'Owner Chart', canBuild: true }),
       makeChart({ id: 'granted-chart', name: 'Granted Chart', canBuild: false }),
     ]
     render(<RosterTableView charts={charts} />)
-    const disabledBtns = screen.getAllByTestId('nirmana-disabled')
-    expect(disabledBtns).toHaveLength(1)
-    const nirmanaLinks = screen.getAllByRole('link').filter(
-      (el) => (el as HTMLAnchorElement).href?.includes('nirmana')
+    expect(screen.queryByText('Nirmāṇa')).not.toBeInTheDocument()
+    expect(screen.queryByText(/pariprashna|paripraśna/i)).not.toBeInTheDocument()
+    const links = screen.getAllByRole('link')
+    expect(links.map((l) => l.getAttribute('href')).sort()).toEqual(['/clients/granted-chart', '/clients/owner-chart'])
+  })
+
+  it('shows the shared readiness label beside the build percentage', () => {
+    render(
+      <RosterTableView
+        charts={[
+          makeChart({
+            pyramidPercent: 33,
+            readiness: {
+              state: 'partially-built',
+              percent: 33,
+              label: 'Partially built',
+              layerPips: [],
+              lastActivity: null,
+              activeRunId: null,
+              latestRunId: null,
+              latestError: null,
+            },
+          }),
+        ]}
+      />,
     )
-    expect(nirmanaLinks).toHaveLength(1)
-    expect((nirmanaLinks[0] as HTMLAnchorElement).href).toContain('owner-chart')
+    expect(screen.getByText('33%')).toBeInTheDocument()
+    expect(screen.getByText('Partially built')).toBeInTheDocument()
   })
 })
