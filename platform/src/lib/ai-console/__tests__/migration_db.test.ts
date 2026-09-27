@@ -19,6 +19,29 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
   const configuration = randomUUID()
   const schema = `ai_test_${randomUUID().replaceAll('-', '')}`
 
+  async function insertSnapshot(client: Pool | PoolClient, cid: string) {
+    const id = randomUUID()
+    const choice = { kind: 'provider_model', connectionId: connection, modelId: 'model-a' }
+    const roleMap = Object.fromEntries(roles.map(role => [role, { ...choice, providerId: 'openai' }]))
+    await client.query(`INSERT INTO ai_turn_routing_snapshots(id,user_id,correlation_id,source,conversation_id,selection,resolved_choice,roles)
+      VALUES($1,$2,$6,'pariprashna',$3,'{"kind":"default"}',$4,$5)`, [id, user, cid, choice, roleMap, id])
+    return id
+  }
+
+  // Both writes finish (and hold their FK KEY SHARE locks) before either commit starts.
+  async function concurrentCommits(work: (client: PoolClient, index: number) => Promise<unknown>) {
+    const clients = await Promise.all([pool.connect(), pool.connect()])
+    try {
+      await Promise.all(clients.map(client => client.query("BEGIN; SET LOCAL lock_timeout='3s'")))
+      await Promise.all(clients.map(work))
+      const commits = await Promise.allSettled(clients.map(client => client.query('COMMIT')))
+      for (const result of commits) if (result.status === 'rejected') throw result.reason
+    } finally {
+      await Promise.all(clients.map(client => client.query('ROLLBACK')))
+      clients.forEach(client => client.release())
+    }
+  }
+
   async function transaction<T>(work: (client: PoolClient) => Promise<T>) {
     const client = await pool.connect()
     try {
@@ -51,10 +74,23 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
     pool = new Pool({ connectionString: databaseUrl, options: `-c search_path=${schema},public`, max: 4 })
     await pool.query(`CREATE SCHEMA ${schema}`)
     await pool.query(`CREATE TABLE profiles(id text PRIMARY KEY);
-      CREATE TABLE conversations(id uuid PRIMARY KEY, user_id text NOT NULL REFERENCES profiles(id));`)
+      CREATE TABLE charts(id uuid PRIMARY KEY);
+      CREATE TABLE conversations(id uuid PRIMARY KEY, user_id text NOT NULL REFERENCES profiles(id), chart_id uuid REFERENCES charts(id) ON DELETE CASCADE);
+      CREATE TABLE _migrations_applied(filename text PRIMARY KEY);`)
     const sql = readFileSync(resolve(__dirname, '../../../../migrations/1120_ai_console_byok_routing.sql'), 'utf8')
-    await pool.query(sql)
-    await pool.query(sql)
+    // Model the canonical runner: DDL and tracking must roll back as one transaction.
+    await expect(transaction(async client => {
+      await client.query(sql)
+      await client.query("INSERT INTO _migrations_applied VALUES ('1120')")
+      throw new Error('simulated failure before runner commit')
+    })).rejects.toThrow('simulated failure before runner commit')
+    expect((await pool.query('SELECT * FROM _migrations_applied')).rowCount).toBe(0)
+    expect((await pool.query('SELECT count(*)::int AS n FROM pg_tables WHERE schemaname=$1 AND tablename LIKE $2', [schema, 'ai_%'])).rows[0].n).toBe(0)
+    await transaction(async client => {
+      await client.query(sql)
+      await client.query("INSERT INTO _migrations_applied VALUES ('1120')")
+    })
+    await transaction(client => client.query(sql))
     await pool.query('INSERT INTO profiles(id) VALUES($1),($2)', [user, otherUser])
     await pool.query('INSERT INTO conversations(id,user_id) VALUES($1,$2)', [conversation, user])
     await pool.query(`INSERT INTO ai_provider_connections
@@ -158,5 +194,49 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
     expect((await pool.query('SELECT connection_id FROM ai_user_defaults WHERE user_id=$1', [user])).rows[0].connection_id).toBe(connection)
     await expect(pool.query('DELETE FROM ai_provider_connections WHERE id=$1', [connection])).rejects.toMatchObject({ code: '23503' })
     await pool.query('UPDATE ai_custom_configurations SET deleted_at=now(),version=version+1 WHERE id=$1', [configuration])
+  })
+  it('commits distinct correlations for the same conversation without FK lock-upgrade deadlock', async () => {
+    await concurrentCommits(client => insertSnapshot(client, conversation))
+    expect((await pool.query('SELECT * FROM ai_turn_routing_snapshots WHERE conversation_id=$1', [conversation])).rowCount).toBe(3)
+  })
+  it('commits concurrent role changes while both transactions hold parent FK key-share locks', async () => {
+    await concurrentCommits(async (client, index) => {
+      await client.query('SELECT id FROM ai_custom_configurations WHERE id=$1 FOR KEY SHARE', [configuration])
+      await client.query('UPDATE ai_custom_configuration_roles SET model_id=$1 WHERE configuration_id=$2 AND role=$3', ['model-a', configuration, roles[index]])
+    })
+    expect((await pool.query('SELECT * FROM ai_custom_configuration_roles WHERE configuration_id=$1', [configuration])).rowCount).toBe(4)
+  })
+  it('rejects direct DELETE, UPDATE and TRUNCATE on every history table', async () => {
+    await pool.query("INSERT INTO ai_configuration_audit_log(user_id,actor_user_id,event) VALUES($1,$1,'default_selected')", [user])
+    for (const table of ['ai_turn_routing_snapshots', 'ai_turn_role_invocations', 'ai_configuration_audit_log']) {
+      await expect(pool.query(`DELETE FROM ${table}`)).rejects.toMatchObject({ code: '23514' })
+      await expect(pool.query(`UPDATE ${table} SET created_at=now()`)).rejects.toMatchObject({ code: '23514' })
+      await expect(pool.query(`TRUNCATE ${table} CASCADE`)).rejects.toMatchObject({ code: '23514' })
+    }
+    const truncateGrants = await pool.query(`SELECT c.relname FROM pg_class c
+      JOIN pg_namespace n ON n.oid=c.relnamespace
+      CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) acl
+      JOIN pg_roles r ON r.oid=acl.grantee
+      WHERE n.nspname=$1 AND c.relname=ANY($2::text[])
+        AND r.rolname='service_role' AND r.oid<>c.relowner AND acl.privilege_type='TRUNCATE'`,
+    [schema, ['ai_turn_routing_snapshots', 'ai_turn_role_invocations', 'ai_configuration_audit_log']])
+    expect(truncateGrants.rowCount).toBe(0)
+  })
+  it('erases only dependent selection, snapshots and receipts on conversation or chart deletion', async () => {
+    for (const throughChart of [false, true]) {
+      const chart = randomUUID()
+      const cid = randomUUID()
+      await pool.query('INSERT INTO charts(id) VALUES($1)', [chart])
+      await pool.query('INSERT INTO conversations(id,user_id,chart_id) VALUES($1,$2,$3)', [cid, user, chart])
+      await pool.query("INSERT INTO ai_conversation_selections(conversation_id,user_id,kind) VALUES($1,$2,'default')", [cid, user])
+      const snapshot = await insertSnapshot(pool, cid)
+      await pool.query("INSERT INTO ai_turn_role_invocations(snapshot_id,role,phase,status) VALUES($1,'worker','start','started'),($1,'worker','terminal','succeeded')", [snapshot])
+      await pool.query(throughChart ? 'DELETE FROM charts WHERE id=$1' : 'DELETE FROM conversations WHERE id=$1', [throughChart ? chart : cid])
+      expect((await pool.query('SELECT * FROM ai_conversation_selections WHERE conversation_id=$1', [cid])).rowCount).toBe(0)
+      expect((await pool.query('SELECT * FROM ai_turn_routing_snapshots WHERE id=$1', [snapshot])).rowCount).toBe(0)
+      expect((await pool.query('SELECT * FROM ai_turn_role_invocations WHERE snapshot_id=$1', [snapshot])).rowCount).toBe(0)
+      expect((await pool.query('SELECT * FROM ai_turn_routing_snapshots WHERE conversation_id=$1', [conversation])).rowCount).toBe(3)
+      expect((await pool.query('SELECT * FROM ai_configuration_audit_log WHERE user_id=$1', [user])).rowCount).toBe(1)
+    }
   })
 })

@@ -3,7 +3,8 @@
 -- Provisional cross-cutting slot; 1070-1119 reserved for L3.
 -- Additive only. Rollback requires export/retention review of immutable history.
 -- Firebase ownership is checked by the server; these tables are service-only.
-BEGIN;
+-- Transaction owned by platform/scripts/migrate.ts, including its tracking insert.
+-- Do not add transaction control here: an inner COMMIT would break runner atomicity.
 
 CREATE OR REPLACE FUNCTION ai_choice_shape(k text, conn uuid, model text, config uuid, cli text, allow_default boolean DEFAULT false)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
@@ -131,7 +132,7 @@ CREATE INDEX IF NOT EXISTS ai_defaults_connection_idx ON ai_user_defaults(connec
 CREATE INDEX IF NOT EXISTS ai_defaults_configuration_idx ON ai_user_defaults(configuration_id) WHERE configuration_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS ai_conversation_selections (
-  conversation_id uuid PRIMARY KEY REFERENCES conversations(id) ON DELETE RESTRICT,
+  conversation_id uuid PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
   user_id text NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   kind text NOT NULL CHECK (kind IN ('default','provider_model','custom_configuration','local_cli')),
   connection_id uuid,
@@ -191,7 +192,7 @@ CREATE TABLE IF NOT EXISTS ai_turn_routing_snapshots (
   user_id text NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   correlation_id text NOT NULL CHECK (btrim(correlation_id) <> ''),
   source text NOT NULL CHECK (source IN ('pariprashna','mcp','backend')),
-  conversation_id uuid REFERENCES conversations(id) ON DELETE RESTRICT,
+  conversation_id uuid REFERENCES conversations(id) ON DELETE CASCADE,
   selection jsonb NOT NULL,
   resolved_choice jsonb NOT NULL,
   configuration_version bigint,
@@ -221,7 +222,7 @@ BEGIN
 END $$;
 
 CREATE TABLE IF NOT EXISTS ai_turn_role_invocations (
-  snapshot_id uuid NOT NULL REFERENCES ai_turn_routing_snapshots(id) ON DELETE RESTRICT,
+  snapshot_id uuid NOT NULL REFERENCES ai_turn_routing_snapshots(id) ON DELETE CASCADE,
   role text NOT NULL CHECK (role IN ('synthesizer','planner','deep_planner','worker')),
   phase text NOT NULL CHECK (phase IN ('start', 'terminal')),
   status text NOT NULL CHECK (status IN ('started','succeeded','failed','cancelled')),
@@ -254,14 +255,14 @@ DECLARE target uuid;
 BEGIN
   IF TG_TABLE_NAME = 'ai_custom_configurations' THEN target := COALESCE(NEW.id, OLD.id);
   ELSE target := COALESCE(NEW.configuration_id, OLD.configuration_id); END IF;
-  -- Lock the parent so concurrent role mutations cannot independently validate stale counts.
-  PERFORM 1 FROM ai_custom_configurations WHERE id=target FOR UPDATE;
+  -- Serialize checks without upgrading the FK's KEY SHARE to a conflicting lock.
+  PERFORM 1 FROM ai_custom_configurations WHERE id=target FOR NO KEY UPDATE;
   IF FOUND AND (SELECT count(*) FROM ai_custom_configuration_roles WHERE configuration_id=target) <> 4 THEN
     RAISE EXCEPTION 'AI configuration requires all four roles' USING ERRCODE='23514';
   END IF;
   IF TG_OP='UPDATE' AND TG_TABLE_NAME='ai_custom_configuration_roles' THEN
     IF OLD.configuration_id IS DISTINCT FROM NEW.configuration_id THEN
-      PERFORM 1 FROM ai_custom_configurations WHERE id=OLD.configuration_id FOR UPDATE;
+      PERFORM 1 FROM ai_custom_configurations WHERE id=OLD.configuration_id FOR NO KEY UPDATE;
       IF FOUND AND (SELECT count(*) FROM ai_custom_configuration_roles WHERE configuration_id=OLD.configuration_id) <> 4 THEN
         RAISE EXCEPTION 'AI configuration requires all four roles' USING ERRCODE='23514';
       END IF;
@@ -290,7 +291,7 @@ DECLARE cid uuid; owner_id text;
 BEGIN
   IF TG_TABLE_NAME = 'conversations' THEN cid := NEW.id; ELSE cid := NEW.conversation_id; END IF;
   IF cid IS NULL THEN RETURN NULL; END IF;
-  SELECT user_id INTO owner_id FROM conversations WHERE id=cid FOR UPDATE;
+  SELECT user_id INTO owner_id FROM conversations WHERE id=cid FOR NO KEY UPDATE;
   IF EXISTS (SELECT 1 FROM ai_conversation_selections WHERE conversation_id=cid AND user_id IS DISTINCT FROM owner_id)
     OR EXISTS (SELECT 1 FROM ai_turn_routing_snapshots WHERE conversation_id=cid AND user_id IS DISTINCT FROM owner_id) THEN
     RAISE EXCEPTION 'AI conversation owner mismatch' USING ERRCODE='23514';
@@ -306,6 +307,22 @@ CREATE CONSTRAINT TRIGGER ai_conversation_owner AFTER UPDATE ON conversations DE
 
 CREATE OR REPLACE FUNCTION ai_reject_history_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  -- Conversation/consent erasure is the sole exception to ordinary append-only history.
+  -- FK cascades run after their parent disappears, at nested trigger depth. Requiring
+  -- BOTH conditions prevents direct DELETE (including DELETE with a forged setting).
+  -- Audit rows have no conversation payload and are never included in this exception.
+  IF TG_OP = 'DELETE' AND pg_trigger_depth() > 1 THEN
+    IF TG_TABLE_NAME = 'ai_turn_routing_snapshots' THEN
+      IF OLD.conversation_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM conversations WHERE id = OLD.conversation_id) THEN
+        RETURN OLD;
+      END IF;
+    ELSIF TG_TABLE_NAME = 'ai_turn_role_invocations' THEN
+      IF NOT EXISTS (SELECT 1 FROM ai_turn_routing_snapshots WHERE id = OLD.snapshot_id) THEN
+        RETURN OLD;
+      END IF;
+    END IF;
+  END IF;
   RAISE EXCEPTION 'AI history is append-only' USING ERRCODE='23514';
 END $$;
 DO $$
@@ -314,6 +331,8 @@ BEGIN
   FOREACH t IN ARRAY ARRAY['ai_turn_routing_snapshots','ai_turn_role_invocations','ai_configuration_audit_log'] LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS ai_history_immutable ON %I', t);
     EXECUTE format('CREATE TRIGGER ai_history_immutable BEFORE UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION ai_reject_history_mutation()', t);
+    EXECUTE format('DROP TRIGGER IF EXISTS ai_history_no_truncate ON %I', t);
+    EXECUTE format('CREATE TRIGGER ai_history_no_truncate BEFORE TRUNCATE ON %I FOR EACH STATEMENT EXECUTE FUNCTION ai_reject_history_mutation()', t);
   END LOOP;
   FOREACH t IN ARRAY ARRAY['ai_provider_connections','ai_connection_models','ai_custom_configurations',
     'ai_custom_configuration_roles','ai_user_defaults','ai_cli_installations','ai_cli_models','ai_cli_grants',
@@ -326,9 +345,8 @@ BEGIN
       EXECUTE format('CREATE POLICY ai_service_only ON %I TO service_role USING (true) WITH CHECK (true)', t);
       EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE %I TO service_role', t);
       IF t IN ('ai_turn_routing_snapshots','ai_turn_role_invocations','ai_configuration_audit_log') THEN
-        EXECUTE format('REVOKE UPDATE, DELETE ON TABLE %I FROM service_role', t);
+        EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE %I FROM service_role', t);
       END IF;
     END IF;
   END LOOP;
 END $$;
-COMMIT;
