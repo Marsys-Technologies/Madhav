@@ -184,8 +184,6 @@ def fold_overlap_pairs(rows: list[dict], ts: str) -> list[dict]:
             owner=hand_row.get("owner", "asset_census"),
             gate=hand_row.get("gate", "this asset's certification"),
             state=hand_row.get("state", "OPEN"), ts=ts,
-            migration_note=f"R81 pair {pair['n']}: folded from {hand_id}" + (
-                f" and {census_id}" if census_row is not None else "")
         ))
 
         # Supersede the old hand id, unless it IS the final id (never happens here — every pair's
