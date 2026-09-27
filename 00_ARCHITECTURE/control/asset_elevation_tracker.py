@@ -42,7 +42,7 @@ LAYERS = {
        "instance":None,"briefs":"00_ARCHITECTURE/briefs/nirmana/l5_assets"},
 }
 
-# The certified gates. Eight, not thirty-three. A gate is a CLAIM WITH A DETECTOR THAT COULD RETURN
+# The certified gates. Nine, not thirty-three. A gate is a CLAIM WITH A DETECTOR THAT COULD RETURN
 # FALSE; everything that was merely "addressed in the brief" moved to SHAPE below, which produces no
 # certification record because a present section is not a verified claim. See the layer template §5.2.
 #
