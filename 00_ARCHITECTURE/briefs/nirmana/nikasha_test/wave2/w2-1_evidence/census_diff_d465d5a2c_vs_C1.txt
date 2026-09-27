@@ -1,0 +1,3 @@
+verdict moves d465d5a2c -> C1: 0
+text-only changes (verdict unchanged): {('L0', 'Build.exercised'): 35, ('L1', 'Build.exercised'): 19, ('L2', 'Build.exercised'): 23, ('L3', 'Build.exercised'): 21, ('L4', 'Build.exercised'): 9, ('L5', 'Build.exercised'): 14}
+assets whose Build.exercised PASS now reports unstarted rows beside executed ones: {'L0': 11, 'L1': 19, 'L2': 23, 'L3': 21, 'L4': 9, 'L5': 14}

@@ -1,0 +1,35 @@
+=== mutation C1-M1-exercised-counts-rows on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (38 -> 19 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open
+2 failed, 39 passed, 4 skipped in 2.14s
+--- reverted (byte-identical)
+--- after revert:
+193 passed, 9 skipped, 21 deselected in 3.03s
+=== mutation C1-M2-history-zero-completion-pass on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (80 -> 67 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_history_never_passes_with_zero_completions
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open
+3 failed, 38 passed, 4 skipped in 2.12s
+--- reverted (byte-identical)
+--- after revert:
+193 passed, 9 skipped, 21 deselected in 3.04s
+=== mutation C1-M3-started-ignored on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (36 -> 16 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_an_executed_row_still_exercises
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open
+3 failed, 38 passed, 4 skipped in 2.14s
+--- reverted (byte-identical)
+--- after revert:
+193 passed, 9 skipped, 21 deselected in 3.03s
+=== mutation C1-M4-full-revert-both on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (80 -> 67 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_history_never_passes_with_zero_completions
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open
+3 failed, 38 passed, 4 skipped in 2.13s
+--- reverted (byte-identical)
+--- after revert:
+2 failed, 191 passed, 9 skipped, 21 deselected in 3.04s
