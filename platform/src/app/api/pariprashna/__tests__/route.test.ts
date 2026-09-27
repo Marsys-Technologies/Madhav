@@ -604,7 +604,7 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
     vi.mocked(writeConversationMessages).mockImplementationOnce(async () => {
       corrected = true
       mockReadinessState.value = 'building'
-      return { verified: true, messageIds: [] }
+      return { verified: true, messageIds: [], missingMessageIds: [] }
     })
     mockReadinessState.value = 'ready'
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
