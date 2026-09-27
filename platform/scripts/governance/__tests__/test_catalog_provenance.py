@@ -1102,6 +1102,138 @@ def test_derive_all_gives_a_route_evidence_only_producer_an_explicit_no_detector
     assert not cp.scu_has_covering_producer(sp.producers)
 
 
+def _reo_only_snapshot() -> dict:
+    """Two synthetic SCUs whose only claim is `route_evidence_only`: one with no
+    other requirement, one that ALSO carries a `kind: derived` requirement (so
+    derive_all has a second reason to join — the route-evidence one must still
+    be the class token)."""
+    claim = {
+        "asset_id": "ka_kalasutra",
+        "disposition": "route_evidence_only",
+        "evidence": "handler reads kala_activation",
+    }
+    return {
+        "scus": [
+            {
+                "scu_id": "scu.test.reo_only",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "producer_output", "asset_id": "ka_kalasutra"}]}
+                ],
+                "producer_output_claims": [dict(claim)],
+            },
+            {
+                "scu_id": "scu.test.reo_plus_derived",
+                "availability_contracts": [
+                    {
+                        "requirements": [
+                            {"kind": "producer_output", "asset_id": "ka_kalasutra"},
+                            {"kind": "derived", "source_ref": "x.ts#y"},
+                        ]
+                    }
+                ],
+                "producer_output_claims": [dict(claim)],
+            },
+        ]
+    }
+
+
+def test_honest_route_evidence_only_scu_round_trips_through_the_real_check(tmp_path, monkeypatch, capsys):
+    """B1 (review-4 corrections): the honest state for an SCU whose only producer
+    is route evidence is `NO_DETECTOR — route_evidence_only_not_a_producer`, and
+    `--check` must ACCEPT that state — derivation and gate must agree. Before
+    this correction `derive_all` wrote the reason but `validate_derived_artifact`
+    rejected it, because its F2 guard treated the snapshot's route-evidence claim
+    as proof a producer belonged there (route evidence is not production). Also
+    pins that the route-evidence reason is the class token even when another
+    reason is joined to it. Mutation this catches: restoring the guard to fire on
+    ANY snapshot claim (including route_evidence_only) reddens this test."""
+    snapshot = _reo_only_snapshot()
+    prov = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
+    for scu_id in ("scu.test.reo_only", "scu.test.reo_plus_derived"):
+        assert cp.classify_no_detector_reason(prov[scu_id].no_detector) == "route_evidence_only_not_a_producer"
+    payload = {"scus": {k: v.to_json() for k, v in prov.items()}}
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+    monkeypatch.setattr(cp, "load_snapshot", lambda *a, **k: snapshot)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code == 0, out
+    assert "PASS" in out
+
+
+def test_check_fails_when_a_route_evidence_only_scu_is_relabelled_with_another_class(
+    tmp_path, monkeypatch, capsys
+):
+    """B1, reverse direction: an SCU whose only producer is a bound route-evidence
+    claim must carry the `route_evidence_only_not_a_producer` class — relabelling
+    it `no_contract` (exact format, closed set) hides the one fact derive_all
+    states first. Mutation this catches: dropping the reverse agreement check."""
+    snapshot = _reo_only_snapshot()
+    prov = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
+    payload = {"scus": {k: v.to_json() for k, v in prov.items()}}
+    payload["scus"]["scu.test.reo_only"]["no_detector"] = "NO_DETECTOR — no_contract: relabelled"
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+    monkeypatch.setattr(cp, "load_snapshot", lambda *a, **k: snapshot)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "scu.test.reo_only" in out
+    assert "scu.test.reo_plus_derived" not in out
+
+
+def test_check_fails_on_a_route_evidence_reason_with_no_route_evidence_producer(tmp_path, monkeypatch, capsys):
+    """B1: `route_evidence_only_not_a_producer` is a claim about the producers
+    present, not free text. On an SCU with no route-evidence producer at all
+    (`get_dignity`) it is false and must fail. Mutation this catches: dropping
+    the class/producer agreement check lets the false reason pass."""
+    payload = _load_real_committed_artifact()
+    target = "scu.catalog.get_dignity"
+    payload["scus"][target]["producers"] = []
+    payload["scus"][target]["no_detector"] = "NO_DETECTOR — route_evidence_only_not_a_producer: fabricated"
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_check_fails_when_temporal_activation_is_cut_to_route_evidence_with_the_honest_reason(
+    tmp_path, monkeypatch, capsys
+):
+    """B1: the review's reo-only cut (`scu.kala.temporal_activation` reduced to
+    its single `route_evidence_only` producer), this time WITH the exact-format
+    `route_evidence_only_not_a_producer` reason a forger would add. It must
+    still fail: the snapshot declares two `reviewed_output` claims on this SCU,
+    so the honest reason is false here. Mutation this catches: letting route
+    evidence count as coverage makes the cut read covered and pass."""
+    payload = _load_real_committed_artifact()
+    target = "scu.kala.temporal_activation"
+    entry = payload["scus"][target]
+    entry["producers"] = [p for p in entry["producers"] if p.get("disposition") == "route_evidence_only"]
+    assert len(entry["producers"]) == 1
+    entry["no_detector"] = "NO_DETECTOR — route_evidence_only_not_a_producer: only route-evidence claim(s)"
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
 def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
     tmp_path, monkeypatch, capsys
 ):

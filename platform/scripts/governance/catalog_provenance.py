@@ -892,9 +892,15 @@ def derive_all(
             # producer(s) — neither counts as "covered". In the second case,
             # name it explicitly rather than silently letting a non-covering
             # producer's mere presence stand in for coverage.
+            # B1: this reason goes FIRST, so the SCU's class token (the text
+            # before the first ":") reads `route_evidence_only_not_a_producer` —
+            # the most specific fact about this SCU's producers — and
+            # `validate_derived_artifact` can require that class to agree with
+            # the producers actually present (either direction).
             if sp.producers:
                 reo_assets = ", ".join(sorted({p.asset_id for p in sp.producers}))
-                per_requirement_reasons.append(
+                per_requirement_reasons.insert(
+                    0,
                     "NO_DETECTOR — route_evidence_only_not_a_producer: only route-evidence "
                     f"claim(s) for {reo_assets}; D5 rev. 2.1: route evidence is carried but never "
                     "counts as a producer on its own — executor application, flagged for native "
@@ -1572,7 +1578,12 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
       production — see `scu_has_covering_producer`, the same rule `derive_all`
       applies at derivation time). A `route_evidence_only` producer can still
       be BOUND (a real, snapshot-declared claim) while the SCU as a whole is
-      NOT covered, if it is the only producer present.
+      NOT covered, if it is the only producer present — and then the SCU's
+      no_detector class must be `route_evidence_only_not_a_producer`, a class
+      accepted ONLY when such a bound producer is present (agreement checked
+      both ways). The F2 guard ignores route-evidence claims: they prove
+      evidence, not a producer, so an honest route-evidence-only SCU passes
+      as NO_DETECTOR.
     - `derived_from_service_probe`: `source_ref` non-empty AND `asset_id` is
       named by a `kind: service_probe` requirement on this SCU
       (`snapshot_service_probe_asset_ids`). Counts as COVERING.
@@ -1597,6 +1608,7 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
         source_query_refs = source_query_refs_by_scu.get(scu_id, set())
 
         has_covering = False
+        has_bound_reo = False
         scu_failed = False
         for p in producers:
             disposition = p.get("disposition")
@@ -1619,6 +1631,7 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
                 # coverage on its own, regardless of binding.
                 if source_ref and (asset_id, disposition) in claim_keys:
                     bound = True
+                    has_bound_reo = True
             elif disposition == "derived_from_service_probe":
                 if source_ref and asset_id in probe_assets:
                     bound = True
@@ -1648,8 +1661,35 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
         # reason must still fail — the snapshot's own claim/probe entry for this
         # SCU is proof a producer should exist, and no reason string overrides
         # that).
-        if no_detector and classify_no_detector_reason(no_detector) in NO_DETECTOR_REASON_CLASSES:
-            if not claim_keys and not probe_assets:
+        reason_class = classify_no_detector_reason(no_detector)
+        # B1: the `route_evidence_only_not_a_producer` class must agree with the
+        # producers actually present, in both directions — it is a claim about
+        # them, not free text. Claimed with no bound route-evidence producer
+        # present: false. A bound route-evidence producer present (and nothing
+        # covering) under any OTHER class: the reason hides the one fact
+        # `derive_all` states first for such an SCU.
+        if reason_class == "route_evidence_only_not_a_producer" and not has_bound_reo:
+            failures.append(
+                f"{scu_id}: no_detector class 'route_evidence_only_not_a_producer' but no "
+                "snapshot-bound route_evidence_only producer is present"
+            )
+            continue
+        if has_bound_reo and reason_class in NO_DETECTOR_REASON_CLASSES and (
+            reason_class != "route_evidence_only_not_a_producer"
+        ):
+            failures.append(
+                f"{scu_id}: only route_evidence_only producer(s) present but no_detector class is "
+                f"{reason_class!r}, not 'route_evidence_only_not_a_producer'"
+            )
+            continue
+        # F2 guard: the snapshot's own COVERING claim (any disposition except
+        # route_evidence_only — B1: route evidence is not production, so a
+        # route-evidence-only claim cannot prove a producer belongs here) or
+        # service probe for this SCU is proof a producer should exist; no reason
+        # string overrides that.
+        covering_claim_keys = {k for k in claim_keys if k[1] != "route_evidence_only"}
+        if reason_class in NO_DETECTOR_REASON_CLASSES:
+            if not covering_claim_keys and not probe_assets:
                 continue
 
         failures.append(f"{scu_id}: no covering producer and no valid no_detector reason")
