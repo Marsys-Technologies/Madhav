@@ -86,6 +86,7 @@ import {
 } from './reading_parts'
 import { computeTurnReceiptProvenance } from './receipt_stage'
 import type { CitationGateOutcome } from './validation_stage'
+import { checkConversationWritable } from '@/lib/conversations/writeGuard'
 
 /**
  * MSR snippet resolver (read-only). Copy of the consult route's helper — this
@@ -306,7 +307,7 @@ export async function runPersistenceStage(args: {
     return Math.ceil(chars / 4)
   }
 
-  await runOnFinishWriteThrough(
+  const writeThrough = await runOnFinishWriteThrough(
     {
       pipelineKind: 'agentic',
       queryId,
@@ -363,6 +364,9 @@ export async function runPersistenceStage(args: {
       },
     },
     {
+      // Jātaka chart workspace: final archive/readiness recheck at persistence —
+      // a chart correction may have committed while this turn streamed.
+      writeGuard: () => checkConversationWritable({ conversationId, chartId }),
       persistence: {
         writeMessages: async (writeArgs) => {
           // History rows — legacy path, UNCHANGED (see scope-decision comment
@@ -816,4 +820,10 @@ export async function runPersistenceStage(args: {
       },
     },
   )
+
+  // The final recheck refused the write: say so on the wire rather than let the
+  // reader believe this turn was saved.
+  if (!writeThrough.persisted) {
+    em.error({ code: writeThrough.refusal.code, message: writeThrough.refusal.message, retryable: false, phase: 'finalize' })
+  }
 }

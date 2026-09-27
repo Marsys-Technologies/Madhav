@@ -197,7 +197,22 @@ export interface OnFinishWriteThroughOpts {
 }
 
 /** Injected I/O surfaces (mockable for tests). */
+/**
+ * Final authoritative recheck at the persistence boundary (Jātaka chart
+ * workspace): re-evaluated when the turn would be persisted, not only at
+ * admission. Required, so every caller must decide it explicitly.
+ */
+export type WriteGuard = () => Promise<
+  | { ok: true }
+  | { ok: false; code: string; message: string }
+>
+
+export type OnFinishWriteThroughResult =
+  | { persisted: true }
+  | { persisted: false; refusal: { code: string; message: string } }
+
 export interface OnFinishWriteThroughDeps {
+  writeGuard: WriteGuard
   persistence: PersistenceClient
   pricing: PricingClient
   contextAssemblyLog: ContextAssemblyLogWriter
@@ -231,7 +246,31 @@ export interface OnFinishWriteThroughDeps {
 export async function runOnFinishWriteThrough(
   opts: OnFinishWriteThroughOpts,
   deps: OnFinishWriteThroughDeps,
-): Promise<void> {
+): Promise<OnFinishWriteThroughResult> {
+  // 0. Final authoritative recheck — a chart correction may have committed while
+  // this turn streamed. A refusal (or a guard failure: fail closed) stops every
+  // write below: messages, bookkeeping, title, ledger and calibration stamp.
+  let guard: Awaited<ReturnType<WriteGuard>>
+  try {
+    guard = await deps.writeGuard()
+  } catch (err) {
+    console.error('[onfinish_writethrough] write guard failed', err)
+    guard = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', message: 'This reading could not be saved safely.' }
+  }
+  if (!guard.ok) {
+    const refusal = { code: guard.code, message: guard.message }
+    opts.writer.write({
+      type: 'data-persistence',
+      data: persistencePart({ conversation_id: opts.conversationId, message_id: '', status: 'error' }),
+    })
+    try {
+      void deps.pendingStreamWriter.clear()
+    } catch (err) {
+      console.error('[onfinish_writethrough] pending stream clear error', err)
+    }
+    return { persisted: false, refusal }
+  }
+
   // 1. data-cost — Observatory cost tile.
   if (opts.synthUsage) {
     try {
@@ -422,4 +461,6 @@ export async function runOnFinishWriteThrough(
   } catch (err) {
     console.error('[onfinish_writethrough] calibration stamp error', err)
   }
+
+  return { persisted: true }
 }

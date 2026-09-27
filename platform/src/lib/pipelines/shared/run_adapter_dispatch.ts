@@ -88,6 +88,7 @@ import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_v
 import { traceEmitter } from '@/lib/trace/emitter'
 
 import { runOnFinishWriteThrough } from './onfinish_writethrough'
+import { checkConversationWritable } from '@/lib/conversations/writeGuard'
 
 // ---------------------------------------------------------------------------
 // Context shape — everything the dispatch body needs from the route.
@@ -360,6 +361,15 @@ export function buildFirstVerdictEmission(
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
+
+/**
+ * Jātaka chart workspace: the final archive/readiness recheck the shared
+ * write-through runs at persistence time for the legacy consult door, bound to
+ * this dispatch's own conversation and chart and evaluated lazily.
+ */
+export function legacyConsultWriteGuard(ctx: Pick<RunAdapterDispatchCtx, 'finalConversationId' | 'chartId'>) {
+  return () => checkConversationWritable({ conversationId: ctx.finalConversationId, chartId: ctx.chartId })
+}
 
 export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Response> {
   const {
@@ -829,6 +839,8 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             emit,
           },
           {
+            // Jātaka chart workspace: final archive/readiness recheck at persistence.
+            writeGuard: legacyConsultWriteGuard({ finalConversationId, chartId }),
             persistence: {
               writeMessages: (args) => writeConversationMessages(args),
             },

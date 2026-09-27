@@ -533,3 +533,67 @@ describe('Jātaka chart workspace — Paripraśna write gates', () => {
     expect(mockCallPipelinePlanner).toHaveBeenCalled()
   })
 })
+
+describe('Jātaka chart workspace — persistence-boundary race (deterministic)', () => {
+  // These turns must reach persistence, so synthesis produces real text.
+  async function useTextSynthesis() {
+    const { runAgenticLoop } = await import('@/lib/synthesis/agentic_loop')
+    vi.mocked(runAgenticLoop).mockImplementation(async function* () {
+      yield { type: 'text_delta', text: 'Your tenth house is strongly placed this year.' }
+    } as never)
+    return () => vi.mocked(runAgenticLoop).mockImplementation((() => emptyAdapterEvents()) as never)
+  }
+
+  it('a turn admitted before a chart correction cannot persist after the correction commits', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { query } = await import('@/lib/db/client')
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    const { writeTurn } = await import('@/lib/pariprashna/store/writer')
+    const dbQuery = vi.mocked(query)
+    const original = dbQuery.getMockImplementation()!
+    let corrected = false
+    dbQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      // After the correction commits, the conversation row carries the lock.
+      if (corrected && /FROM conversations WHERE id/.test(sql)) {
+        return { rows: [{ chart_id: CHART, archive_reason: 'chart_details_changed' }] } as never
+      }
+      return original(sql, params)
+    })
+    vi.mocked(writeConversationMessages).mockClear()
+    vi.mocked(writeTurn).mockClear()
+
+    // 1. Start under the old state: admission passes (Ready, active conversation).
+    mockReadinessState.value = 'ready'
+    // 2. The correction commits while the turn is planning/streaming.
+    mockCallPipelinePlanner.mockImplementation(async () => {
+      corrected = true
+      mockReadinessState.value = 'building'
+      return planOutcome(['chart_facts_query'])
+    })
+
+    const { events } = await runRoute('What does my chart say about work?')
+
+    expect(mockInsertConversationWithId).toHaveBeenCalled() // admitted before the correction
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+    // 3. The final write is refused at the persistence boundary.
+    expect(vi.mocked(writeConversationMessages)).not.toHaveBeenCalled()
+    expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+
+    dbQuery.mockImplementation(original)
+    restoreSynthesis()
+  })
+
+  it('without a correction the same turn persists normally', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    vi.mocked(writeConversationMessages).mockClear()
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const { events } = await runRoute('What does my chart say about work?')
+    expect(vi.mocked(writeConversationMessages)).toHaveBeenCalled()
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(false)
+    restoreSynthesis()
+  })
+})
+
