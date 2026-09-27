@@ -533,7 +533,20 @@ def publish(conn, chart_id: str, generation: str) -> str:
             "WHERE chart_id = %s AND generation = %s",
             (chart_id, generation),
         ).fetchone()[0],
-        "windows": 0,  # windows are the projection's relation, not WP6-owned
+        "windows": (
+            # Honest count of the projection's relation when it exists
+            # (kala_gochara_windows is not WP6-owned; 0 when the table is
+            # absent, e.g. in ledger-only fixtures).
+            conn.execute(
+                "SELECT count(*) FROM kala_gochara_windows "
+                "WHERE chart_id = %s AND generation = %s",
+                (chart_id, generation),
+            ).fetchone()[0]
+            if conn.execute(
+                "SELECT to_regclass('kala_gochara_windows') IS NOT NULL"
+            ).fetchone()[0]
+            else 0
+        ),
     }
     conn.execute(
         """
