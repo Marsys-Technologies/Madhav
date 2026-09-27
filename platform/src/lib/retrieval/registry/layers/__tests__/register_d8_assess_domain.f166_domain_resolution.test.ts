@@ -25,6 +25,20 @@ const queryMock = vi.fn()
 vi.mock('@/lib/db/client', () => ({
   query: (...args: unknown[]) => queryMock(...args),
 }))
+// The served-generation fence (RC-1/RC-2) is proven in register_d8_assess_domain.build_fence.test.ts;
+// these suites exercise other behaviour, so the generation resolves to one served build.
+vi.mock('../../generation/served_generation', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../generation/served_generation')>()
+  return {
+    ...original,
+    resolveChartServedGeneration: async (chartId: string) => original.chartServedGenerationFromRows(chartId, null, [{
+      asset_id: 'ga_structural', partition_key: '__whole_asset__', receipt_version: 'v1',
+      receipt_build_id: '11111111-1111-4111-8111-111111111111', rows_build_id: '11111111-1111-4111-8111-111111111111',
+      receipt_state: 'proven', freshness_state: 'fresh', output_digest_spec_sha256: 'a'.repeat(64), spec_active: true,
+      receipt_run_state: 'completed', receipt_asset_present: true, receipt_disposition: 'build', observed_at: '2026-09-07T00:00:00Z',
+    }]),
+  }
+})
 
 const domainReadingHandler = vi.fn()
 const temporalHandler = vi.fn()

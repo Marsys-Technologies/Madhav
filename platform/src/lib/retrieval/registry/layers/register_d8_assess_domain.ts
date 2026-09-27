@@ -58,6 +58,14 @@ import {
   type GocharaSweepWindow,
 } from './reading_checklist'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
+import {
+  buildFenceIds,
+  resolveChartServedGeneration,
+  servedGenerationIdentity,
+  type BuildFence,
+  type ChartServedGeneration,
+  type UnresolvedAssetGeneration,
+} from '../generation/served_generation'
 // F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg. Before this, assess_*
 // consumed the OPERATIVE VARGA's dignity (D9 for relationship) but never the rāśi dignity/
 // house/ṣaḍbala of the domain's own bhāveśa, kāraka(s) or bhāva occupants — which is how
@@ -228,6 +236,7 @@ async function fetchVargaDignity(
   chart_id: string,
   ayanamsha_id: string,
   vargas: string[],
+  build_id?: BuildFence,
 ): Promise<Record<string, VargaDignityRow[]>> {
   const out: Record<string, VargaDignityRow[]> = {}
   for (const v of vargas) out[v] = []
@@ -237,8 +246,9 @@ async function fetchVargaDignity(
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
        AND fact_key = 'dignity_state'
-       AND fact_value_jsonb->>'varga' = ANY($3)`,
-    [chart_id, ayanamsha_id, vargas],
+       AND fact_value_jsonb->>'varga' = ANY($3)
+       ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+    build_id ? [chart_id, ayanamsha_id, vargas, buildFenceIds(build_id)] : [chart_id, ayanamsha_id, vargas],
   )
   for (const row of res.rows) {
     const jsonb = row['fact_value_jsonb'] as Record<string, unknown> | null
@@ -270,6 +280,7 @@ async function fetchVargaAvPindaSarva(
   chart_id: string,
   ayanamsha_id: string,
   vargas: string[],
+  build_id?: BuildFence,
 ): Promise<Record<string, VargaAvResult>> {
   const out: Record<string, VargaAvResult> = {}
   for (const v of vargas) out[v] = { rows: [], fact_ids: [], available: false }
@@ -278,8 +289,9 @@ async function fetchVargaAvPindaSarva(
     `SELECT fact_id, fact_subject, fact_key, fact_value_num
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'ashtakavarga_pinda_sarva_per_varga'
-       AND fact_key = ANY($3)`,
-    [chart_id, ayanamsha_id, vargas],
+       AND fact_key = ANY($3)
+       ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+    build_id ? [chart_id, ayanamsha_id, vargas, buildFenceIds(build_id)] : [chart_id, ayanamsha_id, vargas],
   )
   for (const row of res.rows) {
     const v = String(row['fact_key'] ?? '')
@@ -306,14 +318,17 @@ interface InduLagnaResult {
 }
 
 /** special_lagna INDU_LAGNA facts — the dedicated Jaimini wealth-strength lagna. */
-async function fetchInduLagna(chart_id: string, ayanamsha_id: string): Promise<InduLagnaResult | null> {
+async function fetchInduLagna(chart_id: string, ayanamsha_id: string, build_id?: BuildFence): Promise<InduLagnaResult | null> {
   try {
     const res = await query<Record<string, unknown>>(
       `SELECT fact_id, fact_key, fact_value_text, fact_value_num
        FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'special_lagna' AND fact_subject = 'INDU_LAGNA'
-         AND fact_key = ANY($3)`,
-      [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra']],
+         AND fact_key = ANY($3)
+         ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+      build_id
+        ? [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra'], buildFenceIds(build_id)]
+        : [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra']],
     )
     if (res.rows.length === 0) return null
     const byKey: Record<string, unknown> = {}
@@ -348,6 +363,7 @@ export async function buildVargaAnalysisDirect(
   chart_id: string,
   ayanamsha_id: string,
   domain: string,
+  build_id?: BuildFence,
 ): Promise<Record<string, unknown>> {
   // F-164: hydrate the live-read registry before the first synchronous read this request
   // makes of it (this call also feeds the reading_checklist_units block further down this
@@ -366,9 +382,9 @@ export async function buildVargaAnalysisDirect(
   }
   try {
     const [dignityByVarga, avByVarga, induLagna] = await Promise.all([
-      fetchVargaDignity(chart_id, ayanamsha_id, vargas),
-      fetchVargaAvPindaSarva(chart_id, ayanamsha_id, vargas),
-      DOMAIN_INDU_LAGNA.has(domain) ? fetchInduLagna(chart_id, ayanamsha_id) : Promise.resolve(null),
+      fetchVargaDignity(chart_id, ayanamsha_id, vargas, build_id),
+      fetchVargaAvPindaSarva(chart_id, ayanamsha_id, vargas, build_id),
+      DOMAIN_INDU_LAGNA.has(domain) ? fetchInduLagna(chart_id, ayanamsha_id, build_id) : Promise.resolve(null),
     ])
     const per_varga: Record<string, unknown> = {}
     const fact_ids: string[] = []
@@ -671,13 +687,66 @@ async function runAssessDomain(
     ASSESS_MAX_CONTRADICTIONS
   )
 
+  // Consumption fence (RC-1/RC-2): every chart-fact and derived-store read below is fenced to
+  // the chart's SERVED GENERATION — each asset's own writing run, resolved by the same rule the
+  // capability overlay and judgment_query use (generation/served_generation.ts). A failed
+  // resolution or an empty generation is a hard error: the assessment never falls through to
+  // unfenced reads that could serve an unreceipted or superseded run's rows.
+  let generation: ChartServedGeneration
+  try {
+    generation = await resolveChartServedGeneration(chart_id, null)
+  } catch (error) {
+    return {
+      content: {
+        error: `assess_${requested_domain_key}: served-generation resolution failed; refusing unfenced fact reads: ${String(error)}`,
+        code: 'served_generation_resolution_failed',
+        chart_id,
+      },
+      is_error: true,
+    }
+  }
+  const unresolvedAssets = Object.values(generation.assets)
+    .filter((asset): asset is UnresolvedAssetGeneration => asset.state === 'unresolved')
+    .map((asset) => ({ asset_id: asset.asset_id, reason: asset.reason }))
+  if (!servedGenerationIdentity(generation)) {
+    return {
+      content: {
+        error: `assess_${requested_domain_key}: no chart receipt resolves to a served generation; refusing unfenced fact reads.`,
+        code: 'no_served_generation',
+        chart_id,
+        unresolved_assets: unresolvedAssets,
+      },
+      is_error: true,
+    }
+  }
+  const build_ids = generation.served_build_ids
+  const generation_provenance = {
+    source: generation.source,
+    selection: 'per_asset_served_generation',
+    generation_hash: generation.generation_hash,
+    served_build_ids: build_ids,
+    withheld_builds: generation.withheld_builds,
+    unresolved_assets: unresolvedAssets,
+  }
+  const withheldAssetIds = generation.withheld_builds.flatMap((entry) => entry.resolved_asset_ids)
+  const generationFlags: JudgmentFlagEntry[] = unresolvedAssets.length || withheldAssetIds.length
+    ? [judgmentFlag(
+        'served_generation_unresolved_assets',
+        `served generation excludes ${unresolvedAssets.length} unresolved asset(s): ` +
+          unresolvedAssets.map((asset) => `${asset.asset_id} (${asset.reason})`).join(', ') +
+          (withheldAssetIds.length ? `; withholds ${withheldAssetIds.length} resolved asset(s) sharing their runs: ${withheldAssetIds.join(', ')}` : '') +
+          ' — a fenced leg may be empty for that reason, not because the chart lacks the configuration.',
+        'warning',
+      )]
+    : []
+
   try {
     // ── Step 1: domain reading (L2 Bodha) ──────────────────────────────────
     const { queryDomainReadingCapability } = await import(
       './L2_bodha/query_domain_reading'
     )
     const domainResult = await queryDomainReadingCapability.handler(
-      { chart_id, ayanamsha_id, domain },
+      { chart_id, ayanamsha_id, domain, build_id: build_ids },
       undefined
     )
 
@@ -870,7 +939,7 @@ async function runAssessDomain(
     try {
       const { querySignalsCapability } = await import('./L2_bodha/query_signals')
       const signalsResult = await querySignalsCapability.handler(
-        { chart_id, ayanamsha_id, domain, top_k: 50 },
+        { chart_id, ayanamsha_id, domain, top_k: 50, build_id: build_ids },
         undefined
       )
       if (!signalsResult.is_error) {
@@ -887,7 +956,7 @@ async function runAssessDomain(
     }
 
     // ── Step 5: direct varga/AV consumption (EL-45) — never a "see other tool" stub ──
-    const vargaAnalysis = await buildVargaAnalysisDirect(chart_id, ayanamsha_id, domain)
+    const vargaAnalysis = await buildVargaAnalysisDirect(chart_id, ayanamsha_id, domain, build_ids)
 
     // ── Step 5b (F-113): D1 (rāśi) significator condition ─────────────────────────
     // The varga leg above reads the OPERATIVE VARGA (D9 for relationship) only. Nothing in
@@ -897,7 +966,7 @@ async function runAssessDomain(
     // the leg reports its own empty_reason and the rest of the assessment stands.
     let significatorCondition: SignificatorCondition | null = null
     try {
-      significatorCondition = await buildSignificatorCondition(chart_id, ayanamsha_id, domain)
+      significatorCondition = await buildSignificatorCondition(chart_id, ayanamsha_id, domain, build_ids)
     } catch (err) {
       significatorCondition = null
       void err
@@ -953,9 +1022,10 @@ async function runAssessDomain(
          FROM bodha_msr_signals
          WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
            AND (signal_type_class = ANY($4) OR source_subsystem = 'varga')
+           AND build_id = ANY($5::uuid[])
          ORDER BY computed_salience DESC NULLS LAST
          LIMIT 200`,
-        [chart_id, ayanamsha_id, domain, STAGE_CLASSES],
+        [chart_id, ayanamsha_id, domain, STAGE_CLASSES, [...build_ids]],
       )
       stagePool = poolRes.rows
     } catch {
@@ -973,7 +1043,7 @@ async function runAssessDomain(
     let scoredStagePool: Record<string, unknown>[] = stagePool
     try {
       const as_of_date = new Date().toISOString().split('T')[0]!
-      l1ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+      l1ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_ids)
       if (stagePool.length > 0) {
         const scored = applyCompositeRanking(stagePool as unknown as MsrSignalRow[], l1ctx, domain)
         scoredStagePool = scored.map(s => {
@@ -1038,7 +1108,7 @@ async function runAssessDomain(
         for (const k of domainSpec.karakas) domainActors.add(k.toLowerCase())
         try {
           const lordRes = await resolveAddress(
-            chart_id, { type: 'lord_of', house: domainSpec.bhava }, { ayanamsha_id },
+            chart_id, { type: 'lord_of', house: domainSpec.bhava }, { ayanamsha_id, build_id: build_ids },
           )
           const lordEntity = lordRes.entities[0] as { kind?: string; graha?: string } | undefined
           if (lordEntity?.kind === 'graha' && lordEntity.graha) {
@@ -1050,7 +1120,7 @@ async function runAssessDomain(
       }
       const { getYogaFiringsCapability } = await import('./L1_ganita/get_yoga_firings')
       const firingsRes = await getYogaFiringsCapability.handler(
-        { chart_id, ayanamsha_id, fired: true, limit: 50 },
+        { chart_id, ayanamsha_id, fired: true, limit: 50, build_id: build_ids },
         undefined,
       )
       if (!firingsRes.is_error) {
@@ -1225,8 +1295,8 @@ async function runAssessDomain(
     const t5Spec = SHASTRA_MAP[domain]
     const t5SignalDomain = t5Spec?.signal_domain ?? domain
     const [t5Sensitive, t5Kp, t5Gochara] = await Promise.all([
-      fetchSensitiveDegreeFirings(chart_id, ayanamsha_id),
-      fetchKpCuspChain(chart_id, ayanamsha_id, DOMAIN_KP_CUSPS[domain] ?? (t5Spec ? [t5Spec.bhava as number] : [])),
+      fetchSensitiveDegreeFirings(chart_id, ayanamsha_id, build_ids),
+      fetchKpCuspChain(chart_id, ayanamsha_id, DOMAIN_KP_CUSPS[domain] ?? (t5Spec ? [t5Spec.bhava as number] : []), build_ids),
       fetchGocharaSweep(chart_id, t5SignalDomain, today),
     ])
     const t5KpCusps = DOMAIN_KP_CUSPS[domain] ?? (t5Spec ? [t5Spec.bhava as number] : [])
@@ -1386,6 +1456,7 @@ async function runAssessDomain(
         },
         judgment_flags: [
           judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
+          ...generationFlags,
           // F-166a: fires exactly when the tool-name domain word is a classical/colloquial
           // alias for the canonical signal domain (e.g. assess_marriage -> 'relationship'),
           // mirroring judgment_query's domain_resolution_aliased flag (F-57).
@@ -1453,6 +1524,7 @@ async function runAssessDomain(
             'info',
           ),
         ] satisfies JudgmentFlagEntry[],
+        generation_provenance,
         provenance: {
           tables: [
             'bodha_msr_signals',
