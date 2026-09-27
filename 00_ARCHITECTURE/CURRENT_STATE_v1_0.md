@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.83
+version: 6.84
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,48 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.84 (2026-09-27, JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927): Native-authorized narrow
+    Phase-A3 source-integrity session under CCD-016 and its own additive addendum, lease
+    MADHAV-JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927 (claimed a949fb8f1). Completed context
+    staleness for the three remaining deferred surfaces (brahma_mimamsa_prediction_ledger,
+    brahma_prospective_ledger, mimamsa_calibration_snapshot — migration 1123, authored, not
+    applied), enforced at every current-serving/planning/lifecycle/calibration/MCP consumer
+    found across TS (Samīkṣā ledger reader/badge/review/daily_job/writer/reviewConfirm,
+    prospective_ledger.ts, query_prospective_ledger.ts, prediction_lifecycle_sweep.ts,
+    the learning route's cosign approval, register_p1_aliases.ts's standing_predictions_read
+    alias, source_query_availability.ts's probe mirror), Python (mi_bhara/db.py) and
+    platform-mcp. An independent fresh-context review found 7 High/Important findings — a
+    cosign-approval staleness bypass, a Samīkṣā re-entry/provenance-misattribution bug plus a
+    pre-existing IDOR found in the same file, a missed lifecycle-sweep consumer, an
+    empty_reason honesty violation (§N.6/§N.7), and two stripped/stale MCP-surface artifacts
+    (standing_predictions_read's include_stale silently zod-stripped; the availability probe's
+    stale SQL mirror) — all 7 fixed with RED->GREEN tests. Reviewed technical head recorded:
+    ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b. Item 4 (Nirmāṇa L5 source-provenance re-pin)
+    BLOCKED, not completed: build_pins() unconditionally validates every layer even for a
+    --layer L5 splice, and hit a pre-existing, unrelated bug — L0_FROZEN_PINS (a module
+    constant in nirmana_analysis_layer_pins.py) is stale by two generations relative to the
+    JSON's own already-correct, already-re-pinned live L0 value, predating this branch and
+    campaign entirely; fully diagnosed read-only (native-authorized GCP-CLI DB access via
+    cloud-sql-proxy + retrieval_census_ro/nirmana_campaign_control_writer, read-only-session-
+    enforced, no write attempted or possible) and reported, not fixed:
+    briefs/nirmana/JATAKA_PHASE_A3_L0_FROZEN_PINS_DRIFT_FINDING_v1_0.md. Item 5 (Pūrṇa
+    Beyond-Ācārya v7 successor) COMPLETE: BEYOND_ACARYA_ACCEPTANCE_v7.json created (decision
+    record BEYOND_ACARYA_V7_DECISION_v1_0.md), v6 preserved byte-identical and immutable; all
+    six authorization-gate metrics (novel_combination_suite, omission_rate, route_coverage,
+    semantic_edge_coverage, long_inquiry_closure, abstention_quality) identical to v6, only
+    capability_content_hash/report_hash/snapshot fingerprints moved, fully explained by this
+    session's real capability-descriptor changes. Test suite updated so v6 becomes an
+    immutable historical predecessor exactly like v2-v5 and v7 is the current executable
+    check. Full platform suite: 12,930 passed / 2 failed (both the reported L0 blocker,
+    not concealed or baselined) / 707 skipped / 2 todo (13,641 total) — down from the
+    Phase-A2 baseline's 4 pre-existing-cause failures, since the 2 Beyond-Ācārya failures
+    are now resolved by item 5. Full Python CI: 7,031/7,031 passed, 0 failed. tsc PASS
+    (platform + platform-mcp); scoped lint 0 regressions (1 pre-existing-style warning found
+    and fixed); migration guard PASS; drift 79 / schema 42 identical to the Phase-A2 close;
+    git diff --check f95a8a4ca..HEAD clean. Not pushed; no PR, merge, deploy, migration
+    application, Task 9, production access, or L3 Kāla/Pūrṇa-campaign mutation. Database
+    access used only as narrowly, explicitly, live-authorized by the native for this one
+    blocked step, read-only-enforced throughout, no credential echoed or logged.
   - v6.83 (2026-09-27, JATAKA-PHASE-A2-INTEGRITY-20260927): Native-authorized narrow
     Phase-A2 integrity session under CCD-015 and its own additive addendum, lease
     MADHAV-JATAKA-PHASE-A2-INTEGRITY-20260927 (claimed 585b7d4c2, released 8bcdc100f).
@@ -6029,6 +6071,26 @@ block (post-rebuild era), and proceeds.
 > downstream governance artifacts (a NIRMANA L5 layer pin, the Pūrṇa Beyond-Acarya
 > v6 report) need separately-authorized regeneration — reported, not fixed. Task 9
 > remains **BLOCKED**.
+> **Status (2026-09-27, JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927, CLOSED):** Chart-context
+> staleness completed for the three remaining deferred surfaces
+> (`brahma_mimamsa_prediction_ledger`, `brahma_prospective_ledger`,
+> `mimamsa_calibration_snapshot` — migration `1123`, authored, **not applied**) and enforced at
+> every current-serving/planning/lifecycle/calibration/MCP consumer found across TS, Python and
+> platform-mcp. An independent fresh-context review found 7 High/Important findings (cosign
+> staleness bypass, Samīkṣā re-entry + a pre-existing IDOR, a missed lifecycle-sweep consumer, an
+> honesty violation in an `empty_reason` message, and two stripped/stale MCP-surface artifacts);
+> all 7 fixed with RED→GREEN tests. Reviewed technical head recorded: `ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b`.
+> Item 4 (Nirmāṇa L5 source-provenance re-pin) **BLOCKED** — not completed — on a pre-existing,
+> unrelated bug in the shared generator (`L0_FROZEN_PINS` stale by two generations relative to
+> its own already-correct, already-re-pinned JSON; predates this branch/campaign entirely),
+> fully diagnosed and reported: `briefs/nirmana/JATAKA_PHASE_A3_L0_FROZEN_PINS_DRIFT_FINDING_v1_0.md`.
+> Item 5 (Pūrṇa Beyond-Ācārya v7 successor) **COMPLETE** — `BEYOND_ACARYA_ACCEPTANCE_v7.json`
+> created, v6 preserved immutable; all six authorization-gate metrics identical to v6, only
+> hashes moved, fully explained by this session's real source changes. Final verification: full
+> platform suite 12930 passed / 2 failed (both the reported L0 blocker, not concealed) / 707
+> skipped; full Python suite 7031/7031 passed; migration guard, drift (79) and schema (42)
+> checks unchanged from baseline. Task 9 and full browser/recompute acceptance remain
+> **BLOCKED**. Nothing pushed, applied, deployed, merged or production-verified.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
