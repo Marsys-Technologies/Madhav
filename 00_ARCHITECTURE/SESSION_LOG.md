@@ -41648,3 +41648,163 @@ was released and remotely verified at `80d47c44d38d2f903c844dc674714faa679c2478`
 pre-authorized metadata-only successor. Fresh exact-head CI and independent terminal review are now
 required; no later source mutation is permitted. PR #2605 remains open and unmerged, and all external
 actions remain `NOT_RUN` under `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.
+
+## JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927 — 2026-09-27
+
+```yaml
+session_open:
+  session_id: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
+  cowork_thread_name: "Madhav — Jātaka Workspace Governance Bridge"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
+  step_number_or_layer: "Jātaka chart workspace — governance and plan correction"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W7-20260915
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
+    lease_status_verified: true
+    lease_verified_at: 2026-09-27T12:59:27+05:30
+    coordination_commit: 581c3543c
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+      - .conductor-state.json
+      - .gemini/project_state.md
+      - local main mirror of CAMPAIGN_COORDINATION.md
+  mandatory_reading_confirmation:
+    - {file: CLAUDECODE_BRIEF.md, fingerprint_sha256: 47186e8278a246df3f573ab8987de7d1e69dd4d55c8c4a969891703f5eb5dd95, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: CLAUDE.md, fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e, read_at: 2026-09-27T12:55:00+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, fingerprint_sha256: 418064b748dc5cd228fdc2f3c6b55da358678eb1d23b2383ecd7fedf3f976746, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md, fingerprint_sha256: 0d18d70d45f5741cc4535a1fbc578b3f89112cab253ac0f19badbcb0ce088b7a, read_at: 2026-09-27T12:56:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md, fingerprint_sha256: 1cd8ca655e161ac72e31eac6f171da0fba47e41c499a72842f2bce53106bbee3, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md, fingerprint_sha256: f75ccf28594abee4aa57f599ff6ff2a1e0419936f983c0b908b3b44614cd1df5, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533, read_at: 2026-09-27T12:56:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6, read_at: 2026-09-27T12:55:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: 85db6f5d7ebf8490efc1091aa787c142ac4c42fcf1deb6e38cfd8574327ca34e, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, fingerprint_sha256: fb35d3abcd9336dc749d49ba459288316af0b1d0adb500177c950cdb435143dc, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223, read_at: 2026-09-27T12:56:00+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c, read_at: 2026-09-27T12:56:00+05:30}
+    - {file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3, read_at: 2026-09-27T12:58:00+05:30}
+    - {file: 00_ARCHITECTURE/ROOT_FILE_POLICY.md, fingerprint_sha256: 6da89a754f20669fa70d37e3c233c638f72acd92139ae1866524a17ef2df41fd, read_at: 2026-09-27T12:55:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - CLAUDECODE_BRIEF.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
+      - platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
+    must_not_touch:
+      - platform/src/**
+      - platform/tests/**
+      - platform/supabase/migrations/**
+      - platform/migrations/**
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - frozen WriterBase or orchestrator contracts
+      - L3 Kāla source, state, strategy, evidence, migrations 1070-1119, branches, or worktrees
+      - Pūrṇa source, state, branches, worktrees, migrations 1042-1069, or protected delivery
+      - production or shared database, deployment, traffic, rebuild, credentials, secrets, IAM, or infrastructure
+      - shared checkout /Users/Dev/Vibe-Coding/Apps/Madhav
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No Macro Plan revision or health-crisis/mental-health serving change occurs in this governance-only bridge."
+      acknowledged: true
+  red_team_due: false
+  notes: "Native authorized only a narrow Jātaka governance amendment, migration-number coordination request, corrected plan, and Claude Code prompt. CAPABILITY_MANIFEST is included only to rotate the existing CCD register fingerprint required by the append. No feature code is authorized in this session."
+```
+
+The native-authorized governance bridge was completed without implementing the feature. CCD-013 and
+the Jātaka parallel-execution amendment leave the L3 Kāla brief active while authorizing only local
+source implementation and mock-backed verification through corrected-plan Task 8. A complete live
+scan of protected `origin/main` and every open pull request found migration `1120` free;
+`JATAKA-REQ-01` reserved `1120_jataka_conversation_archive_context.sql` at coordination commit
+`ed5f52294`. The governing documents and corrected plan were committed at `a4df86458`.
+
+The temporary governance lease was released and remotely verified at `f14741b3e`. Migration-number
+guard passed with inherited advisories. Full governance checks report the inherited baseline of 42
+schema violations and 79 drift findings; the count and normalized drift finding set match baseline
+`f95a8a4ca`. No feature code, migration file or application, database or data mutation, browser proof,
+rebuild, shared credential read, feature-branch push, pull request, merge, deployment, infrastructure
+change, or foreign-campaign/worktree mutation occurred. Task 9 and acceptance criterion 11 remain
+blocked until the safe local-environment gate in the amendment is satisfied.
+
+```yaml
+session_close:
+  session_id: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
+  closed_at: 2026-09-27T13:10:00+05:30
+  tool: Codex
+  files_touched:
+    - {path: CLAUDECODE_BRIEF.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md, mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - canonical_id: CROSS_CUTTING_DECISION_REGISTER
+        change: fingerprint_rotated
+        rationale: "CCD-013 records the native-authorized Jataka parallel local-execution exception."
+    cross_cutting_decision_register:
+      - decision_id: CCD-013
+        change: appended
+        rationale: "Makes the narrow Jataka exception visible without changing the L3 campaign authority."
+    current_state:
+      - change: current_close_pointer_rotated
+        rationale: "Points the next Claude Code session to the amendment and corrected plan."
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927_20260927T073533Z.md, divergences_found: 79}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: 00_ARCHITECTURE/schema_reports/SCHEMA_VALIDATION_REPORT_JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927_20260927T073533Z.md, violations_found: 42}
+  handshake_validator_run: {script: platform/scripts/governance/schema_validator.py, tool_profile: madhav-safe, exit_code: 0, report_path: 00_ARCHITECTURE/schema_reports/JATAKA_CHART_WORKSPACE_GOVERNANCE_20260927_OPEN.yaml, violations_found: 0}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: [CCD-013]
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    migration_request: JATAKA-REQ-01
+    migration_reservation_commit: ed5f52294
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: f14741b3e8ef33db6e883466d448789d21950c48
+    next_session_can_resume_from:
+      - CLAUDECODE_BRIEF.md
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
+      - platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - {override_id: OVR.JATAKA.1, issued_at: 2026-09-27T12:45:00+05:30, description: "Native authorized the narrow governance amendment, migration coordination request, corrected implementation plan, and Claude Code prompt.", scope_effect: "Allowed governance and plan documents only; feature implementation and all external actions remained outside this session."}
+  halts_encountered:
+    - {halt_id: HLT.JATAKA.1, occurred_at: 2026-09-27T12:40:00+05:30, description: "The earlier Claude Code preflight stopped because the active L3 brief excluded the feature paths, migration 1080 was reserved to L3, and no safe local credentials or disposable seeded database existed.", resolution: "CCD-013 and the Jataka amendment authorize Tasks 1-8, reserve migration 1120, and retain the environment-dependent Task 9 block."}
+  native_directive_per_step_verification:
+    - {directive_id: ND.2, step: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927, obligation_addressed: true, evidence: "No Macro Plan revision or health-crisis/mental-health serving change occurred."}
+  known_residuals:
+    - {finding_id: inherited_schema_baseline, severity: MEDIUM, booking_reference: "The branch reports 42 schema violations, identical in count to baseline f95a8a4ca; none were introduced by this governance bridge."}
+    - {finding_id: inherited_drift_baseline, severity: MEDIUM, booking_reference: "The branch reports 79 drift findings with the same normalized finding set as baseline f95a8a4ca; none were introduced by this governance bridge."}
+    - {finding_id: local_environment_gate, severity: MEDIUM, booking_reference: "Plan Task 9 and acceptance criterion 11 remain blocked until approved test Firebase credentials, a workstream-owned disposable PostgreSQL instance, and an approved L0 seed or snapshot exist."}
+  close_criteria_met: true
+  unblocks: ["Claude Code may implement and mock-test corrected-plan Tasks 1-8 locally under a new code-only coordination lease."]
+  handoff_notes: "Use only the isolated worktree and corrected plan. Re-sweep origin/main plus open PR migration files immediately before creating migration 1120. Do not start Task 9, copy the shared .env.local, use ports 55432/55433, access production, push, open a PR, merge, or deploy."
+```
+
+### Next session objective
+
+Under a new code-only coordination lease, Claude Code may implement and mock-test corrected-plan
+Tasks 1–8 in the isolated Jātaka worktree. Task 9 and browser acceptance remain blocked until the
+safe local-environment gate is satisfied. No push, pull request, merge, deployment, production access,
+shared credential use, or foreign-campaign mutation is authorized by this close.
