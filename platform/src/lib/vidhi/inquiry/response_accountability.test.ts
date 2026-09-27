@@ -11,6 +11,8 @@ import {
   inquiryResponsePartContentHash,
   inquiryCitationMarker,
   inquiryFindingCitationHandles,
+  annotateInquiryEvidenceForSynthesis,
+  visibleInquiryCitationHandles,
 } from './response_accountability'
 import type { InquiryContract, InquiryResponseDeliveryPart, InquiryScopeTuple } from './types'
 
@@ -503,6 +505,59 @@ describe('Wave 4 response accountability', () => {
 
     expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(1)
     expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
+  })
+
+  it('annotates display copies with citation handles without changing canonical evidence (R2C.1)', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const before = evidencePayloads.map((payload) => stableFingerprint(payload))
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+
+    expect(evidencePayloads.map((payload) => stableFingerprint(payload))).toEqual(before)
+    const shown = JSON.stringify(annotated.payloads, null, 2)
+    expect(visibleInquiryCitationHandles(shown)).toEqual([...annotated.handles.values()].sort())
+  })
+
+  it('completes when synthesis interprets every finding it was shown by handle', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+    const visible = visibleInquiryCitationHandles(JSON.stringify(annotated.payloads, null, 2))
+    const reading = visible.map((handle) => `A plain-language interpretation ${inquiryCitationMarker(handle)}.`).join('\n\n')
+
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: reading, evidence_payloads: evidencePayloads, synthesis_visible_handles: visible,
+    })
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+  it('discloses unseen supporting findings and keeps unseen required findings incomplete', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+    const findings = annotated.register.facts.filter((fact) => fact.kind === 'finding')
+    const required = findings.find((fact) => fact.materiality === 'required')!
+    const supporting = findings.find((fact) => fact.materiality === 'supporting')
+    const hidden = new Set([required.fact_id, ...(supporting ? [supporting.fact_id] : [])])
+    const visible = findings.filter((fact) => !hidden.has(fact.fact_id)).map((fact) => annotated.handles.get(fact.fact_id)!)
+    const reading = visible.map((handle) => `Interpreted ${inquiryCitationMarker(handle)}.`).join('\n\n')
+
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: reading, evidence_payloads: evidencePayloads, synthesis_visible_handles: visible,
+    })
+    const receipt = envelope.response_coverage_receipt
+    expect(receipt.status).toBe('INCOMPLETE_RESUMABLE')
+    expect(receipt.interpretation_unmapped_fact_ids).toContain(required.fact_id)
+    if (supporting) {
+      expect(receipt.permitted_exclusion_fact_ids).toContain(supporting.fact_id)
+      expect(envelope.delivery_parts.find((part) => part.kind === 'permitted_exclusion')?.exclusion_reason)
+        .toContain('synthesis_budget_excluded')
+    }
+  })
+
+  it('accepts the Portal citation family for the same handle', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+    const reading = [...annotated.handles.values()].map((handle) => `Interpreted \u27E6cite: ${handle}\u27E7.`).join('\n\n')
+    const envelope = buildStructuredResponseAccountability(contract, { response_text: reading, evidence_payloads: evidencePayloads })
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
   })
 
   it('derives verified production mappings when the canonical synthesis contains every finding', () => {

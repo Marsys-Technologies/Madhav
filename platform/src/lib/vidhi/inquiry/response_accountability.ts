@@ -13,7 +13,8 @@ import { indexInquiryEvidenceBindings } from './managed_bridge'
 import { extractInquirySemanticFindings } from './pagination'
 
 const HASH_RE = /^sha256:[a-f0-9]{64}$/
-const CITATION_MARKER_RE = /\[\[(F[0-9]+)\]\]/g
+// `[[F7]]` or the Portal citation family `⟦cite: F7⟧` / `[[cite: F7]]` (case/spacing tolerant).
+const CITATION_MARKER_RE = /(?:\[\[|\u27E6)\s*(?:cite\s*:\s*)?(F[0-9]+)\s*(?:\]\]|\u27E7)/gi
 const UNKNOWN_CITATION_PREFIX = 'unknown-citation:'
 
 /**
@@ -32,8 +33,50 @@ export function inquiryCitationMarker(handle: string): string {
   return `[[${handle}]]`
 }
 
+/** The row field that carries a finding's citation handle in evidence shown to synthesis. */
+export const INQUIRY_CITATION_FIELD = '_cite'
+
+/**
+ * Annotate evidence payloads with register citation handles, for display to a synthesis model.
+ * Each semantic row that is a register finding gains `_cite: "Fn"`; the canonical payloads (and
+ * therefore every evidence hash) are untouched — the returned payloads are copies for display.
+ * The handles come from the same register the coverage receipt rebuilds, so a cited handle can
+ * only ever resolve to the finding the model was shown.
+ */
+export function annotateInquiryEvidenceForSynthesis(
+  contract: InquiryContract,
+  evidencePayloads: readonly unknown[],
+  knowledgeSnapshot?: CapabilityKnowledgeSnapshot,
+): { register: InquiryFactRegister; handles: ReadonlyMap<string, string>; payloads: unknown[] } {
+  const register = buildInquiryFactRegister(contract, evidencePayloads, knowledgeSnapshot)
+  const handles = inquiryFindingCitationHandles(register)
+  const bindings = knowledgeSnapshot ? indexInquiryEvidenceBindings(knowledgeSnapshot, contract, evidencePayloads) : {}
+  const payloads = evidencePayloads.map((payload) => {
+    const copy: unknown = payload === undefined ? undefined : JSON.parse(JSON.stringify(payload))
+    const binding = bindings[stableFingerprint(payload)]
+    const extraction = extractInquirySemanticFindings(binding, copy)
+    const toolName = copy && typeof copy === 'object' ? (copy as { tool_name?: unknown }).tool_name : undefined
+    const sourceCoordinate = binding?.binding_id ?? (typeof toolName === 'string' ? `opaque-tool:${toolName}` : 'opaque-unbound')
+    extraction.rows.forEach((row, index) => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return
+      const content = normalizedFindingContent(row, extraction.mode)
+      const coordinate = `${sourceCoordinate}:${extraction.result_collection_path ?? 'opaque'}:${stableFingerprint(content)}`
+      const handle = handles.get(factIdentity('finding', contract, coordinate))
+      // The extracted collection is the copy's own array, so this annotates the display copy in place.
+      if (handle) (extraction.rows as unknown[])[index] = { [INQUIRY_CITATION_FIELD]: handle, ...(row as Record<string, unknown>) }
+    })
+    return copy
+  })
+  return { register, handles, payloads }
+}
+
+/** Handles that actually appear in text shown to a synthesis model (after any budget trim). */
+export function visibleInquiryCitationHandles(shownEvidenceText: string): string[] {
+  return uniqueSorted([...shownEvidenceText.matchAll(/"_cite":\s*"(F[0-9]+)"/g)].map((match) => match[1]!))
+}
+
 function citedHandles(text: string): string[] {
-  return uniqueSorted([...text.matchAll(CITATION_MARKER_RE)].map((match) => match[1]!))
+  return uniqueSorted([...text.matchAll(CITATION_MARKER_RE)].map((match) => match[1]!.toUpperCase()))
 }
 
 function uniqueSorted(values: readonly string[]): string[] {
@@ -362,7 +405,7 @@ export function buildResponseCoverageReceipt(args: {
         // A finding is interpreted by an exact response span that either restates its canonical
         // content or cites its register handle; a paraphrase without its marker maps nothing.
         const handle = citationHandles.get(factId)
-        const cited = handle !== undefined && part.content?.includes(inquiryCitationMarker(handle)) === true
+        const cited = handle !== undefined && citedHandles(part.content ?? '').includes(handle)
         if (fact.kind !== 'finding' || !fact.normalized_content
           || !(part.content?.includes(fact.normalized_content) || cited)) {
           invalid.push(`finding interpretation ${part.part_id} does not contain mapped finding ${factId}`)
@@ -504,13 +547,29 @@ export function buildStructuredResponseAccountability(
     evidence_payloads?: readonly unknown[]
     knowledge_snapshot?: CapabilityKnowledgeSnapshot
     conjoint_interpretations?: readonly { text: string; fact_ids: readonly string[] }[]
+    /**
+     * Findings the synthesis model was actually shown (handles surviving any budget trim).
+     * When supplied, a SUPPORTING finding the model never saw is a permitted exclusion with a
+     * visible reason instead of a silent omission; a REQUIRED one stays delivered but
+     * uninterpreted, so the reading remains honestly incomplete.
+     */
+    synthesis_visible_handles?: readonly string[]
   } = {},
 ): InquiryResponseAccountability {
   const factRegister = buildInquiryFactRegister(contract, options.evidence_payloads, options.knowledge_snapshot)
+  const visibleHandles = options.synthesis_visible_handles ? new Set(options.synthesis_visible_handles) : null
+  const handlesByFact = inquiryFindingCitationHandles(factRegister)
+  const budgetExcludedFactIds = visibleHandles
+    ? factRegister.facts
+      .filter((fact) => fact.kind === 'finding' && fact.materiality === 'supporting'
+        && !visibleHandles.has(handlesByFact.get(fact.fact_id) ?? ''))
+      .map((fact) => fact.fact_id)
+    : []
   const evidencePayloads = options.evidence_payloads ?? []
   const actualEvidenceHashes = uniqueSorted(evidencePayloads.map((payload) => stableFingerprint(payload)))
   const deliveredFactIds = factRegister.facts
     .filter((fact) => {
+      if (budgetExcludedFactIds.includes(fact.fact_id)) return false
       if (fact.kind === 'frontier') return true
       if (fact.kind === 'finding') return true
       if (fact.meaning.disposition === 'not_applicable') return true
@@ -569,7 +628,19 @@ export function buildStructuredResponseAccountability(
       exclusion_reason: null,
     }
   })
-  const deliveryParts = prosePart ? [deliveryPart, prosePart, ...conjointParts] : [deliveryPart, ...conjointParts]
+  const exclusionReason = 'synthesis_budget_excluded: the synthesis evidence budget omitted this supporting finding'
+  const exclusionParts: InquiryResponseDeliveryPart[] = budgetExcludedFactIds.length
+    ? [{
+        part_id: `permitted-exclusion:${stableFingerprint(budgetExcludedFactIds)}`,
+        kind: 'permitted_exclusion',
+        content_hash: inquiryResponsePartContentHash(factRegister, budgetExcludedFactIds, 'permitted_exclusion', exclusionReason, [], null),
+        content: null,
+        fact_ids: uniqueSorted(budgetExcludedFactIds),
+        evidence_payload_hashes: [],
+        exclusion_reason: exclusionReason,
+      }]
+    : []
+  const deliveryParts = [deliveryPart, ...(prosePart ? [prosePart] : []), ...conjointParts, ...exclusionParts]
   return {
     accountability_version: 'inquiry-response-accountability-v1',
     fact_register: factRegister,

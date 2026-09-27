@@ -84,7 +84,7 @@ import { enforceTurnLimits } from '@/lib/limits'
 import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { adoptInquiryPlanItems, annotateInquiryEvidenceForSynthesis, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
@@ -1190,6 +1190,11 @@ export async function POST(request: Request) {
         controller.enqueue(
           encoder.encode(JSON.stringify({ event: 'progress', tools_dispatched_count: toolEventLog.length, cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs }, elapsed_ms: Date.now() - dispatchLoopStart, last_tool: 'synthesis' }) + '\n'),
         )
+        // The model is shown display copies annotated with register citation handles; the
+        // canonical bundles (and their evidence hashes) feed the accountability register below.
+        const citedEvidence = inquiryContract
+          ? annotateInquiryEvidenceForSynthesis(inquiryContract, toolResults.map((result) => result.bundle), inquirySnapshot ?? undefined)
+          : null
         synthesis = await synthesizeReading({
           // Guaranteed non-empty by POST's own guard clause before this closure
           // ever runs — TS can't carry that narrowing across the function
@@ -1198,7 +1203,10 @@ export async function POST(request: Request) {
           question: question ?? '',
           queryClass: plan.query_class ?? 'unknown',
           queryIntentSummary: plan.query_intent_summary ?? '',
-          evidence: toolResults,
+          evidence: citedEvidence
+            ? toolResults.map((result, index) => ({ ...result, bundle: citedEvidence.payloads[index] as typeof result.bundle }))
+            : toolResults,
+          citeRegisterFindings: citedEvidence !== null,
           unresolvedTools,
           emptyResultTools,
           strippedLeakedCapabilities: leakedTools,
@@ -1219,6 +1227,7 @@ export async function POST(request: Request) {
             response_text: synthesis.reading,
             evidence_payloads: toolResults.map((result) => result.bundle),
             knowledge_snapshot: inquirySnapshot ?? undefined,
+            ...(synthesis.visible_citation_handles ? { synthesis_visible_handles: synthesis.visible_citation_handles } : {}),
           })
         : null
 

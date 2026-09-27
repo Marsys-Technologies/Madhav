@@ -382,6 +382,8 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
     expect(session.beginAction).toHaveBeenCalledTimes(2)
     expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
+    // With an inquiry contract, synthesis is shown register-annotated display copies (R2C.1).
+    expect(mockSynthesizeReading.mock.calls.at(-1)?.[0]?.citeRegisterFindings).toBe(true)
   })
 
   it('records the planner slot, requested reasoning, and fallback model on the managed contract (RC-5.6)', async () => {
@@ -1016,6 +1018,8 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.emptyResultTools).toEqual([])
     expect(call.strippedLeakedCapabilities).toEqual([])
     expect(call.capTripped).toBeNull()
+    // Without an inquiry contract there is no register to cite.
+    expect(call.citeRegisterFindings).toBe(false)
   })
 
   it('passes an explicitly requested response format to synthesis', async () => {
