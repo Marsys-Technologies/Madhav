@@ -276,6 +276,30 @@ describe('autofileAheadWindows — idempotency: already_filed path', () => {
     expect(fetchSpy.mock.calls.every((c) => !String(c[0]).includes('writes'))).toBe(true)
   })
 
+  it('the existence check excludes a chart-context-stale match (Jātaka Phase-A3) — a fresh filing is allowed after a correction', async () => {
+    let capturedSql: string | null = null
+    const fetchSpy = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes('/api/mcp/db/query')) {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { sql?: string }
+        capturedSql = body.sql ?? null
+        return { ok: true, json: async () => ({ rows: [] }), text: async () => '' }
+      }
+      if (String(url).includes('writes')) {
+        return { ok: true, json: async () => ({ ok: true }), text: async () => '' }
+      }
+      throw new Error(`Unexpected fetch to ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await autofileAheadWindows(
+      CHART_ID,
+      [makeWindow({ signature_classes: ['career_advancement'] })],
+      PRINCIPAL,
+    )
+
+    expect(capturedSql).toMatch(/chart_context_stale_at\s+IS\s+NULL/)
+  })
+
   it('attempts the file when the DB existence check returns an empty row set', async () => {
     const fetchSpy = mockFetchBothSuccess()
     vi.stubGlobal('fetch', fetchSpy)
