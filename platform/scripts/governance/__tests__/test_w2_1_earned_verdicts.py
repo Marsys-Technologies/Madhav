@@ -765,38 +765,41 @@ def test_c4_b_an_ended_but_never_started_row_is_not_executed(monkeypatch, tmp_pa
     assert h["runs"] == 2 and h["executed"] == 1, h
 
 
-def _live_started_counts(layer, prefix, parse_safe_only):
+def _live_started_counts(layer, prefix):
     reg, _ = ac.registry(layer)
     hist = ac.build_history(prefix, sorted(reg))["per"]
     ids = ", ".join(f"'{a}'" for a in sorted(reg))
-    where = " AND coalesce(left(a.error,200),'') !~ E'[\\n\\r]'" if parse_safe_only else ""
     direct = {r[0]: (int(r[1]), int(r[2])) for r in ac.psql(
         "SELECT a.asset_id, count(a.started_at)::text, count(a.ended_at)::text FROM build_run_assets a "
-        f"JOIN build_runs r ON r.id = a.run_id WHERE a.asset_id IN ({ids}){where} GROUP BY 1")}
+        f"JOIN build_runs r ON r.id = a.run_id WHERE a.asset_id IN ({ids}) GROUP BY 1")}
     return hist, direct
 
 
 @LIVE
 def test_live_c4_executed_equals_the_started_at_count():
     """Live, read-only: for every L4 asset, build_history()'s executed tally equals a direct count of
-    build_run_assets rows with started_at set — over the rows build_history() parses intact (see the
-    xfail twin below) — and at least one asset has ended-but-unstarted rows, so reading ended_at or
-    counting by state would disagree."""
-    hist, direct = _live_started_counts("L4", "ph_", parse_safe_only=True)
+    build_run_assets rows with started_at set — over EVERY row (R233 made the read newline-safe; before
+    it this test was restricted to the rows parsed intact) — and at least one asset has
+    ended-but-unstarted rows, so reading ended_at or counting by state would disagree."""
+    hist, direct = _live_started_counts("L4", "ph_")
     assert any(s != e for s, e in direct.values()), "need an asset whose ended and started counts differ"
     for aid, (started, _ended) in direct.items():
-        # A split row's started flag is lost (F-C4), so over the intact rows the tally is exact.
         assert hist[aid]["executed"] == started, (aid, hist[aid]["executed"], started)
 
 
 @LIVE
-@pytest.mark.xfail(strict=True, reason="F-C4 (found by this test, NOT fixed — W2-1 C4 is tests-only): "
-                   "build_history() reads left(a.error,200) raw; an error text containing a newline "
-                   "splits one psql row into several lines, so that row's started flag is lost "
-                   "(executed undercounted — fail-safe) and traceback fragments appear as phantom "
-                   "per-asset keys (57 rows / 29 assets live on 2026-09-27; ph_sodhana 39 vs 41). "
-                   "strict=True: this test starts failing the day the read is made newline-safe.")
 def test_live_c4_executed_equals_the_started_at_count_over_all_rows():
-    hist, direct = _live_started_counts("L4", "ph_", parse_safe_only=False)
+    """R233 (W2-2; was a strict xfail documenting F-C4). Over EVERY row — multi-line tracebacks
+    included — build_history()'s executed tally equals a direct started_at count, and no traceback
+    fragment appears as a per-asset key. Fails without the fix: build_history() read
+    left(a.error,200) raw, psql() split one row into several lines on the newlines, the started flag
+    landed on a fragment (ph_sodhana 39 against 41 started, 2026-09-27) and fragments became keys."""
+    reg, _ = ac.registry("L4")
+    hist, direct = _live_started_counts("L4", "ph_")
+    assert set(hist) <= set(reg), f"phantom per-asset keys: {sorted(set(hist) - set(reg))[:5]}"
+    multi = int(ac.scalar("SELECT count(*)::text FROM build_run_assets WHERE asset_id LIKE 'ph\\_%' "
+                          "AND error ~ E'[\\n\\r]'"))
+    assert multi > 0, "the proof needs at least one multi-line error row in L4"
     for aid, (started, _ended) in direct.items():
         assert hist[aid]["executed"] == started, (aid, hist[aid]["executed"], started)
+    assert hist["ph_sodhana"]["executed"] == direct["ph_sodhana"][0]

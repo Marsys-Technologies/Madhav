@@ -549,10 +549,18 @@ def build_history(prefix: str, ids=None) -> dict:
     started), error 1 515 (319 started), complete 3 133 (3 133 started). So the executed set is
     `started_at IS NOT NULL`, not a list of states — a state list ({complete, error, aborted}) would
     count 1 837 never-started rows as runs. `executed` counts those rows; `runs` stays the raw row
-    count and is reported beside it."""
+    count and is reported beside it.
+
+    R233 (F-C4, W2-1 C4): `error` is free text and Python tracebacks carry newlines. `psql()` splits
+    its output on newlines, so a raw `left(a.error,200)` split ONE row into several: the row's
+    started flag landed on a fragment line (executed undercounted — ph_sodhana 39 against 41 started)
+    and traceback fragments became phantom per-asset keys. The error text is flattened in SQL before
+    it reaches the line-oriented read: newline, carriage return and the field separator (chr(31))
+    become spaces, THEN it is truncated — so one attempt is always exactly one line."""
     per: dict[str, dict] = {}
     rows = psql("SELECT a.asset_id, r.scope, a.state, coalesce(a.disposition,''), "
-                "coalesce(r.created_at::date::text,''), coalesce(left(a.error,200),''), "
+                "coalesce(r.created_at::date::text,''), "
+                "coalesce(left(translate(a.error, E'\\n\\r' || chr(31), '   '),200),''), "
                 "(a.started_at IS NOT NULL)::text "
                 "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
                 f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} ORDER BY a.asset_id, r.created_at")
