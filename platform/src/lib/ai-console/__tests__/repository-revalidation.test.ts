@@ -12,6 +12,22 @@ beforeEach(() => {
   (globalThis as typeof globalThis & { __pgPool?: Pool }).__pgPool = { connect: async () => client, query: execute } as unknown as Pool
 })
 describe('bounded repository-owned revalidation leases', () => {
+  it('authorizes one exact active request without returning crypto or holding a transaction', async () => {
+    execute.mockResolvedValue({ rows: [{ id }], rowCount: 1 })
+    expect(await repository.assertConnectionRequestAuthorized({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 2 })).toBeUndefined()
+    expect(calls()).toHaveLength(1)
+    expect(calls()[0].params).toEqual(['alice', id, 'openai', 2])
+    expect(calls()[0].sql).toContain('c.user_id=$1 AND c.id=$2 AND c.provider_id=$3 AND c.credential_version=$4')
+    expect(calls()[0].sql).toContain("p.status='active'")
+    expect(calls()[0].sql).toContain('c.deleted_at IS NULL')
+    expect(calls()[0].sql).not.toMatch(/credential_ciphertext|wrapped_dek|FOR UPDATE|BEGIN/)
+  })
+  it('refuses unauthorized request preflights and invalid input', async () => {
+    await expect(repository.assertConnectionRequestAuthorized({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 2 })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    execute.mockClear()
+    await expect(repository.assertConnectionRequestAuthorized({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 0 })).rejects.toBeDefined()
+    expect(execute).not.toHaveBeenCalled()
+  })
   it('atomically claims active stale noninvalid connections with skip-locked recovery and safe projection', async () => {
     execute.mockImplementation(async (sql: string) => ({ rows: sql.includes('RETURNING') ? [{ user_id: 'alice', id, provider_id: 'openai', credential_version: '2', credential_ciphertext: 'never-return' }] : [] }))
     const staleBefore = new Date(Date.now() - 86_400_000)

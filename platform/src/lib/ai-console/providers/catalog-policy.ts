@@ -4,6 +4,14 @@ import { object, tokenCount, type DiscoveredModel } from './types'
 
 const MODEL_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/
 const UNSUPPORTED = /embedding|rerank|moderation|whisper|tts|audio|realtime|image|vision-exp|video|computer-use|deep-research|multi-agent|instruct|codex|(^|\/)auto$|openrouter\/(auto|free)|:online|:nitro|:floor/i
+// Positive protocol evidence, not availability. Unknown/specialized suffixes do
+// not inherit a family's capabilities. Sources and limitations: Task 5 report.
+const DOCUMENTED_CAPABILITIES: Partial<Record<ProviderId, RegExp>> = {
+  openai: /^(?:gpt-4\.1(?:-mini|-nano)?(?:-2025-04-14)?|gpt-4o(?:-2024-08-06|-2024-11-20)?|gpt-4o-mini(?:-2024-07-18)?)$/,
+  anthropic: /^claude-(?:haiku-4-5|sonnet-4-[56]|opus-4-[56])(?:-\d{8})?$/,
+  google: /^gemini-2\.5-(?:pro|flash|flash-lite)$/,
+  xai: /^grok-4(?:-0709)?$/,
+}
 export function safeModelId(value: unknown): value is string {
   return typeof value === 'string' && MODEL_ID.test(value) && !value.includes('..')
 }
@@ -28,15 +36,26 @@ export function compatibleModel(provider: ProviderId, input: unknown, secret: st
   if (!family) return null
   const parameters = row.supported_parameters
   const capabilities = object(row.capabilities)
-  let tools = provider !== 'openrouter'
-  let structured = provider !== 'openrouter'
+  let tools = DOCUMENTED_CAPABILITIES[provider]?.test(id) ?? false
+  let structured = tools
   if (Array.isArray(parameters)) {
     tools = parameters.includes('tools')
-    structured = parameters.includes('response_format') || parameters.includes('structured_outputs')
+    // response_format alone may mean only json_object, not schema conformance.
+    structured = parameters.includes('structured_outputs')
   }
   if (typeof capabilities.tools === 'boolean') tools = capabilities.tools
+  if (typeof object(capabilities.tools).supported === 'boolean') tools = object(capabilities.tools).supported === true
   if (typeof capabilities.structured_outputs === 'boolean') structured = capabilities.structured_outputs
-  if (object(capabilities.structured_outputs).supported === false) structured = false
+  if (typeof object(capabilities.structured_outputs).supported === 'boolean') structured = object(capabilities.structured_outputs).supported === true
+  // Native function calling is explicitly unsupported for the search preview.
+  if (provider === 'openai' && /^gpt-4o(?:-mini)?-search-preview(?:-\d{4}-\d{2}-\d{2})?$/.test(id)) tools = false
+  // Shared Chat SDK cannot round-trip reasoning_content/reasoning_details.
+  // Kimi/DeepSeek default-thinking models are synthesis-only under this adapter.
+  if (provider === 'kimi' || provider === 'deepseek') { tools = false; structured = false }
+  if (provider === 'openrouter') {
+    tools = false
+    structured = structured && Array.isArray(parameters) && parameters.includes('structured_outputs')
+  }
   const label = row.display_name ?? row.displayName ?? row.name
   const displayName = typeof label === 'string' && !label.includes(secret) && label.length <= 160
     && /^[\p{L}\p{N} ._:/()+\-]+$/u.test(label) ? label : id

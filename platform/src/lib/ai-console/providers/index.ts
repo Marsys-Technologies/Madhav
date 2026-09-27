@@ -1,7 +1,6 @@
 import 'server-only'
 import { decryptCredential } from '../crypto'
-import { listAiConsoleState, loadConnectionCredential } from '../repository'
-import { AiConsoleError } from '../errors'
+import { assertConnectionRequestAuthorized, loadConnectionCredential } from '../repository'
 import type { DiscoveredModel } from './types'
 import { ProviderIdSchema, type ProviderId } from '../types'
 import { anthropicAdapter } from './anthropic'
@@ -24,28 +23,29 @@ export interface OwnedProviderConnection {
   credentialVersion: number
 }
 async function ownedCredential(connection: OwnedProviderConnection) {
-  const { connections } = await listAiConsoleState(connection.userId)
-  const row = connections.find(c => c.id === connection.connectionId && !c.deleted_at)
-  if (!row || row.provider_id !== connection.providerId || Number(row.credential_version) !== connection.credentialVersion) throw new AiConsoleError('AI_CHOICE_BROKEN')
+  await assertConnectionRequestAuthorized(connection)
   return loadConnectionCredential(connection.userId, connection.connectionId, connection.credentialVersion)
 }
 // Plaintext is decrypted only here, immediately before adapter invocation. No cache.
 export async function discoverConnectionModels(connection: OwnedProviderConnection, signal: AbortSignal) {
+  connection = Object.freeze({ ...connection })
   const record = await ownedCredential(connection)
   let key: string | undefined = decryptCredential(record)
-  try { return await getProviderAdapter(connection.providerId).discover(key, signal) }
+  try { return await getProviderAdapter(connection.providerId).discover(key, signal, () => assertConnectionRequestAuthorized(connection)) }
   finally { key = undefined }
 }
 export async function probeConnectionModel(connection: OwnedProviderConnection, model: DiscoveredModel, signal: AbortSignal) {
+  connection = Object.freeze({ ...connection })
   const record = await ownedCredential(connection)
   let key: string | undefined = decryptCredential(record)
-  try { return await getProviderAdapter(connection.providerId).probe(key, model, signal) }
+  try { return await getProviderAdapter(connection.providerId).probe(key, model, signal, () => assertConnectionRequestAuthorized(connection)) }
   finally { key = undefined }
 }
 /** Caller owns disposal in a finally block for the entire request, including streams. */
 export async function createConnectionRuntimeBinding(connection: OwnedProviderConnection, model: DiscoveredModel) {
+  connection = Object.freeze({ ...connection })
   const record = await ownedCredential(connection)
   let key: string | undefined = decryptCredential(record)
-  try { return getProviderAdapter(connection.providerId).createRuntimeBinding(key, model) }
+  try { return getProviderAdapter(connection.providerId).createRuntimeBinding(key, model, () => assertConnectionRequestAuthorized(connection)) }
   finally { key = undefined }
 }

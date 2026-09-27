@@ -128,6 +128,26 @@ describe('owned AI configuration repository', () => {
     expect(calls().find(c => c.sql.startsWith('INSERT INTO ai_user_defaults'))?.sql).toContain('ON CONFLICT(user_id) DO UPDATE')
     expect(calls().some(c => c.sql.startsWith('DELETE'))).toBe(false)
   })
+  it('requires every role for direct defaults and explicit conversation models', async () => {
+    respond(sql => {
+      if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: ['synthesizer', 'planner', 'deep_planner'], available: true }]
+      if (sql.includes('FROM conversations')) return [{ id: conversationId }]
+    })
+    await expect(repository.setUserDefault('alice', choice)).rejects.toMatchObject({ code: 'AI_ROLE_INCOMPATIBLE' })
+    await expect(repository.setConversationSelection('alice', conversationId, { kind: 'explicit', choice })).rejects.toMatchObject({ code: 'AI_ROLE_INCOMPATIBLE' })
+    expect(calls().some(c => c.sql.startsWith('INSERT'))).toBe(false)
+  })
+  it('allows a partial-capability model only in its compatible custom role', async () => {
+    respond((sql, params) => {
+      if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: params[2] === 'synthesis-only' ? ['synthesizer'] : AI_ROLES, available: true }]
+      if (sql.includes('RETURNING')) return [{ id: configurationId, version: '1' }]
+    })
+    const roles = { ...assignments, synthesizer: { ...choice, modelId: 'synthesis-only' } }
+    expect(await repository.saveConfiguration('alice', { name: 'Mixed', roles })).toMatchObject({ roles })
+    await expect(repository.saveConfiguration('alice', { name: 'Wrong role', roles: { ...roles, worker: roles.synthesizer } })).rejects.toMatchObject({ code: 'AI_ROLE_INCOMPATIBLE' })
+  })
   it('rejects another user’s connection and never changes their default', async () => {
     expect(repository).toHaveProperty('setUserDefault')
     await expect(repository.setUserDefault('mallory', choice)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })

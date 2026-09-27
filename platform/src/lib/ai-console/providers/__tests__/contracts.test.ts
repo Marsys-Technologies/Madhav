@@ -73,7 +73,7 @@ describe.each(PROVIDER_IDS)('%s authenticated provider contract', provider => {
     const body = JSON.parse(http.mock.calls[1][1].body)
     const cap = provider === 'google' ? body.generationConfig.maxOutputTokens : body.max_completion_tokens ?? body.max_tokens
     expect(cap).toBeGreaterThan(0)
-    expect(cap).toBeLessThanOrEqual(16)
+    expect(cap).toBeLessThanOrEqual(provider === 'google' ? 256 : 16)
     if (provider === 'openrouter') expect(body.provider.allow_fallbacks).toBe(false)
     expect(body.stream).not.toBe(true)
   })

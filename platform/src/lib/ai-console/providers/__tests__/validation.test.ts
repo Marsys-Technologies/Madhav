@@ -4,6 +4,7 @@ import { encryptCredential } from '../../crypto'
 import * as validation from '../../validation'
 import * as revalidation from '../../revalidation'
 import { createConnectionRuntimeBinding, discoverConnectionModels } from '../index'
+import type { ProviderId } from '../../types'
 
 // Real crypto/repository/adapters; only database and HTTP transports are replaced.
 const execute = vi.fn()
@@ -11,6 +12,8 @@ const http = vi.fn()
 const id = '00000000-0000-4000-8000-000000000001'
 const key = 'test-user-owned-secret-1234'
 let active = true
+let deleted = false
+let provider: ProviderId = 'openai'
 let version = 1
 let state = 'untested'
 let validity = 'unknown'
@@ -22,14 +25,17 @@ beforeEach(() => {
   vi.stubEnv('MARSYS_AI_KEK_test', Buffer.alloc(32, 1).toString('base64'))
   vi.stubEnv('MARSYS_AI_FINGERPRINT_SECRET', Buffer.alloc(32, 2).toString('base64'))
   const e = encryptCredential(key)
-  active = true; version = 1; state = 'untested'; validity = 'unknown'; claimed = []; concurrent = 0; maxConcurrent = 0
+  active = true; deleted = false; provider = 'openai'; version = 1; state = 'untested'; validity = 'unknown'; claimed = []; concurrent = 0; maxConcurrent = 0
   execute.mockReset().mockImplementation(async (sql: string, params: unknown[] = []) => {
     let rows: Record<string, unknown>[] = []
     if (sql.includes('SKIP LOCKED')) { rows = claimed; claimed = [] }
+    else if (sql.includes('SELECT c.id FROM ai_provider_connections c')) {
+      if (active && !deleted && params[0] === 'alice' && params[1] === id && params[2] === provider && params[3] === version) rows = [{ id }]
+    }
     else if (sql.includes('SELECT c.credential_ciphertext')) {
       if (active && params[0] === 'alice' && params[1] === id && params[2] === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint }]
     } else if (sql.includes('FROM ai_provider_connections') && sql.trim().startsWith('SELECT') && params[0] === 'alice') {
-      rows = [{ id, provider_id: 'openai', credential_version: version, validation_state: state, credential_validity: validity, deleted_at: null }]
+      rows = [{ id, provider_id: provider, credential_version: version, validation_state: state, credential_validity: validity, deleted_at: deleted ? '2026-09-27' : null }]
     } else if (sql.startsWith('UPDATE ai_provider_connections SET validation_state')) {
       state = String(params[2]); validity = String(params[3])
     }
@@ -43,9 +49,69 @@ beforeEach(() => {
   })
   vi.stubGlobal('fetch', http)
 })
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers() })
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); vi.restoreAllMocks() })
 const writes = () => execute.mock.calls.filter(([sql]) => String(sql).startsWith('UPDATE ai_provider_connections SET validation_state')).map(([, params]) => params)
 describe('owned validation state flow', () => {
+  it.each(['disabled', 'deleted', 'replaced'] as const)('blocks every paginated request after the connection is %s', async change => {
+    for (const source of ['anthropic', 'google', 'openrouter'] as const) {
+      active = true; deleted = false; version = 1; provider = source
+      http.mockReset().mockImplementation(async () => {
+        if (change === 'disabled') active = false
+        if (change === 'deleted') deleted = true
+        if (change === 'replaced') version = 2
+        return Response.json(source === 'anthropic' ? { data: [{ id: 'claude-haiku-4-5' }], has_more: true, last_id: 'claude-haiku-4-5' }
+          : source === 'google' ? { models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }], nextPageToken: 'page-two' }
+            : { data: Array.from({ length: 500 }, () => ({ id: 'vendor/text', architecture: { output_modalities: ['text'] } })) })
+      })
+      await expect(discoverConnectionModels({ userId: 'alice', connectionId: id, providerId: source, credentialVersion: 1 }, new AbortController().signal)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+      expect(http).toHaveBeenCalledTimes(1)
+    }
+  })
+  it.each(['disabled', 'deleted', 'replaced'] as const)('blocks extracted runtime models after the connection is %s', async change => {
+    const binding = await createConnectionRuntimeBinding({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 1 }, { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer'], supportsTools: true, supportsStructuredOutput: true })
+    const model = binding.model
+    if (change === 'disabled') active = false
+    if (change === 'deleted') deleted = true
+    if (change === 'replaced') version = 2
+    await expect(model.doGenerate({ prompt: [] })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(http).not.toHaveBeenCalled(); binding.dispose()
+  })
+  it('cancels during the initial validating write with zero HTTP and no false health verdict', async () => {
+    const controller = new AbortController()
+    let entered!: () => void; let release!: () => void
+    const barrier = new Promise<void>(resolve => { release = resolve })
+    const writing = new Promise<void>(resolve => { entered = resolve })
+    const transport = execute.getMockImplementation()!
+    execute.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.startsWith('UPDATE ai_provider_connections SET validation_state') && params[2] === 'validating') { entered(); await barrier }
+      return transport(sql, params)
+    })
+    const pending = validation.validateConnection('alice', id, { signal: controller.signal }).catch(e => e)
+    await writing; controller.abort('private-cancellation-reason'); release()
+    expect(await pending).toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(http).not.toHaveBeenCalled()
+    expect(writes().map(p => p[2])).toEqual(['validating'])
+  })
+  it('does not misclassify caller cancellation during discovery as provider health', async () => {
+    const controller = new AbortController()
+    http.mockImplementation(async () => { controller.abort(); throw new Error('cancelled') })
+    await expect(validation.validateConnection('alice', id, { signal: controller.signal })).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(writes().map(p => p[2])).toEqual(['validating'])
+  })
+  it('retains unreachable semantics for the total validation deadline across slow pages', async () => {
+    vi.useFakeTimers(); provider = 'anthropic'; validity = 'valid'
+    let page = 0
+    http.mockImplementation(async () => {
+      page++
+      await new Promise(resolve => setTimeout(resolve, 10_000))
+      return Response.json({ data: [{ id: 'claude-haiku-4-5' }], has_more: true, last_id: `claude-cursor-${page}` })
+    })
+    const pending = validation.validateConnection('alice', id)
+    await vi.advanceTimersByTimeAsync(30_001)
+    expect(await pending).toMatchObject({ state: 'unreachable', error: { code: 'AI_PROVIDER_UNREACHABLE' } })
+    expect(writes().map(p => p[2])).toEqual(['validating', 'unreachable'])
+    expect(validity).toBe('valid'); expect(http).toHaveBeenCalledTimes(3)
+  })
   it('requires discovery plus one tiny cheap-model probe, projects only catalog metadata', async () => {
     const result = await validation.validateConnection('alice', id)
     expect(result).toEqual({ state: 'validated', modelCount: 2 })
@@ -100,6 +166,7 @@ describe('owned validation state flow', () => {
 })
 describe('conservative stale revalidation', () => {
   it('uses an aged recoverable lease and at most two simultaneous validations', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
     claimed = Array.from({ length: 5 }, () => ({ user_id: 'alice', id, provider_id: 'openai', credential_version: 1 }))
     const started = Date.now()
     expect(await revalidation.revalidateStaleConnections()).toEqual({ checked: 5, validated: 5, needsAttention: 0, unreachable: 0, invalid: 0, failed: 0 })

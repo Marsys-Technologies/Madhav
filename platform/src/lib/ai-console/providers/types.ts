@@ -13,18 +13,19 @@ export interface DiscoveredModel {
   contextWindow?: number
   outputLimit?: number
 }
-export interface ProbeUsage { inputTokens: number | null; outputTokens: number | null }
+export interface ProbeUsage { inputTokens: number | null; outputTokens: number | null; reasoningTokens?: number }
 export interface RuntimeModelBinding {
   readonly providerId: ProviderId
   readonly modelId: string
   readonly model: LanguageModelV3
   dispose(): void
 }
+export type RequestPreflight = () => Promise<void>
 export interface ProviderValidationAdapter {
   readonly providerId: ProviderId
-  discover(apiKey: string, signal: AbortSignal): Promise<DiscoveredModel[]>
-  probe(apiKey: string, model: DiscoveredModel, signal: AbortSignal): Promise<ProbeUsage>
-  createRuntimeBinding(apiKey: string, model: DiscoveredModel): RuntimeModelBinding
+  discover(apiKey: string, signal: AbortSignal, preflight?: RequestPreflight): Promise<DiscoveredModel[]>
+  probe(apiKey: string, model: DiscoveredModel, signal: AbortSignal, preflight?: RequestPreflight): Promise<ProbeUsage>
+  createRuntimeBinding(apiKey: string, model: DiscoveredModel, preflight?: RequestPreflight): RuntimeModelBinding
 }
 
 export const PROVIDER_BASE_URLS = Object.freeze({
@@ -58,7 +59,7 @@ export function providerHeaders(provider: ProviderId, key: string): Headers {
 }
 
 /** Total deadline includes headers AND streamed body. Never return upstream errors/bodies. */
-export async function boundedFetch(url: string, init: RequestInit, timeoutMs: number, maxBytes: number): Promise<Response> {
+export async function boundedFetch(url: string, init: RequestInit, timeoutMs: number, maxBytes: number, providerId?: ProviderId, preflight?: RequestPreflight): Promise<Response> {
   const controller = new AbortController()
   const cancel = () => controller.abort()
   const callerSignal = init.signal
@@ -81,10 +82,41 @@ export async function boundedFetch(url: string, init: RequestInit, timeoutMs: nu
   const finish = () => { cleanup(); if (abortListener) controller.signal.removeEventListener('abort', abortListener) }
   try {
     if (callerSignal?.aborted) throw fail()
+    if (preflight) await Promise.race([preflight(), abortRace])
+    if (controller.signal.aborted) throw expired ? new AiConsoleError('AI_PROVIDER_UNREACHABLE') : fail()
     const response = await Promise.race([fetch(url, { ...init, signal: controller.signal, redirect: 'error', cache: 'no-store' }), abortRace])
     if (response.status < 200 || response.status >= 300) {
-      void response.body?.cancel().catch(() => undefined)
-      // Anthropic overload is transient. Error bodies are deliberately never read.
+      // A small complete JSON error may distinguish billing from rate limiting.
+      // Retain no message/body: only allowlisted machine discriminators escape.
+      let billing = false
+      const bytes = new Uint8Array(4096)
+      let length = 0
+      try {
+        if (response.body && Number(response.headers.get('content-length')) <= bytes.length) {
+          reader = response.body.getReader()
+          while (true) {
+            const chunk = await Promise.race([reader.read(), abortRace])
+            if (chunk.done) {
+              try {
+                const error = object(object(JSON.parse(new TextDecoder().decode(bytes.subarray(0, length)))).error)
+                if (response.status === 429 && providerId === 'openai') {
+                  const codes = ['insufficient_quota', 'credit_balance_exhausted', 'organization_spend_limit_exceeded', 'project_spend_limit_exceeded', 'organization_usage_limit_exceeded']
+                  billing = (typeof error.code === 'string' && codes.includes(error.code)) || error.type === 'insufficient_quota'
+                }
+                if (response.status === 429 && providerId === 'kimi') billing = error.type === 'exceeded_current_quota_error'
+              } catch { /* Malformed error content never overrides the HTTP class. */ }
+              break
+            }
+            if (length + chunk.value.byteLength > bytes.length) break
+            bytes.set(chunk.value, length); length += chunk.value.byteLength
+          }
+        }
+      } finally {
+        bytes.fill(0)
+        if (reader) void reader.cancel().catch(() => undefined)
+        else void response.body?.cancel().catch(() => undefined)
+      }
+      if (billing) throw new AiConsoleError('AI_BILLING_UNAVAILABLE')
       throw response.status === 529 ? new AiConsoleError('AI_PROVIDER_UNREACHABLE')
         : new AiConsoleError(normalizeAiError({ status: response.status }, { source: 'provider' }).code)
     }
@@ -117,10 +149,10 @@ export async function boundedFetch(url: string, init: RequestInit, timeoutMs: nu
   }
 }
 
-export async function providerJson(provider: ProviderId, key: string, path: string, signal: AbortSignal, body?: unknown): Promise<Record<string, unknown>> {
+export async function providerJson(provider: ProviderId, key: string, path: string, signal: AbortSignal, body?: unknown, preflight?: RequestPreflight): Promise<Record<string, unknown>> {
   const response = await boundedFetch(PROVIDER_BASE_URLS[provider] + path,
     { method: body === undefined ? 'GET' : 'POST', headers: providerHeaders(provider, key), signal,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, 15_000, body === undefined ? 2_097_152 : 65_536)
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, 15_000, body === undefined ? 2_097_152 : 65_536, provider, preflight)
   try {
     const parsed: unknown = await response.json()
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw fail()
@@ -130,7 +162,7 @@ export async function providerJson(provider: ProviderId, key: string, path: stri
 
 /** No key or SDK object is enumerable/serializable. Disposal revokes even extracted models. */
 export function runtimeBinding(providerId: ProviderId, apiKey: string, modelId: string,
-  create: (http: typeof fetch) => LanguageModelV3): RuntimeModelBinding {
+  create: (http: typeof fetch) => LanguageModelV3, preflight?: RequestPreflight): RuntimeModelBinding {
   assertApiKey(apiKey)
   let secret: string | undefined = apiKey
   const lifetime = new AbortController()
@@ -157,7 +189,7 @@ export function runtimeBinding(providerId: ProviderId, apiKey: string, modelId: 
         ...(providerId === 'openrouter' ? { models: undefined, route: undefined, provider: { allow_fallbacks: false, require_parameters: true } } : {}),
       })
     }
-    return boundedFetch(url.href, request, 120_000, 8_388_608)
+    return boundedFetch(url.href, request, 120_000, 8_388_608, providerId, preflight)
   }
   const sdk = create(http)
   const normalized = (cause: unknown) => new AiConsoleError(normalizeAiError(cause, { source: 'provider' }).code)
