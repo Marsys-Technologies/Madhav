@@ -228,12 +228,22 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md',
       sha256: '0f87dc072590179cc9a5e8b928bf30a0436de5d13b3d1e9ed4c20ce31aceee79',
     }])
+    // L5 was untouched by the L0-repair successor (PR #2727) -- the assertion below still
+    // proves that. It IS updated past its original convergence_commit/writer_inventory_sha256
+    // by a later, unrelated, legitimate live pin update (NIRMANA_L0_L5_RECEIPT_COUPLING_FIX_ADDENDUM_v1_0.md,
+    // CCD-017): the Jātaka Phase-A3 mi_bhara.py context-staleness fix moved L5's writer
+    // inventory, and this correction re-pinned L5 alone once build_pins()'s L0/L5 coupling
+    // bug (nirmana-analysis-layer-pins.py unconditionally validating L0 even for an L5-only
+    // request) was fixed. asset_prefix/non_writer_assets/receipt_count are UNCHANGED --
+    // membership never moved, only the reviewed source (convergence_commit) and its derived
+    // writer_inventory_sha256 did. history.L5 stays [] -- this was a live pin UPDATE via
+    // --layer L5, not a successor ADMISSION via --admit-successor.
     expect(layerPinRecord.layers.L5).toEqual({
       asset_prefix: 'mi_',
-      convergence_commit: 'fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5',
+      convergence_commit: 'ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b',
       non_writer_assets: ['lel_events'],
       receipt_count: 15,
-      writer_inventory_sha256: 'df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc',
+      writer_inventory_sha256: '9d222087056d2133991c52a53ca48ee20cafe06f5c9d3401565ad9e2436e99db',
     })
     expect(layerPinRecord.history.L5).toEqual([])
   })

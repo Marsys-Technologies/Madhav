@@ -28,7 +28,7 @@
     "L5": {
       "membership_sha256": "70221ef549ea99db55541d0f09a78650b22ec634575314f2b6f89711a356db53",
       "schema_version": "nirmana-analysis-layer-definition/v1",
-      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+      "snapshot_commit": "d1bd8916a61a6ee78dd03b941bfe0ea898b9827d"
     }
   },
   "history": {
@@ -1305,12 +1305,12 @@
     },
     "L5": {
       "asset_prefix": "mi_",
-      "convergence_commit": "fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5",
+      "convergence_commit": "ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b",
       "non_writer_assets": [
         "lel_events"
       ],
       "receipt_count": 15,
-      "writer_inventory_sha256": "df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc"
+      "writer_inventory_sha256": "9d222087056d2133991c52a53ca48ee20cafe06f5c9d3401565ad9e2436e99db"
     }
   },
   "version": "nirmana-analysis-layer-pins/v2"
