@@ -229,7 +229,7 @@ traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured 
 | **Carr** source carriage and reproduction | always | what the asset restates from a source matches that source; what it computes reproduces a second way; a witness disagreement is carried, not settled — **one** applicable check from §4.1, run | | | |
 | **Narr** narration fidelity | if it emits prose | prose restates cited facts and never re-derives them (§N.7) | | | |
 | **Dens** serving density | if it reaches a served surface | confirmed and catalog-only rows counted separately; the dense layer survives a trim (§N.6) | | | |
-| **Build** buildability | always | the orchestrator can dispatch this asset and a triggered rebuild produces the correct result — the six checks of §4.2 | | | |
+| **Build** buildability | always | the orchestrator can dispatch this asset and a triggered rebuild produces the correct result — the nine checks of §4.2 | | | |
 
 **Verdict vocabulary, closed set, these spellings exactly** (they are the tracker's and the ledger's):
 `PASS` · `FAIL` · `PARTIAL` (holds for a *named* subset) · `NO_DETECTOR` (never recorded as PASS) ·
@@ -238,7 +238,7 @@ traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured 
 A conditional gate that does not apply is disposed of with an explicit `N/A` and one line of reason. It is
 never silently dropped.
 
-### 4.2 · Buildability — the six checks, and what is NOT a gap
+### 4.2 · Buildability — the nine checks, and what is NOT a gap
 
 ```
 inherits:    CLAUDE.md §N.2 (the FROZEN orchestrator contract), §N.3 (idempotency per layer), §N.8 (a status needs a detector that could read false); ORCHESTRATOR_CONVERGENCE_CLOSE §2
