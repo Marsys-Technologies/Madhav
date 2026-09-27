@@ -87,7 +87,7 @@ correct reading**, because the alternative is a transcribed guess.
 | Source and domain fidelity | no row exists without a verse-level citation and a `school_tag` | the table is empty, so **satisfied vacuously and verifiably**: `count(*) WHERE source_citation IS NULL` = 0 of 0 |
 | Operational honesty | the emptiness is declared as intentional everywhere it shows: registry floor 0, throughput 0, and a consumer that falls through and discloses `uncited_extension` | **PASS** — all three agree |
 
-## §4 · The eight gates
+## §4 · The nine gates
 
 | gate | verdict | reason |
 |---|---|---|
@@ -99,6 +99,7 @@ correct reading**, because the alternative is a transcribed guess.
 | **Carr** | **N/A — inapplicable, not failed** | D1 is the applicable check and there is no passage to check against. The distinction matters: `NO_DETECTOR` would imply a claim nobody verifies; here there is no claim. |
 | **Narr** | **N/A** | no prose |
 | **Dens** | **N/A** | reaches no served surface |
+| **Build** | **PARTIAL** | Measured against `asset_census.py --layer L0`, 2026-09-28: registered / contract / dep-liveness / exercised / history all **N/A** (no writer, consistent with the asset's declared no-writer status); target and DAG **PASS**; completion **PASS** (`rows_written=0` = `live=0`, declared complete by `target_floor=0` — the fifth pilot's own headline, expressed again at the Build gate). Check 5 (count/integrity) is **PARTIAL**: `count_sql` is present but `integrity_check_sql` is absent — a new finding this pilot refresh surfaces, not yet a registered ledger row (out of this row's scope; a candidate under R78's registered-criterion discipline). |
 
 ## §5 · Ledger rows (registered)
 `G01` the universe cannot be declared until the passage exists (blocked, not open work) ·

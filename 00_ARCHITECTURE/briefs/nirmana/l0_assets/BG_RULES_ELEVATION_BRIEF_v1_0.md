@@ -113,7 +113,7 @@ how many rules a text contains), so the measurable proxy is yield per chunk:
 | Operational honesty | `confidence` means something a reader can act on; the build record carries a rate | the distribution check (G02); `rows_per_second` non-null |
 | Delivery fidelity | a caller can reach the rules from the retrieval registry, not only the MCP surface | the §1.2 census (G05) |
 
-## §4 · The eight gates
+## §4 · The nine gates
 
 | gate | verdict | detector and evidence |
 |---|---|---|
@@ -125,6 +125,7 @@ how many rules a text contains), so the measurable proxy is yield per chunk:
 | **Carr** | **NO_DETECTOR** | D1 is the applicable check and nothing compares a rule to its verse. This is the asset where D1 matters most — 3,002 encoded claims, none verified against its source. |
 | **Narr** | **N/A** | `prediction_jsonb` carries structured fields, not narration re-derived over computed facts. In D1's scope once that detector exists. |
 | **Dens** | **FAIL** | reaches a served surface (MCP) with no `density_contract`; and 0 of 46 retrieval-registry modules expose it |
+| **Build** | **PASS** | Measured against `asset_census.py --layer L0`, 2026-09-28: all nine checks pass — registered, contract, target (`sutravali_rules`), DAG (3 edges, all resolvable, all 3 declared dependencies lit), count-integrity, completion (`rows_written=3002` = `live=3002`), exercised (2 runs), history (2 complete, 1 skip_no_delta). The only asset of the five pilots with a clean Build gate. |
 
 ## §5 · Ledger rows (registered)
 
