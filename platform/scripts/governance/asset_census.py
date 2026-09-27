@@ -2380,10 +2380,33 @@ def measure(layer_key: str) -> dict:
             # (mi_kula's "15 vs 11 scored PASS" was that branch; 15 vs anything would have passed).
             m["Build.completion"] = dict(v=FAIL, measured=f"build record rows_written={rw} disagrees with "
                                                          f"live={live} ({basis}; {rec_scope})")
+        elif live == 0 and r["has_writer"]:
+            # R99: the uncovered third case (ga_prashna: 51 runs, 0 rows, 0 modules). target_floor=0
+            # alone is not "the layer plan declares this asset empty by design" — it is frequently
+            # just an unset floor, and R52's fix (below) built its PASS path for a genuinely
+            # design-empty asset (bg_sarvatobhadra_grid: has_writer=false, no writer ever attempted).
+            # A WRITER-BACKED data asset that has actually run and still produced zero rows is
+            # indistinguishable from a writer that has never worked — PASS here would silently
+            # launder that ambiguity through the same branch. has_writer is the one existing
+            # registry signal honest enough to distinguish the two without inventing a new
+            # "empty by design" field nothing populates yet; a writer-backed asset gets PARTIAL —
+            # not FAIL (R52's fix must not regress: an empty table under a declared target_floor=0
+            # must not read as a new defect beyond what the emptiness itself already is), not PASS
+            # (nothing here confirms the emptiness is intended, only that a floor was set to 0).
+            m["Build.completion"] = dict(
+                v=PARTIAL,
+                measured=f"rows_written={rw} = live=0 ({basis}; {rec_scope}); target_floor=0 declares zero "
+                         "rows complete, but this is a writer-backed data asset (has_writer=true) with no "
+                         "layer-plan claim that the emptiness is by design — indistinguishable from a "
+                         "writer that has never produced a row")
         else:
-            # Consistency (R42), reached for live == 0 only under the target_floor=0 declaration (R52).
+            # Consistency (R42), reached for live == 0 only under the target_floor=0 declaration (R52)
+            # AND (R99) has_writer=false — no writer at all, the one signal honest enough to read as
+            # "empty by design" without inventing a field the registry does not carry.
             m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live={live} ({basis}; {rec_scope})"
-                                         + ("; zero rows declared complete by target_floor=0" if live == 0 else ""))
+                                         + ("; zero rows declared complete by target_floor=0 (has_writer=false "
+                                            "— no writer at all, the signal honest enough to read as by-design)"
+                                            if live == 0 else ""))
 
         # D6 item 2 (W2-2): Earn/Cost are attributed to the latest STARTED build_run_assets attempt at
         # the build record's scope (`_attempt_timing`), and only then graded by the D6 classifier —
