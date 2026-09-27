@@ -13,8 +13,26 @@ describe('raw inquiry lifecycle MCP surface', () => {
     registerInquiryLifecycleTools(server, principal, 'full')
   })
 
-  it('registers start, server execution, and finalize as one lifecycle', () => {
-    expect([...handlers.keys()].sort()).toEqual(['inquiry_execute_next', 'inquiry_finalize', 'inquiry_start'])
+  it('registers start, server execution, finalize, evidence continuation and certification as one lifecycle', () => {
+    expect([...handlers.keys()].sort()).toEqual([
+      'inquiry_certify', 'inquiry_continue', 'inquiry_execute_next', 'inquiry_finalize', 'inquiry_start',
+    ])
+  })
+
+  it('forwards continuation and certification as their exact server actions', async () => {
+    await handlers.get('inquiry_continue')?.({ lifecycle_token: 'final-token' })
+    expect(callInquiryLifecycle).toHaveBeenLastCalledWith(principal, { action: 'continue', lifecycle_token: 'final-token' })
+    await handlers.get('inquiry_certify')?.({ lifecycle_token: 'final-token', response_text: 'Answer [[F1]]', evidence_payloads: [{ rows: [] }] })
+    expect(callInquiryLifecycle).toHaveBeenLastCalledWith(principal, {
+      action: 'certify', lifecycle_token: 'final-token', response_text: 'Answer [[F1]]', evidence_payloads: [{ rows: [] }],
+    })
+  })
+
+  it('rejects certification bodies the server would refuse, before any platform call', async () => {
+    vi.mocked(callInquiryLifecycle).mockClear()
+    await expect(handlers.get('inquiry_certify')?.({ lifecycle_token: 'final-token', response_text: '', evidence_payloads: [] })).rejects.toThrow()
+    await expect(handlers.get('inquiry_certify')?.({ lifecycle_token: 'final-token', response_text: 'a', evidence_payloads: [], extra: true })).rejects.toThrow()
+    expect(callInquiryLifecycle).not.toHaveBeenCalled()
   })
 
   it('forwards a strict start contract with authenticated principal out of caller control', async () => {

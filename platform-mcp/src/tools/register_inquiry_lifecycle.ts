@@ -75,4 +75,26 @@ export function registerInquiryLifecycleTools(server: InquiryRegisteringServer, 
     const parsed = z.object({ lifecycle_token: z.string().min(1).max(16384) }).strict().parse(args)
     return output(await callInquiryLifecycle(principal, { action: 'finalize', ...parsed }))
   })
+
+  server.tool('inquiry_continue', 'Continue an inquiry whose served evidence called for a different required capability (for example an active yoga cancellation calling for the cancellation analysis). Use the token that allows finalization. The server atomically closes the parent and compiles a successor contract for only the evidence-admitted capabilities, returning its next actions and a fresh token; it never adds a tool the caller chose.', {
+    lifecycle_token: z.string().min(1).max(16384),
+  }, async (args) => {
+    if (restricted()) return output({ ok: false, error: 'inquiry lifecycle requires the full MCP profile' })
+    const parsed = z.object({ lifecycle_token: z.string().min(1).max(16384) }).strict().parse(args)
+    return output(await callInquiryLifecycle(principal, { action: 'continue', ...parsed }))
+  })
+
+  server.tool('inquiry_certify', 'Certify the answer you wrote against the server\'s own record, after the inquiry is terminal. Pass the last lifecycle token you received, your answer (cite findings with their [[Fn]] handles), and every raw_result the server returned, unchanged. The server rebuilds the fact register and coverage receipt itself; coverage_certified attests evidence coverage only, never faithfulness of the prose. Read-only.', {
+    lifecycle_token: z.string().min(1).max(16384),
+    response_text: z.string().min(1).max(200_000),
+    evidence_payloads: z.array(z.unknown()).max(64),
+  }, async (args) => {
+    if (restricted()) return output({ ok: false, error: 'inquiry lifecycle requires the full MCP profile' })
+    const parsed = z.object({
+      lifecycle_token: z.string().min(1).max(16384),
+      response_text: z.string().min(1).max(200_000),
+      evidence_payloads: z.array(z.unknown()).max(64),
+    }).strict().parse(args)
+    return output(await callInquiryLifecycle(principal, { action: 'certify', ...parsed }))
+  })
 }
