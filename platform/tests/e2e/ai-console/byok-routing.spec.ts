@@ -6,7 +6,7 @@ import { captureLeakageBaseline, containsForbiddenLeakage, readFreshLeakageEvide
   type LeakageBaseline } from '../../../scripts/ai-console/leakage_evidence'
 import { requestWithValidationThrottle } from '../../../scripts/ai-console/validation_scheduler'
 import {
-  assertSafeRoutingEvidence, parseConsultTerminal, parsePariprashnaTerminal,
+  assertSafeRoutingEvidence, assertStableAcceptanceNamespaceClean, parseConsultTerminal, parsePariprashnaTerminal,
   type SafeRoleMap, type SafeRoleTarget, type SafeSelection,
 } from '../../../scripts/ai-console/e2e_evidence'
 
@@ -57,7 +57,8 @@ let runStartedAtMs = 0
 let leakageBaselines: LeakageBaseline[] = []
 const createdConnectionIds = new Set<string>()
 const createdConfigurationIds = new Set<string>()
-const currentRunMarkers = new Set<string>()
+const turnCorrelationMarkers = new Set<string>()
+const auditCorrelationMarkers = new Set<string>()
 
 test.use({ trace: 'off', screenshot: 'off', video: 'off' })
 test.describe.configure({ mode: 'serial' })
@@ -93,7 +94,7 @@ async function createConnection(request: APIRequestContext, providerId: Provider
   let created: { connection: { id: string }; validation: { state: string } }
   try { created = await response.json() as typeof created } catch { throw new Error('AIC_E2E_RESPONSE_INVALID') }
   createdConnectionIds.add(created.connection.id)
-  currentRunMarkers.add(created.connection.id)
+  auditCorrelationMarkers.add(created.connection.id)
   expect(created.validation.state).toBe('validated')
   const candidates = (await state(request)).models.filter(model => model.connectionId === created.connection.id && model.available
     && ['synthesizer', 'planner', 'deep_planner', 'worker'].every(role => model.compatibleRoles.includes(role)))
@@ -130,7 +131,7 @@ async function runNativeTurn(request: APIRequestContext, selection: SafeSelectio
   })
   if (!response.ok()) throw new Error(`AIC_E2E_HTTP_${response.status()}`)
   const turnId = parsePariprashnaTerminal(await response.text())
-  currentRunMarkers.add(turnId)
+  turnCorrelationMarkers.add(turnId)
   const path = config.inspection.routingEvidenceUrlTemplate.replace('{turnId}', encodeURIComponent(turnId))
   await pollEvidence(request, path, { userId: config.userId, correlationId: turnId, selection, resolvedChoice, roles })
   return turnId
@@ -147,7 +148,7 @@ async function latestEvidence(request: APIRequestContext, after: string, selecti
         const evidence = await response.json() as { correlationId?: unknown }
         if (typeof evidence.correlationId === 'string') {
           assertSafeRoutingEvidence(evidence, { userId: config.userId, correlationId: evidence.correlationId, selection, resolvedChoice, roles })
-          currentRunMarkers.add(evidence.correlationId)
+          turnCorrelationMarkers.add(evidence.correlationId)
           return evidence.correlationId
         }
       } catch { /* bounded retry for asynchronous Observatory persistence */ }
@@ -210,6 +211,7 @@ async function cleanup(request: APIRequestContext) {
       expect(current.configurations.filter(row => row.name.startsWith(prefix) && !row.deletedAt)).toEqual([])
       expect(current.connections.filter(row => row.name.startsWith(prefix) && !row.deletedAt)).toEqual([])
     }
+    assertStableAcceptanceNamespaceClean(current)
   })
   createdConfigurationIds.clear()
   createdConnectionIds.clear()
@@ -250,8 +252,8 @@ test.describe('AI Console owner-operated local cutover', () => {
     await authenticate(context)
     await assertIdentity(context.request, config)
     const current = await state(context.request)
+    assertStableAcceptanceNamespaceClean(current)
     currentPrefix = `${PREFIX}${crypto.randomUUID()} `
-    currentRunMarkers.add(currentPrefix)
     expect(current.connections.filter(row => row.name.startsWith(currentPrefix!))).toEqual([])
     expect(current.configurations.filter(row => row.name.startsWith(currentPrefix!))).toEqual([])
     if (/@routing|@backend|@cli-|@leakage/.test(testInfo.title)) await snapshotMutableState(context.request,
@@ -297,7 +299,7 @@ test.describe('AI Console owner-operated local cutover', () => {
       method: 'POST', data: { name: `${currentPrefix}quartet ${suffix}`, roles },
     })
     createdConfigurationIds.add(configuration.configuration.id)
-    currentRunMarkers.add(configuration.configuration.id)
+    auditCorrelationMarkers.add(configuration.configuration.id)
     const configurationChoice: Choice = { kind: 'custom_configuration', configurationId: configuration.configuration.id }
     await runNativeTurn(context.request, { kind: 'explicit', choice: firstChoice }, firstChoice, providerRoles(first))
     await runNativeTurn(context.request, { kind: 'explicit', choice: configurationChoice }, configurationChoice, {
@@ -320,7 +322,7 @@ test.describe('AI Console owner-operated local cutover', () => {
       method: 'POST', data: { name: `${currentPrefix}quartet copy ${suffix}`, duplicateFrom: configuration.configuration.id },
     })
     createdConfigurationIds.add(duplicate.configuration.id)
-    currentRunMarkers.add(duplicate.configuration.id)
+    auditCorrelationMarkers.add(duplicate.configuration.id)
     const secondContext = await browser.newContext()
     await authenticate(secondContext)
     try {
@@ -399,9 +401,10 @@ test.describe('AI Console owner-operated local cutover', () => {
     await runNativeTurn(context.request, { kind: 'explicit', choice }, choice, providerRoles(direct))
     const values: string[] = [JSON.stringify(await state(context.request)), JSON.stringify(await json(context.request, '/api/ai-console/clis'))]
     for (const url of config.leakage.urls) values.push(JSON.stringify(await json(context.request, url)))
-    for (const baseline of leakageBaselines) values.push(await readFreshLeakageEvidence(baseline, {
-      runStartedAtMs, markers: [...currentRunMarkers],
-    }))
+    for (const [index, baseline] of leakageBaselines.entries()) {
+      const markers = index === 3 ? [...auditCorrelationMarkers] : [...turnCorrelationMarkers]
+      values.push(await readFreshLeakageEvidence(baseline, { runStartedAtMs, markers }))
+    }
     const artifacts = await artifactFiles(config.leakage.artifactDirectory)
     expect(artifacts.map(path => basename(path)).some(name => /(?:trace.*\.zip|.*\.(?:png|jpe?g|webm|har))$/i.test(name))).toBe(false)
     for (const path of artifacts) values.push(await readFile(path, 'utf8'))

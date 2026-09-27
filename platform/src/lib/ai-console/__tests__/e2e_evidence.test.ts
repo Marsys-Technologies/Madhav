@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assertSafeRoutingEvidence,
+  assertStableAcceptanceNamespaceClean,
   parseConsultTerminal,
   parsePariprashnaTerminal,
 } from '../../../../scripts/ai-console/e2e_evidence'
@@ -9,6 +10,17 @@ const target = { kind: 'provider_model' as const, providerId: 'openai', connecti
 const roles = { synthesizer: target, planner: target, deep_planner: target, worker: target }
 
 describe('real local E2E evidence contract', () => {
+  it('rejects any active row in the stable acceptance namespace while allowing tombstones', () => {
+    const clean = {
+      connections: [{ name: 'AIC acceptance old', deletedAt: '2026-09-28T00:00:00.000Z' }],
+      configurations: [],
+    }
+    expect(assertStableAcceptanceNamespaceClean(clean)).toBe(true)
+    expect(() => assertStableAcceptanceNamespaceClean({ ...clean,
+      configurations: [{ name: 'AIC acceptance leaked', deletedAt: null }],
+    })).toThrow('AIC_E2E_NAMESPACE_NOT_CLEAN')
+  })
+
   it('requires a successful Pariprashna turn.close and returns its exact turn id', () => {
     const text = [
       'event: turn.open\ndata: {"type":"turn.open","turn_id":"10000000-0000-4000-8000-000000000001"}\n',

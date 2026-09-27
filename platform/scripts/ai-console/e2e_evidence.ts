@@ -35,6 +35,18 @@ export type SafeRoleTarget = z.infer<typeof TargetSchema>
 export type SafeRoleMap = z.infer<typeof RolesSchema>
 export type SafeSelection = z.infer<typeof SelectionSchema>
 
+export function assertStableAcceptanceNamespaceClean(
+  state: { readonly connections: readonly { readonly name: string; readonly deletedAt: string | null }[];
+    readonly configurations: readonly { readonly name: string; readonly deletedAt: string | null }[] },
+  prefix = 'AIC acceptance ',
+): true {
+  if ([...state.connections, ...state.configurations]
+    .some(row => row.deletedAt === null && row.name.startsWith(prefix))) {
+    throw new Error('AIC_E2E_NAMESPACE_NOT_CLEAN')
+  }
+  return true
+}
+
 function sseData(text: string): unknown[] {
   const values: unknown[] = []
   for (const line of text.split('\n')) {

@@ -175,6 +175,65 @@ describe('AI Console shared-key route import audit', () => {
     }])
   })
 
+  it('recognizes default, namespace, and named environment imports from both process module names', async () => {
+    const root = await fixture({
+      'src/root.ts': ["import './default-process'", "import './default-node'", "import './namespace-process'",
+        "import './namespace-node'", "import './named-process'", "import './named-node'"].join(';'),
+      'src/default-process.ts': "import proc from 'process'; export const value = proc.env.OPENAI_API_KEY\n",
+      'src/default-node.ts': "import proc from 'node:process'; export const value = proc.env.OPENAI_API_KEY\n",
+      'src/namespace-process.ts': "import * as proc from 'process'; export const value = proc.env.NVIDIA_NIM_API_KEY\n",
+      'src/namespace-node.ts': "import * as proc from 'node:process'; export const value = proc.env.NVIDIA_NIM_API_KEY\n",
+      'src/named-process.ts': "import { env as importedEnv } from 'process'; export const value = importedEnv.ANTHROPIC_API_KEY\n",
+      'src/named-node.ts': "import { env as importedEnv } from 'node:process'; export const value = importedEnv.ANTHROPIC_API_KEY\n",
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.violations.filter(row => row.ruleId === 'AIC_SHARED_PROVIDER_ENV')).toHaveLength(6)
+    expect(result.scannerErrors).toEqual([])
+  })
+
+  it('recognizes globalThis.process and static Reflect.get environment access', async () => {
+    const root = await fixture({
+      'src/root.ts': [
+        "const proc = Reflect['get'](globalThis, 'process');",
+        "const environment = Reflect.get(proc, 'env');",
+        "export const first = globalThis['process'].env.OPENAI_API_KEY;",
+        "export const second = Reflect.get(environment, 'NVIDIA_NIM_API_KEY');",
+      ].join('\n'),
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.violations).toEqual([{ ruleId: 'AIC_SHARED_PROVIDER_ENV', chain: ['src/root.ts'] }])
+    expect(result.scannerErrors).toEqual([])
+  })
+
+  it('fails closed when a reflective global or process transition uses a dynamic key', async () => {
+    const root = await fixture({
+      'src/root.ts': 'const proc = Reflect.get(globalThis, getProcessKey()); Reflect.get(proc, getEnvironmentKey())\n',
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.scannerErrors).toEqual([{
+      ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: ['src/root.ts', 'dynamic-environment-key'],
+    }])
+  })
+
+  it('fails closed when process.env escapes through calls, reflection, spread, or rest destructuring', async () => {
+    const root = await fixture({
+      'src/root.ts': [
+        'const environment = process.env;',
+        'consume(environment);',
+        'const copy = { ...environment };',
+        'const { PATH, ...rest } = environment;',
+        'const dynamic = Reflect.get(environment, getName());',
+        'export { copy, rest, dynamic, PATH };',
+      ].join('\n'),
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.scannerErrors).toEqual([
+      { ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: ['src/root.ts', 'dynamic-environment-key'] },
+      { ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: ['src/root.ts', 'unmodeled-environment-operation'] },
+    ])
+    expect(result.violations).toEqual([{ ruleId: 'AIC_SHARED_PROVIDER_ENV', chain: ['src/root.ts'] }])
+  })
+
   it('traverses createRequire and module.require aliases and fails closed on dynamic loader calls', async () => {
     const root = await fixture({
       'src/root.ts': [

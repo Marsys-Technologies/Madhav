@@ -171,78 +171,194 @@ function propertyName(node: ts.Expression | ts.PropertyName | undefined, strings
   return staticString(node as ts.Expression, strings)
 }
 
-function usesSharedProviderEnvironment(source: string, path: string): { found: boolean; unsupported: boolean } {
+function usesSharedProviderEnvironment(source: string, path: string): { found: boolean; unsupported: readonly string[] } {
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
   const strings = collectStaticStrings(sourceFile)
   const flows = assignments(sourceFile)
+  const globalAliases = new Set(['globalThis'])
   const processAliases = new Set(['process'])
   const environmentAliases = new Set<string>()
-  const isProcess = (node: ts.Expression): boolean => {
-    const current = unwrapExpression(node)
-    return ts.isIdentifier(current) && processAliases.has(current.text)
+  let found = false
+  const unsupported = new Set<string>()
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement) && ts.isStringLiteralLike(statement.moduleSpecifier)
+      && ['process', 'node:process'].includes(statement.moduleSpecifier.text)) {
+      const clause = statement.importClause
+      if (clause?.name) processAliases.add(clause.name.text)
+      const bindings = clause?.namedBindings
+      if (bindings && ts.isNamespaceImport(bindings)) processAliases.add(bindings.name.text)
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const element of bindings.elements) {
+          const imported = (element.propertyName ?? element.name).text
+          if (imported === 'env') environmentAliases.add(element.name.text)
+          if (imported === 'default') processAliases.add(element.name.text)
+        }
+      }
+    }
+    if (ts.isImportEqualsDeclaration(statement) && ts.isExternalModuleReference(statement.moduleReference)
+      && staticString(statement.moduleReference.expression, strings)
+      && ['process', 'node:process'].includes(staticString(statement.moduleReference.expression, strings)!)) {
+      processAliases.add(statement.name.text)
+    }
   }
-  const isEnvironment = (node: ts.Expression): boolean => {
+
+  const staticMember = (node: ts.Expression): { readonly base: ts.Expression; readonly key: string | null } | null => {
     const current = unwrapExpression(node)
-    if (ts.isIdentifier(current)) return environmentAliases.has(current.text)
-    if (ts.isPropertyAccessExpression(current)) return isProcess(current.expression) && current.name.text === 'env'
-    return ts.isElementAccessExpression(current) && isProcess(current.expression)
-      && staticString(current.argumentExpression, strings) === 'env'
+    if (ts.isPropertyAccessExpression(current)) return { base: current.expression, key: current.name.text }
+    if (ts.isElementAccessExpression(current)) return { base: current.expression,
+      key: staticString(current.argumentExpression, strings) }
+    return null
+  }
+  const isReflectGet = (node: ts.Expression): boolean => {
+    const current = unwrapExpression(node)
+    const member = staticMember(current)
+    return Boolean(member && ts.isIdentifier(unwrapExpression(member.base))
+      && (unwrapExpression(member.base) as ts.Identifier).text === 'Reflect' && member.key === 'get')
+  }
+  const isProcessModuleLoad = (node: ts.Expression): boolean => {
+    const current = unwrapExpression(node)
+    return ts.isCallExpression(current) && ts.isIdentifier(unwrapExpression(current.expression))
+      && (unwrapExpression(current.expression) as ts.Identifier).text === 'require'
+      && current.arguments.length === 1
+      && ['process', 'node:process'].includes(staticString(current.arguments[0], strings) ?? '')
+  }
+  type Taint = 'global' | 'process' | 'environment'
+  const taintOf = (node: ts.Expression): Taint | null => {
+    const current = unwrapExpression(node)
+    if (ts.isIdentifier(current)) {
+      if (environmentAliases.has(current.text)) return 'environment'
+      if (processAliases.has(current.text)) return 'process'
+      if (globalAliases.has(current.text)) return 'global'
+      return null
+    }
+    if (isProcessModuleLoad(current)) return 'process'
+    const member = staticMember(current)
+    if (member) {
+      const base = taintOf(member.base)
+      if (base === 'global' && member.key === 'process') return 'process'
+      if (base === 'process' && member.key === 'env') return 'environment'
+    }
+    if (ts.isCallExpression(current) && isReflectGet(current.expression) && current.arguments.length >= 2) {
+      const base = taintOf(current.arguments[0])
+      const key = staticString(current.arguments[1], strings)
+      if (base === 'global' && key === 'process') return 'process'
+      if (base === 'process' && key === 'env') return 'environment'
+    }
+    if (ts.isObjectLiteralExpression(current)) {
+      for (const property of current.properties) {
+        if (ts.isSpreadAssignment(property)) {
+          const spread = taintOf(property.expression)
+          if (spread) return spread
+        }
+      }
+    }
+    return null
+  }
+  const bind = (name: ts.BindingName | ts.Expression, taint: Taint): boolean => {
+    const current = ts.isExpression(name) ? unwrapExpression(name) : name
+    if (ts.isIdentifier(current)) {
+      const target = taint === 'global' ? globalAliases : taint === 'process' ? processAliases : environmentAliases
+      if (!target.has(current.text)) { target.add(current.text); return true }
+      return false
+    }
+    const properties = ts.isObjectBindingPattern(current) ? current.elements : ts.isObjectLiteralExpression(current)
+      ? current.properties : []
+    let changed = false
+    for (const property of properties) {
+      if ((ts.isBindingElement(property) && property.dotDotDotToken) || ts.isSpreadAssignment(property)) {
+        if (taint === 'environment') found = true
+        const target = ts.isBindingElement(property) ? property.name : property.expression
+        changed = bind(target, taint) || changed
+        continue
+      }
+      const keyNode = ts.isBindingElement(property) ? property.propertyName ?? (ts.isIdentifier(property.name) ? property.name : undefined)
+        : property.name
+      const key = propertyName(keyNode, strings)
+      const target = ts.isBindingElement(property) ? property.name
+        : ts.isPropertyAssignment(property) ? property.initializer
+          : ts.isShorthandPropertyAssignment(property) ? property.name : undefined
+      if (!target) continue
+      if (taint === 'environment') {
+        if (key && PROVIDER_ENV_KEYS.has(key)) found = true
+        continue
+      }
+      if (taint === 'process' && key === 'env') changed = bind(target, 'environment') || changed
+      if (taint === 'global' && key === 'process') changed = bind(target, 'process') || changed
+    }
+    return changed
   }
   let changed = true
   while (changed) {
     changed = false
     for (const flow of flows) {
-      if (ts.isIdentifier(flow.name)) {
-        if (isProcess(flow.value) && !processAliases.has(flow.name.text)) { processAliases.add(flow.name.text); changed = true }
-        if (isEnvironment(flow.value) && !environmentAliases.has(flow.name.text)) { environmentAliases.add(flow.name.text); changed = true }
-      } else if (ts.isObjectBindingPattern(flow.name) && isProcess(flow.value)) {
-        for (const element of flow.name.elements) {
-          const name = element.propertyName ?? (ts.isIdentifier(element.name) ? element.name : undefined)
-          if (propertyName(name, strings) === 'env' && ts.isIdentifier(element.name)
-            && !environmentAliases.has(element.name.text)) { environmentAliases.add(element.name.text); changed = true }
-          }
-      } else if (ts.isObjectLiteralExpression(unwrapExpression(flow.name as ts.Expression)) && isProcess(flow.value)) {
-        for (const property of (unwrapExpression(flow.name as ts.Expression) as ts.ObjectLiteralExpression).properties) {
-          if (ts.isPropertyAssignment(property) && propertyName(property.name, strings) === 'env'
-            && ts.isIdentifier(unwrapExpression(property.initializer))
-            && !environmentAliases.has((unwrapExpression(property.initializer) as ts.Identifier).text)) {
-            environmentAliases.add((unwrapExpression(property.initializer) as ts.Identifier).text); changed = true
-          }
-        }
-      }
+      const taint = taintOf(flow.value)
+      if (taint) changed = bind(flow.name, taint) || changed
     }
   }
-  let found = false
-  let unsupported = false
-  const inspectPattern = (name: ts.BindingName | ts.Expression, value: ts.Expression) => {
-    if (!isEnvironment(value)) return
-    if (ts.isObjectBindingPattern(name)) {
-      for (const element of name.elements) {
-        const key = element.propertyName ?? (ts.isIdentifier(element.name) ? element.name : undefined)
-        if (PROVIDER_ENV_KEYS.has(propertyName(key, strings) ?? '')) found = true
-      }
-    } else if (ts.isObjectLiteralExpression(unwrapExpression(name as ts.Expression))) {
-      for (const property of (unwrapExpression(name as ts.Expression) as ts.ObjectLiteralExpression).properties) {
-        if (PROVIDER_ENV_KEYS.has(propertyName(property.name, strings) ?? '')) found = true
-      }
-    }
+
+  const isValueIdentifier = (node: ts.Identifier): boolean => {
+    const parent = node.parent
+    if ((ts.isVariableDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent)) && parent.name === node) return false
+    if (ts.isBinaryExpression(parent) && parent.left === node
+      && parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment
+      && parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment) return false
+    if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false
+    if ((ts.isPropertyAssignment(parent) || ts.isShorthandPropertyAssignment(parent)) && parent.name === node) return false
+    if (ts.isImportClause(parent) || ts.isNamespaceImport(parent) || ts.isImportSpecifier(parent)) return false
+    return true
   }
-  for (const flow of flows) inspectPattern(flow.name, flow.value)
+  const isModeledEnvironmentParent = (node: ts.Expression): boolean => {
+    const parent = node.parent
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isTypeAssertionExpression(parent)
+      || ts.isNonNullExpression(parent) || ts.isSatisfiesExpression(parent)) return true
+    if ((ts.isVariableDeclaration(parent) || ts.isParameter(parent)) && parent.initializer === node) return true
+    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && parent.right === node) {
+      return ts.isIdentifier(unwrapExpression(parent.left)) || ts.isObjectLiteralExpression(unwrapExpression(parent.left))
+    }
+    if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === node) return true
+    if (ts.isCallExpression(parent) && isReflectGet(parent.expression) && parent.arguments[0] === node) return true
+    if (ts.isSpreadAssignment(parent)) return true
+    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.InKeyword && parent.right === node) return true
+    return false
+  }
   const inspect = (node: ts.Node) => {
-    if (ts.isPropertyAccessExpression(node) && isEnvironment(node.expression) && PROVIDER_ENV_KEYS.has(node.name.text)) {
+    if (ts.isPropertyAccessExpression(node) && taintOf(node.expression) === 'environment' && PROVIDER_ENV_KEYS.has(node.name.text)) {
       found = true
     }
-    if (ts.isElementAccessExpression(node) && isEnvironment(node.expression)) {
+    if (ts.isElementAccessExpression(node) && taintOf(node.expression) === 'environment') {
       const key = staticString(node.argumentExpression, strings)
-      if (key === null) unsupported = true
+      if (key === null) unsupported.add('dynamic-environment-key')
       else if (PROVIDER_ENV_KEYS.has(key)) found = true
     }
-    if (ts.isElementAccessExpression(node) && isProcess(node.expression)
-      && staticString(node.argumentExpression, strings) === null) unsupported = true
+    if (ts.isElementAccessExpression(node) && taintOf(node.expression) === 'process'
+      && staticString(node.argumentExpression, strings) === null) unsupported.add('dynamic-environment-key')
+    if (ts.isCallExpression(node) && isReflectGet(node.expression) && node.arguments.length >= 2) {
+      const base = taintOf(node.arguments[0])
+      const key = staticString(node.arguments[1], strings)
+      if (base && key === null) unsupported.add('dynamic-environment-key')
+      else if (base === 'environment' && key && PROVIDER_ENV_KEYS.has(key)) found = true
+    }
+    if (ts.isCallExpression(node) && !isReflectGet(node.expression)) {
+      if (node.arguments.some(argument => taintOf(argument) === 'environment')) unsupported.add('unmodeled-environment-operation')
+      const callee = staticMember(node.expression)
+      if (callee && taintOf(callee.base) === 'environment') unsupported.add('unmodeled-environment-operation')
+    }
+    if (ts.isSpreadAssignment(node) && taintOf(node.expression) === 'environment') found = true
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.InKeyword
+      && taintOf(node.right) === 'environment') {
+      const key = staticString(node.left, strings)
+      if (key === null) unsupported.add('dynamic-environment-key')
+      else if (PROVIDER_ENV_KEYS.has(key)) found = true
+    }
+    if (ts.isExpression(node) && taintOf(node) === 'environment'
+      && (!ts.isIdentifier(node) || isValueIdentifier(node)) && !isModeledEnvironmentParent(node)) {
+      unsupported.add('unmodeled-environment-operation')
+    }
     ts.forEachChild(node, inspect)
   }
   inspect(sourceFile)
-  return { found, unsupported }
+  return { found, unsupported: [...unsupported].sort() }
 }
 
 function isImportMetaUrl(node: ts.Expression): boolean {
@@ -377,8 +493,8 @@ export async function auditImportGraph(config: ImportAuditConfig): Promise<Impor
       }
 
       const providerEnvironment = usesSharedProviderEnvironment(source, current.path)
-      if (providerEnvironment.unsupported) {
-        const finding = { ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: [...current.chain, 'dynamic-environment-key'] }
+      for (const reason of providerEnvironment.unsupported) {
+        const finding = { ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: [...current.chain, reason] }
         scannerErrors.set(findingKey(finding), finding)
       }
       for (const rule of config.forbidden) {

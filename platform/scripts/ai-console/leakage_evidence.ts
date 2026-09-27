@@ -1,4 +1,5 @@
 import { lstat, readFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 
 export interface LeakageBaseline {
   readonly path: string
@@ -6,17 +7,15 @@ export interface LeakageBaseline {
   readonly ino: number
   readonly size: number
   readonly mtimeMs: number
+  readonly prefixHash: string
 }
 
 export async function captureLeakageBaseline(path: string): Promise<LeakageBaseline> {
   const status = await lstat(path)
   if (!status.isFile() || status.isSymbolicLink()) throw new Error('AIC_E2E_LEAKAGE_INPUT_INVALID')
-  return { path, dev: status.dev, ino: status.ino, size: status.size, mtimeMs: status.mtimeMs }
-}
-
-function hasCurrentTimestamp(text: string, startedAt: number): boolean {
-  return [...text.matchAll(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g)]
-    .some(match => Date.parse(match[0]) >= startedAt)
+  const prefix = await readFile(path)
+  return { path, dev: status.dev, ino: status.ino, size: status.size, mtimeMs: status.mtimeMs,
+    prefixHash: createHash('sha256').update(prefix).digest('hex') }
 }
 
 export async function readFreshLeakageEvidence(
@@ -27,11 +26,12 @@ export async function readFreshLeakageEvidence(
   if (!status.isFile() || status.isSymbolicLink()) throw new Error('AIC_E2E_LEAKAGE_INPUT_INVALID')
   const bytes = await readFile(baseline.path)
   const sameFile = status.dev === baseline.dev && status.ino === baseline.ino
-  const offset = sameFile && status.size >= baseline.size ? baseline.size : 0
+  const prefixUnchanged = sameFile && status.size >= baseline.size
+    && createHash('sha256').update(bytes.subarray(0, baseline.size)).digest('hex') === baseline.prefixHash
+  const offset = prefixUnchanged ? baseline.size : 0
   const fresh = bytes.subarray(offset).toString('utf8')
-  const changed = !sameFile || status.size !== baseline.size || status.mtimeMs > baseline.mtimeMs
+  const changed = !prefixUnchanged || status.size !== baseline.size || status.mtimeMs > baseline.mtimeMs
   const marked = expected.markers.some(marker => marker.length > 0 && fresh.includes(marker))
-    || hasCurrentTimestamp(fresh, expected.runStartedAtMs)
   if (!changed || !fresh.trim() || !marked) throw new Error('AIC_E2E_LEAKAGE_INPUT_STALE')
   return fresh
 }
@@ -43,6 +43,7 @@ function forbiddenField(key: string): boolean {
   return /(?:ciphertext|nonce|wrapped(?:data)?key|apikey|credential)/.test(normalized)
     || /(?:^|auth)tag$/.test(normalized)
     || /(?:refresh|access|session)?token$/.test(normalized)
+    || /(?:secret|password|(?:secret|private|signing|client)key)$/.test(normalized)
     || /(?:authorization|auth|cookie|prompt|body|stdout|stderr|path)$/.test(normalized)
 }
 
@@ -54,6 +55,8 @@ function forbiddenObject(value: unknown): boolean {
 
 export function containsForbiddenLeakage(text: string, secrets: readonly string[]): boolean {
   if (secrets.some(secret => secret.length > 0 && text.includes(secret)) || CREDENTIAL_PATTERN.test(text)) return true
+  const namedFields = text.matchAll(/(?:^|[\s,{])['"]?([A-Za-z][A-Za-z0-9_.-]{1,64})['"]?\s*[:=]/gm)
+  if ([...namedFields].some(match => forbiddenField(match[1]))) return true
   const documents: unknown[] = []
   try { documents.push(JSON.parse(text)) } catch {
     for (const line of text.split('\n').filter(Boolean)) {
