@@ -14,7 +14,7 @@
 
 - Implement behind `MARSYS_FLAG_AI_CONSOLE_BYOK` and `NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK`; default both to `false`. Flag-off behavior remains byte-compatible until local cutover.
 - Read the relevant installed Next.js 16 guides under `node_modules/next/dist/docs/` before writing App Router, route-handler, or caching code.
-- Create migration `1071_ai_console_byok_routing.sql` only if `npm run migration:next` still returns `1071`; otherwise use the returned free number and update this plan's path references in the implementation commit.
+- The numeric guard returned `1080` during execution setup on 2026-09-27, but active campaign governance reserves `1070–1119` for L3 Kāla and requires cross-cutting work at `1120+`. Use provisional migration `1120_ai_console_byok_routing.sql`; immediately before creation, re-read the live coordination ledger and existing migrations, move to the next free number at or above `1120` if needed, and update every plan reference in the same implementation commit. Do not consume the numerically-next reserved slot.
 - Use the `create-migration` skill for the migration and dispatch the required `migration-guard` reviewer after the file exists.
 - Never persist, return, snapshot, audit, trace, or log plaintext credentials, wrapped keys, nonces, tags, CLI auth material, full provider error bodies, prompts, or completions from validation probes.
 - Keep decryption and executable routing types in `server-only` modules. Client/API types contain identifiers, masks, validation state, and safe metadata only.
@@ -24,6 +24,7 @@
 - AI Console contains exactly Provider connections, Custom configurations, and Local CLIs. A default radio/action lives on usable model/configuration rows; there is no fourth Default section.
 - Reuse `AppShell`, `.pp-root` tokens, Paripraśna picker/sheet behavior, typography, gold hairlines, ink surfaces, focus rings, reduced-motion behavior, and 8-point rhythm. Preserve the compact composer and do not create a generic settings-dashboard visual language.
 - Local CLI execution uses fixed allowlisted executable/argument arrays, stdin for model input, `shell: false`, a fresh isolated temporary directory, a stripped environment, hard timeout/output/concurrency limits, and cancellation. Never append user-supplied shell arguments.
+- Provider transports use closed, provider-owned hosts with redirect, timeout, and response-body caps. MCP user identity stays bound to the validated service-token/OIDC principal and is never taken from an untrusted raw header. Decrypted credentials/runtime bindings are request-scoped and non-serializable. Resolve CLI executables through trusted allowlisted paths and re-check the user's grant immediately before every spawn.
 - Subscription-backed CLI sharing stays local-only unless a separately recorded provider-terms approval enables it. Public deployment must fail closed for CLI use.
 - Do not import, delete, rotate, or reveal existing environment keys. After acceptance, user-facing routes must prove they no longer read them.
 
@@ -45,7 +46,7 @@
 
 | File | Action | Responsibility |
 |---|---|---|
-| `migrations/1071_ai_console_byok_routing.sql` | Create | Add encrypted connections, discovered models, named configurations/roles, defaults, CLI state/grants/catalog, conversation selections, turn snapshots, and safe audit events |
+| `migrations/1120_ai_console_byok_routing.sql` | Create | Add encrypted connections, discovered models, named configurations/roles, defaults, CLI state/grants/catalog, conversation selections, turn snapshots/invocation receipts, and safe audit events |
 | `src/lib/ai-console/types.ts` | Create | Shared safe provider, role, choice, status, catalog, and snapshot types |
 | `src/lib/ai-console/errors.ts` | Create | Stable configuration/validation/execution error codes and safe normalization |
 | `src/lib/ai-console/crypto.ts` | Create | Versioned envelope encryption, keyed fingerprinting, masking, and redaction |
@@ -207,7 +208,7 @@ git commit -m "feat(ai-console): define routing contracts and cutover flag"
 ## Task 2: Add the governed persistence model
 
 **Files:**
-- Create: `migrations/1071_ai_console_byok_routing.sql` (or the free number reported at execution time)
+- Create: `migrations/1120_ai_console_byok_routing.sql` (or the next unclaimed number at or above `1120` reported by the live coordination check)
 - Test: `src/lib/ai-console/__tests__/migration_contract.test.ts`
 - Test: `src/lib/ai-console/__tests__/migration_db.test.ts`
 
@@ -217,7 +218,7 @@ git commit -m "feat(ai-console): define routing contracts and cutover flag"
 cd platform && npm run migration:next
 ```
 
-Expected: `1071`. If not, stop, use the reported number, and update plan references before continuing.
+The command reports the numeric maximum (`1080` at setup) but does not understand active campaign reservations. Re-read `origin/campaign-coordination` and both migration directories. Use `1120` only if it is still unclaimed; otherwise take the next free number at or above `1120` and update every plan reference before continuing.
 
 - [ ] **Step 2: Use the `create-migration` skill and write a failing contract test**
 
@@ -233,6 +234,7 @@ The test must require these relations and constraints:
 - `ai_cli_grants`
 - `ai_conversation_selections`
 - `ai_turn_routing_snapshots`
+- `ai_turn_role_invocations`
 - `ai_configuration_audit_log`
 
 The migration must include:
@@ -243,7 +245,8 @@ The migration must include:
 - four unique role rows per configuration, enforced by the repository transaction plus a deferred constraint trigger that rejects commit unless all four roles exist;
 - one conversation selection per conversation, with owner matching `conversations.user_id` through a deferred trigger;
 - no plaintext credential column;
-- dependency-preserving foreign keys (`RESTRICT` for referenced choices, `CASCADE` only for owned child catalogs/audits where approved);
+- tombstone-capable connections/configurations whose stable identities remain referenced by defaults, conversations, and history; physical deletion is restricted while references exist, while confirmed user deletion marks the choice unavailable without rewriting dependents;
+- dependency-preserving foreign keys (`RESTRICT` for referenced choices/history, `CASCADE` only for owned child catalogs/audits where approved);
 - indexes for user lists, status refreshes, defaults, grants, conversation lookup, and turn correlation;
 - RLS enabled with service-only access because Firebase authorization is enforced server-side;
 - idempotent DDL inside `BEGIN`/`COMMIT`.
@@ -258,7 +261,7 @@ Expected: FAIL until the migration exists.
 
 - [ ] **Step 4: Implement the migration and DB behavior test**
 
-The DB test must prove duplicate names fail, a fifth/unknown role fails, incomplete configurations cannot commit, two defaults cannot exist for one user, and cross-user conversation selection ownership fails.
+The DB test must prove duplicate names fail, a fifth/unknown role fails, incomplete configurations cannot commit, two defaults cannot exist for one user, and cross-user conversation selection ownership fails. It must also exercise concurrent default replacement, concurrent configuration version updates, duplicate turn-correlation snapshot insertion, and append-only per-role invocation receipts.
 
 - [ ] **Step 5: Run migration checks**
 
@@ -357,7 +360,7 @@ Ensure connection release in `finally` and rollback on all failures.
 
 - [ ] **Step 2: Write failing repository/isolation tests**
 
-Cover user-scoped CRUD, atomic default replacement, four-role save/version increment, dependency preview before delete, live catalog invalidation, conversation selection ownership, immutable snapshot insert, CLI grant revocation, and safe audits.
+Cover user-scoped CRUD, atomic default replacement, four-role save/version increment, dependency preview plus confirmed tombstone deletion, live catalog invalidation, conversation selection ownership, immutable snapshot insert, immutable per-role invocation receipt, CLI grant revocation, and safe audits. Include credential replacement during an in-flight request and CLI revocation between resolution and invocation.
 
 - [ ] **Step 3: Implement repository methods**
 
@@ -373,6 +376,7 @@ setUserDefault(userId, choice)
 setConversationSelection(userId, conversationId, selection)
 previewChoiceDependencies(userId, choice)
 insertRoutingSnapshot(snapshot)
+insertRoleInvocationReceipt(receipt)
 ```
 
 Every SQL statement that touches user-owned data must include `user_id`/ownership in the predicate. Super-admin APIs manage grants only; they do not call decrypt/invoke methods for another user.
@@ -484,7 +488,7 @@ Prove active authentication, disabled-account rejection, strict body schemas/unk
 
 - [ ] **Step 3: Implement routes**
 
-Use `getServerUserWithProfile()` and require `status='active'`. Return the standard disabled-feature response while `AI_CONSOLE_BYOK` is off. Credential create/replace accepts plaintext only in the request body, encrypts immediately, and never places it in a returned object. Delete first returns/uses a dependency preview and rejects while a default/configuration/conversation reference remains.
+Use `getServerUserWithProfile()` and require `status='active'`. Return the standard disabled-feature response while `AI_CONSOLE_BYOK` is off. Credential create/replace accepts plaintext only in the request body, encrypts immediately, and never places it in a returned object. Delete first returns a dependency preview and requires explicit confirmation; confirmed deletion tombstones the owned connection/configuration so its stable identity remains visible as unavailable to defaults, conversations, and historical snapshots. Never rewrite dependents or silently choose an alternative.
 
 - [ ] **Step 4: Run tests**
 
@@ -538,11 +542,11 @@ export async function resolveUserRouting(input: {
 export function toSafeRoutingSnapshot(plan: ResolvedExecutionPlan): SafeRoutingSnapshot
 ```
 
-`ResolvedExecutionPlan` may contain decrypted credential-backed runtime bindings but must be `server-only`, non-enumerable where feasible, and impossible to pass through `Response.json`. `SafeRoutingSnapshot` contains only role, provider/CLI, connection/configuration IDs, model IDs, configuration version, selection mode, and resolution time.
+`ResolvedExecutionPlan` may contain decrypted credential-backed runtime bindings but must be `server-only`, request-scoped, non-enumerable where feasible, and impossible to pass through `Response.json`. `SafeRoutingSnapshot` contains only role, provider/CLI, connection/configuration IDs, model IDs, configuration version, selection mode, and resolution time.
 
 - [ ] **Step 3: Persist snapshots only after final resolution and before first LLM call**
 
-Use the same `turnId`/query correlation as Paripraśna/MCP. Snapshot insertion is append-only/idempotent by correlation ID.
+Use the same `turnId`/query correlation as Paripraśna/MCP. Insert one immutable pre-execution snapshot of the complete resolved four-role map before the first AI call, idempotent by correlation ID. Append a separate immutable invocation receipt for each role actually invoked; never mutate the pre-execution routing identity to simulate the final subset.
 
 - [ ] **Step 4: Run tests**
 
@@ -799,7 +803,7 @@ Use four distinguishable fake executors. Prove the normal planner uses Planner, 
 
 - [ ] **Step 2: Resolve once before limits/first LLM call**
 
-`bindTurnParams` must stop accepting a client model ID as authority when BYOK is on. Resolve authenticated user + conversation selection into one execution plan, emit the safe model label on `turn.open`, evaluate limits against the exact resolved role models, and insert the immutable snapshot before the first LLM call.
+`bindTurnParams` must stop accepting a client model ID as authority when BYOK is on. Resolve authenticated user + conversation selection into one execution plan, emit the safe model label on `turn.open`, evaluate limits against the exact resolved role models, and insert the immutable pre-execution snapshot before the first LLM call. Append an immutable role-invocation receipt immediately before/after each actual role call so configured and invoked roles remain distinguishable.
 
 - [ ] **Step 3: Refactor planner dependency injection**
 
@@ -840,7 +844,7 @@ git commit -m "feat(pariprashna): route four AI roles through user choices"
 
 - [ ] **Step 1: Write red MCP contract tests**
 
-Prove the authenticated `x-mcp-user` mapping resolves that user's current default, Planner/Deep Planner/Worker execute, Synthesizer does not execute, `synthesizeReading` is not imported/called, raw primitives stay byte-compatible, and missing/broken default returns a stable configuration error.
+Prove the authenticated MCP principal-to-user mapping resolves that user's current default without trusting an unverified raw `x-mcp-user` header, Planner/Deep Planner/Worker execute, Synthesizer does not execute, `synthesizeReading` is not imported/called on the BYOK branch, raw primitives stay byte-compatible, and missing/broken default returns a stable configuration error. Prove flag-off routing remains byte-compatible during additive development.
 
 - [ ] **Step 2: Define the terminal evidence envelope**
 
@@ -862,7 +866,7 @@ Keep the existing NDJSON progress framing; change only the terminal high-level p
 
 - [ ] **Step 3: Remove high-level MCP synthesis**
 
-Delete `synthesizeReading` and synthesis model resolution from `prashna_ask`. Preserve safety/entitlement/completeness/accountability behavior as structured data. Mark Observatory metadata as external synthesis rather than fabricating an internal synthesis event.
+Move BYOK high-level handling to an evidence-only module that cannot import `synthesizeReading` or synthesis model resolution, then dispatch to it only while the feature is enabled. Preserve the byte-compatible legacy handler behind flag-off during additive development. Preserve safety/entitlement/completeness/accountability behavior as structured data and mark Observatory metadata as external synthesis rather than fabricating an internal synthesis event. Retire the legacy user-facing branch only after genuine local cutover acceptance; do not convert an unqualified acceptance run into retirement.
 
 - [ ] **Step 4: Run MCP tests**
 
@@ -962,7 +966,7 @@ Verify AI Console desktop/mobile states, exact default controls, Paripraśna pic
 
 - [ ] **Step 6: Run whole-branch reviews**
 
-Request fresh security, code, and migration reviews. Require explicit findings on secret leakage, command injection, cross-user access, no-fallback behavior, MCP external synthesis, and design-system parity.
+Request fresh security, code, and migration reviews plus one final read-only verifier that did not implement the feature. Require explicit findings on secret leakage, request-scoped/non-serializable runtime bindings, fixed provider transports and response caps, trusted CLI executable resolution, immediate pre-spawn grant checks, command injection, cross-user access, authenticated MCP identity binding, no-fallback behavior, MCP external synthesis, race/idempotency coverage, and design-system parity. Critical/high/medium findings return to implementation and scoped re-review before completion.
 
 - [ ] **Step 7: Commit acceptance assets**
 
