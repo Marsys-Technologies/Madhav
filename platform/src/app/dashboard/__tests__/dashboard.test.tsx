@@ -38,10 +38,23 @@ vi.mock('@/lib/roster/stats', () => ({
 // Mock the ClientRoster — it's a heavy client component; we only care here
 // that the dashboard page selects the right charts and passes them through.
 vi.mock('@/components/dashboard/ClientRoster', () => ({
-  ClientRoster: ({ charts }: { charts: Array<{ id: string }> }) => (
-    <div data-testid="roster">
+  ClientRoster: ({
+    charts,
+    stats,
+  }: {
+    charts: Array<{ id: string; readiness?: { state: string; percent: number }; pyramidPercent?: number }>
+    stats?: { inActiveBuild: number }
+  }) => (
+    <div data-testid="roster" data-in-active-build={stats?.inActiveBuild}>
       {charts.map((c) => (
-        <div key={c.id} data-testid="chart-row" data-chart-id={c.id} />
+        <div
+          key={c.id}
+          data-testid="chart-row"
+          data-chart-id={c.id}
+          data-readiness={c.readiness?.state}
+          data-readiness-percent={c.readiness?.percent}
+          data-pyramid-percent={c.pyramidPercent}
+        />
       ))}
     </div>
   ),
@@ -215,6 +228,50 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     const root = container.querySelector('[data-testid="dashboard-root"]')
     expect(root?.getAttribute('data-role')).toBe('guest')
 
+  })
+})
+
+describe('Dashboard — shared readiness authority (Jātaka Task 1)', () => {
+  it('derives each chart readiness from the shared resolver, never pyramid_layers', async () => {
+    setUser(SUPER_ADMIN_UID)
+    setProfile('super_admin')
+    setCharts([{ id: 'chart-a' }, { id: 'chart-b' }])
+    setLayers([
+      { chart_id: 'chart-a', asset_id: 'ga_positions', state: 'lit', rows_written: 9, last_built_at: '2026-09-01T00:00:00Z' },
+    ])
+    setBuilds([
+      { id: 'run-b', chart_id: 'chart-b', state: 'failed', action: 'rebuild', last_error: 'JOB_DISPATCH_FAILED: spawn', created_at: '2026-09-02T00:00:00Z', started_at: null, ended_at: null },
+    ])
+
+    const jsx = await DashboardPage()
+    const { getAllByTestId, getByTestId } = render(jsx)
+    const rows = getAllByTestId('chart-row')
+    const a = rows.find((r) => r.dataset.chartId === 'chart-a')!
+    const b = rows.find((r) => r.dataset.chartId === 'chart-b')!
+    expect(a.dataset.readiness).toBe('partially-built')
+    expect(a.dataset.readinessPercent).toBe(a.dataset.pyramidPercent)
+    expect(b.dataset.readiness).toBe('needs-rebuild')
+    expect(b.dataset.readinessPercent).toBe('0')
+    expect(getByTestId('roster').dataset.inActiveBuild).toBe('0')
+
+    for (const [sql] of mockQuery.mock.calls) {
+      if (typeof sql === 'string') expect(sql).not.toMatch(/pyramid_layers/)
+    }
+    const runSql = mockQuery.mock.calls.map(([s]) => s).find((s) => typeof s === 'string' && s.includes('build_runs')) as string
+    // Latest run regardless of state — a failed dispatch must be visible, not filtered out.
+    expect(runSql).not.toMatch(/state IN/)
+  })
+
+  it('counts charts whose shared readiness is building as in active build', async () => {
+    setUser(SUPER_ADMIN_UID)
+    setProfile('super_admin')
+    setCharts([{ id: 'chart-a' }, { id: 'chart-b' }])
+    setLayers([])
+    setBuilds([
+      { id: 'run-a', chart_id: 'chart-a', state: 'running', action: 'rebuild', last_error: null, created_at: '2026-09-02T00:00:00Z', started_at: null, ended_at: null },
+    ])
+    const { getByTestId } = render(await DashboardPage())
+    expect(getByTestId('roster').dataset.inActiveBuild).toBe('1')
   })
 })
 
