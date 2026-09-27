@@ -203,6 +203,7 @@ this is RELEASED or expired.*
 | 1039 | PURNA-ANVESANA / Codex | `1039_purna_inquiry_protected_ownership.sql` (transfer four Pūrṇa stores and their twelve functions to a preprovisioned normalized NOLOGIN owner; revoke the temporary migrator membership and attest the final role/RLS ownership boundary) | **CLAIMED** — live-wrapup successor after fresh `origin/main` tree plus complete open-PR migration sweep on 2026-09-16 found no 1039 claimant; reuses this row's explicitly released number under the active Pūrṇa live-wrapup lease. The file must fail closed unless the exact owner/login preflight exists; no role/shared DB mutation under the source lease. |
 | 1042–1069 | PŪRṆA ANVEṢAṆA / Codex | Reserved range for all remaining Pūrṇa migrations (DP-SD-021, dual-campaign plan §3.3 rule 2) | **RANGE RESERVED** — claim exact numbers within this range at PR-open per the normal convention; supersedes ad hoc per-migration claims for this pair going forward |
 | 1070–1119 | L3 KĀLA / Claude Code | Reserved range for all L3 Kāla data-plane migrations (DP-SD-021, dual-campaign plan §3.3 rule 2) | **RANGE RESERVED** — added 2026-09-20 by the L3 autonomous conductor; claim exact numbers within this range at PR-open; anything cross-cutting both campaigns goes to 1120+ by a logged request here, never into either reserved range |
+| 1120 | JĀTAKA CHART WORKSPACE / Claude Code | `1120_jataka_conversation_archive_context.sql` | **RESERVED — JATAKA-REQ-01, native-authorized 2026-09-27.** First cross-cutting number above the Pūrṇa/L3 partitions. Reservation followed a fresh protected `origin/main` tree check and complete open-PR migration-file sweep; neither contained a migration numbered 1120 or higher. Source authoring may begin only under the separately ratified Jātaka local-execution exception; no migration application or database write is authorized by this row. Re-run the live sweep immediately before creating the file and renumber forward if a newer claimant appears. |
 | — | NIRMANA / CONDUCTOR RULING (2026-09-09, on issue #2510 Finding 2, decide-and-log per D-NATIVE-12) | — | **§2 of this file is DEPRECATED for the remainder of the NIRMANA campaign.** It has now missed two independent in-flight migration-number collisions (902/905/911 and 990-997 above) despite carrying its own warning text since the first miss — the structural problem is that nothing pushes an update to this table between a PR's open and its merge, so it is stale by construction under high-concurrency autonomous lanes. The **live-PR-sweep method** (`gh pr list --repo Marsys-Technologies/Madhav --state open --json number,headRefName` then `gh pr diff <n> --name-only \| grep migrations` for every open PR, cross-checked against `git ls-tree origin/main --name-only -- platform/migrations` for the true current ceiling) is the standing check for NIRMANA lanes going forward — it has caught every real collision so far and does not depend on any lane remembering to write here. NIRMANA lanes may stop appending migration-claim rows to this table; other concurrent campaigns' use of §2 is unaffected by this ruling (their own territory, own call). |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
@@ -346,6 +347,21 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
 | UTKARṢA | PENDING — native will direct its conductor to adopt + counter-sign R-COORD-1 | — | — |
 
 ## 6. LOG
+
+### JATAKA-REQ-01 | 2026-09-27 | JĀTAKA CHART WORKSPACE → shared migration sequence
+
+- **Request:** reserve `1120_jataka_conversation_archive_context.sql` for the local-first Jātaka
+  chart workspace/edit-and-recompute feature.
+- **Authority:** direct native authorization in the Jātaka workspace planning thread on
+  2026-09-27, limited to the governance amendment, coordination request, corrected plan and later
+  local source implementation under the amendment's gates.
+- **Collision proof:** protected `origin/main` and every open pull request were inspected after a
+  fresh fetch; neither contained a migration numbered `1120` or higher.
+- **Disposition:** **ANSWERED(RESERVED-1120)**. The reservation does not authorize application to
+  any database. Re-run the same live sweep immediately before file creation and renumber forward
+  if the number has been claimed meanwhile.
+- **Campaign isolation:** no change to Pūrṇa `1042–1069`, L3 Kāla `1070–1119`, either campaign's
+  source/state/worktree, or any production/shared operation.
 
 ### 2026-09-20 04:35 IST — L3 KĀLA / Claude Code — two findings from tonight's W1 dispatch attempt, both relevant to Pūrṇa
 
