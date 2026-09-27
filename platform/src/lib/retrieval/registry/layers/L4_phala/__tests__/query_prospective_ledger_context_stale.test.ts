@@ -52,4 +52,34 @@ describe('query_prospective_ledger — include_stale discloses stale rows with e
       chart_context: { current: false, stale_reason: 'chart_details_changed', superseded_by_run_id: 'run-1' },
     })
   })
+
+  it('exposes include_stale in the response filters', async () => {
+    const result = await queryProspectiveLedgerCapability.handler({ chart_id: CHART, include_stale: true }, undefined)
+    const content = (result as { content: { filters: Record<string, unknown> } }).content
+    expect(content.filters).toMatchObject({ include_stale: true })
+  })
+})
+
+describe('query_prospective_ledger — empty_reason is never a false claim when data was withheld', () => {
+  it('when every matching row is context-stale, empty_reason discloses that instead of claiming none was ever filed', async () => {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (/SELECT count/i.test(sql)) return { rows: [{ count: '3' }] }
+      return { rows: [] }
+    })
+    const result = await queryProspectiveLedgerCapability.handler({ chart_id: CHART }, undefined)
+    const content = (result as { content: { empty_reason: string | null } }).content
+    expect(content.empty_reason).toMatch(/3.*chart-context-stale|chart-context-stale.*3/i)
+    expect(content.empty_reason).toMatch(/include_stale/)
+    expect(content.empty_reason).not.toMatch(/not that data was withheld/)
+  })
+
+  it('when nothing was ever filed (no stale rows either), the original honest reason is unchanged', async () => {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (/SELECT count/i.test(sql)) return { rows: [{ count: '0' }] }
+      return { rows: [] }
+    })
+    const result = await queryProspectiveLedgerCapability.handler({ chart_id: CHART }, undefined)
+    const content = (result as { content: { empty_reason: string | null } }).content
+    expect(content.empty_reason).toMatch(/not that data was withheld/)
+  })
 })
