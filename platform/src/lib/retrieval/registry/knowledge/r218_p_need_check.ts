@@ -43,7 +43,11 @@ export const P_NEEDS: readonly PNeed[] = [
   { id: 'P13', question: 'Does uncertain birth information or a different convention change this?' },
   { id: 'P14', question: 'How do two people, a shared undertaking or an organization relate?' },
   { id: 'P15', question: 'What supports this in the tradition, and where do schools disagree?' },
-  { id: 'P16', question: 'Give me this exact fact, or help me investigate an open question.' },
+  // F9 (W3-1_REVIEW.md §6/§10, gate review): T1's own P16 cell is two quoted alternative
+  // phrasings, not one clean question sentence like the other 23 rows — reproduced here exactly
+  // as T1 writes it (quotes included), so "verbatim" holds for this row too, not a merged
+  // paraphrase.
+  { id: 'P16', question: '"Give me this exact fact," or "Help me investigate an open question."' },
   { id: 'P17', question: 'What important question have I not asked?' },
   { id: 'P18', question: 'What would most efficiently resolve this uncertainty?' },
   { id: 'P19', question: 'Show what changes if we examine this differently.' },

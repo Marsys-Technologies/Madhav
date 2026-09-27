@@ -88,9 +88,18 @@ describe('R218: planner P-need producer-provenance test', () => {
       expect(r.resolved_count).toBeGreaterThan(0)
     }
     // At least this wave's own measured floor holds: some P-needs pass, some genuinely do not
-    // (editorial=false registry-derived stubs like assess_career/assess_marriage/compose_large_n
-    // still lack a reviewed producer claim) — a suite reporting either 0 or 24 would itself be
-    // suspicious (either the join or the search is broken).
+    // (5 real, editorial=true, served capabilities — assess_career, assess_marriage,
+    // compose_large_n, graha_portrait, call_priority_ranking — still lack a producer-provenance
+    // claim Lane B's derivation can find; see W3-1_REPORT.md's R218 section for the corrected
+    // count/cause, gate-reviewed 2026-09-28, C1a) — a suite reporting either 0 or 24 would itself
+    // be suspicious (either the join or the search is broken).
+    //
+    // F8 (W3-1_REVIEW.md §6/§10, gate review, non-blocking): `failed > 0` is a snapshot-in-time
+    // assertion, not a permanent invariant — it encodes TODAY's known producer-provenance gap
+    // (the 5 capabilities above). The day that gap is closed and all 24 P-needs PASS, this
+    // assertion will itself go red; that will be this test correctly reporting real progress, not
+    // a regression. Whoever fixes the provenance gap should loosen or remove this line as part of
+    // that fix, not treat its failure as a bug in the fix.
     expect(report.summary.passed).toBeGreaterThan(0)
     expect(report.summary.failed).toBeGreaterThan(0)
   })
