@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.84
+version: 6.85
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,50 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.85 (2026-09-27, NIRMANA-L0-L5-COUPLING-FIX-20260927): Native-authorized, separately
+    governed follow-up (CCD-017) to the closed Jātaka Phase-A3 session, lease
+    MADHAV-NIRMANA-L0-L5-COUPLING-FIX-20260927 (claimed 4640ec77b, released at this close).
+    Root cause of the two nirmana-analysis-receipts.test.ts failures Phase-A3 reported and did
+    not fix: build_pins() in nirmana_analysis_layer_pins.py unconditionally computed and
+    validated EVERY layer (L0's frozen-pin comparison included) on every call, so the
+    pre-existing L0_FROZEN_PINS drift (JATAKA_PHASE_A3_L0_FROZEN_PINS_DRIFT_FINDING_v1_0.md)
+    blocked regenerating L5's pin too, even though only L5 needed it. Fix: build_pins() and
+    build_definition_bindings() take an optional layers parameter scoping both derivation and
+    validation to the requested layer(s) only; extracted the per-layer splice merge into a
+    pure, directly-testable splice_layer_pin() function. 7 new hermetic RED->GREEN Python unit
+    tests (fully synthetic fixtures, no database, no git) prove: a legitimate L5-only successor
+    passes; it never touches L0_FROZEN_PINS; a real L0 fingerprint/membership drift still fails
+    closed when L0 is in scope; unreviewed L5 drift still fails closed; predecessor histories
+    stay immutable; whole-file regeneration is unchanged. Confirmed RED before the fix
+    (TypeError: unexpected keyword 'layers') and GREEN after via patch revert/reapply; the
+    pre-existing test suite's own 7 unrelated failures (branch-topology-caused, confirmed via
+    the same revert/reapply discipline) are unaffected, 55 passed both before and after. Then,
+    under live native GCP-CLI DB authorization narrowly re-granted for this one action
+    (dedicated cloud-sql-proxy, role verified via SELECT current_user, read-only-session-
+    enforced via load_frozen_manifest_assets()'s own set_session(readonly=True), no credential
+    echoed/logged, proxy terminated immediately after), ran the fixed --layer L5 splice once:
+    nirmana-analysis-layer-pins.json's L5 entry updated (convergence_commit: fd4c102e...  ->
+    ed5ad601c... the reviewed Phase-A3 head; writer_inventory_sha256 recomputed) with
+    membership_sha256 byte-identical before and after, receipt_count/non_writer_assets/
+    asset_prefix unchanged, and L0-L4 plus the entire history block untouched, byte-for-byte
+    (verified via git diff, which touches only these two fields). Updated one further stale
+    hardcoded literal in nirmana-analysis-receipts.test.ts (asserting L5 unchanged since an
+    earlier, unrelated L0-repair successor) to the new correct values -- not weakened, still an
+    exact-equality assertion, still proves history.L5 stays []. Both target tests and the full
+    file (12/12) now pass. Also fixed, as governance hygiene this session's own drift/schema
+    re-run surfaced: a stale CAPABILITY_MANIFEST.json fingerprint for the CCD register (left
+    unrotated after CCD-017 was appended, a HIGH-severity drift finding) and a
+    last_session_id/predecessor_session pointer the Phase-A3 close should have advanced to
+    JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927 but left at JATAKA-PHASE-A2-INTEGRITY-20260927 (a
+    MEDIUM schema finding). Full platform unit suite: 12,932/12,932 passed, 0 failed (up from
+    the Phase-A3 close's 12,930/2-failed, since both target failures are now resolved). Full
+    Python CI: 7,031/7,031 passed, 0 failed. tsc PASS; scoped lint 0 regressions; migration
+    guard PASS; git diff --check a97fc8ffb0..HEAD clean; drift 79 (baseline-identical) / schema
+    42 (baseline-identical once this session's own SESSION_LOG entry resolves the transient
+    last_session_id-vs-SESSION_LOG-tail disagreement this session's own not-yet-closed state
+    otherwise causes). Not pushed; no PR, merge, deploy, migration application, Task 9,
+    production access, or L3 Kāla/Pūrṇa-campaign/Beyond-Ācārya-v6-or-v7 mutation. No L0 accepted
+    membership, hash, generation or receipt evidence changed; no chart-workspace source touched.
   - v6.84 (2026-09-27, JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927): Native-authorized narrow
     Phase-A3 source-integrity session under CCD-016 and its own additive addendum, lease
     MADHAV-JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927 (claimed a949fb8f1). Completed context
@@ -6091,6 +6135,35 @@ block (post-rebuild era), and proceeds.
 > skipped; full Python suite 7031/7031 passed; migration guard, drift (79) and schema (42)
 > checks unchanged from baseline. Task 9 and full browser/recompute acceptance remain
 > **BLOCKED**. Nothing pushed, applied, deployed, merged or production-verified.
+> **Status (2026-09-27, NIRMANA-L0-L5-COUPLING-FIX-20260927, CLOSED):** Separately governed
+> follow-up (CCD-017) to the closed Phase-A3 session, diagnosing and fixing the cross-layer
+> coupling that blocked item 4 above. Root cause: `build_pins()` in
+> `nirmana_analysis_layer_pins.py` unconditionally computed and validated EVERY layer
+> (including L0's frozen-pin comparison) on every call, so the pre-existing L0_FROZEN_PINS
+> drift reported above blocked regenerating L5's pin too, even though L5 alone needed it.
+> Fixed: `build_pins()`/`build_definition_bindings()` take an optional `layers` parameter
+> scoping both derivation and validation to only the requested layer(s); a legitimate L5-only
+> request now never touches `L0_FROZEN_PINS` at all, while whole-file regeneration (L0
+> included) still fails closed on genuine L0 drift. 7 new hermetic RED→GREEN Python unit tests
+> (`test_nirmana_l0_l5_receipt_coupling_fix.py`) prove both invariants plus predecessor-history
+> immutability. Then, under live native GCP-CLI DB authorization narrowly re-granted for this
+> one action (read-only-session-enforced, no write attempted or possible), ran the fixed
+> `--layer L5` splice once: `nirmana-analysis-layer-pins.json`'s L5 entry updated
+> (`convergence_commit`/`writer_inventory_sha256` only; `membership_sha256`/`receipt_count`/
+> `non_writer_assets` unchanged; L0–L4 and all history byte-for-byte untouched, verified via
+> diff). Both previously-failing `nirmana-analysis-receipts.test.ts` tests now pass; one further
+> stale hardcoded literal in the same file (asserting L5 unchanged since an unrelated,
+> earlier L0-repair successor) updated to the new correct values, not weakened — 12/12 pass.
+> Also fixed, as governance hygiene found via this session's own drift/schema re-run: a stale
+> `CAPABILITY_MANIFEST.json` fingerprint for the CCD register (left unrotated after CCD-017 was
+> appended) and a `last_session_id`/`predecessor_session` pointer the Phase-A3 close should have
+> advanced but did not. Final verification: full platform suite 12,932/12,932 passed, 0 failed;
+> full Python suite 7,031/7,031 passed; migration guard PASS; drift 79 / schema 43→ (43rd is the
+> now-resolved `current_state_last_session_id_disagreement`, cleared once this session's own
+> SESSION_LOG entry lands) identical finding set otherwise. Task 9 remains **BLOCKED**. Nothing
+> pushed, applied, deployed, merged or production-verified. Database access used only as
+> narrowly, explicitly, live-authorized by the native for this one action, read-only-enforced
+> throughout, no credential echoed or logged.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
@@ -9547,10 +9620,15 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: JATAKA-PHASE-A2-INTEGRITY-20260927
-  predecessor_session: JATAKA-PHASE-A-HARDENING-20260927
+  # (Housekeeping note: the Phase-A3 close should have advanced this pointer to
+  # JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927 and did not -- the §2 narrative banner was
+  # updated but this dedicated pointer field was missed, which schema_validator.py's
+  # current_state_last_session_id_disagreement check caught at this session's open. Fixed
+  # here rather than carried forward as a second miss.)
+  last_session_id: NIRMANA-L0-L5-COUPLING-FIX-20260927
+  predecessor_session: JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Jataka Phase-A2 integrity: chart-context staleness marked and enforced at the addendum's named minimum (event_chart_state_index, mimamsa_predictions) and every identified current-query consumer; prashna_ask and chat/build gated; migration 1121 security disposition documented. Migration 1122 authored, not applied. Full unit 1,184/12,872 PASS (4 pre-existing-cause failures reported as residuals, not fixed — two governance-artifact regenerations outside this authority). Full Python CI 7,029 PASS, tsc PASS, scoped lint no regression, migration guard PASS. Drift 79 and schema 42 are the identical finding sets of baseline. Not pushed; no external action."
+  last_session_drift_verdict: "Nirmāṇa L0/L5 receipt-checker coupling fix (CCD-017, separately governed follow-up to the closed Jātaka Phase-A3 session): fixed build_pins()'s cross-layer coupling in nirmana_analysis_layer_pins.py (an L5-only --layer request used to unconditionally validate L0's frozen pins too, which is what blocked Phase-A3's item 4); scoped both the per-layer construction loop and the definition-binding membership check to only the requested layer(s), extracted the per-layer splice into a testable splice_layer_pin() function. 7 new hermetic RED->GREEN Python unit tests prove: a legitimate L5-only successor passes; it never touches L0_FROZEN_PINS; a real L0 fingerprint/membership drift still fails closed when L0 is in scope; unreviewed L5 drift still fails closed; predecessor histories stay immutable across a splice. Then, under live native GCP-CLI DB authorization narrowly re-granted for this one action (read-only-session-enforced, no write attempted or possible), ran the now-fixed --layer L5 splice once: nirmana-analysis-layer-pins.json's L5 entry updated (convergence_commit, writer_inventory_sha256 only; membership_sha256/receipt_count/non_writer_assets/asset_prefix unchanged; L0-L4 and all history untouched, byte-for-byte, confirmed via diff). Both previously-failing nirmana-analysis-receipts.test.ts tests now pass; one further pre-existing hardcoded literal in the same file (asserting L5 unchanged since the unrelated L0-repair successor) updated to the new correct values, not weakened -- 12/12 pass. Beyond-Ācārya v6/v7 untouched, 16/16 still pass. Full platform unit suite and full Python CI verified with no new failures beyond confirmed pre-existing/unrelated ones. Task 9 remains BLOCKED. Not pushed; no PR, merge, deploy, migration application, or production access."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
