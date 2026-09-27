@@ -36,6 +36,7 @@ coordination lease that produced it.
 | CCD-013 | 2026-09-27 | Codex → Claude Code | ACTIVE | Authorize the isolated Jātaka chart-workspace workstream to implement and commit plan Tasks 1–8 locally under an exact file allowlist, reserve cross-cutting migration 1120 through JATAKA-REQ-01, and keep browser/full-recompute acceptance blocked until a non-production Firebase project, disposable local PostgreSQL database and approved L0 seed/snapshot exist. |
 | CCD-014 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A integrity-hardening follow-up (correction-history write doors, context staleness or stop-and-report, reading-door readiness parity, safe birthplace edits, persistence-boundary recheck) under the hardening addendum; reserve cross-cutting migration 1121 through JATAKA-REQ-02; Task 9 remains blocked. |
 | CCD-015 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A2 integrity session (chart-context staleness end to end or stop-and-report per consumer, `prashna_ask` and `chat/build` reading-door gates, terminal/persistence/retry/stale/serving-impact correctness, migration 1121 security disposition) under the Phase-A2 addendum; reserve cross-cutting migration 1122 through JATAKA-REQ-03; Task 9 remains blocked. |
+| CCD-016 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the Jātaka Phase-A3 source-integrity pass (chart-context staleness for brahma_mimamsa_prediction_ledger, brahma_prospective_ledger, mimamsa_calibration_snapshot; a reviewed technical head with independent review) and two separately governed source-evidence refreshes at that head (a narrow Nirmāṇa L5 successor re-pin; a Pūrṇa Beyond-Ācārya v7 successor preserving v6) under the Phase-A3 addendum; reserve cross-cutting migration 1123 through JATAKA-REQ-04; Task 9 remains blocked. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -366,3 +367,30 @@ coordination lease that produced it.
 - **Coordination:** lease `MADHAV-JATAKA-PHASE-A2-INTEGRITY-20260927` on `origin/campaign-coordination`.
 - **Supersession:** none. Extends CCD-013 and CCD-014; the parent amendment and the Phase-A
   addendum are unchanged.
+
+## CCD-016 — Jātaka Phase-A3 source-integrity pass and evidence refreshes
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927`.
+- **Authority:** the native accepted the Phase-A2 report at `7673c96b8` as source-local, mock-tested
+  evidence with four explicitly understood governance-artifact failures, and authorized a Phase-A3
+  source-integrity pass followed by two separately governed source-evidence refreshes at one exact
+  reviewed technical head.
+- **Decision:** permit local source changes, tests and local commits for the work and exact file scope
+  in `briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A3_SOURCE_INTEGRITY_ADDENDUM_v1_0.md`: chart-context
+  staleness for the three deferred surfaces and their identified current-query consumers (named files
+  only — not blanket sidecar/MCP/retrieval/Pūrṇa/Nirmāṇa authority); establishing one reviewed
+  technical head with an independent fresh-context review; then, ONLY after that head is approved and
+  ONLY under their own narrow decision records, a Nirmāṇa L5 successor re-pin (source-provenance only)
+  and a Pūrṇa Beyond-Ācārya v7 successor (v6 preserved immutable, source-local only, does not reopen or
+  close the Pūrṇa campaign).
+- **Migration:** reserve `1123_jataka_context_staleness_deferred_surfaces.sql` through `JATAKA-REQ-04`
+  after a fresh `origin/main` (`6b26f3ff0`, max 1079) and complete open-PR sweep (21 PRs, max 1090).
+  Authored only; never applied under this authority. 1120, 1121 and 1122 stay unapplied.
+- **Ceiling:** no Task 9, browser acceptance, migration application, database or external-service
+  access, credentials, push, PR, merge, deploy, production data, real-user mutation, or chart rebuild;
+  no empirical/production acceptance claim; the Nirmāṇa re-pin is source-provenance only, never data/
+  value acceptance; the Pūrṇa v7 successor never reopens/closes that campaign.
+- **Coordination:** lease `MADHAV-JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927` on
+  `origin/campaign-coordination`.
+- **Supersession:** none. Extends CCD-013/014/015; the parent amendment and the Phase-A/Phase-A2
+  addenda are unchanged.
