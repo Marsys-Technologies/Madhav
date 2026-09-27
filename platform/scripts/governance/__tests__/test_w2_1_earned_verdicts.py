@@ -153,6 +153,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None, thru=None, writers=None):
     monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: dict(thru or {}))
     monkeypatch.setattr(ac, "build_history", lambda prefix, *a, **k: dict(per={}, global_runs=0,
                                                                           global_with_layer=0, lit=set()))
+    monkeypatch.setattr(ac, "latest_attempts", lambda ids: ({}, None))   # W2-2 D6 item 2: the attempt read
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
     monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="", scanned=True))
@@ -408,18 +409,24 @@ def test_r222_n5_identity_on_an_empty_table_probes_when_depth_errored(monkeypatc
 # ─────────────────────────── R225: the measure() call site, with the instrument present ───────────────────────────
 
 def test_r225_measure_with_the_instrument_present_reads_no_detector_and_closes_nothing(monkeypatch, tmp_path):
-    """The REAL measure() with `duration_instrument_present` forced True (migration 1094 applied):
-    both Earn.build_record and Cost.baseline must read `NO_DETECTOR — attempt linkage not wired`,
-    and an open Earn gap must not close. Fails if the call site passes `attempt_linkage_wired=True`
-    (or, before the safe default, merely omits it) — the G1 mutation F1b that no test caught."""
+    """The REAL measure() with `duration_instrument_present` forced True (migration 1094 applied).
+    W2-1 pinned "NO_DETECTOR — attempt linkage not wired" here; W2-2 (D6 item 2) wires the linkage,
+    so the call site now grades by the attempt read — and R225's safety property is kept where it
+    matters: when the attempt read FAILED (the attempts are unknown, not absent), both Earn and Cost
+    read NO_DETECTOR and an open Earn gap does not close. Fails if a failed attempt read is taken as
+    "never attempted" (the closable N/A) — the same F1/G1 defect one layer down."""
     reg = {"bg_x": _reg_row("bg_x", None, has_writer=True, asset_kind="service")}
     _stub_layer(monkeypatch, tmp_path, reg)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: True)
+
+    def failed_read(ids):
+        raise ac.Unknown("ERROR:  relation \"build_run_assets\" does not exist")
+    monkeypatch.setattr(ac, "latest_attempts", failed_read)
     _open_gap(tmp_path, "bg_x", "Earn.build_record")
     c = ac.measure("L0")
     for crit in ("Earn.build_record", "Cost.baseline"):
         res = _m(c, "bg_x", crit)
-        assert res == dict(v=ac.NO_DET, measured="NO_DETECTOR — attempt linkage not wired"), (crit, res)
+        assert res["v"] == ac.NO_DET and "attempt read failed" in res["measured"], (crit, res)
     assert _emit_closes(tmp_path, c) == 0
 
 

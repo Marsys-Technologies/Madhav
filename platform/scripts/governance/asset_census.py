@@ -474,7 +474,7 @@ def _asset_scope(prefix: str, ids=None, col: str = "asset_id") -> str:
     return f"{col} IN ({lit})" if lit else "FALSE"
 
 
-def throughput(prefix: str, ids=None) -> dict[str, dict[str, dict]]:
+def throughput(prefix: str, ids=None, with_duration: bool = False) -> dict[str, dict[str, dict]]:
     """asset_id -> {chart_id ('' for a global row) -> build record}.
 
     R231: `asset_throughput` holds one row per (chart_id, asset_id). The pre-R231 read keyed a dict
@@ -494,13 +494,17 @@ def throughput(prefix: str, ids=None) -> dict[str, dict[str, dict]]:
                 "coalesce(round(rows_per_second)::text,''), coalesce(last_built_at::date::text,''), "
                 "coalesce(chart_id::text,''), "
                 "coalesce(extract(epoch FROM last_built_at)::text,''), "
-                "coalesce(extract(epoch FROM last_measured_at)::text,'') "
-                f"FROM asset_throughput WHERE {_asset_scope(prefix, ids)} "
+                "coalesce(extract(epoch FROM last_measured_at)::text,''), "
+                # D6 item 2: the duration column is named ONLY when the instrument (migration 1094)
+                # was feature-detected present — never a query that fails on its absence.
+                + ("coalesce(duration_seconds::text,'') " if with_duration else "'' ")
+                + f"FROM asset_throughput WHERE {_asset_scope(prefix, ids)} "
                 "ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST, last_measured_at DESC NULLS LAST")
     out: dict[str, dict[str, dict]] = {}
-    for r in ((x + [""] * 8)[:8] for x in rows):
+    for r in ((x + [""] * 9)[:9] for x in rows):
         rec = dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4], n_rows=1, ambiguous=False,
-                   _key=(_epoch(r[6]), _epoch(r[7])))
+                   _key=(_epoch(r[6]), _epoch(r[7])), built_epoch=r[6],
+                   duration=(float(r[8]) if r[8].strip() else None))
         cur = out.setdefault(r[0], {}).get(r[5])
         if cur is None:
             out[r[0]][r[5]] = rec
@@ -641,6 +645,43 @@ def build_history(prefix: str, ids=None) -> dict:
     # R45: the chart-agnostic `lit` set (asset_ids lit on ANY chart) that Build.dep_liveness read is
     # gone — liveness is now read per dependency at the census's chart scope (`_grade_dep_liveness`).
     return dict(per=per, global_runs=glob, global_with_layer=glob_l0)
+
+
+def latest_attempts(ids) -> tuple[dict[str, dict[str, dict]], float | None]:
+    """D6 item 2 (R55, with R44/R45/R49): the latest STARTED build_run_assets attempt per
+    (asset, run chart) — `{asset_id: {chart_id: attempt}}` — plus the start of the disposition era.
+
+    Measurement identity is (asset, chart scope, latest attempt). "Attempt" means STARTED (C1: a
+    `queued` leftover or an unstarted BLOCKED/aborted row never executed). Order is total:
+    (created_at, run_id) — run_id completes the primary key (R49). Each attempt carries
+    `ended_epoch` (the link to the build record, below), `created_epoch`, and `receipt`: whether an
+    `asset_provenance_receipts` row names this run as its build_id — the probe-green evidence (the
+    engine's `_mark_probe_green` writes `complete` with NO disposition and persists a receipt with
+    build_id = run_id; it never writes a `probe_green` disposition, wave-1 F11).
+
+    `era` is the epoch of the first attempt the engine marked `disposition='build'` (2026-09-04 live).
+    From then on every writer completion records 'build'; BEFORE it, completions carried no
+    disposition at all, so "complete + no disposition + a receipt" there may be a real writer build
+    whose receipt survived (2 such latest attempts live, 2026-09-27) — never a probe-green."""
+    if not ids:
+        return {}, None
+    lit = ", ".join("'" + str(i).replace("'", "''") + "'" for i in ids)
+    rows = psql("SELECT DISTINCT ON (a.asset_id, r.chart_id) a.asset_id, r.chart_id::text, a.run_id::text, "
+                "a.state, coalesce(a.disposition,''), coalesce(extract(epoch FROM a.ended_at)::text,''), "
+                "extract(epoch FROM r.created_at)::text, r.created_at::date::text, "
+                "(EXISTS (SELECT 1 FROM asset_provenance_receipts p WHERE p.build_id = a.run_id "
+                "AND p.asset_id = a.asset_id))::text "
+                "FROM build_run_assets a JOIN build_runs r ON r.id = a.run_id "
+                f"WHERE a.started_at IS NOT NULL AND a.asset_id IN ({lit}) "
+                "ORDER BY a.asset_id, r.chart_id, r.created_at DESC, a.run_id DESC")
+    out: dict[str, dict[str, dict]] = {}
+    for r in ((x + [""] * 9)[:9] for x in rows):
+        out.setdefault(r[0], {})[r[1]] = dict(run_id=r[2], state=r[3], disposition=r[4], ended_epoch=r[5],
+                                              created_epoch=_epoch(r[6]), when=r[7],
+                                              receipt=(r[8] in ("t", "true")))
+    era = scalar("SELECT extract(epoch FROM min(r.created_at))::text FROM build_run_assets a "
+                 "JOIN build_runs r ON r.id = a.run_id WHERE a.disposition = 'build'")
+    return out, (_epoch(era) if era else None)
 
 
 def _grade_build_history(h: dict) -> dict:
@@ -813,6 +854,97 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
     else:
         cost = dict(v=FAIL, measured="no sanctioned baseline build on record")
     return earn, cost
+
+
+def _attempt_timing(by_chart: dict | None, rec: dict, rec_scope: str, chart_id: str,
+                    instrument_present: bool | None, has_writer: bool, era: float | None,
+                    today: dt.date | None = None) -> tuple[dict, dict]:
+    """D6 item 2 — the attempt adapter: Earn.build_record / Cost.baseline attributed to the latest
+    STARTED attempt at the build record's scope, then graded by the unchanged D6 classifier
+    (`_grade_earn_cost`, attempt linkage genuinely wired).
+
+    `by_chart` is `latest_attempts()` for this asset (None when the attempt read itself failed).
+    Scope: a global build record (chart_id NULL) is written by a run on ANY chart, so its attempt is
+    the latest across run charts; any other record is the bound chart's, so its attempt is that
+    chart's latest. The link between an attempt and the build record's duration is the engine's own:
+    the completion write sets `asset_throughput.last_built_at = NOW()` and `build_run_assets.ended_at
+    = NOW()` with `disposition='build'` in ONE transaction, so the two are equal — true for all 64
+    latest 'build' attempts live (2026-09-27). A duration counts for an attempt only if the attempt
+    is 'build' AND that equality holds (skip, probe-green, error and start all refresh
+    `last_built_at` without touching the duration — D6 finding 3).
+
+    Nothing here can PASS or N/A while the instrument is absent: `_grade_earn_cost` grades
+    NO_DETECTOR first. The linked attempt's identity is appended to that NO_DETECTOR as evidence."""
+    atts = by_chart or {}
+    if rec_scope == "global":
+        att = max(atts.values(), key=lambda a: (a["created_epoch"], a["run_id"])) if atts else None
+        where = "any chart (global build record)"
+    else:
+        att, where = atts.get(chart_id), f"chart {chart_id[:8]}"
+    ident = (f"latest attempt at {where}: run {att['run_id'][:8]} {att['state']}/"
+             f"{att['disposition'] or 'no disposition'} ({att['when']})" if att else f"no started attempt at {where}")
+    if by_chart is None:
+        ident = "the attempt read failed"
+
+    if instrument_present is not True:
+        earn, cost = _grade_earn_cost(attempt=None, instrument_present=instrument_present, baseline=None,
+                                      attempt_linkage_wired=True)
+        return (dict(earn, measured=f"{earn['measured']}; {ident}"),
+                dict(cost, measured=f"{cost['measured']}; {ident}"))
+    if by_chart is None:
+        nd = dict(v=NO_DET, measured="NO_DETECTOR — the build_run_assets attempt read failed; no attempt to link")
+        return dict(nd), dict(nd)
+    if att is None:
+        if atts:
+            nd = dict(v=NO_DET, measured=f"NO_DETECTOR — {ident} ({len(atts)} run chart(s) with attempts elsewhere): "
+                                         "nothing to time for this scope")
+            return dict(nd), dict(nd)
+        return _grade_earn_cost(attempt=None, instrument_present=True, baseline=None, attempt_linkage_wired=True)
+
+    disp, state = att["disposition"], att["state"]
+    linked = (state == "complete" and disp == "build" and bool(att["ended_epoch"])
+              and att["ended_epoch"] == rec.get("built_epoch"))
+
+    def _nd(why: str) -> tuple[dict, dict]:
+        nd = dict(v=NO_DET, measured=f"NO_DETECTOR — {ident}: {why}")
+        return dict(nd), dict(nd)
+
+    if state == "complete":
+        if disp == "build" and not linked:
+            return _nd("a completion write, but the build record's last_built_at is not this attempt's completion "
+                       "(a later write touched it); its duration cannot be attributed")
+        if not disp:
+            if not (att["receipt"] and era is not None and att["created_epoch"] >= era):
+                return _nd("complete with no disposition and not derivable as probe-green ("
+                           + ("no probe receipt names this run" if not att["receipt"] else
+                              "it predates the disposition era, so a surviving receipt may be a writer build's")
+                           + ") — unclassified")
+            disp = "probe_green"                            # derived: complete + no disposition + receipt
+        elif disp not in ("build", "skip_no_delta"):
+            return _nd(f"complete with an unrecognised disposition '{disp}' — unclassified")
+    elif state in ("error", "aborted"):
+        if disp in ("build", "skip_no_delta", "probe_green"):
+            return _nd(f"state '{state}' with disposition '{disp}' is inconsistent — unclassified")
+    else:
+        return _nd(f"attempt in state '{state}', no outcome to grade")
+
+    dur = rec.get("duration") if linked else None
+    rw = int(rec["rows_written"]) if str(rec.get("rows_written", "")).strip().lstrip("-").isdigit() else 0
+    attempt = dict(state=state, disposition=disp, reached_completion_write=(disp == "build"),
+                   duration_seconds=dur, rows_written=rw, is_legacy_telemetry=False, has_writer=has_writer)
+    baseline = None
+    if linked and dur is not None:
+        age = ((today or dt.date.today()) - dt.date.fromisoformat(att["when"])).days if att["when"] else 0
+        baseline = dict(rate=(rw / dur) if dur else 0.0, attempt_id=att["run_id"][:8], age_days=age)
+    earn, cost = _grade_earn_cost(attempt=attempt, instrument_present=True, baseline=baseline,
+                                  attempt_linkage_wired=True)
+    if baseline is None and rec.get("duration") is not None:
+        # D6 item 4: a healthy skip neither erases a prior baseline nor creates one — but a duration
+        # this adapter cannot attribute to a completion attempt has no provenance, so it is not a
+        # "sanctioned" baseline either, and "none on record" would be false. Unmeasured, said so.
+        cost = dict(v=NO_DET, measured=f"NO_DETECTOR — a duration is on record ({rec['duration']}s) but is not "
+                                       f"attributable to a completion attempt ({ident})")
+    return (dict(earn, measured=f"{earn['measured']}; {ident}"), dict(cost, measured=f"{cost['measured']}; {ident}"))
 
 
 def declared_keys(table: str) -> list[list[str]]:
@@ -1044,16 +1176,23 @@ def measure(layer_key: str) -> dict:
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
     counts, count_errors = _layer_read("live_counts", live_counts, reg, CHART_ID)
     ids = sorted(reg)                                      # R224: the layer's measured population
-    thru = _layer_read("throughput", throughput, cfg["prefix"], ids)
+    # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
+    # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
+    # (Detected before the build-record read, which names `duration_seconds` only when present.)
+    instrument_present = duration_instrument_present()
+    thru = _layer_read("throughput", throughput, cfg["prefix"], ids, instrument_present is True)
     hist = _layer_read("build_history", build_history, cfg["prefix"], ids)
+    # D6 item 2: the latest started attempt per (asset, run chart). Fault-isolated like live_counts:
+    # a failed read leaves Earn/Cost unlinked (NO_DETECTOR), it never aborts the layer.
+    try:
+        attempts, era = latest_attempts(ids)
+    except Unknown:
+        attempts, era = None, None
     # R45: every declared dependency's build record (cross-layer ones included), latest per
     # (asset, chart) by R44's rule — read only when some asset declares a dependency.
     dep_ids = sorted({d for r in reg.values() for d in r["depends_on"]})
     deprec = _layer_read("dependency_records", throughput, "", dep_ids) if dep_ids else {}
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
-    # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
-    # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
-    instrument_present = duration_instrument_present()
 
     known = set(reg)
     assets = []
@@ -1169,21 +1308,14 @@ def measure(layer_key: str) -> dict:
             m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live={live} ({basis}; {rec_scope})"
                                          + ("; zero rows declared complete by target_floor=0" if live == 0 else ""))
 
-        # D6: `_grade_earn_cost` feature-detects `duration_seconds` (absent everywhere today,
-        # migration 1094 not applied) and grades NO_DETECTOR for both measurements when it is —
-        # never the naive "rows_per_second populated => PASS" this replaces, which could not tell
-        # a genuinely-measured build from a stale/never-cleared column (R44/R55). `attempt`/
-        # `baseline` are unused here because THIS call site never queries build_run_assets for a
-        # real attempt — that wiring is R42-R56 (a separate lane, see §A-4), not landed by this
-        # packet. `attempt_linkage_wired=False` says so explicitly, so `_grade_earn_cost` reads
-        # NO_DETECTOR — attempt linkage not wired instead of the closable N/A "never attempted"
-        # once the instrument is present (F1, `nikasha_test/wave1/A_REVIEW.md`): the moment
-        # migration 1094 lands, grading for REAL still needs the attempt query to land too, and
-        # until it does this call site must not claim "never attempted" for assets that plainly
-        # were.
-        m["Earn.build_record"], m["Cost.baseline"] = _grade_earn_cost(
-            attempt=None, instrument_present=instrument_present, baseline=None,
-            attempt_linkage_wired=False)
+        # D6 item 2 (W2-2): Earn/Cost are attributed to the latest STARTED build_run_assets attempt at
+        # the build record's scope (`_attempt_timing`), and only then graded by the D6 classifier —
+        # the attempt linkage wave 1 left unwired (F1; `attempt_linkage_wired=False` until now). With
+        # the instrument absent (migration 1094 not applied — production today) both still read
+        # NO_DETECTOR "instrument absent", now naming the attempt they would be linked to.
+        m["Earn.build_record"], m["Cost.baseline"] = _attempt_timing(
+            None if attempts is None else attempts.get(aid, {}), t, rec_scope.split(";")[0], CHART_ID,
+            instrument_present, r["has_writer"], era)
 
         cf = _grade_count_floor(r, live, count_errors.get(aid), ctables)
         if cf is not None:

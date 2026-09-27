@@ -299,3 +299,187 @@ def test_live_r45_dep_liveness_matches_a_direct_chart_scoped_query():
             assert got == want, (aid, got, want, dict(zip(r["depends_on"], st)))
             if aid in _C2_ASSETS:
                 assert got != ac.PASS, aid
+
+
+# ─────────────────────────── D6 item 2: attempt-linked Earn/Cost timing ───────────────────────────
+
+ERA = 1_788_000_000.0          # the first disposition='build' attempt (live: 2026-09-04)
+
+
+class _EngineDB:
+    """asset_throughput + build_run_assets/build_runs + asset_provenance_receipts as the engine at
+    8edba0533 writes them, answering the census's three reads by evaluation. `column_1094` simulates
+    migration 1094: when False, a query that NAMES duration_seconds fails exactly as PostgreSQL does."""
+
+    def __init__(self, thru, attempts, column_1094=True):
+        self.thru, self.attempts, self.col = thru, attempts, column_1094
+
+    def psql(self, sql, sep="\x1f", timeout=None):
+        if "FROM asset_throughput WHERE asset_id IN" in sql:
+            if "duration_seconds" in sql and not self.col:
+                raise ac.Unknown('ERROR:  column "duration_seconds" does not exist')
+            ids = {x.strip().strip("'") for x in sql.split("asset_id IN (", 1)[1].split(")", 1)[0].split(",")}
+            return [[t["asset"], t["state"], str(t["rw"]), "", "2026-09-27", t["chart"], t["built"], "",
+                     (str(t["dur"]) if ("duration_seconds" in sql and t.get("dur") is not None) else "")]
+                    for t in self.thru if t["asset"] in ids]
+        if sql.startswith("SELECT DISTINCT ON (a.asset_id, r.chart_id)"):
+            # Evaluated, not asserted: the started predicate applies only if the census sends it, and
+            # DISTINCT ON keeps the first row of the order the census asks for.
+            ids = {x.strip().strip("'") for x in sql.split("a.asset_id IN (", 1)[1].split(")", 1)[0].split(",")}
+            started_only = "a.started_at IS NOT NULL" in sql
+            newest_first = "r.created_at DESC" in sql
+            best = {}
+            for a in sorted(self.attempts, key=lambda a: (a["created"], a["run"]), reverse=newest_first):
+                if a["asset"] in ids and (a.get("started", True) or not started_only):
+                    best.setdefault((a["asset"], a["chart"]), a)
+            return [[a["asset"], a["chart"], a["run"], a["state"], a.get("disp", ""), a.get("ended", ""),
+                     str(a["created"]), "2026-09-20", "t" if a.get("receipt") else "f"] for a in best.values()]
+        if "WHERE a.disposition = 'build'" in sql:
+            eps = [a["created"] for a in self.attempts if a.get("disp") == "build"]
+            return [[str(min(eps))]] if eps else []
+        if "FROM build_run_assets a JOIN build_runs r" in sql:
+            return []
+        if sql.startswith("SELECT count(*)::text FROM build_runs"):
+            return [["0"]]
+        raise AssertionError(f"unexpected query: {sql[:100]}")
+
+
+def _timed(monkeypatch, ctrl, thru, attempts, present=True, column_1094=True, has_writer=True, aid="ph_x"):
+    reg = {aid: w1._reg_row(aid, None, has_writer=has_writer, asset_kind="service")}
+    w1._stub_layer(monkeypatch, ctrl, reg)
+    db = _EngineDB(thru, attempts, column_1094)
+    monkeypatch.setattr(ac, "psql", db.psql)
+    monkeypatch.setattr(ac, "scalar", _scalar_via(db.psql))
+    for n in ("throughput", "build_history"):
+        monkeypatch.setattr(ac, n, _REAL[n])
+    monkeypatch.setattr(ac, "latest_attempts", _REAL_LATEST_ATTEMPTS, raising=False)
+    monkeypatch.setattr(ac, "duration_instrument_present", lambda: present)
+    c = ac.measure("L4")
+    return w1._m(c, aid, "Earn.build_record"), w1._m(c, aid, "Cost.baseline"), c
+
+
+_REAL_LATEST_ATTEMPTS = getattr(ac, "latest_attempts", None)   # absent before W2-2: the tests then fail, not error
+T0 = 1_790_000_000.0
+
+
+def _rec_row(chart=CANONICAL, built=T0, dur=2.5, rw=10, state="lit", asset="ph_x"):
+    return dict(asset=asset, chart=chart, state=state, rw=rw, built=repr(built), dur=dur)
+
+
+def _att(run, created, state="complete", disp="build", ended=None, chart=CANONICAL, **kw):
+    return dict(asset=kw.pop("asset", "ph_x"), chart=chart, run=run, state=state, disp=disp,
+                ended=("" if ended is None else repr(ended)), created=created, **kw)
+
+
+def test_d6_2_a_linked_completion_write_grades_earn_pass_with_its_rate_and_cost_on_that_attempt(monkeypatch, tmp_path):
+    """The engine's completion write: disposition='build', ended_at = last_built_at (one transaction's
+    NOW()), duration 2.5 s over 10 rows. Earn PASS rate 4.0, Cost PASS naming the attempt. Fails
+    without the fix: the call site was unwired and read "NO_DETECTOR — attempt linkage not wired"."""
+    earn, cost, _ = _timed(monkeypatch, tmp_path, [_rec_row()], [_att("run-new-1", ERA + 10, ended=T0)])
+    assert earn["v"] == ac.PASS and "duration=2.5s, rows_written=10, rate=4.0" in earn["measured"], earn
+    assert cost["v"] == ac.PASS and "attempt run-new-" in cost["measured"], cost
+    assert "latest attempt at chart 482012f1: run run-new- complete/build" in earn["measured"]
+
+
+def test_d6_2_a_completion_whose_build_record_was_rewritten_later_is_not_linked(monkeypatch, tmp_path):
+    """last_built_at moved after the attempt's completion (a later write): the duration on the row is
+    not this attempt's. NO_DETECTOR, never PASS on a duration of unknown provenance."""
+    earn, cost, _ = _timed(monkeypatch, tmp_path, [_rec_row(built=T0 + 60)], [_att("r1", ERA + 10, ended=T0)])
+    assert earn["v"] == ac.NO_DET and "cannot be attributed" in earn["measured"], earn
+    assert cost["v"] == ac.NO_DET
+
+
+def test_d6_2_a_skip_keeps_earn_na_and_does_not_invent_a_baseline(monkeypatch, tmp_path):
+    """skip_no_delta refreshes last_built_at without touching duration: Earn N/A (healthy
+    non-execution); the lingering duration has no attributable attempt, so Cost is NO_DETECTOR —
+    neither the closable PASS nor a false "none on record"."""
+    earn, cost, _ = _timed(monkeypatch, tmp_path, [_rec_row(built=T0 + 90)],
+                           [_att("r1", ERA + 10, ended=T0), _att("r2", ERA + 20, disp="skip_no_delta", ended=T0 + 90)])
+    assert earn["v"] == ac.NA and "skip_no_delta" in earn["measured"], earn
+    assert cost["v"] == ac.NO_DET and "not attributable" in cost["measured"], cost
+
+
+@pytest.mark.parametrize("created, receipt, verdict", [
+    (ERA + 30, True, ac.NA),        # derived probe-green: complete + no disposition + receipt, in the era
+    (ERA - 30, True, ac.NO_DET),    # pre-era: a surviving receipt may be a writer build's (2 live)
+    (ERA + 30, False, ac.NO_DET),   # no receipt: unclassified (e.g. a watchdog-completed row)
+])
+def test_d6_2_probe_green_is_derived_never_assumed(monkeypatch, tmp_path, created, receipt, verdict):
+    """The engine never writes a `probe_green` disposition (wave-1 F11): it is DERIVED from complete +
+    no disposition + a receipt naming the run, inside the disposition era. Anything else with no
+    disposition is unclassified NO_DETECTOR — never the closable 'failed before completion' N/A."""
+    # ph_x's only attempt is the no-disposition completion; the era is set by ANOTHER asset's first
+    # 'build' attempt at ERA (the era is estate-wide, as in production).
+    earn, _cost, _ = _timed(monkeypatch, tmp_path, [_rec_row(built=T0 + 5, dur=None)],
+                            [_att("r0", ERA, ended=T0 - 1, asset="ph_other"),
+                             _att("r2", created, disp="", ended=T0 + 5, receipt=receipt)])
+    assert earn["v"] == verdict, earn
+    if verdict == ac.NA:
+        assert "probe_green" in earn["measured"]
+
+
+def test_d6_2_failures_route_to_build_history_and_cost_fails_only_when_nothing_was_ever_measured(monkeypatch, tmp_path):
+    earn, cost, _ = _timed(monkeypatch, tmp_path, [_rec_row(state="error", dur=None)],
+                           [_att("r1", ERA + 10, state="error", disp="", ended=T0)])
+    assert earn["v"] == ac.NA and "before completion; see Build.history" in earn["measured"], earn
+    assert cost["v"] == ac.FAIL and "no sanctioned baseline" in cost["measured"], cost
+
+
+def test_d6_2_attempts_only_on_another_chart_are_no_detector_for_this_scope(monkeypatch, tmp_path):
+    earn, cost, _ = _timed(monkeypatch, tmp_path, [_rec_row()], [_att("r1", ERA + 10, ended=T0, chart=OTHER)])
+    assert earn["v"] == ac.NO_DET and cost["v"] == ac.NO_DET and "elsewhere" in earn["measured"], earn
+
+
+def test_d6_2_unstarted_rows_are_not_attempts(monkeypatch, tmp_path):
+    """A queued leftover newer than the real completion is not the latest attempt (C1)."""
+    earn, _cost, _ = _timed(monkeypatch, tmp_path, [_rec_row()],
+                            [_att("r1", ERA + 10, ended=T0), _att("r2", ERA + 99, state="queued", disp="", started=False)])
+    assert earn["v"] == ac.PASS, earn
+
+
+def test_d6_2_a_global_build_record_links_the_latest_attempt_on_any_chart(monkeypatch, tmp_path):
+    """An L0-style global build record (chart_id NULL) is written by a run on any chart."""
+    earn, _cost, _ = _timed(monkeypatch, tmp_path, [_rec_row(chart="")],
+                            [_att("r1", ERA + 10, ended=T0 - 50, chart=OTHER), _att("r2", ERA + 20, ended=T0, chart=CANONICAL)])
+    assert earn["v"] == ac.PASS and "any chart (global build record)" in earn["measured"], earn
+
+
+def test_d6_2_with_migration_1094_absent_both_stay_no_detector_and_the_column_is_never_named(monkeypatch, tmp_path):
+    """Production today: the instrument is absent. The build-record read must not name the column (the
+    simulated database raises if it does), and Earn/Cost read NO_DETECTOR "instrument absent" — now
+    naming the attempt they would be linked to."""
+    w1._open_gap(tmp_path, "ph_x", "Earn.build_record")
+    earn, cost, c = _timed(monkeypatch, tmp_path, [_rec_row()], [_att("r1", ERA + 10, ended=T0)],
+                           present=False, column_1094=False)
+    for res in (earn, cost):
+        assert res["v"] == ac.NO_DET and "instrument absent (migration 1094)" in res["measured"], res
+        assert "latest attempt at chart 482012f1: run r1 complete/build" in res["measured"], res
+    assert ac.emit_gaps(c)[2] == 0
+
+
+@LIVE
+def test_live_d6_2_every_latest_build_attempt_links_to_its_build_record_on_real_rows():
+    """Live, read-only, all six layers: the instrument is absent (every Earn/Cost is NO_DETECTOR); and
+    with the column SIMULATED on the real rows (a duration injected into each real build record), every
+    asset whose latest attempt at its scope is a 'build' completion links — the ended_at =
+    last_built_at key holds on production data — and nothing links that is not a 'build'."""
+    assert ac.duration_instrument_present() is False, "migration 1094 is applied — re-grade the proof"
+    linked = builds = 0
+    for layer, cfg in ac.LAYERS.items():
+        reg, _ = ac.registry(layer)
+        ids = sorted(reg)
+        thru = ac.throughput(cfg["prefix"], ids)
+        atts, era = ac.latest_attempts(ids)
+        for aid, r in reg.items():
+            rec, scope = ac._build_record(thru.get(aid, {}), ac._chart_scoped(r["count_sql"]), ac.CHART_ID)
+            if not rec:
+                continue
+            absent = ac._attempt_timing(atts.get(aid, {}), rec, scope, ac.CHART_ID, False, r["has_writer"], era)
+            assert all(x["v"] == ac.NO_DET and "instrument absent" in x["measured"] for x in absent), (aid, absent)
+            earn, _ = ac._attempt_timing(atts.get(aid, {}), dict(rec, duration=1.0), scope, ac.CHART_ID, True,
+                                         r["has_writer"], era)
+            is_build = "complete/build" in earn["measured"]
+            builds += is_build
+            linked += earn["v"] == ac.PASS
+            assert (earn["v"] == ac.PASS) == (is_build and r["has_writer"]), (aid, earn)
+    assert builds > 0 and linked == builds, (linked, builds)
