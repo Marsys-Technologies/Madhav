@@ -1,21 +1,31 @@
 ---
 artifact: NIKASHA_WAVE2_W2-2_REPORT
 packet: W2-2 — latest row, right registration, attempt-linked timing
-version: "1.0"
-status: BUILT — awaiting the packet-reviewer gate (fresh Opus, read-only)
+version: "1.1"
+status: CORRECTIONS C-KSHETRA (code, 2e1c06d1b) and C1/C3 (this text) APPLIED after W2-2_REVIEW.md (9f84ecf6a, ACCEPT_WITH_CORRECTIONS)
+changelog:
+  - "1.1 (2026-09-27): gate corrections. C-KSHETRA (2e1c06d1b): Idem.pattern counts a DELETE only when it names the
+    asset's own table and is reachable on a populated rebuild; ka_kshetra PASS->FAIL (its PASS was WRONG, not correct
+    by accident), bo_upaya and ka_gochara PASS->PARTIAL. C1: §0, §4.3, §5.2, §5.3, OS-C rewritten — 33 of 34 simulated
+    second-emit closures were earned; after the fix the simulation closes 33, all earned. C3: fact_category_ownership
+    is created and seeded by migration 410 (418/842/845 later); OS-B is 1 read on L1, not 2; the R53-M3 claim is
+    withdrawn (spec unrecorded; its natural form is an equivalent mutant). New §10."
+  - "1.0 (2026-09-27): builder report."
 produced_on: 2026-09-27
 builder: Opus (wave-2 builder, packet W2-2 only). Rows R233…R54 were built and committed by a first builder that
   was stopped mid-R232; a second (finishing) builder verified the tree, finished and committed R232, re-ran one or
   two mutations per committed row at the final HEAD, ran the four packet proofs and wrote this report.
 base: 931dbc479
-head_code: 8f5e2fd29
+head_code: "2e1c06d1b (v1.0 was 8f5e2fd29)"
 rows: [R233, R44, R49, R45, D6-item-2, R43, R46, R50, R51, R53, R54, R232]
+corrections: ["C-KSHETRA 2e1c06d1b", "C1/C3 this report"]
 files_touched:
   - platform/scripts/governance/asset_census.py
   - platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py   (new)
   - platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py
   - platform/scripts/governance/__tests__/test_b1_asset_census_blocked_dependency.py
   - platform/scripts/governance/__tests__/test_a4_gate_corrections.py
+  - "platform/scripts/governance/__tests__/test_a3_fault_isolation_and_population.py (C-KSHETRA — call-site text + stub arity)"
   - 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave2/** (this report + w2-2_evidence/)
 not_touched: asset_elevation_tracker.py (no change needed), writers, orchestrator, migrations, sealed tiers,
   editorial.ts/compiler.ts, register/plan/decisions/STATE, catalog_provenance.py and its tests, provenance/**,
@@ -43,6 +53,7 @@ Twelve rows, twelve commits, one row per commit (`git commit -- <paths>`, only-m
 | R53 | `83f143be1` | `Build.target`'s FAIL is reachable; N/A only for a declared service or a writerless asset. |
 | R54 | `eca58994d` | `Vocab.alias` states its measured fraction and carries `severity` (0.0–1.0). |
 | R232 | `8f5e2fd29` | A module "declares" `density_contract` only with a real `density_contract:` / `density_contract?:` property in code. |
+| **C-KSHETRA** (gate correction) | `2e1c06d1b` | `Idem.pattern` PASS needs a DELETE that names the asset's own table and is reachable on a populated rebuild; ka_kshetra's refused rebuild reads FAIL (§10). |
 
 **R232 final state: finished and committed (`8f5e2fd29`).** The first builder's uncommitted diff was correct as
 code. Its test was extended before commit (template-literal mention, `?:` declaration, mention + declaration, an
@@ -53,21 +64,29 @@ only through `AttributeError`, and it asserted today's source snapshot rather th
 1. **Branch enumeration (§3):** 38 PASS/N/A-yielding branches (36 at W2-1, plus 2 new from R53). 20 genuine
    (5 of them unreachable in production while migration 1094 is absent), 12 fixed, 4 proxy, 2 contested.
    W2-2 fixed #18 (R53) and #33 (R45); #29's declaration basis is fixed (R51, R232), but its grading stays contested.
+   **v1.1:** #3 (`Idem.pattern` DELETE) is fixed by C-KSHETRA for a DELETE on another table, a bare fragment, and a
+   rebuild refused on a populated chart. It stays a proxy for writers that delegate (R20).
 2. **Census diff (§4):** 71 verdict changes, **0 unexplained**; 500 text-only changes, each attributed to a row.
    There are **37 favourable flips** (→PASS or →N/A): 13 `Build.registered`, 13 `Build.contract` and 8 `Idem.pattern`
-   (all R43), plus 3 `Build.target` (R53). Each one is hand-verified in §4.3. Two findings came out of that check:
-   - `ka_kshetra` `Idem.pattern`: the verdict is true, but the census's evidence does not name its target (proxy #3).
-   - `ga_structural` `Build.target`: the PASS text names a lookup table as "produced" (proxy #37).
+   (all R43), plus 3 `Build.target` (R53). **v1.1 (gate review §4): 36 of the 37 were correct. One was WRONG:
+   `ka_kshetra` `Idem.pattern`.** Its writer raises `KshetraReplacementHeld` on any populated chart, and
+   482012f1 holds 8,570,075 `kala_field` rows, so a rebuild holds rather than replaces. v1.0 called this verdict
+   "true, but not measured by the census". That was wrong: my hand-check read the DELETE loop and missed the guard
+   in front of it. C-KSHETRA (`2e1c06d1b`) fixes the detector, and ka_kshetra now reads FAIL. `ga_structural`'s
+   `Build.target` verdict is correct, but its text wrongly names a lookup table as "produced" (proxy #37).
 3. **Emit dry run (§5):**
    - HEAD on a copy of the production ledger: **574 OPEN, 0 CLOSED, 0 RE-OPENED**, 209 already present. Idempotent
      (the re-emit leaves the copy byte-identical).
-   - Simulated second emit (base code first, then HEAD, on one copy): **34 CLOSED**, 12 OPEN, 0 RE-OPENED. All 34
-     are R43 flips, each hand-verified correct. 0 `Build.dep_liveness` and 0 `Dens.served` rows close.
-   - **Ruling:** R45 + R232 remove both named blockers, so a second emit on today's data closes nothing on an
-     unmeasured basis. It is still **not trustworthy by construction**: closures of `Build.contract` / `Idem.pattern`
-     rest on proxy detectors, and two residual paths remain (§5.3).
+   - Simulated second emit (base code first, then HEAD, on one copy): at `8f5e2fd29`, **34 CLOSED**, of which
+     **33 were earned**. The 34th, `ka_kshetra-Idem.pattern`, would have closed on a false measurement. At
+     `2e1c06d1b`: **33 CLOSED, all earned**, 14 OPEN, 0 RE-OPENED; `ka_kshetra-Idem.pattern` is not in the closed
+     set. 0 `Build.dep_liveness` and 0 `Dens.served` rows close.
+   - **Ruling (v1.1):** at `8f5e2fd29` a second emit was **not** safe on today's data. It would have closed
+     `ka_kshetra-Idem.pattern` on a false measurement. With C-KSHETRA landed it closes only the 33 earned rows. It
+     is still **not trustworthy by construction** (§5.3).
 4. **Suite, fingerprint, drift, ledgers (§6):**
-   - Offline suite: 227 → 291 tests. Base: 214 passed, 11 skipped, 2 failed. HEAD: 269 passed, 20 skipped, 2 failed.
+   - Offline suite: 227 → 291 tests (v1.0 head) → **300** (C-KSHETRA head). Base: 214 passed, 11 skipped, 2 failed.
+     8f5e2fd29: 269 passed, 20 skipped, 2 failed. 2e1c06d1b: 278 passed, 20 skipped, 2 failed.
    - Live suite at HEAD: 289 passed, 2 failed.
    - The same 2 failures (`test_drift_detector_h35_h38.py`) are pre-existing at 931dbc479.
    - `manifest_fingerprint --check`: MATCH. `drift_detector`: exit 3 (1 LOW).
@@ -249,8 +268,17 @@ deselected. See `mutation_reverify_final_head.log` and its script `mutation_reve
 - **Tests.** `test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[4 cases]`,
   `…_a_declared_service_and_a_writerless_asset_stay_na`, `…_an_unreadable_ownership_map_is_errored`,
   `test_live_r53_no_writer_backed_data_asset_reads_the_closable_na`.
-- **Mutation.** V-R53-any-kind-waves-through → 5 failed; V-R53-unowned-single-table-passes → 1 failed. First
-  builder also ran M3 (own asset counted as owner) → 1 failed.
+- **Mutation.** V-R53-any-kind-waves-through → 5 failed; V-R53-unowned-single-table-passes → 1 failed.
+  **v1.1 (C3c): the R53-M3 claim ("own asset counted as owner → 1 failed") is withdrawn.**
+  - The first builder's log records only `ok: asset_census.py (72 -> 69 chars)`. The 72-character target is the
+    line `own = [a for a in owners().get(ct[0], []) if a != r["asset_id"]]`, but the 69-character replacement was
+    never recorded and cannot be recovered.
+  - It killed the `owners={}` case, so it must have made the owner list non-empty when no owner exists. That is not
+    the self-exclusion mutation its name describes.
+  - The natural form (drop `if a != r["asset_id"]`), run by the finishing builder, **survives: 7 passed**
+    (`mutation_runs_ckshetra.log` tail). It is an equivalent mutant: `_grade_target_less` runs only when the asset's
+    own `target_table` is NULL, and `target_owners()` lists only assets with a non-NULL target, so the exclusion can
+    never fire.
 - **Live.** bg_prashna_rules, ga_strength and ga_structural move N/A → PASS. See §4.3 for the hand-check and the
   ga_structural text finding (OS-A).
 
@@ -297,11 +325,18 @@ deselected. See `mutation_reverify_final_head.log` and its script `mutation_reve
 Lines are at `8f5e2fd29`. `CLOSABLE = (PASS, NA)` is at `:1738`. The labels are W2-1's: **genuine**, **fixed**,
 **proxy**, **contested**. "(W2-2)" marks a W2-2 change.
 
+**v1.1:** C-KSHETRA inserts code at `idem_scan`, so line numbers move at `2e1c06d1b`:
+- sites from `:400` to `:1176` shift by +152 (#2 → `:548`, #3 → `:553`, #4 → `:1047`, #11 → `:1307`);
+- sites up to the Idem.pattern call site shift by +153 (#33 → `:1416`, #37 → `:1365`);
+- later sites shift by +154 (#17 → `:1579`, #35 → `:1892`).
+
+C-KSHETRA's new branch is a FAIL, not a PASS/N/A, so the count of 38 is unchanged.
+
 | # | file:line | criterion — condition | label |
 |---|---|---|---|
 | 1 | `:386` | `Build.contract` PASS — AST scan of the registered class | **proxy** (A1). Its reach was widened by R43; the 13 new live PASSes were hand-scanned: no commit/close/rollback call and no `asset_throughput` write in any resolved file (§4.3). |
 | 2 | `:402` | `Idem.pattern` PASS — `ON CONFLICT` in the writer's SQL (upsert layers) | **proxy** (A2); R20 is W2-3 |
-| 3 | `:405` | `Idem.pattern` PASS — `DELETE FROM` present | **proxy** (A2). **Now live:** ka_kshetra PASSes on a DELETE that does not name its target (verdict true only by hand-check, OS-C). |
+| 3 | `:405` (v1.1: `:553`) | `Idem.pattern` PASS — v1.0: `DELETE FROM` present; **v1.1: a DELETE naming the asset's own table, not behind a populated-output refusal** | v1.0: **proxy** (A2), and live **WRONG** on ka_kshetra (PASS on a refused rebuild; review §4.1). **v1.1: fixed in `2e1c06d1b` (C-KSHETRA)** for a sibling-table or fragment DELETE and for a refused rebuild. It is **still a proxy** for delegated replacement (R20). |
 | 4 | `:895` | `Build.history` PASS — cascade-blocked only, ≥1 completion | genuine (R49: text dated, total order) |
 | 5 | `:905` | `Build.history` PASS — no error/abort, ≥1 completion | **fixed** (C1); tallies exact after R233/R50 (W2-2) |
 | 6 | `:989` | Earn N/A — never attempted (routed from `:1061`: no started attempt on any chart) | genuine per D6; **wired by D6.2** (W2-2); unreachable in production while 1094 is absent |
@@ -343,7 +378,7 @@ Lines are at `8f5e2fd29`. `CLOSABLE = (PASS, NA)` is at `:1738`. The labels are 
   production while the instrument is absent.
 - **12 fixed:** #5, 11, 12, 13, 18, 22, 23, 24, 25, 28, 32, 33. W2-2 fixed #18 and #33 and strengthened #5, 13,
   23, 28 and 32.
-- **4 proxy:** #1, 2, 3, 37.
+- **4 proxy:** #1, 2, 3, 37. v1.1: #3 is partly fixed (C-KSHETRA); it remains a proxy for delegation.
 - **2 contested:** #19, and #29's grading.
 
 Changes from W2-1's 36:
@@ -424,13 +459,26 @@ R44, R49, R46, R50, R54, D6.2, R233 and R232 move **no** verdict today:
   the resolved class. Hand-check (`r43_r53_favourable_flip_handcheck.out`): a text scan of every line of the 13
   resolved files finds no `.commit()`, `.close()` or `.rollback()` call and no `asset_throughput`
   INSERT/UPDATE/DELETE; the only hits are docstrings stating "NEVER calls …".
-- **Idem.pattern NO_DET→PASS (8) — proxy #3, verdict hand-verified.** Seven writers DELETE FROM their registry
-  target literally: gochara_resonance_map, kala_kota_chakra, kala_moorti_nirnaya, kala_sudarshana_varsha,
-  kala_tithi_pravesha, kala_vedha_gochara, phala_rectification. **ka_kshetra is different:** its target is
-  `kala_field`, and the only literal DELETE is on `build_substep_progress`. It does clear `kala_field` per chart,
-  through `for table, predicate in _OWNED_TABLES: DELETE FROM {table}` (`services/ka_kshetra/writer.py:2431–2434`;
-  `kala_field` is in `_OWNED_TABLES` at :2482ff). So the verdict is true, but the census's evidence does not
-  measure it (OS-C).
+- **Idem.pattern NO_DET→PASS (8) — proxy #3. 7 correct, 1 WRONG (v1.1, corrected).**
+  - **Correct (7):** these writers DELETE FROM their registry target on the rebuild path: gochara_resonance_map,
+    kala_kota_chakra, kala_moorti_nirnaya, kala_sudarshana_varsha, kala_tithi_pravesha, kala_vedha_gochara,
+    phala_rectification.
+  - **ka_kshetra's PASS was WRONG.** v1.0 said it was "true, but the census's evidence does not measure it". That
+    was false.
+    - The census matched two strings: `DELETE FROM build_substep_progress` and a bare f-string fragment
+      `'DELETE FROM '`.
+    - My v1.0 hand-check then read the `_OWNED_TABLES` delete loop (`services/ka_kshetra/writer.py:2431–2434`) and
+      stopped. It missed the guard in front of that loop.
+    - `_run_prepare_replace` calls `_populated_owned_table()` and **raises `KshetraReplacementHeld`**
+      (`writer.py:543–551`) when any writer-owned table already has rows for the chart. Only an output-empty chart
+      reaches `_delete_prior_rows`.
+    - 482012f1 holds 8,570,075 `kala_field` rows. So a rebuild of the canonical chart **holds; it does not
+      replace**. §N.3's "rebuild replaces" is deliberately not met (DP-SD-017 W0).
+    - That is the same proxy error twice, in the census and in my hand-check: a right-looking answer for the wrong
+      reason, the §N.8 defect class.
+  - **Fixed by C-KSHETRA (`2e1c06d1b`):** ka_kshetra now reads `FAIL — rebuild refused when target is populated:
+    services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld after the output-existence probe
+    _populated_owned_table)`.
 - **Build.target N/A→PASS (3) — R53** (`r53_target_handcheck.txt`):
   - **bg_prashna_rules — genuine.** Five count tables; its writer delegates to
     `brahmagyan/l0_prashna.seed_prashna_rules`, which INSERTs into all five.
@@ -443,7 +491,7 @@ R44, R49, R46, R50, R54, D6.2, R233 and R232 move **no** verdict today:
     PASS is independently earned through #38's rule (a chart_facts partition writer), but the text the census
     writes is false.
 
-No other flip is favourable. The 26 dep_liveness changes all land on PARTIAL (non-closable). Each of the 3
+**v1.1 tally: 36 of the 37 favourable flips were correct; ka_kshetra's `Idem.pattern` was wrong.** No other flip is favourable. The 26 dep_liveness changes all land on PARTIAL (non-closable). Each of the 3
 Dens.served changes moves away from PASS/N/A.
 
 ## §5 — Proof 3: `--emit-gaps` dry runs on ledger copies
@@ -505,10 +553,30 @@ The first step reproduces W2-1's 596 appended / 0 closed exactly.
 - **RE-OPENED 0.**
 
 Each CLOSED row names its measurement (`CLOSED by measurement: @register in …; registry agrees`, `…: conformant`,
-`…: DELETE FROM present (delete-then-insert)`). Each one was hand-verified in §4.3. **0 dep_liveness and 0
-Dens.served rows close.**
+`…: DELETE FROM present (delete-then-insert)`). **0 dep_liveness and 0 Dens.served rows close.**
+
+**v1.1 correction.** v1.0 said all 34 closures were hand-verified correct. They were not: **33 of 34 were earned.**
+`ka_kshetra-Idem.pattern` would have closed on "DELETE FROM present (delete-then-insert)" for a writer that
+refuses to rebuild a populated chart (§4.3).
+
+**Re-run at `2e1c06d1b`** (`emit_second_emit_simulation_ck.log`, `second_emit_transitions_ck.txt`): the base
+module's first emit is the same (596 appended, 0 closed). The second emit gives:
+```
+ck L0..L5 appended/present/closed/reopened = (0,215,0,0) (1,113,0,0) (7,136,0,0) (5,140,26,0) (1,69,3,0) (0,99,4,0)
+```
+- **CLOSED 33:** Build.contract 13, Build.registered 13, Idem.pattern 7. `ka_kshetra-Idem.pattern` is **absent**,
+  and the other 33 ids are exactly the v1.0 set (0 added).
+- **OPEN 14:** the v1.0 12, plus `bo_upaya-Idem.pattern` and `ka_gochara-Idem.pattern`, which now read PARTIAL (§10).
+- **RE-OPENED 0.**
+- ka_kshetra's Idem.pattern gap, opened by the first emit, stays OPEN (FAIL).
 
 ### §5.3 Ruling — does R45 + R232 landing make a SECOND production emit's closures trustworthy?
+
+**v1.1 (corrected, as W2-2_REVIEW's ruling):** at `8f5e2fd29` a second emit was **NOT** safe on today's data. It
+would have closed `ka_kshetra-Idem.pattern` on a false measurement; 33 of its 34 closures were earned. At
+`2e1c06d1b` (C-KSHETRA) the simulated second emit closes exactly those 33, all earned, and not ka_kshetra. The
+review's C2 hand-withholding of that row is no longer needed for this code, but it applies to any emit run on
+`8f5e2fd29`. v1.0's text follows, with its "each correct" claim struck by the correction above.
 
 **For the two blockers the W2-1 gates named: yes.**
 - **C2 (dep_liveness "lit on any chart") is closed by R45.** The ten assets it named now read PARTIAL and would open
@@ -516,9 +584,10 @@ Dens.served rows close.**
   and by `test_r45_an_open_dep_liveness_gap_does_not_close_on_another_charts_lit`.
 - **F-S1 (Dens.served declaration read from a comment) is closed by R232**, proven by
   `test_r232_an_open_dens_served_gap_does_not_close_on_a_comment`; 0 live instances either way.
-- On today's data, the 34 closures a second emit would make are each correct by independent hand-check.
+- ~~On today's data, the 34 closures a second emit would make are each correct by independent hand-check.~~
+  **v1.1:** 33 of 34 were correct; ka_kshetra's was not. Since `2e1c06d1b`: 33 closures, all correct.
 
-**Not trustworthy by construction.** Three things keep it from being so:
+**Not trustworthy by construction.** Four things keep it from being so (v1.1 adds the fourth, from the review):
 1. `Build.contract` and `Idem.pattern` close on **proxy detectors** (#1, #2, #3).
    - ka_kshetra is a live case: the census's evidence names a table other than the one it claims about. The
      verdict is right, but only by coincidence of the proxy.
@@ -529,12 +598,15 @@ Dens.served rows close.**
    - A dep_liveness gap opened today could close later on such a row.
 3. **Dens.served grading (OS-3):** a PASS needs only one declaring module out of N (20 of 40 live PASSes are
    partial). A later emit could close a Dens.served gap on one of N.
+4. **Hand-verification itself can be a proxy (v1.1).** My v1.0 hand-check confirmed a DELETE and missed the
+   refusal guard in front of it. A hand-verify of a CLOSED `Idem.pattern` row must read the **rebuild path on a
+   populated chart**, not only whether a DELETE exists. C-KSHETRA now detects one refusal shape structurally.
+   Others (a refusal inside a probe the census cannot see, or delegated replacement) remain for R20.
 
 **Recommendation for the executor/native (not a builder decision):** the second production emit can run with C2
 and F-S1 discharged. Keep W2-1_C1_REVIEW's "hand-verify every CLOSED row" discipline for `Build.contract`,
 `Idem.pattern`, `Dens.served`, `Build.dep_liveness` and `Build.target` (#37) until R20 (W2-3), OS-3 and OS-D are
-decided. On today's data that is exactly the 34 rows listed in `second_emit_transitions.txt`, all already
-hand-verified here.
+decided. v1.1: on today's data, at `2e1c06d1b`, that is the 33 rows in `second_emit_transitions_ck.txt`.
 
 ## §6 — Proof 4: suite, fingerprint, drift, ledgers
 
@@ -592,16 +664,26 @@ They are outside the Lane A files and are W2-1's same pair.
 ## §8 — Out-of-scope findings (listed, not fixed)
 
 - **OS-A (R53, #37).** `_grade_target_less`'s "≥2 count tables" branch treats a JOINed lookup table as produced.
-  - ga_structural's PASS text names `fact_category_ownership`, which it does not produce; migrations 842/845
-    populate it.
+  - ga_structural's PASS text names `fact_category_ownership`, which it does not produce. **v1.1 (C3a):** the table
+    is created and seeded by **migration 410** (`410_ga_structural_category_ownership.sql`, 58 ga_structural rows),
+    realigned by 418, and backfilled by 842/845 (v1.0 named only 842/845). Live: 67 rows, 64 owned by
+    ga_structural.
   - A writer with one undeclared produced table plus a JOIN would PASS where R53 intends FAIL. 0 live instances.
   - The R53 commit message says ga_structural PASSes as a chart_facts partition; the live census PASSes it through
     the ≥2 branch.
 - **OS-B (R53, cosmetic).** `owners.setdefault("map", target_owners())` (:1430) evaluates `target_owners()` on
-  every call, although the comment at the `owners` declaration says "at most once per layer". That is 2 reads on L1
-  today; there is no correctness effect.
-- **OS-C (#3, now live).** ka_kshetra's `Idem.pattern` PASS evidence is a DELETE on `build_substep_progress` or an
-  f-string fragment, not on its target. The verdict is true via `_OWNED_TABLES`. This is R20 (W2-3) territory.
+  every call, although the comment at the `owners` declaration says "at most once per layer". **v1.1 (C3b): that is
+  1 read on L1 today, not 2** — only ga_strength reaches the one-table branch; ga_structural takes the ≥2-table
+  branch. There is no correctness effect.
+- **OS-C (#3) — v1.1: mis-scoped in v1.0, now FIXED in-packet (C-KSHETRA, `2e1c06d1b`).**
+  - v1.0 said "the verdict is true via `_OWNED_TABLES`". It was **false**: the writer refuses any populated
+    rebuild (`KshetraReplacementHeld`, `writer.py:543–551`), so the PASS was wrong.
+  - The detector now requires a DELETE naming the asset's own table, reachable on a populated rebuild. ka_kshetra
+    reads FAIL.
+  - **For R20's W2-3 acceptance (the executor registers this; not written to the register here):** Idem.pattern
+    must grade ka_kshetra's guarded/refused-rebuild shape correctly — a held or refused replacement is never
+    closable idempotency. A counted DELETE must name the asset's target and be reachable on a populated rebuild.
+    Delegated replacement (bo_upaya → `bodha_writers/_idempotency.py:425–450`) must be followed, not guessed.
 - **OS-D (C2 residual, R45).** `Build.dep_liveness` trusts `state='lit'` regardless of who set it:
   bg_sarvatobhadra_grid is lit (global, rows_written 0, no started attempt, empty table) under ka_vedha_gochara's
   PASS. `r45_lit_without_run.txt` has the query.
@@ -630,3 +712,60 @@ They are outside the Lane A files and are W2-1's same pair.
 - **Proof 3:** `emit_dry_run_head.log`, `emit_closure_check_head.out`, `check_emit_head.py`, `emit_seq.py`,
   `emit_second_emit_simulation.log`, `second_emit_transitions.txt`.
 - **Proof 4:** `suite_base_offline.txt`, `suite_head_offline.txt`, `suite_head_live_part1..3.txt`, `drift.out`.
+- **v1.1 (C-KSHETRA):**
+  - `mutation_runs_ckshetra.log` — CK-M1…M5, plus the R53-M3 natural-form run;
+  - `census_diff_8f5e2fd29_vs_ckshetra.txt`, `census_runs_ckshetra.log`, `idem_compare.py`;
+  - `emit_second_emit_simulation_ck.log`, `second_emit_transitions_ck.txt`, `emit_first_emit_ck.log`;
+  - `suite_ck_live_touched.txt`.
+
+## §10 — Corrections after gate review (v1.1; `W2-2_REVIEW.md`, 9f84ecf6a, ACCEPT_WITH_CORRECTIONS)
+
+| item | what | commit | test | mutation evidence |
+|---|---|---|---|---|
+| **C-KSHETRA** | `Idem.pattern`: (a) a counted DELETE must name one of the asset's own tables (target_table ∪ count_sql tables), literally or through a resolved module constant or `for`-loop sequence; a bare fragment names nothing; (b) a rebuild that raises on the populated polarity of an output-existence probe before its delete path reads **FAIL** with the raise's location, never PASS | `2e1c06d1b` | `test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[guard / no-guard control / empty-polarity control]`; `test_ckshetra_a_counted_delete_must_name_the_assets_own_table[sibling / fragment / literal-own / no-target]`; `test_ckshetra_an_open_idem_gap_does_not_close_on_a_refused_rebuild` (measure() + emit_gaps on a ledger copy, closed 0); `test_ckshetra_the_real_ka_kshetra_does_not_pass_and_a_real_replacing_writer_does` (real source: ka_kshetra FAIL naming `services/ka_kshetra/writer.py`, ka_kota_chakra PASS) | **CK-M1 guard reverted → 3 failed**: guarded fixture, emit gap closes, and the **real ka_kshetra PASSes again**. CK-M2 any delete counts → 3. CK-M3 old rule restored → 8 of 9. CK-M4 guard polarity ignored → 1. CK-M5 loop tables unresolved → 2. All reverted byte-identical; the suite afterwards read 259 passed, 20 skipped, 21 deselected. |
+| **C1** | §0, §4.3, §5.2, §5.3 and OS-C rewritten: ka_kshetra's PASS was **wrong**, not "correct by accident"; 33 of 34 simulated second-emit closures were earned at `8f5e2fd29`; 33 of 33 at `2e1c06d1b` | this report commit | — (text) | — |
+| **C3a** | `fact_category_ownership`: created and seeded by migration **410**, then 418/842/845 (OS-A) | this report commit | — | — |
+| **C3b** | OS-B: **1** `target_owners()` read on L1, not 2 | this report commit | — | — |
+| **C3c** | The R53-M3 claim is withdrawn: its spec was not recorded, and its natural form is an equivalent mutant (§2 R53) | this report commit | — | `mutation_runs_ckshetra.log` tail: natural form **7 passed (survives)** |
+
+**C-KSHETRA — what moved (six-layer census, read-only, `2e1c06d1b` vs `8f5e2fd29`,
+`census_diff_8f5e2fd29_vs_ckshetra.txt`).** 3 verdict changes, all `Idem.pattern`, none toward PASS or N/A:
+
+| asset | change | measured | why honest |
+|---|---|---|---|
+| **ka_kshetra** | PASS → **FAIL** | `rebuild refused when target is populated: services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld after the output-existence probe _populated_owned_table)` | The flip the review required. |
+| **bo_upaya** | PASS → PARTIAL | its literal DELETEs hit `bodha_rm_chart_summary`, `_dosha_remedy_bundles` and `_pattern_remedies`, none of its counted tables (`bodha_rm_resonances`, `bodha_rm_remedy_prescriptions`) | The old PASS was the sibling-table proxy W2-1 review A2 already named ("correct by coincidence"). The writer does replace its counted tables, through `replace_prior_rm_*` in `bodha_writers/_idempotency.py:425–450`, a delegation the scan does not follow (R20). So PARTIAL under-claims a true PASS: non-closable, the safe direction. |
+| **ka_gochara** | PASS → PARTIAL | it deletes `{TABLE}` = `kala_gochara_windows_v2`; the registry declares `kala_gochara_windows` | The old PASS matched a bare fragment. The declared table is not the one it replaces: W2-1 F8's registry-data mismatch, for the owner. |
+
+- **Not "exactly one flip".** The coordinator expected ka_kshetra alone to move. Requirement (a), applied as
+  specified, also moves bo_upaya and ka_gochara. Both are cases the earlier gates had already called unearned
+  evidence.
+- **One case does not move:** mi_adhilepa deletes all five targets through a loop over a literal list, which (a)
+  resolves, so it stays PASS.
+- **Text-only changes: 43,** all `Idem.pattern` PASS texts that now name the table deleted and its line. No other
+  criterion changed on any asset.
+- **Guard false-positive check:** across all 127 assets, the refusal guard fires only on ka_kshetra
+  (`idem_compare.py`).
+- **The ka_kshetra FAIL (not PARTIAL):** it follows the coordinator's instruction (NO_DETECTOR or FAIL). The review
+  suggested PARTIAL. Either is non-closable, and FAIL states a measured refusal. R20 may re-grade it.
+
+**Emit dry runs at `2e1c06d1b`, all on ledger copies.**
+- **First emit** (`emit_first_emit_ck.log`): 577 appended (= 574 + the 3 Idem.pattern rows now failing),
+  0 CLOSED. The re-emit is byte-identical.
+- **Simulated second emit:** 33 CLOSED, and `ka_kshetra-Idem.pattern` is absent from the closed set (§5.2).
+
+**Test count.**
+- Offline: 291 → **300** (278 passed, 20 skipped, 2 failed); the 2 failures are the same pre-existing
+  `test_drift_detector_h35_h38.py` pair.
+- Live, the two touched test files (`test_w2_2_…` + `test_a3_…`): **86 passed**.
+- Three existing tests were adapted to the new `idem_scan(…, targets)` signature:
+  - `test_a3`'s call-site text assertion and its `_boom` arity;
+  - the R43 fixture now declares the `t_x` its writer deletes.
+
+**Ledgers.** Production `asset_gaps.jsonl` / `asset_certs.jsonl` md5 `30365ff2…` / `514cbdfc…`, unchanged
+throughout the corrections. The temporary base worktree was re-created for the base first emit and removed after.
+
+**For R20's W2-3 acceptance (reported here; the executor folds it into the register):** Idem.pattern must handle
+ka_kshetra's guarded/refused-rebuild shape correctly — a guarded or refused rebuild is not closable idempotency.
+It must also follow delegated replacement (bo_upaya), and grade a registry target that differs from the table
+replaced (ka_gochara, F8) as the registry-data finding it is.
