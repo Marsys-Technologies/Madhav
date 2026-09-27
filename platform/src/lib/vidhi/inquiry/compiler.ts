@@ -624,6 +624,13 @@ export function compileInquirySuccessorContract(args: {
   parent_inquiry_id: string
   parent: InquiryContract
   max_iterations?: number
+  /**
+   * Admit only frontier for a DIFFERENT capability than the observation that discovered it
+   * (evidence-driven widening, RC-5.4). A door that continues automatically sets this so a
+   * capped pagination frontier — the same capability's next page — can never carry an inquiry
+   * past its own iteration budget; that continuation stays the caller's explicit choice.
+   */
+  cross_capability_only?: boolean
 }): InquiryContract {
   if (!args.parent_inquiry_id) throw new Error('INQUIRY_SUCCESSOR_PARENT_ID_REQUIRED')
   if (args.parent.status === 'COMPLETE') throw new Error('INQUIRY_SUCCESSOR_PARENT_COMPLETE')
@@ -633,6 +640,7 @@ export function compileInquirySuccessorContract(args: {
     .flatMap((frontier) => {
       const source = args.parent.plan_items.find((item) => item.item_id === frontier.discovered_from)
       if (!source || source.observation?.disposition !== 'served' || source.observation.evidence_refs.length === 0) return []
+      if (args.cross_capability_only && source.scu_id === frontier.scu_id) return []
       if (!args.snapshot.scus.some((scu) => scu.scu_id === frontier.scu_id)) return []
       return [{ frontier, evidence_refs: unique(source.observation.evidence_refs).sort() }]
     })
