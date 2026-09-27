@@ -69,7 +69,9 @@ describe('credential envelope', () => {
   it.each(['mask', 'fingerprint', 'keyVersion'] as const)('authenticates %s metadata', field => {
     const record = encryptCredential(secret)
     vi.stubEnv('MARSYS_AI_KEK_V2', firstKek)
-    record[field] = field === 'keyVersion' ? 'V2' : 'changed'
+    record[field] = field === 'keyVersion' ? 'V2'
+      : field === 'mask' ? (record.mask === '••••abcd' ? '••••efgh' : '••••abcd')
+        : `${record.fingerprint[0] === 'a' ? 'b' : 'a'}${record.fingerprint.slice(1)}`
     expect(() => decryptCredential(record)).toThrow('AI_CREDENTIAL_DECRYPT_FAILED')
   })
 

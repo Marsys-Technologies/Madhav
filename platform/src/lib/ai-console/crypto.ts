@@ -1,6 +1,6 @@
 import 'server-only'
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
-import { inspect } from 'node:util'
+import { inspect, types as utilTypes } from 'node:util'
 import { AI_ERROR_CODES } from './errors'
 
 export interface EncryptedCredential {
@@ -151,7 +151,7 @@ export function decryptCredential(record: EncryptedCredential): string {
   }
 }
 
-const SENSITIVE_FIELD = /key|secret|credential|token|password|authorization|cookie|cipher|nonce|tag|wrapped|kek|header|body|response|request|message|stack|cause|stderr|stdout|prompt|completion|error|tojson/i
+const SENSITIVE_FIELD = /key|secret|credential|token|password|authorization|cookie|cipher|nonce|tag|wrapped|kek|header|body|response|request|message|stack|cause|stderr|stdout|prompt|completion|error|tojson|mask|fingerprint/i
 const SAFE_CODES = new Set<string>([...AI_ERROR_CODES, CONFIG_ERROR, DECRYPT_ERROR,
   'AI_CREDENTIAL_ENCRYPT_FAILED', 'AI_CREDENTIAL_INPUT_INVALID'])
 const SAFE_STATUS = new Set(['untested', 'validating', 'validated', 'needs_attention', 'invalid', 'unreachable'])
@@ -167,9 +167,10 @@ const SAFE_FIELDS = new Set(['nested', 'data', 'metadata', 'details', 'detail', 
 
 /**
  * Defense in depth, not an API projection: unknown free text is discarded since an
- * upstream provider may echo a credential under any field. Only validated safe
- * masks/fingerprints/codes/statuses survive as strings. Unknown property names are
- * removed too. Never calls user getters.
+ * upstream provider may echo a credential under any field. Only allowlisted
+ * codes/statuses survive as strings. Untrusted masks/fingerprints are always
+ * redacted; trusted server metadata belongs in a separate typed projection.
+ * Unknown property names are removed too. Never calls user getters.
  */
 export function redactAiSecret(value: unknown): unknown {
   const seen = new WeakSet<object>()
@@ -179,30 +180,34 @@ export function redactAiSecret(value: unknown): unknown {
     if (item === null || typeof item === 'boolean') return item
     if (typeof item === 'number') return Number.isFinite(item) ? item : REDACTED
     if (typeof item === 'string') {
-      if (field === 'mask' && /^••••(?:[A-Za-z0-9_-]{4})?$/.test(item)) return item
-      if (field === 'fingerprint' && /^[a-f0-9]{64}$/.test(item)) return item
       if (field === 'code' && SAFE_CODES.has(item)) return item
       if (field === 'status' && SAFE_STATUS.has(item)) return item
       return REDACTED
     }
-    if (typeof item !== 'object' || seen.has(item)) return REDACTED
+    if (typeof item !== 'object' || utilTypes.isProxy(item) || seen.has(item)) return REDACTED
     seen.add(item)
     try {
-      const array = Array.isArray(item)
-      const prototype = Object.getPrototypeOf(item)
-      if (!array && prototype !== Object.prototype && prototype !== null) return REDACTED
-      const descriptors = Object.getOwnPropertyDescriptors(item)
-      if (array) {
-        if (item.length > remaining) return REDACTED
-        return Array.from({ length: item.length }, (_, index) => {
-          const descriptor = descriptors[String(index)]
-          return descriptor && 'value' in descriptor ? visit(descriptor.value, '', depth + 1) : REDACTED
-        })
+      if (Array.isArray(item)) {
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(item, 'length')
+        const length: unknown = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : undefined
+        if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0 || length > remaining) return REDACTED
+        const output: unknown[] = []
+        for (let index = 0; index < length; index++) {
+          if (remaining <= 0) return REDACTED
+          const descriptor = Object.getOwnPropertyDescriptor(item, String(index))
+          output.push(descriptor && 'value' in descriptor ? visit(descriptor.value, '', depth + 1) : REDACTED)
+        }
+        return output
       }
+      const prototype = Object.getPrototypeOf(item)
+      if (prototype !== Object.prototype && prototype !== null) return REDACTED
       const output: Record<string, unknown> = Object.create(null)
-      for (const [key, descriptor] of Object.entries(descriptors)) {
-        if (!descriptor.enumerable) continue
+      // Inspect one own descriptor at a time; never allocate all descriptors for
+      // an oversized container before applying the traversal budget.
+      for (const key in item) {
         if (--remaining < 0) return REDACTED
+        const descriptor = Object.getOwnPropertyDescriptor(item, key)
+        if (!descriptor?.enumerable) continue
         // Do not retain arbitrary token-shaped property names or prototype hooks.
         if (!SAFE_FIELDS.has(key.replace(/[-_]/g, '').toLowerCase())) continue
         output[key] = SENSITIVE_FIELD.test(key) || !('value' in descriptor)
