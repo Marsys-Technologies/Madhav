@@ -150,7 +150,7 @@ describe('POST /api/clients/[id]/learning — write-gated mutating actions (V3-E
   it('DENY: approving a chart-context-stale calibration snapshot is refused with 409, and no cosign row is inserted (Jātaka Phase-A3)', async () => {
     mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
     setupMocks({ role: 'guest', isOwner: true, hasGrant: false })
-    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+    mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('LEFT JOIN chart_grants g')) return Promise.resolve({ rows: [{ id: CHART_ID }] })
       if (sql.includes('FROM profiles')) return Promise.resolve({ rows: [{ role: 'guest' }] })
       if (sql.includes('SELECT owner_id FROM charts WHERE id=$1')) return Promise.resolve({ rows: [{ owner_id: OWNER_UID }] })
