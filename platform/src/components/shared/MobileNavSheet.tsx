@@ -15,6 +15,7 @@ import {
   Map,
   MenuIcon,
   Settings2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 import { auth } from '@/lib/firebase/client'
@@ -22,6 +23,7 @@ import { Sigil } from '@/components/brand/Sigil'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
   normalizeRole,
+  visibleNavItems,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
 import { cn } from '@/lib/utils'
@@ -47,20 +49,16 @@ function MoonCrescentIcon({ className }: { className?: string }) {
   )
 }
 
-const NAV_ITEMS: {
-  href: string
-  label: string
-  icon: LucideIcon | React.ComponentType<{ className?: string }>
-  roles: readonly string[]
-}[] = [
-  { href: '/dashboard', label: 'Jātakas',    icon: LayoutGrid,  roles: ['super_admin', 'guest'] },
-  { href: '/panchang',  label: 'Panchang',   icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
-  { href: '/cockpit',   label: 'Cockpit',    icon: Gauge,       roles: ['super_admin'] },
-  { href: '/audit',     label: 'Audit',      icon: FileSearch,  roles: ['super_admin'] },
-  { href: '/aiops',     label: 'AIOps',      icon: Bot,         roles: ['super_admin'] },
-  { href: '/performance', label: 'Performance', icon: ChartColumn, roles: ['super_admin'] },
-  { href: '/admin',     label: 'Admin',      icon: Settings2,   roles: ['super_admin'] },
-]
+const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: string }>> = {
+  roster: LayoutGrid,
+  panchang: MoonCrescentIcon,
+  cockpit: Gauge,
+  'ai-console': SlidersHorizontal,
+  aiops: Bot,
+  audit: FileSearch,
+  performance: ChartColumn,
+  admin: Settings2,
+}
 
 export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   const pathname = usePathname()
@@ -77,9 +75,9 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   }
 
   const effectiveRole = normalizeRole(profile.role)
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(effectiveRole)
-  )
+  const visibleItems = visibleNavItems(effectiveRole, {
+    aiConsoleByok: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true',
+  })
   const informationItems = visibleInformationNavItems(effectiveRole)
   const informationActive = pathname.startsWith('/information')
 
@@ -114,7 +112,8 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
           >
             <Sigil size={28} />
           </Link>
-          {visibleItems.map(({ href, label, icon: Icon }) => {
+          {visibleItems.map(({ key, href, label }) => {
+            const Icon = NAV_ICONS[key]
             const isActive =
               href === '/dashboard'
                 ? pathname === '/dashboard' || pathname === '/'

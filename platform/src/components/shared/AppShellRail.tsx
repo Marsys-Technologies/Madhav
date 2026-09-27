@@ -25,10 +25,12 @@ import {
   Info,
   Map,
   Settings2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 import {
   normalizeRole,
+  visibleNavItems,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
 import {
@@ -52,27 +54,21 @@ function MoonCrescentIcon({ className }: { className?: string }) {
   )
 }
 
-interface NavItem {
-  href: string
-  label: string
-  icon: LucideIcon | React.ComponentType<{ className?: string }>
-  roles: readonly string[]
-}
-
 interface AppShellRailProps {
   user: { uid: string; email?: string; name?: string }
   profile: { role: 'super_admin' | 'guest'; status?: string }
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Jātakas',     icon: LayoutGrid,       roles: ['super_admin', 'guest'] },
-  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
-  { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,            roles: ['super_admin'] },
-  { href: '/audit',       label: 'Audit',       icon: FileSearch,       roles: ['super_admin'] },
-  { href: '/aiops',       label: 'AIOps',       icon: Bot,              roles: ['super_admin'] },
-  { href: '/performance', label: 'Performance', icon: ChartColumn,      roles: ['super_admin'] },
-  { href: '/admin',       label: 'Admin',       icon: Settings2,        roles: ['super_admin'] },
-]
+const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: string }>> = {
+  roster: LayoutGrid,
+  panchang: MoonCrescentIcon,
+  cockpit: Gauge,
+  'ai-console': SlidersHorizontal,
+  aiops: Bot,
+  audit: FileSearch,
+  performance: ChartColumn,
+  admin: Settings2,
+}
 
 export function AppShellRail({ user, profile }: AppShellRailProps) {
   const pathname = usePathname()
@@ -92,9 +88,9 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
   // Normalize legacy 'client' → 'guest' (per Unit 2c) before role-gating.
   const effectiveRole = normalizeRole(profile.role)
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(effectiveRole)
-  )
+  const visibleItems = visibleNavItems(effectiveRole, {
+    aiConsoleByok: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true',
+  })
   const informationItems = visibleInformationNavItems(effectiveRole)
   const informationActive = pathname.startsWith('/information')
 
@@ -162,7 +158,8 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
       {/* Nav links */}
       <div className="relative flex flex-1 flex-col gap-0.5 w-full px-2">
-        {visibleItems.map(({ href, label, icon: Icon }, index) => {
+        {visibleItems.map(({ key, href, label }, index) => {
+          const Icon = NAV_ICONS[key]
           const isActive = href === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
             : pathname.startsWith(href)

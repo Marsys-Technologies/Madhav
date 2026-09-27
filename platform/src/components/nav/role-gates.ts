@@ -5,10 +5,10 @@
  * Used by AppShellRail + dashboard + tests. Pure logic — no Next/React.
  *
  * Roles:
- *   - super_admin: full instrument operator. Roster + Panchang + Cockpit +
- *     Audit + Performance + AIOps + Admin.
- *   - guest: legacy 'client' role rolled into 'guest' per Unit 2c. Sees only
- *     their owned + granted charts + the global Panchang surface.
+ *   - super_admin: full instrument operator. Jātakas + Panchang + Cockpit +
+ *     AI Console (when enabled) + AIOps + Audit + Performance + Admin.
+ *   - guest: legacy 'client' role rolled into 'guest' per Unit 2c. Sees their
+ *     owned + granted charts, Panchang, and AI Console when it is enabled.
  *
  * Per-chart visibility (Build vs Profile/Consult/Panchang) is decided by
  * `authorizeChartAccess` (2c) at the per-chart layout level. This helper only
@@ -28,6 +28,12 @@ export interface NavItemDescriptor {
   roles: readonly NavRole[]
   /** Admin surface? Helps tests assert "guest does not see admin." */
   admin?: boolean
+  /** Optional public client-side feature visibility gate. */
+  feature?: 'aiConsoleByok'
+}
+
+export interface NavVisibility {
+  aiConsoleByok?: boolean
 }
 
 export interface InformationNavItemDescriptor {
@@ -39,11 +45,12 @@ export interface InformationNavItemDescriptor {
 }
 
 export const NAV_ITEMS: readonly NavItemDescriptor[] = [
-  { key: 'roster',      href: '/dashboard',   label: 'Roster',      roles: ['super_admin', 'guest'] },
+  { key: 'roster',      href: '/dashboard',   label: 'Jātakas',     roles: ['super_admin', 'guest'] },
   { key: 'panchang',    href: '/panchang',    label: 'Panchang',    roles: ['super_admin', 'guest'] },
   { key: 'cockpit',     href: '/cockpit',     label: 'Cockpit',     roles: ['super_admin'], admin: true },
-  { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
+  { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['super_admin', 'guest'], feature: 'aiConsoleByok' },
   { key: 'aiops',       href: '/aiops',       label: 'AIOps',       roles: ['super_admin'], admin: true },
+  { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
   { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },
 ] as const
@@ -62,9 +69,16 @@ export const INFORMATION_NAV_ITEMS: readonly InformationNavItemDescriptor[] = [
   },
 ] as const
 
-export function visibleNavItems(role: NavRole | string): NavItemDescriptor[] {
+export function visibleNavItems(
+  role: NavRole | string,
+  visibility: NavVisibility = {},
+): NavItemDescriptor[] {
   const normalized: NavRole = role === 'super_admin' ? 'super_admin' : 'guest'
-  return NAV_ITEMS.filter((item) => (item.roles as readonly string[]).includes(normalized))
+  return NAV_ITEMS.filter((item) => {
+    if (!(item.roles as readonly string[]).includes(normalized)) return false
+    if (item.feature === 'aiConsoleByok') return visibility.aiConsoleByok === true
+    return true
+  })
 }
 
 export function visibleInformationNavItems(
