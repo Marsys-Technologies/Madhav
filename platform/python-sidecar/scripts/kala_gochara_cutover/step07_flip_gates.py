@@ -91,8 +91,8 @@ def main() -> int:
 
         # Gate 5 (E-012): the SERVED table has window rows for this generation. Gates 1-2 read
         # the contact ledger and coverage manifest only, so they stay green when no window was
-        # ever written — and the flip in step 8 repoints serving at kala_gochara_windows. Plan
-        # §2.2/§4.7 has ka_gochara write the windows projection under '4.0'; no code does yet.
+        # ever written — and the flip in step 8 repoints serving at kala_gochara_windows. The
+        # writer is step06b_windows_projection.py (E-012, ADK-0012).
         cur.execute(
             "SELECT count(*) FROM kala_gochara_windows "
             "WHERE chart_id = %s AND generation = %s",
@@ -102,8 +102,8 @@ def main() -> int:
             "pass": n_win > 0,
             "detail": f"kala_gochara_windows rows for generation {args.generation}: {n_win}. "
                       "Flipping serving authority onto a generation with no window rows would "
-                      "empty the served forecast for this chart. The '4.0' windows projection "
-                      "(plan §2.2/§4.7) has no writer yet (E-012).",
+                      "empty the served forecast for this chart. Run the '4.0' windows "
+                      "projection writer (step06b_windows_projection.py, E-012) first.",
         }
 
         # Gate 3: disclosure is TS-only.
