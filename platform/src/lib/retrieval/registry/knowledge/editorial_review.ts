@@ -188,6 +188,28 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead',
     }],
   },
+  // R3 proof typing (review §4, "direct-DB composites"): compose_large_n's RegistrySurfaceGateway
+  // (synthesis/surface_gateway.ts) composes exactly these four already-contracted surfaces via
+  // their own registered handlers (getCapability) — pre-aggregated gestalt, domain reading,
+  // CGM dispositor paths and contradictions — before map-reducing atomic signal families. Which
+  // surfaces one specific question actually draws on varies with its decomposition; gating
+  // availability on the full promised surface set is the conservative, honest choice (never
+  // claims available when a surface the instrument could need is unverified), matching every
+  // other composite in this file.
+  compose_large_n: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: [
+        'registry:marsys://tool/L2/query_chart_gestalt',
+        'registry:marsys://tool/L2/query_domain_reading',
+        'registry:marsys://tool/L2/query_cgm_paths',
+        'registry:marsys://tool/L2/query_contradictions',
+      ],
+      source_ref: 'platform/src/lib/retrieval/synthesis/surface_gateway.ts',
+    }],
+  },
   graha_portrait: {
     producer_output_claims: [],
     requirements: [{

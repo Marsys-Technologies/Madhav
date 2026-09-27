@@ -167,6 +167,33 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
   return loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [...rows] }), new Date('2026-09-17T00:05:00.000Z'))
 }
 
+describe('compose_large_n — R3 proof typing (direct-DB composite)', () => {
+  it('becomes available only once every surface leg resolves, and names the one leg that fails', async () => {
+    const scu = findScu('scu.catalog.compose_large_n')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/synthesis/compose_large_n',
+      requirements: [expect.objectContaining({ kind: 'derived', scope: 'chart' })],
+    })])
+
+    const gestaltReceipt = adjacentProducerReceipt('bo_chart_gestalt', '2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e')
+    const available = await overlayFor([transitProbeAnchor(), gestaltReceipt])
+    expect(available.availability.find((entry) => entry.scu_id === 'scu.catalog.compose_large_n')).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/synthesis/compose_large_n'], gaps: [],
+    })
+
+    // Withhold query_cgm_paths's own source-query success and confirm only that leg is named.
+    const failing = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('bodha_cgm_paths') || sql.includes('bodha_cgm_dispositor')) throw new Error('leg source unavailable')
+      return { rows: [transitProbeAnchor(), gestaltReceipt] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    const entry = failing.availability.find((candidate) => candidate.scu_id === 'scu.catalog.compose_large_n')!
+    expect(entry.state).toBe('dark')
+    expect(entry.gaps.length).toBeGreaterThan(0)
+    for (const gap of entry.gaps) expect(gap).toContain('registry:marsys://tool/L2/query_cgm_paths:')
+  })
+})
+
 describe('pact_query / synergy_cross_layer — R3 proof typing (direct-DB composites)', () => {
   it('pact_query becomes available only once judgment_query resolves, and stays scoped to that one leg', async () => {
     const scu = findScu('scu.catalog.pact_query')
