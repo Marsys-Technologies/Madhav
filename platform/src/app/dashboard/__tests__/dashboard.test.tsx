@@ -279,11 +279,16 @@ describe('Dashboard — shared readiness authority (Jātaka Task 1)', () => {
 })
 
 describe('Nav role-gates (pure helper)', () => {
-  it('super_admin sees Roster + Panchang + all admin surfaces', () => {
+  it('keeps Observatory out of the left sidebar because it lives inside Cockpit', () => {
+    const items = visibleNavItems('super_admin')
+
+    expect(items.find((item) => item.key === 'aiops')).toBeUndefined()
+    expect(items.find((item) => item.key === 'cockpit')?.href).toBe('/cockpit')
+  })
+
+  it('super_admin sees Cockpit and the remaining top-level admin surfaces', () => {
     const keys = visibleNavItems('super_admin').map((i) => i.key)
-    expect(keys).toEqual(
-      expect.arrayContaining(['roster', 'panchang', 'cockpit', 'audit', 'aiops', 'performance', 'admin'])
-    )
+    expect(keys).toEqual(['roster', 'panchang', 'cockpit', 'audit', 'performance', 'admin'])
   })
 
   it('guest sees only Roster + Panchang — no admin surfaces', () => {

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut as firebaseSignOut } from 'firebase/auth'
 import {
-  Bot,
   ChartColumn,
   ChevronDown,
   FileSearch,
@@ -21,6 +20,7 @@ import { auth } from '@/lib/firebase/client'
 import { Sigil } from '@/components/brand/Sigil'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
+  NAV_ITEMS as NAV_DESCRIPTORS,
   normalizeRole,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
@@ -48,19 +48,25 @@ function MoonCrescentIcon({ className }: { className?: string }) {
 }
 
 const NAV_ITEMS: {
+  key: string
   href: string
   label: string
   icon: LucideIcon | React.ComponentType<{ className?: string }>
   roles: readonly string[]
-}[] = [
-  { href: '/dashboard', label: 'Jātakas',    icon: LayoutGrid,  roles: ['super_admin', 'guest'] },
-  { href: '/panchang',  label: 'Panchang',   icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
-  { href: '/cockpit',   label: 'Cockpit',    icon: Gauge,       roles: ['super_admin'] },
-  { href: '/audit',     label: 'Audit',      icon: FileSearch,  roles: ['super_admin'] },
-  { href: '/aiops',     label: 'AIOps',      icon: Bot,         roles: ['super_admin'] },
-  { href: '/performance', label: 'Performance', icon: ChartColumn, roles: ['super_admin'] },
-  { href: '/admin',     label: 'Admin',      icon: Settings2,   roles: ['super_admin'] },
-]
+}[] = NAV_DESCRIPTORS.map(({ key, href, label, roles }) => ({
+  key,
+  href,
+  label,
+  roles,
+  icon: {
+    roster: LayoutGrid,
+    panchang: MoonCrescentIcon,
+    cockpit: Gauge,
+    audit: FileSearch,
+    performance: ChartColumn,
+    admin: Settings2,
+  }[key] as LucideIcon | React.ComponentType<{ className?: string }>,
+}))
 
 export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   const pathname = usePathname()
@@ -114,14 +120,14 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
           >
             <Sigil size={28} />
           </Link>
-          {visibleItems.map(({ href, label, icon: Icon }) => {
+          {visibleItems.map(({ key, href, label, icon: Icon }) => {
             const isActive =
               href === '/dashboard'
                 ? pathname === '/dashboard' || pathname === '/'
                 : pathname.startsWith(href)
             return (
               <Link
-                key={href}
+                key={key}
                 href={href}
                 className={cn(
                   'flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',

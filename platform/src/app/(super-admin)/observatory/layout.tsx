@@ -5,7 +5,7 @@ import { AppShell } from '@/components/shared/AppShell'
 import { ObservatorySubNav } from '@/components/observatory/ObservatorySubNav'
 
 export const metadata: Metadata = {
-  title: 'AIOps · Observatory — MARSYS-JIS',
+  title: 'Observatory — MARSYS-JIS',
 }
 
 export default async function ObservatorySectionLayout({
@@ -24,7 +24,7 @@ export default async function ObservatorySectionLayout({
       profile={ctx.profile}
       breadcrumb={[
         { label: 'Roster', href: '/dashboard' },
-        { label: 'AIOps', href: '/aiops', current: false },
+        { label: 'Observatory', href: '/observatory', current: true },
       ]}
     >
       <div className="flex h-full min-h-0 flex-col">
