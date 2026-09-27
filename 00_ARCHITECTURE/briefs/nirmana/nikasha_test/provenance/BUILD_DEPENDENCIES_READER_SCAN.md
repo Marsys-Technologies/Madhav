@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE1_B3_BUILD_DEPENDENCIES_READER_SCAN
 version: "1.0"
-generated_at: 2026-09-27T07:07:33.311103+00:00
+generated_at: 2026-09-27T07:23:07.210405+00:00
 generator: platform/scripts/governance/catalog_provenance.py --reader-scan
 ---
 
@@ -174,22 +174,22 @@ Total hits: **76**
 
 ## `platform/scripts/governance/__tests__/test_catalog_provenance.py`
 
-- L295: `scan finds its own prior report (which lists 'build_dependencies' on every hit`
-- L304: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
-- L310: `stale_report.write_text("\n".join(f"- L{i}: `build_dependencies`" for i in range(50)))`
-- L323: `line mentioning 'build_dependencies' while describing the scan itself`
-- L333: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
-- L338: `"\n".join(f"mentions build_dependencies on line {i}" for i in range(20))`
+- L297: `scan finds its own prior report (which lists 'build_dependencies' on every hit`
+- L306: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
+- L312: `stale_report.write_text("\n".join(f"- L{i}: `build_dependencies`" for i in range(50)))`
+- L325: `line mentioning 'build_dependencies' while describing the scan itself`
+- L335: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
+- L340: `"\n".join(f"mentions build_dependencies on line {i}" for i in range(20))`
 
 ## `platform/scripts/governance/catalog_provenance.py`
 
 - L14: `read-only grep, never drops or alters `build_dependencies`)`
-- L61: `# and the gate's own B_REVIEW.md) mentions "build_dependencies" many times while`
-- L1151: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
-- L1162: `which both discuss 'build_dependencies' at length while describing this very`
-- L1164: `previous output file listing 'build_dependencies' on every line, and hit`
-- L1355: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
-- L1695: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
+- L67: `# and the gate's own B_REVIEW.md) mentions "build_dependencies" many times while`
+- L1163: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
+- L1174: `which both discuss 'build_dependencies' at length while describing this very`
+- L1176: `previous output file listing 'build_dependencies' on every line, and hit`
+- L1367: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
+- L1759: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
 
 ## `platform/src/generated/harvest/e2_db_truth.json`
 
