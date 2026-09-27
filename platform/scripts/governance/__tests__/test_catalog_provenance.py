@@ -450,6 +450,115 @@ def test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry():
     assert set(failures) == {"scu.stale_bad_source_ref", "scu.stale_unclassified_reason"}
 
 
+# ── C-3: false producers from the one-hop helper / non-handler segments ─────
+#
+# NIKASHA_WAVE1_LANE_B_REVIEW.md finding 3: four derived producers were wrong.
+# (a) the one-hop follower matched a *definition* line as a call. (b) a migration
+# file's own unrelated SQL was taken as evidence of the SCU's query. (c) a
+# writer's own INPUT read was taken as evidence of the SCU's query. Each test
+# below reproduces the real shape of one cause and proves it is now excluded.
+
+
+def test_one_hop_follower_skips_a_definition_header_not_a_call(tmp_path):
+    """C-3(a): the real regression — a declared range's LAST line was itself the
+    header of an unrelated function defined in the same file
+    (`_idempotency.py:54-78`'s `def replace_prior_chart_dashas(`). The follower
+    treated that header as a CALL and ingested the unrelated function's entire
+    body, falsely producing a `chart_dashas`/`ga_dashas` producer for
+    `get_ayurdaya`/`get_sensitive_degrees`, neither of which queries chart_dashas
+    anywhere in their own declared range. Mutation this catches: removing the
+    def/function-header guard in `one_hop_helper_texts` makes `ga_decoy`
+    reappear as a producer."""
+    f = tmp_path / "handler.py"
+    f.write_text(
+        "\n".join(
+            [
+                "def range_owner(conn, rows):",  # line 1
+                "    return len(rows)",  # line 2
+                "",  # line 3
+                "def unrelated_function(conn, rows):",  # line 4 — LAST line of the declared range
+                "    sql = \"DELETE FROM decoy_table WHERE chart_id = %s\"",  # line 5 — NOT in range
+                "    return sql",  # line 6
+            ]
+        )
+        + "\n"
+    )
+    req = {"kind": "source_query", "source_ref": f"{f.name}:1-4"}
+    known_tables = {"decoy_table"}
+    table_to_assets = {"decoy_table": [_asset("ga_decoy", "decoy_table")]}
+
+    producers, reason = cp.derive_from_source_query(
+        "scu.test.def_header", req, known_tables, table_to_assets, tmp_path
+    )
+    assert producers == []
+    assert reason is not None and reason.startswith("NO_DETECTOR")
+
+
+def test_migration_segment_is_never_a_producer_source(tmp_path):
+    """C-3(b): a migration file's SQL is not evidence of what the SCU's OWN query
+    reads. Real regression: `bg_dignity_reference` was picked up from migration
+    606's unrelated integrity-check SQL when the actual handler read a different,
+    unregistered table (`bg_graha_naisargika_friendship`). A migration-path
+    segment must never contribute a relation candidate, even when it is the ONLY
+    segment that resolves to real text alongside the handler."""
+    handler = tmp_path / "query_graha_naisargika_friendship.ts"
+    handler.write_text("const sql = `SELECT graha FROM unregistered_table WHERE x = $1`\n")
+    migrations_dir = tmp_path / "supabase" / "migrations"
+    migrations_dir.mkdir(parents=True)
+    migration = migrations_dir / "606_integrity_contracts.sql"
+    migration.write_text("SELECT 1 FROM real_table WHERE exists_check = true;\n")
+
+    req = {
+        "kind": "source_query",
+        "source_ref": f"{handler.name}:1-1 | supabase/migrations/{migration.name}:1-1",
+    }
+    known_tables = {"real_table", "unregistered_table"}
+    # 'real_table' has a registry owner; 'unregistered_table' (the handler's
+    # actual read) does not — the honest 29-class outcome, matching the real bug.
+    table_to_assets = {"real_table": [_asset("bg_decoy", "real_table")]}
+
+    producers, reason = cp.derive_from_source_query(
+        "scu.test.migration_segment", req, known_tables, table_to_assets, tmp_path
+    )
+    assert producers == []
+    assert reason is not None
+    assert "bg_decoy" not in reason
+    assert cp.classify_no_detector_reason(reason) == "relation_unowned_by_registry"
+
+
+def test_writer_segment_input_read_is_never_a_producer_source(tmp_path):
+    """C-3(c): a writer's OWN input read (reading its upstream input table to
+    build its output) is not the SCU's read. Real regression:
+    `bg_texts`/`bg_text_index` were picked up from `bg_compendium_index`'s
+    WRITER reading `classical_text_chunks` as ITS OWN input — the handler only
+    ever reads `brahma_compendium_index`."""
+    handler = tmp_path / "query_compendium_index.ts"
+    handler.write_text("const sql = `SELECT * FROM brahma_compendium_index WHERE x = $1`\n")
+    writers_dir = tmp_path / "pipeline" / "orchestrator" / "writers"
+    writers_dir.mkdir(parents=True)
+    writer = writers_dir / "bg_compendium_index.py"
+    writer.write_text("cur.execute('SELECT chunk_id FROM classical_text_chunks')\n")
+
+    req = {
+        "kind": "source_query",
+        "source_ref": f"{handler.name}:1-1 | pipeline/orchestrator/writers/{writer.name}:1-1",
+    }
+    known_tables = {"brahma_compendium_index", "classical_text_chunks"}
+    table_to_assets = {
+        "brahma_compendium_index": [_asset("bg_compendium_index", "brahma_compendium_index")],
+        "classical_text_chunks": [
+            _asset("bg_texts", "classical_text_chunks"),
+            _asset("bg_text_index", "classical_text_chunks"),
+        ],
+    }
+
+    producers, reason = cp.derive_from_source_query(
+        "scu.test.writer_segment", req, known_tables, table_to_assets, tmp_path
+    )
+    assert reason is None
+    assert {p.asset_id for p in producers} == {"bg_compendium_index"}
+
+
 # ── C-4: full/partial/none recount, bounds-checked ───────────────────────────
 
 

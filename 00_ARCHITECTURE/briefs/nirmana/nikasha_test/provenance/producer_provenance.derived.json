@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-09-27T05:46:54.823631+00:00",
+  "generated_at": "2026-09-27T05:47:55.719043+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
   "snapshot_content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
   "snapshot_scu_count": 182,
   "summary": {
     "total_scus": 182,
-    "scus_with_producers": 108,
-    "scus_no_detector": 74,
+    "scus_with_producers": 107,
+    "scus_no_detector": 75,
     "no_detector_reason_counts": {
       "no_contract": 28,
-      "relation_unowned_by_registry": 29,
-      "no_relation_in_range": 9,
+      "relation_unowned_by_registry": 28,
+      "no_relation_in_range": 11,
       "source_ref_out_of_range": 7,
       "derived_kind_no_source_query": 1
     }
@@ -26,6 +26,7 @@
           "table": "bodha_mechanisms",
           "source_ref": "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -76,6 +77,7 @@
           "table": null,
           "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_graha_sancara; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -90,6 +92,7 @@
           "table": null,
           "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#ka_muhurta_seva; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -104,6 +107,7 @@
           "table": null,
           "source_ref": "platform/python-sidecar/scripts/nirmana_probe_contracts.json#bg_panchanga; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -140,6 +144,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -147,6 +152,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -154,6 +160,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -161,6 +168,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -168,6 +176,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -175,6 +184,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -182,6 +192,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -191,7 +202,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['charts'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts:205-215 | platform/migrations/002_ganita_divisionals.sql:31-65')"
+      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts:205-215 | platform/migrations/002_ganita_divisionals.sql:31-65')"
     },
     "scu.catalog.classical_attribution_lookup": {
       "requirement_kinds": [],
@@ -213,6 +224,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -220,6 +232,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -227,6 +240,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -234,6 +248,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -241,6 +256,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -248,6 +264,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -255,6 +272,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:34-41 | platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts:89-116 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -269,6 +287,7 @@
           "table": null,
           "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -283,6 +302,7 @@
           "table": null,
           "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -297,6 +317,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -304,6 +325,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -318,6 +340,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -325,6 +348,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -332,6 +356,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -339,6 +364,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -346,6 +372,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -353,6 +380,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -360,6 +388,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -369,14 +398,14 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts has 131 lines, ref 118-140); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts has 131 lines, ref 118-140); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_aspects": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts has 86 lines, ref 55-91); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts has 86 lines, ref 55-91); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_av_transit_gating": {
       "requirement_kinds": [],
@@ -388,7 +417,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts has 91 lines, ref 71-100); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts has 91 lines, ref 71-100); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_ayurdaya": {
       "requirement_kinds": [
@@ -400,13 +429,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
-          "shared": false
-        },
-        {
-          "asset_id": "ga_dashas",
-          "table": "chart_dashas",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
-          "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -421,6 +444,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -428,6 +452,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -435,6 +460,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -442,6 +468,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -449,6 +476,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -456,6 +484,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -463,6 +492,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -473,59 +503,19 @@
       ],
       "producers": [
         {
-          "asset_id": "ga_sensitive",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
-          "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
-          "asset_id": "ga_sade_sati",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
-          "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
-          "asset_id": "ga_panchanga",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
-          "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
           "asset_id": "ga_positions",
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
           "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
-          "asset_id": "ga_ayurdaya",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
-          "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
-          "asset_id": "ga_sensitive_degree",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
-          "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
-          "asset_id": "ga_nakshatra",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
-          "disposition": "derived_from_source_query",
-          "shared": true
+          "via_helper": null,
+          "shared": false
         },
         {
           "asset_id": "ga_dashas",
           "table": "chart_dashas",
           "source_ref": "platform/src/lib/retrieval/chart_header.ts:72-94 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts:54-55 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -540,6 +530,7 @@
           "table": "ga_condition_composite",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:75-107 | platform/migrations/251_ga_condition_composite.sql:1-73",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -554,6 +545,7 @@
           "table": "chart_dashas",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -561,6 +553,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -568,6 +561,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -575,6 +569,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -582,6 +577,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -589,6 +585,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -596,6 +593,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -603,6 +601,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -610,6 +609,7 @@
           "table": "chart_vichara",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts:166-209 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/supabase/migrations/206_ga3_supporting_tables.sql:36-68 | platform/migrations/435_ga_vichara.sql:44-83",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -624,6 +624,7 @@
           "table": "chart_dashas",
           "source_ref": "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -638,6 +639,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -645,6 +647,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -652,6 +655,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -659,6 +663,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -666,6 +671,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -673,6 +679,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -680,6 +687,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:79-105 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts:151-190 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -689,7 +697,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts has 104 lines, ref 78-108); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts has 104 lines, ref 78-108); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_dispositors": {
       "requirement_kinds": [
@@ -701,6 +709,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -708,6 +717,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -715,6 +725,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -722,6 +733,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -729,6 +741,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -736,6 +749,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -743,6 +757,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -758,6 +773,7 @@
           "table": "chart_divisionals",
           "source_ref": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -765,6 +781,7 @@
           "table": "chart_divisionals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/migrations/002_ganita_divisionals.sql:31-59",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -774,7 +791,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts has 60 lines, ref 38-62); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts has 60 lines, ref 38-62); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_graha_yuddha": {
       "requirement_kinds": [
@@ -786,6 +803,7 @@
           "table": "ephemeris_daily",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:165-218 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/ws2_l0_ephemeris.sql:18-45",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -800,6 +818,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -807,6 +826,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -814,6 +834,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -821,6 +842,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -828,6 +850,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -835,6 +858,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -842,6 +866,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -856,6 +881,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -863,6 +889,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -870,6 +897,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -877,6 +905,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -884,6 +913,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -891,6 +921,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -898,6 +929,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -912,6 +944,7 @@
           "table": "ga_medical",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:76-95 | platform/migrations/279_ga_medical.sql:21-55",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -926,6 +959,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -933,6 +967,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -940,6 +975,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -947,6 +983,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -954,6 +991,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -961,6 +999,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -968,6 +1007,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -977,7 +1017,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts has 131 lines, ref 128-158); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts has 131 lines, ref 128-158); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_positions": {
       "requirement_kinds": [
@@ -990,6 +1030,7 @@
           "table": "chart_facts",
           "source_ref": "platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql:74-77",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -997,6 +1038,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1004,6 +1046,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1011,6 +1054,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1018,6 +1062,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1025,6 +1070,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1032,6 +1078,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1039,6 +1086,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1060,6 +1108,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1067,6 +1116,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1074,6 +1124,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1081,6 +1132,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1088,6 +1140,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1095,6 +1148,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1102,6 +1156,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1116,6 +1171,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1123,6 +1179,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1130,6 +1187,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1137,6 +1195,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1144,6 +1203,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1151,6 +1211,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1158,14 +1219,8 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
-        },
-        {
-          "asset_id": "ga_dashas",
-          "table": "chart_dashas",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
-          "disposition": "derived_from_source_query",
-          "shared": false
         }
       ]
     },
@@ -1179,6 +1234,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1186,6 +1242,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1193,6 +1250,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1200,6 +1258,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1207,6 +1266,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1214,6 +1274,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1221,6 +1282,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1235,7 +1297,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts has 163 lines, ref 151-171); no relation name found in the remaining resolved segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts has 163 lines, ref 151-171); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_tajik": {
       "requirement_kinds": [
@@ -1247,6 +1309,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1254,6 +1317,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1261,6 +1325,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1268,6 +1333,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1275,6 +1341,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1282,6 +1349,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1289,6 +1357,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1296,6 +1365,7 @@
           "table": "l1_tajik_varsha_year_lords",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1310,6 +1380,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1317,6 +1388,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1324,6 +1396,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1331,6 +1404,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1338,6 +1412,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1345,6 +1420,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1352,6 +1428,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1366,6 +1443,7 @@
           "table": "ga_transit_anchors",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -1373,6 +1451,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1380,6 +1459,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1387,6 +1467,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1394,6 +1475,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1401,6 +1483,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1408,6 +1491,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1415,6 +1499,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1429,6 +1514,7 @@
           "table": "ga_vastu_planet_direction_map",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts:91-117 | platform/migrations/284_bg_vastu_directions.sql:37-66 | platform/migrations/286_ga_vastu_planet_direction_map.sql:8-38",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1450,6 +1536,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1457,6 +1544,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1464,6 +1552,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1471,6 +1560,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1478,6 +1568,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1485,6 +1576,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1492,6 +1584,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1499,6 +1592,7 @@
           "table": "ga_yoga_firings",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1518,7 +1612,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['brahma_vichara_constants'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in any handler-kind segment (excluded ['migration']-kind segment(s) per C-3) ('platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.lel_intake_checklist": {
       "requirement_kinds": [],
@@ -1535,6 +1629,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1542,6 +1637,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1556,6 +1652,7 @@
           "table": "brahma_ontology",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:136-160 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:17 | platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1570,6 +1667,7 @@
           "table": "brahma_remedy_corpus",
           "source_ref": "platform/src/lib/retrieve/remedy_tools.ts:180-200 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1609,6 +1707,7 @@
           "table": "kala_taranga",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts:61-147",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1623,6 +1722,7 @@
           "table": "chart_dashas",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts:101-126",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1637,6 +1737,7 @@
           "table": "phala_sodhana",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:306-335",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1651,6 +1752,7 @@
           "table": null,
           "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1672,6 +1774,7 @@
           "table": "phala_muhurta",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:76-113",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1681,7 +1784,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_avastha_schemes', 'bg_motion_state_thresholds', 'bg_combustion_orbs'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:48-66 | platform/migrations/250_bg_dignity_reference.sql:239-256 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:474-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184')"
+      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_avastha_schemes'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:48-66 | platform/migrations/250_bg_dignity_reference.sql:239-256 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:474-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184')"
     },
     "scu.catalog.query_calibration": {
       "requirement_kinds": [
@@ -1693,6 +1796,7 @@
           "table": "mimamsa_calibration",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -1700,6 +1804,7 @@
           "table": "mimamsa_multipliers",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -1707,6 +1812,7 @@
           "table": "mimamsa_qa_eval",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1728,6 +1834,7 @@
           "table": "bodha_cgm_motifs",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:67-84 | platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1742,6 +1849,7 @@
           "table": "bodha_cgm_paths",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:66-83 | platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1756,6 +1864,7 @@
           "table": "bodha_chart_gestalt",
           "source_ref": "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1770,6 +1879,7 @@
           "table": "brahma_class_priors",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115 | platform/supabase/migrations/387_brahma_class_priors.sql:18-31 | platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100 | platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39 | platform/supabase/migrations/615_nirmana_l0_governance_integrity_contracts.sql:1-45",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1777,6 +1887,7 @@
           "table": "brahma_class_priors",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115 | platform/supabase/migrations/387_brahma_class_priors.sql:18-31 | platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100 | platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39 | platform/supabase/migrations/615_nirmana_l0_governance_integrity_contracts.sql:1-45",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -1792,6 +1903,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ],
@@ -1809,6 +1921,7 @@
           "table": "phala_suddha_sodhana",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:495-530",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1830,21 +1943,8 @@
           "table": "brahma_compendium_index",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211 | platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
-        },
-        {
-          "asset_id": "bg_texts",
-          "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211 | platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84",
-          "disposition": "derived_from_source_query",
-          "shared": true
-        },
-        {
-          "asset_id": "bg_text_index",
-          "table": "classical_text_chunks",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211 | platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84",
-          "disposition": "derived_from_source_query",
-          "shared": true
         }
       ]
     },
@@ -1858,6 +1958,7 @@
           "table": "bodha_discoveries",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269 | platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-130",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1872,6 +1973,7 @@
           "table": "kala_convergence",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1893,6 +1995,7 @@
           "table": "kala_avadhi",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:60-119",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1907,6 +2010,7 @@
           "table": "brahma_dasha_systems",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1921,6 +2025,7 @@
           "table": "bodha_discoveries",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -1935,6 +2040,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1942,6 +2048,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1949,6 +2056,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1956,6 +2064,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1963,6 +2072,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1970,6 +2080,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1977,6 +2088,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -1984,6 +2096,7 @@
           "table": "bodha_cdlm_cells",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -1991,6 +2104,7 @@
           "table": "bodha_question_lenses",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -1998,6 +2112,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2005,6 +2120,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2012,6 +2128,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2019,6 +2136,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2026,6 +2144,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2033,6 +2152,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2040,6 +2160,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2047,6 +2168,7 @@
           "table": "chart_dashas",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:174-533 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:680-1010 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:93-157 | platform/src/lib/retrieval/provenance/freshness_notes.ts:84-111",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2061,6 +2183,7 @@
           "table": "phala_phaladesa",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:70-114",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2075,6 +2198,7 @@
           "table": "brahma_dosha_catalog",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71 | platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36 | platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047 | platform/supabase/migrations/622_nirmana_l0_doshas_integrity_contract.sql:1-84",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2082,6 +2206,7 @@
           "table": "brahma_ontology",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71 | platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36 | platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047 | platform/supabase/migrations/622_nirmana_l0_doshas_integrity_contract.sql:1-84",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2096,6 +2221,7 @@
           "table": "phala_pramana",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:241-250 | platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts:43-64 | platform/supabase/migrations/338_phala_pramana.sql:23-67",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2110,6 +2236,7 @@
           "table": "brahma_formula_constants",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69 | platform/supabase/migrations/389_brahma_formula_constants.sql:9-27",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2125,15 +2252,8 @@
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [
-        {
-          "asset_id": "bg_dignity_reference",
-          "table": "bg_dignity_reference",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts:51-69 | platform/migrations/250_bg_dignity_reference.sql:128-140 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:64-149 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:442-455 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:166-179",
-          "disposition": "derived_from_source_query",
-          "shared": false
-        }
-      ]
+      "producers": [],
+      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_graha_naisargika_friendship'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts:51-69 | platform/migrations/250_bg_dignity_reference.sql:128-140 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:64-149 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:442-455 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:166-179')"
     },
     "scu.catalog.query_insight_embeddings": {
       "requirement_kinds": [
@@ -2145,6 +2265,7 @@
           "table": "mimamsa_insight_units",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts:109-168",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2159,6 +2280,7 @@
           "table": "mimamsa_insight_units",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:198-257",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2166,6 +2288,7 @@
           "table": "mimamsa_calibration",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:198-257",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2180,6 +2303,7 @@
           "table": "mimamsa_journal",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts:59-108",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2201,6 +2325,7 @@
           "table": "kala_kota_chakra",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:86-115",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2215,6 +2340,7 @@
           "table": "kala_jivana_parva",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:119-169",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2229,6 +2355,7 @@
           "table": "mimamsa_load_bearing",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts:66-112",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2243,6 +2370,7 @@
           "table": "mimamsa_manifestation_grammar",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts:78-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2257,6 +2385,7 @@
           "table": "mimamsa_manifestation_grammar",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts:67-116",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2278,6 +2407,7 @@
           "table": "bg_medical_mappings",
           "source_ref": "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2299,6 +2429,7 @@
           "table": "kala_moorti_nirnaya",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:91-119",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2308,7 +2439,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_motion_state_thresholds', 'bg_combustion_orbs'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66 | platform/migrations/250_bg_dignity_reference.sql:406-423 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:274-323 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:475-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184-186')"
+      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_motion_state_thresholds'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66 | platform/migrations/250_bg_dignity_reference.sql:406-423 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:274-323 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:475-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184-186')"
     },
     "scu.catalog.query_muhurat": {
       "requirement_kinds": [],
@@ -2325,6 +2456,7 @@
           "table": "bg_muhurta_lattice",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147 | platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85 | platform/supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql:77-93",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2339,6 +2471,7 @@
           "table": "bg_nakshatra_medical",
           "source_ref": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2353,6 +2486,7 @@
           "table": "kala_obstruction",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:74-94",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2367,6 +2501,7 @@
           "table": "bg_parihara_rules",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227 | platform/supabase/migrations/485_bg_parihara_rules.sql:63-138 | platform/scripts/ci/migration_renumber_disclosed.json:30-36 | platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2374,6 +2509,7 @@
           "table": "brahma_dosha_catalog",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227 | platform/supabase/migrations/485_bg_parihara_rules.sql:63-138 | platform/scripts/ci/migration_renumber_disclosed.json:30-36 | platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2393,6 +2529,7 @@
           "table": null,
           "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2408,6 +2545,7 @@
           "table": null,
           "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ],
@@ -2460,6 +2598,7 @@
           "table": "bodha_pratijna",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:155-177 | platform/migrations/665_bo_pratijna_integrity_check.sql:10-91",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2474,6 +2613,7 @@
           "table": "phala_anchors",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:103-185",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2488,6 +2628,7 @@
           "table": "kala_bhavishya",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:74-137 | platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:209-371",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2502,6 +2643,7 @@
           "table": "brahma_event_ontology",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2516,6 +2658,7 @@
           "table": "synthesis_quality_scorecard",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2523,6 +2666,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2530,6 +2674,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2537,6 +2682,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2544,6 +2690,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2551,6 +2698,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2558,6 +2706,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2565,6 +2714,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2572,6 +2722,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2579,6 +2730,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2586,6 +2738,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2593,6 +2746,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2600,6 +2754,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2607,6 +2762,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2614,6 +2770,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:78-97 | platform/src/lib/retrieval/provenance/freshness_notes.ts:73-107",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -2628,6 +2785,7 @@
           "table": "bodha_question_lenses",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts:84-117 | platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql:1-80",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2642,6 +2800,7 @@
           "table": "phala_rectification",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:600-652",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2656,6 +2815,7 @@
           "table": "chart_vichara",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2663,6 +2823,7 @@
           "table": "bodha_cdlm_cells",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2670,6 +2831,7 @@
           "table": "bodha_rm_resonances",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:126-175 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:320-422",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2698,6 +2860,7 @@
           "table": "brahma_remedy_corpus",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:92-108 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/608_nirmana_bg_remedies_integrity_contract.sql:38-78",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2712,6 +2875,7 @@
           "table": "phala_anchors",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:388-449",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -2719,6 +2883,7 @@
           "table": "phala_mitigation",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:388-449",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2733,6 +2898,7 @@
           "table": null,
           "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
           "disposition": "derived_from_service_probe",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2782,6 +2948,7 @@
           "table": "bodha_rm_resonances",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts:57-82",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2803,6 +2970,7 @@
           "table": "bg_sign_medical",
           "source_ref": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2817,6 +2985,7 @@
           "table": "mimamsa_signal_families",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts:72-143",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2831,6 +3000,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2838,6 +3008,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2845,6 +3016,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2852,6 +3024,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2859,6 +3032,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2866,6 +3040,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2873,6 +3048,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2880,6 +3056,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2887,6 +3064,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2894,6 +3072,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2901,6 +3080,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2908,6 +3088,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2915,6 +3096,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2922,6 +3104,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -2929,6 +3112,7 @@
           "table": "chart_dashas",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2943,6 +3127,7 @@
           "table": "bg_sky_calendar",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156 | platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2957,6 +3142,7 @@
           "table": "phala_sankrama",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:158-195",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -2976,6 +3162,7 @@
           "table": "kala_sudarshana_varsha",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:66-118",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3007,6 +3194,7 @@
           "table": "kala_darshana",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:59-112",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3021,6 +3209,7 @@
           "table": "kala_tithi_pravesha",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:65-120",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3042,6 +3231,7 @@
           "table": "bg_transit_engine",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75 | platform/migrations/266_bg_transit_tables.sql:21-32",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3077,6 +3267,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3084,6 +3275,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3091,6 +3283,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3098,6 +3291,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3105,6 +3299,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3112,6 +3307,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3119,6 +3315,7 @@
           "table": "chart_facts",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3126,6 +3323,7 @@
           "table": "vw_chart_digest",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3133,6 +3331,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3140,6 +3339,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3147,6 +3347,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3154,6 +3355,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3161,6 +3363,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3168,6 +3371,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3175,6 +3379,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3182,6 +3387,7 @@
           "table": "chart_dashas",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3203,6 +3409,7 @@
           "table": "bg_vastu_directions",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3217,6 +3424,7 @@
           "table": "kala_vedha_gochara",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts:111-152",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3238,6 +3446,7 @@
           "table": "brahma_yoga_catalog",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:52-62 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:63-75",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3252,6 +3461,7 @@
           "table": "brahma_remedy_corpus",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3259,6 +3469,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3266,6 +3477,7 @@
           "table": "classical_text_chunks",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -3287,6 +3499,7 @@
           "table": "sutravali_rules",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3301,6 +3514,7 @@
           "table": "brahma_ontology",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:45-92 | platform/migrations/ws2_l0_ontology.sql:15-37 | platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30 | platform/python-sidecar/brahmagyan/l0_ontology.py:1094-1173 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3335,6 +3549,7 @@
           "table": "bodha_cgm_nodes",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3342,6 +3557,7 @@
           "table": "bodha_cgm_edges",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3349,6 +3565,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3356,6 +3573,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3363,6 +3581,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3370,6 +3589,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3377,6 +3597,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3384,6 +3605,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3391,6 +3613,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         }
       ]
@@ -3412,6 +3635,7 @@
           "table": "bodha_cdlm_chart_summary",
           "source_ref": "platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:137",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3419,6 +3643,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         }
       ],
@@ -3436,6 +3661,7 @@
           "table": "kala_activation_predicates",
           "source_ref": "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3443,6 +3669,7 @@
           "table": "kala_bhavishya",
           "source_ref": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3450,6 +3677,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3457,6 +3685,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3464,6 +3693,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3471,6 +3701,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3478,6 +3709,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3485,6 +3717,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3492,6 +3725,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": true
         },
         {
@@ -3499,6 +3733,7 @@
           "table": "kala_activation",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3506,6 +3741,7 @@
           "table": "kala_activation_predicates",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3513,6 +3749,7 @@
           "table": "kala_bhavishya",
           "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:176-620",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]
@@ -3528,6 +3765,7 @@
           "table": "ga_yoga_firings",
           "source_ref": "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128",
           "disposition": "reviewed_output",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3535,6 +3773,7 @@
           "table": "bodha_msr_signals",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         },
         {
@@ -3542,6 +3781,7 @@
           "table": "kala_activation",
           "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039",
           "disposition": "derived_from_source_query",
+          "via_helper": null,
           "shared": false
         }
       ]

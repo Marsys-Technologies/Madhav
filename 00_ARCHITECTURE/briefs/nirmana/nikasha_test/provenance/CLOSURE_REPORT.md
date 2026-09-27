@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE1_B2_CLOSURE_REPORT
 version: "1.0"
-generated_at: 2026-09-27T05:46:54.825895+00:00
+generated_at: 2026-09-27T05:47:55.721523+00:00
 generator: platform/scripts/governance/catalog_provenance.py --closure
 ---
 
@@ -16,7 +16,7 @@ Population: `SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag I
 
 ## After (reviewed ∪ derived producers — this session's B-1 output)
 
-- Named producer assets: **95**
+- Named producer assets: **94**
 - Necessary (closure ∩ active population): **111 / 127**
 
 ## Still outside the closure, by layer

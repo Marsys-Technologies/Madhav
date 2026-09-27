@@ -79,8 +79,12 @@ class Producer:
     asset_id: str
     table: Optional[str]
     source_ref: str
-    disposition: str  # 'reviewed_output' | 'derived_from_source_query' | 'derived_from_service_probe'
+    disposition: str  # 'reviewed_output' | 'derived_from_source_query' | 'derived_from_service_probe' | 'route_evidence_only'
     shared: bool = False
+    # C-3: which name of the one-hop-followed helper (if any) contributed the
+    # literal this relation name was found in — None when found directly in the
+    # handler segment's own text, never guessed.
+    via_helper: Optional[str] = None
 
     def to_json(self) -> dict:
         return {
@@ -88,6 +92,7 @@ class Producer:
             "table": self.table,
             "source_ref": self.source_ref,
             "disposition": self.disposition,
+            "via_helper": self.via_helper,
             "shared": self.shared,
         }
 
@@ -436,10 +441,22 @@ def _extract_py_body(full_text: str, def_start: int, max_lines: int = 400) -> st
     return "\n".join(body_lines)
 
 
+_DEF_HEADER_PREFIX_RE = re.compile(r"\b(?:def|function)\s*$")
+
+
 def one_hop_helper_texts(range_text: str, full_file_text: Optional[str], file_ext: str) -> List[Tuple[str, str]]:
     """Best-effort: for each plain-identifier call in `range_text` that names a
     function/const-arrow defined elsewhere in the SAME file, return [(name, body_text)]
-    for the first definition site found. Non-recursive (one hop only, per spec)."""
+    for the first definition site found. Non-recursive (one hop only, per spec).
+
+    C-3(a): `_CALL_RE` (`identifier(`) matches a `def foo(`/`function foo(` HEADER
+    just as readily as it matches a real call to `foo(...)` — a real defect this
+    lane's own derivation hit: a declared range whose LAST line happened to be a
+    function's own definition header (not a call to it) was followed as if it were
+    a call, ingesting that function's entire body as evidence for the range's SQL,
+    even though the range never called it. Skip any match immediately preceded
+    (ignoring whitespace/newlines) by the `def`/`function` keyword — that identifier
+    is being DEFINED here, not called."""
     if not full_file_text:
         return []
     found: List[Tuple[str, str]] = []
@@ -447,6 +464,8 @@ def one_hop_helper_texts(range_text: str, full_file_text: Optional[str], file_ex
     for m in _CALL_RE.finditer(range_text):
         name = m.group(1)
         if name in _SQL_AND_LANG_STOPWORDS or name in seen_names or len(name) < 3:
+            continue
+        if _DEF_HEADER_PREFIX_RE.search(range_text[: m.start()]):
             continue
         seen_names.add(name)
         if file_ext == ".py":
@@ -545,6 +564,36 @@ def narrow_producers_by_partition(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# §6b — source_ref segment classification (C-3 b/c)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MIGRATION_PATH_RE = re.compile(r"(?:^|/)(?:migrations|supabase/migrations)/")
+_WRITER_PATH_RE = re.compile(r"(?:^|/)(?:[A-Za-z0-9]+_writers|writers)/")
+
+
+def classify_segment_kind(file_rel: str) -> str:
+    """Classify a source_ref segment's file by its role relative to the SCU's OWN
+    query, so relation-name extraction can be scoped to the segment(s) that
+    actually represent that query (the 'handler') rather than incidental SQL a
+    migration's integrity check or a writer's own input read happens to contain.
+
+    C-3(b): a migration file's SQL (e.g. an unrelated integrity-check query sitting
+    a few lines from the one the citation actually means) is never evidence of what
+    the SCU's handler reads — it produced a real false positive
+    (`bg_dignity_reference` from migration 606's integrity check, when the actual
+    handler reads a different, unregistered table).
+    C-3(c): a writer's OWN input read (e.g. the writer reading its upstream input
+    table to build its output) is not the SCU's read either — it produced another
+    real false positive (`bg_texts`/`bg_text_index` from `bg_compendium_index`'s
+    writer reading `classical_text_chunks` as ITS input)."""
+    if _MIGRATION_PATH_RE.search(file_rel):
+        return "migration"
+    if _WRITER_PATH_RE.search(file_rel):
+        return "writer"
+    return "handler"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # §7 — the derivation core (pure function; DI'd known_tables/table_to_assets so
 #      tests never need a live DB)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -562,9 +611,16 @@ def derive_from_source_query(
     if not segments:
         return [], f"NO_DETECTOR — source_ref did not resolve to any <file>:<a>-<b> segment ({source_ref!r})"
 
-    all_literals: List[str] = []
+    handler_literals: List[str] = []
+    # C-3: relation-name origin, so a Producer can honestly say whether it was found
+    # directly in the handler's own text or only via a one-hop-followed helper.
+    # `None` = direct. Populated ONLY from handler-kind segments (never migration/
+    # writer — see classify_segment_kind).
+    origin: Dict[str, Optional[str]] = {}
     oob_reasons: List[str] = []
+    excluded_kinds: Set[str] = set()
     resolved_any = False
+
     for file_rel, a, b in segments:
         text, oob_reason = resolve_segment_text(repo_root, file_rel, a, b)
         if text is None:
@@ -572,11 +628,28 @@ def derive_from_source_query(
                 oob_reasons.append(oob_reason)
             continue
         resolved_any = True
+
+        kind = classify_segment_kind(file_rel)
+        if kind != "handler":
+            # C-3(b)/(c): a migration's or a writer's own SQL is not evidence of
+            # what THIS SCU's query reads. Still counts toward `resolved_any` (so
+            # out-of-range detection above stays honest about what actually
+            # resolved), but contributes no relation candidates.
+            excluded_kinds.add(kind)
+            continue
+
         ext = Path(file_rel).suffix
-        all_literals.extend(extract_string_literals(text, ext))
+        direct_literals = extract_string_literals(text, ext)
+        handler_literals.extend(direct_literals)
+        for name in find_relation_candidates(direct_literals):
+            origin.setdefault(name, None)
+
         full_text = resolve_full_file_text(repo_root, file_rel) if ext != ".sql" else None
-        for _name, body in one_hop_helper_texts(text, full_text, ext):
-            all_literals.extend(extract_string_literals(body, ext))
+        for helper_name, body in one_hop_helper_texts(text, full_text, ext):
+            helper_literals = extract_string_literals(body, ext)
+            handler_literals.extend(helper_literals)
+            for name in find_relation_candidates(helper_literals):
+                origin.setdefault(name, helper_name)
 
     if not resolved_any:
         # C-2/C-4: a stale source_ref annotation (file exists but the declared range
@@ -591,17 +664,23 @@ def derive_from_source_query(
             f"exist or a range out of bounds ({source_ref!r})"
         )
 
-    candidates = find_relation_candidates(all_literals)
+    candidates = find_relation_candidates(handler_literals)
     known = filter_known_relations(candidates, known_tables)
     if not known:
-        # C-4: even when SOME segment resolved, an out-of-range segment sitting
-        # alongside a resolved-but-irrelevant one must not be silently reported as
-        # "resolved, no relation" — the true cause is the stale annotation, and
-        # burying it there is exactly finding 4's defect.
+        # C-4: even when SOME segment resolved, an out-of-range handler segment
+        # sitting alongside a resolved-but-irrelevant migration/writer segment must
+        # not be silently reported as "resolved, no relation" — the true cause is
+        # the stale annotation, and burying it there is exactly finding 4's defect.
         if oob_reasons:
             return [], (
                 f"NO_DETECTOR — source_ref_out_of_range ({'; '.join(oob_reasons)}); no relation name "
-                f"found in the remaining resolved segment(s) ({source_ref!r})"
+                f"found in the remaining resolved handler-kind segment(s) ({source_ref!r})"
+            )
+        if excluded_kinds and not handler_literals:
+            return [], (
+                "NO_DETECTOR — resolved source range(s) contain no relation name in any "
+                f"handler-kind segment (excluded {sorted(excluded_kinds)}-kind segment(s) per C-3) "
+                f"({source_ref!r})"
             )
         return [], (
             "NO_DETECTOR — resolved source range(s) contain no relation name in "
@@ -609,7 +688,7 @@ def derive_from_source_query(
             f"({source_ref!r})"
         )
 
-    query_pins = extract_query_pins(all_literals)
+    query_pins = extract_query_pins(handler_literals)
     producers: List[Producer] = []
     for table in known:
         assets = table_to_assets.get(table, [])
@@ -624,6 +703,7 @@ def derive_from_source_query(
                     source_ref=source_ref,
                     disposition="derived_from_source_query",
                     shared=shared,
+                    via_helper=origin.get(table),
                 )
             )
     if not producers:
