@@ -191,16 +191,16 @@ describe('owned AI configuration repository', () => {
   it('rechecks the exact CLI grant under a lock immediately before the invocation callback', async () => {
     expect(repository).toHaveProperty('withCliInvocationAuthorization')
     const spawn = vi.fn()
-    await expect(repository.withCliInvocationAuthorization('alice', 'codex', spawn)).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+    await expect(repository.withCliInvocationAuthorization('alice', 'claude_code', spawn)).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
     expect(spawn).not.toHaveBeenCalled()
     expect(calls().find(c => c.sql.includes('ai_cli_grants'))?.sql).toContain('FOR SHARE')
-    expect(calls().find(c => c.sql.includes('ai_cli_grants'))?.params).toEqual(['alice', 'codex'])
+    expect(calls().find(c => c.sql.includes('ai_cli_grants'))?.params).toEqual(['alice', 'claude_code'])
   })
   it('starts only after grant locking and commits after immediate handle acquisition', async () => {
     validTransport()
-    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
+    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'claude_code' }] : undefined)
     const handle = { pid: 42, cancel: vi.fn() }
-    const result = await repository.withCliInvocationAuthorization('alice', 'codex', () => {
+    const result = await repository.withCliInvocationAuthorization('alice', 'claude_code', () => {
       expect(calls().at(-1)?.sql).toContain('FOR SHARE')
       return handle
     })
@@ -212,19 +212,19 @@ describe('owned AI configuration repository', () => {
     const commitError = new Error('commit failed')
     execute.mockImplementation(async (sql: string) => {
       if (sql === 'COMMIT') throw commitError
-      return { rows: sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : [] }
+      return { rows: sql.includes('ai_cli_grants') ? [{ cli_id: 'claude_code' }] : [] }
     })
     const cancel = vi.fn(() => { throw new Error('cancel failed') })
     const start = vi.fn(() => ({ pid: 42, cancel }))
-    await expect(repository.withCliInvocationAuthorization('alice', 'codex', start)).rejects.toBe(commitError)
+    await expect(repository.withCliInvocationAuthorization('alice', 'claude_code', start)).rejects.toBe(commitError)
     expect(start).toHaveBeenCalledOnce()
     expect(cancel).toHaveBeenCalledOnce()
     expect(calls().filter(c => c.sql === 'BEGIN')).toHaveLength(1)
   })
   it('preserves typed adapter completion and output on the identical returned handle', async () => {
-    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
+    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'claude_code' }] : undefined)
     const handle = { pid: 42, cancel: vi.fn(), completion: Promise.resolve('complete'), output: 'adapter output' }
-    const result = await repository.withCliInvocationAuthorization('alice', 'codex', () => handle)
+    const result = await repository.withCliInvocationAuthorization('alice', 'claude_code', () => handle)
     // These assignments must compile without casts: the adapter keeps its own handle type.
     const completion: Promise<string> = result.completion
     const output: string = result.output
@@ -234,22 +234,22 @@ describe('owned AI configuration repository', () => {
     expect(handle.cancel).not.toHaveBeenCalled()
   })
   it('rejects async callbacks before invocation and requires a concrete handle statically', async () => {
-    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
+    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'claude_code' }] : undefined)
     let invoked = false
     const asyncStart = async () => { invoked = true; return { pid: 42, cancel() {} } }
     // @ts-expect-error a Promise is not a synchronous cancellable process handle
-    await expect(repository.withCliInvocationAuthorization('alice', 'codex', asyncStart)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    await expect(repository.withCliInvocationAuthorization('alice', 'claude_code', asyncStart)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
     expect(invoked).toBe(false)
     expect(execute).not.toHaveBeenCalled()
     if (false) {
       // @ts-expect-error void callbacks cannot transfer ownership of a started process
-      void repository.withCliInvocationAuthorization('alice', 'codex', () => {})
+      void repository.withCliInvocationAuthorization('alice', 'claude_code', () => {})
     }
   })
   it.each([undefined, null, {}, { pid: 0, cancel() {} }, { pid: 42 }, { pid: 42, cancel() {}, then() {} }])(
     'rejects malformed or thenable process handles at runtime (%j)', async value => {
-      respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
-      await expect(repository.withCliInvocationAuthorization('alice', 'codex', () => value as repository.CliInvocationHandle)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+      respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'claude_code' }] : undefined)
+      await expect(repository.withCliInvocationAuthorization('alice', 'claude_code', () => value as repository.CliInvocationHandle)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
       expect(calls().at(-1)?.sql).toBe('ROLLBACK')
     },
   )
@@ -402,21 +402,21 @@ describe('atomic routing resolution read', () => {
   })
 
   it('returns one current configuration version with four independently validated assignments', async () => {
-    const cliTarget = { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: null }
+    const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
     respond(sql => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
       if (sql.includes('FROM ai_custom_configurations')) return [{ id: configurationId, version: '8' }]
       if (sql.includes('FROM ai_custom_configuration_roles')) return [
         { role: 'synthesizer', kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', cli_id: null },
-        { role: 'planner', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'codex' },
+        { role: 'planner', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'claude_code' },
         { role: 'deep_planner', kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', cli_id: null },
-        { role: 'worker', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'codex' },
+        { role: 'worker', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'claude_code' },
       ]
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
       if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES,
         available: true, supports_tools: true, supports_structured_output: true }]
-      if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'codex', revoked_at: null }]
-      if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'codex', validation_state: 'reachable' }]
+      if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'claude_code', revoked_at: null }]
+      if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'claude_code', validation_state: 'reachable' }]
       if (sql.includes('FROM ai_cli_models')) return [{ model_id: 'builtin', display_name: 'Built in', compatible_roles: AI_ROLES, available: true, is_builtin_default: true, supports_tools: false, supports_structured_output: true }]
     })
     const selected = { kind: 'explicit' as const, choice: { kind: 'custom_configuration' as const, configurationId } }
@@ -435,9 +435,18 @@ describe('atomic routing resolution read', () => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
       if (sql.includes('FROM ai_cli_grants')) return []
     })
-    const selected = { kind: 'explicit' as const, choice: { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: 'exact-model' } }
+    const selected = { kind: 'explicit' as const, choice: { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: 'exact-model' } }
     await expect(repository.loadRoutingResolution('alice', selected)).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
     expect(calls().some(c => c.sql.includes('FROM ai_cli_installations') || c.sql.includes('FROM ai_cli_models'))).toBe(false)
+  })
+
+  it('rejects stale reachable state for a detect-only CLI before reading host state', async () => {
+    respond(sql => sql.includes('FROM profiles') ? [{ id: 'alice' }] : undefined)
+    const selected = { kind: 'explicit' as const,
+      choice: { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: null } }
+    await expect(repository.loadRoutingResolution('alice', selected))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(calls().some(c => c.sql.includes('FROM ai_cli_'))).toBe(false)
   })
 
   it.each([
@@ -513,10 +522,10 @@ describe('atomic routing resolution read', () => {
   ] as const)('maps exact CLI state %s to stable %s without a model search', async (state, code) => {
     respond(sql => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
-      if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'codex', revoked_at: null }]
-      if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'codex', validation_state: state }]
+      if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'claude_code', revoked_at: null }]
+      if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'claude_code', validation_state: state }]
     })
-    const selected = { kind: 'explicit' as const, choice: { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: 'exact-model' } }
+    const selected = { kind: 'explicit' as const, choice: { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: 'exact-model' } }
     await expect(repository.loadRoutingResolution('alice', selected)).rejects.toMatchObject({ code })
     expect(calls().some(c => c.sql.includes('FROM ai_cli_models'))).toBe(false)
   })

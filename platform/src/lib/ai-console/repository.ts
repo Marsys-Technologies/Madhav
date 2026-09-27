@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { query, withTransaction } from '@/lib/db/client'
 import type { EncryptedCredential } from './crypto'
 import { writeAiAudit } from './audit'
+import { CLI_REGISTRY } from './cli/registry'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError } from './errors'
 import {
   AI_ROLES, CLI_IDS, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
@@ -99,6 +100,7 @@ async function assertTarget(client: Client, userId: string, target: RoleTarget, 
       WHERE c.user_id=$1 AND c.id=$2 AND m.model_id=$3 AND m.available=true`, [userId, target.connectionId, target.modelId])).rows)
     if (!roles.every(role => model.compatible_roles.includes(role))) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
   } else {
+    if (!CLI_REGISTRY[target.cliId].execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     const model = (await client.query(`SELECT m.compatible_roles FROM ai_cli_grants g
       JOIN ai_cli_installations i ON i.cli_id=g.cli_id JOIN ai_cli_models m ON m.cli_id=g.cli_id
       WHERE g.user_id=$1 AND g.cli_id=$2 AND g.revoked_at IS NULL AND i.validation_state='reachable'
@@ -214,6 +216,7 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
     }
   }
 
+  if (!CLI_REGISTRY[target.cliId].execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
   const grant = (await client.query(`SELECT g.cli_id,g.revoked_at FROM ai_cli_grants g
     WHERE g.user_id=$1 AND g.cli_id=$2 FOR SHARE`, [userId, target.cliId])).rows[0]
   if (!grant || grant.revoked_at !== null) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
@@ -603,11 +606,53 @@ export interface CliValidationWrite {
   }[]
 }
 
-export async function markCliValidationStarted(cliId: string): Promise<void> {
+type CliStoredValidationState = 'untested' | 'validating' | CliValidationWrite['state']
+type CliStoredErrorCode = NonNullable<CliValidationWrite['errorCode']>
+export interface CliValidationAttempt {
+  readonly cliId: z.infer<typeof CliIdSchema>
+  /** PostgreSQL row-version token; never exposed by a route. */
+  readonly epoch: string
+  readonly previous: {
+    readonly state: CliStoredValidationState
+    readonly detectedProduct: string | null
+    readonly detectedVersion: string | null
+    readonly lastCheckedAt: Date | null
+    readonly errorCode: CliStoredErrorCode | null
+  }
+}
+
+const cliStoredStateSchema = z.enum(['untested', 'validating', 'reachable', 'not_installed',
+  'auth_unavailable', 'unreachable', 'needs_attention'])
+const cliStoredErrorSchema = z.enum(['AI_CLI_NOT_INSTALLED', 'AI_CLI_AUTH_UNAVAILABLE', 'AI_CLI_UNREACHABLE',
+  'AI_CLI_TIMEOUT', 'AI_CLI_OUTPUT_LIMIT', 'AI_EXECUTION_FAILED'])
+const cliEpochSchema = z.string().regex(/^\d+$/)
+
+export async function markCliValidationStarted(cliId: string): Promise<CliValidationAttempt> {
   const cli = CliIdSchema.parse(cliId)
-  await query(`INSERT INTO ai_cli_installations(cli_id,validation_state,updated_at)
-    VALUES($1,'validating',clock_timestamp())
-    ON CONFLICT(cli_id) DO UPDATE SET validation_state='validating',updated_at=excluded.updated_at`, [cli])
+  return withTransaction(async client => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
+    await client.query(`INSERT INTO ai_cli_installations(cli_id) VALUES($1) ON CONFLICT(cli_id) DO NOTHING`, [cli])
+    const previous = required((await client.query(`SELECT validation_state,detected_product,detected_version,
+      last_checked_at,last_error_code FROM ai_cli_installations WHERE cli_id=$1 FOR UPDATE`, [cli])).rows)
+    const started = required((await client.query(`UPDATE ai_cli_installations SET validation_state='validating',
+      updated_at=clock_timestamp() WHERE cli_id=$1 RETURNING xmin::text AS validation_epoch`, [cli])).rows)
+    const previousState = cliStoredStateSchema.parse(previous.validation_state)
+    // A cross-process predecessor can disappear while marked validating. Never
+    // restore that non-terminal marker and strand the host; fail closed instead.
+    const orphaned = previousState === 'validating'
+    return {
+      cliId: cli, epoch: cliEpochSchema.parse(started.validation_epoch),
+      previous: {
+        state: orphaned ? 'untested' : previousState,
+        detectedProduct: orphaned || previous.detected_product == null ? null
+          : z.string().min(1).max(120).parse(previous.detected_product),
+        detectedVersion: orphaned || previous.detected_version == null ? null
+          : z.string().min(1).max(80).parse(previous.detected_version),
+        lastCheckedAt: orphaned || previous.last_checked_at == null ? null : z.coerce.date().parse(previous.last_checked_at),
+        errorCode: orphaned || previous.last_error_code == null ? null : cliStoredErrorSchema.parse(previous.last_error_code),
+      },
+    }
+  })
 }
 
 /** Grant-gated preflight. It reveals no installation/auth state on denial. */
@@ -619,8 +664,9 @@ export async function assertCliValidationAuthorized(userId: string, cliId: strin
 }
 
 /** Global host state contains no user or authentication material. */
-export async function storeCliValidation(cliId: string, input: CliValidationWrite): Promise<void> {
+export async function storeCliValidation(cliId: string, input: CliValidationWrite, epoch: string): Promise<string | null> {
   const cli = CliIdSchema.parse(cliId)
+  const expectedEpoch = cliEpochSchema.parse(epoch)
   const data = z.object({
     state: z.enum(['reachable', 'not_installed', 'auth_unavailable', 'unreachable', 'needs_attention']),
     detectedProduct: z.string().min(1).max(120).optional(),
@@ -631,15 +677,13 @@ export async function storeCliValidation(cliId: string, input: CliValidationWrit
       compatibleRoles: z.array(AiRoleSchema).min(1), supportsTools: z.boolean(), supportsStructuredOutput: z.boolean(),
       isBuiltinDefault: z.boolean() }).strict()).optional(),
   }).strict().parse(input)
-  await withTransaction(async client => {
+  return withTransaction(async client => {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
-    await client.query(`INSERT INTO ai_cli_installations
-      (cli_id,detected_product,detected_version,validation_state,last_checked_at,last_error_code,updated_at)
-      VALUES($1,$2,$3,$4,clock_timestamp(),$5,clock_timestamp())
-      ON CONFLICT(cli_id) DO UPDATE SET detected_product=excluded.detected_product,
-      detected_version=excluded.detected_version,validation_state=excluded.validation_state,
-      last_checked_at=excluded.last_checked_at,last_error_code=excluded.last_error_code,updated_at=excluded.updated_at`,
-    [cli, data.detectedProduct ?? null, data.detectedVersion ?? null, data.state, data.errorCode ?? null])
+    const updated = await client.query(`UPDATE ai_cli_installations SET detected_product=$2,detected_version=$3,
+      validation_state=$4,last_checked_at=clock_timestamp(),last_error_code=$5,updated_at=clock_timestamp()
+      WHERE cli_id=$1 AND xmin::text=$6 RETURNING xmin::text AS validation_epoch`,
+    [cli, data.detectedProduct ?? null, data.detectedVersion ?? null, data.state, data.errorCode ?? null, expectedEpoch])
+    if (!updated.rows.length) return null
     await client.query('UPDATE ai_cli_models SET available=false WHERE cli_id=$1', [cli])
     for (const model of data.models ?? []) {
       await client.query(`INSERT INTO ai_cli_models
@@ -651,6 +695,31 @@ export async function storeCliValidation(cliId: string, input: CliValidationWrit
       [cli, model.modelId, model.displayName, model.isBuiltinDefault, model.compatibleRoles,
         model.supportsTools, model.supportsStructuredOutput])
     }
+    return cliEpochSchema.parse(updated.rows[0].validation_epoch)
+  })
+}
+
+/** Restore the prior visible state only if no newer host validation superseded this attempt. */
+export async function restoreCliValidation(attempt: CliValidationAttempt): Promise<boolean> {
+  const cli = CliIdSchema.parse(attempt.cliId)
+  const epoch = cliEpochSchema.parse(attempt.epoch)
+  const previous = {
+    state: cliStoredStateSchema.parse(attempt.previous.state),
+    detectedProduct: attempt.previous.detectedProduct == null ? null
+      : z.string().min(1).max(120).parse(attempt.previous.detectedProduct),
+    detectedVersion: attempt.previous.detectedVersion == null ? null
+      : z.string().min(1).max(80).parse(attempt.previous.detectedVersion),
+    lastCheckedAt: attempt.previous.lastCheckedAt == null ? null : z.coerce.date().parse(attempt.previous.lastCheckedAt),
+    errorCode: attempt.previous.errorCode == null ? null : cliStoredErrorSchema.parse(attempt.previous.errorCode),
+  }
+  return withTransaction(async client => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
+    const restored = await client.query(`UPDATE ai_cli_installations SET detected_product=$2,detected_version=$3,
+      validation_state=$4,last_checked_at=$5,last_error_code=$6,updated_at=clock_timestamp()
+      WHERE cli_id=$1 AND xmin::text=$7 RETURNING cli_id`,
+    [cli, previous.detectedProduct, previous.detectedVersion, previous.state, previous.lastCheckedAt,
+      previous.errorCode, epoch])
+    return restored.rows.length === 1
   })
 }
 
@@ -676,6 +745,7 @@ export async function listAdminCliGrants(actorId: string, userId: string) {
 export async function withCliInvocationAuthorization<T extends CliInvocationHandle>(userId: string, cliId: string, start: () => T,
   purpose: 'execution' | 'validation' = 'execution'): Promise<T> {
   const cli = CliIdSchema.parse(cliId)
+  if (!CLI_REGISTRY[cli].execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
   const safePurpose = z.enum(['execution', 'validation']).parse(purpose)
   if (typeof start !== 'function' || utilTypes.isAsyncFunction(start)) throw new AiConsoleError('AI_EXECUTION_FAILED')
   let started: T | undefined

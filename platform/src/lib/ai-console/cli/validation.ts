@@ -1,7 +1,9 @@
 import 'server-only'
 import { z } from 'zod'
 import { AiConsoleError, normalizeAiError } from '../errors'
-import { assertCliValidationAuthorized, markCliValidationStarted, storeCliValidation } from '../repository'
+import {
+  assertCliValidationAuthorized, markCliValidationStarted, restoreCliValidation, storeCliValidation,
+} from '../repository'
 import { CliIdSchema, type CliId } from '../types'
 import { CLI_REGISTRY, parseSupportedVersion, type CliDefinition, type CliOutputFormat } from './registry'
 import { cliRunner, type CliRunner } from './runner'
@@ -26,67 +28,109 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
   const definition = (dependencies.registry ?? CLI_REGISTRY)[id]
   if (!definition) throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
   const runner = dependencies.runner ?? cliRunner
-  if (!definition.execution || !definition.authStatusArgs || definition.candidates.length === 0) {
-    const write = { state: 'not_installed' as const, errorCode: 'AI_CLI_NOT_INSTALLED' as const }
-    await storeCliValidation(id, write)
-    return { cliId: id, productName: definition.productName, state: write.state, modelCount: 0,
-      errorCode: write.errorCode }
-  }
-
-  let version: string | null = null
-  try {
-    const versionResult = await runner.runVersionValidation(userId, id, signal)
-    version = parseSupportedVersion(definition, versionResult.stdout)
-    if (!version) {
-      await storeCliValidation(id, { state: 'needs_attention', detectedProduct: definition.productName,
-        errorCode: 'AI_EXECUTION_FAILED' })
-      return { cliId: id, productName: definition.productName, state: 'needs_attention', modelCount: 0,
-        errorCode: 'AI_EXECUTION_FAILED' }
+  const attempt = await markCliValidationStarted(id)
+  let superseded = false
+  const publish = async (write: Parameters<typeof storeCliValidation>[1], epoch = attempt.epoch): Promise<string> => {
+    const nextEpoch = await storeCliValidation(id, write, epoch)
+    if (!nextEpoch) {
+      superseded = true
+      throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
-    await markCliValidationStarted(id)
-  } catch (error) {
-    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
-    const safe = normalizeAiError(error, { source: 'cli' })
-    if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
-    const state = safe.code === 'AI_CLI_NOT_INSTALLED' ? 'not_installed' as const : 'unreachable' as const
-    await storeCliValidation(id, { state, errorCode: cliErrorCode(safe.code) })
-    return { cliId: id, productName: definition.productName, state, modelCount: 0, errorCode: safe.code }
+    return nextEpoch
   }
 
   try {
-    // Output may contain account identity. Success/failure is the only retained fact.
-    await runner.runAuthValidation(userId, id, signal)
-  } catch (error) {
-    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
-    const safe = normalizeAiError(error, { source: 'cli' })
-    if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
-    await storeCliValidation(id, { state: 'auth_unavailable', detectedProduct: definition.productName,
-      detectedVersion: version, errorCode: 'AI_CLI_AUTH_UNAVAILABLE' })
-    return { cliId: id, productName: definition.productName, state: 'auth_unavailable',
-      detectedVersion: version, modelCount: 0, errorCode: 'AI_CLI_AUTH_UNAVAILABLE' }
-  }
+    if (definition.candidates.length === 0) {
+      const write = { state: 'not_installed' as const, errorCode: 'AI_CLI_NOT_INSTALLED' as const }
+      await publish(write)
+      return { cliId: id, productName: definition.productName, state: write.state, modelCount: 0,
+        errorCode: write.errorCode }
+    }
+    if (!definition.execution || !definition.authStatusArgs) {
+      try { runner.inspectInstallation(id) }
+      catch (error) {
+        const safe = normalizeAiError(error, { source: 'cli' })
+        const state = safe.code === 'AI_CLI_NOT_INSTALLED' ? 'not_installed' as const : 'unreachable' as const
+        await publish({ state, errorCode: cliErrorCode(safe.code) })
+        return { cliId: id, productName: definition.productName, state, modelCount: 0, errorCode: safe.code }
+      }
+      await publish({ state: 'needs_attention', detectedProduct: definition.productName,
+        errorCode: 'AI_CLI_UNREACHABLE' })
+      return { cliId: id, productName: definition.productName, state: 'needs_attention', modelCount: 0,
+        errorCode: 'AI_CLI_UNREACHABLE' }
+    }
 
-  try {
-    const probe = await runner.runProbeValidation(userId, id, PROBE, signal)
-    const parsed = validateMachineOutput(definition.execution.outputFormat, probe.stdout)
-    if (parsed.text.trim().toUpperCase() !== 'OK') throw new AiConsoleError('AI_EXECUTION_FAILED')
-    const model = { modelId: CLI_BUILTIN_MODEL_DB_ID, displayName: 'Built-in default',
-      compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
-      supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: true }
-    await storeCliValidation(id, { state: 'reachable', detectedProduct: definition.productName,
-      detectedVersion: version, models: [model] })
-    return { cliId: id, productName: definition.productName, state: 'reachable',
-      detectedVersion: version, modelCount: 1 }
+    let version: string | null = null
+    let installationIdentity: ReturnType<CliRunner['inspectInstallation']>
+    try {
+      installationIdentity = runner.inspectInstallation(id)
+      const versionResult = await runner.runVersionValidation(userId, id, signal)
+      version = parseSupportedVersion(definition, versionResult.stdout)
+      if (!version) {
+        await publish({ state: 'needs_attention', detectedProduct: definition.productName,
+          errorCode: 'AI_EXECUTION_FAILED' })
+        return { cliId: id, productName: definition.productName, state: 'needs_attention', modelCount: 0,
+          errorCode: 'AI_EXECUTION_FAILED' }
+      }
+    } catch (error) {
+      if (superseded) throw error
+      if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      const safe = normalizeAiError(error, { source: 'cli' })
+      if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      const state = safe.code === 'AI_CLI_NOT_INSTALLED' ? 'not_installed' as const : 'unreachable' as const
+      await publish({ state, errorCode: cliErrorCode(safe.code) })
+      return { cliId: id, productName: definition.productName, state, modelCount: 0, errorCode: safe.code }
+    }
+
+    try {
+      // Output may contain account identity. Success/failure is the only retained fact.
+      await runner.runAuthValidation(userId, id, signal)
+    } catch (error) {
+      if (superseded) throw error
+      if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      const safe = normalizeAiError(error, { source: 'cli' })
+      if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      await publish({ state: 'auth_unavailable', detectedProduct: definition.productName,
+        detectedVersion: version, errorCode: 'AI_CLI_AUTH_UNAVAILABLE' })
+      return { cliId: id, productName: definition.productName, state: 'auth_unavailable',
+        detectedVersion: version, modelCount: 0, errorCode: 'AI_CLI_AUTH_UNAVAILABLE' }
+    }
+
+    try {
+      const probe = await runner.runProbeValidation(userId, id, PROBE, signal)
+      const parsed = validateMachineOutput(definition.execution.outputFormat, probe.stdout)
+      if (parsed.text.trim().toUpperCase() !== 'OK') throw new AiConsoleError('AI_EXECUTION_FAILED')
+      const model = { modelId: CLI_BUILTIN_MODEL_DB_ID, displayName: 'Built-in default',
+        compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
+        supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: true }
+      const completedEpoch = await publish({ state: 'reachable', detectedProduct: definition.productName,
+        detectedVersion: version, models: [model] })
+      try { runner.confirmValidation(id, installationIdentity, version) }
+      catch {
+        await publish({ state: 'needs_attention', detectedProduct: definition.productName,
+          detectedVersion: version, errorCode: 'AI_CLI_UNREACHABLE' }, completedEpoch)
+        return { cliId: id, productName: definition.productName, state: 'needs_attention',
+          detectedVersion: version, modelCount: 0, errorCode: 'AI_CLI_UNREACHABLE' }
+      }
+      return { cliId: id, productName: definition.productName, state: 'reachable',
+        detectedVersion: version, modelCount: 1 }
+    } catch (error) {
+      if (superseded) throw error
+      if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      const safe = normalizeAiError(error, { source: 'cli' })
+      if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      const state = safe.code === 'AI_CLI_TIMEOUT' || safe.code === 'AI_CLI_OUTPUT_LIMIT'
+        ? 'unreachable' as const : 'needs_attention' as const
+      await publish({ state, detectedProduct: definition.productName,
+        detectedVersion: version, errorCode: cliErrorCode(safe.code) })
+      return { cliId: id, productName: definition.productName, state, detectedVersion: version,
+        modelCount: 0, errorCode: safe.code }
+    }
   } catch (error) {
-    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
-    const safe = normalizeAiError(error, { source: 'cli' })
-    if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
-    const state = safe.code === 'AI_CLI_TIMEOUT' || safe.code === 'AI_CLI_OUTPUT_LIMIT'
-      ? 'unreachable' as const : 'needs_attention' as const
-    await storeCliValidation(id, { state, detectedProduct: definition.productName,
-      detectedVersion: version, errorCode: cliErrorCode(safe.code) })
-    return { cliId: id, productName: definition.productName, state, detectedVersion: version,
-      modelCount: 0, errorCode: safe.code }
+    if (!superseded) {
+      try { await restoreCliValidation(attempt) } catch { /* Preserve the safe terminal error. */ }
+    }
+    throw error
   }
 }
 
@@ -115,6 +159,7 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
   let text = ''
   let inputTokens = 0
   let outputTokens = 0
+  let completed = false
   const lines = stdout.split(/\r?\n/).filter(Boolean)
   if (!lines.length) throw new AiConsoleError('AI_EXECUTION_FAILED')
   for (const line of lines) {
@@ -122,16 +167,26 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
     try { raw = JSON.parse(line) } catch { throw new AiConsoleError('AI_EXECUTION_FAILED') }
     const event = z.object({ type: z.string() }).passthrough().safeParse(raw)
     if (!event.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    if (completed) throw new AiConsoleError('AI_EXECUTION_FAILED')
     if (event.data.type === 'item.completed') {
       const item = z.object({ item: z.object({ type: z.string(), text: z.string().optional() }).passthrough() })
         .passthrough().safeParse(raw)
-      if (item.success && item.data.item.type === 'agent_message') text += item.data.item.text ?? ''
+      if (!item.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      if (item.data.item.type === 'agent_message') {
+        if (!item.data.item.text) throw new AiConsoleError('AI_EXECUTION_FAILED')
+        text += item.data.item.text
+      }
     } else if (event.data.type === 'turn.completed') {
-      const completed = z.object({ usage: UsageSchema.optional() }).passthrough().parse(raw)
-      inputTokens = completed.usage?.input_tokens ?? 0
-      outputTokens = completed.usage?.output_tokens ?? 0
+      if (!text) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      const terminal = z.object({ usage: UsageSchema.optional() }).passthrough().safeParse(raw)
+      if (!terminal.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      inputTokens = terminal.data.usage?.input_tokens ?? 0
+      outputTokens = terminal.data.usage?.output_tokens ?? 0
+      completed = true
+    } else if (!['thread.started', 'turn.started', 'item.started'].includes(event.data.type)) {
+      throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
   }
-  if (!text) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  if (!text || !completed) throw new AiConsoleError('AI_EXECUTION_FAILED')
   return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
 }

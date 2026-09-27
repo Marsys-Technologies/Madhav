@@ -32,7 +32,8 @@ export async function GET(_request: Request, context: Context) {
       const cliId = CliIdSchema.parse(row.cli_id)
       return { cliId, productName: CLI_REGISTRY[cliId].productName,
         granted: row.granted_at != null && row.revoked_at == null,
-        hostState: z.enum(['reachable', 'unavailable']).parse(row.host_state) }
+        hostState: CLI_REGISTRY[cliId].execution
+          ? z.enum(['reachable', 'unavailable']).parse(row.host_state) : 'unavailable' as const }
     }) })
   } catch (error) {
     return error instanceof AiConsoleError && error.code === 'AI_PERMISSION_DENIED'

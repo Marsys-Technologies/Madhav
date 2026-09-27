@@ -25,7 +25,8 @@ export function createCliRoleExecutor(execution: ResolvedRoleExecution, dependen
   }
   const registry = dependencies.registry ?? CLI_REGISTRY
   const definition = registry[execution.target.cliId]
-  if (!definition?.execution) throw new AiConsoleError('AI_CLI_NOT_INSTALLED', execution.role)
+  if (!definition) throw new AiConsoleError('AI_CLI_NOT_INSTALLED', execution.role)
+  if (!definition.execution) throw new AiConsoleError('AI_CLI_UNREACHABLE', execution.role)
   const descriptor: SafeCliExecutorDescriptor = Object.freeze({ role: execution.role,
     cliId: execution.target.cliId, modelId: execution.target.modelId })
   const runner = dependencies.runner ?? cliRunner

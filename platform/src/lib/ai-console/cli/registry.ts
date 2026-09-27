@@ -13,6 +13,11 @@ export interface CliExecutionDefinition {
   readonly outputFormat: CliOutputFormat
 }
 
+export interface CliInterpreterDefinition {
+  readonly candidate: string
+  readonly allowedRealpathPrefixes: readonly string[]
+}
+
 export interface CliDefinition {
   readonly id: CliId
   readonly productName: string
@@ -24,6 +29,7 @@ export interface CliDefinition {
   readonly compatibleRoles: readonly AiRole[]
   readonly supportsTools: false
   readonly supportsStructuredOutput: boolean
+  readonly interpreter?: CliInterpreterDefinition
   readonly execution?: CliExecutionDefinition
 }
 
@@ -33,19 +39,16 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   codex: Object.freeze({
     id: 'codex', productName: 'Codex CLI', candidates: fixed('/opt/homebrew/bin/codex'),
     allowedRealpathPrefixes: fixed('/opt/homebrew/Caskroom/codex/'), versionArgs: fixed('--version'),
-    authStatusArgs: fixed('login', 'status'), supportedVersion: '0.155.1', compatibleRoles: ALL_CLI_ROLES,
-    supportsTools: false, supportsStructuredOutput: true,
-    execution: Object.freeze({
-      args: fixed('exec', '--ephemeral', '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check',
-        '--json', '--color', 'never', '--sandbox', 'read-only', '--ask-for-approval', 'never', '-C', '__CWD__', '-'),
-      modelFlag: fixed('-m'), structuredSchemaFlag: fixed('--output-schema'), outputFormat: 'codex_jsonl',
-    }),
+    supportedVersion: '0.155.1', compatibleRoles: fixed<AiRole>(), supportsTools: false,
+    supportsStructuredOutput: false,
   }),
   claude_code: Object.freeze({
     id: 'claude_code', productName: 'Claude Code', candidates: fixed('/usr/local/bin/claude'),
     allowedRealpathPrefixes: fixed('/usr/local/lib/node_modules/@anthropic-ai/claude-code/'), versionArgs: fixed('--version'),
     authStatusArgs: fixed('auth', 'status'), supportedVersion: '2.1.56', compatibleRoles: ALL_CLI_ROLES,
     supportsTools: false, supportsStructuredOutput: true,
+    interpreter: Object.freeze({ candidate: '/usr/local/bin/node',
+      allowedRealpathPrefixes: fixed('/usr/local/bin/') }),
     execution: Object.freeze({
       args: fixed('-p', '--input-format', 'text', '--output-format', 'json', '--no-session-persistence',
         '--disable-slash-commands', '--tools', '', '--setting-sources', '', '--mcp-config', '{}',
@@ -86,7 +89,7 @@ export function validateCliModelId(modelId: string | null): string | null {
 
 export function buildExecutionArgs(definition: CliDefinition, modelId: string | null,
   options: { cwd?: string; schemaPath?: string } = {}): string[] {
-  if (!definition.execution) throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
+  if (!definition.execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
   const model = validateCliModelId(modelId)
   const args = definition.execution.args.map(value => value === '__CWD__' ? options.cwd ?? '__CWD__' : value)
   const additions: string[] = []

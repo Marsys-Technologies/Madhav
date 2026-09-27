@@ -75,6 +75,16 @@ export async function withValidationAdmission<T>(userId: string, target: string,
   } finally { release() }
 }
 
+/** CLI installation state is host-global, so users share one process-local flight per CLI. */
+export async function withCliValidationAdmission<T>(userId: string, cliId: string,
+  work: () => Promise<T>): Promise<T> {
+  const release = reserveValidationFlight('host-cli', cliId)
+  try {
+    checkRate(`ai-console:validation:${userId}`, VALIDATION_RPM_LIMIT)
+    return await work()
+  } finally { release() }
+}
+
 export function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
 }
@@ -234,7 +244,9 @@ export function projectState(state: ConsoleState) {
         validationState: granted ? nullableText(row.validation_state) : null,
         lastCheckedAt: granted ? date(row.last_checked_at) : null }
     }),
-    cliModels: state.cliModels.filter(model => state.clis.some(cli => cli.cli_id === model.cli_id && cli.granted_at != null && cli.revoked_at == null))
+    cliModels: state.cliModels.filter(model => CLI_REGISTRY[CliIdSchema.parse(model.cli_id)].execution
+      && state.clis.some(cli => cli.cli_id === model.cli_id && cli.granted_at != null
+        && cli.revoked_at == null && cli.validation_state === 'reachable'))
       .map(row => ({ cliId: CliIdSchema.parse(row.cli_id), modelId: row.is_builtin_default ? null : text(row.model_id), displayName: text(row.display_name),
         compatibleRoles: z.array(AiRoleSchema).min(1).parse(row.compatible_roles), available: z.boolean().parse(row.available),
         supportsTools: z.boolean().parse(row.supports_tools),
@@ -248,18 +260,21 @@ export function projectCliCards(state: ConsoleState) {
   return state.clis.map(row => {
     const cliId = CliIdSchema.parse(row.cli_id)
     const productName = CLI_REGISTRY[cliId].productName
+    const executable = CLI_REGISTRY[cliId].execution !== undefined
     const granted = row.granted_at != null && row.revoked_at == null
     if (!granted) return { cliId, productName, state: 'not_granted' as const }
     const validationState = z.enum(['untested', 'validating', 'reachable', 'not_installed', 'auth_unavailable',
       'unreachable', 'needs_attention']).parse(row.validation_state ?? 'untested')
-    const models = state.cliModels.filter(model => model.cli_id === cliId && model.available === true).map(model => ({
+    const models = executable && validationState === 'reachable'
+      ? state.cliModels.filter(model => model.cli_id === cliId && model.available === true).map(model => ({
       modelId: model.is_builtin_default ? null : text(model.model_id), displayName: text(model.display_name),
       compatibleRoles: z.array(AiRoleSchema).min(1).parse(model.compatible_roles),
       supportsTools: z.boolean().parse(model.supports_tools),
       supportsStructuredOutput: z.boolean().parse(model.supports_structured_output),
       isBuiltinDefault: z.boolean().parse(model.is_builtin_default),
-    }))
-    return { cliId, productName, state: validationState, detectedProduct: nullableText(row.detected_product),
+      })) : []
+    return { cliId, productName, state: executable ? validationState : 'needs_attention' as const,
+      detectedProduct: nullableText(row.detected_product),
       detectedVersion: nullableText(row.detected_version), lastCheckedAt: date(row.last_checked_at), models }
   })
 }
