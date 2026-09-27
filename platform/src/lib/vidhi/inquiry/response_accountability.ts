@@ -13,6 +13,28 @@ import { indexInquiryEvidenceBindings } from './managed_bridge'
 import { extractInquirySemanticFindings } from './pagination'
 
 const HASH_RE = /^sha256:[a-f0-9]{64}$/
+const CITATION_MARKER_RE = /\[\[(F[0-9]+)\]\]/g
+const UNKNOWN_CITATION_PREFIX = 'unknown-citation:'
+
+/**
+ * Short, stable citation handles for the register's findings (`F1`…`Fn` in fact-id order).
+ * They depend only on the register, so the evidence shown to synthesis, the prose citations,
+ * and the coverage receipt all resolve the same handle to the same finding (RC-6.3).
+ */
+export function inquiryFindingCitationHandles(register: InquiryFactRegister): ReadonlyMap<string, string> {
+  return new Map(register.facts
+    .filter((fact) => fact.kind === 'finding')
+    .map((fact, index) => [fact.fact_id, `F${index + 1}`]))
+}
+
+/** The marker a synthesis cites a finding with, e.g. `[[F7]]`. */
+export function inquiryCitationMarker(handle: string): string {
+  return `[[${handle}]]`
+}
+
+function citedHandles(text: string): string[] {
+  return uniqueSorted([...text.matchAll(CITATION_MARKER_RE)].map((match) => match[1]!))
+}
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort()
@@ -241,6 +263,7 @@ export function buildResponseCoverageReceipt(args: {
   const suppliedRegister = args.fact_register
   const register = expectedRegister
   const factsById = new Map(register.facts.map((fact) => [fact.fact_id, fact]))
+  const citationHandles = inquiryFindingCitationHandles(register)
   const invalid: string[] = [...register.validation_errors, ...validateInquiryContract(contract).errors]
   // Compiler frontiers are immutable authorization inputs even after execution
   // absorbs them. Runtime-discovered frontiers are excluded by the compiler's
@@ -318,7 +341,9 @@ export function buildResponseCoverageReceipt(args: {
     for (const factId of uniqueSorted(part.fact_ids)) {
       const fact = factsById.get(factId)
       if (!fact) {
-        invalid.push(`unknown fact ${factId}`)
+        invalid.push(factId.startsWith(UNKNOWN_CITATION_PREFIX)
+          ? `unknown citation marker ${factId.slice(UNKNOWN_CITATION_PREFIX.length)}`
+          : `unknown fact ${factId}`)
         continue
       }
       if (part.kind === 'permitted_exclusion') {
@@ -334,8 +359,12 @@ export function buildResponseCoverageReceipt(args: {
       } else if (part.kind === 'prose') {
         continue
       } else if (part.kind === 'finding_interpretation' || part.kind === 'conjoint_interpretation') {
+        // A finding is interpreted by an exact response span that either restates its canonical
+        // content or cites its register handle; a paraphrase without its marker maps nothing.
+        const handle = citationHandles.get(factId)
+        const cited = handle !== undefined && part.content?.includes(inquiryCitationMarker(handle)) === true
         if (fact.kind !== 'finding' || !fact.normalized_content
-          || !part.content?.includes(fact.normalized_content)) {
+          || !(part.content?.includes(fact.normalized_content) || cited)) {
           invalid.push(`finding interpretation ${part.part_id} does not contain mapped finding ${factId}`)
           continue
         }
@@ -444,6 +473,25 @@ export function buildResponseCoverageReceipt(args: {
 }
 
 /**
+ * Interpretations evidenced by citation markers: each paragraph (an exact span of the
+ * response) that cites register handles interprets exactly the findings it cites. A marker
+ * naming no registered finding is carried forward so the coverage receipt fails closed on it.
+ */
+function citedInterpretations(
+  register: InquiryFactRegister,
+  responseText: string,
+): { text: string; fact_ids: readonly string[] }[] {
+  const factByHandle = new Map([...inquiryFindingCitationHandles(register)].map(([factId, handle]) => [handle, factId]))
+  return responseText.split(/\n{2,}/)
+    .filter((span) => span.trim().length > 0)
+    .map((span) => ({
+      text: span,
+      fact_ids: citedHandles(span).map((handle) => factByHandle.get(handle) ?? `${UNKNOWN_CITATION_PREFIX}${handle}`),
+    }))
+    .filter((item) => item.fact_ids.length > 0)
+}
+
+/**
  * Deliver the complete bounded fact register as an explicit structured
  * findings part beside prose. This prevents prose compression from becoming
  * an unobservable omission while retaining the prose as the reader-facing
@@ -508,7 +556,7 @@ export function buildStructuredResponseAccountability(
   const inferredInterpretations = findingFacts.length > 0
     && findingFacts.every((fact) => responseText.includes(fact.normalized_content!))
     ? [{ text: responseText, fact_ids: findingFacts.map((fact) => fact.fact_id) }]
-    : []
+    : citedInterpretations(factRegister, responseText)
   const conjointParts: InquiryResponseDeliveryPart[] = (options.conjoint_interpretations ?? inferredInterpretations).map((item, index) => {
     const kind = item.fact_ids.length === 1 ? 'finding_interpretation' as const : 'conjoint_interpretation' as const
     return {

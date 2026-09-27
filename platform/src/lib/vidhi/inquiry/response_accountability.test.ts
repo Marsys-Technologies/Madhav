@@ -9,6 +9,8 @@ import {
   buildResponseCoverageReceipt,
   buildStructuredResponseAccountability,
   inquiryResponsePartContentHash,
+  inquiryCitationMarker,
+  inquiryFindingCitationHandles,
 } from './response_accountability'
 import type { InquiryContract, InquiryResponseDeliveryPart, InquiryScopeTuple } from './types'
 
@@ -445,6 +447,62 @@ describe('Wave 4 response accountability', () => {
     expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
     expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(0)
     expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids.length).toBeGreaterThan(0)
+  })
+
+  it('maps paraphrased findings through citation markers instead of verbatim row JSON (RC-6.3)', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const handles = inquiryFindingCitationHandles(register)
+    const findings = register.facts.filter((fact) => fact.kind === 'finding')
+    expect(findings.length).toBeGreaterThan(1)
+    // Prose paraphrases each finding and cites it; no canonical JSON appears anywhere.
+    const responseText = findings
+      .map((fact, index) => `Point ${index + 1} is interpreted in plain language ${inquiryCitationMarker(handles.get(fact.fact_id)!)}.`)
+      .join('\n\n')
+    expect(findings.some((fact) => responseText.includes(fact.normalized_content!))).toBe(false)
+
+    const envelope = buildStructuredResponseAccountability(contract, { response_text: responseText, evidence_payloads: evidencePayloads })
+
+    expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(findings.length)
+    expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids).toEqual([])
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+  it('assigns stable citation handles from the register alone', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const first = inquiryFindingCitationHandles(buildInquiryFactRegister(contract, evidencePayloads))
+    const second = inquiryFindingCitationHandles(buildInquiryFactRegister(contract, [...evidencePayloads]))
+    expect([...first.entries()]).toEqual([...second.entries()])
+    expect([...first.values()]).toEqual([...first.values()].map((_, index) => `F${index + 1}`))
+  })
+
+  it('fails closed on a citation marker that names no registered finding', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const handles = inquiryFindingCitationHandles(register)
+    const cited = [...handles.values()].map((handle) => inquiryCitationMarker(handle)).join(' ')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: `${cited} and an invented claim ${inquiryCitationMarker('F999')}.`,
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.response_coverage_receipt.status).not.toBe('COMPLETE')
+    expect(envelope.response_coverage_receipt.invalid_delivery_claims)
+      .toContainEqual(expect.stringContaining('unknown citation marker F999'))
+  })
+
+  it('does not map a finding whose marker is absent from the cited span', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const handles = inquiryFindingCitationHandles(register)
+    const [firstFinding] = register.facts.filter((fact) => fact.kind === 'finding')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: `Only one finding is interpreted ${inquiryCitationMarker(handles.get(firstFinding!.fact_id)!)}.`,
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(1)
+    expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
   })
 
   it('derives verified production mappings when the canonical synthesis contains every finding', () => {
