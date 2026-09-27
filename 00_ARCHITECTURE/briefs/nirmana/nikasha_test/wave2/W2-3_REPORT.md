@@ -303,27 +303,88 @@ registry fix itself remains the data-plane owner's (R240's row text), untouched 
   - R241b-M1 helper calls ignored (1), R241b-M2 try-wrapped calls counted (1).
 - **Live:** 0 verdict and 0 text changes vs R20. None of these shapes is live today; ka_kshetra is unchanged.
 
-**Still undetected — each with a writer pattern that would fool the check today:**
-1. **Emptiness computed in SQL:**
-   `empty = cur.execute("SELECT NOT EXISTS (SELECT 1 FROM own WHERE chart_id=%s)").fetchone()[0]; if not empty: raise Held`
-   — `SELECT NOT EXISTS` is not a recognised probe form (recognising it needs the inverted polarity), so no probe →
-   PASS.
-2. **A compound test:** `if self._populated(conn) and not ctx.config.get("force"): return`.
-   - `BoolOp` tests are deliberately not read as holds, because the legitimate incremental skip
-     (`populated and unchanged`) has the same shape.
-   - A force-flag hold therefore PASSes.
-3. **A flag built from a comparison:** `skip = self._populated(conn) is not None; … if skip: raise Held`. Only
-   names bound directly to a probe call (or through `bool/int/len`, subscript, await) are tracked.
-4. **A probe with no literal SQL in scope:** an ORM / query-builder probe
-   (`session.query(Row).filter_by(chart_id=c).first()`), or SQL assembled in a variable
-   (`sql = base + where`) with the table in neither part.
-5. **Anything beyond the resolved scope:** a guard more than 2 hops away, reached by dynamic import, `getattr`, a
-   registry/dispatch table, or a callback passed in from outside.
-6. **A hold enforced by the database:** e.g. a unique constraint violated on purpose so the insert fails and the
-   writer catches it and returns; or a trigger. The scan reads Python, not DDL.
-7. **Empty-UPSTREAM early returns placed before the replacement** (ga_yoga, bo_samskara — hand-verified in §5).
-   These are not populated-output holds, and grading them FAIL would be wrong. But if an upstream ever empties, the
-   prior rows survive a "rebuild". Disclosed, not detected.
+**Still undetected — v1.1 (C2), the complete list.** This merges v1.0's seven shapes with the gate review's
+additions (W2-3_REVIEW §2.3–§2.4, §8). Each item gives a writer pattern that would fool the check today.
+
+**A. LIVE TODAY — two shapes occur in current writers.** Both are accounted for in the current classifications.
+
+- **A1. A hold enforced by the database (v1.0 #6, presented then as hypothetical). It is live.**
+  - The scan reads Python, not DDL. Two instances were found:
+    - the `public.assert_l2_msr_delete_safe` interlock: 6 PASSes, chart-conditional;
+    - a NO ACTION foreign key the writer no longer clears: bo_upaya, a PASS that must not close.
+  - Both are resolved in §0.1 (C1).
+- **A2. Empty-upstream early returns before the replacement (v1.0 #7). Live in 24 current writers**, not the two v1.0
+  named. The screen is `w2-3_evidence/c2_empty_upstream_screen.py` and `c2_empty_upstream_classified.txt`.
+  - **What counts.** An `if <empty test>: return|continue` before the credited replacement, where:
+    - the test reads an empty input or an empty computed row set;
+    - a `continue` counts only when its loop also holds the replacement, i.e. it skips the replacement for that
+      ayanamsha;
+    - a branch that itself replaces is not counted (ka_sangam);
+    - dry-run tests are excluded.
+  - **The 24 writers:**
+    - L0: bg_concordance, bg_rules;
+    - L1: ga_ayurdaya, ga_condition, ga_dashas, ga_prashna, ga_sade_sati, ga_sensitive, ga_sensitive_degree,
+      ga_vichara, ga_yoga;
+    - L2: bo_arudha, bo_grounding, bo_nakshatra_semantic, bo_samskara, bo_special_lagna, bo_vargottama_dhana;
+    - L3: ka_avadhi, ka_bhavishya_lekha, ka_yojaka;
+    - L5: mi_bhara, mi_bhavisya, mi_gunanaka, mi_pariksha.
+  - 18 are W2-3 closures. ka_avadhi, ka_bhavishya_lekha, ka_yojaka, mi_bhavisya, mi_gunanaka and mi_pariksha were
+    PASS already at `a72cdf460`.
+  - **Every writer the review named is in the list.** The review named ga_yoga and bo_samskara (from v1.0), plus
+    bo_arudha, bo_grounding, bo_nakshatra_semantic, bo_special_lagna, bo_vargottama_dhana, ga_ayurdaya,
+    ga_sensitive_degree, ga_vichara and bg_concordance.
+  - **How they are classified: all 24 read PASS, not PARTIAL.** That is the intended grading. The coordinator's
+    message assumed they read PARTIAL; they do not.
+    - The shape skips the replacement only when the input is empty. On a populated input — every rebuild the
+      census measures — the replacement runs, so it is not a hold on populated output.
+    - Grading it FAIL would be wrong (review §8, row 7). Grading it PARTIAL would withhold 24 correct closures over a
+      state no chart is in today.
+    - The residual is disclosed, not detected: if an upstream ever empties, the prior rows survive the "rebuild".
+  - **Related, milder form.** The shared L1 helpers return early when the new row set is empty (`if not rows /
+    cats: return` in `ga_writers/_idempotency.replace_prior_chart_facts` and its siblings), in 12 L1 writers. Their
+    DELETE is scoped to the keys of the rows being written, so a category a writer stops producing is never deleted.
+    That is §N.3's natural-key scope (limit 3), and it reads PASS.
+
+**B. Probe forms the hold guard does not recognise.** Each of these gives a PASS on a held rebuild.
+1. `SELECT NOT EXISTS (…)` — emptiness computed in SQL (inverted polarity).
+2. The inline test `if cur.fetchone()[0]:` — only a *name bound* to `fetchone` is tracked.
+3. `SELECT count(1) FROM own WHERE chart_id …`.
+4. An aliased probe, `FROM own o WHERE o.chart_id …`.
+5. A probe whose WHERE puts another predicate before `chart_id`.
+6. `EXISTS (SELECT * FROM own …)`.
+7. A compound test, `if self._populated(conn) and not ctx.config.get("force"): return`. This is deliberately not
+   read as a hold: the legitimate incremental skip (`populated and unchanged`) has the same shape.
+8. A flag built from a comparison, `skip = self._populated(conn) is not None; … if skip: raise`.
+9. A probe with no literal SQL in scope: an ORM or query builder, or SQL assembled in a variable.
+10. A guard beyond the resolved scope: more than 2 hops away, or reached by dynamic import, `getattr`, a dispatch
+    table or a callback.
+
+**C. Replacement shapes graded PASS that do not in fact replace.** These are the review's fixtures S1–S6, all
+read through the real `idem_scan`.
+1. The own table's DELETE sits in a method of the registered class that nothing calls (S1). Every method of the
+   class is credited; R20-M7 covers module-level helpers only.
+2. A DELETE limited to the current build, `… WHERE chart_id=%s AND build_id=%s` (S2). This is inconsistent: a
+   build-scoped *probe* is treated as a resume check, while a build-scoped *DELETE* is credited as replacement.
+3. A DELETE behind a configuration flag, `if ctx.config.get("full_rebuild"):` (S3).
+4. An own table written by `COPY` and never deleted, beside a replaced one (S4). `COPY` is not an "insert" fact.
+5. An upsert-only second own table on a delete-then-insert layer (S5): credited as covered, although the same table
+   alone reads FAIL. Live instance: mi_gunanaka → mimamsa_calibration_snapshot. It is append-only by design and was
+   PASS at base, not a W2-3 closure.
+6. A stray row outside the DELETE's predicate (S6), e.g. a `'combined'` row outside the per-ayanamsha delete.
+7. Cross-asset stray rows (review F-6, §8 OS-8): bo_karanajala inserts nodes into bo_bimba's table, and neither
+   asset's check can see them.
+
+**D. Shapes that give a false FAIL (conservative: they open a gap, never close one; review C4).** An imported SQL
+constant, because `_resolve_def` refuses assignments; and a cut hop-3 module that holds no write text of its own,
+because the cut goes unreported.
+
+**Live status.**
+- **A: live today.** Both A shapes are accounted for: A1 by §0.1's 6 chart-conditional PASSes and the withheld
+  bo_upaya; A2 as PASS, with the residual disclosed.
+- **B–D: no live false PASS today.** None of the newly identified shapes gives a live false PASS. The review
+  confirmed this: it screened the resolved scope of all 110 live PASSes for B2–B6 and C1–C6. There is one live C5
+  instance, mi_gunanaka, which is by design and pre-dates W2-3.
+- **A1 is the exception:** it does give one live false PASS (bo_upaya, §0.1).
 
 ### §2.5 R21 — blocking radius · `3f9a11428`
 
@@ -646,6 +707,18 @@ holds or skips the replacement on a POPULATED chart. **17 of the 58 were checked
   build-time rows". This is a registry/writer kind disagreement.
 - **OS-7:** the next emit opens 11 L2 `Complete.depth` gaps under base and HEAD code alike. Live L2 data has
   changed since the first production emit.
+- **OS-8 (v1.1; review F-6) — for the L2 data-plane owner: bo_karanajala's CGM nodes are never refreshed.**
+  - **The write:** bo_karanajala inserts its `arudha` and `special_lagna` nodes into `bodha_cgm_nodes` (bo_bimba's
+    target table) with `ON CONFLICT (node_id) DO NOTHING` (`bo_karanajala.py:1539–1563`, called at :1827). The L2
+    guard trigger assigns that partition to bo_karanajala.
+  - **No delete:** the only DELETE on the table, `replace_prior_cgm_nodes`, covers bo_bimba's five types only
+    (`_idempotency.py:337–350`), and nothing deletes the karanajala partition.
+  - **Effect:** those 130 nodes per chart (95 + 35, on all three charts, one build each —
+    `c2_karanajala_nodes.txt`) are never refreshed by any rebuild. A changed attribute stays stale, and a vanished
+    fact leaves an orphan node.
+  - **Why the detector misses it:** per-asset `Idem.pattern` cannot see this. bo_bimba's own rows are replaced, and
+    bo_karanajala's counted table is the edge table.
+  - **Status:** latent today, since each chart has a single build.
 
 ## §9 — Evidence index (`nikasha_test/wave2/w2-3_evidence/`)
 

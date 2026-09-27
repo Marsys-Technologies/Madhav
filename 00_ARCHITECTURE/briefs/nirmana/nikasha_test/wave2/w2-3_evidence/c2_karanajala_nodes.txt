@@ -1,0 +1,6 @@
+1c826d5a | arudha | 95 | 1
+1c826d5a | special_lagna | 35 | 1
+482012f1 | arudha | 95 | 1
+482012f1 | special_lagna | 35 | 1
+cb73cd3d | arudha | 95 | 1
+cb73cd3d | special_lagna | 35 | 1

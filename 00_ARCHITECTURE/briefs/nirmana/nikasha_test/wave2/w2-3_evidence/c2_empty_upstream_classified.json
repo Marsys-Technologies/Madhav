@@ -1,0 +1,173 @@
+{
+ "skip": {
+  "bg_concordance": [
+   "bg_concordance.py:86 `if not topic_rows: return` (run)",
+   "bg_concordance.py:108 `if tagged_chunks == 0: return` (run)"
+  ],
+  "bg_rules": [
+   "brahmagyan/l0_rules.py:1507 `if upstream_chunks == 0: return` (seed_rules)"
+  ],
+  "ga_ayurdaya": [
+   "ga_writers/ga_ayurdaya_writer.py:273 `if not positions: return` (build_ga_ayurdaya_substep)",
+   "ga_writers/ga_ayurdaya_writer.py:277 `if not rows: return` (build_ga_ayurdaya_substep)"
+  ],
+  "ga_condition": [
+   "ga_writers/ga_condition_writer.py:1447 `if not position_list: return` (build_ga_condition_substep)",
+   "ga_writers/ga_condition_writer.py:1618 `if not insert_rows: return` (build_ga_condition_substep)",
+   "ga_writers/ga_condition_writer.py:1185 `if not rows: return` (_insert_per_varga_avastha_rows)"
+  ],
+  "ga_dashas": [
+   "ga_writers/ga_dashas_writer.py:3037 `if not rows: return` (_upsert_rows)"
+  ],
+  "ga_prashna": [
+   "ga_writers/ga_prashna_writer.py:295 `if result is None: return` (seed_prashna_judgment)"
+  ],
+  "ga_sade_sati": [
+   "ga_writers/ga_sade_sati_writer.py:1987 `if not moon_sign: continue` (build_ga_sade_sati)"
+  ],
+  "ga_sensitive": [
+   "ga_writers/ga_sensitive_writer.py:2901 `if not rows: return` (_insert_rows)"
+  ],
+  "ga_sensitive_degree": [
+   "ga_writers/ga_sensitive_degree_writer.py:802 `if not positions: return` (build_ga_sensitive_degree_substep)",
+   "ga_writers/ga_sensitive_degree_writer.py:813 `if not rows: return` (build_ga_sensitive_degree_substep)"
+  ],
+  "ga_vichara": [
+   "ga_writers/ga_vichara_writer.py:964 `if not facts: return` (build_ga_vichara_substep)",
+   "ga_writers/ga_vichara_writer.py:970 `if not constants: return` (build_ga_vichara_substep)"
+  ],
+  "ga_yoga": [
+   "ga_writers/ga_yoga_writer.py:2823 `if not facts: return` (build_ga_yoga_substep)",
+   "ga_writers/ga_yoga_writer.py:2831 `if not yoga_catalog: return` (build_ga_yoga_substep)"
+  ],
+  "bo_arudha": [
+   "bo_arudha.py:158 `if not arudha_facts: continue` (run)",
+   "bo_arudha.py:170 `if not rows: continue` (run)"
+  ],
+  "bo_grounding": [
+   "bo_grounding.py:159 `if not rows: continue` (run)"
+  ],
+  "bo_nakshatra_semantic": [
+   "bo_nakshatra_semantic.py:156 `if not rows: continue` (run)"
+  ],
+  "bo_samskara": [
+   "bo_samskara.py:234 `if not signals: return` (run_substep)"
+  ],
+  "bo_special_lagna": [
+   "bo_special_lagna.py:143 `if not rows: continue` (run)"
+  ],
+  "bo_vargottama_dhana": [
+   "bo_vargottama_dhana.py:139 `if not positions: continue` (run)",
+   "bo_vargottama_dhana.py:154 `if not rows: continue` (run)"
+  ],
+  "ka_avadhi": [
+   "ka_avadhi.py:203 `if not md_rows: return` (run)",
+   "ka_avadhi.py:316 `if not all_rows: return` (run)"
+  ],
+  "ka_bhavishya_lekha": [
+   "ka_bhavishya_lekha.py:198 `if not darshana_rows: return` (run)"
+  ],
+  "ka_yojaka": [
+   "ka_yojaka.py:91 `if not signals: return` (run)",
+   "ka_yojaka.py:434 `if not rows: return` (run)"
+  ],
+  "mi_bhara": [
+   "mi_bhara.py:159 `if not lel_events: return` (run)"
+  ],
+  "mi_bhavisya": [
+   "mi_bhavisya.py:85 `if not anchors: return` (run)"
+  ],
+  "mi_gunanaka": [
+   "mi_gunanaka.py:294 `if not rows: return` (run)"
+  ],
+  "mi_pariksha": [
+   "mi_pariksha.py:162 `if not events: return` (_substep_retrodiction)"
+  ]
+ },
+ "filter": {
+  "bg_remedies": [
+   "brahmagyan/l0_remedy_loader.py:324 `if not isinstance(row, dict): continue` (load_remedies)",
+   "brahmagyan/l0_remedy_loader.py:332 `if not is_acceptable_tantric_source(source_text): continue` (load_remedies)"
+  ],
+  "ga_condition": [
+   "ga_writers/ga_condition_writer.py:1470 `if pos is None: continue` (build_ga_condition_substep)"
+  ],
+  "ga_transit_anchors": [
+   "ga_transit_anchors.py:127 `if graha is None: continue` (run_substep)"
+  ],
+  "bo_nakshatra_semantic": [
+   "bo_nakshatra_semantic.py:135 `if not pos_facts: continue` (run)",
+   "bo_nakshatra_semantic.py:151 `if row is None: continue` (run)"
+  ],
+  "bo_special_lagna": [
+   "bo_special_lagna.py:130 `if not facts: continue` (run)",
+   "bo_special_lagna.py:138 `if row is None: continue` (run)"
+  ],
+  "bo_sudarshana": [
+   "bo_sudarshana.py:210 `if not grec: continue` (run)",
+   "bo_sudarshana.py:217 `if graha_i is None: continue` (run)"
+  ],
+  "ka_bhavishya_lekha": [
+   "ka_bhavishya_lekha.py:367 `if existing is None: continue` (run)",
+   "ka_bhavishya_lekha.py:377 `if not changed_fields: continue` (run)"
+  ],
+  "ka_yojaka": [
+   "ka_yojaka.py:382 `if not subject: continue` (run)",
+   "ka_yojaka.py:164 `if d is None: continue` (run)",
+   "ka_yojaka.py:185 `if d is None: continue` (run)"
+  ],
+  "mi_jivanaghatana": [
+   "mi_jivanaghatana.py:276 `if not event_id: continue` (run)"
+  ]
+ },
+ "helper": {
+  "ga_ayurdaya": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_dashas": [
+   "ga_writers/_idempotency.py:78 `if not rows: return` (replace_prior_chart_dashas)",
+   "ga_writers/_idempotency.py:82 `if not systems: return` (replace_prior_chart_dashas)"
+  ],
+  "ga_nakshatra": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_panchanga": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_positions": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_sade_sati": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_sensitive": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_sensitive_degree": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_strength": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_structural": [
+   "ga_writers/_idempotency.py:57 `if not rows: return` (replace_prior_chart_facts)",
+   "ga_writers/_idempotency.py:60 `if not cats: return` (replace_prior_chart_facts)"
+  ],
+  "ga_tajaka": [
+   "ga_writers/_idempotency.py:124 `if not rows: return` (replace_prior_tajik_varsha)",
+   "ga_writers/_idempotency.py:128 `if not years: return` (replace_prior_tajik_varsha)"
+  ],
+  "ga_vargas": [
+   "ga_writers/_idempotency.py:98 `if not rows: return` (replace_prior_chart_divisionals)",
+   "ga_writers/_idempotency.py:102 `if not vargas: return` (replace_prior_chart_divisionals)"
+  ]
+ }
+}
