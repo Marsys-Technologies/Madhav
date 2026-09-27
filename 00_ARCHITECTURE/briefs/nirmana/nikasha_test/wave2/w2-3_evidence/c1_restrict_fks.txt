@@ -1,0 +1,10 @@
+bg_transit_rules | gochara_resonance_map | a
+bg_vastu_directions | bg_vastu_direction_remedials | a
+bodha_rm_remedy_prescriptions | bodha_rm_dasha_windowed_prescriptions | a
+bodha_rm_resonances | bodha_rm_remedy_prescriptions | a
+brahma_event_ontology | bodha_pratijna | a
+brahma_event_ontology | brahma_activity_ontology | a
+brahma_event_ontology | brahma_prospective_ledger | a
+brahma_event_ontology | gochara_resonance_map | a
+brahma_event_ontology | mimamsa_intervention_ledger | a
+reference_nakshatra | reference_nakshatra_pada | a

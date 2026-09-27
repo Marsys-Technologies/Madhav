@@ -1,0 +1,8 @@
+bodha_contradictions | signal_a_id | c
+bodha_contradictions | signal_b_id | c
+bodha_signal_embeddings | signal_id | c
+kala_activation | signal_id | c
+kala_bhavishya | signal_id | c
+kala_convergence | signal_id | c
+kala_darshana | signal_id | c
+kala_obstruction | signal_id | c

@@ -46,7 +46,8 @@ not_touched: asset_elevation_tracker.py (no change needed), writers, orchestrato
 covered L0 only: today L0 still has exactly 27 PARTIAL `Idem.pattern` assets. Across all six layers the PARTIAL
 population at `a72cdf460` is **69** (L0 27 · L1 18 · L2 14 · L3 5 · L5 5; ka_kshetra is the one FAIL).
 - **The 27 (L0): 26 → PASS, 0 → FAIL, 1 stays PARTIAL** (bg_text_index: its own table is only `UPDATE`d in place).
-- **All 69: 58 → PASS, 0 → FAIL, 11 stay PARTIAL**, each with a named reason:
+- **All 69: 58 → PASS, 0 → FAIL, 11 stay PARTIAL.** **v1.1 (C1): the 58 PASSes are not all unconditional —
+  51 unconditional + 6 chart-conditional + 1 not earned today (§0.1).** The 11 PARTIALs each carry a named reason:
   - 1 registry/writer table mismatch (R240): ka_gochara;
   - 2 own table only `UPDATE`d in place: bg_text_index, bo_laksana_rerank;
   - 8 no write to the asset's own table anywhere in the resolved scope (graded PARTIAL, never N/A — a static scan
@@ -58,6 +59,101 @@ population at `a72cdf460` is **69** (L0 27 · L1 18 · L2 14 · L3 5 · L5 5; ka
 - R127's three L2 delegating writers: bo_bimba **PASS**, bo_pramana_mapa **PASS** (both through
   `bodha_writers/_idempotency.py`), bo_samvada **PARTIAL** (its writer runs no write at all — correct).
 
+### §0.1 — v1.1 (C1): the 58 PASSes, by the condition they hold under
+
+Python-level, all 58 replace their own table on the rebuild path with no hold (my 17 and the review's 41). Two
+database mechanisms sit **under** the Python and decide whether that DELETE actually runs. Both are read here from
+the live catalog, read-only (`w2-3_evidence/c1_*`).
+
+**(1) 6 chart-conditional PASSes — the L2 MSR family:** bo_arudha, bo_laksana, bo_nakshatra_semantic,
+bo_special_lagna, bo_sudarshana, bo_vargottama_dhana.
+- **Mechanism.**
+  - Each rebuild calls `bodha_writers/_idempotency.replace_prior_msr_for_chart`, which calls
+    `_assert_msr_delete_safe` (`_idempotency.py:168`) and so the database function
+    `public.assert_l2_msr_delete_safe`.
+  - That function loops over every foreign key onto `bodha_msr_signals` except `bodha_signal_embeddings` and
+    `bodha_contradictions`. Those are `kala_activation`, `kala_bhavishya`, `kala_convergence`, `kala_darshana` and
+    `kala_obstruction`, all `ON DELETE CASCADE`.
+  - It executes `RAISE EXCEPTION 'L2 MSR replacement blocked by cross-layer dependent rows in %.%'` whenever a row in
+    any of them references a signal this producer is about to replace.
+- **Measured per producer and chart** (all five FK tables, `c1_msr_dependents.txt`):
+
+  | asset | 482012f1 (canonical) | 1c826d5a | cb73cd3d |
+  |---|---|---|---|
+  | bo_arudha | **0** | 709 (activation 157, convergence 552) | 125 (activation) |
+  | bo_laksana | **0** | 353,426 (activation 334,998, convergence 16,853, darshana 750, obstruction 725, bhavishya 100) | **0** |
+  | bo_nakshatra_semantic | **0** | 361 (activation 360, obstruction 1) | 1,630 (activation 360, convergence 1,270) |
+  | bo_special_lagna | **0** | 168 (activation 160, obstruction 8) | 166 (activation 160, obstruction 6) |
+  | bo_sudarshana | **0** | 919 (activation 360, convergence 552, obstruction 7) | 995 (activation 360, convergence 635) |
+  | bo_vargottama_dhana | **0** | 58 (activation) | 685 (activation 50, convergence 635) |
+
+- **Two refinements of the review's figures.**
+  - bo_special_lagna has dependents on both other charts (through `kala_activation` / `kala_obstruction`). The review
+    counted only `kala_convergence` / `kala_darshana` and reported none.
+  - bo_laksana has none on cb73cd3d.
+- **Fact.** Each is earned today on the canonical chart 482012f1, which has no dependent rows. The same rebuild would
+  be **REFUSED** on 1c826d5a (all six) and on cb73cd3d (all but bo_laksana). A refused rebuild raises and rolls back:
+  it neither replaces nor accretes.
+- **This is not a code defect.** The database is correctly protecting real L3 rows that reference these signals —
+  a deliberate cross-layer interlock (`_idempotency.py:78–111`), not a stale-row risk.
+- **But it makes "Idem.pattern PASS" chart-conditional for these 6, not universal.** Every Nikaṣa measurement is
+  already scoped to the canonical chart (R231), so the PASS is true on its stated scope. It must not be read as
+  "rebuilds on any chart".
+- **Whether a database-enforced cross-layer interlock is a held rebuild** (the ka_kshetra class, FAIL) **or a
+  permitted precondition** (PASS with a scope) is a native ruling the review queues. It is not decided here.
+
+**(2) 1 PASS not earned today — bo_upaya.** This is new in v1.1, beyond the review, which recorded "bo_upaya
+helpers carry no DB assert". That is true, but the hold here is a foreign key, not an assert.
+- **The foreign key.** `bodha_rm_dasha_windowed_prescriptions.base_prescription_id` references
+  `bodha_rm_remedy_prescriptions(prescription_id)`:
+  - `NO ACTION`, **NOT DEFERRABLE** (`c1_upaya_fk.txt`, from `pg_constraint`);
+  - so it is checked at the end of each DELETE statement.
+- **The writer change.**
+  - At the last real bo_upaya builds (2026-09-09, `disposition='build'`), the writer called
+    `replace_prior_rm_dasha_windowed` **before** `replace_prior_rm_prescriptions` (`git show aa26d83bb:…/bo_upaya.py`
+    :2203–2204).
+  - #2607 (`fa9857f00`, 2026-09-16, "DP-SD-015: do not delete or append the legacy daśā-window table") removed that
+    first delete, but kept the prescriptions DELETE (`bo_upaya.py:1945`).
+- **The rows that block it.** On all three charts, legacy dasha-window rows reference `static_natal` prescriptions
+  in every ayanamsha bo_upaya replaces:
+  - 482012f1: 5 rows, one per ayanamsha, all written by build `fcdcd284` together with the prescriptions they
+    reference;
+  - 1c826d5a: 9 rows; cb73cd3d: 6 rows.
+- **Consequence.** The next current-code rebuild of bo_upaya on any chart, **482012f1 included**, will fail its
+  `DELETE FROM bodha_rm_remedy_prescriptions … snapshot_type='static_natal'` on that foreign key.
+  - It will not replace. The rebuild errors.
+  - bo_upaya has not run since #2607 (its last started attempt is 2026-09-09), so the failure has never been
+    exercised.
+  - The detector reads the Python, not the FK graph, and still grades PASS.
+- **So the `bo_upaya-Idem.pattern` closure in the next emit would be a false closure.** My v1.0 §5 row calling it
+  "genuine" is retracted.
+- **Screen for other cases.** No other W2-3 closure is affected. I screened every RESTRICT / NO ACTION foreign key onto
+  the 68 tables the 58 closures replace (`c1_restrict_fks.txt`):
+  - reference_nakshatra: its writer deletes the child `reference_nakshatra_pada` first;
+  - bodha_rm_resonances: bo_upaya deletes the referencing prescriptions first;
+  - bg_transit_rules: it retires only rows stale against its source list, and fails loudly by design if one is
+    referenced;
+  - bg_vastu_directions and brahma_event_ontology: upsert-only, no DELETE.
+- **Triggers.** The per-row `l1/l2_data_plane_mutation_guard` triggers on those tables are authorization /
+  ownership guards (admitted build context, owning asset). They return `OLD` on DELETE and hold nothing on populated
+  output.
+
+**Register-facing note for the executor's fold (C1).**
+- **The six MSR-family gaps close as PASS with a scope annotation, not silently:**
+  `chart_scope: 482012f1 only; refused on 1c826d5a, cb73cd3d via public.assert_l2_msr_delete_safe`.
+  For bo_laksana the refused chart is **1c826d5a only**.
+  The ruling "is a DB-enforced cross-layer interlock a held rebuild?" is queued for the native. If the ruling is
+  "held", a detector row follows (read `_assert_*_delete_safe` calls in scope as a hold).
+- **`bo_upaya-Idem.pattern` should be withheld from the next production emit.** Hand-withhold it, as W2-2's C2 did
+  for ka_kshetra, and leave it OPEN.
+  - Owner action: delete the legacy dasha-window rows first (restore the pre-#2607 order), or re-point or retire the
+    FK.
+  - Detector action (new row, not built here): read the replaced tables' RESTRICT / NO ACTION children from
+    `pg_constraint` and grade a replacement that leaves referencing children un-deleted as a FAIL.
+- **The resolution to fold: 69 PARTIAL → 51 unconditional PASS + 6 chart-conditional PASS + 1 PASS that must not
+  close (bo_upaya) + 11 PARTIAL + 0 FAIL.**
+  - Of the register's 27 (L0): 26 PASS, all unconditional; 1 PARTIAL.
+
 **Packet proofs.**
 1. **Branch enumeration (§3):** 39 PASS/N/A-yielding branches (38 at W2-2 + 1 new). 20 genuine, **15 fixed**,
    **2 proxy**, 2 contested. R20/R241 move #2 and #3 (the two `Idem.pattern` PASS branches — the largest remaining
@@ -66,8 +162,11 @@ population at `a72cdf460` is **69** (L0 27 · L1 18 · L2 14 · L3 5 · L5 5; ka
 2. **Census (§4):** six layers, read-only, `a72cdf460` vs HEAD: 2,446 verdicts each; **58 verdict changes, all
    `Idem.pattern` PARTIAL → PASS, 0 unexplained**; 151 text-only changes (127 `Reach.fields`, 24 `Idem.pattern`).
 3. **Next emit (§5):** on a copy of the real 830-line ledger, HEAD **closes 58** real OPEN gaps (all
-   `Idem.pattern`), opens 11 (`Complete.depth`, identical under base code — live data moved), re-opens 0. **17 of
-   the 58 hand-verified against writer source**, all genuine. Base code on the same data closes 0.
+   `Idem.pattern`), opens 11 (`Complete.depth`, identical under base code — live data moved), re-opens 0. Base code
+   on the same data closes 0. **v1.1 (C1):** 17 were hand-verified by me, and the gate review read the other 41.
+   Of the 58, **51 are earned unconditionally**; **6 are earned on 482012f1 only** (a database interlock refuses
+   their rebuild on 1c826d5a / cb73cd3d); and **1, bo_upaya, is NOT earned** — its current-code rebuild fails a
+   foreign-key check on every chart, including 482012f1. My v1.0 hand-verification of bo_upaya was wrong (§0.1).
 4. **Suite / fingerprint / drift / ledgers (§6):** offline 300 → **348** tests (323 passed · 23 skipped · 2 failed;
    the 2 are the pre-existing `test_drift_detector_h35_h38.py` pair, failing identically at `a72cdf460`); live
    (full suite, one invocation) **346 passed · 2 failed** at `8702ee331`; manifest **MATCH**; drift
@@ -457,7 +556,7 @@ holds or skips the replacement on a POPULATED chart. **17 of the 58 were checked
 | ga_vargas | `replace_prior_chart_divisionals` via `_write_rows_batch`; the `_check_already_written` skips (:2942, :3061, :3084, :3130) count rows with `build_id_uuid = <this build>` — resume checks a new build never trips | genuine (and the reason for R241's build-scope rule) |
 | ga_yoga | `_delete_prior_yoga_firings` (chart × ayanamsha, :2773) reached at :2854; the earlier returns fire on EMPTY chart_facts / catalog (upstream) | genuine (empty-upstream caveat, §2.4 #7) |
 | ga_prashna | `DELETE FROM ga_prashna_lagna` / `ga_prashna_judgment WHERE chart_id AND ayanamsha_id` (:302/:306) before inserts; the return in front is "not a prashna chart" | genuine |
-| bo_upaya | `replace_prior_rm_resonances` / `_prescriptions` (`bodha_writers/_idempotency.py:425–455`) called per ayanamsha before `_batch_insert`; `@l2_producer` has no populated refusal (C-KSHETRA review §3, re-read) | genuine |
+| bo_upaya | `replace_prior_rm_resonances` / `_prescriptions` (`bodha_writers/_idempotency.py:425–455`) called per ayanamsha before `_batch_insert`; `@l2_producer` has no populated refusal (C-KSHETRA review §3, re-read) | ~~genuine~~ **v1.1: NOT earned** — the prescriptions DELETE fails a NO ACTION foreign key from the legacy dasha-window rows on every chart (§0.1 (2)). My read checked the Python only. |
 | bo_bimba | `replace_prior_cgm_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)` (writer :658; helper :336–350, owned node types only); the raise at :638 is on EMPTY `bodha_msr_signals` | genuine |
 | bo_pramana_mapa | `replace_prior_scorecard` (:908; helper :523 `DELETE … WHERE chart_id`); raises at :675/:787/:793 are empty-upstream and detector-failure halts | genuine |
 | bo_samskara | `replace_prior_signal_embeddings` (:310; helper :508); the returns at :231/:236 are dry-run and no-signals | genuine (empty-upstream caveat) |
@@ -465,7 +564,9 @@ holds or skips the replacement on a POPULATED chart. **17 of the 58 were checked
 | mi_sankalpa | `delete_unresolved` (`db.py:201–215`, unresolved/derived rows only) then `reinsert_rows` (writer :161–162), after reading every such row first | genuine — attested and outcome-linked rows are human data and are kept by design |
 
 **Ruling on the next emit.**
-- **On today's data, every one of the 58 closures I read is earned.** The detector's claim was confirmed
+- **v1.1 (C1) supersedes the next bullet:** 51 closures are earned unconditionally, 6 on 482012f1 only (fold them with
+  the scope annotation), and `bo_upaya-Idem.pattern` must be withheld (§0.1).
+- ~~**On today's data, every one of the 58 closures I read is earned.**~~ (v1.0 text, retracted for bo_upaya.) The detector's claim was confirmed
   independently for 17. The remaining 41 follow the same verified shapes (the shared helpers `ga_writers/_idempotency`
   and `bodha_writers/_idempotency`, and the L0 seeders), but I did not read each one.
 - **Recommendation to the executor:** keep the hand-verify discipline for the 41 not individually read, or accept
