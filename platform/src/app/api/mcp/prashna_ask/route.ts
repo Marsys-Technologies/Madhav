@@ -90,7 +90,11 @@ import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
 import { ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
 import { getManagedPrashnaJob } from '@/lib/vidhi/inquiry/managed_job_store'
 import { AiConsoleError, normalizeAiError } from '@/lib/ai-console/errors'
-import { prepareMcpByokRuntime, type PreparedMcpByokRuntime } from '@/lib/mcp/prashna_ask/byok_preflight'
+import {
+  authorizeMcpByokPrincipal,
+  prepareMcpByokRuntime,
+  type PreparedMcpByokRuntime,
+} from '@/lib/mcp/prashna_ask/byok_preflight'
 import {
   buildMcpEvidenceEnvelope,
   MCP_EVIDENCE_ENVELOPE_MAX_BYTES,
@@ -267,6 +271,21 @@ export async function POST(request: Request) {
   }
   let authorizedManagedJob: Awaited<ReturnType<typeof getManagedPrashnaJob>> = null
   if (byokEnabled && body.managed_job_id && body.managed_inquiry_id) {
+    try {
+      await authorizeMcpByokPrincipal({
+        userId: userUid,
+        keyId,
+        authKind: authKind as 'api_key' | 'oauth',
+        chartId,
+      })
+    } catch (error) {
+      const normalized = normalizeAiError(error, { source: 'provider' })
+      return NextResponse.json(buildErrorEnvelope({
+        error_class: 'auth',
+        message: normalized.message,
+        remediation: `AI Console: ${normalized.code}`,
+      }), { status: 401 })
+    }
     try {
       authorizedManagedJob = await getManagedPrashnaJob({
         job_id: body.managed_job_id,

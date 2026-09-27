@@ -49,6 +49,21 @@ function validTransport() {
 const calls = () => execute.mock.calls.map(([sql, params]) => ({ sql: String(sql).replace(/\s+/g, ' ').trim(), params: params as unknown[] }))
 
 describe('owned AI configuration repository', () => {
+  it('authorizes a managed principal without reading Default or routing state', async () => {
+    respond(sql => {
+      if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
+      if (sql.includes('FROM profiles')) return [{ id: 'alice', role: 'guest' }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'alice' }]
+      return undefined
+    })
+    await expect(repository.authorizeMcpPrincipal({
+      userId: 'alice', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: conversationId,
+    })).resolves.toEqual({ role: 'guest' })
+    expect(calls().some(call => call.sql.includes('FROM ai_user_defaults'))).toBe(false)
+    expect(calls().some(call => call.sql.includes('FROM ai_turn_routing_snapshots'))).toBe(false)
+    expect(calls().at(-1)?.sql).toBe('COMMIT')
+  })
+
   it.each([
     ['api_key', 'mcp_test_KEY001'],
     ['oauth', `oauth_sha256:${'a'.repeat(64)}`],

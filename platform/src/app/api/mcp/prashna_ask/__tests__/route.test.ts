@@ -89,8 +89,14 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
   mockGetToolByName: vi.fn(),
 }))
-const { mockPrepareMcpByokRuntime } = vi.hoisted(() => ({ mockPrepareMcpByokRuntime: vi.fn() }))
-vi.mock('@/lib/mcp/prashna_ask/byok_preflight', () => ({ prepareMcpByokRuntime: mockPrepareMcpByokRuntime }))
+const { mockAuthorizeMcpByokPrincipal, mockPrepareMcpByokRuntime } = vi.hoisted(() => ({
+  mockAuthorizeMcpByokPrincipal: vi.fn(),
+  mockPrepareMcpByokRuntime: vi.fn(),
+}))
+vi.mock('@/lib/mcp/prashna_ask/byok_preflight', () => ({
+  authorizeMcpByokPrincipal: mockAuthorizeMcpByokPrincipal,
+  prepareMcpByokRuntime: mockPrepareMcpByokRuntime,
+}))
 const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
 vi.mock('@/lib/vidhi/inquiry/managed_job_store', () => ({ getManagedPrashnaJob: managedInquiry.getJob }))
@@ -226,6 +232,7 @@ beforeEach(() => {
   knowledgeState.overlaySequence = []
   knowledgeState.overlayLoadCount = 0
   configService.setFlag('AI_CONSOLE_BYOK', false)
+  mockAuthorizeMcpByokPrincipal.mockResolvedValue({ role: 'guest' })
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -333,6 +340,24 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
 })
 
 describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
+  it('rejects a revoked or mismatched credential before any managed-job or routing read', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    mockAuthorizeMcpByokPrincipal.mockRejectedValue(new Error('credential revoked'))
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'must stop before job lookup',
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000098',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000098',
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(401)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledOnce()
+    expect(managedInquiry.getJob).not.toHaveBeenCalled()
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
   it('rejects a forged managed job before snapshot preflight or any model call', async () => {
     configService.setFlag('AI_CONSOLE_BYOK', true)
     managedInquiry.getJob.mockResolvedValue(null)
@@ -344,6 +369,7 @@ describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
     }, { 'x-mcp-auth-kind': 'api_key' }))
 
     expect(res.status).toBe(401)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledOnce()
     expect(managedInquiry.getJob).toHaveBeenCalledWith({
       job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
       principal_uid: 'owner-uid',
@@ -352,6 +378,34 @@ describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
     expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
     expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
     expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(mockAuthorizeMcpByokPrincipal.mock.invocationCallOrder[0])
+      .toBeLessThan(managedInquiry.getJob.mock.invocationCallOrder[0])
+  })
+
+  it('reads an authorized managed job before repeating authority in atomic routing preparation', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000097'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000097'
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors: {}, releaseAdmission: vi.fn(), safeSnapshot: {},
+    })
+    mockCallPipelinePlanner.mockResolvedValue({
+      outcome: 'clarification_needed', question: 'Which period?', missing_scope_dims: [], suggested_options: [],
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'authorized managed request',
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(200)
+    expect(mockAuthorizeMcpByokPrincipal.mock.invocationCallOrder[0])
+      .toBeLessThan(managedInquiry.getJob.mock.invocationCallOrder[0])
+    expect(managedInquiry.getJob.mock.invocationCallOrder[0])
+      .toBeLessThan(mockPrepareMcpByokRuntime.mock.invocationCallOrder[0])
+    expect(mockPrepareMcpByokRuntime.mock.invocationCallOrder[0])
+      .toBeLessThan(mockCallPipelinePlanner.mock.invocationCallOrder[0])
   })
 
   it('uses the mapped Default executors and returns evidence without invoking Madhav synthesis', async () => {

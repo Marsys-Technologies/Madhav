@@ -4,7 +4,7 @@ import { AiConsoleError } from '@/lib/ai-console/errors'
 import { createRoleExecutor, type RoleExecutor } from '@/lib/ai-console/execution'
 import { trackRoleExecutor } from '@/lib/ai-console/execution/tracked-executor'
 import { buildResolvedExecutionPlan } from '@/lib/ai-console/routing'
-import { prepareMcpRouting } from '@/lib/ai-console/repository'
+import { authorizeMcpPrincipal, prepareMcpRouting } from '@/lib/ai-console/repository'
 import { admitByokTurn } from '@/lib/limits/byok_admission'
 import type { SafeRoutingSnapshot, ResolvedExecutionPlan } from '@/lib/ai-console/execution/types'
 
@@ -19,6 +19,15 @@ export interface PreparedMcpByokRuntime {
     worker: RoleExecutor
   }>
   readonly releaseAdmission: () => void
+}
+
+export async function authorizeMcpByokPrincipal(input: {
+  userId: string
+  keyId: string
+  authKind: 'api_key' | 'oauth'
+  chartId: string
+}): Promise<{ role: 'super_admin' | 'guest' }> {
+  return authorizeMcpPrincipal(input)
 }
 
 export async function prepareMcpByokRuntime(input: {

@@ -76,3 +76,17 @@ without inventing synthesis.
 - Fix-round platform aggregate: 12 files, 273 tests passed; TypeScript, scoped
   zero-warning ESLint, whitespace, credential, import-boundary, and raw-error
   log scans passed.
+
+## Fix round 2
+
+- A narrow repository-backed managed-door preflight now verifies the exact
+  API-key/OAuth mapping, active profile, and chart authority before durable-job
+  storage sees the principal headers. Atomic routing preparation deliberately
+  invokes the same shared authority helper again while resolving and
+  snapshotting, so revocation and routing races remain fail-closed.
+- Ordering regressions cover rejected credentials with zero job/routing/model
+  work, forged jobs with zero snapshot/model work, and the valid sequence of
+  principal authorization, job ownership read, repeated atomic preparation,
+  then planner execution.
+- Refreshed aggregate: 12 files, 276 tests passed; TypeScript, scoped ESLint,
+  whitespace, credential, and authority-order scans passed.
