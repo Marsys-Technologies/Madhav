@@ -234,8 +234,8 @@ def test_live_e2e_a_broken_count_sql_grades_errored_not_na(monkeypatch):
     real_live_counts = ac.live_counts
     picked: dict[str, str] = {}
 
-    def broken(reg):
-        counts, errored = real_live_counts(reg)
+    def broken(reg, *a, **k):
+        counts, errored = real_live_counts(reg, *a, **k)
         target = next(iter(reg), None)
         if target is not None:
             counts[target] = None

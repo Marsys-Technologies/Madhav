@@ -177,7 +177,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None):
                                                        cols={t: c for t, (c, _k) in tables.items()},
                                                        keys={t: k for t, (_c, k) in tables.items()}))
     monkeypatch.setattr(ac, "registered_ids", lambda prefix: {})
-    monkeypatch.setattr(ac, "live_counts", lambda r: ({a: None for a in r}, {}))
+    monkeypatch.setattr(ac, "live_counts", lambda r, *a, **k: ({x: None for x in r}, {}))
     monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: {})
     monkeypatch.setattr(ac, "build_history", lambda prefix, *a, **k: dict(per={}, global_runs=0, global_with_layer=0, lit=set()))
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)

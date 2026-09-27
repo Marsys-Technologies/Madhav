@@ -126,3 +126,112 @@ def test_live_r224_population_is_127_and_includes_lel_events():
     per = {k: ac.registry(k) for k in ac.LAYERS}
     assert sum(p["active"] for _r, p in per.values()) == total
     assert "lel_events" in per["L5"][0]
+
+
+# ─────────────────────────── offline measure() harness ───────────────────────────
+
+def _reg_row(aid, target_table=None, has_writer=True, count_sql="", target_floor=None, asset_kind="data"):
+    return dict(asset_id=aid, has_writer=has_writer, target_table=target_table, count_sql=count_sql,
+                has_integrity=bool(count_sql), depends_on=[], target_floor=target_floor, catalog_status="",
+                asset_kind=asset_kind)
+
+
+def _stub_layer(monkeypatch, ctrl, reg, tables=None, thru=None, writers=None):
+    """Every layer-wide read measure() makes, fixed. `live_counts` is NOT stubbed: each test either
+    stubs `ac.psql` (so the real live_counts runs its real binding/fallback logic) or overrides it."""
+    tables = tables or {}
+    monkeypatch.setattr(ac, "CTRL", ctrl)
+    monkeypatch.setattr(ac, "registry", lambda k: (dict(reg), dict(registry_total=len(reg), active=len(reg),
+                                                                    excluded_inactive=[])))
+    monkeypatch.setattr(ac, "catalog", lambda ts: dict(exists=set(tables),
+                                                       cols={t: c for t, (c, _k) in tables.items()},
+                                                       keys={t: k for t, (_c, k) in tables.items()}))
+    monkeypatch.setattr(ac, "registered_ids", lambda prefix, *a, **k: dict(writers or {}))
+    monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: dict(thru or {}))
+    monkeypatch.setattr(ac, "build_history", lambda prefix, *a, **k: dict(per={}, global_runs=0,
+                                                                          global_with_layer=0, lit=set()))
+    monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
+    monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="", scanned=True))
+    monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=3, full=list(c), never=[], note=""))
+    monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
+    monkeypatch.setattr(ac, "_run_carriage_detector", lambda aid: dict(v=ac.NO_DET, measured="stub"))
+
+
+def _m(census, aid, crit):
+    return next(a for a in census["assets"] if a["asset_id"] == aid)["measurements"].get(crit)
+
+
+def _rec(rows_written, state="lit"):
+    return dict(state=state, rows_written=str(rows_written), rps="", last_built="2026-09-27")
+
+
+def _pg_like_psql(values: dict):
+    """Answers count queries the way PostgreSQL would: an unbound `$1` is an error ("there is no
+    parameter $1"); otherwise the value keyed by the first table named after FROM."""
+    def fake(sql, sep="\x1f", timeout=None):
+        if re.search(r"\$\d", sql):
+            raise ac.Unknown("ERROR:  there is no parameter $1")
+        out = []
+        for part in sql.split(" UNION ALL "):
+            m = re.search(r"SELECT '([^']+)' a,", part)
+            tbl = re.search(r"FROM ([a-z_]+)", part.split(",", 1)[1] if m else part).group(1)
+            v = values[tbl](part) if callable(values[tbl]) else values[tbl]
+            out.append([m.group(1), str(v)] if m else [str(v)])
+        return out
+    return fake
+
+
+# ─────────────────────────── R231: bind the canonical chart to $1 ───────────────────────────
+
+def test_r231_chart_scoped_count_sql_is_bound_and_measured(monkeypatch, tmp_path):
+    """A `WHERE chart_id = $1` count_sql is bound to the canonical chart and graded against THAT
+    chart's build record. Fails without the fix: the unbound `$1` errors and Build.completion reads
+    ERRORED (the 78 L1–L5 readings of A_REVIEW2 G4)."""
+    reg = {"ga_x": _reg_row("ga_x", "ga_t", count_sql="SELECT count(*) FROM ga_t WHERE chart_id = $1")}
+    thru = {"ga_x": {CANONICAL: _rec(5), "cb73cd3d-9eba-4220-9902-0de91566e980": _rec(9)}}
+    _stub_layer(monkeypatch, tmp_path, reg, thru=thru)
+    seen = []
+
+    def count(part):
+        seen.append(part)
+        return 5 if f"chart_id = '{CANONICAL}'" in part else 999
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({"ga_t": count}))
+    res = _m(ac.measure("L1"), "ga_x", "Build.completion")
+    assert res["v"] == ac.PASS, res
+    assert "live=5" in res["measured"] and "rows_written=5" in res["measured"], res
+    assert "chart 482012f1" in res["measured"], "the verdict must name the chart it measured"
+    assert seen and all(CANONICAL in s for s in seen)
+
+
+def test_r231_the_build_record_is_the_bound_charts_not_another_charts(monkeypatch, tmp_path):
+    """The count for the canonical chart is compared with the canonical chart's rows_written, never
+    another chart's. Fails without the fix: throughput() kept one arbitrary row per asset."""
+    reg = {"ga_x": _reg_row("ga_x", "ga_t", count_sql="SELECT count(*) FROM ga_t WHERE chart_id = $1")}
+    thru = {"ga_x": {"cb73cd3d-9eba-4220-9902-0de91566e980": _rec(5)}}   # only ANOTHER chart was built
+    _stub_layer(monkeypatch, tmp_path, reg, thru=thru)
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({"ga_t": 5}))
+    res = _m(ac.measure("L1"), "ga_x", "Build.completion")
+    assert res["v"] == ac.FAIL and "no build record" in res["measured"], res
+
+
+def test_r231_an_unbindable_parameter_is_errored_not_run_half_bound(monkeypatch):
+    reg = {"ga_x": dict(count_sql="SELECT count(*) FROM ga_t WHERE chart_id = $1 AND k = $2")}
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({"ga_t": 1}))
+    counts, errored = ac.live_counts(reg, CANONICAL)
+    assert counts["ga_x"] is None and "$2" in errored["ga_x"]
+
+
+def test_r231_the_phantom_chart_is_refused():
+    with pytest.raises(ac.Unknown, match="phantom"):
+        ac._bind_chart("SELECT count(*) FROM t WHERE chart_id = $1", "362f9f17-0000-0000-0000-000000000000")
+
+
+@LIVE
+def test_live_r231_every_l4_count_sql_is_measured_for_the_canonical_chart():
+    """Live, read-only: all nine L4 count_sql are chart-scoped; bound to the canonical chart, every
+    one returns an integer (before R231 all nine errored)."""
+    reg, _ = ac.registry("L4")
+    counts, errored = ac.live_counts(reg, CANONICAL)
+    assert not errored, errored
+    assert all(isinstance(counts[a], int) for a in reg), counts

@@ -97,6 +97,38 @@ ERRORED = "ERRORED"
 # code change.
 PSQL_TIMEOUT_SECONDS = int(os.environ.get("NIKASHA_CENSUS_TIMEOUT_SECONDS", "180"))
 
+# R231 (A_REVIEW2 G4): 78 of 86 L1–L5 `count_sql` are chart-scoped (`WHERE chart_id = $1`). Run
+# standalone they cannot bind `$1`, so F2 correctly graded them ERRORED — and `Build.completion` was
+# unmeasured above L0. The census now binds ONE chart scope, exactly as the engine does
+# (`asset_runner._data_rows_present`: `count_sql.replace("$1", %s)` with the chart id as a quoted
+# literal), and reads that chart's own build record. The canonical chart (CLAUDE.md §B) is the
+# default; `362f9f17-…` is a dead phantom and is refused.
+CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+CHART_ID = os.environ.get("NIKASHA_CENSUS_CHART_ID", CANONICAL_CHART_ID).strip()
+_PHANTOM_CHART_PREFIX = "362f9f17"
+_PARAM_1 = re.compile(r"\$1(?!\d)")
+_ANY_PARAM = re.compile(r"\$\d+")
+
+
+def _chart_scoped(count_sql: str) -> bool:
+    return bool(_PARAM_1.search(count_sql or ""))
+
+
+def _bind_chart(q: str, chart_id: str) -> str:
+    """Bind `$1` to the chart scope as a quoted literal (the engine's own binding). Raises `Unknown`
+    for a phantom chart id, a malformed one, or a `count_sql` with any OTHER unbound parameter —
+    a query that cannot be bound is not measured, and never silently run half-bound."""
+    if _PARAM_1.search(q):
+        if chart_id.startswith(_PHANTOM_CHART_PREFIX):
+            raise Unknown(f"refusing chart scope {chart_id}: the 362f9f17-… chart id is a dead phantom")
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}", chart_id):
+            raise Unknown(f"chart scope {chart_id!r} is not a uuid")
+    bound = _PARAM_1.sub(f"'{chart_id}'", q)
+    left = sorted(set(_ANY_PARAM.findall(bound)))
+    if left:
+        raise Unknown(f"count_sql has unbound parameter(s) {', '.join(left)} — only $1 (chart scope) is bindable")
+    return bound
+
 
 class Unknown(Exception):
     """The instrument could not run. Never reported as clean."""
@@ -331,7 +363,7 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
     return out, population
 
 
-def live_counts(reg: dict) -> tuple[dict[str, int | None], dict[str, str]]:
+def live_counts(reg: dict, chart_id: str | None = None) -> tuple[dict[str, int | None], dict[str, str]]:
     """Each asset's OWN count_sql — the cockpit instrument, not a table count.
 
     F2 (A_REVIEW.md, Lane A gate REJECT): a `count_sql` that RAISES (statement timeout, missing
@@ -340,15 +372,27 @@ def live_counts(reg: dict) -> tuple[dict[str, int | None], dict[str, str]]:
     count_sql"` for a query that in fact errored. N/A is CLOSABLE; a live demonstration
     (bg_ephemeris) closed the gap on a query that never returned a clean answer. Returns
     `(counts, errored)`: `errored[aid]` is set only when that asset's own `count_sql` was
-    non-empty and its query raised `Unknown` — never for a genuinely absent `count_sql`."""
+    non-empty and its query raised `Unknown` — never for a genuinely absent `count_sql`.
+
+    R231: a chart-scoped `count_sql` (`$1`) is bound to `chart_id` (default `CHART_ID`, the
+    canonical chart) before it runs; one that cannot be bound is recorded in `errored` with the
+    reason, never run and never read as absent."""
+    chart_id = CHART_ID if chart_id is None else chart_id
     out: dict[str, int | None] = {}
     errored: dict[str, str] = {}
-    parts, ids = [], []
+    parts, ids, bound = [], [], {}
     for aid, r in reg.items():
         q = " ".join(re.sub(r"--[^\n]*", "", r["count_sql"]).replace("\n", " ").rstrip(" ;").split())
         if not q:
             out[aid] = None
             continue
+        try:
+            q = _bind_chart(q, chart_id)
+        except Unknown as exc:
+            out[aid] = None
+            errored[aid] = str(exc)
+            continue
+        bound[aid] = q
         parts.append(f"SELECT '{aid}' a,({q})::text n")
         ids.append(aid)
     if not parts:
@@ -358,7 +402,7 @@ def live_counts(reg: dict) -> tuple[dict[str, int | None], dict[str, str]]:
             out[a] = int(n) if n.strip().lstrip("-").isdigit() else None
     except Unknown:
         for aid in ids:                                    # one bad count_sql must not blind the rest
-            q = " ".join(re.sub(r"--[^\n]*", "", reg[aid]["count_sql"]).replace("\n", " ").rstrip(" ;").split())
+            q = bound[aid]
             try:
                 v = scalar(f"SELECT ({q})::text")
                 out[aid] = int(v) if v and v.strip().lstrip("-").isdigit() else None
@@ -379,12 +423,33 @@ def _asset_scope(prefix: str, ids=None, col: str = "asset_id") -> str:
     return f"{col} IN ({lit})" if lit else "FALSE"
 
 
-def throughput(prefix: str, ids=None) -> dict[str, dict]:
+def throughput(prefix: str, ids=None) -> dict[str, dict[str, dict]]:
+    """asset_id -> {chart_id ('' for a global row) -> build record}.
+
+    R231: `asset_throughput` holds one row per (chart_id, asset_id). The pre-R231 read keyed a dict
+    by asset_id alone, so whichever chart's row came last silently became "the" build record — a
+    count bound to one chart compared against another chart's rows_written. Rows are now kept per
+    chart and `_build_record()` picks the one matching the count's own scope."""
     rows = psql("SELECT asset_id, coalesce(state,''), coalesce(rows_written::text,''), "
-                "coalesce(round(rows_per_second)::text,''), coalesce(last_built_at::date::text,'') "
+                "coalesce(round(rows_per_second)::text,''), coalesce(last_built_at::date::text,''), "
+                "coalesce(chart_id::text,'') "
                 f"FROM asset_throughput WHERE {_asset_scope(prefix, ids)}")
-    return {r[0]: dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4])
-            for r in ((x + [""] * 5)[:5] for x in rows)}
+    out: dict[str, dict[str, dict]] = {}
+    for r in ((x + [""] * 6)[:6] for x in rows):
+        out.setdefault(r[0], {})[r[5]] = dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4])
+    return out
+
+
+def _build_record(rows_by_chart: dict, chart_scoped: bool, chart_id: str) -> tuple[dict, str]:
+    """R231: the build record that matches the live count's scope, and a label naming it.
+    Chart-scoped count -> that chart's row; global count -> the global (chart_id NULL) row, else the
+    bound chart's row (a global table built per chart), said so in the label."""
+    short = chart_id[:8]
+    if chart_scoped:
+        return rows_by_chart.get(chart_id, {}), f"chart {short}"
+    if "" in rows_by_chart:
+        return rows_by_chart[""], "global"
+    return rows_by_chart.get(chart_id, {}), f"chart {short} (global count_sql; no global build row)"
 
 
 def catalog(tables: list[str]) -> dict:
@@ -740,7 +805,7 @@ def measure(layer_key: str) -> dict:
     reg, population = _layer_read("registry", registry, layer_key)
     cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()])
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
-    counts, count_errors = _layer_read("live_counts", live_counts, reg)
+    counts, count_errors = _layer_read("live_counts", live_counts, reg, CHART_ID)
     ids = sorted(reg)                                      # R224: the layer's measured population
     thru = _layer_read("throughput", throughput, cfg["prefix"], ids)
     hist = _layer_read("build_history", build_history, cfg["prefix"], ids)
@@ -791,7 +856,7 @@ def measure(layer_key: str) -> dict:
             measured=f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}")
 
         live = counts.get(aid)
-        t = thru.get(aid, {})
+        t, rec_scope = _build_record(thru.get(aid, {}), _chart_scoped(r["count_sql"]), CHART_ID)
         rw = t.get("rows_written", "")
         if aid in count_errors:
             # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
@@ -801,13 +866,13 @@ def measure(layer_key: str) -> dict:
         elif live is None:
             m["Build.completion"] = dict(v=NA, measured=f"no count_sql; build state='{t.get('state','-')}'")
         elif rw == "":
-            m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all")
+            m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all ({rec_scope})")
         elif int(rw) == 0 and live > 0:
-            m["Build.completion"] = dict(v=FAIL, measured=f"build record says rows_written=0 against live={live}")
+            m["Build.completion"] = dict(v=FAIL, measured=f"build record says rows_written=0 against live={live} ({rec_scope})")
         elif int(rw) == 0 and live == 0:
-            m["Build.completion"] = dict(v=PASS, measured="live=0 and rows_written=0 — consistent (empty by design or service)")
+            m["Build.completion"] = dict(v=PASS, measured=f"live=0 and rows_written=0 — consistent (empty by design or service) ({rec_scope})")
         else:
-            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw}, live={live}")
+            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw}, live={live} ({rec_scope})")
 
         # D6: `_grade_earn_cost` feature-detects `duration_seconds` (absent everywhere today,
         # migration 1094 not applied) and grades NO_DETECTOR for both measurements when it is —
@@ -943,6 +1008,9 @@ def measure(layer_key: str) -> dict:
                 # gap between it and the layer's raw registry row count must never be silent.
                 population_active=population["active"], population_registry_total=population["registry_total"],
                 population_excluded_inactive=population["excluded_inactive"],
+                # R231: the chart every `$1` count_sql was bound to, and how many were.
+                chart_scope=CHART_ID,
+                chart_scoped_count_sql=sum(1 for r in reg.values() if _chart_scoped(r["count_sql"])),
                 global_runs=hist["global_runs"], global_runs_touching_layer=hist["global_with_layer"],
                 never_exercised_with_writer=never,
                 registered_ids=len(regd), registry_has_writer=sum(1 for r in reg.values() if r["has_writer"]),
@@ -1105,6 +1173,8 @@ def main() -> int:
             print(f"  population: {c['population_active']} active of {c['population_registry_total']} registry "
                   f"rows for this layer — excluded (inactive/dead): "
                   f"{', '.join(x['asset_id'] for x in c['population_excluded_inactive'])}")
+        if c.get("chart_scoped_count_sql"):
+            print(f"  chart scope: {c['chart_scoped_count_sql']} chart-scoped count_sql bound to chart {c['chart_scope']}")
         print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
               f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
         if c["never_exercised_with_writer"]:
