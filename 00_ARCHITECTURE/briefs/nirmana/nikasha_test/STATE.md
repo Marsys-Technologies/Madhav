@@ -167,3 +167,8 @@ None. (L3 production census blocked by inspector timeout → routed to sandbox; 
 **Hand-off to the engine campaign (R215 discipline — read at its next session open):** R216 (rebase `asset_census.py` on B1 `17e5a1257`) and R217 (`build_runs.last_error` never written by `mark_run_state`) are engine-surface rows owned there; this session did not write into that worktree.
 
 **Not done here:** no push; PR #2736 unchanged on the remote; sealed tiers untouched (D2 authorizes the reopens, executing them is P9); the from-scratch L0→L5 run has not started — freeze criterion (PHASE6 §6.5) still unmet.
+
+## 2026-09-27 · Wave 1 folded
+
+Both lanes accepted with corrections (A_REVIEW2, B_REVIEW5). Register v2.2: 10 rows CLOSED (R216, R57, R58, R47, R62, R30, R40, R41, R220, R85), R55 annotated (classifier landed, stays OPEN), R219 annotated (reader scan), R222–R231 added. Plan: P3 landed, P4 partly, P9-R85 landed. Details: `wave1/STATE.md`. **Pending native:** R227 (route evidence never counts as coverage). **Preconditions registered:** R222 before any `--emit-gaps` on the production ledger; R225 before migration 1094 where the census emits; R226 before compiler.ts consumes the provenance artifact.
+

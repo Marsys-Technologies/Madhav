@@ -2,7 +2,7 @@
 artifact: NIKASHA_IMPLEMENTATION_PLAN
 canonical_id: NIKASHA_IMPLEMENTATION_PLAN
 version: "1.0"
-status: PROPOSED — rulings D1–D6 applied 2026-09-27 (nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md); no native decision pending on any packet; what remains for the native is the review of the R218 planner-test output per P-need (D5 rev. 2.1 — §3.6 withdrawn) (D5) and the three re-seal signatures (D2)
+status: IN_PROGRESS — wave 1 folded 2026-09-27 (P3 landed; P4 partly; P9-R85 landed); rulings D1–D6 applied 2026-09-27 (nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md); no native decision pending on any packet; what remains for the native is the review of the R218 planner-test output per P-need (D5 rev. 2.1 — §3.6 withdrawn) (D5) and the three re-seal signatures (D2)
 produced_on: 2026-09-26
 authored_by: nikasha-test campaign, Phase 6 (K3_256 LOW effort, per native instruction)
 register: NIKASHA_CHANGE_REGISTER_v2_0.md (214 rows)
@@ -52,6 +52,8 @@ acts are the review of the R218 planner-test output per P-need (D5 rev. 2.1 — 
 
 ## P3 · Port the closure loop into the production tools (~70 lines, proof exists in sandbox)
 
+- **Wave 1 (2026-09-27): LANDED.** R57/R58/R47/R62/R30 CLOSED (Lane A, A_REVIEW2 ACCEPT_WITH_CORRECTIONS, final `7352ba484`). T3 passes under the production tools (OPEN→CLOSED→RE-OPENED→CLOSED, live, ledger copy). Carry **R222** (G2) must close before the first `--emit-gaps` on the production ledger.
+
 - **Closes:** R57 (closure impossible in stock tooling), R58 (hand-written rows carry no detector binding), R47 (census output path overwrites the production artifact), R62 (sandbox census emits prod-scale floor rows), R30 (tracker reads the census JSON, not only ledgers).
 - **What it is:** port the three proven scratch changes — (a) `emit_gaps` closure semantics (append CLOSED when a previously-OPEN deterministic-id row's check now passes; RE-OPENED when a closed check fails again; ~40 lines), (b) last-wins-per-gap_id gap resolution in the tracker (~6 lines), (c) `NIKASHA_CONTROL_DIR` redirection + census `--out` flag — from `nikasha_test/harness/asset_census_closing.py` and `harness/tracker_sandbox.py`; plus detector bindings for hand-written rows (`<control>/detectors/<asset>_<check>.py` convention, proven by `harness/sandbox_control/detectors/bg_nakshatra_medical_D1.py`, which failed before its fix).
 - **Closure semantics (per D4 ruling 2026-09-27):** the port is not adopted unchanged — CLOSED only on `PASS` or an explicitly justified `N/A` (never `NOT_GENERIC`, `UNKNOWN`, an errored or unmeasured check); `IN_PROGRESS` transitions on PASS; regression re-opens; a superseded id is never resurrected; hand `change`/`owner`/`gate` carried onto every transition row. Each is an acceptance case with a test before the port lands (the sandbox copy fails four of them today).
@@ -61,6 +63,8 @@ acts are the review of the R218 planner-test output per P-need (D5 rev. 2.1 — 
 - **Who decides:** native — this is the campaign's headline finding; the change is small and proven, but it changes governance tooling behaviour (D4 ruled 2026-09-27 — the identity, namespace and closure semantics it interacts with are fixed; see P6).
 
 ## P4 · Inspector detector fixes (the C1–C4 clusters)
+
+- **Wave 1 (2026-09-27): PARTLY LANDED.** R216, R40, R41, R220 CLOSED; D6 classifier landed but R55 stays OPEN until **R225** (G1). Remaining: R20–R23, R42–R56 (the second P4 lane, incl. the attempt adapter D6 item 2 needs), plus carries **R223**, **R224**, **R231**.
 
 - **Closes:** **R216** (rebase the census on engine B1's `17e5a1257` diff — before anything else in this packet; per D1 ruling 2026-09-27), R41 (per-check fault isolation — then everything else ships behind it), R40 (scalable duplicate count + configurable timeout), R42 + R52 + R99 (completion logic: N/A-despite-count_sql, inverted consistency test, empty-by-design third case), R43 (registration: constant indirection, package writers), R44 + R45 + R49 (latest-row selection), R46 (view count_sql), R48 + R56 (silent coverage: every gate emits a row for every asset, N/A-with-reason included; R128 folds in), R50, R51, R53, R54, R55 (per D6 ruling 2026-09-27: `Earn.build_record` / `Cost.baseline` separately specified, instrument feature-detected, timing attributed to the latest attempt at chart scope, graded by cause, a zero-row rate kept as 0.0, the cost baseline a sanctioned measured completion — tested against the engine implementation before adoption; register R55 carries the spec), R60, R20 (follow writer delegation into the seeder — proof exists: sandbox F3 closed 23 Idem rows), R21 (blocking radius), R22 (declared width universes — needs the R06-class registry declaration from P9-D5), R23 (field-level reachability census).
 - **Proof:** (a) re-run the T2 hand-verification protocol (`harness/T2_PROTOCOL.md`) on all six layers against production — verdict disagreements must go 60 → 0 (`handverify/T2_SUMMARY.md` baseline); (b) re-run the T1 planted suite against the fixed inspector — the TRUNCATE plant (`build_completion_truncate`) must now FAIL, and all 17 plants still detected with `collateral=[]`; (c) the L3 census completes on production (currently NOT_RUNNABLE, R40/R41); (d) the differential (`harness/differential.py`) finds zero unclassified disagreements and the three known hidden floor breaches (ga_vargas 0 < 22 092; bo_laksana 7 409 < 60 000; ph_sankrama 630 < 2 510) appear as emitted inspector rows.
@@ -102,6 +106,8 @@ acts are the review of the R218 planner-test output per P-need (D5 rev. 2.1 — 
 - **Who decides:** none pending — D1 ruled 2026-09-27.
 
 ## P9 · Layer-instance blockers (C8 cluster — the derivability mappings)
+
+- **Wave 1 (2026-09-27): R85 LANDED** (Lane B, B_REVIEW5 ACCEPT_WITH_CORRECTIONS, final `ef9c0bf50`): 107/182 SCUs name a producer; closure 63 → 111 of 127. Carries **R226** (`--live`, before compiler.ts wiring), **R227** (B1, awaiting native), **R228**, **R229**. R218 (planner test) and R221 (§0.1 re-scope) remain.
 
 - **Closes (primary rows; the ~100 remaining P4 rows are `depends_on` transcription rows that close with their primary):**
   - **R85** — **re-scoped by D5 rev. 2.1 (native, 2026-09-27):** catalog provenance — name the producing asset(s) for the 170 of 182 catalog units that carry none (`capability_knowledge.snapshot.json` `producer_output_claims`; editorial.ts / compiler.ts), then compute the necessity closure over `asset_registry.depends_on` (today 63 of 127 active assets; all 23 ph/mi outside). The signed P/V × layer matrix is withdrawn: Pariprāśna's planner LLM chooses catalog units per question, so no static table is used. Plus **R218** — the planner P-need test (each of P01–P24 through `plan_retrieval`, PASS when every route's catalog unit has a named producer; 6 h) and **R221** — T3 §0.1 re-scoped to catalog units produced + closure position (2 h; T3 reopen agenda). No T2 §3.6. 12 + 6 + 2 h.
