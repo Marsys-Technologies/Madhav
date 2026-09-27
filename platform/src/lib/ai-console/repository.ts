@@ -15,8 +15,14 @@ import {
 type Client = Pick<PoolClient, 'query'>
 type Row = Record<string, unknown>
 const nameSchema = z.string().trim().min(1).max(120)
+const uuidSchema = z.string().uuid()
 const safeColumns = 'id,provider_id,name,masked_suffix,validation_state'
 const notFound = () => new AiConsoleError('AI_CHOICE_BROKEN')
+const providerConnectionErrorSchema = z.enum([
+  'AI_CONNECTION_INVALID', 'AI_MODEL_UNAVAILABLE', 'AI_ROLE_INCOMPATIBLE',
+  'AI_PROVIDER_UNREACHABLE', 'AI_PERMISSION_DENIED', 'AI_BILLING_UNAVAILABLE',
+  'AI_RATE_LIMITED', 'AI_EXECUTION_FAILED',
+])
 /**
  * One lock order for the entire owned graph: user advisory lock, then row locks.
  * Save/select/duplicate, validation, deletion, history and CLI authorization all
@@ -63,7 +69,13 @@ function rowChoice(row: Row): AiChoiceRef {
     : row.kind === 'local_cli' ? { kind: row.kind, cliId: row.cli_id, modelId: row.model_id }
       : { kind: row.kind, configurationId: row.configuration_id })
 }
+function assertChoiceUuid(choice: AiChoiceRef): void {
+  const id = choice.kind === 'provider_model' ? choice.connectionId
+    : choice.kind === 'custom_configuration' ? choice.configurationId : undefined
+  if (id !== undefined && !uuidSchema.safeParse(id).success) throw notFound()
+}
 async function ownedConnection(client: Client, userId: string, id: string) {
+  if (!uuidSchema.safeParse(id).success) throw notFound()
   return required((await client.query(`SELECT ${safeColumns},credential_version,credential_validity FROM ai_provider_connections
     WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR NO KEY UPDATE`, [userId, id])).rows)
 }
@@ -72,6 +84,7 @@ async function invalidateCatalog(client: Client, userId: string, id: string) {
     WHERE connection_id=$2 AND EXISTS(SELECT 1 FROM ai_provider_connections WHERE user_id=$1 AND id=$2)`, [userId, id])
 }
 async function ownedConversation(client: Client, userId: string, conversationId: string) {
+  if (!uuidSchema.safeParse(conversationId).success) throw new AiConsoleError('AI_PERMISSION_DENIED')
   const rows = (await client.query('SELECT id FROM conversations WHERE user_id=$1 AND id=$2 FOR NO KEY UPDATE', [userId, conversationId])).rows
   if (!rows.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
 }
@@ -157,11 +170,24 @@ function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readon
 /** Exact target read for one resolution. It never decrypts, spawns, repairs, or searches alternatives. */
 async function loadRoutingTarget(client: Client, userId: string, target: RoleTarget, roles: readonly AiRole[]): Promise<RoutingTarget> {
   if (target.kind === 'provider_model') {
-    const connection = (await client.query(`SELECT c.id,c.provider_id,c.credential_version,c.credential_validity,c.validation_state
+    if (!uuidSchema.safeParse(target.connectionId).success) throw notFound()
+    const connection = (await client.query(`SELECT c.id,c.provider_id,c.credential_version,c.credential_validity,c.validation_state,c.last_error_code
       FROM ai_provider_connections c WHERE c.user_id=$1 AND c.id=$2 AND c.deleted_at IS NULL FOR SHARE`,
     [userId, target.connectionId])).rows[0]
     if (!connection) throw new AiConsoleError('AI_CHOICE_BROKEN')
-    if (connection.validation_state === 'unreachable') throw new AiConsoleError('AI_PROVIDER_UNREACHABLE')
+    if (connection.validation_state === 'invalid' || connection.credential_validity === 'invalid') {
+      throw new AiConsoleError('AI_CONNECTION_INVALID')
+    }
+    if (connection.validation_state === 'needs_attention') {
+      const error = providerConnectionErrorSchema.safeParse(connection.last_error_code)
+      if (!error.success) throw notFound()
+      throw new AiConsoleError(error.data)
+    }
+    if (connection.validation_state === 'unreachable') {
+      const error = providerConnectionErrorSchema.safeParse(connection.last_error_code)
+      if (!error.success) throw notFound()
+      throw new AiConsoleError(error.data)
+    }
     if (connection.validation_state !== 'validated' || connection.credential_validity !== 'valid') {
       throw new AiConsoleError('AI_CONNECTION_INVALID')
     }
@@ -205,12 +231,19 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
  * AI Console mutations. The returned graph contains only safe identity and
  * capability metadata; executable bindings are constructed outside the DB transaction.
  */
-export async function loadRoutingResolution(userId: string, input: unknown): Promise<RoutingResolution> {
+export async function loadRoutingResolution(userId: string, input: unknown, conversationId?: string): Promise<RoutingResolution> {
   if (typeof userId !== 'string' || userId.trim().length === 0) throw new AiConsoleError('AI_PERMISSION_DENIED')
-  const selection = ConversationAiSelectionSchema.parse(input)
+  if (conversationId !== undefined && !uuidSchema.safeParse(conversationId).success) {
+    throw new AiConsoleError('AI_PERMISSION_DENIED')
+  }
+  const parsedSelection = ConversationAiSelectionSchema.safeParse(input)
+  if (!parsedSelection.success) throw notFound()
+  const selection = parsedSelection.data
+  if (selection.kind === 'explicit') assertChoiceUuid(selection.choice)
   return withUserTransaction(userId, async client => {
     const owner = (await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [userId])).rows
     if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    if (conversationId !== undefined) await ownedConversation(client, userId, conversationId)
 
     let resolvedChoice: AiChoiceRef
     if (selection.kind === 'default') {
@@ -222,6 +255,7 @@ export async function loadRoutingResolution(userId: string, input: unknown): Pro
     } else {
       resolvedChoice = selection.choice
     }
+    assertChoiceUuid(resolvedChoice)
 
     let assignments: RoleAssignments
     let configurationVersion: number | null = null
@@ -473,8 +507,10 @@ export async function deleteConfiguration(userId: string, configurationId: strin
 
 /** Adapter-only: a version mismatch fails rather than silently switching credentials. */
 export async function assertConnectionRequestAuthorized(input: { userId: string; connectionId: string; providerId: z.infer<typeof ProviderIdSchema>; credentialVersion: number }): Promise<void> {
-  const target = z.object({ userId: z.string().min(1), connectionId: z.string().uuid(), providerId: ProviderIdSchema,
-    credentialVersion: z.number().int().positive() }).strict().parse(input)
+  const parsed = z.object({ userId: z.string().min(1), connectionId: uuidSchema, providerId: ProviderIdSchema,
+    credentialVersion: z.number().int().positive() }).strict().safeParse(input)
+  if (!parsed.success) throw notFound()
+  const target = parsed.data
   // A fresh read immediately before dispatch. No credential projection, row lock,
   // or open transaction spans the subsequent external provider request.
   required((await query(`SELECT c.id FROM ai_provider_connections c JOIN profiles p ON p.id=c.user_id
@@ -483,8 +519,23 @@ export async function assertConnectionRequestAuthorized(input: { userId: string;
   [target.userId, target.connectionId, target.providerId, target.credentialVersion])).rows)
 }
 
+/** Runtime-only: authorize the exact selected model as well as the pinned connection version. */
+export async function assertRuntimeModelRequestAuthorized(input: { userId: string; connectionId: string;
+  providerId: z.infer<typeof ProviderIdSchema>; credentialVersion: number; modelId: string }): Promise<void> {
+  const parsed = z.object({ userId: z.string().min(1), connectionId: uuidSchema, providerId: ProviderIdSchema,
+    credentialVersion: z.number().int().positive(), modelId: z.string().min(1).max(512) }).strict().safeParse(input)
+  if (!parsed.success) throw notFound()
+  const target = parsed.data
+  required((await query(`SELECT c.id FROM ai_provider_connections c JOIN profiles p ON p.id=c.user_id
+    JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5
+    WHERE c.user_id=$1 AND c.id=$2 AND c.provider_id=$3 AND c.credential_version=$4
+    AND c.deleted_at IS NULL AND c.credential_validity<>'invalid' AND p.status='active' AND m.available=true`,
+  [target.userId, target.connectionId, target.providerId, target.credentialVersion, target.modelId])).rows)
+}
+
 /** Adapter-only: a version mismatch fails rather than silently switching credentials. */
 export async function loadConnectionCredential(userId: string, connectionId: string, credentialVersion: number): Promise<EncryptedCredential> {
+  if (!uuidSchema.safeParse(connectionId).success || !z.number().int().positive().safeParse(credentialVersion).success) throw notFound()
   const row = required((await query(`SELECT c.credential_ciphertext,c.credential_nonce,c.credential_tag,c.wrapped_dek,
     c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint FROM ai_provider_connections c
     JOIN profiles p ON p.id=c.user_id WHERE c.user_id=$1 AND c.id=$2 AND c.credential_version=$3

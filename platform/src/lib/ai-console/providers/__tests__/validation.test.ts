@@ -17,6 +17,7 @@ let provider: ProviderId = 'openai'
 let version = 1
 let state = 'untested'
 let validity = 'unknown'
+let availableModels = new Set(['gpt-4.1', 'gpt-4.1-mini'])
 let claimed: Record<string, unknown>[] = []
 let maxConcurrent = 0
 let concurrent = 0
@@ -25,12 +26,14 @@ beforeEach(() => {
   vi.stubEnv('MARSYS_AI_KEK_test', Buffer.alloc(32, 1).toString('base64'))
   vi.stubEnv('MARSYS_AI_FINGERPRINT_SECRET', Buffer.alloc(32, 2).toString('base64'))
   const e = encryptCredential(key)
-  active = true; deleted = false; provider = 'openai'; version = 1; state = 'untested'; validity = 'unknown'; claimed = []; concurrent = 0; maxConcurrent = 0
+  active = true; deleted = false; provider = 'openai'; version = 1; state = 'untested'; validity = 'unknown';
+  availableModels = new Set(['gpt-4.1', 'gpt-4.1-mini']); claimed = []; concurrent = 0; maxConcurrent = 0
   execute.mockReset().mockImplementation(async (sql: string, params: unknown[] = []) => {
     let rows: Record<string, unknown>[] = []
     if (sql.includes('SKIP LOCKED')) { rows = claimed; claimed = [] }
     else if (sql.includes('SELECT c.id FROM ai_provider_connections c')) {
-      if (active && !deleted && params[0] === 'alice' && params[1] === id && params[2] === provider && params[3] === version) rows = [{ id }]
+      const exactModelAllowed = !sql.includes('ai_connection_models') || (validity !== 'invalid' && availableModels.has(String(params[4])))
+      if (active && !deleted && exactModelAllowed && params[0] === 'alice' && params[1] === id && params[2] === provider && params[3] === version) rows = [{ id }]
     }
     else if (sql.includes('SELECT c.credential_ciphertext')) {
       if (active && params[0] === 'alice' && params[1] === id && params[2] === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint }]
@@ -162,6 +165,33 @@ describe('owned validation state flow', () => {
     binding.dispose(); version = 2
     await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(http).not.toHaveBeenCalled()
+  })
+  it('rejects a removed exact runtime model before decrypting and on every outbound preflight', async () => {
+    const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
+    const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
+    availableModels.clear()
+    await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(execute.mock.calls.some(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toBe(false)
+    availableModels.add(model.modelId)
+    const binding = await createConnectionRuntimeBinding(connection, model)
+    availableModels.clear()
+    await expect(binding.model.doGenerate({ prompt: [] })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(http).not.toHaveBeenCalled()
+    binding.dispose()
+  })
+  it('rejects a confirmed-invalid runtime credential before decrypting even when the exact model remains available', async () => {
+    validity = 'invalid'
+    const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
+    const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
+    await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(execute.mock.calls.some(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toBe(false)
+    expect(http).not.toHaveBeenCalled()
+  })
+  it('preserves connection-only authorization for discovery before a model catalog exists', async () => {
+    availableModels.clear()
+    await expect(discoverConnectionModels({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 1 },
+      new AbortController().signal)).resolves.toHaveLength(2)
+    expect(http).toHaveBeenCalledOnce()
   })
 })
 describe('conservative stale revalidation', () => {

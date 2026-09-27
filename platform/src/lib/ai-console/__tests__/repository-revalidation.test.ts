@@ -28,6 +28,26 @@ describe('bounded repository-owned revalidation leases', () => {
     await expect(repository.assertConnectionRequestAuthorized({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 0 })).rejects.toBeDefined()
     expect(execute).not.toHaveBeenCalled()
   })
+  it('authorizes only the exact available runtime model on a not-invalid credential', async () => {
+    execute.mockResolvedValue({ rows: [{ id }], rowCount: 1 })
+    expect(await repository.assertRuntimeModelRequestAuthorized({ userId: 'alice', connectionId: id,
+      providerId: 'openai', credentialVersion: 2, modelId: 'gpt-4.1-mini' })).toBeUndefined()
+    expect(calls()).toHaveLength(1)
+    expect(calls()[0].params).toEqual(['alice', id, 'openai', 2, 'gpt-4.1-mini'])
+    expect(calls()[0].sql).toContain("c.credential_validity<>'invalid'")
+    expect(calls()[0].sql).toContain('m.connection_id=c.id')
+    expect(calls()[0].sql).toContain('m.model_id=$5')
+    expect(calls()[0].sql).toContain('m.available=true')
+  })
+  it('rejects unavailable runtime models and malformed runtime target IDs without SQL fallback', async () => {
+    await expect(repository.assertRuntimeModelRequestAuthorized({ userId: 'alice', connectionId: id,
+      providerId: 'openai', credentialVersion: 2, modelId: 'removed-model' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(calls()).toHaveLength(1)
+    execute.mockClear()
+    await expect(repository.assertRuntimeModelRequestAuthorized({ userId: 'alice', connectionId: 'not-a-uuid',
+      providerId: 'openai', credentialVersion: 2, modelId: 'gpt-4.1-mini' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(execute).not.toHaveBeenCalled()
+  })
   it('atomically claims active stale noninvalid connections with skip-locked recovery and safe projection', async () => {
     execute.mockImplementation(async (sql: string) => ({ rows: sql.includes('RETURNING') ? [{ user_id: 'alice', id, provider_id: 'openai', credential_version: '2', credential_ciphertext: 'never-return' }] : [] }))
     const staleBefore = new Date(Date.now() - 86_400_000)

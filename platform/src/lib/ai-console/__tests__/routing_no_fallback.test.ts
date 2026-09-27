@@ -42,7 +42,20 @@ describe('routing has no fallback path', () => {
   it('fails closed for a disabled user and never attempts another owner', async () => {
     mocks.loadRoutingResolution.mockRejectedValue(new AiConsoleError('AI_PERMISSION_DENIED'))
     await expect(resolveUserRouting(input)).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
-    expect(mocks.loadRoutingResolution).toHaveBeenCalledExactlyOnceWith('alice', input.selection)
+    expect(mocks.loadRoutingResolution).toHaveBeenCalledExactlyOnceWith('alice', input.selection, undefined)
+  })
+
+  it('does not construct a plan for a foreign conversation', async () => {
+    const conversationId = '00000000-0000-4000-8000-000000000004'
+    mocks.loadRoutingResolution.mockRejectedValue(new AiConsoleError('AI_PERMISSION_DENIED'))
+    await expect(resolveUserRouting({ ...input, conversationId })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    expect(mocks.loadRoutingResolution).toHaveBeenCalledExactlyOnceWith('alice', input.selection, conversationId)
+    expect(mocks.createConnectionRuntimeBinding).not.toHaveBeenCalled()
+  })
+
+  it('rejects a malformed conversation reference with a stable error before persistence access', async () => {
+    await expect(resolveUserRouting({ ...input, conversationId: 'not-a-uuid' })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    expect(mocks.loadRoutingResolution).not.toHaveBeenCalled()
   })
 
   it('fails closed before persistence access for an ownerless job', async () => {

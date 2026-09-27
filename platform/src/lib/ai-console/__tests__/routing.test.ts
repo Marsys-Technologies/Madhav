@@ -44,7 +44,7 @@ const baseInput = {
   userId: 'alice',
   source: 'pariprashna' as const,
   selection: { kind: 'default' as const },
-  conversationId: 'conversation-1',
+  conversationId: '00000000-0000-4000-8000-000000000004',
   turnId: 'turn-1',
 }
 
@@ -141,7 +141,7 @@ describe('central AI routing resolver', () => {
     mocks.loadRoutingResolution.mockResolvedValueOnce(second)
     const explicit = { kind: 'explicit' as const, choice: secondChoice }
     await resolveUserRouting({ ...baseInput, selection: explicit, turnId: 'turn-3' })
-    expect(mocks.loadRoutingResolution).toHaveBeenLastCalledWith('alice', explicit)
+    expect(mocks.loadRoutingResolution).toHaveBeenLastCalledWith('alice', explicit, baseInput.conversationId)
 
     const configChoice = { kind: 'custom_configuration' as const, configurationId }
     mocks.loadRoutingResolution

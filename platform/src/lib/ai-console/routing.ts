@@ -15,7 +15,7 @@ const ResolverInputSchema = z.object({
   userId: z.string().min(1).regex(/\S/),
   source: z.enum(['pariprashna', 'consult', 'mcp', 'backend']),
   selection: ConversationAiSelectionSchema,
-  conversationId: z.string().min(1).regex(/\S/).optional(),
+  conversationId: z.string().uuid().optional(),
   turnId: z.string().min(1).regex(/\S/),
 }).strict()
 
@@ -65,9 +65,12 @@ export async function resolveUserRouting(input: {
   if (typeof input?.userId !== 'string' || input.userId.trim().length === 0) {
     throw new AiConsoleError('AI_PERMISSION_DENIED')
   }
+  if (input.conversationId !== undefined && !z.string().uuid().safeParse(input.conversationId).success) {
+    throw new AiConsoleError('AI_PERMISSION_DENIED')
+  }
   const parsed = ResolverInputSchema.parse(input)
   const source: AiSource = parsed.source === 'consult' ? 'pariprashna' : parsed.source
-  const resolution = await loadRoutingResolution(parsed.userId, parsed.selection)
+  const resolution = await loadRoutingResolution(parsed.userId, parsed.selection, parsed.conversationId)
   const parsedSelection = ConversationAiSelectionSchema.parse(parsed.selection)
   const selection = parsedSelection.kind === 'default'
     ? Object.freeze({ kind: 'default' as const })

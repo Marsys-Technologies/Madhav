@@ -359,21 +359,31 @@ describe('atomic routing resolution read', () => {
   it('locks an active owner and resolves only the current exact default target', async () => {
     respond((sql, params) => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM conversations')) return [{ id: conversationId }]
       if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', configuration_id: null, cli_id: null }]
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
       if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES, available: true }]
       expect(params).not.toContain('alternative-model')
     })
-    const resolution = await repository.loadRoutingResolution('alice', { kind: 'default' })
+    const resolution = await repository.loadRoutingResolution('alice', { kind: 'default' }, conversationId)
     expect(resolution.resolvedChoice).toEqual(choice)
     expect(resolution.configurationVersion).toBeNull()
     expect(resolution.roles.worker).toMatchObject({ ...choice, providerId: 'openai', credentialVersion: 1 })
     expect(calls()[0].sql).toBe('BEGIN')
     expect(calls().find(c => c.sql.includes('FROM profiles'))?.sql).toContain("status='active'")
     expect(calls().find(c => c.sql.includes('FROM profiles'))?.sql).toContain('FOR SHARE')
+    expect(calls().find(c => c.sql.includes('FROM conversations'))?.params).toEqual(['alice', conversationId])
     expect(calls().filter(c => c.sql.includes('FROM ai_provider_connections'))).toHaveLength(1)
     expect(calls().filter(c => c.sql.includes('FROM ai_connection_models'))).toHaveLength(1)
     expect(calls().at(-1)?.sql).toBe('COMMIT')
+  })
+
+  it('fails a foreign conversation inside the user transaction before reading any choice or target', async () => {
+    respond(sql => sql.includes('FROM profiles') ? [{ id: 'alice' }] : undefined)
+    await expect(repository.loadRoutingResolution('alice', { kind: 'default' }, conversationId)).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    expect(calls().some(c => c.sql.includes('ai_user_defaults') || c.sql.includes('ai_provider_connections') || c.sql.includes('ai_cli_'))).toBe(false)
+    expect(calls().find(c => c.sql.includes('FROM conversations'))?.params).toEqual(['alice', conversationId])
+    expect(calls().at(-1)?.sql).toBe('ROLLBACK')
   })
 
   it('fails disabled users before reading defaults or any target', async () => {
@@ -425,15 +435,46 @@ describe('atomic routing resolution read', () => {
   })
 
   it.each([
-    ['invalid', 'invalid', 'AI_CONNECTION_INVALID'],
-    ['unreachable', 'valid', 'AI_PROVIDER_UNREACHABLE'],
-  ] as const)('maps provider state %s to stable %s-free failure %s', async (state, validity, code) => {
+    ['invalid', 'invalid', 'AI_PERMISSION_DENIED', 'AI_CONNECTION_INVALID'],
+    ['needs_attention', 'valid', 'AI_MODEL_UNAVAILABLE', 'AI_MODEL_UNAVAILABLE'],
+    ['needs_attention', 'valid', 'AI_ROLE_INCOMPATIBLE', 'AI_ROLE_INCOMPATIBLE'],
+    ['needs_attention', 'valid', 'AI_PERMISSION_DENIED', 'AI_PERMISSION_DENIED'],
+    ['needs_attention', 'valid', 'AI_BILLING_UNAVAILABLE', 'AI_BILLING_UNAVAILABLE'],
+    ['needs_attention', 'valid', 'AI_EXECUTION_FAILED', 'AI_EXECUTION_FAILED'],
+    ['unreachable', 'valid', 'AI_RATE_LIMITED', 'AI_RATE_LIMITED'],
+    ['unreachable', 'valid', 'AI_PROVIDER_UNREACHABLE', 'AI_PROVIDER_UNREACHABLE'],
+  ] as const)('maps provider %s/%s with %s to exact stable %s', async (state, validity, lastErrorCode, code) => {
     respond(sql => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
-      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: state, credential_validity: validity }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: state,
+        credential_validity: validity, last_error_code: lastErrorCode }]
     })
     const selected = { kind: 'explicit' as const, choice }
     await expect(repository.loadRoutingResolution('alice', selected)).rejects.toMatchObject({ code })
+    expect(calls().some(c => c.sql.includes('FROM ai_connection_models'))).toBe(false)
+    expect(calls().find(c => c.sql.includes('FROM ai_provider_connections'))?.sql).toContain('last_error_code')
+  })
+
+  it.each([
+    ['needs_attention', 'AI_RATE_LIMITED'],
+    ['unreachable', 'AI_MODEL_UNAVAILABLE'],
+  ] as const)('preserves any allowlisted provider state/error %s/%s exactly', async (state, lastErrorCode) => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: state,
+        credential_validity: 'valid', last_error_code: lastErrorCode }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice })).rejects.toMatchObject({ code: lastErrorCode })
+    expect(calls().some(c => c.sql.includes('FROM ai_connection_models'))).toBe(false)
+  })
+
+  it('fails closed when a non-validated provider state has no strictly parseable safe error', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: 'needs_attention',
+        credential_validity: 'valid', last_error_code: null }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(calls().some(c => c.sql.includes('FROM ai_connection_models'))).toBe(false)
   })
 
@@ -465,6 +506,15 @@ describe('atomic routing resolution read', () => {
       if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model', connection_id: null, model_id: null }]
     })
     await expect(repository.loadRoutingResolution('alice', { kind: 'default' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+  })
+
+  it.each([
+    [{ kind: 'explicit', choice: { kind: 'provider_model', connectionId: 'not-a-uuid', modelId: 'model-a' } }, undefined, 'AI_CHOICE_BROKEN'],
+    [{ kind: 'explicit', choice: { kind: 'custom_configuration', configurationId: 'not-a-uuid' } }, undefined, 'AI_CHOICE_BROKEN'],
+    [{ kind: 'default' }, 'not-a-uuid', 'AI_PERMISSION_DENIED'],
+  ] as const)('rejects malformed UUID-backed routing references before SQL', async (selection, conversation, code) => {
+    await expect(repository.loadRoutingResolution('alice', selection, conversation)).rejects.toMatchObject({ code })
+    expect(execute).not.toHaveBeenCalled()
   })
 })
 
