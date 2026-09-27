@@ -12,7 +12,14 @@ import { readinessRefusalMessage } from '@/lib/charts/readinessCopy'
  */
 export type ReadingGateResult =
   | { ok: true }
-  | { ok: false; code: 'CHART_RECOMPUTE_REQUIRED'; state: string; message: string }
+  | { ok: false; code: 'CHART_RECOMPUTE_REQUIRED'; state: string; message: string; retryable: boolean }
+
+/**
+ * A refusal is retryable only when it clears on its own: an actively
+ * progressing build, or a readiness lookup that failed. Needs rebuild, Failed,
+ * Partially built and Not built need an explicit rebuild/operator/user action.
+ */
+const TRANSIENT_STATES = new Set(['building', 'unavailable'])
 
 export async function checkReadingReadiness(chartId: string): Promise<ReadingGateResult> {
   let state = 'unavailable'
@@ -23,5 +30,11 @@ export async function checkReadingReadiness(chartId: string): Promise<ReadingGat
   } catch (err) {
     console.error('[charts/readingGate] readiness lookup failed:', (err as Error)?.message)
   }
-  return { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state, message: readinessRefusalMessage(state) }
+  return {
+    ok: false,
+    code: 'CHART_RECOMPUTE_REQUIRED',
+    state,
+    message: readinessRefusalMessage(state),
+    retryable: TRANSIENT_STATES.has(state),
+  }
 }

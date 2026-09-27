@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   // Same shared readiness gate as the consult and Paripraśna doors.
   const readingGate = await checkReadingReadiness(conv.chart_id)
   if (!readingGate.ok) {
-    return errorResponse(readingGate.code, readingGate.message, 409, { retry: true })
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
   }
 
   // Load conversation messages for context.

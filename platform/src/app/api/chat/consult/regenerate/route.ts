@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   // conversation.
   const readingGate = await checkReadingReadiness(conv.chart_id)
   if (!readingGate.ok) {
-    return errorResponse(readingGate.code, readingGate.message, 409, { retry: true })
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
   }
 
   // Get the created_at timestamp of the parent message so we can delete everything after it.

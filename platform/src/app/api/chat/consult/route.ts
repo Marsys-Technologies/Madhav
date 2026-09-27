@@ -392,7 +392,7 @@ export async function POST(request: Request) {
   // before any conversation insert.
   const readingGate = await checkReadingReadiness(chartId)
   if (!readingGate.ok) {
-    return errorResponse(readingGate.code, readingGate.message, 409, { retry: true })
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
   }
 
   if (!conversationId) {

@@ -61,21 +61,23 @@ async function consultOutcome() {
   ).catch(() => null)
   if (res?.status === 409) {
     const body = await res.json()
-    return { refused: true, code: body.error.code as string, message: body.error.message as string }
+    return { refused: true, code: body.error.code as string, message: body.error.message as string, retry: body.error.retry as boolean }
   }
   return { refused: false }
 }
 
 async function pariprashnaOutcome() {
-  const errors: Array<{ code: string; message: string }> = []
-  const em = { error: (e: { code: string; message: string }) => errors.push(e) }
+  const errors: Array<{ code: string; message: string; retryable: boolean }> = []
+  const em = { error: (e: { code: string; message: string; retryable: boolean }) => errors.push(e) }
   await authorizeTurn({
     em: em as never,
     user: { uid: 'owner-uid' },
     identity: { chartId: CHART, conversationId: '6b0f4c2e-1111-4222-8333-4444555566cc', isFirstTurn: true } as never,
   })
   const refusal = errors.find((e) => e.code === 'CHART_RECOMPUTE_REQUIRED')
-  return refusal ? { refused: true, code: refusal.code, message: refusal.message } : { refused: false }
+  return refusal
+    ? { refused: true, code: refusal.code, message: refusal.message, retry: refusal.retryable }
+    : { refused: false }
 }
 
 beforeEach(() => {
@@ -85,13 +87,13 @@ beforeEach(() => {
 
 describe('legacy consult ↔ Paripraśna readiness parity', () => {
   it.each([
-    ['building', true],
-    ['needs-rebuild', true],
-    ['failed', true],
-    ['partially-built', true],
-    ['not-built', true],
-    ['ready', false],
-  ])('a %s chart: refused=%s at both doors, with the same code and message', async (state, refused) => {
+    ['building', true, true],
+    ['needs-rebuild', true, false],
+    ['failed', true, false],
+    ['partially-built', true, false],
+    ['not-built', true, false],
+    ['ready', false, undefined],
+  ])('a %s chart: refused=%s at both doors, with the same code, message and retry=%s', async (state, refused, retry) => {
     readiness.value = { state, refreshWarning: null }
     const [consult, pariprashna] = [await consultOutcome(), await pariprashnaOutcome()]
     expect(consult.refused).toBe(refused)
@@ -99,6 +101,7 @@ describe('legacy consult ↔ Paripraśna readiness parity', () => {
     if (refused) {
       expect(consult.code).toBe('CHART_RECOMPUTE_REQUIRED')
       expect(consult.message).toBe(readinessRefusalMessage(state))
+      expect(consult.retry).toBe(retry)
     }
   })
 
@@ -114,5 +117,6 @@ describe('legacy consult ↔ Paripraśna readiness parity', () => {
     expect(consult.refused).toBe(true)
     expect(pariprashna).toEqual(consult)
     expect(consult.message).toBe(readinessRefusalMessage('unavailable'))
+    expect(consult.retry).toBe(true)
   })
 })

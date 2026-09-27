@@ -9,7 +9,8 @@ vi.mock('server-only', () => ({}))
 
 const { mockReadiness } = vi.hoisted(() => ({ mockReadiness: vi.fn() }))
 vi.mock('@/lib/charts/readingGate', () => ({ checkReadingReadiness: mockReadiness }))
-const NOT_READY = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state: 'building', message: 'This chart is still being computed.' }
+const NOT_READY = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state: 'building', message: 'This chart is still being computed.', retryable: true }
+const FAILED = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state: 'failed', message: 'The latest build failed.', retryable: false }
 
 const { mockGetConversation, mockQuery } = vi.hoisted(() => ({ mockGetConversation: vi.fn(), mockQuery: vi.fn() }))
 
@@ -59,5 +60,18 @@ describe('POST /api/chat/consult/regenerate — shared readiness gate', () => {
     expect((await res.json()).error.code).toBe('CHART_RECOMPUTE_REQUIRED')
     expect(mockReadiness).toHaveBeenCalledWith('c')
     expect(mockQuery.mock.calls.some(([sql]) => /DELETE/i.test(sql))).toBe(false)
+  })
+})
+
+describe('POST /api/chat/consult/regenerate — refusal retry flag follows the gate', () => {
+  it.each([
+    [NOT_READY, true],
+    [FAILED, false],
+  ])('%o → retry %s', async (gate, retry) => {
+    mockGetConversation.mockResolvedValue({ id: 'conv-1', chart_id: 'c', archived_at: null, archive_reason: null })
+    mockReadiness.mockResolvedValue(gate)
+    const res = await POST(req())
+    expect(res.status).toBe(409)
+    expect((await res.json()).error.retry).toBe(retry)
   })
 })

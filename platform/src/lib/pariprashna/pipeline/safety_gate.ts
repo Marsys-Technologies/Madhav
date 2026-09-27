@@ -282,7 +282,7 @@ export async function authorizeTurn(args: {
   // workspace and directory use. Fails closed if readiness cannot be read.
   const readingGate = await checkReadingReadiness(chartId)
   if (!readingGate.ok) {
-    em.error({ code: readingGate.code, message: readingGate.message, retryable: true, phase: 'plan' })
+    em.error({ code: readingGate.code, message: readingGate.message, retryable: readingGate.retryable, phase: 'plan' })
     return halt('error')
   }
 
