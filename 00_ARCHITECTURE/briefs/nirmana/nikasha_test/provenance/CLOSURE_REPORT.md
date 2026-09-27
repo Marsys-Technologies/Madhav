@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE1_B2_CLOSURE_REPORT
 version: "1.0"
-generated_at: 2026-09-27T06:46:08.655676+00:00
+generated_at: 2026-09-27T07:07:34.482646+00:00
 generator: platform/scripts/governance/catalog_provenance.py --closure
 ---
 
@@ -15,7 +15,7 @@ Population: `SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag I
 
 **Edges** — `asset_registry.depends_on` (a `text[]` column on each asset row), read once via `load_asset_registry()`'s single SELECT and never re-queried per traversal step.
 
-**Traversal** — `transitive_upstream_closure(seeds, depends_on)` (pure Python, no DB access after the initial load): a worklist walk starting from `seeds`, at each step adding every `asset_id` in the current asset's `depends_on` array not already visited, until the frontier is empty. This is the in-process equivalent of the recursive CTE below, which the wave1 gate re-review independently ran directly against production to confirm the same 111/127 and the same 16 still-outside assets:
+**Traversal** — `transitive_upstream_closure(seeds, depends_on)` (pure Python, no DB access after the initial load): a worklist walk starting from `seeds`, at each step adding every `asset_id` in the current asset's `depends_on` array not already visited, until the frontier is empty. This is the in-process equivalent of the recursive CTE below, which the wave1 gate re-review independently ran directly against production to confirm the same **111/127** and the same **16** still-outside assets (N3: read from `closure[...]`, never hardcoded):
 
 ```sql
 WITH RECURSIVE closure(asset_id) AS (

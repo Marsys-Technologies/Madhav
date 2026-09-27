@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE1_B3_BUILD_DEPENDENCIES_READER_SCAN
 version: "1.0"
-generated_at: 2026-09-27T06:46:07.532080+00:00
+generated_at: 2026-09-27T07:07:33.311103+00:00
 generator: platform/scripts/governance/catalog_provenance.py --reader-scan
 ---
 
@@ -185,11 +185,11 @@ Total hits: **76**
 
 - L14: `read-only grep, never drops or alters `build_dependencies`)`
 - L61: `# and the gate's own B_REVIEW.md) mentions "build_dependencies" many times while`
-- L1116: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
-- L1127: `which both discuss 'build_dependencies' at length while describing this very`
-- L1129: `previous output file listing 'build_dependencies' on every line, and hit`
-- L1314: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
-- L1582: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
+- L1151: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
+- L1162: `which both discuss 'build_dependencies' at length while describing this very`
+- L1164: `previous output file listing 'build_dependencies' on every line, and hit`
+- L1355: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
+- L1695: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
 
 ## `platform/src/generated/harvest/e2_db_truth.json`
 

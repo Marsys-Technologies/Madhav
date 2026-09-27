@@ -897,7 +897,9 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
       (closure BY MEASUREMENT: the same detector now passes; the row quotes the new measured value)
     - check closable, latest row CLOSED or no row                             -> nothing to do
     - a row carrying `superseded_by` (R80) is a dead identity — never touched, never resurrected,
-      regardless of what the census currently measures for that gap_id.
+      regardless of what the census currently measures for that gap_id, and regardless of any
+      LATER row for the same gap_id that omits the flag (F5, A_REVIEW.md): once superseded, always
+      superseded — the flag is checked across the id's whole history, not only its latest row.
     - hand `change`/`owner`/`gate` are CARRIED FORWARD from the prior row onto every transition
       row (CLOSED or RE-OPENED); only a gap_id's very first OPEN row uses the census's own
       defaults, because there is no prior hand annotation yet to carry.
@@ -907,6 +909,13 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
     """
     path = CTRL / "asset_gaps.jsonl"
     latest: dict[str, dict] = {}
+    # F5 (A_REVIEW.md, non-blocking correction): `superseded_by` must be a PERMANENT flag on the
+    # identity, not just a property of whichever row happens to be latest. Checking only
+    # `latest.get(gid)` meant a superseded id could be resurrected the instant any later row
+    # (hand-written or otherwise) omitted the flag — demonstrated: an early superseded_by row
+    # followed by a later plain row re-opened/re-closed the "dead" id. `ever_superseded` is set
+    # once any row for a gid ever carried the flag, and stays set regardless of what follows.
+    ever_superseded: set[str] = set()
     if path.exists():
         for ln in path.read_text(encoding="utf-8").split("\n"):
             if ln.strip():
@@ -916,6 +925,8 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                     continue
                 if r.get("gap_id"):
                     latest[r["gap_id"]] = r  # append-only: last row for an id wins
+                    if r.get("superseded_by"):
+                        ever_superseded.add(r["gap_id"])
     ts = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     added = skipped = closed = reopened = 0
     with path.open("a", encoding="utf-8") as f:
@@ -926,8 +937,9 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                     continue  # NOT_GENERIC / UNKNOWN / errored / anything future: never a transition
                 gid = f"{a['asset_id']}-{crit}"
                 prior = latest.get(gid)
-                if prior is not None and prior.get("superseded_by"):
-                    continue  # a superseded id is never resurrected, whatever is measured now
+                if gid in ever_superseded:
+                    continue  # a superseded id is never resurrected, whatever is measured now,
+                              # and whatever any LATER row (with no superseded_by of its own) says
                 prior_state = (prior or {}).get("state", "OPEN").upper()
                 # Carry hand metadata forward; only the very first OPEN row for a gid has none
                 # to carry, so it alone falls back to the census's own defaults.

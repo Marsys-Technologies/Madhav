@@ -492,14 +492,27 @@ def test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry():
             },
             "scu.ok_no_detector": {
                 "producers": [],
-                "no_detector": "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim",
+                "no_detector": "NO_DETECTOR — no_contract: no availability_contracts requirement and no reviewed_output claim",
             },
         }
     }
-    # None of this fixture's SCUs use an exemption disposition, so an empty
-    # snapshot is sufficient — R7's snapshot-backing check simply never applies.
-    failures = cp.validate_derived_artifact(payload, {"scus": []})
-    assert set(failures) == {"scu.stale_bad_source_ref", "scu.stale_unclassified_reason"}
+    # scu.ok's derived_from_source_query producer must be bound to a matching
+    # snapshot source_query requirement (B2) to count as legitimate; everything
+    # else in this fixture is deliberately unbacked/malformed with no snapshot
+    # counterpart at all.
+    snapshot = {
+        "scus": [
+            {
+                "scu_id": "scu.ok",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "source_query", "source_ref": "handler.ts:1-1"}]}
+                ],
+            },
+        ]
+    }
+    failures = cp.validate_derived_artifact(payload, snapshot)
+    failed_scu_ids = {f.split(":", 1)[0] for f in failures}
+    assert failed_scu_ids == {"scu.stale_bad_source_ref", "scu.stale_unclassified_reason"}
 
 
 # ── C-3: false producers from the one-hop helper / non-handler segments ─────
@@ -744,7 +757,8 @@ def test_still_outside_asset_with_a_same_domain_unowned_table_reads_table_unregi
         "scu.catalog.query_prashna_lagna_methods": cp.ScuProvenance(
             scu_id="scu.catalog.query_prashna_lagna_methods",
             no_detector=(
-                "NO_DETECTOR — relation name(s) ['bg_prashna_lagna_methods'] matched no row in "
+                "NO_DETECTOR — relation_unowned_by_registry: relation name(s) "
+                "['bg_prashna_lagna_methods'] matched no row in "
                 "asset_registry.target_table ('handler.ts:1-1')"
             ),
         ),
@@ -792,7 +806,7 @@ def _full_valid_artifact_matching_catalog() -> dict:
     scus = {
         scu["scu_id"]: {
             "producers": [],
-            "no_detector": "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim",
+            "no_detector": "NO_DETECTOR — no_contract: no availability_contracts requirement and no reviewed_output claim",
         }
         for scu in snapshot["scus"]
     }
@@ -846,7 +860,7 @@ def test_check_fails_when_the_artifact_carries_an_unknown_scu_through_the_real_e
     payload = _full_valid_artifact_matching_catalog()
     payload["scus"]["scu.test.not_in_catalog"] = {
         "producers": [],
-        "no_detector": "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim",
+        "no_detector": "NO_DETECTOR — no_contract: no availability_contracts requirement and no reviewed_output claim",
     }
 
     artifact_path = tmp_path / "producer_provenance.derived.json"
@@ -1018,3 +1032,253 @@ def test_all_committed_exemption_producers_are_snapshot_backed():
                     unbacked.append((scu_id, p.get("asset_id"), disp))
     assert unbacked == []
     assert exemption_count == 24
+
+
+# ── B_REVIEW4: three siblings of the R7 defect, plus a test-gap and a ────────
+# classifier fix.
+
+
+def test_check_fails_when_temporal_activation_is_reduced_to_only_its_route_evidence_producer(
+    tmp_path, monkeypatch, capsys
+):
+    """B1 (B_REVIEW4): an SCU whose ONLY producer is `route_evidence_only`
+    passed --check before this correction, even though D5 rev. 2.1's own
+    wording is "names the asset(s) that PRODUCE or part-produce it" — route
+    evidence is carried (never dropped) but is not production, so it must
+    never count as coverage on its own. This is an EXECUTOR APPLICATION of
+    that wording, not yet a recorded native ruling — flagged for confirmation
+    at the R85 fold (see B_REPORT.md). Mutation this catches: letting
+    route_evidence_only count toward coverage (i.e. reverting
+    `scu_has_covering_producer`'s exclusion / the disposition check in
+    `validate_derived_artifact`) makes this pass again."""
+    payload = _load_real_committed_artifact()
+    target = "scu.kala.temporal_activation"
+    assert target in payload["scus"]
+    reo_producers = [
+        p for p in payload["scus"][target]["producers"] if p.get("disposition") == "route_evidence_only"
+    ]
+    assert len(reo_producers) == 1, "expected exactly one route_evidence_only producer on this SCU"
+    payload["scus"][target]["producers"] = reo_producers
+    payload["scus"][target]["no_detector"] = None
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_derive_all_gives_a_route_evidence_only_producer_an_explicit_no_detector_reason():
+    """B1: at DERIVATION time (not just --check time), an SCU whose only
+    producer ends up being a carried `route_evidence_only` claim must get the
+    new `route_evidence_only_not_a_producer` no_detector reason — never
+    silently read as 'covered' just because producers[] is non-empty."""
+    snapshot = {
+        "scus": [
+            {
+                "scu_id": "scu.test.reo_only",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "producer_output", "asset_id": "ka_kalasutra"}]}
+                ],
+                "producer_output_claims": [
+                    {
+                        "asset_id": "ka_kalasutra",
+                        "disposition": "route_evidence_only",
+                        "evidence": "handler reads kala_activation",
+                    }
+                ],
+            }
+        ]
+    }
+    result = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
+    sp = result["scu.test.reo_only"]
+    assert len(sp.producers) == 1  # the claim is still carried, never dropped
+    assert sp.producers[0].disposition == "route_evidence_only"
+    assert sp.no_detector is not None
+    assert cp.classify_no_detector_reason(sp.no_detector) == "route_evidence_only_not_a_producer"
+    assert not cp.scu_has_covering_producer(sp.producers)
+
+
+def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
+    tmp_path, monkeypatch, capsys
+):
+    """B2 (B_REVIEW4): a fabricated `derived_from_source_query` producer
+    (`table: no_such_table_xyz`, `source_ref: nope.ts:1-2` — shape-valid but
+    uncatalogued) on all 75 NO_DETECTOR SCUs used to pass 182/182. Binding
+    each producer's `source_ref` to a `kind: source_query` requirement's own
+    `source_ref` on the SAME SCU (checkable from the snapshot alone, no DB)
+    closes this. Table EXISTENCE remains a stated, DB-bound limit (E).
+    Mutation this catches: removing the `source_ref in source_query_refs`
+    binding check makes this pass again."""
+    payload = _load_real_committed_artifact()
+    faked = []
+    for scu_id, entry in payload["scus"].items():
+        if entry.get("no_detector"):
+            entry["producers"] = [
+                {
+                    "asset_id": "zz_fake",
+                    "table": "no_such_table_xyz",
+                    "source_ref": "nope.ts:1-2",
+                    "disposition": "derived_from_source_query",
+                    "shared": False,
+                }
+            ]
+            entry["no_detector"] = None
+            faked.append(scu_id)
+    assert len(faked) == 75
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    for scu_id in faked:
+        assert scu_id in out
+
+
+def test_all_committed_source_query_producers_are_snapshot_bound():
+    """B2 (d): confirms the count the gate review found — all 294
+    `derived_from_source_query` producers in the real committed artifact have
+    a `source_ref` equal to a `kind: source_query` requirement's own
+    `source_ref` on the SAME SCU in the snapshot. This is what makes the
+    unmodified artifact still pass under the new B2 binding check."""
+    payload = _load_real_committed_artifact()
+    snapshot = cp.load_snapshot()
+    refs_by_scu = cp.snapshot_source_query_refs(snapshot)
+
+    bound_count = 0
+    unbound = []
+    for scu_id, entry in payload["scus"].items():
+        for p in entry.get("producers", []):
+            if p.get("disposition") == "derived_from_source_query":
+                bound_count += 1
+                if p.get("source_ref") not in refs_by_scu.get(scu_id, set()):
+                    unbound.append((scu_id, p.get("asset_id")))
+    assert unbound == []
+    assert bound_count == 294
+
+
+def test_check_fails_when_a_fake_producer_is_appended_beside_a_real_one(
+    tmp_path, monkeypatch, capsys
+):
+    """B3 (B_REVIEW4): the check used to stop at the first VALID producer per
+    SCU — a fabricated `{zz_fake, reviewed_output, "x"}` producer appended
+    beside (or placed before) an already-covered SCU's real producers still
+    passed. Every producer must now be validated. This is the artifact a
+    follow-on lane will wire into `compiler.ts`, so a fabricated producer
+    reaching it would be a real problem, not just a report-honesty one.
+    Mutation this catches: restoring the first-valid-producer short-circuit
+    (breaking out of the per-producer loop as soon as one is bound) makes
+    this pass again."""
+    payload = _load_real_committed_artifact()
+    target = "scu.bodha.mechanism.network"
+    assert target in payload["scus"]
+    assert payload["scus"][target]["producers"], "expected this SCU to already have real producer(s)"
+    payload["scus"][target]["producers"].append(
+        {"asset_id": "zz_fake", "disposition": "reviewed_output", "source_ref": "x"}
+    )
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_check_fails_when_a_real_claim_is_copied_onto_the_wrong_scu(tmp_path, monkeypatch, capsys):
+    """T1 (B_REVIEW4 test gap): the per-SCU binding is correct today (bypass1/
+    bypass2 in the gate's own probes), but nothing in this suite pinned it —
+    a mutation that widened the lookup from per-SCU to global (a union of
+    every SCU's claims/probes) left the whole suite green. Copies the REAL
+    `(bo_yantra_mechanism, reviewed_output)` claim — genuinely declared on
+    `scu.bodha.mechanism.network` — onto an unrelated NO_DETECTOR SCU and
+    expects `--check` to still fail it. Mutation this catches: replacing the
+    per-SCU `claim_keys_by_scu.get(scu_id, set())` lookup with a global union
+    across all SCUs reddens this test."""
+    payload = _load_real_committed_artifact()
+    wrong_target = None
+    for scu_id, entry in payload["scus"].items():
+        if entry.get("no_detector") and scu_id != "scu.bodha.mechanism.network":
+            wrong_target = scu_id
+            break
+    assert wrong_target is not None
+
+    payload["scus"][wrong_target]["producers"] = [
+        {
+            "asset_id": "bo_yantra_mechanism",
+            "disposition": "reviewed_output",
+            "source_ref": "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114",
+        }
+    ]
+    payload["scus"][wrong_target]["no_detector"] = None
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert wrong_target in out
+
+
+def test_check_fails_on_a_no_detector_reason_containing_a_trigger_substring_but_no_exact_prefix(
+    tmp_path, monkeypatch, capsys
+):
+    """F (B_REVIEW4): the OLD substring classifier let a bogus reason
+    containing a known class's trigger text ANYWHERE pass —
+    `'zzz kind: derived zzz'` classified as `derived_kind_no_source_query`.
+    The new exact-match classifier requires the literal `"NO_DETECTOR — "`
+    prefix followed immediately by a real class token and `": "` — a string
+    that merely contains a trigger substring, with no such prefix, must be
+    `"unclassified"` and fail. Mutation this catches: reverting
+    `classify_no_detector_reason` to substring search makes this pass again."""
+    payload = _load_real_committed_artifact()
+    target = "scu.catalog.get_dignity"
+    assert target in payload["scus"]
+    payload["scus"][target]["producers"] = []
+    payload["scus"][target]["no_detector"] = "zzz kind: derived zzz"
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_check_fails_when_a_reviewed_scus_producers_are_erased_and_replaced_with_a_fake_reason(
+    tmp_path, monkeypatch, capsys
+):
+    """F2 (B_REVIEW4): erasing a REVIEWED SCU's real producers and writing a
+    fabricated but exact-format `no_contract` reason in their place must still
+    fail — the snapshot's own `producer_output_claims` entry for this SCU is
+    proof a producer belongs here, and no no_detector reason (however
+    correctly formatted) can override that. Mutation this catches: dropping
+    the "snapshot already proves a producer belongs here" guard (letting any
+    exact-classified reason excuse a claimed SCU) makes this pass again."""
+    payload = _load_real_committed_artifact()
+    target = "scu.bodha.mechanism.network"  # has a real reviewed_output claim in the snapshot
+    assert target in payload["scus"]
+    assert payload["scus"][target]["producers"]
+    payload["scus"][target]["producers"] = []
+    payload["scus"][target]["no_detector"] = "NO_DETECTOR — no_contract: fabricated, this SCU has a real contract"
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out

@@ -642,7 +642,10 @@ def derive_from_source_query(
     source_ref = req.get("source_ref") or ""
     segments = parse_source_ref_segments(source_ref)
     if not segments:
-        return [], f"NO_DETECTOR — source_ref did not resolve to any <file>:<a>-<b> segment ({source_ref!r})"
+        return [], (
+            f"NO_DETECTOR — source_ref_unresolvable_shape: source_ref did not resolve to any "
+            f"<file>:<a>-<b> segment ({source_ref!r})"
+        )
 
     handler_literals: List[str] = []
     # C-3: relation-name origin, so a Producer can honestly say whether it was found
@@ -691,10 +694,10 @@ def derive_from_source_query(
         # including the file's actual current line count, rather than folding both
         # into one vague "does not exist or is out of bounds" message.
         if oob_reasons:
-            return [], f"NO_DETECTOR — source_ref_out_of_range ({'; '.join(oob_reasons)})"
+            return [], f"NO_DETECTOR — source_ref_out_of_range: {'; '.join(oob_reasons)}"
         return [], (
-            "NO_DETECTOR — every segment in source_ref names a file that does not "
-            f"exist or a range out of bounds ({source_ref!r})"
+            "NO_DETECTOR — source_ref_out_of_range: every segment in source_ref names a file "
+            f"that does not exist or a range out of bounds ({source_ref!r})"
         )
 
     candidates = find_relation_candidates(handler_literals)
@@ -706,18 +709,18 @@ def derive_from_source_query(
         # the stale annotation, and burying it there is exactly finding 4's defect.
         if oob_reasons:
             return [], (
-                f"NO_DETECTOR — source_ref_out_of_range ({'; '.join(oob_reasons)}); no relation name "
+                f"NO_DETECTOR — source_ref_out_of_range: {'; '.join(oob_reasons)}; no relation name "
                 f"found in the remaining resolved handler-kind segment(s) ({source_ref!r})"
             )
         if excluded_kinds and not handler_literals:
             return [], (
-                "NO_DETECTOR — resolved source range(s) contain no relation name in any "
-                f"handler-kind segment (excluded {sorted(excluded_kinds)}-kind segment(s) per C-3) "
-                f"({source_ref!r})"
+                "NO_DETECTOR — no_relation_in_range: resolved source range(s) contain no relation "
+                f"name in any handler-kind segment (excluded {sorted(excluded_kinds)}-kind "
+                f"segment(s) per C-3) ({source_ref!r})"
             )
         return [], (
-            "NO_DETECTOR — resolved source range(s) contain no relation name in "
-            "asset_registry.target_table ∪ information_schema.tables "
+            "NO_DETECTOR — no_relation_in_range: resolved source range(s) contain no relation "
+            "name in asset_registry.target_table ∪ information_schema.tables "
             f"({source_ref!r})"
         )
 
@@ -741,7 +744,7 @@ def derive_from_source_query(
             )
     if not producers:
         return [], (
-            "NO_DETECTOR — relation name(s) "
+            "NO_DETECTOR — relation_unowned_by_registry: relation name(s) "
             f"{known} matched no row in asset_registry.target_table ({source_ref!r})"
         )
     return producers, None
@@ -750,7 +753,7 @@ def derive_from_source_query(
 def derive_from_service_probe(req: dict, assets: Dict[str, AssetRow]) -> Tuple[List[Producer], Optional[str]]:
     asset_id = req.get("asset_id")
     if not asset_id:
-        return [], "NO_DETECTOR — service_probe requirement carries no asset_id"
+        return [], "NO_DETECTOR — service_probe_missing_asset_id: service_probe requirement carries no asset_id"
     a = assets.get(asset_id)
     return (
         [
@@ -764,6 +767,22 @@ def derive_from_service_probe(req: dict, assets: Dict[str, AssetRow]) -> Tuple[L
         ],
         None,
     )
+
+
+def scu_has_covering_producer(producers: Sequence[Producer]) -> bool:
+    """B1 (B_REVIEW4): an SCU counts as covered only if it has >=1 producer whose
+    disposition is NOT `route_evidence_only`. A `route_evidence_only` claim is
+    carried through `derive_all` (never dropped, per C-5(iii)) but never counts
+    toward coverage on its own — D5 rev. 2.1's own wording is "names the
+    asset(s) that PRODUCE or part-produce it"; route evidence is not
+    production. This is an executor application of that wording, flagged for
+    native confirmation at the R85 fold — not yet a recorded native ruling.
+    Used consistently by `derive_all` (to decide whether an SCU needs a
+    `route_evidence_only_not_a_producer` no_detector reason), by the summary
+    counts in `write_derived_json`, and by `validate_derived_artifact` (so a
+    hand-edited/fabricated artifact reduced to a route-evidence-only producer
+    fails `--check` the same way a freshly-derived one would)."""
+    return any(p.disposition != "route_evidence_only" for p in producers)
 
 
 def derive_all(
@@ -812,7 +831,7 @@ def derive_all(
 
         reqs = list(iter_scu_requirements({"scus": [scu]}))
         if not reqs and not sp.producers:
-            sp.no_detector = "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim"
+            sp.no_detector = "NO_DETECTOR — no_contract: no availability_contracts requirement and no reviewed_output claim"
             continue
 
         per_requirement_reasons: List[str] = []
@@ -844,15 +863,18 @@ def derive_all(
                 )
                 if not has_any_claim:
                     per_requirement_reasons.append(
-                        f"NO_DETECTOR — producer_output requirement ({req_asset_id!r}) has no "
-                        "producer_output_claims recorded"
+                        f"NO_DETECTOR — producer_output_unclaimed: producer_output requirement "
+                        f"({req_asset_id!r}) has no producer_output_claims recorded"
                     )
             elif kind == "derived":
                 per_requirement_reasons.append(
-                    f"NO_DETECTOR — no source_query requirement (kind: derived; {req.get('source_ref', '')})"
+                    "NO_DETECTOR — derived_kind_no_source_query: no source_query requirement "
+                    f"(kind: derived; {req.get('source_ref', '')})"
                 )
             else:
-                per_requirement_reasons.append(f"NO_DETECTOR — unrecognized requirement kind {kind!r}")
+                per_requirement_reasons.append(
+                    f"NO_DETECTOR — unrecognized_requirement_kind: unrecognized requirement kind {kind!r}"
+                )
 
         # Deduplicate producers (same asset_id + table + disposition).
         dedup: List[Producer] = []
@@ -864,7 +886,20 @@ def derive_all(
                 dedup.append(p)
         sp.producers = dedup
 
-        if not sp.producers:
+        if not scu_has_covering_producer(sp.producers):
+            # B1 (B_REVIEW4): reached either because sp.producers is genuinely
+            # empty, OR because it holds only carried route_evidence_only
+            # producer(s) — neither counts as "covered". In the second case,
+            # name it explicitly rather than silently letting a non-covering
+            # producer's mere presence stand in for coverage.
+            if sp.producers:
+                reo_assets = ", ".join(sorted({p.asset_id for p in sp.producers}))
+                per_requirement_reasons.append(
+                    "NO_DETECTOR — route_evidence_only_not_a_producer: only route-evidence "
+                    f"claim(s) for {reo_assets}; D5 rev. 2.1: route evidence is carried but never "
+                    "counts as a producer on its own — executor application, flagged for native "
+                    "confirmation at the R85 fold"
+                )
             # C-1: NO catch-all here. If no requirement branch produced a specific
             # reason, this SCU is left genuinely unclassified (no_detector stays None)
             # rather than being handed a fabricated generic reason — `check_completeness`
@@ -1171,7 +1206,10 @@ def write_derived_json(
 ) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     total = len(provenance)
-    named = sum(1 for sp in provenance.values() if sp.producers)
+    # B1: "named"/covered means >=1 NON-route_evidence_only producer, not merely a
+    # non-empty producers[] — an SCU carrying only route_evidence_only producer(s)
+    # also has no_detector set (derive_all), so it is counted below, never here.
+    named = sum(1 for sp in provenance.values() if scu_has_covering_producer(sp.producers))
     no_detector = sum(1 for sp in provenance.values() if sp.no_detector)
     # Bucketed by the CLOSED reason class (C-1's `classify_no_detector_reason`), not a
     # free-text prefix — a stable, enumerable key, never "whatever text came first".
@@ -1239,13 +1277,16 @@ def write_closure_report_md(closure: dict, out_path: Path = CLOSURE_REPORT_PATH)
         "once via `load_asset_registry()`'s single SELECT and never re-queried per traversal step."
     )
     lines.append("")
+    still_outside_total = sum(len(rows) for rows in closure["still_outside_by_layer"].values())
     lines.append(
         "**Traversal** — `transitive_upstream_closure(seeds, depends_on)` (pure Python, no DB "
         "access after the initial load): a worklist walk starting from `seeds`, at each step "
         "adding every `asset_id` in the current asset's `depends_on` array not already visited, "
         "until the frontier is empty. This is the in-process equivalent of the recursive CTE "
         "below, which the wave1 gate re-review independently ran directly against production to "
-        "confirm the same 111/127 and the same 16 still-outside assets:"
+        f"confirm the same **{closure['after']['necessary_count']}/{closure['population_active_count']}** "
+        f"and the same **{still_outside_total}** still-outside assets (N3: read from `closure[...]`, "
+        "never hardcoded):"
     )
     lines.append("")
     lines.append("```sql")
@@ -1355,6 +1396,9 @@ NO_DETECTOR_REASON_CLASSES: Set[str] = {
     "unrecognized_requirement_kind",
     "service_probe_missing_asset_id",
     "producer_output_unclaimed",
+    # B1 (B_REVIEW4): an SCU whose only producer(s) are `route_evidence_only` is
+    # NOT covered — see `scu_has_covering_producer` and `derive_all`.
+    "route_evidence_only_not_a_producer",
 }
 
 # Dispositions that are a "declared exemption" (per C-1's correction text) from the
@@ -1401,32 +1445,53 @@ def snapshot_service_probe_asset_ids(snapshot: dict) -> Dict[str, Set[str]]:
     return out
 
 
+def snapshot_source_query_refs(snapshot: dict) -> Dict[str, Set[str]]:
+    """B2 (B_REVIEW4 finding): scu_id -> the set of `source_ref` strings declared
+    by a `kind: source_query` requirement ON THAT SCU, per the catalog. This is
+    the ground truth `validate_derived_artifact` checks a
+    `derived_from_source_query` producer's `source_ref` against — giving all 75
+    NO_DETECTOR SCUs a fabricated `{table: no_such_table_xyz, source_ref:
+    nope.ts:1-2}` producer used to pass 182/182, because a non-null table plus
+    a shape-valid range was accepted with no check that the SCU's own contract
+    ever cited that range. Every real `derived_from_source_query` Producer's
+    `source_ref` is set (in `derive_from_source_query`) to the EXACT
+    `source_ref` string of the `source_query` requirement it was derived from,
+    so this binding holds for all genuine producers by construction. Confirming
+    the named TABLE actually exists in the live database remains a stated,
+    DB-bound limit (E) — this only confirms the CITATION is one the SCU's own
+    contract makes, which is checkable from the snapshot alone."""
+    out: Dict[str, Set[str]] = {}
+    for scu_id, req in iter_scu_requirements(snapshot):
+        if req.get("kind") == "source_query" and req.get("source_ref"):
+            out.setdefault(scu_id, set()).add(req["source_ref"])
+    return out
+
+
+_NO_DETECTOR_PREFIX = "NO_DETECTOR — "
+
+
 def classify_no_detector_reason(reason: Optional[str]) -> str:
-    """Map a no_detector message to its closed reason class. Order matters: more
-    specific substrings are checked before more general ones so a combined message
-    (e.g. an out-of-range segment alongside a 'no relation' finding) classifies by
-    its most specific, most actionable cause."""
-    if not reason:
+    """Map a no_detector message to its closed reason class by EXACT match, not
+    substring search (F, B_REVIEW4: a substring classifier let
+    `'zzz kind: derived zzz'` classify as `derived_kind_no_source_query` and
+    `'I made this up; no availability_contracts requirement exists lol'`
+    classify as `no_contract` — a fabricated string containing a trigger
+    phrase anywhere used to read as a valid, closed-set reason).
+
+    Every message this module generates has the exact shape
+    `f"NO_DETECTOR — {class_token}: {free_text_detail}"` — the class token is
+    the FIRST word up to the first `': '`, never searched for elsewhere in the
+    string. A reason that doesn't start with the literal `"NO_DETECTOR — "`
+    prefix, or whose token-before-the-first-colon isn't a member of
+    `NO_DETECTOR_REASON_CLASSES`, is `"unclassified"` — deliberately not a
+    member of the closed set, so `--check` rejects it rather than pattern-
+    matching its way to a false PASS."""
+    if not reason or not reason.startswith(_NO_DETECTOR_PREFIX):
         return "unclassified"
-    r = reason
-    if "no availability_contracts requirement" in r:
-        return "no_contract"
-    if "source_ref_out_of_range" in r:
-        return "source_ref_out_of_range"
-    if "did not resolve to any" in r and "segment" in r:
-        return "source_ref_unresolvable_shape"
-    if "matched no row in asset_registry.target_table" in r:
-        return "relation_unowned_by_registry"
-    if "contain no relation name" in r:
-        return "no_relation_in_range"
-    if "kind: derived" in r:
-        return "derived_kind_no_source_query"
-    if "unrecognized requirement kind" in r:
-        return "unrecognized_requirement_kind"
-    if "service_probe requirement carries no asset_id" in r:
-        return "service_probe_missing_asset_id"
-    if "producer_output requirement" in r and "no producer_output_claims recorded" in r:
-        return "producer_output_unclaimed"
+    rest = reason[len(_NO_DETECTOR_PREFIX):]
+    class_token, sep, _detail = rest.partition(": ")
+    if sep and class_token in NO_DETECTOR_REASON_CLASSES:
+        return class_token
     return "unclassified"
 
 
@@ -1472,41 +1537,55 @@ def validate_scu_coverage(payload: dict, snapshot: dict) -> List[str]:
 
 
 def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
-    """Part of the B-4 gate (C-1 + R7), covering ENTRY validity only. Validates
-    every entry actually PRESENT in the committed `producer_provenance.derived
-    .json` payload against the invariant: every SCU has (a) >=1 producer that is
-    valid for its disposition, or (b) a `no_detector` reason whose class is a
-    member of the CLOSED `NO_DETECTOR_REASON_CLASSES` set. An SCU with neither,
-    or whose no_detector reason classifies as "unclassified", is a failure.
+    """Part of the B-4 gate (C-1 + R7 + B1/B2/B3, B_REVIEW4), covering ENTRY
+    validity only. Validates EVERY entry actually PRESENT in the committed
+    `producer_provenance.derived.json` payload against the invariant: every SCU
+    has (a) >=1 COVERING producer where EVERY producer listed for that SCU is
+    bound to the snapshot (B3 — not just the first one found; a fabricated
+    producer appended beside, or placed before, a real one used to still pass),
+    or (b) a `no_detector` reason whose class is a member of the CLOSED
+    `NO_DETECTOR_REASON_CLASSES` set, exact-matched (F — never substring-
+    matched; see `classify_no_detector_reason`) AND not contradicted by the
+    snapshot itself declaring a claim/probe for this SCU (F2 guard below). An
+    SCU with neither is a failure, naming the SCU and (for an unbound producer)
+    the producer itself.
 
-    Per-disposition validity (R7, B_REVIEW3: a non-empty `source_ref` string
-    alone used to be accepted for every exemption disposition — a fabricated
-    `{"asset_id": "zz_fake", "disposition": "route_evidence_only",
-    "source_ref": "x"}` on all 75 NO_DETECTOR SCUs made the artifact read
-    182/182 and PASS. Never again: every exemption producer must be backed by
-    something the CATALOG itself declares, read from `snapshot`, not from the
-    artifact's own claim):
-    - `derived_from_source_query`: non-null `table` AND a range-shaped
-      `source_ref` (via `parse_source_ref_segments`, never trusted as a bare
-      string).
-    - `reviewed_output` / `route_evidence_only`: `source_ref` non-empty AND
-      `(asset_id, disposition)` is a member of the snapshot's own
-      `producer_output_claims` for this SCU (`snapshot_producer_output_claim_
-      keys`) — the catalog must have declared exactly this claim.
+    Per-disposition binding, checked for EVERY producer (B3), against the
+    SNAPSHOT (never the artifact's own say-so):
+    - `derived_from_source_query`: non-null `table`, a range-shaped
+      `source_ref` (via `parse_source_ref_segments`), AND that exact
+      `source_ref` string is one the SAME SCU's own `kind: source_query`
+      requirement declares (`snapshot_source_query_refs`) — B2, B_REVIEW4:
+      before this, a fabricated `{table: no_such_table_xyz, source_ref:
+      nope.ts:1-2}` on all 75 NO_DETECTOR SCUs passed 182/182, because a
+      shape-valid but uncatalogued citation was accepted. Confirming the named
+      TABLE actually EXISTS in the live database remains outside this
+      function's reach (stated limit E) — binding the citation itself does
+      not need the DB. Counts as COVERING.
+    - `reviewed_output`: `source_ref` non-empty AND `(asset_id, disposition)`
+      is a member of the snapshot's own `producer_output_claims` for this SCU
+      (`snapshot_producer_output_claim_keys`). Counts as COVERING.
+    - `route_evidence_only`: same binding check as `reviewed_output` — but
+      NEVER counts as COVERING on its own (B1, B_REVIEW4: D5 rev. 2.1's own
+      wording is "names the asset(s) that PRODUCE or part-produce it"; route
+      evidence is carried as real evidence, never dropped, but is not
+      production — see `scu_has_covering_producer`, the same rule `derive_all`
+      applies at derivation time). A `route_evidence_only` producer can still
+      be BOUND (a real, snapshot-declared claim) while the SCU as a whole is
+      NOT covered, if it is the only producer present.
     - `derived_from_service_probe`: `source_ref` non-empty AND `asset_id` is
       named by a `kind: service_probe` requirement on this SCU
-      (`snapshot_service_probe_asset_ids`) — the catalog must probe that asset.
+      (`snapshot_service_probe_asset_ids`). Counts as COVERING.
+    - anything else: never bound, never covering.
 
     This function has NO way to notice an SCU that is entirely absent from the
     artifact (nothing to iterate over), or a stale entry left over from a
-    retired SCU — that is `validate_scu_coverage`'s job (R1, B_REVIEW2 finding
-    1); `main()`'s `--check` branch runs both and merges their failures. Neither
-    function alone is "the real B-4 gate" — together they are. E (a fabricated
-    `derived_from_source_query` table/asset that happens to be shape-valid) is
-    NOT closed here — confirming a table/asset actually exists needs the DB,
-    and is a stated limit (§7), not this function's job."""
+    retired SCU — that is `validate_scu_coverage`'s job (R1); `main()`'s
+    `--check` branch runs both and merges their failures. Neither function
+    alone is "the real B-4 gate" — together they are."""
     claim_keys_by_scu = snapshot_producer_output_claim_keys(snapshot)
     probe_assets_by_scu = snapshot_service_probe_asset_ids(snapshot)
+    source_query_refs_by_scu = snapshot_source_query_refs(snapshot)
 
     failures: List[str] = []
     scus = payload.get("scus") or {}
@@ -1515,31 +1594,65 @@ def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
         no_detector = entry.get("no_detector")
         claim_keys = claim_keys_by_scu.get(scu_id, set())
         probe_assets = probe_assets_by_scu.get(scu_id, set())
+        source_query_refs = source_query_refs_by_scu.get(scu_id, set())
 
-        producer_ok = False
+        has_covering = False
+        scu_failed = False
         for p in producers:
             disposition = p.get("disposition")
             source_ref = p.get("source_ref") or ""
             asset_id = p.get("asset_id")
+            bound = False
+            covers = False
+
             if disposition == "derived_from_source_query":
-                if p.get("table") and parse_source_ref_segments(source_ref):
-                    producer_ok = True
-                    break
-            elif disposition in ("reviewed_output", "route_evidence_only"):
+                if p.get("table") and parse_source_ref_segments(source_ref) and source_ref in source_query_refs:
+                    bound = True
+                    covers = True
+            elif disposition == "reviewed_output":
                 if source_ref and (asset_id, disposition) in claim_keys:
-                    producer_ok = True
-                    break
+                    bound = True
+                    covers = True
+            elif disposition == "route_evidence_only":
+                # B1: bound (a real, snapshot-declared claim) is possible; covers
+                # is deliberately always False — route evidence never counts as
+                # coverage on its own, regardless of binding.
+                if source_ref and (asset_id, disposition) in claim_keys:
+                    bound = True
             elif disposition == "derived_from_service_probe":
                 if source_ref and asset_id in probe_assets:
-                    producer_ok = True
-                    break
-        if producer_ok:
+                    bound = True
+                    covers = True
+
+            if not bound:
+                # B3: ANY unbound producer fails the SCU outright, even beside
+                # or before a real one — naming both the SCU and the producer.
+                failures.append(
+                    f"{scu_id}: producer {asset_id!r} (disposition {disposition!r}) is not bound "
+                    "to anything the snapshot declares for this SCU"
+                )
+                scu_failed = True
+            if covers:
+                has_covering = True
+
+        if scu_failed:
+            continue
+        if has_covering:
             continue
 
+        # No covering producer — either genuinely none, or only route_evidence_only
+        # one(s) (B1). A no_detector reason can excuse this ONLY if it classifies
+        # into the closed set AND the snapshot itself does not already prove a
+        # producer belongs here (F2 guard, B_REVIEW4: a reviewed SCU's producers
+        # erased and replaced with a fabricated but exact-format `no_contract`
+        # reason must still fail — the snapshot's own claim/probe entry for this
+        # SCU is proof a producer should exist, and no reason string overrides
+        # that).
         if no_detector and classify_no_detector_reason(no_detector) in NO_DETECTOR_REASON_CLASSES:
-            continue
+            if not claim_keys and not probe_assets:
+                continue
 
-        failures.append(scu_id)
+        failures.append(f"{scu_id}: no covering producer and no valid no_detector reason")
     return failures
 
 
@@ -1587,7 +1700,7 @@ def main(argv: List[str]) -> int:
         if args.derive:
             calibration = calibration_report(snapshot, provenance)
             write_derived_json(snapshot, provenance, calibration)
-            named = sum(1 for sp in provenance.values() if sp.producers)
+            named = sum(1 for sp in provenance.values() if scu_has_covering_producer(sp.producers))
             print(f"[B-1] {named}/{len(provenance)} SCUs have a named producer -> {DERIVED_OUTPUT_PATH}")
             # Belt-and-braces in-memory sanity check right after a fresh derivation
             # (see check_completeness's docstring) — NOT the authoritative B-4 gate.
@@ -1615,12 +1728,17 @@ def main(argv: List[str]) -> int:
         # silently. A malformed/shape-defective entry (e.g. a source_ref edited into
         # an unresolvable shape, or a no_detector string that classifies as
         # "unclassified") must be able to fail this even though nothing in today's
-        # DB/snapshot would reproduce the problem. R7 (B_REVIEW3): this does NOT
-        # extend to a fabricated exemption-tier producer with a plausible-looking
-        # but uncatalogued asset_id/source_ref — validate_derived_artifact now
-        # cross-checks every reviewed_output/route_evidence_only/
-        # derived_from_service_probe producer against the loaded snapshot itself
-        # (see its docstring), so THAT class of hand-edit fails too.
+        # DB/snapshot would reproduce the problem. R7/B1/B2/B3 (B_REVIEW3/4):
+        # validate_derived_artifact checks EVERY producer on EVERY SCU (never stops
+        # at the first valid one), binding derived_from_source_query to a
+        # same-SCU source_query requirement's own source_ref (B2, not just shape),
+        # and reviewed_output/route_evidence_only/derived_from_service_probe to a
+        # snapshot-declared claim/probe (R7). route_evidence_only can be bound
+        # (real evidence) but never counts as coverage on its own (B1). A
+        # no_detector reason must exact-match a closed-set class token (F), and
+        # cannot excuse an SCU the snapshot itself proves should have a producer
+        # (F2). A fabricated producer anywhere in an SCU's list — beside, before,
+        # or in place of real ones — fails.
         if not DERIVED_OUTPUT_PATH.is_file():
             print(f"[B-4] --check FAIL: no derived artifact at {DERIVED_OUTPUT_PATH} — run --derive first.")
             exit_code = 1
@@ -1646,11 +1764,13 @@ def main(argv: List[str]) -> int:
                 exit_code = 1
             else:
                 print(
-                    f"[B-4] --check PASS: all {total} SCUs in {DERIVED_OUTPUT_PATH} have either a "
-                    "snapshot-backed producer (a shape-valid derived_from_source_query, or an "
-                    "exemption-tier producer matching a producer_output_claim / service_probe "
-                    "requirement the catalog itself declares) or a no_detector reason from the closed "
-                    "reason set, and the artifact's SCU coverage matches the catalog exactly."
+                    f"[B-4] --check PASS: all {total} SCUs in {DERIVED_OUTPUT_PATH} have every "
+                    "producer bound to the snapshot (derived_from_source_query to a same-SCU "
+                    "source_query requirement's source_ref; reviewed_output/route_evidence_only to a "
+                    "producer_output_claims entry; derived_from_service_probe to a service_probe "
+                    "requirement), at least one NON-route_evidence_only covering producer where any "
+                    "producers exist, or a no_detector reason exact-matching the closed reason set — "
+                    "and the artifact's SCU coverage matches the catalog exactly."
                 )
 
     return exit_code

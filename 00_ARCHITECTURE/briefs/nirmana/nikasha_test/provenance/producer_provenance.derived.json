@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T06:46:08.652822+00:00",
+  "generated_at": "2026-09-27T07:07:34.479786+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
   "snapshot_content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
   "snapshot_scu_count": 182,
@@ -34,38 +34,38 @@
     "scu.catalog.assess_career": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.assess_health": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.assess_marriage": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.asset_registry_all": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['asset_registry'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts:145-162')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['asset_registry'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts:145-162')"
     },
     "scu.catalog.asset_registry_l0": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['asset_registry'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts:103-120')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['asset_registry'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts:103-120')"
     },
     "scu.catalog.call_dasha_eligibility": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:298-325')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:298-325')"
     },
     "scu.catalog.call_ephemeris_at_t": {
       "requirement_kinds": [
@@ -117,22 +117,22 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:614-695')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:614-695')"
     },
     "scu.catalog.call_transit_search": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.channel_chat_dispatch": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.channel_mcp_wiring": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.chart_facts_query": {
       "requirement_kinds": [
@@ -202,17 +202,17 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts:205-215 | platform/migrations/002_ganita_divisionals.sql:31-65')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts:205-215 | platform/migrations/002_ganita_divisionals.sql:31-65')"
     },
     "scu.catalog.classical_attribution_lookup": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.compose_large_n": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.concept_locate": {
       "requirement_kinds": [
@@ -398,26 +398,26 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts has 131 lines, ref 118-140); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts has 131 lines, ref 118-140; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_aspects": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts has 86 lines, ref 55-91); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts has 86 lines, ref 55-91; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_av_transit_gating": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.get_avasthas": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts has 91 lines, ref 71-100); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts has 91 lines, ref 71-100; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_ayurdaya": {
       "requirement_kinds": [
@@ -697,7 +697,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts has 104 lines, ref 78-108); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts has 104 lines, ref 78-108; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_dispositors": {
       "requirement_kinds": [
@@ -791,7 +791,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts has 60 lines, ref 38-62); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts has 60 lines, ref 38-62; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_graha_yuddha": {
       "requirement_kinds": [
@@ -1017,7 +1017,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts has 131 lines, ref 128-158); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts has 131 lines, ref 128-158; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_positions": {
       "requirement_kinds": [
@@ -1096,7 +1096,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['ga_prashna_lagna'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts:70-95 | platform/migrations/289_ga_prashna_lagna.sql')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['ga_prashna_lagna'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts:70-95 | platform/migrations/289_ga_prashna_lagna.sql')"
     },
     "scu.catalog.get_sade_sati": {
       "requirement_kinds": [
@@ -1290,14 +1290,14 @@
     "scu.catalog.get_strength": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.get_structural": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range (platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts has 163 lines, ref 151-171); no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts has 163 lines, ref 151-171; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_tajik": {
       "requirement_kinds": [
@@ -1524,7 +1524,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:151-176 | platform/migrations/435_ga_vichara.sql:44-83')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:151-176 | platform/migrations/435_ga_vichara.sql:44-83')"
     },
     "scu.catalog.get_yoga_dosha": {
       "requirement_kinds": [
@@ -1600,24 +1600,24 @@
     "scu.catalog.graha_portrait": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.intent_classify": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.judgment_query": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in any handler-kind segment (excluded ['migration']-kind segment(s) per C-3) ('platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in any handler-kind segment (excluded ['migration']-kind segment(s) per C-3) ('platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.lel_intake_checklist": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.list_classical_texts": {
       "requirement_kinds": [
@@ -1675,27 +1675,27 @@
     "scu.catalog.list_sutravali_rules_by_text": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.maro_mcp_surface": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.maro_orchestrate": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.maro_profiles": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.pact_query": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.query_activation_waveform": {
       "requirement_kinds": [
@@ -1762,7 +1762,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['mimamsa_attribution'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts:70-106')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['mimamsa_attribution'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts:70-106')"
     },
     "scu.catalog.query_auspicious_windows": {
       "requirement_kinds": [
@@ -1784,7 +1784,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_avastha_schemes'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:48-66 | platform/migrations/250_bg_dignity_reference.sql:239-256 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:474-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_avastha_schemes'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:48-66 | platform/migrations/250_bg_dignity_reference.sql:239-256 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:474-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184')"
     },
     "scu.catalog.query_calibration": {
       "requirement_kinds": [
@@ -1822,7 +1822,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:32-73 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:182-201 | platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:10-86')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:32-73 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:182-201 | platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:10-86')"
     },
     "scu.catalog.query_cgm_motifs": {
       "requirement_kinds": [
@@ -1908,7 +1908,7 @@
         }
       ],
       "notes": [
-        "NO_DETECTOR \u2014 source_ref did not resolve to any <file>:<a>-<b> segment ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec')"
+        "NO_DETECTOR \u2014 source_ref_unresolvable_shape: source_ref did not resolve to any <file>:<a>-<b> segment ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec')"
       ]
     },
     "scu.catalog.query_cleansed_anchors": {
@@ -1931,7 +1931,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_combustion_orbs'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts:51-68 | platform/migrations/250_bg_dignity_reference.sql:484-497 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:501-516 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:187')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_combustion_orbs'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts:51-68 | platform/migrations/250_bg_dignity_reference.sql:484-497 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:501-516 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:187')"
     },
     "scu.catalog.query_compendium_index": {
       "requirement_kinds": [
@@ -1983,7 +1983,7 @@
         "derived"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout)"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout)"
     },
     "scu.catalog.query_dasha_dossier": {
       "requirement_kinds": [
@@ -2246,14 +2246,14 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_graha_dik'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts:53-57 | platform/migrations/304_bg_graha_dik.sql:22-32')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_graha_dik'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts:53-57 | platform/migrations/304_bg_graha_dik.sql:22-32')"
     },
     "scu.catalog.query_graha_naisargika_friendship": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_graha_naisargika_friendship'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts:51-69 | platform/migrations/250_bg_dignity_reference.sql:128-140 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:64-149 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:442-455 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:166-179')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_graha_naisargika_friendship'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts:51-69 | platform/migrations/250_bg_dignity_reference.sql:128-140 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:64-149 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:442-455 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:166-179')"
     },
     "scu.catalog.query_insight_embeddings": {
       "requirement_kinds": [
@@ -2313,7 +2313,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['kala_paddhati_profile'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts:121-143')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['kala_paddhati_profile'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts:121-143')"
     },
     "scu.catalog.query_kota_chakra": {
       "requirement_kinds": [
@@ -2395,7 +2395,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
     },
     "scu.catalog.query_medical_mappings": {
       "requirement_kinds": [
@@ -2417,7 +2417,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['mimamsa_discoveries'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:69-113')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['mimamsa_discoveries'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:69-113')"
     },
     "scu.catalog.query_moorti_nirnaya": {
       "requirement_kinds": [
@@ -2439,12 +2439,12 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_motion_state_thresholds'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66 | platform/migrations/250_bg_dignity_reference.sql:406-423 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:274-323 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:475-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184-186')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_motion_state_thresholds'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:49-66 | platform/migrations/250_bg_dignity_reference.sql:406-423 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:274-323 | platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:475-499 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:184-186')"
     },
     "scu.catalog.query_muhurat": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.query_muhurta_lattice": {
       "requirement_kinds": [
@@ -2517,7 +2517,7 @@
     "scu.catalog.query_planet": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.query_planet_position": {
       "requirement_kinds": [
@@ -2550,7 +2550,7 @@
         }
       ],
       "notes": [
-        "NO_DETECTOR \u2014 no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout)"
+        "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts#strict-nine-graha-fanout)"
       ]
     },
     "scu.catalog.query_prashna_fructification_rules": {
@@ -2558,35 +2558,35 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_prashna_fructification_rules'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59 | platform/migrations/261_bg_prashna_rules_schema.sql:45-52 | platform/python-sidecar/brahmagyan/l0_prashna.py:889-909 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:52-58')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_prashna_fructification_rules'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59 | platform/migrations/261_bg_prashna_rules_schema.sql:45-52 | platform/python-sidecar/brahmagyan/l0_prashna.py:889-909 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:52-58')"
     },
     "scu.catalog.query_prashna_lagna_methods": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_prashna_lagna_methods'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63 | platform/migrations/261_bg_prashna_rules_schema.sql:6-16 | platform/python-sidecar/brahmagyan/l0_prashna.py:804-831 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:27-34')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_prashna_lagna_methods'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63 | platform/migrations/261_bg_prashna_rules_schema.sql:6-16 | platform/python-sidecar/brahmagyan/l0_prashna.py:804-831 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:27-34')"
     },
     "scu.catalog.query_prashna_significators": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_prashna_significators'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56 | platform/migrations/261_bg_prashna_rules_schema.sql:32-42 | platform/python-sidecar/brahmagyan/l0_prashna.py:862-887 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:44-51')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_prashna_significators'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56 | platform/migrations/261_bg_prashna_rules_schema.sql:32-42 | platform/python-sidecar/brahmagyan/l0_prashna.py:862-887 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:44-51')"
     },
     "scu.catalog.query_prashna_special_techniques": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_prashna_special_techniques'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55 | platform/migrations/261_bg_prashna_rules_schema.sql:54-62 | platform/python-sidecar/brahmagyan/l0_prashna.py:911-931 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:59-65')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_prashna_special_techniques'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55 | platform/migrations/261_bg_prashna_rules_schema.sql:54-62 | platform/python-sidecar/brahmagyan/l0_prashna.py:911-931 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:59-65')"
     },
     "scu.catalog.query_prashna_tajik_yogas": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_prashna_tajik_yogas'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64 | platform/migrations/261_bg_prashna_rules_schema.sql:19-29 | platform/python-sidecar/brahmagyan/l0_prashna.py:833-860 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:35-43')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_prashna_tajik_yogas'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64 | platform/migrations/261_bg_prashna_rules_schema.sql:19-29 | platform/python-sidecar/brahmagyan/l0_prashna.py:833-860 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:35-43')"
     },
     "scu.catalog.query_pratijna": {
       "requirement_kinds": [
@@ -2841,14 +2841,14 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
     },
     "scu.catalog.query_remedies_for_chart": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
     },
     "scu.catalog.query_remedy_corpus": {
       "requirement_kinds": [
@@ -2908,35 +2908,35 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bodha_rm_chart_summary'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:62-88')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bodha_rm_chart_summary'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:62-88')"
     },
     "scu.catalog.query_rm_dasha_windowed_prescriptions": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bodha_rm_dasha_windowed_prescriptions'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:74-102')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bodha_rm_dasha_windowed_prescriptions'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:74-102')"
     },
     "scu.catalog.query_rm_dosha_remedy_bundles": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bodha_rm_dosha_remedy_bundles'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bodha_rm_dosha_remedy_bundles'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96')"
     },
     "scu.catalog.query_rm_pattern_remedies": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bodha_rm_pattern_remedies'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bodha_rm_pattern_remedies'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81')"
     },
     "scu.catalog.query_rm_prescriptions": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bodha_rm_remedy_prescriptions'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts:65-91')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bodha_rm_remedy_prescriptions'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts:65-91')"
     },
     "scu.catalog.query_rm_resonances": {
       "requirement_kinds": [
@@ -2958,7 +2958,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_shashtiamsha_deities'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts:62-66 | platform/supabase/migrations/430_bg_shashtiamsha_deities.sql:34-42')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_shashtiamsha_deities'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts:62-66 | platform/supabase/migrations/430_bg_shashtiamsha_deities.sql:34-42')"
     },
     "scu.catalog.query_sign_medical": {
       "requirement_kinds": [
@@ -3150,7 +3150,7 @@
     "scu.catalog.query_spine_bundle": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.query_sudarshana_varsha": {
       "requirement_kinds": [
@@ -3170,19 +3170,19 @@
     "scu.catalog.query_sutravali_rules": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.query_sutravali_rules_for_planet": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.query_tantric_remedies": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
     },
     "scu.catalog.query_temporal_view": {
       "requirement_kinds": [
@@ -3219,7 +3219,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_transit_av_gates'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85 | platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_transit_av_gates'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85 | platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38')"
     },
     "scu.catalog.query_transit_engine": {
       "requirement_kinds": [
@@ -3241,21 +3241,21 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_transit_moorti'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73 | platform/supabase/migrations/401_bg_transit_moorti.sql:10-20')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_transit_moorti'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73 | platform/supabase/migrations/401_bg_transit_moorti.sql:10-20')"
     },
     "scu.catalog.query_transit_vedha": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_transit_vedha'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:81-112 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_transit_vedha'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:81-112 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112')"
     },
     "scu.catalog.query_triangulation": {
       "requirement_kinds": [
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bodha_triangulation'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bodha_triangulation'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98')"
     },
     "scu.catalog.query_ucd": {
       "requirement_kinds": [
@@ -3397,7 +3397,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['bg_vastu_direction_remedials'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:45-64 | platform/migrations/284_bg_vastu_directions.sql:37-89 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:31-38')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['bg_vastu_direction_remedials'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:45-64 | platform/migrations/284_bg_vastu_directions.sql:37-89 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:31-38')"
     },
     "scu.catalog.query_vastu_directions": {
       "requirement_kinds": [
@@ -3434,7 +3434,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 relation name(s) ['brahma_vichara_constants'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59 | platform/migrations/435_ga_vichara.sql:83-89')"
+      "no_detector": "NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['brahma_vichara_constants'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59 | platform/migrations/435_ga_vichara.sql:83-89')"
     },
     "scu.catalog.query_yoga_catalog": {
       "requirement_kinds": [
@@ -3487,7 +3487,7 @@
         "source_query"
       ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
     },
     "scu.catalog.read_sutravali_rule": {
       "requirement_kinds": [
@@ -3522,22 +3522,22 @@
     "scu.catalog.route": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.synergy_cross_layer": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.synergy_pipeline": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.tool_search": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.traverse_chart_graph": {
       "requirement_kinds": [
@@ -3621,7 +3621,7 @@
     "scu.catalog.yoga_activation_by_dasha": {
       "requirement_kinds": [],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.finance.prosperity_assessment": {
       "requirement_kinds": [
@@ -3648,7 +3648,7 @@
         }
       ],
       "notes": [
-        "NO_DETECTOR \u2014 no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/knowledge/editorial.ts:51-58)"
+        "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/knowledge/editorial.ts:51-58)"
       ]
     },
     "scu.kala.temporal_activation": {

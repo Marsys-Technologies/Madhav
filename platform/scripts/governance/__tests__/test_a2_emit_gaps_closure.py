@@ -128,6 +128,33 @@ def test_case4_superseded_id_never_resurrected(ctrl):
     assert len(rows) == 1, "no new row may ever be appended under a superseded gap_id"
 
 
+# ── F5 (A_REVIEW.md, correction): superseded_by is permanent across the id's WHOLE history ──
+
+def test_case4b_superseded_survives_a_later_row_that_omits_the_flag(ctrl):
+    """F5: the superseded check used to read only the LATEST row for a gap_id — an early
+    superseded_by row followed by a later plain row (no flag) resurrected the id. This simulates
+    exactly that history (an old superseded row, then a later hand row re-touching the same
+    gap_id without the flag) and asserts the id still never transitions."""
+    _write_ledger(ctrl, [
+        dict(asset="bg_x", gap_id="bg_x-Vocab.rule1.alias", kind="gap",
+             criterion="Vocab.rule1.alias", what="w", change="", detector="d",
+             owner="asset_census", gate="this asset's certification",
+             state="OPEN", ts="t0", superseded_by="bg_x-Vocab.alias"),
+        dict(asset="bg_x", gap_id="bg_x-Vocab.rule1.alias", kind="gap",
+             criterion="Vocab.rule1.alias", what="a later row with no superseded_by of its own",
+             change="", detector="d", owner="asset_census",
+             gate="this asset's certification", state="OPEN", ts="t1"),
+    ])
+    added, skipped, closed, reopened = asset_census.emit_gaps(
+        _census("bg_x", "Vocab.rule1.alias", "PASS"))
+    assert (added, skipped, closed, reopened) == (0, 0, 0, 0), (
+        "a gap_id ever flagged superseded_by must never transition again, even after a later "
+        "row omits the flag"
+    )
+    rows = _read_ledger(ctrl)
+    assert len(rows) == 2, "no new row may ever be appended under a once-superseded gap_id"
+
+
 # ── F4 (A_REVIEW.md): WITHDRAWN is terminal, never re-opened by inference ──
 
 def test_case_withdrawn_is_terminal_never_reopened(ctrl):
