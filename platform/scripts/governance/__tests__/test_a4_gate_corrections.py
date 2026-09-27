@@ -268,3 +268,25 @@ def test_f9_a_count_that_errors_keeps_the_probe_fail(monkeypatch, tmp_path):
     res = _measured(ac.measure("L0"), "bg_x", "Vocab.identity")
     assert res["v"] == ac.FAIL
     assert "the count errored (SIMULATED: statement timeout)" in res["measured"]
+
+
+# ─────────────────────────── F12: the R41 scope limit is disclosed where it bites ───────────────────────────
+
+def test_f12_a_failed_layer_wide_read_names_itself_and_the_r41_limit(monkeypatch, tmp_path, capsys):
+    """R41 isolates per-asset checks only; a layer-wide read failing still aborts the layer. That is
+    fail-closed (exit 4) but was silent about its scope: the message did not say which read failed or
+    that the WHOLE layer (and, under several layers, every later layer) went unmeasured. Fails
+    without the fix: the output carries neither the read's name nor the scope line."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
+
+    def boom(prefix):
+        raise ac.Unknown("SIMULATED: canceling statement due to statement timeout")
+
+    monkeypatch.setattr(ac, "build_history", boom)
+    monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L0,L1", "--out", str(tmp_path / "c.json")])
+    rc = ac.main()
+    out = capsys.readouterr().out
+    assert rc == 4
+    assert "layer L0: layer-wide read 'build_history' failed: SIMULATED" in out, out
+    assert "R41 isolates per-asset checks only" in out and "stops every layer after it" in out, out
+    assert not (tmp_path / "c.json").exists()

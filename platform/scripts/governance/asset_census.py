@@ -693,14 +693,32 @@ def _run_carriage_detector(aid: str) -> dict:
 
 # ─────────────────────────── the census ───────────────────────────
 
+def _layer_read(name: str, fn, *args):
+    """F12 (A_REVIEW.md): name the layer-wide read that failed, so the UNKNOWN says which one."""
+    try:
+        return fn(*args)
+    except Unknown as exc:
+        raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
+
+
 def measure(layer_key: str) -> dict:
+    """Measure one layer.
+
+    R41 SCOPE LIMIT (F12, A_REVIEW.md — disclosed, not fixed). R41 isolates PER-ASSET checks: one
+    asset's failing check degrades only that criterion to ERRORED. The LAYER-WIDE reads below —
+    `registry`, `catalog`, `registered_ids` (the writer scan), `throughput`, `build_history` — are
+    not isolated: any of them raising `Unknown` still aborts the whole layer (exit 4, nothing reported
+    clean), and under `--layer all` it also stops every layer after it, with no census file written.
+    That is fail-closed, never a false PASS, but it is a whole-layer blind spot, not a degraded one.
+    (`live_counts` isolates per asset itself — F2; `duration_instrument_present` degrades to
+    `instrument unreachable` — D6 item 1.)"""
     cfg = LAYERS[layer_key]
-    reg, population = registry(layer_key)
-    cat = catalog([r["target_table"] for r in reg.values()])
-    regd = registered_ids(cfg["prefix"])
-    counts, count_errors = live_counts(reg)
-    thru = throughput(cfg["prefix"])
-    hist = build_history(cfg["prefix"])
+    reg, population = _layer_read("registry", registry, layer_key)
+    cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()])
+    regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
+    counts, count_errors = _layer_read("live_counts", live_counts, reg)
+    thru = _layer_read("throughput", throughput, cfg["prefix"])
+    hist = _layer_read("build_history", build_history, cfg["prefix"])
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
     # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
     # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
@@ -950,6 +968,13 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
     Rows whose gap_id is not a deterministic `<asset>-<criterion>` id (hand-written rows with no
     detector binding, R58) are never touched by this function at all — no census criterion will
     ever produce that gap_id, so `latest` simply never matches them.
+
+    LIMIT (F12, A_REVIEW.md item 4 — disclosed, not detected): "latest" means last in FILE order,
+    not by `ts`. For one append-only file that is the truth. A git merge of two branches that both
+    appended to the ledger concatenates their rows in merge order, so a stale CLOSED can land after a
+    newer OPEN for the same gap_id and be read as current. Neither this function nor the tracker
+    detects that; re-running the census after such a merge re-measures and appends the correct
+    transition.
     """
     path = CTRL / "asset_gaps.jsonl"
     latest: dict[str, dict] = {}
@@ -1040,8 +1065,10 @@ def main() -> int:
         try:
             c = measure(k)
         except Unknown as exc:
-            print(f"asset_census: UNKNOWN — {exc}")
+            print(f"asset_census: UNKNOWN — layer {k}: {exc}")
             print("  Nothing is reported clean: an unreachable instrument is not a passing result.")
+            print("  R41 isolates per-asset checks only; a failed layer-wide read leaves this whole layer "
+                  f"unmeasured{' and stops every layer after it (no census file written)' if len(keys) > 1 else ''}.")
             return 4
         out[k] = c
         fails = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] == FAIL)
