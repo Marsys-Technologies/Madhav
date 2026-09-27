@@ -960,6 +960,18 @@ def measure(layer_key: str) -> dict:
             # R42: a count_sql that reads no relation is a constant — it cannot disagree with anything.
             m["Build.completion"] = dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant "
                                                            f"{live}); completion cannot be measured")
+        elif live == 0 and (r["target_floor"] or "").strip() != "0":
+            # R52 (T1 plant build_completion_truncate): NON-EMPTINESS, measured on its own and first.
+            # The check used to be only a rows_written<->live consistency test, so emptying a table
+            # whose build record said rows_written=0 made the two AGREE and flipped FAIL -> PASS:
+            # destroying data made the asset look healthy. An empty result is a completion only
+            # where the registry itself declares zero rows complete (target_floor=0 — the engine's
+            # own rule, asset_runner.py `zero_rows_is_complete`); everywhere else it FAILs,
+            # whatever the build record says.
+            m["Build.completion"] = dict(v=FAIL, measured=f"empty: live=0 ({basis}; {rec_scope}) and the registry "
+                                                         f"does not declare zero rows complete (target_floor="
+                                                         f"{r['target_floor'] if r['target_floor'] is not None else 'none'}); "
+                                                         f"build record rows_written={rw or 'none'}")
         elif rw == "":
             m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all ({rec_scope})")
         elif t.get("state") not in COMPLETED_STATES:
@@ -968,15 +980,15 @@ def measure(layer_key: str) -> dict:
                                                          "Build.history")
         elif int(rw) == 0 and live > 0:
             m["Build.completion"] = dict(v=FAIL, measured=f"build record says rows_written=0 against live={live} ({rec_scope})")
-        elif int(rw) == 0 and live == 0:
-            m["Build.completion"] = dict(v=PASS, measured=f"live=0 and rows_written=0 — consistent (empty by design or service) ({rec_scope})")
         elif int(rw) != live:
             # R42: the pre-fix final branch read PASS for ANY rows_written > 0 — it never compared
             # (mi_kula's "15 vs 11 scored PASS" was that branch; 15 vs anything would have passed).
             m["Build.completion"] = dict(v=FAIL, measured=f"build record rows_written={rw} disagrees with "
                                                          f"live={live} ({basis}; {rec_scope})")
         else:
-            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live={live} ({basis}; {rec_scope})")
+            # Consistency (R42), reached for live == 0 only under the target_floor=0 declaration (R52).
+            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live={live} ({basis}; {rec_scope})"
+                                         + ("; zero rows declared complete by target_floor=0" if live == 0 else ""))
 
         # D6: `_grade_earn_cost` feature-detects `duration_seconds` (absent everywhere today,
         # migration 1094 not applied) and grades NO_DETECTOR for both measurements when it is —

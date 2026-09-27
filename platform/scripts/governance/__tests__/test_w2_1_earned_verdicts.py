@@ -485,3 +485,36 @@ def test_r42_rows_left_by_a_failed_build_are_not_a_completion(monkeypatch, tmp_p
     c = _completion(monkeypatch, tmp_path, "SELECT count(*) FROM t_main", 7, _rec(7, state="error"))
     res = _m(c, "mi_x", "Build.completion")
     assert res["v"] == ac.FAIL and "state='error'" in res["measured"], res
+
+
+# ─────────────────────────── R52: emptying a table never flips Build.completion to PASS ───────────────────────────
+
+@pytest.mark.parametrize("floor", [None, "5", "164575"])
+@pytest.mark.parametrize("rows_written", [0, 8579])
+def test_r52_emptying_a_table_never_reads_pass(monkeypatch, tmp_path, floor, rows_written):
+    """The T1 plant, offline, over every build-record shape: bg_muhurta_lattice (target_floor
+    164575, rows_written=0) truncated from 8579 rows to 0. Fails without the fix for
+    rows_written=0: the two sides AGREED on 0 and the check read PASS ('empty by design')."""
+    c = _completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(rows_written), floor=floor)
+    res = _m(c, "mi_x", "Build.completion")
+    assert res["v"] == ac.FAIL, res
+    assert "empty: live=0" in res["measured"], res
+
+
+def test_r52_the_truncate_plant_flips_toward_fail_never_toward_pass(monkeypatch, tmp_path):
+    before = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 8579, _rec(0), floor="164575"),
+                "mi_x", "Build.completion")
+    after = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(0), floor="164575"),
+               "mi_x", "Build.completion")
+    assert before["v"] == ac.FAIL and after["v"] == ac.FAIL, (before, after)
+
+
+def test_r52_zero_rows_pass_only_under_the_registry_declaration(monkeypatch, tmp_path):
+    """target_floor=0 is the registry's (and the engine's) declaration that zero rows is a complete
+    build — the one place an empty result may read PASS, and it says so."""
+    res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(0), floor="0"),
+             "mi_x", "Build.completion")
+    assert res["v"] == ac.PASS and "declared complete by target_floor=0" in res["measured"], res
+    res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(5), floor="0"),
+             "mi_x", "Build.completion")
+    assert res["v"] == ac.FAIL, "a declared-empty asset whose build wrote rows that are now gone still fails"
