@@ -65,7 +65,7 @@ import {
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
-import { buildFenceIds } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -369,7 +369,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
     const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
-    const build_ids       = buildFenceIds(args['build_id'])
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('query_signals', chart_id)
+    const build_ids       = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     const build_id        = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
     const frame           = ((args['frame'] as string | undefined) ?? 'lagna') as ReferenceFrame
     if (!FRAME_VALUES.includes(frame)) {

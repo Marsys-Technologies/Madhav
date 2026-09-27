@@ -55,6 +55,15 @@ export interface L1ChartContext {
   current_ad_lord: string | null
   /** Today's date ISO string (for cache key generation) */
   as_of_date: string
+  /**
+   * Honest disclosure of whether the caller's build fence was actually applied (R3
+   * boundary, "explicit-empty build-fence semantics"). `fenced: false` with `explicit_empty:
+   * true` means a fence was supplied but normalized to zero build ids — the enrichment
+   * fell back to unfenced current rows rather than silently binding to an empty array and
+   * reading zero rows as if that were genuine absence. Optional only because most callers
+   * omit a fence entirely (`fenced: false, explicit_empty: false`), the ordinary case.
+   */
+  generation_fence?: { fenced: boolean; explicit_empty: boolean }
 }
 
 // ── Signal row shape (from bodha_msr_signals) ─────────────────────────────────

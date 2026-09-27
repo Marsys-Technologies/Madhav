@@ -59,7 +59,8 @@ import {
 } from './reading_checklist'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import {
-  buildFenceIds,
+  resolvedBuildFenceIds,
+  ExplicitEmptyBuildFenceError,
   resolveChartServedGeneration,
   servedGenerationIdentity,
   type BuildFence,
@@ -248,7 +249,7 @@ async function fetchVargaDignity(
        AND fact_key = 'dignity_state'
        AND fact_value_jsonb->>'varga' = ANY($3)
        ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
-    build_id ? [chart_id, ayanamsha_id, vargas, buildFenceIds(build_id)] : [chart_id, ayanamsha_id, vargas],
+    build_id ? [chart_id, ayanamsha_id, vargas, resolvedBuildFenceIds(build_id, 'register_d8_assess_domain.fetchVargaDignity')] : [chart_id, ayanamsha_id, vargas],
   )
   for (const row of res.rows) {
     const jsonb = row['fact_value_jsonb'] as Record<string, unknown> | null
@@ -291,7 +292,7 @@ async function fetchVargaAvPindaSarva(
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'ashtakavarga_pinda_sarva_per_varga'
        AND fact_key = ANY($3)
        ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
-    build_id ? [chart_id, ayanamsha_id, vargas, buildFenceIds(build_id)] : [chart_id, ayanamsha_id, vargas],
+    build_id ? [chart_id, ayanamsha_id, vargas, resolvedBuildFenceIds(build_id, 'register_d8_assess_domain.fetchVargaAvPindaSarva')] : [chart_id, ayanamsha_id, vargas],
   )
   for (const row of res.rows) {
     const v = String(row['fact_key'] ?? '')
@@ -327,7 +328,7 @@ async function fetchInduLagna(chart_id: string, ayanamsha_id: string, build_id?:
          AND fact_key = ANY($3)
          ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       build_id
-        ? [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra'], buildFenceIds(build_id)]
+        ? [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra'], resolvedBuildFenceIds(build_id, 'register_d8_assess_domain.fetchInduLagna')]
         : [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra']],
     )
     if (res.rows.length === 0) return null
@@ -348,7 +349,8 @@ async function fetchInduLagna(chart_id: string, ayanamsha_id: string, build_id?:
         'benefic occupying/aspecting it, or its sign-lord being strong, is a classical ' +
         'wealth-strength indicator distinct from the 2nd/11th house-and-lord reading.',
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return null
   }
 }

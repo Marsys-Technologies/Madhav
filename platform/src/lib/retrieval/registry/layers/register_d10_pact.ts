@@ -59,7 +59,7 @@ import { query } from '@/lib/db/client'
 import type { DrillPointer, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag } from '../../envelope'
 import { grahaCodeOf } from '../../address_resolver'
-import { buildFenceIds, resolveChartServedGeneration, servedGenerationIdentity, type BuildFence } from '../generation/served_generation'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, servedGenerationIdentity, type BuildFence } from '../generation/served_generation'
 
 // ── Classical dignity weighting for the CONFIRMATION stage (design §28.1's own weighting
 // discipline — deterministic, never an LLM judgment, never a fabricated probability;
@@ -81,7 +81,7 @@ async function gradeGrahaInVarga(
   buildId?: BuildFence,
 ): Promise<VargaDignityRow> {
   try {
-    const buildIds = buildFenceIds(buildId)
+    const buildIds = resolvedBuildFenceIds(buildId, 'register_d10_pact.gradeGrahaInVarga')
     const res = await query<{ fact_id: string; fact_value_text: string | null }>(
       `SELECT fact_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
@@ -97,7 +97,12 @@ async function gradeGrahaInVarga(
       dignity_weight: row.fact_value_text ? DIGNITY_WEIGHT[row.fact_value_text] ?? 0 : null,
       fact_id: row.fact_id,
     }
-  } catch {
+  } catch (error) {
+    // Structurally unreachable in practice — pact_query's own CONFIRMATION-stage gate
+    // (servedGenerationIdentity) guarantees buildId is never empty by the time it reaches
+    // here — but an explicit-empty fence must still surface, not degrade into a false
+    // "dignity absent" finding for a CONFIRMATION-stage grading that can halt the chain.
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { role, graha, varga, dignity_state: null, dignity_weight: null, fact_id: null }
   }
 }

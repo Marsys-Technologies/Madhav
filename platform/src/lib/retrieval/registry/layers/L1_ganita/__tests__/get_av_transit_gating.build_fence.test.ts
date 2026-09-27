@@ -42,4 +42,11 @@ describe('get_av_transit_gating sav_bav_gating build fence', () => {
     expect(result.is_error).toBe(false)
     for (const { sql } of chartFactsCalls()) expect(sql).not.toContain('build_id')
   })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    const result = await getAvTransitGatingCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined)
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
 })

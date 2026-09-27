@@ -96,7 +96,7 @@ import {
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
-import { buildFenceIds, resolveChartServedGeneration, resolvedRowsBuildId, servedGenerationIdentity, type BuildFence, type ChartServedGeneration, type UnresolvedAssetGeneration } from '../generation/served_generation'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, resolvedRowsBuildId, servedGenerationIdentity, type BuildFence, type ChartServedGeneration, type UnresolvedAssetGeneration } from '../generation/served_generation'
 
 // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows.
 // Mirrors the same helper in register_d8_assess_domain.ts — see that file for the
@@ -347,7 +347,7 @@ async function vargaDignity(
          AND fact_subject = $3 AND fact_key = 'dignity_state'
          ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, `${varga}_${grahaCode}`, buildFenceIds(buildId)]
+        ? [chartId, ayanamshaId, `${varga}_${grahaCode}`, resolvedBuildFenceIds(buildId, 'register_d9_judgment.vargaDignity')]
         : [chartId, ayanamshaId, `${varga}_${grahaCode}`],
     )
     if (res.rows[0]) {
@@ -355,7 +355,12 @@ async function vargaDignity(
       base.dignity_weight = res.rows[0].fact_value_text ? DIGNITY_WEIGHT[res.rows[0].fact_value_text] ?? 0 : null
       base.fact_id = res.rows[0].fact_id
     }
-  } catch {
+  } catch (error) {
+    // An explicit-empty build fence is an invariant violation, not a "best-effort miss" —
+    // judgment_query's own caller-side gate (servedGenerationIdentity) guarantees buildId is
+    // never empty by the time it reaches here, so this should never fire in practice; if it
+    // ever does, it must not be swallowed into a false "dignity absent" 0-weight contribution.
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: operative-varga dignity is best-effort; absence contributes 0, disclosed in the receipt.
   }
   return base
@@ -376,14 +381,15 @@ export async function gradeGraha(
          AND fact_subject = $3 AND fact_key = 'dignity_state'
          ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, `D1_${g.graha_code}`, buildFenceIds(buildId)]
+        ? [chartId, ayanamshaId, `D1_${g.graha_code}`, resolvedBuildFenceIds(buildId, 'register_d9_judgment.gradeGraha.dignity')]
         : [chartId, ayanamshaId, `D1_${g.graha_code}`],
     )
     if (dignityRes.rows[0]) {
       dignity_state = dignityRes.rows[0].fact_value_text
       fact_ids.push(dignityRes.rows[0].fact_id)
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: dignity annotation best-effort
   }
   try {
@@ -393,14 +399,15 @@ export async function gradeGraha(
          AND fact_subject = $3 AND fact_key = 'rupa'
          ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, g.graha_code, buildFenceIds(buildId)]
+        ? [chartId, ayanamshaId, g.graha_code, resolvedBuildFenceIds(buildId, 'register_d9_judgment.gradeGraha.shadbala')]
         : [chartId, ayanamshaId, g.graha_code],
     )
     if (shadbalaRes.rows[0]) {
       shadbala_rupa = shadbalaRes.rows[0].fact_value_num !== null ? Number(shadbalaRes.rows[0].fact_value_num) : null
       fact_ids.push(shadbalaRes.rows[0].fact_id)
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: shadbala annotation best-effort
   }
   return {
@@ -425,14 +432,15 @@ async function fetchAspectingGrahas(
          AND fact_subject = $3 AND fact_key LIKE 'from_%'
          ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, `HOUSE_${house}`, buildFenceIds(buildId)]
+        ? [chartId, ayanamshaId, `HOUSE_${house}`, resolvedBuildFenceIds(buildId, 'register_d9_judgment.fetchAspectingGrahas')]
         : [chartId, ayanamshaId, `HOUSE_${house}`],
     )
     const grahas = res.rows
       .map(r => r.fact_key.replace(/^from_/, ''))
       .map(code => GRAHA_CODE_TO_NAME[code] ?? code)
     return { grahas, fact_ids: res.rows.map(r => r.fact_id) }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { grahas: [], fact_ids: [] }
   }
 }

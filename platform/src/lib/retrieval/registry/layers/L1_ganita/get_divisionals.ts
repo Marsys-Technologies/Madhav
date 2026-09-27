@@ -21,7 +21,7 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
-import { buildFenceIds } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 function isZodiacSign(v: unknown): v is ZodiacSign {
   return typeof v === 'string' && (ZODIAC_SIGNS as readonly string[]).includes(v)
@@ -73,7 +73,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
     try {
       const chartId = args.chart_id as string
       // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
-      const buildIds = buildFenceIds(args.build_id)
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_divisionals', chartId)
+      const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
       const buildId = buildIds && buildIds.length === 1 ? buildIds[0]! : buildIds
       const requestedLimit = Number(args.limit ?? 300)
       const limit = Number.isFinite(requestedLimit)

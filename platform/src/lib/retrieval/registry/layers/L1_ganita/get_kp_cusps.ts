@@ -30,7 +30,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { buildFenceIds } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const KP_CATEGORIES = [
   'cusp_kp_lords',
@@ -125,7 +125,9 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
     // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
-    const build_ids = buildFenceIds(args['build_id'])
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_kp_cusps', chart_id)
+    const build_ids = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
     const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA

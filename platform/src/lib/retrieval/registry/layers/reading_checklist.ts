@@ -24,7 +24,7 @@
 import { query } from '@/lib/db/client'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
-import { buildFenceIds, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, classifyBuildFence, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
 
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -357,7 +357,7 @@ export async function fetchSensitiveDegreeFirings(
           AND fact_key = ANY($3)
           ${build_id ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       build_id
-        ? [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS], buildFenceIds(build_id)]
+        ? [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS], resolvedBuildFenceIds(build_id, 'reading_checklist.fetchSensitiveDegreeFirings')]
         : [chart_id, ayanamsha_id, [...HIGH_SIGNAL_SENSITIVE_CHECKS]],
     )
     out.available = res.rows.length > 0
@@ -380,7 +380,8 @@ export async function fetchSensitiveDegreeFirings(
     // (junction danger), then puṣkara (the rare beneficence), then kartari.
     const order: Record<string, number> = { mrityu_bhaga: 0, gandanta: 1, pushkara: 2, kartari: 3 }
     out.firings.sort((a, b) => (order[a.check_type] ?? 9) - (order[b.check_type] ?? 9))
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: the whole leg degrades to an honest not-computed state upstream.
   }
   return out
@@ -599,7 +600,7 @@ export async function fetchVargaRatification(
            AND domain = $3 AND subject = ANY($4)
            ${build_id ? 'AND build_id = ANY($5::uuid[])' : ''}`,
         build_id
-          ? [chart_id, ayanamsha_id, vicharaDomain, subjectCodes, buildFenceIds(build_id)]
+          ? [chart_id, ayanamsha_id, vicharaDomain, subjectCodes, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchVargaRatification')]
           : [chart_id, ayanamsha_id, vicharaDomain, subjectCodes],
       )
       const bySubject = new Map(res.rows.map(r => [r.subject, r.value_jsonb]))
@@ -613,7 +614,8 @@ export async function fetchVargaRatification(
         }
       }
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // Non-fatal: every subject stays 'no_row' (honest unknown) — `ok:false` lets the caller
     // distinguish this genuine failure from a domain that legitimately has no ratification
     // vote (out of brahma_vichara_constants' scope), which is also 'no_row' but ok:true.
@@ -677,7 +679,7 @@ export async function fetchWealthCorroboratingVargas(
           AND build_id = ANY($3::uuid[]) AND vichara_family = 'varga_ratification'
           AND domain = 'wealth' AND subject = ANY($4)
         ORDER BY subject ASC, id ASC`,
-      [chart_id, ayanamsha_id, buildFenceIds(build_id), codes],
+      [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchWealthCorroboratingVargas'), codes],
     )
     const bySubject = new Map<string, typeof res.rows>()
     for (const row of res.rows) bySubject.set(row.subject, [...(bySubject.get(row.subject) ?? []), row])
@@ -696,7 +698,8 @@ export async function fetchWealthCorroboratingVargas(
       }
     }
     return { state: 'served', rows, fact_ids: [...new Set(rows.flatMap(row => row.constituent_fact_ids))].sort() }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { state: 'source_unproven', rows: [], fact_ids: [] }
   }
 }
@@ -730,7 +733,7 @@ export async function fetchWealthAshtakavarga(
              AND fact_subject = ANY($6) AND fact_key = ANY($5))
           )
         ORDER BY fact_category ASC, fact_subject ASC, fact_key ASC, fact_id ASC`,
-      [chart_id, ayanamsha_id, buildFenceIds(build_id),
+      [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchWealthAshtakavarga'),
         WEALTH_ASHTAKAVARGA_HOUSES.map(house => `SARVA-HOUSE_${house}`),
         [...WEALTH_ASHTAKAVARGA_VARGAS], actors],
     )
@@ -748,7 +751,8 @@ export async function fetchWealthAshtakavarga(
     return observed.size === expected.size
       ? { state: 'served', rows: res.rows }
       : { state: 'source_incomplete', rows: [] }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { state: 'source_unproven', rows: [] }
   }
 }
@@ -781,7 +785,7 @@ export async function fetchWealthSpecialLagnas(
           AND fact_category = 'special_lagna'
           AND fact_subject = ANY($4) AND fact_key = ANY($5)
         ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
-      [chart_id, ayanamsha_id, buildFenceIds(build_id), [...WEALTH_SPECIAL_LAGNAS], [...WEALTH_SPECIAL_LAGNA_KEYS]],
+      [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchWealthSpecialLagnas'), [...WEALTH_SPECIAL_LAGNAS], [...WEALTH_SPECIAL_LAGNA_KEYS]],
     )
     const expected = new Set<string>()
     for (const lagna of WEALTH_SPECIAL_LAGNAS) {
@@ -803,7 +807,8 @@ export async function fetchWealthSpecialLagnas(
     return observed.size === expected.size
       ? { state: 'served', rows: res.rows }
       : { state: 'source_incomplete', rows: [] }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { state: 'source_unproven', rows: [] }
   }
 }
@@ -837,7 +842,7 @@ export async function fetchWealthYogiAvayogi(
           AND fact_category = 'sensitive_point_yogi'
           AND fact_subject = ANY($4) AND fact_key = ANY($5)
         ORDER BY fact_subject ASC, fact_key ASC, fact_id ASC`,
-      [chart_id, ayanamsha_id, buildFenceIds(build_id), subjects, keys],
+      [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchWealthYogiAvayogi'), subjects, keys],
     )
     const expected = new Set<string>()
     for (const subject of subjects) {
@@ -857,7 +862,8 @@ export async function fetchWealthYogiAvayogi(
     return observed.size === expected.size
       ? { state: 'served', rows: res.rows }
       : { state: 'source_incomplete', rows: [] }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { state: 'source_unproven', rows: [] }
   }
 }
@@ -898,7 +904,7 @@ export async function fetchWealthTajaka(
         WHERE chart_id = $1::uuid AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
           AND varsha_start_iso <= $4::date AND varsha_end_iso > $4::date
         ORDER BY varsha_year ASC, varsha_id ASC`,
-      [chart_id, ayanamsha_id, buildFenceIds(build_id), as_of_date],
+      [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchWealthTajaka'), as_of_date],
     )
     if (res.rows.length !== 1) return { state: 'source_incomplete', row: null }
     const row = res.rows[0]!
@@ -911,7 +917,8 @@ export async function fetchWealthTajaka(
       return { state: 'source_incomplete', row: null }
     }
     return { state: 'served', row }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { state: 'source_unproven', row: null }
   }
 }
@@ -958,11 +965,25 @@ export async function fetchKpCuspChain(
       { chart_id, ayanamsha_id, ...(build_id ? { build_id } : {}) },
       undefined,
     )
-    if (res.is_error) return out
+    if (res.is_error) {
+      // get_kp_cusps refuses outright (never silently returns zero rows) on an
+      // explicit-empty fence — that refusal must propagate as a refusal here too, not
+      // degrade into "no cusp data" for a leg its own docstring calls "the final arbiter
+      // of a bhāva's promise".
+      const code = (res.content as Record<string, unknown> | undefined)?.['code']
+      if (code === 'explicit_empty_build_fence') throw new ExplicitEmptyBuildFenceError('reading_checklist.fetchKpCuspChain')
+      return out
+    }
     const c = res.content as Record<string, unknown>
     // The child echoes the fence it applied; refuse a payload fenced to anything else.
-    if (build_id && JSON.stringify(buildFenceIds(c['build_id'])?.slice().sort() ?? null)
-      !== JSON.stringify(buildFenceIds(build_id)?.slice().sort() ?? null)) return out
+    // (build_id cannot be explicit-empty here — the is_error branch above already refused
+    // that case — so a plain, non-throwing normalize is correct for this equality check.)
+    const normalizeForCompare = (value: unknown): string[] | null => {
+      const fence = classifyBuildFence(value)
+      return fence.kind === 'resolved' ? [...fence.build_ids] : null
+    }
+    if (build_id && JSON.stringify(normalizeForCompare(c['build_id'])?.slice().sort() ?? null)
+      !== JSON.stringify(normalizeForCompare(build_id)?.slice().sort() ?? null)) return out
     const allCusps = Array.isArray(c['cusps']) ? (c['cusps'] as Record<string, unknown>[]) : []
     out.available = allCusps.length > 0
     const want = new Set(houses)
@@ -982,7 +1003,8 @@ export async function fetchKpCuspChain(
       for (const f of fact_ids) out.fact_ids.push(f)
     }
     out.cusps.sort((a, b) => houses.indexOf(a.house) - houses.indexOf(b.house))
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: leg degrades to honest not-computed upstream.
   }
   return out
@@ -1183,7 +1205,7 @@ export async function fetchDomainStructuralCoverage(
        SELECT msr.c AS msr_count, mech.c AS mech_count, mech_domains.c AS mech_domain_coverage
          FROM msr, mech, mech_domains`,
       build_id
-        ? [chart_id, ayanamsha_id, signal_domain, buildFenceIds(build_id)]
+        ? [chart_id, ayanamsha_id, signal_domain, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchDomainStructuralCoverage')]
         : [chart_id, ayanamsha_id, signal_domain],
     )
     const row = res.rows[0]
@@ -1194,7 +1216,8 @@ export async function fetchDomainStructuralCoverage(
       out.structurally_unpopulated = row.msr_count === 0 && row.mech_count === 0
       out.available = true
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: leg degrades to "could not measure" (available: false) — never a fabricated
     // zero or a fabricated "populated" claim (B.10).
   }

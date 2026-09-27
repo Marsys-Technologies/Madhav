@@ -186,4 +186,12 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
       .toEqual({ semantics: 'offset', exhausted: false, next: 300 })
   })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    mockQuery.mockReset()
+    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined)
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
 })

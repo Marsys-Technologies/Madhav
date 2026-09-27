@@ -8,6 +8,7 @@ import {
   judgmentQueryCapability,
   type GrahaCondition,
 } from '../register_d9_judgment'
+import { ExplicitEmptyBuildFenceError } from '@/lib/retrieval/registry/generation/served_generation'
 import type { ResolvedGraha } from '@/lib/retrieval/address_resolver'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -103,5 +104,19 @@ describe('judgment mandatory served-generation fence', () => {
       expect(String(sql)).not.toContain('build_id = $4::text')
       expect(Array.isArray((params as unknown[]).at(-1))).toBe(true)
     }
+  })
+
+  it('throws (never degrades to a false null-dignity finding) on an explicit-empty build fence', async () => {
+    // judgment_query's own served-generation gate guarantees this never happens through its
+    // own request surface (it always passes a non-empty resolved build set) — this is a
+    // defense-in-depth invariant check on gradeGraha itself, called directly per the R3
+    // boundary ruling's "at least one judgment/checklist caller" test requirement.
+    queryMock.mockResolvedValue({ rows: [] })
+    const graha: ResolvedGraha = {
+      kind: 'graha', graha: 'Jupiter', graha_code: 'JUP', sign: 'Sagittarius',
+      house: 9, varga: 'D1', fact_ids: ['active-placement'],
+    }
+
+    await expect(gradeGraha(CHART_ID, AYANAMSHA, graha, [])).rejects.toThrow(ExplicitEmptyBuildFenceError)
   })
 })

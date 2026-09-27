@@ -4,7 +4,11 @@ vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 
 import {
   chartServedGenerationFromRows,
+  classifyBuildFence,
+  ExplicitEmptyBuildFenceError,
+  explicitEmptyBuildFenceRefusal,
   resolveChartServedGeneration,
+  resolvedBuildFenceIds,
   servedRowsBuildIdSql,
 } from './served_generation'
 
@@ -77,5 +81,75 @@ describe('served generation classification', () => {
     expect(generation.withheld_builds).toEqual([
       { build_id: 'run-shared', unresolved_asset_ids: ['ga_vichara'], resolved_asset_ids: ['ga_structural'] },
     ])
+  })
+})
+
+// ── Explicit-empty build-fence semantics (R3 boundary, native ruling) ─────────────────────
+//
+// classifyBuildFence's three states must never collapse into each other: `absent` (no fence
+// supplied — a legitimate "read unfenced" fallback) is not `explicit_empty` (a fence WAS
+// supplied but normalized to zero build ids — must never read unfenced or bind to `[]` and
+// match zero rows as if that were genuine absence), and neither is the ordinary `resolved`
+// case.
+describe('classifyBuildFence', () => {
+  it('classifies an absent fence (undefined, null, empty string)', () => {
+    expect(classifyBuildFence(undefined)).toEqual({ kind: 'absent' })
+    expect(classifyBuildFence(null)).toEqual({ kind: 'absent' })
+    expect(classifyBuildFence('')).toEqual({ kind: 'absent' })
+  })
+
+  it('classifies a scalar fence as resolved with one build id', () => {
+    expect(classifyBuildFence('11111111-1111-4111-8111-111111111111'))
+      .toEqual({ kind: 'resolved', build_ids: ['11111111-1111-4111-8111-111111111111'] })
+  })
+
+  it('canonicalizes a duplicate/noncanonical (unsorted, repeated) fence array', () => {
+    const a = '22222222-2222-4222-8222-222222222222'
+    const b = '11111111-1111-4111-8111-111111111111'
+    expect(classifyBuildFence([a, b, a, b])).toEqual({ kind: 'resolved', build_ids: [b, a] })
+  })
+
+  it('classifies an explicit empty array as explicit_empty, never absent', () => {
+    expect(classifyBuildFence([])).toEqual({ kind: 'explicit_empty' })
+  })
+
+  it('classifies an array that normalizes to empty (all null/undefined/empty-string items) as explicit_empty', () => {
+    expect(classifyBuildFence([null, undefined, ''])).toEqual({ kind: 'explicit_empty' })
+  })
+
+  it('never returns a bare array-or-null shape that could be mistaken for the old buildFenceIds contract', () => {
+    // Regression guard for the exact defect this type exists to close: `resolved` with an
+    // empty array must be structurally impossible — explicit_empty is a distinct tag, not a
+    // `resolved` state whose build_ids array happens to be empty.
+    const explicit = classifyBuildFence([])
+    if (explicit.kind === 'resolved') {
+      expect((explicit as { build_ids: readonly string[] }).build_ids.length).toBeGreaterThan(0)
+    }
+    expect(explicit.kind).toBe('explicit_empty')
+  })
+})
+
+describe('explicitEmptyBuildFenceRefusal', () => {
+  it('returns a distinct, typed refusal — never a happy-path empty result', () => {
+    const refusal = explicitEmptyBuildFenceRefusal('get_strength', chartId)
+    expect(refusal.is_error).toBe(true)
+    expect(refusal.content.code).toBe('explicit_empty_build_fence')
+    expect(refusal.content.chart_id).toBe(chartId)
+    expect(refusal.content.error).toContain('get_strength')
+  })
+})
+
+describe('resolvedBuildFenceIds (internal, already-should-be-non-empty callers)', () => {
+  it('passes through absent as null', () => {
+    expect(resolvedBuildFenceIds(undefined, 'test')).toBeNull()
+  })
+
+  it('passes through a resolved fence as a plain array', () => {
+    expect(resolvedBuildFenceIds(['b', 'a'], 'test')).toEqual(['a', 'b'])
+  })
+
+  it('throws ExplicitEmptyBuildFenceError on an explicit-empty fence rather than returning []', () => {
+    expect(() => resolvedBuildFenceIds([], 'test.caller')).toThrow(ExplicitEmptyBuildFenceError)
+    expect(() => resolvedBuildFenceIds([], 'test.caller')).toThrow(/test\.caller/)
   })
 })

@@ -403,11 +403,90 @@ export function resolvedRowsBuildId(generation: ChartServedGeneration, assetId: 
  */
 export type BuildFence = string | readonly string[]
 
-/** Normalize a build fence argument to a uuid[] query parameter; null means "no fence". */
-export function buildFenceIds(value: unknown): string[] | null {
-  if (value === null || value === undefined || value === '') return null
+/**
+ * The three states a build-fence argument can resolve to (R3 boundary, native ruling
+ * "explicit-empty build-fence semantics"). These are NOT interchangeable:
+ *
+ * - `absent`: the caller supplied no fence at all (`undefined`/`null`/`''`). Reading
+ *   unfenced ("current rows") is a legitimate, long-standing fallback for this state.
+ * - `resolved`: the caller supplied a fence that normalizes to one or more build ids.
+ *   Bind it and read fenced.
+ * - `explicit_empty`: the caller supplied a fence value (an array, or a scalar that
+ *   normalizes away) that resolves to ZERO build ids. This is NOT the same as absent —
+ *   binding `build_id = ANY($n::uuid[])` to `[]` matches zero rows, which looks exactly
+ *   like "no evidence exists" when the real problem is "the fence itself could not be
+ *   established." Every caller MUST branch on this state explicitly rather than folding
+ *   it into either of the other two — see `describeBuildFence` for the callers' shared
+ *   refusal/disclosure vocabulary.
+ */
+export type BuildFenceState =
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'resolved'; readonly build_ids: readonly string[] }
+  | { readonly kind: 'explicit_empty' }
+
+/**
+ * Classify a raw build-fence argument into its three distinguishable states. This is the
+ * ONLY place a `build_id`-shaped value should be normalized — callers branch on `.kind`,
+ * they never coerce the result back into a bare `string[] | null` (that shape cannot
+ * distinguish `resolved: []`-that-should-never-happen from `explicit_empty`, which is
+ * exactly the defect class this type exists to close).
+ */
+export function classifyBuildFence(value: unknown): BuildFenceState {
+  if (value === null || value === undefined || value === '') return { kind: 'absent' }
   // Canonical (sorted, de-duplicated) so equal fences produce equal cache keys; any scalar a
   // caller supplies is fenced as text rather than silently dropped.
   const items = Array.isArray(value) ? value : [value]
-  return [...new Set(items.filter((item) => item !== null && item !== undefined && item !== '').map(String))].sort()
+  const normalized = [...new Set(items.filter((item) => item !== null && item !== undefined && item !== '').map(String))].sort()
+  return normalized.length > 0 ? { kind: 'resolved', build_ids: normalized } : { kind: 'explicit_empty' }
+}
+
+/**
+ * Standard refusal payload for an EVIDENTIARY caller that received an explicit-empty
+ * fence: never proceeds unfenced, never binds to an empty array. Distinct from
+ * `no_served_generation` (this session's earlier, internally-resolved-generation refusal)
+ * because the failure mode is different — here a CALLER supplied a fence value, not the
+ * server's own generation resolver.
+ */
+export function explicitEmptyBuildFenceRefusal(toolName: string, chartId: string | undefined): {
+  content: { error: string; code: 'explicit_empty_build_fence'; chart_id: string | undefined }
+  is_error: true
+} {
+  return {
+    content: {
+      error: `${toolName}: build_id was supplied but normalized to zero build ids; refusing rather than reading unfenced or matching zero rows.`,
+      code: 'explicit_empty_build_fence',
+      chart_id: chartId,
+    },
+    is_error: true,
+  }
+}
+
+/**
+ * Thrown by an internal helper (address_resolver.ts, register_d9/d10's grading helpers,
+ * significator_condition.ts, reading_checklist.ts) that receives an explicit-empty build
+ * fence. These helpers sit deep inside already-fenced composite tools whose own
+ * `resolveChartServedGeneration` gate guarantees a non-empty fence by the time it reaches
+ * here — so this should never fire in practice — but it exists so a future caller that
+ * violates that invariant fails loudly instead of silently regressing to the "bind to []
+ * and match zero rows" defect. Callers already wrap these helpers in try/catch for other
+ * failure modes; this class lets that same catch distinguish an explicit-empty fence from
+ * a generic error rather than reporting a plain "unavailable".
+ */
+export class ExplicitEmptyBuildFenceError extends Error {
+  constructor(source: string) {
+    super(`${source}: build fence was supplied but normalized to zero build ids; refusing rather than reading unfenced or matching zero rows.`)
+    this.name = 'ExplicitEmptyBuildFenceError'
+  }
+}
+
+/**
+ * Resolve an internal, already-should-be-non-empty `BuildFence` to a plain array or
+ * `null` (absent). Throws `ExplicitEmptyBuildFenceError` on an explicit-empty fence
+ * rather than ever returning `[]` — see the class doc above for why this case should be
+ * structurally unreachable for its callers, and why it still must not degrade silently.
+ */
+export function resolvedBuildFenceIds(value: unknown, source: string): string[] | null {
+  const fence = classifyBuildFence(value)
+  if (fence.kind === 'explicit_empty') throw new ExplicitEmptyBuildFenceError(source)
+  return fence.kind === 'resolved' ? [...fence.build_ids] : null
 }

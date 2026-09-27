@@ -26,7 +26,7 @@ import { query } from '@/lib/db/client'
 import type { L1ChartContext, GrahaStrength } from './composite_ranker'
 import { COMPOSITE_CACHE_TTL_MS } from './priors_config'
 import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
-import { buildFenceIds, type BuildFence } from '@/lib/retrieval/registry/generation/served_generation'
+import { classifyBuildFence, type BuildFence } from '@/lib/retrieval/registry/generation/served_generation'
 
 // Ranking-layer cache (separate from 60s retrieval cache — needs 30d TTL)
 const _rankingCache = new Map<string, { data: unknown; expiresAt: number }>()
@@ -37,8 +37,10 @@ function rankingCacheKey(
   as_of_date: string,
   build_id?: BuildFence,
 ): string {
-  const fence = buildFenceIds(build_id)
-  return `l1ctx::${chart_id}::${ayanamsha_id}::${as_of_date}::${fence ? [...fence].sort().join(',') : 'unfenced'}`
+  const fence = classifyBuildFence(build_id)
+  const fenceKey = fence.kind === 'resolved' ? [...fence.build_ids].sort().join(',')
+    : fence.kind === 'explicit_empty' ? 'explicit_empty' : 'unfenced'
+  return `l1ctx::${chart_id}::${ayanamsha_id}::${as_of_date}::${fenceKey}`
 }
 function rankingCacheGet(key: string): unknown {
   const e = _rankingCache.get(key)
@@ -76,7 +78,13 @@ export async function fetchL1Context(
   as_of_date: string,
   build_id?: BuildFence,
 ): Promise<L1ChartContext> {
-  const buildIds = buildFenceIds(build_id)
+  // DISPLAY enrichment (R3 boundary, "explicit-empty build-fence semantics"): an
+  // explicit-empty fence falls back to the same unfenced read as an absent fence — this
+  // is a ranking-only signal with generic numeric fallbacks already, never evidence a user
+  // sees directly — but the fallback is disclosed via `generation_fence` below rather than
+  // silently indistinguishable from a genuinely-unfenced request.
+  const buildFence = classifyBuildFence(build_id)
+  const buildIds = buildFence.kind === 'resolved' ? [...buildFence.build_ids] : null
   const ck = rankingCacheKey(chart_id, ayanamsha_id, as_of_date, build_id)
   const cached = rankingCacheGet(ck)
   if (cached !== undefined) return cached as L1ChartContext
@@ -168,7 +176,10 @@ export async function fetchL1Context(
     // Non-fatal: temporal_activation stays at 1.0
   }
 
-  const ctx: L1ChartContext = { graha_map, current_md_lord, current_ad_lord, as_of_date }
+  const ctx: L1ChartContext = {
+    graha_map, current_md_lord, current_ad_lord, as_of_date,
+    generation_fence: { fenced: buildIds !== null, explicit_empty: buildFence.kind === 'explicit_empty' },
+  }
   rankingCacheSet(ck, ctx)
   return ctx
 }

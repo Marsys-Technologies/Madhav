@@ -56,7 +56,7 @@
  */
 
 import { query } from '@/lib/db/client'
-import { buildFenceIds, type BuildFence } from '../generation/served_generation'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, type BuildFence } from '../generation/served_generation'
 import {
   resolveAddress,
   GRAHA_CODE_TO_NAME,
@@ -243,7 +243,7 @@ async function fetchShadbalaRanking(
        WHERE chart_id = $1 AND ayanamsha_id = $2
          AND fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'
          ${build_id ? 'AND build_id = ANY($3::uuid[])' : ''}`,
-      build_id ? [chart_id, ayanamsha_id, buildFenceIds(build_id)] : [chart_id, ayanamsha_id],
+      build_id ? [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'significator_condition.rankByShadbala')] : [chart_id, ayanamsha_id],
     )
     const inputs: Array<{ graha: string; shadbala_total: number }> = []
     const percentileByKey = new Map<string, number>()
@@ -257,7 +257,8 @@ async function fetchShadbalaRanking(
       if (r.percentile !== null) percentileByKey.set(key, Number(r.percentile))
     }
     return { ranked: rankGrahasByShadbala(inputs, 'all_9'), percentileByKey }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // Non-fatal: the dignity leg still stands; strength-extreme selection degrades to null.
     return empty
   }

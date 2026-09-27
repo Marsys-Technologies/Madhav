@@ -77,7 +77,7 @@ import {
 // grahaCodeOf, AddressResolutionError} call site is unaffected — moved, not copied.
 // A CLIENT COMPONENT must import from './graha_labels' directly, never from this file.
 import { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
-import { buildFenceIds, type BuildFence } from './registry/generation/served_generation'
+import { resolvedBuildFenceIds, type BuildFence } from './registry/generation/served_generation'
 export { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,7 +316,7 @@ function divisionalBuildFence(ctx: ResolveCtx, param: number): string {
 }
 
 function withBuildParam(ctx: ResolveCtx, params: unknown[]): unknown[] {
-  return ctx.build_id ? [...params, buildFenceIds(ctx.build_id)] : params
+  return ctx.build_id ? [...params, resolvedBuildFenceIds(ctx.build_id, 'address_resolver')] : params
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

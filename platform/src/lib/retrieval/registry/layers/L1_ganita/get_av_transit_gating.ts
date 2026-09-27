@@ -38,7 +38,7 @@
  */
 import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
-import { buildFenceIds, type BuildFence } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
@@ -267,7 +267,9 @@ async function handleSavBavGating(
   chart_id: string, ayanamsha_id: string, args: Record<string, unknown>, buildId?: BuildFence,
 ): Promise<ToolResult> {
   try {
-    const buildIds = buildFenceIds(buildId)
+    const buildFence = classifyBuildFence(buildId)
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_av_transit_gating', chart_id)
+    const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     // 1. LAGNA sign number (for house resolution).
     const lagnaRes = await query<{ fact_value_num: number }>(
       `SELECT fact_value_num FROM chart_facts

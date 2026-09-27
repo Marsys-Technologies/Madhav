@@ -28,7 +28,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { buildFenceIds } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { deriveDefect001Note } from '../../../provenance/freshness_notes'
 import { demoteSignatureTier } from '../../../ranking/salience_demotion'
@@ -692,7 +692,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     const domain          = args['domain'] as string | undefined
     const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     // Build fence: a chart's served build set, supplied by composing callers (assess_*).
-    const build_ids       = buildFenceIds(args['build_id'])
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('query_domain_reading', chart_id)
+    const build_ids       = buildFence.kind === 'resolved' ? [...buildFence.build_ids] : null
     const response_format = (args['response_format'] as string | undefined) ?? 'default'
     const is_full         = response_format === 'full'
     // Default cap: 200 (enough for temporal-activation filter top_k=20 with headroom).

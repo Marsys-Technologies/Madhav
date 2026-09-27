@@ -25,7 +25,7 @@ import {
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
-import { buildFenceIds, type BuildFence } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -147,7 +147,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
       const buildId = args.build_id as BuildFence
-      const buildIds = buildFenceIds(buildId)
+      const buildFence = classifyBuildFence(buildId)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_strength', chartId)
+      const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
 
       // F-60 fix: build the WHERE clause + its params ONCE, shared by a dedicated COUNT
       // query (the true pre-LIMIT/OFFSET row count matching this filter) and the SELECT

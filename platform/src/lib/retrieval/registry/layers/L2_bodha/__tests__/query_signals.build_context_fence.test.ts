@@ -121,4 +121,14 @@ describe('query_signals selected-build L1 ranking context', () => {
     expect(String(frameFactCall?.[0])).not.toContain('build_id = $4::text')
     expect(frameFactCall?.[1]).toEqual(expect.arrayContaining([[BUILD_A]]))
   })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    queryMock.mockClear()
+    const result = await querySignalsCapability.handler(
+      { chart_id: CHART_ID, build_id: [], domain: 'career' }, undefined,
+    )
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(queryMock).not.toHaveBeenCalled()
+  })
 })

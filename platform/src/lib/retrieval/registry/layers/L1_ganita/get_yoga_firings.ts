@@ -32,7 +32,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { YOGA_SCUS } from '../../knowledge/editorial'
-import { buildFenceIds } from '../../generation/served_generation'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const MAX_LIMIT = 50
 
@@ -160,7 +160,9 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
     // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
-    const build_ids = buildFenceIds(args['build_id'])
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_yoga_firings', chart_id)
+    const build_ids = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
     const all               = args['all'] === true

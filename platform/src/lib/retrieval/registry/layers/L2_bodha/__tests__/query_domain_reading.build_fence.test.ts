@@ -70,4 +70,14 @@ describe('query_domain_reading build fence', () => {
     await queryDomainReadingCapability.handler({ chart_id: CHART_ID, domain: 'wealth' }, undefined)
     for (const { sql } of bodhaCalls()) expect(sql).not.toContain('build_id')
   })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    mockQuery.mockClear()
+    const result = await queryDomainReadingCapability.handler(
+      { chart_id: CHART_ID, domain: 'wealth', build_id: [] }, undefined,
+    )
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
 })
