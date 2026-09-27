@@ -262,6 +262,32 @@ describe('provider-backed RoleExecutor', () => {
     expect(owned.disposals[0]).toHaveBeenCalledOnce()
   })
 
+  it('promptly disposes a stalled buffered stream when its external signal aborts', async () => {
+    let upstreamReads = 0
+    const upstreamReturn = vi.fn(async () => ({ done: true as const, value: undefined }))
+    mocks.streamAdapterRaw.mockReturnValue({ result: { fullStream: {
+      [Symbol.asyncIterator]() { return this },
+      async next() {
+        upstreamReads++
+        return { done: false as const, value: { type: 'text-delta', text: String(upstreamReads) } }
+      },
+      return: upstreamReturn,
+    } } })
+    const abort = new AbortController()
+    const owned = execution()
+    const reader = createProviderRoleExecutor(owned.value)
+      .stream({ ...request, responseSchema: undefined, abortSignal: abort.signal }).getReader()
+
+    expect(await reader.read()).toEqual({ done: false, value: { type: 'text_delta', text: '1' } })
+    await vi.waitFor(() => expect(upstreamReads).toBe(2))
+    abort.abort()
+    await vi.waitFor(() => expect(owned.disposals[0]).toHaveBeenCalledOnce())
+    expect(upstreamReturn).toHaveBeenCalledOnce()
+    expect(owned.createRuntimeBinding).toHaveBeenCalledOnce()
+    expect(mocks.streamAdapterRaw).toHaveBeenCalledOnce()
+    await expect(reader.read()).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+  })
+
   it('does not serialize or inspect the model, binding, credential, or credential version', () => {
     const owned = execution()
     const executor = createProviderRoleExecutor(owned.value)

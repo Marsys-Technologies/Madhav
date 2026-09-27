@@ -126,8 +126,14 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
   let disposeCurrent: (() => void) | undefined
   let retryCount = 0
   let emitted = false
+  let settled = false
   let pulling: Promise<void> | undefined
+  let detachExternalAbort = () => undefined
   const dispose = () => { const current = disposeCurrent; disposeCurrent = undefined; current?.() }
+  const returnIteratorSafely = (current: AsyncIterator<unknown> | undefined) => {
+    try { void Promise.resolve(current?.return?.()).catch(() => undefined) }
+    catch { /* external abort is already terminal */ }
+  }
 
   async function openAttempt(): Promise<boolean> {
     if (cancelled) return false
@@ -166,6 +172,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
       retryCount = 1
       return 'retry'
     }
+    settled = true
+    detachExternalAbort()
     if (execution.markRuntimeFailure && MARKABLE.has(normalized.code as ProviderRuntimeFailure['code'])) {
       try { await execution.markRuntimeFailure(normalized as ProviderRuntimeFailure) }
       catch { /* Health telemetry must not replace the safe terminal provider error. */ }
@@ -176,6 +184,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
   async function pullOne(controller: ReadableStreamDefaultController<RoleExecutionEvent>): Promise<void> {
     if (((request.tools?.length ?? 0) > 0 && !execution.capabilities.supportsTools)
       || (request.responseSchema !== undefined && !execution.capabilities.supportsStructuredOutput)) {
+      settled = true
+      detachExternalAbort()
       throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role)
     }
     while (!cancelled) {
@@ -183,6 +193,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
         if (!iterator && !await openAttempt()) return
         const next = await iterator!.next()
         if (next.done) {
+          settled = true
+          detachExternalAbort()
           dispose(); iterator = undefined
           controller.close()
           return
@@ -193,18 +205,43 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
         controller.enqueue(event)
         return
       } catch (cause) {
+        if (cancelled) return
         if (await terminalError(cause) === 'retry') continue
       }
     }
   }
 
   return new ReadableStream<RoleExecutionEvent>({
+    start(controller) {
+      if (!request.abortSignal) return
+      const onAbort = () => {
+        if (settled) return
+        settled = true
+        cancelled = true
+        detachExternalAbort()
+        localAbort.abort()
+        const current = iterator
+        iterator = undefined
+        dispose()
+        returnIteratorSafely(current)
+        controller.error(new AiConsoleError('AI_EXECUTION_FAILED', execution.role))
+      }
+      detachExternalAbort = () => {
+        request.abortSignal?.removeEventListener('abort', onAbort)
+        detachExternalAbort = () => undefined
+      }
+      request.abortSignal.addEventListener('abort', onAbort, { once: true })
+      if (request.abortSignal.aborted) onAbort()
+    },
     pull(controller) {
       pulling ??= pullOne(controller).finally(() => { pulling = undefined })
       return pulling
     },
     async cancel() {
+      if (settled) return
+      settled = true
       cancelled = true
+      detachExternalAbort()
       localAbort.abort()
       try { await iterator?.return?.() } catch { /* cancellation is already terminal */ }
       dispose()
