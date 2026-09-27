@@ -69,15 +69,88 @@ describe('deriveChartReadiness', () => {
     expect(full.layerPips.every((p) => p.state === 'lit')).toBe(true)
   })
 
-  it('treats lit zero-row and stale-with-rows assets as data present', () => {
-    const r = deriveChartReadiness({
-      throughput: [row('ga_prashna', 'lit', 0), row('bo_laksana', 'stale', 12)],
-      latestRun: null,
-    })
+  it('treats a lit zero-row asset as data present', () => {
+    const r = deriveChartReadiness({ throughput: [row('ga_prashna', 'lit', 0)], latestRun: null })
     const byLayer = Object.fromEntries(r.layerPips.map((p) => [p.layer, p.state]))
     expect(byLayer.ganita).toBe('lit')
-    expect(byLayer.bodha).toBe('lit')
     expect(byLayer.kala).toBe('dim')
+  })
+
+  describe('stale assets are not valid current data', () => {
+    it('a stale required asset keeps an otherwise complete chart out of Ready', () => {
+      const r = deriveChartReadiness({
+        throughput: [...ALL_LAYERS, row('bo_bimba', 'stale', 12)],
+        latestRun: run('completed'),
+        unresolvedFailure: NONE,
+      })
+      expect(r.state).not.toBe('ready')
+      expect(isDerivedChartReady(r)).toBe(false)
+      expect(r.state).toBe('partially-built')
+    })
+
+    it('marks the layer holding a stale asset as needing attention, not built', () => {
+      const r = deriveChartReadiness({
+        throughput: [...ALL_LAYERS, row('bo_bimba', 'stale', 12)],
+        latestRun: run('completed'),
+        unresolvedFailure: NONE,
+      })
+      const byLayer = Object.fromEntries(r.layerPips.map((p) => [p.layer, p.state]))
+      expect(byLayer.bodha).toBe('amber')
+    })
+
+    it('a layer whose only data is stale does not count as built', () => {
+      const r = deriveChartReadiness({ throughput: [row('bo_laksana', 'stale', 12)], latestRun: null, unresolvedFailure: NONE })
+      expect(r.state).toBe('not-built')
+      expect(r.percent).toBe(0)
+    })
+  })
+
+  describe('serving impact of active runs', () => {
+    const recal = (state = 'running') =>
+      ({ ...run(state, null, { id: 'recal-1', scope: 'asset_set', action: 'rebuild' }), planned_assets: ['mi_jivanaghatana', 'mi_pramana', 'ph_rectification', 'ph_pramana'] })
+
+    it('an LEL recalibration run leaves a Ready chart Ready (it does not invalidate served data)', () => {
+      const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: recal(), unresolvedFailure: NONE })
+      expect(r.state).toBe('ready')
+      expect(r.activeRunId).toBe('recal-1')
+      expect(r.activeRunBlocksReadings).toBe(false)
+    })
+
+    it('its own assets building do not block readings', () => {
+      const r = deriveChartReadiness({
+        throughput: [...ALL_LAYERS, row('mi_pramana', 'building', 4)],
+        latestRun: recal(),
+        unresolvedFailure: NONE,
+      })
+      expect(r.state).toBe('ready')
+    })
+
+    it.each([
+      ['a global rebuild', { scope: 'global', action: 'rebuild' }, ['ga_positions']],
+      ['a global build', { scope: 'global', action: 'build' }, []],
+      ['a layer rebuild', { scope: 'layer', action: 'rebuild' }, ['bo_laksana']],
+      ['an asset rebuild outside the recalibration set', { scope: 'asset', action: 'rebuild' }, ['ga_positions']],
+      ['an asset set mixing recalibration and serving assets', { scope: 'asset_set', action: 'rebuild' }, ['mi_pramana', 'bo_laksana']],
+      ['a run whose planned assets are unknown', { scope: 'asset_set', action: 'rebuild' }, null],
+      ['a run with no planned assets', { scope: 'asset_set', action: 'rebuild' }, []],
+    ] as const)('%s blocks readings (fails safe until classified)', (_label, extra, planned) => {
+      const r = deriveChartReadiness({
+        throughput: ALL_LAYERS,
+        latestRun: { ...run('running', null, { ...extra, id: 'r-9' }), planned_assets: planned === null ? null : [...planned] },
+        unresolvedFailure: NONE,
+      })
+      expect(r.state).toBe('building')
+      expect(r.activeRunBlocksReadings).toBe(true)
+    })
+
+    it('a building asset outside the non-blocking run still blocks', () => {
+      const r = deriveChartReadiness({
+        throughput: [...ALL_LAYERS, row('ga_positions', 'building', 3)],
+        latestRun: recal(),
+        unresolvedFailure: NONE,
+      })
+      expect(r.state).toBe('building')
+    })
   })
 
   it('dormant rows with no data do not count as built', () => {
@@ -246,6 +319,13 @@ describe('getChartReadinessMap', () => {
     expect(failureSql).toMatch(/at\.last_built_at >= r\.created_at/)
     expect(failureSql).toMatch(/COUNT\(DISTINCT bra\.asset_id\)/)
     expect(failureSql).toMatch(/JOB_DISPATCH_FAILED/)
+    // Only a lit asset holds valid current data; a stale one does not resolve a failure.
+    expect(failureSql).toMatch(/at\.state = 'lit'/)
+    expect(failureSql).not.toMatch(/'stale'/)
+    // The latest run carries its planned assets (for serving-impact classification),
+    // read once per chart, never per historical run.
+    expect(runSql).toMatch(/planned_assets/)
+    expect(runSql).toMatch(/build_run_assets/)
     const throughputSql = calls.map(([s]) => s as string).find((s) => s.includes('asset_throughput'))!
     expect(throughputSql).toMatch(/is_active\s*=\s*true/)
     expect(map.get(CHART)?.state).toBe('partially-built')

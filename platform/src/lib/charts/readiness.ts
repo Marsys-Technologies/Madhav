@@ -2,6 +2,7 @@ import 'server-only'
 import { query } from '@/lib/db/client'
 import { BRAHMA_LAYER_ORDER, type BrahmaLayerId } from '@/lib/brahma/lexicon'
 import type { LayerPip } from '@/lib/roster/types'
+import { runBlocksReadings } from '@/lib/charts/servingImpact'
 
 /**
  * Shared chart-readiness authority (Jātaka chart workspace, Task 1).
@@ -27,6 +28,11 @@ export interface ChartReadiness {
   layerPips: LayerPip[]
   lastActivity: string | null
   activeRunId: string | null
+  /**
+   * Whether the active run (if any) blocks new readings. False only for a run
+   * classified as leaving the served dataset valid (see servingImpact.ts).
+   */
+  activeRunBlocksReadings?: boolean
   latestRunId: string | null
   latestError: string | null
   /**
@@ -58,6 +64,8 @@ export type ReadinessRunRow = {
   created_at?: string
   started_at?: string | null
   ended_at?: string | null
+  /** Assets the run planned (build_run_assets). Null/absent → unknown → blocking. */
+  planned_assets?: string[] | null
 }
 
 type ThroughputRow = ReadinessThroughputRow & {
@@ -117,16 +125,24 @@ export function deriveChartReadiness(input: {
   const { throughput, latestRun } = input
   const unresolvedFailure = input.unresolvedFailure ?? null
 
+  const runActive = latestRun !== null && ACTIVE_RUN_STATES.has(latestRun.state)
+  const activeRunBlocks = runActive && runBlocksReadings(latestRun!)
+  // Assets a non-blocking active run is rebuilding keep serving their previous data.
+  const nonBlockingAssets = new Set(runActive && !activeRunBlocks ? (latestRun!.planned_assets ?? []) : [])
+
   // A layer holds data when any of its active assets is lit (zero-row-by-design
-  // assets count) or has written rows (stale data is still present data).
-  const layerData = new Map<BrahmaLayerId, { hasData: boolean; isBuilding: boolean }>()
+  // assets count) or has written rows. A stale asset is not valid current data:
+  // its layer needs attention and the chart is not Ready until it is rebuilt.
+  const layerData = new Map<BrahmaLayerId, { hasData: boolean; isBuilding: boolean; isStale: boolean }>()
   for (const row of throughput) {
     const layer = assetLayer(row.asset_id)
     if (!layer) continue
-    const current = layerData.get(layer) ?? { hasData: false, isBuilding: false }
+    const current = layerData.get(layer) ?? { hasData: false, isBuilding: false, isStale: false }
+    const stale = row.state === 'stale'
     layerData.set(layer, {
-      hasData: current.hasData || row.state === 'lit' || (row.rows_written != null && row.rows_written > 0),
+      hasData: current.hasData || (!stale && (row.state === 'lit' || (row.rows_written != null && row.rows_written > 0))),
       isBuilding: current.isBuilding || row.state === 'building',
+      isStale: current.isStale || stale,
     })
   }
 
@@ -134,6 +150,7 @@ export function deriveChartReadiness(input: {
   const layerPips: LayerPip[] = BRAHMA_LAYER_ORDER.map((layer) => {
     if (layer === 'brahmagyan') return { layer, state: 'lit' as const }
     const entry = layerData.get(layer)
+    if (entry?.isStale) return { layer, state: 'amber' as const }
     if (entry?.hasData) return { layer, state: 'lit' as const }
     if (entry?.isBuilding) return { layer, state: 'building' as const }
     return { layer, state: 'dim' as const }
@@ -141,8 +158,7 @@ export function deriveChartReadiness(input: {
 
   const perChartLit = layerPips.filter((p) => p.layer !== 'brahmagyan' && p.state === 'lit').length
   const allLit = layerPips.every((p) => p.state === 'lit')
-  const anyBuilding = throughput.some((row) => row.state === 'building')
-  const runActive = latestRun !== null && ACTIVE_RUN_STATES.has(latestRun.state)
+  const anyBuilding = throughput.some((row) => row.state === 'building' && !nonBlockingAssets.has(row.asset_id))
   const endedIncomplete = (run: ReadinessRunRow | null) => run?.state === 'failed' || run?.state === 'stopped'
   const latestDispatchFailed =
     latestRun?.state === 'failed' && (latestRun.last_error ?? '').startsWith(JOB_DISPATCH_FAILED_PREFIX)
@@ -154,7 +170,7 @@ export function deriveChartReadiness(input: {
   const refreshWarningApplies = endedIncomplete(latestRun) && !unresolved
 
   let state: ChartReadinessState
-  if (runActive || anyBuilding) state = 'building'
+  if (activeRunBlocks || anyBuilding) state = 'building'
   else if (unresolved) state = unresolvedFailure?.dispatchFailed || latestDispatchFailed ? 'needs-rebuild' : 'failed'
   else if (latestDispatchFailed) state = 'needs-rebuild'
   else if (allLit) state = 'ready'
@@ -182,6 +198,7 @@ export function deriveChartReadiness(input: {
     layerPips,
     lastActivity,
     activeRunId: runActive ? latestRun!.id : null,
+    activeRunBlocksReadings: activeRunBlocks || anyBuilding,
     latestRunId: latestRun?.id ?? null,
     latestError: latestRun?.last_error ?? null,
     refreshWarning,
@@ -206,13 +223,19 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
         WHERE at.chart_id = ANY($1::uuid[])`,
       [chartIds],
     ),
-    // Latest run of any kind and any state (a failed dispatch must be visible).
+    // Latest run of any kind and any state (a failed dispatch must be visible),
+    // with its planned assets for serving-impact classification — read once per
+    // chart for the latest run only.
     query<LatestRunRow>(
-      `SELECT DISTINCT ON (r.chart_id)
-              r.id, r.chart_id, r.state, r.scope, r.action, r.last_error, r.created_at, r.started_at, r.ended_at
-         FROM build_runs r
-        WHERE r.chart_id = ANY($1::uuid[])
-        ORDER BY r.chart_id, r.created_at DESC, r.id DESC`,
+      `SELECT l.*,
+              ARRAY(SELECT bra.asset_id FROM build_run_assets bra WHERE bra.run_id = l.id ORDER BY bra.position) AS planned_assets
+         FROM (
+           SELECT DISTINCT ON (r.chart_id)
+                  r.id, r.chart_id, r.state, r.scope, r.action, r.last_error, r.created_at, r.started_at, r.ended_at
+             FROM build_runs r
+            WHERE r.chart_id = ANY($1::uuid[])
+            ORDER BY r.chart_id, r.created_at DESC, r.id DESC
+         ) l`,
       [chartIds],
     ),
     // Failed/stopped runs of any age that still own broken active per-chart
@@ -229,7 +252,7 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
         WHERE r.chart_id = ANY($1::uuid[])
           AND r.state IN ('failed', 'stopped')
           AND NOT COALESCE(
-                at.state IN ('lit', 'stale')
+                at.state = 'lit'
                 AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at),
                 false)
         GROUP BY r.chart_id`,

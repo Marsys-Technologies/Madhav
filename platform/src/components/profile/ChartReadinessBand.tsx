@@ -96,8 +96,13 @@ export function ChartReadinessBand({
       </ol>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--jw-ink-dim)]">
-        {readiness.activeRunId && (
+        {readiness.activeRunId && readiness.activeRunBlocksReadings !== false && (
           <span>Build run {readiness.activeRunId.slice(0, 8)} in progress — progress updates here.</span>
+        )}
+        {readiness.activeRunId && readiness.activeRunBlocksReadings === false && (
+          <span>
+            Recalibration run {readiness.activeRunId.slice(0, 8)} in progress — readings continue on the current chart.
+          </span>
         )}
         {readiness.lastActivity && <span>Last built {formatDate(readiness.lastActivity)}</span>}
         {readiness.state === 'needs-rebuild' && (

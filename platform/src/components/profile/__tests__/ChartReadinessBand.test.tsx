@@ -80,6 +80,16 @@ describe('ChartReadinessBand', () => {
     expect(screen.getByText(/build run abcdef12 in progress/i)).toBeInTheDocument()
   })
 
+  it('says readings continue while a non-blocking recalibration run is active', () => {
+    render(
+      <ChartReadinessBand
+        readiness={fixture({ state: 'ready', percent: 100, activeRunId: 'recal123-4567', activeRunBlocksReadings: false })}
+      />,
+    )
+    expect(screen.getByText(/recalibration run recal123 in progress/i)).toBeInTheDocument()
+    expect(screen.getByText(/readings continue/i)).toBeInTheDocument()
+  })
+
   it('shows last activity when available', () => {
     render(<ChartReadinessBand readiness={fixture({ state: 'ready', lastActivity: '2026-09-05T10:00:00Z' })} />)
     expect(screen.getByText(/last built/i)).toBeInTheDocument()
