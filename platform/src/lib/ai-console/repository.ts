@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { query, withTransaction } from '@/lib/db/client'
 import type { EncryptedCredential } from './crypto'
 import { writeAiAudit } from './audit'
-import { AiConsoleError, AiErrorCodeSchema } from './errors'
+import { AiConsoleError, AiErrorCodeSchema, normalizeAiError } from './errors'
 import {
   AI_ROLES, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
   ProviderIdSchema, RoleAssignmentsSchema, RoutingSnapshotSchema, SafeProviderConnectionSchema,
@@ -186,6 +186,45 @@ export async function storeConnectionValidation(userId: string, connectionId: st
         [userId, connectionId, model.modelId, model.displayName, model.compatibleRoles])
       }
     }
+    await writeAiAudit(client, userId, { event: 'connection_validated', connectionId })
+  })
+}
+
+/** Server-internal global scheduler boundary. last_checked_at is a recoverable lease. */
+export async function claimStaleConnectionRevalidations(input: { staleBefore: Date; limit: number }) {
+  const { staleBefore, limit } = z.object({ staleBefore: z.date().refine(v => v.getTime() <= Date.now()),
+    limit: z.number().int().min(1).max(25) }).strict().parse(input)
+  return withTransaction(async client => {
+    const { rows } = await client.query(`WITH candidates AS (
+      SELECT c.id FROM ai_provider_connections c JOIN profiles p ON p.id=c.user_id
+      WHERE p.status='active' AND c.deleted_at IS NULL AND c.credential_validity<>'invalid'
+      AND (c.last_checked_at IS NULL OR c.last_checked_at < $1)
+      ORDER BY c.last_checked_at NULLS FIRST,c.id LIMIT $2 FOR UPDATE OF c SKIP LOCKED
+    ) UPDATE ai_provider_connections c SET validation_state='validating',last_checked_at=now(),updated_at=now()
+      FROM candidates WHERE c.id=candidates.id
+      RETURNING c.user_id,c.id,c.provider_id,c.credential_version`, [staleBefore, limit])
+    return rows.map(row => ({ userId: String(row.user_id), connectionId: String(row.id),
+      providerId: ProviderIdSchema.parse(row.provider_id), credentialVersion: z.coerce.number().int().positive().parse(row.credential_version) }))
+  })
+}
+
+/** Exact-version runtime failure marker; no catalog rewrite or credential substitution. */
+export async function markConnectionForRevalidation(userId: string, connectionId: string, credentialVersion: number, normalizedError: unknown) {
+  z.number().int().positive().parse(credentialVersion)
+  const error = z.object({ code: z.enum(['AI_CONNECTION_INVALID', 'AI_MODEL_UNAVAILABLE', 'AI_ROLE_INCOMPATIBLE',
+    'AI_PROVIDER_UNREACHABLE', 'AI_PERMISSION_DENIED', 'AI_BILLING_UNAVAILABLE', 'AI_RATE_LIMITED']),
+  message: z.string(), retryable: z.boolean(), role: AiRoleSchema.optional() }).strict().parse(normalizedError)
+  // Accept only canonical normalized public values, never provider-controlled messages.
+  if (!isDeepStrictEqual(error, normalizeAiError(new AiConsoleError(error.code, error.role), { source: 'provider' }))) throw notFound()
+  const state = error.code === 'AI_CONNECTION_INVALID' ? 'invalid'
+    : error.code === 'AI_PROVIDER_UNREACHABLE' || error.code === 'AI_RATE_LIMITED' ? 'unreachable' : 'needs_attention'
+  return withUserTransaction(userId, async client => {
+    required((await client.query(`UPDATE ai_provider_connections c SET validation_state=$4,
+      credential_validity=CASE WHEN $5='AI_CONNECTION_INVALID' THEN 'invalid' ELSE credential_validity END,
+      last_error_code=$5,last_checked_at=now(),updated_at=now()
+      WHERE c.user_id=$1 AND c.id=$2 AND c.credential_version=$3 AND c.deleted_at IS NULL
+      AND EXISTS(SELECT 1 FROM profiles p WHERE p.id=c.user_id AND p.status='active') RETURNING c.id`,
+    [userId, connectionId, credentialVersion, state, error.code])).rows)
     await writeAiAudit(client, userId, { event: 'connection_validated', connectionId })
   })
 }
