@@ -133,7 +133,7 @@ def query_rules_for_planet(
     """
     Query rules for a specific planet, optionally filtered by house placement.
     """
-    params: list = [planet, planet]
+    params: list = [planet]
     house_clause = ""
     if house is not None:
         house_clause = "AND r.antecedent_jsonb->>'house' = %s"

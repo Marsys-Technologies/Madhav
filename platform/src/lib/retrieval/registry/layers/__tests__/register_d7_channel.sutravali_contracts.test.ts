@@ -15,9 +15,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-// query_sutravali_rules_for_planet is deliberately not covered here: it has no
-// source-query contract because its sidecar route (python-sidecar/routers/
-// sutravali.py query_rules_for_planet) binds two parameters for one placeholder.
 describe('Sutravali registry source-query contracts', () => {
   it('preserves every optional filter and the bounded response shape for the flexible query', async () => {
     const fetchMock = successfulFetch([{ rule_id: 'rule-1', text_id: 'bphs' }])
@@ -58,5 +55,37 @@ describe('Sutravali registry source-query contracts', () => {
       content: { rules: [{ rule_id: 'rule-2' }], returned_count: 1, text_id: 'bphs', limit: 500, offset: 50 },
       is_error: false,
     })
+  })
+
+  // R3 boundary ("remaining residual classification", packet 4): query_rules_for_planet's
+  // sidecar route (python-sidecar/routers/sutravali.py) used to bind two parameters for one
+  // SQL placeholder and could never succeed — see
+  // python-sidecar/tests/test_sutravali_query_rules_for_planet.py for the sidecar-side fix and
+  // regression test. This capability is now contracted
+  // (source-query:query-sutravali-rules-for-planet:v1) — this test covers the TypeScript-side
+  // request construction the way its two siblings above already do.
+  it('builds the planet-scoped query string and forwards rows for query_sutravali_rules_for_planet', async () => {
+    const fetchMock = successfulFetch([{ rule_id: 'rule-3', text_id: 'bphs' }])
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await capability('marsys://tool/L0/query_sutravali_rules_for_planet').handler({
+      planet: 'Saturn', house: 10, limit: 999,
+    })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const [url] = (fetchMock.mock.calls as unknown as [string, RequestInit][])[0]!
+    expect(String(url)).toContain('/api/brahma/sutravali/query_rules_for_planet?')
+    expect(String(url)).toContain('planet=Saturn')
+    expect(String(url)).toContain('house=10')
+    expect(String(url)).toContain('limit=500') // clamped to the 500 max
+    expect(response).toEqual({
+      content: { rules: [{ rule_id: 'rule-3', text_id: 'bphs' }], returned_count: 1, planet: 'Saturn', limit: 500 },
+      is_error: false,
+    })
+  })
+
+  it('requires planet before querying', async () => {
+    const planetCapability = capability('marsys://tool/L0/query_sutravali_rules_for_planet')
+    await expect(planetCapability.handler({})).resolves.toEqual({ content: { error: 'planet is required' }, is_error: true })
   })
 })

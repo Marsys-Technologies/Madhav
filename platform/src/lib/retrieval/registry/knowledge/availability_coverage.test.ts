@@ -459,9 +459,12 @@ describe('first-slice availability coverage', () => {
     expect(contract?.sql).toContain('LIMIT 0')
   })
 
-  it('leaves query_sutravali_rules_for_planet uncontracted while its sidecar route mis-binds parameters', () => {
+  it('contracts query_sutravali_rules_for_planet now that its sidecar route param-binding bug is fixed (R3 boundary, packet 4)', () => {
     const scu = findScu('scu.catalog.query_sutravali_rules_for_planet')
-    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L0/query_sutravali_rules_for_planet',
+      requirements: [expect.objectContaining({ kind: 'source_query', contract_id: 'source-query:query-sutravali-rules-for-planet:v1', scope: 'global' })],
+    })])
   })
 
   it('admits query_domain_reading only through its complete active-build-context source-query contract', async () => {

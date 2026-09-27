@@ -172,8 +172,11 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain('LIMIT 0')
   })
 
-  it('does not contract query_sutravali_rules_for_planet while its sidecar route mis-binds parameters', () => {
-    expect(getSourceQueryAvailabilityContract('source-query:query-sutravali-rules-for-planet:v1')).toBeUndefined()
+  it('contracts query_sutravali_rules_for_planet now that its sidecar route param-binding bug is fixed (R3 boundary, packet 4)', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:query-sutravali-rules-for-planet:v1')!
+    expect(contract).toBeDefined()
+    expect(contract.scope).toBe('global')
+    expect(contract.sql).toContain('LIMIT 0')
   })
 
   it('probes both lel_intake_checklist relations in the chart scope with zero rows', () => {
@@ -1334,7 +1337,7 @@ describe('binding availability contracts', () => {
 
     const missingLegReport = inspectCapabilityKnowledge(catalog, withContracts([{
       binding_id: knownBindingId,
-      requirements: [{ ...derived, required_binding_ids: ['registry:marsys://tool/L0/query_sutravali_rules_for_planet'] }],
+      requirements: [{ ...derived, required_binding_ids: ['registry:marsys://tool/L4/query_muhurat'] }],
     }]))
     expect(missingLegReport.findings).toContainEqual(expect.objectContaining({
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',

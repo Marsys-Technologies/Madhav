@@ -4060,12 +4060,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
     ],
   },
-  // The two Sutravali sidecar routes below run exactly these relations. The
+  // The three Sutravali sidecar routes below run exactly these relations. The
   // probe binds every optional filter to NULL so it proves the handler's
   // relation, projection, filter columns, and ordering are queryable without
-  // returning rule content. query_sutravali_rules_for_planet is deliberately
-  // NOT contracted: its sidecar route binds two parameters for a single
-  // placeholder and fails, so a DB probe would falsely certify it.
+  // returning rule content. query_sutravali_rules_for_planet's sidecar route
+  // (python-sidecar/routers/sutravali.py) previously bound two parameters
+  // for a single placeholder and could never succeed — fixed at the R3
+  // boundary ("remaining residual classification", packet 4) by removing the
+  // duplicated `planet` param; now contracted like its siblings.
   {
     contract_id: 'source-query:query-sutravali-rules:v1',
     descriptor_name: 'query_sutravali_rules',
@@ -4087,6 +4089,27 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:368-394',
       'platform/python-sidecar/routers/sutravali.py:87-124',
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-sutravali-rules-for-planet:v1',
+    descriptor_name: 'query_sutravali_rules_for_planet',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules_for_planet',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.antecedent_jsonb->>'planet' ILIKE NULL::text
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:400-473',
+      'platform/python-sidecar/routers/sutravali.py#query_rules_for_planet',
+      'platform/python-sidecar/tests/test_sutravali_query_rules_for_planet.py',
     ],
   },
   {
