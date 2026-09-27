@@ -18,15 +18,23 @@ import { markChartContextStale, staleMarkingStatements } from '../chartContextSt
 const CHART = '11111111-2222-4333-8444-555555555555'
 const RUN = 'run-new'
 
+const ALL_TABLES = [
+  'event_chart_state_index',
+  'mimamsa_predictions',
+  'brahma_mimamsa_prediction_ledger',
+  'brahma_prospective_ledger',
+  'mimamsa_calibration_snapshot',
+]
+
 describe('staleMarkingStatements — pure statement builder', () => {
   const statements = staleMarkingStatements(CHART, RUN)
 
-  it('marks exactly event_chart_state_index and mimamsa_predictions', () => {
+  it('marks exactly the five preserved chart-context surfaces (Phase-A2 + Phase-A3 deferred surfaces)', () => {
     const tables = statements.map((s) => s.sql.match(/UPDATE\s+(\w+)/i)?.[1])
-    expect(tables.sort()).toEqual(['event_chart_state_index', 'mimamsa_predictions'])
+    expect(tables.sort()).toEqual([...ALL_TABLES].sort())
   })
 
-  it.each(['event_chart_state_index', 'mimamsa_predictions'])('scopes the %s statement to this chart, this run, and only currently-current rows', (table) => {
+  it.each(ALL_TABLES)('scopes the %s statement to this chart, this run, and only currently-current rows', (table) => {
     const stmt = statements.find((s) => new RegExp(`UPDATE\\s+${table}\\b`, 'i').test(s.sql))!
     expect(stmt.sql).toMatch(/SET\s+chart_context_stale_at\s*=\s*NOW\(\)/i)
     expect(stmt.sql).toMatch(/chart_context_stale_reason\s*=\s*'chart_details_changed'/i)
@@ -36,11 +44,17 @@ describe('staleMarkingStatements — pure statement builder', () => {
     expect(stmt.params).toEqual([CHART, RUN])
   })
 
-  it('never touches lifecycle_status, outcome, confirmed or denied', () => {
+  it('never touches lifecycle_status, outcome, confirmed, denied, or any Samīkṣā frozen-claim field', () => {
     for (const s of statements) {
       expect(s.sql).not.toMatch(/lifecycle_status/i)
       expect(s.sql).not.toMatch(/\boutcome\b/i)
+      expect(s.sql).not.toMatch(/claim_text|confidence|\bwindow\b|direction|\bdomain\b|build_id|priors_version|formula_versions|ranking_config|now_context_date/i)
+      expect(s.sql).not.toMatch(/publication_status|two_key_complete/i)
     }
+  })
+
+  it('runs exactly five UPDATEs, one per surface', () => {
+    expect(statements).toHaveLength(5)
   })
 
   it('never touches life_events', () => {
@@ -53,7 +67,7 @@ describe('markChartContextStale — executes the statements on the caller\'s tra
     const calls: Array<{ sql: string; params: unknown[] }> = []
     const db = { query: vi.fn(async (sql: string, params: unknown[] = []) => { calls.push({ sql, params }); return { rows: [], rowCount: 0 } as never }) }
     await markChartContextStale({ db, chartId: CHART, runId: RUN })
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(5)
     expect(calls.every((c) => c.params[0] === CHART && c.params[1] === RUN)).toBe(true)
   })
 

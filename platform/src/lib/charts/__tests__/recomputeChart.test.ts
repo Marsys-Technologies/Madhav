@@ -298,20 +298,25 @@ describe('updateChartAndMaybeRecompute — successful correction', () => {
     expect(has(/SET archived_by_run_id/)).toBe(false)
   })
 
-  it('marks event_chart_state_index and mimamsa_predictions stale for this chart, stamped with the new run id, before COMMIT', async () => {
+  it('marks all five preserved chart-context surfaces stale for this chart, stamped with the new run id, before COMMIT', async () => {
     setup()
     await run({ ...INPUT, birth_time: '10:44' })
-    const eciStmt = statements.find((s) => /UPDATE event_chart_state_index/.test(s.sql))
-    const predStmt = statements.find((s) => /UPDATE mimamsa_predictions/.test(s.sql))
-    expect(eciStmt).toBeDefined()
-    expect(predStmt).toBeDefined()
-    expect(eciStmt!.params).toEqual([CHART, 'run-new'])
-    expect(predStmt!.params).toEqual([CHART, 'run-new'])
-    // Runs after the run id is known, before COMMIT (inside the same transaction).
     const commitIdx = idx(/^COMMIT/)
-    expect(idx(/INSERT INTO build_runs/)).toBeLessThan(idx(/UPDATE event_chart_state_index/))
-    expect(idx(/UPDATE event_chart_state_index/)).toBeLessThan(commitIdx)
-    expect(idx(/UPDATE mimamsa_predictions/)).toBeLessThan(commitIdx)
+    for (const table of [
+      'event_chart_state_index',
+      'mimamsa_predictions',
+      'brahma_mimamsa_prediction_ledger',
+      'brahma_prospective_ledger',
+      'mimamsa_calibration_snapshot',
+    ]) {
+      const stmt = statements.find((s) => new RegExp(`UPDATE ${table}\\b`).test(s.sql))
+      expect(stmt, `expected an UPDATE ${table} statement`).toBeDefined()
+      expect(stmt!.params).toEqual([CHART, 'run-new'])
+      // Runs after the run id is known, before COMMIT (inside the same transaction).
+      const stmtIdx = idx(new RegExp(`UPDATE ${table}\\b`))
+      expect(idx(/INSERT INTO build_runs/)).toBeLessThan(stmtIdx)
+      expect(stmtIdx).toBeLessThan(commitIdx)
+    }
   })
 
   it('rolls back the staleness marking along with everything else on a later failure', async () => {
