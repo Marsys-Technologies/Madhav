@@ -1193,6 +1193,31 @@ def test_honest_route_evidence_only_scu_round_trips_through_the_real_check(tmp_p
     assert "PASS" in out
 
 
+def test_check_fails_on_a_route_evidence_only_scu_carrying_no_reason(tmp_path, monkeypatch, capsys):
+    """B1, isolated: the snapshot declares ONLY a route-evidence claim, the artifact
+    carries exactly that (bound, present) producer and NO no_detector reason.
+    Nothing else can fail this SCU — binding holds, presence holds — so the only
+    thing that makes `--check` exit non-zero is that route evidence does not
+    count as coverage. Mutation this catches: letting route_evidence_only count
+    as coverage turns this into a PASS."""
+    snapshot = _reo_only_snapshot()
+    prov = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
+    payload = {"scus": {k: v.to_json() for k, v in prov.items()}}
+    for entry in payload["scus"].values():
+        assert [p["disposition"] for p in entry["producers"]] == ["route_evidence_only"]
+        entry.pop("no_detector", None)
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+    monkeypatch.setattr(cp, "load_snapshot", lambda *a, **k: snapshot)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "scu.test.reo_only" in out and "scu.test.reo_plus_derived" in out
+
+
 def test_check_fails_when_a_route_evidence_only_scu_is_relabelled_with_another_class(
     tmp_path, monkeypatch, capsys
 ):
