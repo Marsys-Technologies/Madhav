@@ -6,6 +6,7 @@ vi.mock('../../repository', () => ({ insertRoleInvocationReceipt: insertReceipt 
 
 import { trackRoleExecutor } from '../tracked-executor'
 import type { RoleExecutionEvent, RoleExecutor } from '../provider-executor'
+import { setSafeExecutionStreamFacts } from '../execution-facts'
 
 const connectionId = '10000000-0000-4000-8000-000000000003'
 const conversationId = '10000000-0000-4000-8000-000000000004'
@@ -88,15 +89,45 @@ describe('trackRoleExecutor', () => {
       errorCode: 'AI_EXECUTION_FAILED' })
   })
 
-  it('records stream success only after complete consumption', async () => {
+  it('records stream success before exposing the semantic finish event', async () => {
     const wrapped = trackRoleExecutor(executor(), { userId: 'user-1', snapshotId: crypto.randomUUID() })
     const reader = wrapped.stream({ systemPrompt: 'secret', messages: [] }).getReader()
 
     expect((await reader.read()).done).toBe(false)
     expect(insertReceipt).toHaveBeenCalledTimes(1)
     expect((await reader.read()).done).toBe(false)
-    expect(insertReceipt).toHaveBeenCalledTimes(1)
+    expect(insertReceipt).toHaveBeenCalledTimes(2)
+    expect(insertReceipt.mock.calls[1][0]).toMatchObject({ phase: 'terminal', status: 'succeeded' })
     expect((await reader.read()).done).toBe(true)
+  })
+
+  it('terminalizes success at finish even when delegate EOF never arrives', async () => {
+    const delegate = executor()
+    delegate.stream = () => new ReadableStream<RoleExecutionEvent>({
+      start(controller) {
+        controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+          usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
+      },
+    })
+    const reader = trackRoleExecutor(delegate, {
+      userId: 'user-1', snapshotId: crypto.randomUUID(),
+    }).stream({ systemPrompt: 'secret', messages: [] }).getReader()
+
+    await expect(reader.read()).resolves.toMatchObject({ done: false, value: { type: 'finish' } })
+    expect(insertReceipt.mock.calls[1][0]).toMatchObject({ phase: 'terminal', status: 'succeeded' })
+    await reader.cancel()
+  })
+
+  it('keeps success terminal after cancellation following finish', async () => {
+    const reader = trackRoleExecutor(executor(), {
+      userId: 'user-1', snapshotId: crypto.randomUUID(),
+    }).stream({ systemPrompt: 'secret', messages: [] }).getReader()
+
+    await reader.read()
+    await reader.read()
+    await reader.cancel()
+
+    expect(insertReceipt).toHaveBeenCalledTimes(2)
     expect(insertReceipt.mock.calls[1][0]).toMatchObject({ phase: 'terminal', status: 'succeeded' })
   })
 
@@ -172,6 +203,18 @@ describe('trackRoleExecutor', () => {
     expect(JSON.stringify(write.mock.calls)).not.toContain('private output')
   })
 
+  it('does not delay generate after a durable terminal receipt when telemetry never settles', async () => {
+    const write = vi.fn(() => new Promise<void>(() => undefined))
+    const wrapped = trackRoleExecutor(executor(), { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) })
+
+    await expect(Promise.race([
+      wrapped.generate({ systemPrompt: 'private prompt', messages: [] }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('telemetry blocked result')), 100)),
+    ])).resolves.toMatchObject({ finishReason: 'stop' })
+    expect(write).toHaveBeenCalledOnce()
+  })
+
   it('keeps an Observatory failure non-fatal without repeating execution or receipts', async () => {
     const delegate = executor()
     const execute = vi.spyOn(delegate, 'generate')
@@ -198,5 +241,59 @@ describe('trackRoleExecutor', () => {
     expect(write).toHaveBeenCalledTimes(1)
     expect(write.mock.calls[0][0]).toMatchObject({ terminal_status: 'success', total_tokens: 3,
       retry_count: 0 })
+  })
+
+  it('does not delay a stream finish event when telemetry never settles', async () => {
+    const write = vi.fn(() => new Promise<void>(() => undefined))
+    const reader = trackRoleExecutor(executor(), { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) }).stream({ systemPrompt: 'private prompt', messages: [] }).getReader()
+
+    await reader.read()
+    await expect(Promise.race([
+      reader.read(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('telemetry blocked stream')), 100)),
+    ])).resolves.toMatchObject({ done: false, value: { type: 'finish' } })
+    expect(write).toHaveBeenCalledOnce()
+  })
+
+  it('records retry_count 0 when cancelled before delegate execution', async () => {
+    let releaseStart!: () => void
+    insertReceipt.mockImplementationOnce(() => new Promise<void>(resolve => { releaseStart = resolve }))
+      .mockResolvedValue(undefined)
+    const write = vi.fn().mockResolvedValue(undefined)
+    const reader = trackRoleExecutor(executor(), { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) }).stream({ systemPrompt: 'secret', messages: [] }).getReader()
+
+    const pendingRead = reader.read()
+    await vi.waitFor(() => expect(insertReceipt).toHaveBeenCalledOnce())
+    const cancelling = reader.cancel()
+    releaseStart()
+    await cancelling
+    await pendingRead
+    await vi.waitFor(() => expect(write).toHaveBeenCalledOnce())
+    expect(write.mock.calls[0][0]).toMatchObject({ terminal_status: 'cancelled', retry_count: 0 })
+  })
+
+  it('records retry_count 1 when cancelled after one delegate retry', async () => {
+    const write = vi.fn().mockResolvedValue(undefined)
+    const delegate = executor()
+    delegate.stream = () => {
+      const stream = new ReadableStream<RoleExecutionEvent>({
+        pull() {
+          setSafeExecutionStreamFacts(stream, { retryCount: 1 })
+          return new Promise<void>(() => undefined)
+        },
+      })
+      setSafeExecutionStreamFacts(stream, { retryCount: 0 })
+      return stream
+    }
+    const reader = trackRoleExecutor(delegate, { userId: 'user-1', snapshotId: crypto.randomUUID(),
+      observation: observation(write) }).stream({ systemPrompt: 'secret', messages: [] }).getReader()
+
+    void reader.read()
+    await vi.waitFor(() => expect(insertReceipt).toHaveBeenCalledOnce())
+    await reader.cancel()
+    await vi.waitFor(() => expect(write).toHaveBeenCalledOnce())
+    expect(write.mock.calls[0][0]).toMatchObject({ terminal_status: 'cancelled', retry_count: 1 })
   })
 })

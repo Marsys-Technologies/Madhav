@@ -26,8 +26,15 @@ BEGIN
   IF to_regclass('public.llm_call_log') IS NOT NULL THEN
     ALTER TABLE public.llm_call_log ALTER COLUMN model_id DROP NOT NULL;
     ALTER TABLE public.llm_call_log ALTER COLUMN provider DROP NOT NULL;
-    CREATE UNIQUE INDEX IF NOT EXISTS llm_call_log_external_synthesis_idx
-      ON public.llm_call_log(query_id,call_stage) WHERE call_stage='external_synthesis';
+    ALTER TABLE public.llm_call_log DROP CONSTRAINT IF EXISTS llm_call_log_model_provider_shape_check;
+    ALTER TABLE public.llm_call_log ADD CONSTRAINT llm_call_log_model_provider_shape_check CHECK (
+      (call_stage = 'external_synthesis_handoff' AND model_id IS NULL AND provider IS NULL)
+      OR
+      (call_stage <> 'external_synthesis_handoff' AND model_id IS NOT NULL AND provider IS NOT NULL)
+    );
+    DROP INDEX IF EXISTS public.llm_call_log_external_synthesis_idx;
+    CREATE UNIQUE INDEX IF NOT EXISTS llm_call_log_external_synthesis_handoff_idx
+      ON public.llm_call_log(query_id,call_stage) WHERE call_stage='external_synthesis_handoff';
   END IF;
 END $$;
 

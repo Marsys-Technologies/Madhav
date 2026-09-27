@@ -147,18 +147,15 @@ export const SafeMcpExternalSynthesisSchema = z.object({
   correlation_id: z.string().uuid(),
   conversation_id: z.string().uuid().nullable(),
   user_id: Identifier,
-  call_stage: z.literal('external_synthesis'),
+  call_stage: z.literal('external_synthesis_handoff'),
   external_synthesis: z.literal(true),
   performed_by_madhav: z.literal(false),
-  status: z.enum(['success', 'error', 'cancelled']),
+  status: z.literal('not_observed'),
   fallback_used: z.literal(false),
 }).strict()
 export type SafeMcpExternalSynthesis = z.infer<typeof SafeMcpExternalSynthesisSchema>
 
-export async function observeMcpExternalSynthesis(
-  snapshot: SafeRoutingSnapshot,
-  status: SafeMcpExternalSynthesis['status'] = 'success',
-): Promise<void> {
+export function observeMcpExternalSynthesis(snapshot: SafeRoutingSnapshot): void {
   if (snapshot.source !== 'mcp') return
   try {
     const event = SafeMcpExternalSynthesisSchema.parse({
@@ -166,13 +163,15 @@ export async function observeMcpExternalSynthesis(
       correlation_id: snapshot.correlationId,
       conversation_id: snapshot.conversationId,
       user_id: snapshot.userId,
-      call_stage: 'external_synthesis',
+      call_stage: 'external_synthesis_handoff',
       external_synthesis: true,
       performed_by_madhav: false,
-      status,
+      status: 'not_observed',
       fallback_used: false,
     })
-    await writeMcpExternalSynthesisEvent(event)
+    void writeMcpExternalSynthesisEvent(event).catch(() => {
+      console.warn('[ai-console] Observatory external-synthesis observation failed')
+    })
   } catch {
     console.warn('[ai-console] Observatory external-synthesis observation failed')
   }

@@ -12,7 +12,7 @@ import type {
   RoleExecutionEvent, RoleExecutionRequest, RoleExecutionResult, RoleExecutor, SafeCliExecutorDescriptor,
 } from './provider-executor'
 import { isStructuredOutputValidationError, StructuredOutputValidationError } from './structured-output-error'
-import { attachSafeExecutionFailureFacts } from './execution-facts'
+import { attachSafeExecutionFailureFacts, setSafeExecutionStreamFacts } from './execution-facts'
 
 interface Dependencies {
   runner?: CliRunner
@@ -45,7 +45,7 @@ export function createCliRoleExecutor(execution: ResolvedRoleExecution, dependen
 }
 
 async function generate(execution: ResolvedRoleExecution, definition: CliDefinition, runner: CliRunner,
-  request: RoleExecutionRequest): Promise<RoleExecutionResult> {
+  request: RoleExecutionRequest, onRetryCount?: (retryCount: number) => void): Promise<RoleExecutionResult> {
   if ((request.tools?.length ?? 0) > 0 || request.toolChoice && request.toolChoice !== 'none') {
     // The common contract carries definitions but no authorized handler authority.
     throw attachSafeExecutionFailureFacts(new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role),
@@ -59,6 +59,7 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
 
   const prompt = serializePrompt(request)
   let retryCount = 0
+  onRetryCount?.(retryCount)
   while (true) {
     try {
       const result = await runner.runExecution(execution.cliUserId!, definition.id, {
@@ -87,7 +88,11 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
         throw attachSafeExecutionFailureFacts(error, { retryCount })
       }
       const safe = normalizeAiError(error, { source: 'cli', role: execution.role })
-      if (retryCount === 0 && TRANSIENT.has(safe.code)) { retryCount = 1; continue }
+      if (retryCount === 0 && TRANSIENT.has(safe.code)) {
+        retryCount = 1
+        onRetryCount?.(retryCount)
+        continue
+      }
       throw attachSafeExecutionFailureFacts(new AiConsoleError(safe.code, execution.role), { retryCount })
     }
   }
@@ -114,10 +119,11 @@ function stream(execution: ResolvedRoleExecution, definition: CliDefinition, run
   let events: RoleExecutionEvent[] | undefined
   let loading: Promise<void> | undefined
   let cancelled = false
-  return new ReadableStream<RoleExecutionEvent>({
+  const publishRetryCount = (retryCount: number) => setSafeExecutionStreamFacts(output, { retryCount })
+  const output = new ReadableStream<RoleExecutionEvent>({
     async pull(controller) {
       if (cancelled) return
-      loading ??= generate(execution, definition, runner, { ...request, abortSignal: signal }).then(result => {
+      loading ??= generate(execution, definition, runner, { ...request, abortSignal: signal }, publishRetryCount).then(result => {
         events = []
         if (result.text) events.push({ type: 'text_delta', text: result.text })
         events.push({ type: 'finish', finishReason: result.finishReason, usage: result.usage,
@@ -131,6 +137,8 @@ function stream(execution: ResolvedRoleExecution, definition: CliDefinition, run
     },
     cancel() { cancelled = true; localAbort.abort() },
   })
+  publishRetryCount(0)
+  return output
 }
 
 function serializePrompt(request: RoleExecutionRequest): string {

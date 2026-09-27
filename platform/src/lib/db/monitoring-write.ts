@@ -12,7 +12,7 @@ import 'server-only'
 import { getStorageClient } from '@/lib/storage'
 import { getModelMeta } from '@/lib/models/registry'
 import type {
-  LlmCallLogRow,
+  LlmCallLogWriteInput,
   QueryPlanLogRow,
   ToolExecutionLogRow,
   ContextAssemblyLogRow,
@@ -22,7 +22,7 @@ import type { SafeAiRoutingParameters, SafeMcpExternalSynthesis } from '@/lib/ai
 import { SafeAiRoutingParametersSchema, SafeMcpExternalSynthesisSchema } from '@/lib/ai-console/observability'
 
 export async function writeLlmCallLog(
-  row: Omit<LlmCallLogRow, 'id' | 'created_at'>
+  row: LlmCallLogWriteInput
 ): Promise<void> {
   try {
     await getStorageClient().query(
@@ -322,7 +322,7 @@ export async function writeMcpExternalSynthesisEvent(input: SafeMcpExternalSynth
         (query_id,conversation_id,call_stage,model_id,provider,input_tokens,output_tokens,
          reasoning_tokens,latency_ms,cost_usd,fallback_used,error_code,payload)
        VALUES($1,$2,$3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,$4,NULL,$5)
-       ON CONFLICT (query_id,call_stage) WHERE call_stage='external_synthesis' DO NOTHING`,
+       ON CONFLICT (query_id,call_stage) WHERE call_stage='external_synthesis_handoff' DO NOTHING`,
       [event.correlation_id, event.conversation_id, event.call_stage, event.fallback_used,
         JSON.stringify(event)],
     )

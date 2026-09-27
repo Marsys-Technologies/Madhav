@@ -9,7 +9,7 @@ import type {
   RoleExecutor,
 } from './provider-executor'
 import { isStructuredOutputValidationError } from './structured-output-error'
-import { safeExecutionFailureFacts } from './execution-facts'
+import { safeExecutionFailureFacts, safeExecutionStreamFacts } from './execution-facts'
 import { observeRoleInvocation, type RoleObservationContext } from '../observability'
 
 export interface InvocationReceiptContext {
@@ -72,6 +72,11 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
       console.warn('[ai-console] Observatory terminal observation failed')
     }
   }
+  const scheduleObservation = (input: Parameters<typeof observeRoleInvocation>[2]) => {
+    // observe() owns its rejection path. Deliberately do not await telemetry:
+    // the durable terminal receipt is the request-path boundary.
+    void observe(input)
+  }
   return Object.freeze({
     descriptor: executor.descriptor,
     async generate(request: RoleExecutionRequest): Promise<RoleExecutionResult> {
@@ -86,7 +91,7 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
         const failure = publicFailure(executor, cause)
         const cancelled = request.abortSignal?.aborted === true
         await terminalReceipt(executor, context, invocationId, cancelled ? 'cancelled' : 'failed', failure.code)
-        await observe({ invocationId, status: cancelled ? 'cancelled'
+        scheduleObservation({ invocationId, status: cancelled ? 'cancelled'
           : failure.code === 'AI_CLI_TIMEOUT' ? 'timeout' : 'error', startedAt, finishedAt: new Date(),
         usage: null, retryCount, errorCode: failure.code })
         if (isStructuredOutputValidationError(cause)) throw cause
@@ -95,19 +100,19 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
       // A receipt-commit failure is not an executor failure and must never be
       // rewritten as a second, contradictory terminal row for this invocation.
       await terminalReceipt(executor, context, invocationId, 'succeeded')
-      await observe({ invocationId, status: 'success', startedAt, finishedAt: new Date(),
+      scheduleObservation({ invocationId, status: 'success', startedAt, finishedAt: new Date(),
         usage: result.usage, retryCount: result.retryCount, errorCode: null })
       return result
     },
     stream(request: RoleExecutionRequest): ReadableStream<RoleExecutionEvent> {
       const invocationId = crypto.randomUUID()
       let reader: ReadableStreamDefaultReader<RoleExecutionEvent> | undefined
+      let delegateStream: ReadableStream<RoleExecutionEvent> | undefined
       let started = false
       let cancelRequested = false
       let pulling: Promise<void> | undefined
       let beginning: Promise<boolean> | undefined
       let terminalCommit: Promise<void> | undefined
-      let terminalObservation: Promise<void> | undefined
       let startedAt: Date | undefined
       let terminalUsage: RoleExecutionResult['usage'] | null = null
       let terminalRetryCount: number | null = null
@@ -118,7 +123,7 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
         if (!started) return
         terminalCommit = terminalReceipt(executor, context, invocationId, status, errorCode)
         await terminalCommit
-        terminalObservation ??= observe({ invocationId,
+        scheduleObservation({ invocationId,
           status: status === 'succeeded' ? 'success' : status === 'cancelled' ? 'cancelled'
             : errorCode === 'AI_CLI_TIMEOUT' ? 'timeout' : 'error',
           startedAt: startedAt!, finishedAt: new Date(),
@@ -126,7 +131,6 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
           retryCount: status === 'succeeded' ? terminalRetryCount : retryCount,
           errorCode: errorCode ?? null,
         })
-        await terminalObservation
       }
 
       const begin = async () => {
@@ -136,10 +140,11 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
           started = true
           startedAt = new Date()
           if (cancelRequested) {
-            await finish('cancelled', 'AI_EXECUTION_FAILED')
+            await finish('cancelled', 'AI_EXECUTION_FAILED', 0)
             return false
           }
-          reader = executor.stream(request).getReader()
+          delegateStream = executor.stream(request)
+          reader = delegateStream.getReader()
           return true
         })()
         return beginning
@@ -152,7 +157,8 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
               if (!await begin()) return
               const next = await reader!.read()
               if (cancelRequested) {
-                await finish('cancelled', 'AI_EXECUTION_FAILED')
+                await finish('cancelled', 'AI_EXECUTION_FAILED',
+                  safeExecutionStreamFacts(delegateStream)?.retryCount ?? 0)
                 return
               }
               if (next.done) {
@@ -163,6 +169,10 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
               if (next.value.type === 'finish') {
                 terminalUsage = next.value.usage
                 terminalRetryCount = next.value.retryCount
+                // A semantic finish is the provider's terminal success. Make
+                // the durable receipt visible before exposing that event;
+                // EOF is transport cleanup only and may never arrive.
+                await finish('succeeded')
               }
               controller.enqueue(next.value)
             } catch (cause) {
@@ -185,7 +195,8 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
             await reader?.cancel()
             await beginning
           } finally {
-            await finish('cancelled', 'AI_EXECUTION_FAILED')
+            await finish('cancelled', 'AI_EXECUTION_FAILED',
+              safeExecutionStreamFacts(delegateStream)?.retryCount ?? 0)
           }
         },
       })

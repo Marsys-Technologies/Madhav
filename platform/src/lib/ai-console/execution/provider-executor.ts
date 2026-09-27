@@ -10,7 +10,7 @@ import { AiConsoleError, normalizeAiError, type PublicAiError } from '../errors'
 import type { AiRole, ProviderId } from '../types'
 import type { ProviderRuntimeFailure, ResolvedRoleExecution } from './types'
 import { StructuredOutputValidationError } from './structured-output-error'
-import { attachSafeExecutionFailureFacts } from './execution-facts'
+import { attachSafeExecutionFailureFacts, setSafeExecutionStreamFacts } from './execution-facts'
 
 export interface SafeProviderExecutorDescriptor extends SafeRuntimeModelDescriptor {
   readonly role: AiRole
@@ -137,6 +137,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
   let settled = false
   let pulling: Promise<void> | undefined
   let detachExternalAbort = () => undefined
+  const publishRetryCount = () => setSafeExecutionStreamFacts(output, { retryCount })
   const dispose = () => { const current = disposeCurrent; disposeCurrent = undefined; current?.() }
   const returnIteratorSafely = (current: AsyncIterator<unknown> | undefined) => {
     try { void Promise.resolve(current?.return?.()).catch(() => undefined) }
@@ -145,7 +146,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
 
   async function openAttempt(): Promise<boolean> {
     if (cancelled) return false
-    if (request.abortSignal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+    if (request.abortSignal?.aborted) throw attachSafeExecutionFailureFacts(
+      new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount })
     const binding = await execution.createRuntimeBinding!()
     let disposed = false
     disposeCurrent = () => { if (!disposed) { disposed = true; binding.dispose() } }
@@ -173,11 +175,13 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
   async function terminalError(cause: unknown): Promise<never | 'retry'> {
     dispose(); iterator = undefined
     if (cancelled || request.abortSignal?.aborted) {
-      throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+      throw attachSafeExecutionFailureFacts(
+        new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount })
     }
     const normalized = normalizeAiError(cause, { source: 'provider', role: execution.role })
     if (!emitted && retryCount === 0 && TRANSIENT.has(normalized.code)) {
       retryCount = 1
+      publishRetryCount()
       return 'retry'
     }
     settled = true
@@ -220,7 +224,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
     }
   }
 
-  return new ReadableStream<RoleExecutionEvent>({
+  const output = new ReadableStream<RoleExecutionEvent>({
     start(controller) {
       if (!request.abortSignal) return
       const onAbort = () => {
@@ -257,6 +261,8 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
       dispose()
     },
   })
+  publishRetryCount()
+  return output
 }
 
 function adapterDescriptor(descriptor: SafeProviderExecutorDescriptor): SafeRuntimeModelDescriptor {

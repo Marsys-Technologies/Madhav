@@ -5,6 +5,7 @@ import type { ResolvedRoleExecution } from '../types'
 import type { CliRunner } from '../../cli/runner'
 import { StructuredOutputValidationError } from '../structured-output-error'
 import { encode } from 'gpt-tokenizer'
+import { safeExecutionFailureFacts } from '../execution-facts'
 
 function execution(overrides: Partial<ResolvedRoleExecution> = {}): ResolvedRoleExecution {
   return {
@@ -147,6 +148,31 @@ describe('CLI role executor', () => {
     await expect(executor.generate(request)).resolves.toMatchObject({ retryCount: 1 })
     expect(runExecution).toHaveBeenCalledTimes(2)
     expect(runExecution.mock.calls[1]).toEqual(runExecution.mock.calls[0])
+  })
+
+  it('attaches the exact retry count to an abort after one CLI retry', async () => {
+    let secondStarted!: () => void
+    const started = new Promise<void>(resolve => { secondStarted = resolve })
+    const runExecution = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error('hidden'), { code: 'ETIMEDOUT' }))
+      .mockImplementationOnce((_userId, _cliId, input: { signal: AbortSignal }) => {
+        secondStarted()
+        return new Promise((_resolve, reject) => input.signal.addEventListener('abort', () => {
+          reject(new DOMException('private abort detail', 'AbortError'))
+        }, { once: true }))
+      })
+    const abort = new AbortController()
+    const reader = createCliRoleExecutor(execution(), {
+      runner: { runExecution } as unknown as CliRunner,
+    }).stream({ ...request, abortSignal: abort.signal }).getReader()
+
+    const pending = reader.read().catch(error => error)
+    await started
+    abort.abort()
+    const failure = await pending
+    expect(failure).toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(safeExecutionFailureFacts(failure)).toEqual({ retryCount: 1 })
+    expect(String(failure)).not.toContain('private abort detail')
   })
 
   it('streams with pull-driven emission and forwards caller cancellation', async () => {

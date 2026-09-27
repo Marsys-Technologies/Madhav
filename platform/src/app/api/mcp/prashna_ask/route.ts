@@ -547,7 +547,7 @@ export async function POST(request: Request) {
             },
           },
         })
-        await observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+        observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
         return NextResponse.json(envelope)
       } finally {
         byokRuntime.releaseAdmission()
@@ -861,7 +861,7 @@ export async function POST(request: Request) {
               },
             },
           })
-          await observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+          observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
           return NextResponse.json(envelope)
         } finally {
           byokRuntime.releaseAdmission()
@@ -1519,7 +1519,7 @@ export async function POST(request: Request) {
           controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...boundedFailure }) + '\n'))
           return
         }
-        await observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+        observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
         controller.enqueue(encoder.encode(finalLine))
         return
       }

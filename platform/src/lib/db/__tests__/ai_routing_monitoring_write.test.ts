@@ -57,8 +57,8 @@ describe('strict AI routing monitoring writers', () => {
     const marker: SafeMcpExternalSynthesis = {
       schema_version: 'madhav.external-synthesis.v1',
       correlation_id: '10000000-0000-4000-8000-000000000006', conversation_id: null,
-      user_id: 'user-1', call_stage: 'external_synthesis', external_synthesis: true,
-      performed_by_madhav: false, status: 'success', fallback_used: false,
+      user_id: 'user-1', call_stage: 'external_synthesis_handoff', external_synthesis: true,
+      performed_by_madhav: false, status: 'not_observed', fallback_used: false,
     }
     await writeMcpExternalSynthesisEvent(marker)
 
@@ -66,6 +66,7 @@ describe('strict AI routing monitoring writers', () => {
     expect(dbQuery.mock.calls[0][0]).toContain('INSERT INTO llm_call_log')
     expect(dbQuery.mock.calls[0][0]).not.toContain('llm_usage_events')
     expect(dbQuery.mock.calls[0][0]).toContain('NULL,NULL,NULL,NULL,NULL,NULL,NULL')
+    expect(dbQuery.mock.calls[0][0]).toContain("call_stage='external_synthesis_handoff'")
     expect(JSON.stringify(dbQuery.mock.calls[0][1])).not.toContain('prompt')
   })
 

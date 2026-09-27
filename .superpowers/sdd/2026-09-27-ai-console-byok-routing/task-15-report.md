@@ -24,15 +24,38 @@ Native BYOK synthesis is observed once by the tracked Synthesizer executor.
 The legacy synthesis observer now explicitly rejects BYOK mode while preserving
 flag-off behavior. MCP constructs/observes only actual Planner, Deep Planner,
 and Worker calls and writes one idempotent, strict non-usage
-`external_synthesis` marker to `llm_call_log`; it assigns no model, provider,
-tokens, or cost to the external host.
+`external_synthesis_handoff` marker to `llm_call_log`; its fixed
+`not_observed` status says only that Madhav delegated synthesis to the external
+host. It assigns no model, provider, tokens, cost, or completion claim.
 
 Migration 1120, which remains unapplied, now widens legacy Observatory
 provider/stage/status vocabularies, permits absent conversation identity,
 allows null model/provider only for the non-usage marker path, and adds a
-partial unique marker index. The safe audit vocabulary separately records
+named conditional shape constraint plus partial unique marker index. The safe
+audit vocabulary separately records
 confirmed validation success and rejected validation with an allowlisted error
 code; database and Zod checks reject raw details.
+
+## Independent-review fix round 1
+
+- `llm_call_log` now enforces both legal row variants: only the external
+  synthesis handoff has null model/provider, while every Madhav-executed stage
+  requires both values. Static tests assert the full named constraint body and
+  the DB-gated suite exercises both accepted/rejected variants plus replay when
+  a disposable baseline database is supplied.
+- Stream success commits at the semantic `finish` event before that event is
+  exposed. EOF and cancellation after finish are idempotent and cannot replace
+  success. Finish-without-EOF and cancel-after-finish are covered.
+- Provider and CLI abort paths retain bounded server-only retry facts. Tracked
+  cancellation records exact zero before execution and exact one after a
+  retry, without exposing upstream abort detail.
+- Observatory writes are safely scheduled only after the durable terminal
+  receipt and never awaited by generate, stream, or MCP response delivery.
+  Never-settling telemetry tests cover all three paths; rejection remains
+  internally handled.
+- `llm_usage_events.conversation_id` nullability is reflected in the database
+  row, public list/detail types, both OpenAPI event schemas, endpoint JSON, and
+  the Observatory UI's null handling.
 
 ## Verification
 
@@ -48,6 +71,13 @@ code; database and Zod checks reject raw details.
 - `git diff --check`: passed.
 - Credential/literal-key, environment-key, raw-error logging, and Observatory
   sensitive-family scans found no new secret value or unsafe BYOK persistence.
+- Review-fix focused suite: 180 passed, 14 prerequisite-skipped; no failures.
+- Review-fix full platform suite: 1,189 files passed, 80 skipped; 13,294 tests
+  passed, 733 skipped, 2 todo. The one unrelated capability-cache timeout from
+  the immediately preceding run passed 5/5 on targeted rerun before the clean
+  full-suite run.
+- Review-fix TypeScript, scoped zero-warning ESLint, `git diff --check`,
+  migration-number guard, and credential/environment/raw-error scans passed.
 
 ## Unqualified
 
@@ -58,6 +88,5 @@ code; database and Zod checks reject raw details.
   principal, provider pricing/billing result, or external subscription was used.
 - No browser acceptance, deployment, push, PR, merge, shared database, or
   production mutation occurred.
-- Failed/cancelled stream retry count remains honestly nullable when the
-  underlying executor cannot expose a terminal attempt fact; it is never
-  invented as zero.
+- The DB-gated constraint/replay test was authored but did not execute because
+  no approved localhost `ai_console_test_*` database was provided.

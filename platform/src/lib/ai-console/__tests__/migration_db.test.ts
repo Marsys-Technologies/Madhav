@@ -115,6 +115,36 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
     expect(result.rows[0].count).toBe(12)
     expect((await pool.query('SELECT * FROM ai_user_defaults')).rowCount).toBe(0)
   })
+  it('replays the legacy call-log shape constraint and enforces both row variants', async context => {
+    const legacy = await pool.query("SELECT to_regclass('public.llm_call_log') AS call_log, to_regclass('public.llm_usage_events') AS usage")
+    if (!legacy.rows[0].call_log || !legacy.rows[0].usage) {
+      context.skip()
+      return
+    }
+    const constraints = await pool.query(`SELECT pg_get_constraintdef(oid) AS definition
+      FROM pg_constraint WHERE conrelid='public.llm_call_log'::regclass
+        AND conname='llm_call_log_model_provider_shape_check'`)
+    expect(constraints.rowCount).toBe(1)
+    expect(constraints.rows[0].definition).toContain('external_synthesis_handoff')
+    const marker = randomUUID()
+    const regular = randomUUID()
+    try {
+      await pool.query(`INSERT INTO public.llm_call_log(query_id,call_stage,model_id,provider)
+        VALUES($1,'external_synthesis_handoff',NULL,NULL)`, [marker])
+      await pool.query(`INSERT INTO public.llm_call_log(query_id,call_stage,model_id,provider)
+        VALUES($1,'planner','model-a','openai')`, [regular])
+      await expect(pool.query(`INSERT INTO public.llm_call_log(query_id,call_stage,model_id,provider)
+        VALUES($1,'planner',NULL,NULL)`, [randomUUID()])).rejects.toMatchObject({ code: '23514' })
+      await expect(pool.query(`INSERT INTO public.llm_call_log(query_id,call_stage,model_id,provider)
+        VALUES($1,'external_synthesis_handoff','model-a','openai')`, [randomUUID()]))
+        .rejects.toMatchObject({ code: '23514' })
+      expect((await pool.query(`SELECT is_nullable FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='llm_usage_events' AND column_name='conversation_id'`))
+        .rows[0].is_nullable).toBe('YES')
+    } finally {
+      await pool.query('DELETE FROM public.llm_call_log WHERE query_id=ANY($1::uuid[])', [[marker, regular]])
+    }
+  })
   it('rejects duplicate case-insensitive connection/configuration names', async () => {
     await expect(pool.query('UPDATE ai_provider_connections SET name=$1 WHERE id=$2', ['PRIMARY', connection])).resolves.toBeDefined()
     await expect(pool.query(`INSERT INTO ai_provider_connections SELECT $1,user_id,provider_id,name,

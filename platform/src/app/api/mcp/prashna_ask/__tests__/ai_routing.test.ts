@@ -92,5 +92,7 @@ describe('MCP BYOK routing seam', () => {
     expect(source).toContain("import('@/lib/pipeline/prashna_ask_synthesis')")
     expect(source).toContain('if (byokRuntime)')
     expect(source).toContain('observeMcpExternalSynthesis(byokRuntime.safeSnapshot)')
+    expect(source).not.toContain('await observeMcpExternalSynthesis')
+    expect(source).toMatch(/observeMcpExternalSynthesis\(byokRuntime\.safeSnapshot\)\s+controller\.enqueue\(encoder\.encode\(finalLine\)\)/)
   })
 })

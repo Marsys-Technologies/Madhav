@@ -35,6 +35,13 @@ export interface LlmCallLogRow {
   created_at: string
 }
 
+/** Normal Madhav-executed call writes always carry a concrete model/provider. */
+export type LlmCallLogWriteInput = Omit<LlmCallLogRow,
+  'id' | 'created_at' | 'model_id' | 'provider'> & {
+  model_id: string
+  provider: string
+}
+
 export interface QueryPlanLogRow {
   id: string
   query_id: string

@@ -93,20 +93,27 @@ describe('safe AI routing observations', () => {
 
   it('records one strict external-synthesis marker without usage identity', async () => {
     externalWrite.mockClear()
-    await observeMcpExternalSynthesis(snapshot({ source: 'mcp', conversationId: null }))
+    observeMcpExternalSynthesis(snapshot({ source: 'mcp', conversationId: null }))
     expect(externalWrite).toHaveBeenCalledTimes(1)
     expect(externalWrite.mock.calls[0][0]).toEqual({
       schema_version: 'madhav.external-synthesis.v1', correlation_id: ids.correlation,
-      conversation_id: null, user_id: 'user-1', call_stage: 'external_synthesis',
-      external_synthesis: true, performed_by_madhav: false, status: 'success', fallback_used: false,
+      conversation_id: null, user_id: 'user-1', call_stage: 'external_synthesis_handoff',
+      external_synthesis: true, performed_by_madhav: false, status: 'not_observed', fallback_used: false,
     })
     expect(externalWrite.mock.calls[0][0]).not.toHaveProperty('model')
   })
 
-  it('keeps external marker persistence non-fatal', async () => {
+  it('keeps external marker persistence non-fatal and non-blocking', async () => {
+    externalWrite.mockClear()
+    externalWrite.mockImplementationOnce(() => new Promise<void>(() => undefined))
+    expect(() => observeMcpExternalSynthesis(snapshot({ source: 'mcp' }))).not.toThrow()
+    expect(externalWrite).toHaveBeenCalledOnce()
+
     externalWrite.mockRejectedValueOnce(new Error('db unavailable'))
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    await expect(observeMcpExternalSynthesis(snapshot({ source: 'mcp' }))).resolves.toBeUndefined()
+    observeMcpExternalSynthesis(snapshot({ source: 'mcp' }))
+    await vi.waitFor(() => expect(console.warn).toHaveBeenCalledWith(
+      '[ai-console] Observatory external-synthesis observation failed'))
   })
 
   it('exports closed schemas', () => {

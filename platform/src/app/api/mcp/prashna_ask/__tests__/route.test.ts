@@ -93,9 +93,15 @@ const { mockAuthorizeMcpByokPrincipal, mockPrepareMcpByokRuntime } = vi.hoisted(
   mockAuthorizeMcpByokPrincipal: vi.fn(),
   mockPrepareMcpByokRuntime: vi.fn(),
 }))
+const { mockObserveMcpExternalSynthesis } = vi.hoisted(() => ({
+  mockObserveMcpExternalSynthesis: vi.fn(),
+}))
 vi.mock('@/lib/mcp/prashna_ask/byok_preflight', () => ({
   authorizeMcpByokPrincipal: mockAuthorizeMcpByokPrincipal,
   prepareMcpByokRuntime: mockPrepareMcpByokRuntime,
+}))
+vi.mock('@/lib/ai-console/observability', () => ({
+  observeMcpExternalSynthesis: mockObserveMcpExternalSynthesis,
 }))
 const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
@@ -233,6 +239,7 @@ beforeEach(() => {
   knowledgeState.overlayLoadCount = 0
   configService.setFlag('AI_CONSOLE_BYOK', false)
   mockAuthorizeMcpByokPrincipal.mockResolvedValue({ role: 'guest' })
+  mockObserveMcpExternalSynthesis.mockReturnValue(undefined)
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -454,6 +461,35 @@ describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
     expect(final).not.toHaveProperty('reading')
     expect((final?.routing as { roles: object }).roles).not.toHaveProperty('synthesizer')
     expect(releaseAdmission).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not delay the final MCP envelope when handoff telemetry never settles', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    mockObserveMcpExternalSynthesis.mockReturnValue(new Promise<void>(() => undefined))
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors: {}, releaseAdmission: vi.fn(),
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+
+    const response = await POST(makeReq(
+      { chart_id: CHART, question: 'Return evidence without telemetry delay.' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    const lines = await Promise.race([
+      readNdjson(response),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('telemetry blocked MCP')), 100)),
+    ])
+
+    expect(lines.at(-1)).toMatchObject({ event: 'final', synthesis: { mode: 'external' } })
+    expect(mockObserveMcpExternalSynthesis).toHaveBeenCalledOnce()
   })
 
   it('logs only a stable code, trace, and allowlisted tool for BYOK retrieval failures', async () => {

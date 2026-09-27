@@ -95,8 +95,8 @@ describe('AI routing observability redaction', () => {
   it('keeps external synthesis closed and non-usage', () => {
     const marker = { schema_version: 'madhav.external-synthesis.v1',
       correlation_id: '10000000-0000-4000-8000-000000000006', conversation_id: null,
-      user_id: 'user-1', call_stage: 'external_synthesis', external_synthesis: true,
-      performed_by_madhav: false, status: 'success', fallback_used: false }
+      user_id: 'user-1', call_stage: 'external_synthesis_handoff', external_synthesis: true,
+      performed_by_madhav: false, status: 'not_observed', fallback_used: false }
     expect(SafeMcpExternalSynthesisSchema.safeParse({ ...marker, model: 'forbidden' }).success).toBe(false)
     expect(SafeMcpExternalSynthesisSchema.safeParse({ ...marker, prompt: 'forbidden' }).success).toBe(false)
     expect(SafeMcpExternalSynthesisSchema.parse(marker)).toEqual(marker)

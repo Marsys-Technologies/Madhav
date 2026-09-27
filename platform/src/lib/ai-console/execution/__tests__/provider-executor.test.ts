@@ -11,6 +11,7 @@ vi.mock('@/lib/adapters/raw', () => ({ streamAdapterRaw: mocks.streamAdapterRaw 
 import { AiConsoleError } from '../../errors'
 import { StructuredOutputValidationError } from '../structured-output-error'
 import { createProviderRoleExecutor, type RoleExecutionRequest } from '../provider-executor'
+import { safeExecutionFailureFacts } from '../execution-facts'
 import type { ResolvedRoleExecution } from '../types'
 
 const connectionId = '00000000-0000-4000-8000-000000000008'
@@ -132,6 +133,31 @@ describe('provider-backed RoleExecutor', () => {
     expect(owned.markRuntimeFailure).toHaveBeenCalledWith(expect.objectContaining({
       code: 'AI_PROVIDER_UNREACHABLE', role: 'worker',
     }))
+  })
+
+  it('attaches the exact retry count to an abort after one provider retry', async () => {
+    const abort = new AbortController()
+    let secondStarted!: () => void
+    const started = new Promise<void>(resolve => { secondStarted = resolve })
+    mocks.streamAdapterRaw
+      .mockReturnValueOnce(raw([], new AiConsoleError('AI_PROVIDER_UNREACHABLE')))
+      .mockImplementationOnce((input: { abortSignal: AbortSignal }) => ({ result: { fullStream: (async function* () {
+        secondStarted()
+        await new Promise<void>((_resolve, reject) => input.abortSignal.addEventListener('abort', () => {
+          reject(new DOMException('private abort detail', 'AbortError'))
+        }, { once: true }))
+      })() } }))
+    const reader = createProviderRoleExecutor(execution().value).stream({
+      ...request, responseSchema: undefined, abortSignal: abort.signal,
+    }).getReader()
+
+    const pending = reader.read().catch(error => error)
+    await started
+    abort.abort()
+    const failure = await pending
+    expect(failure).toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(safeExecutionFailureFacts(failure)).toEqual({ retryCount: 1 })
+    expect(String(failure)).not.toContain('private abort detail')
   })
 
   it.each([
