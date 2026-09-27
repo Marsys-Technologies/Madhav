@@ -24,6 +24,14 @@ describe('classical_attribution_lookup source closure', () => {
     expect(response.content).not.toHaveProperty('attributions')
   })
 
+  it('describes itself as unavailable and names the classical corpus surface instead of promising attributions', () => {
+    const capability = getCatalog().find((candidate) => candidate.uri === CLASSICAL_ATTRIBUTION_URI)!
+    expect(capability.description).toMatch(/^UNAVAILABLE — fails closed\./)
+    expect(capability.description).toContain('CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE')
+    expect(capability.description).toContain('query_classical_texts')
+    expect(capability.description).not.toMatch(/Provides the classical grounding/)
+  })
+
   it('throws the typed source-unavailable error from the underlying lookup (never signal_ids_silent)', async () => {
     const {
       classical_attribution_lookup,
