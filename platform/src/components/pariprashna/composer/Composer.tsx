@@ -104,19 +104,19 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
 
   function submit() {
     const trimmed = text.trim()
-    const usingAiChoices = !!aiChoices?.enabled && !aiChoices.legacy
+    const usingAiChoices = aiChoices?.mode.kind === 'byok'
     if (!trimmed || streaming || (usingAiChoices && !aiChoices.canSubmit)) return
     const common = {
       readingDepth: depthToReadingDepth(depth),
       lengthTier: lengthToLengthTier(length),
     } as const
     onSubmit(trimmed, depthToFixtureMode(depth), usingAiChoices
-      ? { ...common, aiSelection: aiChoices.selection }
-      : { ...common, modelId: modelToModelId(model) })
+      ? { ...common, aiMode: aiChoices.mode }
+      : { ...common, aiMode: { kind: 'legacy', modelId: modelToModelId(model) } })
     setText('')
   }
 
-  const usingAiChoices = !!aiChoices?.enabled && !aiChoices.legacy
+  const usingAiChoices = aiChoices?.mode.kind === 'byok'
   const blocked = usingAiChoices && !aiChoices.canSubmit
 
   return (

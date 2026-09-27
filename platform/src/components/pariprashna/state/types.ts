@@ -448,12 +448,12 @@ export interface ModelOption {
  * state rather than smuggled through the dev-fixture `mode` the live host
  * used to reuse for this.
  */
-interface SharedSubmitControls {
+export type AiSubmissionMode =
+  | { kind: 'legacy'; modelId?: string }
+  | { kind: 'byok'; selection: ConversationAiSelection }
+
+export interface SubmitControls {
+  aiMode: AiSubmissionMode
   readingDepth: 'auto' | 'deep_dive'
   lengthTier: 'brief' | 'standard' | 'exhaustive'
 }
-
-export type SubmitControls = SharedSubmitControls & (
-  | { modelId?: string; aiSelection?: never }
-  | { aiSelection: ConversationAiSelection; modelId?: never }
-)

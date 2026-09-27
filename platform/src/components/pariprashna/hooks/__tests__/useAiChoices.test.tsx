@@ -34,6 +34,12 @@ function response(body: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }))
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
+
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('useAiChoices', () => {
@@ -52,6 +58,7 @@ describe('useAiChoices', () => {
     expect(result.current.options[0].label).toBe('Default — Personal OpenAI · GPT Safe')
     expect(result.current.options.some(option => option.label.includes('Codex'))).toBe(false)
     expect(result.current.canSubmit).toBe(true)
+    expect(result.current.mode).toEqual({ kind: 'byok', selection: { kind: 'default' } })
   })
 
   it('refreshes the live Default label on window focus and picker-open refresh', async () => {
@@ -132,6 +139,79 @@ describe('useAiChoices', () => {
     expect(result.current.selection).toEqual(confirmed)
   })
 
+  it('does not let a stale refresh GET overwrite a newer successful PUT', async () => {
+    const confirmed = { kind: 'explicit', choice: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' } } as const
+    const replacement = { kind: 'default' } as const
+    const staleGet = deferred<Response>()
+    const put = deferred<Response>()
+    let selectionGets = 0
+    vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url) === '/api/ai-console') return response(aggregate)
+      if (String(url) === '/api/ai-console/clis') return response(clis)
+      if (String(url).endsWith('/ai-selection') && init?.method === 'PUT') return put.promise
+      if (String(url).endsWith('/ai-selection')) {
+        selectionGets += 1
+        return selectionGets === 1
+          ? response({ selection: confirmed, availability: 'ready', label: 'Personal OpenAI · GPT Safe', resolvedLabel: null, remediation: null })
+          : staleGet.promise
+      }
+      throw new Error(`unexpected ${url}`)
+    }))
+    const { result } = renderHook(() => useAiChoices(CONVERSATION_ID, true))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => result.current.refresh())
+    await waitFor(() => expect(selectionGets).toBe(2))
+    let mutation!: Promise<void>
+    act(() => { mutation = result.current.select(replacement) })
+    await act(async () => {
+      put.resolve(new Response(JSON.stringify({ selection: replacement, availability: 'ready', label: 'Default',
+        resolvedLabel: 'Personal OpenAI · GPT Safe', remediation: null }), { status: 200 }))
+      await mutation
+    })
+    expect(result.current.selection).toEqual(replacement)
+
+    await act(async () => {
+      staleGet.resolve(new Response(JSON.stringify({ selection: confirmed, availability: 'ready', label: 'Personal OpenAI · GPT Safe',
+        resolvedLabel: null, remediation: null }), { status: 200 }))
+      await staleGet.promise
+    })
+    expect(result.current.selection).toEqual(replacement)
+  })
+
+  it('offers specialist provider and CLI assignments only through their valid four-role configuration', async () => {
+    const specialistAggregate = {
+      ...aggregate,
+      models: [
+        { ...aggregate.models[0], modelId: 'synth-only', displayName: 'Synth specialist', compatibleRoles: ['synthesizer'] },
+        { ...aggregate.models[0], modelId: 'planner-only', displayName: 'Planner specialist', compatibleRoles: ['planner'] },
+      ],
+      configurations: [{ ...aggregate.configurations[0], name: 'Specialist quartet', roles: {
+        synthesizer: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'synth-only' },
+        planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'planner-only' },
+        deep_planner: { kind: 'local_cli', cliId: 'claude_code', modelId: 'deep-only' },
+        worker: { kind: 'local_cli', cliId: 'claude_code', modelId: 'worker-only' },
+      }}],
+      defaultChoice: { kind: 'custom_configuration', configurationId: CONFIG_ID },
+    }
+    const specialistClis = { clis: [{ ...clis.clis[0], models: [
+      { ...clis.clis[0].models![0], modelId: 'deep-only', displayName: 'Deep specialist', compatibleRoles: ['deep_planner'] },
+      { ...clis.clis[0].models![0], modelId: 'worker-only', displayName: 'Worker specialist', compatibleRoles: ['worker'] },
+    ] }] }
+    vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
+      if (String(url) === '/api/ai-console') return response(specialistAggregate)
+      if (String(url) === '/api/ai-console/clis') return response(specialistClis)
+      throw new Error(`unexpected ${url}`)
+    }))
+    const { result } = renderHook(() => useAiChoices(null, true))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.canSubmit).toBe(true)
+    expect(result.current.options.map(option => [option.group, option.label])).toEqual([
+      [null, 'Default — Specialist quartet'],
+      ['Custom configurations', 'Specialist quartet'],
+    ])
+  })
+
   it('blocks without a usable default and preserves a selected broken identity as a repair row', async () => {
     const broken = { kind: 'explicit', choice: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'removed' } } as const
     vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
@@ -157,6 +237,7 @@ describe('useAiChoices', () => {
     const { result } = renderHook(() => useAiChoices(null, true))
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.legacy).toBe(true)
+    expect(result.current.mode).toEqual({ kind: 'legacy' })
     expect(result.current.options).toEqual([])
   })
 })

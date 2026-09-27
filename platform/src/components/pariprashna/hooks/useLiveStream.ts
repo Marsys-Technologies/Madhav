@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { threadReducer, initialThreadState } from '../state/reducer'
 import type { ThreadAction } from '../state/reducer'
 import { decodeEvent } from '@/lib/pariprashna/protocol/events'
 import { makeS1LiveAdapter, type S1LiveAdapter } from '../state/s1LiveAdapter'
 import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
-import type { ConversationAiSelection } from '@/lib/ai-console/types'
+import type { AiSubmissionMode } from '../state/types'
 
 let turnSeq = 0
 function nextTurnId(): string {
@@ -16,8 +16,7 @@ function nextTurnId(): string {
 
 export interface LiveSubmitOptions {
   reading_depth?: 'auto' | 'deep_dive'
-  model_id?: string
-  ai_selection?: ConversationAiSelection
+  aiMode?: AiSubmissionMode
   length_tier?: 'brief' | 'standard' | 'exhaustive'
 }
 
@@ -31,6 +30,7 @@ export interface LiveSubmitOptions {
  * state (no further reconnect should ever be attempted past that point).
  */
 interface TurnConnState {
+  chartId: string
   serverTurnId: string | null
   lastSeq: number
   lastFrameAtMs: number
@@ -79,8 +79,12 @@ function sleep(ms: number): Promise<void> {
  */
 export function useLiveStream(chartId: string) {
   const [state, dispatch] = useReducer(threadReducer, initialThreadState)
-  const [conversationId, setConversationId] = useState<string | null>(null)
-  const conversationIdRef = useRef<string | null>(null)
+  const [conversationScope, setConversationScope] = useState<{ chartId: string; conversationId: string | null }>({
+    chartId,
+    conversationId: null,
+  })
+  const conversationScopeRef = useRef(conversationScope)
+  const activeChartRef = useRef(chartId)
   const controllers = useRef(new Map<string, AbortController>())
   const connState = useRef(new Map<string, TurnConnState>())
   const dispatchTyped = dispatch as (a: ThreadAction) => void
@@ -116,7 +120,8 @@ export function useLiveStream(chartId: string) {
           cs.lastFrameAtMs = Date.now()
           if (decoded.type === 'turn.open') {
             cs.serverTurnId = decoded.turn_id
-            const currentConversationId = conversationIdRef.current
+            const scope = conversationScopeRef.current
+            const currentConversationId = scope.chartId === cs.chartId ? scope.conversationId : null
             if (currentConversationId !== null && currentConversationId !== decoded.conversation_id) {
               cs.terminal = true
               dispatchTyped({
@@ -124,12 +129,14 @@ export function useLiveStream(chartId: string) {
                 error: classifyPariprashnaError('CONVERSATION_ID_MISMATCH'),
                 eventId: `${turnId}-conversation-mismatch`,
               })
+              controllers.current.get(turnId)?.abort()
               await reader.cancel().catch(() => {})
               return
             }
             if (currentConversationId === null) {
-              conversationIdRef.current = decoded.conversation_id
-              setConversationId(decoded.conversation_id)
+              const nextScope = { chartId: cs.chartId, conversationId: decoded.conversation_id }
+              conversationScopeRef.current = nextScope
+              setConversationScope(nextScope)
             }
           }
           if (decoded.type === 'turn.close' || decoded.type === 'error') cs.terminal = true
@@ -215,7 +222,14 @@ export function useLiveStream(chartId: string) {
       dispatchTyped({ type: 'CLIENT_SUBMIT_TURN', turnId, userText })
 
       const adapter = makeS1LiveAdapter(turnId, userText, openedAtMs)
-      const cs: TurnConnState = { serverTurnId: null, lastSeq: -1, lastFrameAtMs: openedAtMs, terminal: false, adapter }
+      const cs: TurnConnState = {
+        chartId,
+        serverTurnId: null,
+        lastSeq: -1,
+        lastFrameAtMs: openedAtMs,
+        terminal: false,
+        adapter,
+      }
       connState.current.set(turnId, cs)
 
       const ac = new AbortController()
@@ -223,20 +237,22 @@ export function useLiveStream(chartId: string) {
 
       void (async () => {
         try {
-          const byokEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
-          const requestBody = byokEnabled
+          const aiMode = opts.aiMode ?? { kind: 'legacy' as const }
+          const scope = conversationScopeRef.current
+          const scopedConversationId = scope.chartId === chartId ? scope.conversationId : null
+          const requestBody = aiMode.kind === 'byok'
             ? {
                 chartId,
-                ...(conversationIdRef.current ? { conversation_id: conversationIdRef.current } : {}),
+                ...(scopedConversationId ? { conversationId: scopedConversationId } : {}),
                 reading_depth: opts.reading_depth ?? 'auto',
-                ai_selection: opts.ai_selection ?? { kind: 'default' as const },
+                ai_selection: aiMode.selection,
                 length_tier: opts.length_tier ?? 'standard',
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
               }
             : {
                 chartId,
                 reading_depth: opts.reading_depth ?? 'auto',
-                model_id: opts.model_id,
+                model_id: aiMode.modelId,
                 length_tier: opts.length_tier,
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
               }
@@ -285,6 +301,34 @@ export function useLiveStream(chartId: string) {
     [dispatchTyped],
   )
 
+  // Chart identity is the boundary for every piece of transient transport
+  // state. Reset synchronously before a user can submit against the new chart.
+  useLayoutEffect(() => {
+    if (activeChartRef.current === chartId) return
+
+    for (const cs of connState.current.values()) cs.terminal = true
+    for (const controller of controllers.current.values()) controller.abort()
+    controllers.current.clear()
+    connState.current.clear()
+
+    activeChartRef.current = chartId
+    const nextScope = { chartId, conversationId: null }
+    conversationScopeRef.current = nextScope
+    setConversationScope(nextScope)
+    dispatchTyped({ type: 'RESET_THREAD' })
+  }, [chartId, dispatchTyped])
+
+  useEffect(() => {
+    const activeConnections = connState.current
+    const activeControllers = controllers.current
+    return () => {
+      for (const cs of activeConnections.values()) cs.terminal = true
+      for (const controller of activeControllers.values()) controller.abort()
+      activeControllers.clear()
+      activeConnections.clear()
+    }
+  }, [])
+
   // `visibilitychange` reconnect (§ requirement 4): when the tab regains
   // visibility, any tracked turn that has gone quiet for longer than the
   // stall threshold AND hasn't reached a terminal state gets the exact same
@@ -305,5 +349,6 @@ export function useLiveStream(chartId: string) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [reconnectLoop])
 
+  const conversationId = conversationScope.chartId === chartId ? conversationScope.conversationId : null
   return useMemo(() => ({ state, submit, stop, conversationId }), [state, submit, stop, conversationId])
 }

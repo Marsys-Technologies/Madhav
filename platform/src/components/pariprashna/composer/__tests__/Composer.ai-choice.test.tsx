@@ -5,6 +5,7 @@ import type { UseAiChoicesResult } from '../../hooks/useAiChoices'
 
 const readyChoices: UseAiChoicesResult = {
   enabled: true, legacy: false, selection: { kind: 'default' },
+  mode: { kind: 'byok', selection: { kind: 'default' } },
   options: [{ key: 'default', group: null, label: 'Default — Personal OpenAI · GPT Safe',
     selection: { kind: 'default' }, disabled: false }],
   availability: 'ready', loading: false, mutationPending: false, canSubmit: true,
@@ -34,7 +35,7 @@ describe('Composer AI choice integration', () => {
     fireEvent.change(screen.getByTestId('pp-composer-textarea'), { target: { value: 'Question' } })
     fireEvent.click(screen.getByTestId('pp-composer-send'))
     expect(onSubmit).toHaveBeenCalledWith('Question', 'adaptive', {
-      aiSelection: { kind: 'default' }, readingDepth: 'auto', lengthTier: 'standard',
+      aiMode: { kind: 'byok', selection: { kind: 'default' } }, readingDepth: 'auto', lengthTier: 'standard',
     })
   })
 
@@ -53,11 +54,11 @@ describe('Composer AI choice integration', () => {
 
   it('keeps the legacy model request byte-compatible when AI Console is flag-off', () => {
     const onSubmit = vi.fn()
-    render(<Composer streaming={false} onSubmit={onSubmit} onStop={vi.fn()} aiChoices={{ ...readyChoices, enabled: false, legacy: true, options: [] }} />)
+    render(<Composer streaming={false} onSubmit={onSubmit} onStop={vi.fn()} aiChoices={{ ...readyChoices, enabled: false, legacy: true, mode: { kind: 'legacy' }, options: [] }} />)
     fireEvent.change(screen.getByTestId('pp-composer-textarea'), { target: { value: 'Legacy question' } })
     fireEvent.click(screen.getByTestId('pp-composer-send'))
     expect(onSubmit).toHaveBeenCalledWith('Legacy question', 'adaptive', {
-      modelId: undefined, readingDepth: 'auto', lengthTier: 'standard',
+      aiMode: { kind: 'legacy', modelId: undefined }, readingDepth: 'auto', lengthTier: 'standard',
     })
   })
 })

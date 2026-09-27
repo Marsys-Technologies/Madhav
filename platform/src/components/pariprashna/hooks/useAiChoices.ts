@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AiChoice } from '@/components/ai-console/types'
+import type { AiSubmissionMode } from '../state/types'
 import {
   buildAiChoiceOptions, selectionKey, type AiChoicesAggregateDto, type AiChoicesCliDto,
 } from '../composer/model_options'
@@ -33,6 +34,7 @@ export interface UseAiChoicesResult {
   enabled: boolean
   legacy: boolean
   selection: ConversationSelection
+  mode: AiSubmissionMode
   options: AiChoiceOption[]
   availability: SelectionAvailability
   loading: boolean
@@ -86,6 +88,7 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
   const clisRef = useRef<AiChoicesCliDto | null>(null)
   const initialConversationIdRef = useRef(conversationId)
   const acknowledgedConversationIdRef = useRef<string | null>(null)
+  const operationEpochRef = useRef(0)
 
   const applyView = useCallback((nextView: SelectionView, aggregate: AiChoicesAggregateDto, clis: AiChoicesCliDto) => {
     selectionRef.current = nextView.selection
@@ -103,10 +106,11 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
 
   useEffect(() => {
     if (!enabled) return
+    const operationEpoch = ++operationEpochRef.current
     let cancelled = false
     const controller = new AbortController()
     queueMicrotask(() => {
-      if (cancelled) return
+      if (cancelled || operationEpochRef.current !== operationEpoch) return
       setLoading(true)
       setLoadFailed(false)
       setStatusMessage('Loading AI choices…')
@@ -118,7 +122,7 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
         // 404 silently downgrade an enabled surface.
         const aggregate = await getJson<AiChoicesAggregateDto>('/api/ai-console', { signal: controller.signal })
         const clis = await getJson<AiChoicesCliDto>('/api/ai-console/clis', { signal: controller.signal })
-        if (cancelled) return
+        if (cancelled || operationEpochRef.current !== operationEpoch) return
         aggregateRef.current = aggregate
         clisRef.current = clis
         setLegacy(false)
@@ -135,12 +139,12 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
         } else {
           nextView = await getJson<SelectionView>(`/api/conversations/${encodeURIComponent(conversationId)}/ai-selection`, { signal: controller.signal })
         }
-        if (!cancelled) {
+        if (!cancelled && operationEpochRef.current === operationEpoch) {
           applyView(nextView, aggregate, clis)
           setLoadedConversationId(conversationId)
         }
       } catch (error) {
-        if (cancelled || (error as { name?: string }).name === 'AbortError') return
+        if (cancelled || operationEpochRef.current !== operationEpoch || (error as { name?: string }).name === 'AbortError') return
         setMutationPending(false)
         if (error instanceof FeatureDisabled) {
           setLegacy(true)
@@ -152,7 +156,7 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
           setStatusMessage('AI choices could not be loaded. Try again or open AI Console.')
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled && operationEpochRef.current === operationEpoch) setLoading(false)
       }
     })()
     return () => { cancelled = true; controller.abort() }
@@ -160,7 +164,12 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
 
   useEffect(() => {
     if (!enabled || legacy) return
-    const onFocus = () => setRefreshVersion(version => version + 1)
+    const onFocus = () => {
+      setLoading(true)
+      setLoadFailed(false)
+      setStatusMessage('Loading AI choices…')
+      setRefreshVersion(version => version + 1)
+    }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [enabled, legacy])
@@ -175,18 +184,23 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
       if (aggregate && clis) applyView(localView(next, aggregate, clis), aggregate, clis)
       return
     }
+    const operationEpoch = ++operationEpochRef.current
+    setLoading(false)
+    setLoadFailed(false)
     setMutationPending(true)
     setStatusMessage('Saving AI choice…')
     try {
       const nextView = await persist(conversationId, next)
       const aggregate = aggregateRef.current
       const clis = clisRef.current
-      if (aggregate && clis) applyView(nextView, aggregate, clis)
+      if (operationEpochRef.current === operationEpoch && aggregate && clis) applyView(nextView, aggregate, clis)
     } catch {
       // Deliberately retain the last server-confirmed selection.
-      setStatusMessage('The AI choice could not be saved. Your previous choice remains active.')
+      if (operationEpochRef.current === operationEpoch) {
+        setStatusMessage('The AI choice could not be saved. Your previous choice remains active.')
+      }
     } finally {
-      setMutationPending(false)
+      if (operationEpochRef.current === operationEpoch) setMutationPending(false)
     }
   }, [enabled, legacy, conversationId, applyView, persist])
 
@@ -197,9 +211,18 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
   const effectiveStatusMessage = !enabled ? '' : effectiveLoading ? 'Loading AI choices…' : statusMessage
   const canSubmit = effectiveLegacy
     || (!effectiveLoading && !effectiveMutationPending && !loadFailed && view.availability === 'ready')
-  return useMemo(() => ({ enabled, legacy: effectiveLegacy, selection, options: effectiveOptions, availability: view.availability,
+  const mode = useMemo<AiSubmissionMode>(
+    () => effectiveLegacy ? { kind: 'legacy' } : { kind: 'byok', selection },
+    [effectiveLegacy, selection],
+  )
+  return useMemo(() => ({ enabled, legacy: effectiveLegacy, selection, mode, options: effectiveOptions, availability: view.availability,
     loading: effectiveLoading, mutationPending: effectiveMutationPending, canSubmit, statusMessage: effectiveStatusMessage, select,
-    refresh: () => setRefreshVersion(version => version + 1),
-  }), [enabled, effectiveLegacy, selection, effectiveOptions, view.availability, effectiveLoading,
+    refresh: () => {
+      setLoading(true)
+      setLoadFailed(false)
+      setStatusMessage('Loading AI choices…')
+      setRefreshVersion(version => version + 1)
+    },
+  }), [enabled, effectiveLegacy, selection, mode, effectiveOptions, view.availability, effectiveLoading,
     effectiveMutationPending, canSubmit, effectiveStatusMessage, select])
 }

@@ -103,9 +103,11 @@ vi.mock('@/lib/db/client', () => ({
 
 // ── conversations (no clientConversationId in any scenario here, so only
 // `insertConversationWithId` is ever actually called). ──────────────────────
-const { mockInsertConversationWithId } = vi.hoisted(() => ({ mockInsertConversationWithId: vi.fn() }))
+const { mockGetConversation, mockInsertConversationWithId } = vi.hoisted(() => ({
+  mockGetConversation: vi.fn(), mockInsertConversationWithId: vi.fn(),
+}))
 vi.mock('@/lib/conversations', () => ({
-  getConversation: vi.fn(async () => null),
+  getConversation: mockGetConversation,
   insertConversationWithId: mockInsertConversationWithId,
 }))
 
@@ -262,12 +264,13 @@ vi.mock('@/lib/conversations/title', () => ({
 import { POST } from '../route'
 import { HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT } from '@/lib/pariprashna/safety/fixed_responses'
 
-function makeReq(question: string): Request {
+function makeReq(question: string, conversationId?: string): Request {
   return new Request('http://localhost/api/pariprashna', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       chartId: CHART,
+      ...(conversationId ? { conversationId } : {}),
       messages: [{ role: 'user', parts: [{ type: 'text', text: question }] }],
     }),
   })
@@ -303,6 +306,7 @@ async function runRoute(question: string): Promise<{ status: number; contentType
 beforeEach(() => {
   safetyFlagState.on = false
   mockCallPipelinePlanner.mockReset()
+  mockGetConversation.mockReset().mockResolvedValue(null)
   mockInsertConversationWithId.mockReset().mockResolvedValue(undefined)
 })
 
@@ -311,6 +315,19 @@ afterEach(() => {
 })
 
 describe('V3-E-055: PPR-12 safety gate (WEB door /api/pariprashna) — reaches the SSE wire', () => {
+  it('parses the authoritative camelCase conversationId and reuses that existing conversation row', async () => {
+    const existingConversationId = '33333333-3333-4333-8333-333333333333'
+    safetyFlagState.on = true
+    mockGetConversation.mockResolvedValue({ id: existingConversationId, chart_id: CHART })
+
+    const response = await POST(makeReq('I want to kill myself.', existingConversationId))
+    const events = parseSse(await response.text())
+
+    expect(events.find(event => event.type === 'turn.open')?.conversation_id).toBe(existingConversationId)
+    expect(mockGetConversation).toHaveBeenCalledWith({ id: existingConversationId, userId: 'route-test-uid', isSuperAdmin: false })
+    expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+  })
+
   it('flag OFF (the shipped default): a crisis question runs untouched, no safety block on the wire', async () => {
     safetyFlagState.on = false
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))

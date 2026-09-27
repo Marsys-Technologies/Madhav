@@ -96,6 +96,10 @@ function supportsEveryRole(roles: readonly AiRole[]): boolean {
   return ALL_ROLES.every(role => roles.includes(role))
 }
 
+function supportsRole(roles: readonly AiRole[], role: AiRole): boolean {
+  return roles.includes(role)
+}
+
 export function selectionKey(selection: ConversationSelection): string {
   if (selection.kind === 'default') return 'default'
   const choice = selection.choice
@@ -123,13 +127,30 @@ function cliUsable(clis: AiChoicesCliDto, choice: CliChoiceDto): boolean {
   return !!model && supportsEveryRole(model.compatibleRoles)
 }
 
+function providerUsableForRole(aggregate: AiChoicesAggregateDto, choice: ProviderChoiceDto, role: AiRole): boolean {
+  const connection = aggregate.connections.find(row => row.id === choice.connectionId)
+  const model = aggregate.models.find(row => row.connectionId === choice.connectionId && row.modelId === choice.modelId)
+  return !!connection && !connection.deletedAt && connection.confirmedValid
+    && (connection.validationState === 'validated' || connection.validationState === 'validating')
+    && !!model && model.available && supportsRole(model.compatibleRoles, role)
+}
+
+function cliUsableForRole(clis: AiChoicesCliDto, choice: CliChoiceDto, role: AiRole): boolean {
+  const cli = clis.clis.find(row => row.cliId === choice.cliId)
+  if (!cli || cli.state !== 'reachable') return false
+  const model = cli.models.find(row => row.modelId === choice.modelId)
+  return !!model && supportsRole(model.compatibleRoles, role)
+}
+
 function choiceUsable(aggregate: AiChoicesAggregateDto, clis: AiChoicesCliDto, choice: ChoiceDto): boolean {
   if (choice.kind === 'provider_model') return providerUsable(aggregate, choice)
   if (choice.kind === 'local_cli') return cliUsable(clis, choice)
   const configuration = aggregate.configurations.find(row => row.id === choice.configurationId)
   return !!configuration && !configuration.deletedAt && ALL_ROLES.every(role => {
     const target = configuration.roles[role]
-    return target.kind === 'provider_model' ? providerUsable(aggregate, target) : cliUsable(clis, target)
+    return target.kind === 'provider_model'
+      ? providerUsableForRole(aggregate, target, role)
+      : cliUsableForRole(clis, target, role)
   })
 }
 

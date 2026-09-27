@@ -65,6 +65,31 @@ function stateWithAlternatives(defaultChoice: unknown = { kind: 'provider_model'
   }
 }
 
+function specialistConfigurationState() {
+  return {
+    ...state({ kind: 'custom_configuration', configurationId: CONFIGURATION_ID }),
+    models: [
+      { connection_id: CONNECTION_ID, model_id: 'synth-only', display_name: 'Synth specialist', compatible_roles: ['synthesizer'], supports_tools: false, supports_structured_output: true, available: true },
+      { connection_id: CONNECTION_ID, model_id: 'planner-only', display_name: 'Planner specialist', compatible_roles: ['planner'], supports_tools: false, supports_structured_output: true, available: true },
+    ],
+    configurations: [{ id: CONFIGURATION_ID, name: 'Specialist quartet', version: 1, deleted_at: null }],
+    roles: [
+      { configuration_id: CONFIGURATION_ID, role: 'synthesizer', kind: 'provider_model', connection_id: CONNECTION_ID, model_id: 'synth-only', cli_id: null },
+      { configuration_id: CONFIGURATION_ID, role: 'planner', kind: 'provider_model', connection_id: CONNECTION_ID, model_id: 'planner-only', cli_id: null },
+      { configuration_id: CONFIGURATION_ID, role: 'deep_planner', kind: 'local_cli', connection_id: null, model_id: 'deep-only', cli_id: 'claude_code' },
+      { configuration_id: CONFIGURATION_ID, role: 'worker', kind: 'local_cli', connection_id: null, model_id: 'worker-only', cli_id: 'claude_code' },
+    ],
+    clis: [{ cli_id: 'claude_code', granted_at: '2026-09-27T00:00:00Z', revoked_at: null,
+      detected_product: 'Claude Code', detected_version: '2.1.56', validation_state: 'reachable', last_checked_at: null }],
+    cliModels: [
+      { cli_id: 'claude_code', model_id: 'deep-only', display_name: 'Deep specialist', compatible_roles: ['deep_planner'],
+        available: true, supports_tools: false, supports_structured_output: true, is_builtin_default: false },
+      { cli_id: 'claude_code', model_id: 'worker-only', display_name: 'Worker specialist', compatible_roles: ['worker'],
+        available: true, supports_tools: false, supports_structured_output: true, is_builtin_default: false },
+    ],
+  }
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.flag.mockReturnValue(true)
@@ -176,6 +201,15 @@ describe('conversation AI selection route', () => {
     })
     expect(await (await route.GET(new Request('http://localhost'), context())).json()).toMatchObject({
       selection, availability: 'ready', label: 'Research quartet v2',
+    })
+  })
+
+  it('accepts a complete specialist configuration when each assigned target supports its one role', async () => {
+    const selection = { kind: 'explicit', choice: { kind: 'custom_configuration', configurationId: CONFIGURATION_ID } } as const
+    mocks.getConversationSelection.mockResolvedValue(selection)
+    mocks.listAiConsoleState.mockResolvedValue(specialistConfigurationState())
+    expect(await (await route.GET(new Request('http://localhost'), context())).json()).toEqual({
+      selection, availability: 'ready', label: 'Specialist quartet', resolvedLabel: null, remediation: null,
     })
   })
 

@@ -57,6 +57,13 @@ export function AiChoicePicker({
     return () => cancelAnimationFrame(frame)
   }, [open])
 
+  useEffect(() => {
+    if (!open || !disabled) return
+    closeAndRestore()
+    // `closeAndRestore` intentionally tracks the current controlled callback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, disabled, onOpenChange])
+
   const grouped = useMemo(() => GROUPS.map(group => ({ group, rows: options.filter(option => option.group === group) })), [options])
   const ungrouped = options.filter(option => option.group === null)
 
@@ -67,23 +74,24 @@ export function AiChoicePicker({
 
   function row(option: AiChoiceOption) {
     const selectedRow = option.key === selectedKey
+    const rowDisabled = disabled || option.disabled
     return (
       <div
         key={option.key}
         role="option"
         aria-selected={selectedRow}
-        aria-disabled={option.disabled || undefined}
+        aria-disabled={rowDisabled || undefined}
         aria-label={`${option.label}${option.detail ? ` — ${option.detail}` : ''}`}
-        tabIndex={option.disabled ? -1 : 0}
+        tabIndex={rowDisabled ? -1 : 0}
         className="flex items-center gap-2.5 rounded-[7px]"
-        style={{ padding: '9px 11px', cursor: option.disabled ? 'not-allowed' : 'pointer', opacity: option.disabled ? 0.65 : 1 }}
+        style={{ padding: '9px 11px', cursor: rowDisabled ? 'not-allowed' : 'pointer', opacity: rowDisabled ? 0.65 : 1 }}
         onClick={() => {
-          if (option.disabled) return
+          if (rowDisabled) return
           void onSelect(option.selection)
           closeAndRestore()
         }}
         onKeyDown={event => {
-          if (option.disabled) return
+          if (rowDisabled) return
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
             void onSelect(option.selection)

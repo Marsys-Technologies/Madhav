@@ -30,6 +30,23 @@ function hasEveryRole(roles: readonly AiRole[]): boolean {
   return ALL_ROLES.every(role => roles.includes(role))
 }
 
+function choiceUsableForRole(choice: AiChoiceRef, role: AiRole, state: ConsoleProjection, clis: CliProjection): boolean {
+  if (choice.kind === 'provider_model') {
+    const connection = state.connections.find(row => row.id === choice.connectionId)
+    const model = state.models.find(row => row.connectionId === choice.connectionId && row.modelId === choice.modelId)
+    return !!connection && !connection.deletedAt && connection.confirmedValid
+      && (connection.validationState === 'validated' || connection.validationState === 'validating')
+      && !!model && model.available && model.compatibleRoles.includes(role)
+  }
+  if (choice.kind === 'local_cli') {
+    const cli = clis.find(row => row.cliId === choice.cliId)
+    if (!cli || cli.state !== 'reachable') return false
+    const model = cli.models.find(row => row.modelId === choice.modelId)
+    return !!model && model.compatibleRoles.includes(role)
+  }
+  return false
+}
+
 function describeChoice(choice: AiChoiceRef, state: ConsoleProjection, clis: CliProjection): { label: string; usable: boolean } {
   if (choice.kind === 'provider_model') {
     const connection = state.connections.find(row => row.id === choice.connectionId)
@@ -48,7 +65,7 @@ function describeChoice(choice: AiChoiceRef, state: ConsoleProjection, clis: Cli
     if (!configuration) return { label: 'Unavailable custom configuration', usable: false }
     const usable = !configuration.deletedAt && ALL_ROLES.every(role => {
       const target = configuration.roles[role]
-      return target ? describeChoice(target, state, clis).usable : false
+      return target ? choiceUsableForRole(target, role, state, clis) : false
     })
     return { label: configuration.name, usable }
   }

@@ -75,6 +75,18 @@ describe('AiChoicePicker', () => {
     expect(onSelect).not.toHaveBeenCalled()
   })
 
+  it('closes an already-open picker and disables every row while authority refreshes', async () => {
+    const onOpenChange = vi.fn()
+    const onSelect = vi.fn()
+    renderPicker({ open: true, disabled: true, onOpenChange, onSelect })
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    const provider = screen.getByRole('option', { name: /^personal openai/i })
+    expect(provider).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(provider)
+    fireEvent.keyDown(provider, { key: 'Enter' })
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
   it('shows a selected broken identity as a disabled repair row and remains axe-clean', async () => {
     const broken: AiChoiceOption = { key: 'broken', group: null, label: 'Unavailable AI choice',
       selection: { kind: 'explicit', choice: { kind: 'local_cli', cliId: 'codex', modelId: null } }, disabled: true,

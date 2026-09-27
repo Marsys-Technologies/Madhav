@@ -99,7 +99,10 @@ function DevFixturePicker({ onPick, disabled }: { onPick: (mode: FixtureMode) =>
 export function PariprashnaApp({ chartPin, chartId }: { chartPin: ChartPin; chartId?: string }) {
   const liveEnabled = process.env.NEXT_PUBLIC_PARIPRASHNA_LIVE === '1' && !!chartId
   if (liveEnabled && chartId) {
-    return <PariprashnaAppLive chartPin={chartPin} chartId={chartId} />
+    // Chart identity owns the entire live session. A keyed remount resets the
+    // AI-choice acknowledgement alongside transport state before the new
+    // chart can submit.
+    return <PariprashnaAppLive key={chartId} chartPin={chartPin} chartId={chartId} />
   }
   return <PariprashnaAppFixture chartPin={chartPin} />
 }
@@ -127,8 +130,7 @@ function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId
       submit: (text: string, _mode: FixtureMode, controls?: SubmitControls) =>
         live.submit(text, {
           reading_depth: controls?.readingDepth ?? 'auto',
-          model_id: controls?.modelId,
-          ai_selection: controls?.aiSelection,
+          aiMode: controls?.aiMode ?? { kind: 'legacy' },
           length_tier: controls?.lengthTier ?? 'standard',
         }),
       stop: live.stop,
@@ -316,10 +318,10 @@ function PariprashnaSurface({
 
   const handleSubmit = useCallback(
     (text: string, mode: FixtureMode, controls?: SubmitControls) => {
-      if (aiChoicesEnabled && !controls) {
-        if (!aiChoices.canSubmit) return
+      if (!controls) {
+        if (aiChoices.mode.kind === 'byok' && !aiChoices.canSubmit) return
         submit(text, mode, {
-          aiSelection: aiChoices.selection,
+          aiMode: aiChoices.mode,
           readingDepth: 'auto',
           lengthTier: 'standard',
         })
@@ -327,7 +329,7 @@ function PariprashnaSurface({
       }
       submit(text, mode, controls)
     },
-    [submit, aiChoicesEnabled, aiChoices.canSubmit, aiChoices.selection],
+    [submit, aiChoices.canSubmit, aiChoices.mode],
   )
 
   const handleStop = useCallback(() => {
