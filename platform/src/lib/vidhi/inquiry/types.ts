@@ -183,6 +183,24 @@ export interface AiInquiryProposal {
   readonly hypotheses: readonly string[]
 }
 
+/**
+ * Which planner produced the contract's AI proposal, with the model and reasoning actually
+ * requested (RC-5.6). Recorded, never hashed: it describes how the plan was proposed, while
+ * the deterministic compiler alone decides the contract's semantic and execution identity.
+ */
+export interface InquiryPlanningProvenance {
+  /** 'model' when a server-side planner LLM proposed facets; 'deterministic_compiler' when the
+   *  door compiled only a caller-supplied (or absent) proposal. */
+  readonly planner: 'model' | 'deterministic_compiler'
+  readonly ai_proposal_source: 'server_planner' | 'caller' | 'none'
+  readonly call_type: 'planner_fast' | 'planner_deep' | null
+  readonly reasoning_requested: 'auto' | 'enable' | null
+  /** The model that actually produced the plan; null when the planner reported none. */
+  readonly model_id: string | null
+  /** True when the fallback model produced the plan; null when the planner reported none. */
+  readonly fallback_used: boolean | null
+}
+
 export interface InquiryContract {
   readonly contract_version: typeof INQUIRY_CONTRACT_VERSION
   readonly compiler_version: string
@@ -210,6 +228,7 @@ export interface InquiryContract {
   readonly graph_traversal?: GraphTraversalReceipt
   readonly omission_challenge?: OmissionChallengeReceipt
   readonly planning_budget?: InquiryPlanningBudgetReceipt
+  readonly planning_provenance?: InquiryPlanningProvenance
   /** Present only on a fresh, evidence-admitted continuation contract. */
   readonly successor?: InquirySuccessorReceipt
 }

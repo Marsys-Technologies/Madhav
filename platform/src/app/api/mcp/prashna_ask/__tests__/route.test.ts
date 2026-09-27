@@ -384,6 +384,41 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
   })
 
+  it('records the planner slot, requested reasoning, and fallback model on the managed contract (RC-5.6)', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000019'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000019'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue({
+      ...planOutcome(['authorized_test'], scope),
+      metrics: {
+        planning_confidence: 0.9, fallback_used: true, active_model_id: 'fallback-planner-model',
+        parsed_on_first_attempt: true, first_parse_error: null,
+      },
+    })
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'managed provenance test', response_format: 'standard' },
+    })
+    let opened: InquiryContract | undefined
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      opened = contract
+      throw new Error('stop after compile')
+    })
+
+    await POST(makeReq({
+      chart_id: CHART, question: 'managed provenance test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    })).then(readNdjson).catch(() => undefined)
+
+    expect(requireInquiryContract(opened).planning_provenance).toEqual({
+      planner: 'model', ai_proposal_source: 'server_planner', call_type: 'planner_fast',
+      reasoning_requested: 'auto', model_id: 'fallback-planner-model', fallback_used: true,
+    })
+  })
+
   it('terminalizes a capped ready continuation without a post-cap retrieval', async () => {
     const jobId = 'aaaaaaaa-1111-4000-8000-000000000012'
     const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000012'

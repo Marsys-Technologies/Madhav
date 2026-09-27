@@ -91,6 +91,7 @@ import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
 import { synthesizeReading } from '@/lib/pipeline/prashna_ask_synthesis'
 import { ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
 import { getManagedPrashnaJob } from '@/lib/vidhi/inquiry/managed_job_store'
+import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 
 // Wall-clock generous enough for the elevated super_admin cost cap (300s) plus
 // margin for the HTTP round trip; the resolved per-entitlement cap enforces the
@@ -554,6 +555,7 @@ export async function POST(request: Request) {
           execution_channel: 'platform_internal',
           temporal_anchor_date: nowContextDate,
           temporal_anchor_source: 'request_context_clock',
+          planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)

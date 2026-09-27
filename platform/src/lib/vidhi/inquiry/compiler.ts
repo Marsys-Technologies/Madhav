@@ -13,6 +13,7 @@ import {
   type InquiryObligation,
   type InquiryPlanningBudget,
   type InquiryPlanningBudgetReceipt,
+  type InquiryPlanningProvenance,
   type InquiryPlanItem,
   type InquiryScopeTuple,
   type InquirySuccessorReceipt,
@@ -418,6 +419,8 @@ export function compileInquiryContract(args: {
   /** Explicit request-time anchor; the compiler never reads the wall clock. */
   temporal_anchor_date?: string
   temporal_anchor_source?: InquiryArgumentResolutionReceipt['source']
+  /** How the AI proposal was produced; recorded on the contract, never hashed. */
+  planning_provenance?: InquiryPlanningProvenance
 }): InquiryContract {
   const question = normalizeQuestion(args.question)
   const normalization = normalizeInquiryScope(args.scope_tuple)
@@ -602,6 +605,7 @@ export function compileInquiryContract(args: {
     graph_traversal: traversal,
     omission_challenge: challenge,
     planning_budget: budgetReceipt,
+    ...(args.planning_provenance ? { planning_provenance: args.planning_provenance } : {}),
   }
 }
 

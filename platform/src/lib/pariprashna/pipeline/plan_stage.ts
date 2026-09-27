@@ -41,6 +41,7 @@ import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } fr
 import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
+import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 
 /**
  * Lane P2-C (PPR-09/16) — honest depth disclosure. Maps the CLASSIFIER's own
@@ -345,6 +346,7 @@ export async function runPlanStage(args: {
           execution_channel: 'platform_internal',
           temporal_anchor_date: temporalAnchorDate,
           temporal_anchor_source: 'request_context_clock',
+          planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)

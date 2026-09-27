@@ -43,6 +43,7 @@ import {
   markInquiryActionDispatched,
   reserveInquiryAction,
 } from '@/lib/vidhi/inquiry/lifecycle_store'
+import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 
 export const maxDuration = 60
 
@@ -190,6 +191,8 @@ export async function POST(request: Request) {
         snapshot, overlay, chart_id: body.chart_id, question: body.question,
         scope_tuple: scope, ai_proposal: body.ai_proposal, execution_channel: 'mcp_full',
         temporal_anchor_date: body.temporal_anchor_date,
+        // The raw door makes no model call: any AI decomposition is the caller's (RC-5.3).
+        planning_provenance: deterministicCompilerProvenance(body.ai_proposal !== undefined),
       })
       const inquiryId = randomUUID()
       const ready = nextReady(contract)
