@@ -1,12 +1,13 @@
 ---
 artifact: NIKASHA_CHANGE_REGISTER
 canonical_id: NIKASHA_CHANGE_REGISTER
-version: "2.4"
+version: "2.5"
 status: LIVING
 supersedes: NIKASHA_CHANGE_REGISTER_v1_0.md
 produced_on: 2026-09-26
 decision_owner: Native
 changelog:
+  - "2.5 (2026-09-28, W2-3 fold, wave 2 complete): CLOSED R20, R21, R23, R240, R241, R242. Added R243 (6 chart-conditional PASSes, annotation-only), R244 (bo_upaya — real unearned closure, native ruling needed, withhold-on-every-emit procedure), R245 (remaining Idem blind spots, none live), R246 (DELETE-FK-child detector), R247 (2 data-plane findings). Totals 242 → 247; OPEN 197 → 196; CLOSED 33 → 39. Also corrected a long-standing label error dating to the first wave-1 fold commit: §2.10 was mislabelled \"R218–R231\" (a copy-paste of the wave-1-fold range) and is now correctly \"R218–R221\" (its own D5-revision rows only) — no row content changed, only the range label. Wave 2 (W2-1/W2-2/W2-3) is now complete."
   - "2.4 (2026-09-27, W2-2 fold): CLOSED R233, R44, R49, R45, R43 (incl. C-KSHETRA re-gate fix), R46, R50, R51, R53, R54, R232. R55 annotated (D6 item 2 landed, stays OPEN on migration 1094). R45+R232 both landed — second production emit now safe under hand-verify discipline. Added R240 (ka_gochara data), R241 (Idem.pattern blind spots, W2-3), R242 (perf, cosmetic). Totals 239 → 242; OPEN 200 → 197; CLOSED 21 → 33."
   - "2.3 (2026-09-27, W2-1 fold): CLOSED R224, R231, R223, R222 (precondition MET — first production emit may run), R225, R42, R52, R56, R48. R45 annotated (gates every later emit). Added R232–R239 (§2.12). Totals 231 → 239; OPEN 200; CLOSED 21."
   - "2.2 (2026-09-27, R227 decided): native delegated the decision — route evidence never counts as coverage, ADOPTED; R227 CLOSED. OPEN 202 → 201, CLOSED 11 → 12."
@@ -42,25 +43,25 @@ is a register row here (R85–R214), quoted against the clause that failed to pr
 
 ## 0 · Index
 
-**Total rows: 242** (R01–R84 carried from v1.0; R85–R214 added in v2.0 from P4 derivations; R215–R217 added by the 2026-09-27 rulings, §2.9; R218–R231 added by the D5 revision 2.1, §2.10; R222–R231 added at the wave-1 fold, §2.11; R232–R239 added at the W2-1 fold, §2.12; R240–R242 added at the W2-2 fold, §2.13).
+**Total rows: 247** (R01–R84 carried from v1.0; R85–R214 added in v2.0 from P4 derivations; R215–R217 added by the 2026-09-27 rulings, §2.9; R218–R221 added by the D5 revision 2.1, §2.10; R222–R231 added at the wave-1 fold, §2.11; R232–R239 added at the W2-1 fold, §2.12; R240–R242 added at the W2-2 fold, §2.13; R243–R247 added at the W2-3 fold, §2.14).
 
 ### 0.1 · Count by state
 
 | state | count |
 |---|---|
-| OPEN | 197 |
+| OPEN | 196 |
 | CLOSED_ON_BRANCH | 2 |
 | DONE | 15 |
-| CLOSED | 33 |
+| CLOSED | 39 |
 | MEASURED in P6 | 1 |
 
 ### 0.2 · Count by severity
 
 | severity | count | meaning |
 |---|---|---|
-| BLOCKS_FREEZE | 14 | freeze criterion cannot be met while open (closure loop, gate integrity, silent coverage, contradictions) |
-| BLOCKS_LAYER | 114 | a layer instance/brief cannot be derived from the tiers without inventing content |
-| DEGRADES | 100 | system runs but evidence/verdicts are wrong, incomplete, or misleading |
+| BLOCKS_FREEZE | 15 | freeze criterion cannot be met while open (closure loop, gate integrity, silent coverage, contradictions) |
+| BLOCKS_LAYER | 115 | a layer instance/brief cannot be derived from the tiers without inventing content |
+| DEGRADES | 103 | system runs but evidence/verdicts are wrong, incomplete, or misleading |
 | COSMETIC | 14 | wording, ordering, stale figures; no measurement impact |
 
 ### 0.3 · Where the rows live
@@ -142,10 +143,10 @@ the primary row and `depends_on` the primary with transcription-only effort on t
 | R17 | Registry read via `json_agg`, not line-oriented | first run (52 assets from 40) | DEGRADES | — | 2 | DONE |
 | R18 | Code scans on the AST, framework file excluded, both-entry-points is a note | first run (false positives) | DEGRADES | — | 3 | DONE |
 | R19 | Build history checks 7–9 from `build_runs` / `build_run_assets` | native's build context | DEGRADES | — | 3 | DONE |
-| R20 | **Follow writer delegation into the seeder** so `Idem.pattern` resolves PASS/FAIL instead of PARTIAL for 27 assets | first run | BLOCKS_LAYER | — | 6 | **OPEN** — highest-value inspector fix; confirmed load-bearing on L2 (R127) |
-| R21 | Blocking radius per asset from the DAG, attached to every `Build` gap as severity | triage | DEGRADES | — | 4 | **OPEN** |
+| R20 | **Follow writer delegation into the seeder** so `Idem.pattern` resolves PASS/FAIL instead of PARTIAL for 27 assets | first run | BLOCKS_LAYER | — | 6 | CLOSED 2026-09-28 — 50c0d4535+ee2c7d7ee (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); Idem.pattern follows delegation up to 2 modules. 69 PARTIAL resolved: 51 unconditional PASS, 6 chart-conditional PASS (see R243), 1 real defect surfaced — bo_upaya, WITHHELD not closed (see R244); 11 remain PARTIAL with a named reason (1 registry mismatch R240, 2 update-only, 8 write-nothing pending an N/A ruling) |
+| R21 | Blocking radius per asset from the DAG, attached to every `Build` gap as severity | triage | DEGRADES | — | 4 | CLOSED 2026-09-28 — 3f9a11428 (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); blocking_radius + severity_weight=1+radius on every Build.* gap row; matches an independent recursive query on 127/127 assets; null-with-reason on a failed dependency read, never 0 |
 | R22 | Width universes: read a declared universe from the registry or the layer instance where one exists, instead of always `NOT_GENERIC` | pilots | BLOCKS_LAYER | R06 | 6 | **OPEN** — needs a place to *declare* universes first (R06-adjacent); confirmed layer-wide on L1–L3 in P4 (R90, R110, R123) |
-| R23 | Field-level reachability census over capability modules (fields selected vs columns built) | pilots 1–3 | DEGRADES | — | 8 | **OPEN** |
+| R23 | Field-level reachability census over capability modules (fields selected vs columns built) | pilots 1–3 | DEGRADES | — | 8 | CLOSED 2026-09-28 — f032ecec5 + C3 af30cfe2b (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); field-level reachability reported (verdict-inert, 0 gaps opened/closed); dark-table count corrected 26→19 after widening the scan to platform-mcp/src/tools/** and lib/**; kala_field and bodha_signal_embeddings confirmed genuinely dark |
 | R24 | Exercised on L1–L5 (T4) | — | BLOCKS_FREEZE | — | 4 | **OPEN** — census executed L1–L5 during campaign; remaining: production L3 census (R134) and clean re-runs after fixes |
 | R25 | A `--plant` mode for T1: inject a known defect into a scratch copy and assert detection | — | DEGRADES | — | 4 | **DONE** (nikasha_test/harness/plant.py, 17 plants; T1_RESULTS.md) |
 | R26 | Emits `kind: opportunity` rows? No — opportunities are judgement, never machine-emitted. Recorded so nobody adds it | — | COSMETIC | — | 0 | DONE (by rule) |
@@ -444,9 +445,19 @@ rest `depends_on` it.
 
 | # | change | surfaced by | severity | depends_on | effort_h | state |
 |---|---|---|---|---|---|---|
-| R240 | **ka_gochara registry/table mismatch** (W2-1 F8, re-confirmed W2-2): the registry declares `kala_gochara_windows`; the writer only ever deletes from and writes `kala_gochara_windows_v2` (17,211 vs 1,001 rows for the canonical chart). Idem.pattern now correctly reads PARTIAL rather than a false PASS. Fix the registry's declared target, or the writer's table name — owner's call, not the inspector's | W2-1 F8; W2-2 C-KSHETRA re-gate | DEGRADES | R43 | 1 | OPEN — data-plane owner |
-| R241 | **Idem.pattern blind spots, disclosed, none live today**: a rebuild hold expressed as an early `return` rather than a raised exception; probe/guard forms other than the one pattern matched; a guard living in a helper module the scan doesn't follow; a negated test. All 43 currently-passing writers checked clean; close alongside R20's delegation-following work | W2-2_C_KSHETRA_REVIEW §7 | DEGRADES | R20 | 2 | OPEN — in W2-3 |
-| R242 | **target_owners() is read on every call, not cached per layer** — correctness is unaffected; a real but cosmetic performance item | W2-2_REPORT §not-done | COSMETIC | — | 1 | OPEN |
+| R240 | **ka_gochara registry/table mismatch** (W2-1 F8, re-confirmed W2-2): the registry declares `kala_gochara_windows`; the writer only ever deletes from and writes `kala_gochara_windows_v2` (17,211 vs 1,001 rows for the canonical chart). Idem.pattern now correctly reads PARTIAL rather than a false PASS. Fix the registry's declared target, or the writer's table name — owner's call, not the inspector's | W2-1 F8; W2-2 C-KSHETRA re-gate | DEGRADES | R43 | 1 | CLOSED 2026-09-28 — discharged by R20 (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); ka_gochara stays PARTIAL with an explicit registry/writer table-name-mismatch reason (kala_gochara_windows vs _v2); independently screened, no other asset has the same mismatch |
+| R241 | **Idem.pattern blind spots, disclosed, none live today**: a rebuild hold expressed as an early `return` rather than a raised exception; probe/guard forms other than the one pattern matched; a guard living in a helper module the scan doesn't follow; a negated test. All 43 currently-passing writers checked clean; close alongside R20's delegation-following work | W2-2_C_KSHETRA_REVIEW §7 | DEGRADES | R20 | 2 | CLOSED 2026-09-28 — f31a98e4f+8702ee331 (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); the hold check covers early-return/continue/break holds, count(*) probes, negated/walrus tests, and guards in helper modules. Remaining disclosed-not-fixed shapes: R245 |
+| R242 | **target_owners() is read on every call, not cached per layer** — correctness is unaffected; a real but cosmetic performance item | W2-2_REPORT §not-done | COSMETIC | — | 1 | CLOSED 2026-09-28 — fa23abe69 (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); target_owners() read once per measure(), verdicts unchanged |
+
+### 2.14 · Rows added at the W2-3 fold (2026-09-28)
+
+| # | change | surfaced by | severity | depends_on | effort_h | state |
+|---|---|---|---|---|---|---|
+| R243 | **Six Idem.pattern PASSes are chart-conditional, not universal** (bo_arudha, bo_special_lagna, bo_nakshatra_semantic, bo_sudarshana, bo_vargottama_dhana on charts 1c826d5a and cb73cd3d; bo_laksana on 1c826d5a only): the rebuild calls the live database function `public.assert_l2_msr_delete_safe`, which refuses replacement when `kala_*` rows reference the asset's signals. No such rows on the canonical chart 482012f1 today, so earned there; would be refused on the other two charts. Not a code defect — the database is correctly protecting real dependent data. Any emit or certification of these six must carry the annotation `chart_scope: 482012f1 only; refused via assert_l2_msr_delete_safe on <charts>` | W2-3_REVIEW + W2-3_C1_REVIEW | DEGRADES | R20 | 1 | OPEN — annotation-only; no code fix implied |
+| R244 | **bo_upaya's Idem.pattern PASS is unearned on every chart — a real, live defect, not chart-conditional.** Commit `fa9857f00` (#2607, 2026-09-16) removed the delete of legacy `bodha_rm_dasha_windowed_prescriptions` rows; those rows carry a validated, non-deferrable NO ACTION foreign key onto the prescriptions table bo_upaya still deletes. 5 referencing rows on the canonical chart, 9 and 6 on the other two — every rebuild would raise a foreign-key violation. Never exercised since (last build 2026-09-09, predates the change). Independently confirmed; screened against all 158 live FKs onto the 69 closure tables — the only live failure. **Must be manually withheld from every emit** (the detector still reads it PASS) until either the writer is fixed (native ruling needed — restoring the delete may contradict DP-SD-015's "existing history remains readable") or a DELETE-FK-child detector lands (R246). Procedure, per W2-3_C1_REVIEW §7: emit to a scratch copy of the control directory; delete the one appended `bo_upaya-Idem.pattern` CLOSED line; verify the remaining transitions; only then promote to production | R20 corrections pass; independently re-verified at W2-3_C1_REVIEW | BLOCKS_FREEZE | R20 | 4 | OPEN — native ruling needed on the fix; withholding procedure must be followed on every emit until then |
+| R245 | Idem.pattern still cannot see: a probe written `SELECT NOT EXISTS`; a compound guard mixing a populated-check with a force-flag; a hold flag built from a prior comparison; a probe through an ORM or dynamically assembled SQL; a guard reached only through more than 2 modules of delegation or resolved dynamically. None produces a live false PASS today (independently screened) | W2-3_REPORT §2.4, widened by C2 and the re-gate | DEGRADES | R241 | 3 | OPEN |
+| R246 | Add a DELETE-FK-child detector: before crediting a delete-then-insert as PASS, check whether any live, restrictive (NO ACTION/RESTRICT, non-deferrable) foreign key references a table the delete does not also clear — would have caught bo_upaya (R244) mechanically instead of by manual screen | W2-3_C1_REVIEW §7 | BLOCKS_LAYER | R20 | 6 | OPEN |
+| R247 | Two more findings for their data-plane owners, not the inspector: (a) bo_karanajala writes ~130 nodes into bo_bimba's table via `ON CONFLICT DO NOTHING` with nothing ever refreshing or deleting them; (b) the 8 "writes nothing to its own table" PARTIALs and the 2 "update-only" PARTIALs need a native ruling on whether either pattern qualifies as N/A rather than permanent PARTIAL | W2-3_REPORT | DEGRADES | R20 | 0 | OPEN — native/data-plane decision |
 
 ## 3 · The native's staleness hypothesis, tested
 

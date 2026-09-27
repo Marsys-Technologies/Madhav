@@ -180,3 +180,10 @@ Register v2.3: R222 closed with its precondition MET (the inspector may write to
 
 Register v2.4: CLOSED R233, R44, R49, R45, R43, R46, R50, R51, R53, R54, R232 (12 rows via 12 commits + 1 correction). R55 annotated. Added R240–R242. The gate caught a wrong verdict (ka_kshetra) inside a packet already otherwise sound; the fix then surfaced two more real findings on its own. Both blockers on a second production ledger write are now resolved. Details: `wave2/STATE.md`.
 
+## 2026-09-28 · Wave 2 complete (W2-3 folded)
+
+Register v2.5: CLOSED R20, R21, R23, R240, R241, R242. Wave 2 (all three packets) is now complete.
+One real defect (bo_upaya, R244) was found by the wave's own corrections pass and is withheld from
+production pending a native ruling; six PASSes are correctly chart-conditional by database design
+(R243), not a defect. Details: `wave2/STATE.md`.
+
