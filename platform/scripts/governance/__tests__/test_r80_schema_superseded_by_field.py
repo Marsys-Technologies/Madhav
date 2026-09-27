@@ -6,9 +6,11 @@
 R80 is the schema documentation catching up to a mechanism the code already implements.
 
 This test proves `ledger_r81_migration.add_superseded_by_to_schema_doc` / `migrate_schema_line` —
-idempotent, and NEVER touches the real ledger file (a hardcoded, in-memory copy of the real
-`_schema` row's current `_doc` text is the fixture). The real file's own migration happens only in
-R81's single authorized commit, together with the row fold.
+idempotent — against a FROZEN, hardcoded snapshot of the real `_schema` row's pre-migration
+`_doc` text (`_r81_pre_migration_fixture.PRE_MIGRATION_SCHEMA_ROW`), so it keeps working after the
+real ledger has been migrated for good (R80+R81's one authorized write already landed — see
+`test_real_ledger_schema_row_now_documents_superseded_by` below, which confirms the real file's
+current, post-migration state instead of assuming a pre-migration one).
 
 Fails without the fix: the function does not exist / does not add the field.
 """
@@ -22,26 +24,28 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import ledger_r81_migration as mig  # noqa: E402
+import _r81_pre_migration_fixture as fx  # noqa: E402
 
 REAL_LEDGER = HERE.parents[3] / "00_ARCHITECTURE/control/asset_gaps.jsonl"
 
 
 def _real_schema_row() -> dict:
-    """Reads (never writes) the real ledger's first line, so this test tracks the real current
-    schema text instead of a second, driftable copy of it."""
+    """Reads (never writes) the real ledger's first line — used only by the post-migration
+    confirmation test at the bottom of this file."""
     with REAL_LEDGER.open(encoding="utf-8") as f:
         return json.loads(f.readline())
 
 
-def test_real_schema_row_does_not_yet_document_superseded_by():
-    """Sanity check on the fixture itself — if this ever fails, R80 already landed for real and
-    this test file is stale, not the code."""
+def test_real_ledger_schema_row_now_documents_superseded_by():
+    """Confirms the one authorized real write (R80+R81) actually landed: the real ledger's
+    _schema row documents superseded_by today."""
     row = _real_schema_row()
-    assert "superseded_by" not in row["_doc"]
+    assert row["asset"] == "_schema"
+    assert "superseded_by" in row["_doc"]
 
 
 def test_migrate_schema_line_adds_the_field_and_a_clause():
-    row = _real_schema_row()
+    row = dict(fx.PRE_MIGRATION_SCHEMA_ROW)
     migrated = mig.migrate_schema_line(row)
     assert "superseded_by" in migrated["_doc"]
     assert "the row is never edited or deleted" in migrated["_doc"]
@@ -52,14 +56,14 @@ def test_migrate_schema_line_adds_the_field_and_a_clause():
 
 
 def test_migrate_schema_line_never_mutates_its_input():
-    row = _real_schema_row()
+    row = dict(fx.PRE_MIGRATION_SCHEMA_ROW)
     before = json.dumps(row)
     mig.migrate_schema_line(row)
     assert json.dumps(row) == before, "migrate_schema_line must return a new dict, never mutate its input"
 
 
 def test_migration_is_idempotent_running_twice_matches_running_once():
-    row = _real_schema_row()
+    row = dict(fx.PRE_MIGRATION_SCHEMA_ROW)
     once = mig.migrate_schema_line(row)
     twice = mig.migrate_schema_line(once)
     assert once == twice, "applying the migration to its own output must be a no-op"

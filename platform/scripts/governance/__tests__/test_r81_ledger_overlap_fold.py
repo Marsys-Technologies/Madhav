@@ -24,6 +24,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import ledger_r81_migration as mig  # noqa: E402
+import _r81_pre_migration_fixture as fx  # noqa: E402
 
 REAL_LEDGER = HERE.parents[3] / "00_ARCHITECTURE/control/asset_gaps.jsonl"
 TS = "2026-09-28T00:00:00+05:30"
@@ -136,27 +137,12 @@ def test_missing_hand_row_raises_rather_than_silently_skipping(monkeypatch):
         mig.fold_overlap_pairs([_census("bg_ontology-Earn.build_record", "Earn.build_record")], TS)
 
 
-# ── the real ledger, read-only: proves the migration is runnable and idempotent against the ──
-# ── actual production data this wave must not corrupt, without ever writing to it here ──
+# ── the FROZEN pre-migration fixture: proves the migration's real shape (27 rows: 11 content + ──
+# ── 16 superseding) against the actual 11 pairs' actual pre-migration content, independent of ──
+# ── the real ledger's current (now post-migration) state — see _r81_pre_migration_fixture.py ──
 
-def _real_rows():
-    with REAL_LEDGER.open(encoding="utf-8") as f:
-        return [json.loads(ln) for ln in f if ln.strip()]
-
-
-def test_real_ledger_has_none_of_the_11_pairs_superseded_yet():
-    """Sanity check on production state — if this ever fails, R81 already ran for real and this
-    test (and the whole fixture below) is stale, not the code."""
-    rows = _real_rows()
-    _, ever = mig._latest_and_superseded(rows)
-    touched = {p["hand_old_id"] for p in mig.OVERLAP_PAIRS} | {
-        p["census_old_id"] for p in mig.OVERLAP_PAIRS if p["census_old_id"]}
-    assert not (touched & ever), f"already superseded: {touched & ever}"
-
-
-def test_real_ledger_migration_produces_27_new_rows_11_content_plus_16_supersessions():
-    rows = _real_rows()
-    new = mig.fold_overlap_pairs(rows, TS)
+def test_frozen_fixture_migration_produces_27_new_rows_11_content_plus_16_supersessions():
+    new = mig.fold_overlap_pairs(list(fx.ROWS), TS)
     assert len(new) == 27
     content_rows = [r for r in new if "superseded_by" not in r]
     superseding_rows = [r for r in new if "superseded_by" in r]
@@ -164,17 +150,17 @@ def test_real_ledger_migration_produces_27_new_rows_11_content_plus_16_supersess
     assert len(superseding_rows) == 16
 
 
-def test_real_ledger_migration_is_idempotent_on_a_copy():
-    rows = _real_rows()
+def test_frozen_fixture_migration_is_idempotent():
+    rows = list(fx.ROWS)
     first = mig.fold_overlap_pairs(rows, TS)
     second = mig.fold_overlap_pairs(rows + first, "2026-09-28T00:00:01+05:30")
     assert second == []
 
 
-def test_real_ledger_migration_leaves_zero_duplicate_live_identities_among_touched_ids():
+def test_frozen_fixture_migration_leaves_zero_duplicate_live_identities_among_touched_ids():
     """Packet proof #2: a ledger scan finds zero (asset, criterion) identities with more than one
     live row among every id this migration ever touches."""
-    rows = _real_rows()
+    rows = list(fx.ROWS)
     migrated = rows + mig.fold_overlap_pairs(rows, TS)
     latest, ever = mig._latest_and_superseded(migrated)
     touched = set()
@@ -196,9 +182,59 @@ def test_real_ledger_migration_leaves_zero_duplicate_live_identities_among_touch
     assert dupes == {}, dupes
 
 
-def test_real_ledger_migration_never_mutates_or_deletes_an_existing_line():
-    rows = _real_rows()
+def test_frozen_fixture_migration_never_mutates_or_deletes_an_existing_line():
+    rows = list(fx.ROWS)
     before = [json.dumps(r, sort_keys=True) for r in rows]
     mig.fold_overlap_pairs(rows, TS)
     after = [json.dumps(r, sort_keys=True) for r in rows]
     assert before == after, "fold_overlap_pairs must never mutate the rows list it is given"
+
+
+# ── the REAL ledger, read-only, post-migration: confirms the one authorized real write (commit ──
+# ── "Nikaṣa wave3 R80+R81: the one authorized real write to asset_gaps.jsonl this wave makes") ──
+# ── actually left the ledger in the state R81 requires, and stays idempotent from here on ──
+
+def _real_rows():
+    with REAL_LEDGER.open(encoding="utf-8") as f:
+        return [json.loads(ln) for ln in f if ln.strip()]
+
+
+def test_real_ledger_all_11_pairs_old_ids_are_now_superseded():
+    """Every old id this migration folds AWAY must be superseded — the hand id always, and the
+    census id too EXCEPT for the 5 pairs where the census id was itself already the winning,
+    derived-form id (it is enriched in place, not superseded onto itself)."""
+    rows = _real_rows()
+    _, ever = mig._latest_and_superseded(rows)
+    expected_superseded = set()
+    for p in mig.OVERLAP_PAIRS:
+        final_id = p["census_old_id"] if p["winner_is_census_id"] else mig._gap_id_for(p["asset"], p["criterion"])
+        if p["hand_old_id"] != final_id:
+            expected_superseded.add(p["hand_old_id"])
+        if p["census_old_id"] and p["census_old_id"] != final_id:
+            expected_superseded.add(p["census_old_id"])
+    missing = expected_superseded - ever
+    assert not missing, f"still not superseded in the real ledger: {missing}"
+
+
+def test_real_ledger_bg_panchanga_partial_overlap_left_its_census_siblings_untouched():
+    """Group 8's own rule: bg_panchanga-Earn.build_record and bg_panchanga-Cost.baseline must NOT
+    be superseded — only bg_panchanga-G01 was re-keyed."""
+    rows = _real_rows()
+    _, ever = mig._latest_and_superseded(rows)
+    assert "bg_panchanga-Earn.build_record" not in ever
+    assert "bg_panchanga-Cost.baseline" not in ever
+    assert "bg_panchanga-G01" in ever
+
+
+def test_real_ledger_migration_is_now_a_confirmed_no_op():
+    """The real ledger already carries R81's fold (this wave's one authorized write) — running
+    the same function against it today must find nothing left to do."""
+    rows = _real_rows()
+    new = mig.fold_overlap_pairs(rows, TS)
+    assert new == []
+
+
+def test_real_ledger_schema_row_documents_superseded_by():
+    rows = _real_rows()
+    assert "superseded_by" in rows[0]["_doc"]
+    assert rows[0]["asset"] == "_schema"
