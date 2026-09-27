@@ -37,6 +37,7 @@ coordination lease that produced it.
 | CCD-014 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A integrity-hardening follow-up (correction-history write doors, context staleness or stop-and-report, reading-door readiness parity, safe birthplace edits, persistence-boundary recheck) under the hardening addendum; reserve cross-cutting migration 1121 through JATAKA-REQ-02; Task 9 remains blocked. |
 | CCD-015 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A2 integrity session (chart-context staleness end to end or stop-and-report per consumer, `prashna_ask` and `chat/build` reading-door gates, terminal/persistence/retry/stale/serving-impact correctness, migration 1121 security disposition) under the Phase-A2 addendum; reserve cross-cutting migration 1122 through JATAKA-REQ-03; Task 9 remains blocked. |
 | CCD-016 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the Jātaka Phase-A3 source-integrity pass (chart-context staleness for brahma_mimamsa_prediction_ledger, brahma_prospective_ledger, mimamsa_calibration_snapshot; a reviewed technical head with independent review) and two separately governed source-evidence refreshes at that head (a narrow Nirmāṇa L5 successor re-pin; a Pūrṇa Beyond-Ācārya v7 successor preserving v6) under the Phase-A3 addendum; reserve cross-cutting migration 1123 through JATAKA-REQ-04; Task 9 remains blocked. |
+| CCD-017 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize a separately governed follow-up (Phase-A3 closed, not reopened) diagnosing and correcting the Nirmāṇa L0/L5 receipt-checker cross-layer coupling responsible for the two `nirmana-analysis-receipts.test.ts` failures the Phase-A3 close reported and did not fix; correction preferred over refreshing `L0_FROZEN_PINS`; no L0 evidence change, no further L5 re-pin unless L5 source identity genuinely changed, no database access, no Task 9. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -394,3 +395,30 @@ coordination lease that produced it.
   `origin/campaign-coordination`.
 - **Supersession:** none. Extends CCD-013/014/015; the parent amendment and the Phase-A/Phase-A2
   addenda are unchanged.
+
+## CCD-017 — Nirmāṇa L0/L5 receipt-checker coupling fix
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `NIRMANA-L0-L5-COUPLING-FIX-20260927`.
+- **Authority:** native message starting from branch `codex/jataka-chart-workspace` at
+  `a97fc8ffb0268954fb4bf8c7fb7e838c4bf6e558` (Phase-A3 closed, not reopened; lease released and
+  remotely verified at `89cda9092`; migration 1123 unapplied; Beyond-Ācārya v7 complete, not
+  revisited; Task 9 blocked), authorizing a separately governed follow-up for the two remaining
+  `nirmana-analysis-receipts.test.ts` failures caused by `L0_FROZEN_PINS`.
+- **Decision:** permit local source changes, tests and local commits for the work and exact file
+  scope in `briefs/nirmana/NIRMANA_L0_L5_RECEIPT_COUPLING_FIX_ADDENDUM_v1_0.md`: diagnosis and
+  correction of the cross-layer coupling that lets a legitimate L5 successor trigger an L0
+  comparison/regeneration path; focused regression tests; necessary narrow generated-code or
+  governance updates. `L0_FROZEN_PINS` stays byte-for-byte unchanged unless evidence proves the
+  constant itself is incorrectly constructed; every historical L0 generation and binding is
+  preserved; genuine L0 or unreviewed-L5 drift must still fail closed.
+- **Migration:** none anticipated; if the investigation proves one necessary, this session stops
+  and reports rather than reserving one under this authority.
+- **Ceiling:** no L0 accepted-membership/hash/generation/receipt/evidence change; no further L5
+  re-pin unless the fix genuinely changes L5 source identity; no weakening/deleting the failing
+  assertions; no hand-edited generated JSON; no database access, migrations, rebuilds,
+  credentials, push, PR, merge, deployment, or production work; no Task 9. If the true fix
+  requires changing ratified L0 evidence rather than correcting cross-layer validation, this
+  session stops and reports without proceeding.
+- **Coordination:** lease `MADHAV-NIRMANA-L0-L5-COUPLING-FIX-20260927` on
+  `origin/campaign-coordination`.
+- **Supersession:** none. Phase-A3 (CCD-016) and its close remain unchanged and are not reopened.
