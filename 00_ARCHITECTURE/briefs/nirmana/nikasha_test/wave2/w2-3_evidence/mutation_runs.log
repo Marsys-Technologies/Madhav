@@ -387,3 +387,45 @@ under mutation (rc=1):
   1 failed, 32 passed, 1 skipped, 14 deselected in 4.22s
 reverted: md5 before 39aeeab69577624bc1ba9d614760c257 after 39aeeab69577624bc1ba9d614760c257 -> BYTE-IDENTICAL
 offline suite after revert: ['2 failed, 323 passed, 23 skipped in 8.07s']
+
+=== 2026-09-27T23:50:19 C3-without (WITHOUT the change: asset_census.py at 480d799af)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  2 failed, 1 skipped, 48 deselected in 0.22s
+restored byte-identical: True
+
+=== 2026-09-27T23:51:10 C3-without-v2 (WITHOUT the change: asset_census.py at 480d799af)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  2 failed, 1 skipped, 48 deselected in 0.32s
+restored byte-identical: True
+
+=== 2026-09-27T23:51:36 C3-M1-registry-root-only
+mutation: {"old": "        for i, root in enumerate(CAPS_ROOTS):\n", "new": "        for i, root in enumerate(CAPS_ROOTS[:1]):\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3 or r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  2 failed, 6 passed, 2 skipped, 41 deselected in 0.19s
+reverted: md5 before 0119a90f6f43cfa264a25d2b7ecc9213 after 0119a90f6f43cfa264a25d2b7ecc9213 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 325 passed, 24 skipped in 12.87s']
+
+=== 2026-09-27T23:51:52 C3-M2-select-only-literals-dropped
+mutation: {"old": "if re.search(r\"\\b(?:FROM|JOIN|SELECT)\\b\", x, re.I)]", "new": "if re.search(r\"\\b(?:FROM|JOIN)\\b\", x, re.I)]"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3 or r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  1 failed, 7 passed, 2 skipped, 41 deselected in 0.21s
+reverted: md5 before 0119a90f6f43cfa264a25d2b7ecc9213 after 0119a90f6f43cfa264a25d2b7ecc9213 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 325 passed, 24 skipped in 11.78s']
+
+=== 2026-09-27T23:52:03 C3-M3-missing-root-skipped
+mutation: {"old": "            out.update(capability_sql(root) if i == 0 else\n", "new": "            if i and not (ROOT / root).is_dir():\n                continue\n            out.update(capability_sql(root) if i == 0 else\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3 or r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  1 failed, 7 passed, 2 skipped, 41 deselected in 0.11s
+reverted: md5 before 0119a90f6f43cfa264a25d2b7ecc9213 after 0119a90f6f43cfa264a25d2b7ecc9213 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 325 passed, 24 skipped in 8.68s']

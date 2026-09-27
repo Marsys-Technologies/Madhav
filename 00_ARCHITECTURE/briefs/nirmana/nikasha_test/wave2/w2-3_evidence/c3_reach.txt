@@ -1,0 +1,13 @@
+serving modules with SQL: registry 151 all planes 200 (tools 33 lib 16 )
+dark tables before C3: 26
+dark tables after C3: 19 ['bg_gochara_arcs', 'bg_kota_chakra_rings', 'bg_kp_sublord_division', 'bg_phaladeepika_latta', 'bg_sarvatobhadra_grid', 'bg_synthetic_cohort', 'bg_vedha_malefic_scale', 'bodha_cdlm_chart_summary', 'bodha_grounding_matches', 'bodha_signal_embeddings', 'classical_attributions', 'kala_field', 'mimamsa_event_provenance', 'mimamsa_export_log', 'mimamsa_intervention_ledger', 'mimamsa_preferences', 'reference_planets', 'vidhi_floor_items', 'vidhi_primitives']
+now attributed:
+  bg_dignity_reference (bg_dignity_reference): ['platform-mcp/src/tools/kala_views/ahead.ts', 'platform-mcp/src/tools/kala_views/now.ts', 'platform-mcp/src/tools/register_p1_reference.ts']
+  bg_gochara_citation_resolution (bg_gochara_citation_resolution): ['platform-mcp/src/tools/retrieval/register_gochara_windows.ts']
+  reference_nakshatra (bg_nakshatra): ['platform-mcp/src/tools/register_p1_reference.ts']
+  bg_transit_rules (bg_transit_rules): ['platform-mcp/src/tools/register_p1_reference.ts']
+  ga_prashna_judgment (ga_prashna): ['platform-mcp/src/tools/register_p1_synthesis.ts']
+  gochara_resonance_map (ka_gochara_resonance): ['platform-mcp/src/tools/retrieval/register_gochara_windows.ts']
+  kala_field_skill (mi_bhara): ['platform-mcp/src/lib/kala_envelope.ts']
+registry-read tables whose exposed columns changed: []
+lower-bound widths after: 18

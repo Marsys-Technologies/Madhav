@@ -1,0 +1,4 @@
+drift_detector: 1 findings; exit=3
+  JSON: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260927T183854Z.json
+  MD:   00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260927T183854Z.md
+exit=3

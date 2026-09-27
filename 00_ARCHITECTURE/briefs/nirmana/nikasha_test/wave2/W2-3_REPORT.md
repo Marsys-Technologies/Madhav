@@ -1,12 +1,20 @@
 ---
 artifact: NIKASHA_WAVE2_W2-3_REPORT
 packet: W2-3 — deeper detectors (the last packet of wave 2)
-version: "1.0"
-status: BUILT — awaiting the gate review (executor dispatches a fresh reviewer; the executor folds register/plan/STATE)
+version: "1.1"
+status: CORRECTIONS C1/C2/C3 APPLIED after W2-3_REVIEW.md (fb7ef7cdd, ACCEPT_WITH_CORRECTIONS); the executor folds register/plan/STATE
+changelog:
+  - "1.1 (2026-09-28): gate corrections. C1 (3aec11b5b): the 58 closures are 51 unconditional + 6 chart-conditional
+    (public.assert_l2_msr_delete_safe; earned on 482012f1, refused on 1c826d5a/cb73cd3d) + 1 NOT earned (bo_upaya:
+    NO ACTION FK from legacy dasha-window rows, found in this pass, beyond the review) — §0.1. C2 (55e4981b9):
+    complete blind-spot list; the DB-enforced hold and the empty-upstream skip (24 writers, all PASS) are live —
+    §2.4; OS-8. C3 (af30cfe2b code): R23 also scans platform-mcp/src/tools/** and platform-mcp/src/lib/**, and
+    fixes the concatenated-query read; dark tables 26 -> 19 — §2.6, OS-3. F-7 wording fixed (§4). §10 new."
+  - "1.0 (2026-09-27): builder report."
 produced_on: 2026-09-27
 builder: Opus (wave-2 builder, packet W2-3 only)
 base: a72cdf460 (first production emit; the real ledger holds 830 lines)
-head_code: 8702ee331
+head_code: "af30cfe2b (v1.0 was 8702ee331)"
 rows: [R242, R20, R240, R241, R21, R23]
 commits:
   - "fa23abe69 R242"
@@ -17,6 +25,8 @@ commits:
   - "ee2c7d7ee R20 (follow-up: the PASS is per table)"
   - "8702ee331 R241 (follow-up: guard helpers)"
   - "R240: no code commit — discharged by R20 (§2.3)"
+  - "af30cfe2b C3 (gate correction, code)"
+  - "3aec11b5b C1 · 55e4981b9 C2 (gate corrections, report + evidence)"
 files_touched:
   - platform/scripts/governance/asset_census.py
   - platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py   (new, 48 tests)
@@ -474,8 +484,9 @@ are a decision above the census.
 
 **Live figures.**
 - 117 target tables measured; 10 assets have no target table in production, and say so.
-- **26 tables are read by no capability module's SQL** (§8 OS-3).
-- 17 have width as a lower bound (run-time lists).
+- **26 tables are read by no capability module's SQL** (§8 OS-3). **v1.1 (C3): 19** once the MCP serving plane is
+  scanned (§10).
+- 17 have width as a lower bound (run-time lists). **v1.1: 18.**
 - Width over the 91 read tables: median 0.75, 6 at 1.0.
 - Depth: 91 at 1.0 (upper bound), 26 at 0.0. One table (ephemeris_daily) is read only through pinned queries: its
   count ran live, 825,084 / 825,084 rows match `ayanamsha_id = 'tropical'`.
@@ -556,8 +567,11 @@ Labels are W2-1's: genuine / fixed / proxy / contested. "W2-3" marks this packet
     bg_gochara_arcs\*, bg_nakshatra, bg_yogas.
 - **L1 (18):**
   - through `ga_writers/_idempotency.replace_prior_*` two hops down: ga_ayurdaya, ga_dashas, ga_panchanga,
-    ga_positions, ga_sade_sati, ga_sensitive, ga_sensitive_degree, ga_strength, ga_structural, ga_tajaka,
-    ga_vargas;
+    ga_positions, ga_sade_sati, ga_sensitive, ga_sensitive_degree, ga_strength, ga_structural, ga_tajaka — the
+    10 named in §0;
+  - ga_vargas two hops down **and** one hop down (its own `DELETE … ayanamsha_id='INVARIANT'`,
+    `ga_vargas_writer.py:2896`), so it PASSes at a one-hop limit too. v1.1: v1.0 listed it with the ten (review
+    F-7);
   - ga_nakshatra one hop down;
   - in the builder module: ga_condition, ga_medical, ga_prashna, ga_vastu, ga_vichara, ga_yoga.
 - **L2 (12):** through `bodha_writers/_idempotency.replace_prior_*`: bo_arudha, bo_bimba, bo_grounding,
@@ -684,19 +698,22 @@ holds or skips the replacement on a POPULATED chart. **17 of the 58 were checked
 - **OS-2 (ledger schema):** `asset_gaps.jsonl`'s `_schema` line does not list the new optional fields
   `blocking_radius`, `severity_weight` and `blocking_radius_note`. The ledger was not touched; amending the `_doc`
   is the executor's call.
-- **OS-3 (dark tables, R23):** 26 target tables are read by no capability module's SQL:
-  - bg_synthetic_cohort, classical_attributions, bg_dignity_reference, bg_gochara_arcs,
-    bg_gochara_citation_resolution, bg_kota_chakra_rings, bg_kp_sublord_division, reference_nakshatra,
-    bg_phaladeepika_latta, reference_planets, bg_sarvatobhadra_grid, bg_transit_rules, bg_vedha_malefic_scale,
-    vidhi_floor_items, vidhi_primitives;
-  - ga_prashna_judgment, bodha_cdlm_chart_summary, bodha_grounding_matches, bodha_signal_embeddings,
-    gochara_resonance_map, **kala_field**;
-  - kala_field_skill, mimamsa_event_provenance, mimamsa_intervention_ledger, mimamsa_preferences,
-    mimamsa_export_log.
+- **OS-3 (dark tables, R23) — v1.1 (C3):** once the MCP serving plane is scanned (`platform-mcp/src/tools/**` and
+  `platform-mcp/src/lib/**`), **19** target tables are read by no serving module's SQL (v1.0 said 26, from the
+  registry layers alone):
+  - bg_synthetic_cohort, classical_attributions, bg_gochara_arcs, bg_kota_chakra_rings, bg_kp_sublord_division,
+    bg_phaladeepika_latta, reference_planets, bg_sarvatobhadra_grid, bg_vedha_malefic_scale, vidhi_floor_items,
+    vidhi_primitives;
+  - bodha_cdlm_chart_summary, bodha_grounding_matches, **bodha_signal_embeddings**, **kala_field**;
+  - mimamsa_event_provenance, mimamsa_intervention_ledger, mimamsa_preferences, mimamsa_export_log.
 
-  Some are surely served through services, SQL functions or other layers' code (kala_field). Each is a question
-  for its serving owner, not a verified gap.
-- **OS-4 (R23):** 17 capability queries select through a run-time column list (`SELECT ${cols}`). A declared
+  **Genuinely dark (review-confirmed):**
+  - kala_field — the MCP code itself states "no serving capability exists over any kala_field* table";
+  - bodha_signal_embeddings — `query_signals.ts` reads only `bodha_msr_signals`.
+
+  The rest are still questions for their serving owners, not verified gaps. Services, SQL functions, views and
+  RPCs are still not followed.
+- **OS-4 (R23):** 17 (v1.1: 18) capability queries select through a run-time column list (`SELECT ${cols}`). A declared
   column list — for example beside `density_contract` — would make field reachability measurable rather than
   bounded.
 - **OS-5:** the L3 service writers (ka_dasha_kala, ka_graha_sancara, ka_muhurta_seva, ka_tulana) write
@@ -719,6 +736,47 @@ holds or skips the replacement on a POPULATED chart. **17 of the 58 were checked
   - **Why the detector misses it:** per-asset `Idem.pattern` cannot see this. bo_bimba's own rows are replaced, and
     bo_karanajala's counted table is the edge table.
   - **Status:** latent today, since each chart has a single build.
+
+## §10 — Corrections after gate review (v1.1; `W2-3_REVIEW.md`, fb7ef7cdd, ACCEPT_WITH_CORRECTIONS)
+
+| item | what | commit | evidence |
+|---|---|---|---|
+| **C1** | §0 / §0.1 / §5: the 58 closures are **51 unconditional + 6 chart-conditional + 1 not earned**. The 6 MSR-family PASSes rebuild through `public.assert_l2_msr_delete_safe`: earned on 482012f1 (0 dependents), refused on 1c826d5a (all six) and cb73cd3d (all but bo_laksana). A register-facing `chart_scope` annotation is given for the fold. **bo_upaya** is new beyond the review: a NO ACTION, non-deferrable FK from the legacy dasha-window rows (kept since #2607) makes its next rebuild fail on every chart, so the closure must be withheld. My v1.0 hand-verification of it is retracted. | `3aec11b5b` | `c1_assert_l2_msr_delete_safe.sql`, `c1_msr_fks.txt`, `c1_msr_dependents.txt`, `c1_upaya_fk.txt`, `c1_restrict_fks.txt`, `c1_delete_triggers.txt` |
+| **C2** | §2.4: the complete blind-spot list. It adds the review's probe forms B2–B6 and its PASS-direction shapes C1–C7, and marks two shapes **LIVE**: A1, the DB-enforced hold (= C1), and A2, the empty-upstream skip in **24** writers, all named, all reading PASS, which is the intended grading, not PARTIAL. No live false PASS from the new shapes; the one live false PASS is bo_upaya (A1). Also adds OS-8 (review F-6: bo_karanajala's CGM node partition is never refreshed). | `55e4981b9` | `c2_empty_upstream_screen.py`, `c2_empty_upstream_classified.txt/.json`, `c2_karanajala_nodes.txt` |
+| **C3** | `capability_sql()` scans every root in `CAPS_ROOTS`: the registry layers (keys unchanged), `platform-mcp/src/tools/**`, and `platform-mcp/src/lib/**`. The lib root goes beyond the literal instruction, on evidence: `lib/kala_envelope.ts` is imported by five `tools/kala_views/*` tools and is the only reader of kala_field_skill; tools alone give −6. A missing root leaves R23 unmeasured. Also fixed: SELECT-only literals were dropped before the concatenation look-back, so `` `SELECT a, b ` + `FROM t` `` read as no query; this was how bg_gochara_citation_resolution was missed. Tests: `test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark` (fails without: 2 of 2), `test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark`, `test_live_c3_…`. Mutations: C3-M1 registry root only (2 failed), C3-M2 SELECT-only literals dropped (1), C3-M3 a missing root skipped (1); all reverted byte-identical. | `af30cfe2b` (code) | `c3_reach.txt`, `census_diff_8702ee331_vs_af30cfe2b.txt` |
+| F-7 | §4: ga_vargas is listed apart from the ten two-hop PASSes (it also PASSes at one hop). | this commit | — |
+
+**C3 result.**
+- **Dark tables: 26 → 19.**
+- **The 7 now correctly attributed:**
+
+  | table | asset | read by |
+  |---|---|---|
+  | ga_prashna_judgment | ga_prashna | `platform-mcp/src/tools/register_p1_synthesis.ts:1011`, `FROM ga_prashna_judgment gj` — the MCP synthesis tool |
+  | bg_dignity_reference | bg_dignity_reference | `tools/register_p1_reference.ts:373`, `tools/kala_views/ahead.ts:346`, `tools/kala_views/now.ts:684` |
+  | reference_nakshatra | bg_nakshatra | `tools/register_p1_reference.ts:549` |
+  | bg_transit_rules | bg_transit_rules | `tools/register_p1_reference.ts:644` |
+  | bg_gochara_citation_resolution | bg_gochara_citation_resolution | `tools/retrieval/register_gochara_windows.ts:734` — a concatenated query, read only after the SELECT-literal fix |
+  | gochara_resonance_map | ka_gochara_resonance | `tools/retrieval/register_gochara_windows.ts:1007` |
+  | kala_field_skill | mi_bhara | `platform-mcp/src/lib/kala_envelope.ts:553/556`, imported by `tools/kala_views/{shared,register_all,priority,explain,upaya}.ts` |
+
+- **Still genuinely dark:** kala_field and bodha_signal_embeddings.
+
+**Finish checks (at `af30cfe2b`).**
+- **Census diff vs `8702ee331`** (`census_diff_8702ee331_vs_af30cfe2b.txt`, six layers, read-only):
+  - 2,446 = 2,446 verdicts, **0 verdict changes**;
+  - **10 text-only `Reach.fields` changes**, all C3 — the 7 above, plus bg_ghatana (4 → 7 reading modules),
+    bg_remedies (2 → 3) and ka_gochara (1 → 2, its width now a lower bound);
+  - no other criterion's text moved.
+- **Next emit on a fresh copy of the real 830-line ledger** (`emit_c3.log`):
+  - L0 26 · L1 18 · L2 12 · L5 2 closed; 11 opened; 0 re-opened;
+  - **the same 58 closed ids**, and re-emit byte-identical. C1 and C2 are wording and evidence, so the detector
+    still closes bo_upaya and the six MSR-family gaps. The fold must carry the C1 note.
+- **Suite:** offline 351 (325 passed · 24 skipped · 2 failed); live, one invocation (532 s), **349 passed · 2
+  failed**. The 2 are the pre-existing `test_drift_detector_h35_h38.py` pair.
+- **Manifest:** MATCH (1847709eec2bad52). **Drift:** exit 3, 1 LOW `a3_category_not_yet_populated`, pre-existing.
+- **Production ledgers:** `asset_gaps.jsonl` 7f2257a8d4f0d6a7a21c0648b4101f85 (830 lines) and `asset_certs.jsonl`
+  514cbdfcf3fa71b3e382f84a978bf369, unchanged throughout.
 
 ## §9 — Evidence index (`nikasha_test/wave2/w2-3_evidence/`)
 
