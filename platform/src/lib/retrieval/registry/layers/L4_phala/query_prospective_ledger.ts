@@ -67,6 +67,17 @@ function toServed(row: LedgerRowWithDomain) {
   const win = deriveWindowFields(row)
   return {
     prediction_id: row.prediction_id,
+    // Jātaka Phase-A3. Explicit historical-context metadata — a stale row
+    // (included only via include_stale) is never silently indistinguishable
+    // from a current one.
+    chart_context: row.chart_context_stale_at == null
+      ? { current: true }
+      : {
+          current: false,
+          stale_at: row.chart_context_stale_at,
+          stale_reason: row.chart_context_stale_reason,
+          superseded_by_run_id: row.chart_context_superseded_by_run_id,
+        },
     claim: row.claim,
     event_class: row.event_class,
     ontology_domain: row.ontology_domain,
@@ -138,6 +149,14 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Max predictions to scan (default 100).',
     },
+    include_stale: {
+      type: 'boolean',
+      description:
+        'A chart correction marks a filed prediction chart-context-stale (superseded by former ' +
+        'birth details) rather than deleting it. Default false serves only current predictions. ' +
+        'true also includes stale rows, each stamped with chart_context historical-context ' +
+        'metadata — never silently indistinguishable from a current row.',
+    },
   },
 
   density_contract: {
@@ -166,6 +185,13 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
     const status = (args['status'] as string | undefined) ?? 'open'
     const limit  = Math.min(Number(args['limit'] ?? 100), 500)
     const cluster = clusterFor(domain)
+    // Jātaka Phase-A3 (migration 1123): a prediction a correction has marked
+    // chart_context_stale_at was filed under former birth details — excluded
+    // from this current-serving "standing predictions" surface by default.
+    // include_stale opts into seeing it, still stamped with the explicit
+    // chart_context_* columns selected below.
+    const includeStale = args['include_stale'] === true
+    const staleFilter = includeStale ? '' : 'AND p.chart_context_stale_at IS NULL '
 
     try {
       const sql = `
@@ -175,10 +201,11 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
                p.as_of, p.generator_class, p.configuration_signature,
                p.lifecycle_status, p.matched_event_id, p.matched_at, p.match_note,
                p.filed_by, p.filing_method, p.source_citation, p.created_at,
+               p.chart_context_stale_at, p.chart_context_stale_reason, p.chart_context_superseded_by_run_id,
                o.domain AS ontology_domain
           FROM brahma_prospective_ledger p
           LEFT JOIN brahma_event_ontology o ON o.event_class_id = p.event_class
-         WHERE p.chart_id = $1::uuid AND p.lifecycle_status = $2
+         WHERE p.chart_id = $1::uuid AND p.lifecycle_status = $2 ${staleFilter}
          ORDER BY p.as_of DESC
          LIMIT $3
       `

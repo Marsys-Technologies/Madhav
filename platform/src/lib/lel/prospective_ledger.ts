@@ -139,6 +139,10 @@ export interface ProspectiveLedgerRow {
   filing_method: string
   source_citation: string
   created_at: string
+  /** Jātaka Phase-A3 (migration 1123). NULL = reflects the chart's current birth details. */
+  chart_context_stale_at?: string | null
+  chart_context_stale_reason?: string | null
+  chart_context_superseded_by_run_id?: string | null
 }
 
 export interface FileProspectivePredictionResult {
@@ -607,7 +611,7 @@ export interface ListOpenPredictionsResult {
 /** List predictions for a chart, optionally filtered by lifecycle_status/event_class. */
 export async function listProspectivePredictions(
   chartId: string,
-  opts: { status?: LifecycleStatus; eventClass?: string; limit?: number } = {}
+  opts: { status?: LifecycleStatus; eventClass?: string; limit?: number; includeStale?: boolean } = {}
 ): Promise<ListOpenPredictionsResult> {
   const conditions: string[] = ['chart_id = $1']
   const params: unknown[] = [chartId]
@@ -619,6 +623,11 @@ export async function listProspectivePredictions(
     params.push(opts.eventClass)
     conditions.push(`event_class = $${params.length}`)
   }
+  // Jātaka Phase-A3 (migration 1123): excludes a prediction a correction has
+  // marked chart_context_stale_at by default — it was filed under former
+  // birth details. includeStale opts into seeing it (the row's own
+  // chart_context_* columns are selected below regardless).
+  if (!opts.includeStale) conditions.push('chart_context_stale_at IS NULL')
   const limit = opts.limit ?? 50
   params.push(limit)
 
@@ -627,7 +636,8 @@ export async function listProspectivePredictions(
             observation_window::text, milestone_set, model, formula_version,
             confidence, falsifier, as_of, generator_class, configuration_signature,
             lifecycle_status, matched_event_id, matched_at, match_note,
-            filed_by, filing_method, source_citation, created_at
+            filed_by, filing_method, source_citation, created_at,
+            chart_context_stale_at, chart_context_stale_reason, chart_context_superseded_by_run_id
        FROM brahma_prospective_ledger
       WHERE ${conditions.join(' AND ')}
       ORDER BY as_of DESC
@@ -697,6 +707,9 @@ export interface MatchCandidate {
 export async function matchOpenPredictionsForLelEvent(
   event: LelEventForMatching
 ): Promise<MatchCandidate[]> {
+  // Jātaka Phase-A3 (migration 1123): a prediction a correction has marked
+  // chart_context_stale_at was filed under former birth details — it must
+  // never be matched to a new real-world event as though it were current.
   const { rows: open } = await query<ProspectiveLedgerRow>(
     `SELECT prediction_id, chart_id, claim, event_class, claim_shape,
             observation_window::text, milestone_set, model, formula_version,
@@ -704,7 +717,8 @@ export async function matchOpenPredictionsForLelEvent(
             lifecycle_status, matched_event_id, matched_at, match_note,
             filed_by, filing_method, source_citation, created_at
        FROM brahma_prospective_ledger
-      WHERE chart_id = $1::uuid AND event_class = $2 AND lifecycle_status = 'open'`,
+      WHERE chart_id = $1::uuid AND event_class = $2 AND lifecycle_status = 'open'
+        AND chart_context_stale_at IS NULL`,
     [event.chart_id, event.event_class]
   )
 
