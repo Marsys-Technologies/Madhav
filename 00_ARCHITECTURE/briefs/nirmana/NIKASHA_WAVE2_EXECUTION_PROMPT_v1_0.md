@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE2_EXECUTION_PROMPT
 canonical_id: NIKASHA_WAVE2_EXECUTION_PROMPT
-version: "1.0"
+version: "1.1"
 status: ACTIVE — wave 2 launched 2026-09-27 under native authorization ("let's proceed with the next one")
 produced_on: 2026-09-27
 campaign_id: nikasha-wave2
@@ -12,6 +12,8 @@ authority: >
   (G1–G5 carry-forwards) · CLAUDE.md §N.3, §N.7, §N.8.
 model_routing: builder = Opus · reviewer gate = Opus, fresh context, read-only, never the implementer
 ---
+
+> v1.1 (2026-09-27, W2-1 fold): W2-2 gains R232 and R233; R45 and R232 gate every emit after the first.
 
 # Nikaṣa wave 2 — the inspector's second lane, three gated packets
 
@@ -65,7 +67,7 @@ timing via the latest `build_run_assets` attempt; the engine writes no `probe_gr
 completed builds are `disposition='build'`), R43 (constant-indirection `@register(ASSET_ID)` and package writers),
 R46 (view assets counted by the view), R50 (exercised count off by one), R51 (serving-module attribution),
 R53 (`Build.target` dead FAIL branch — make the loss expressible or remove the branch honestly), R54
-(`Vocab.alias` severity visible below verdict level). **Packet proof:** per row, a planted or live case that the
+(`Vocab.alias` severity visible below verdict level), **R232** (Dens.served reads a declared field, never a comment — gates later emits, with R45), **R233** (multi-line error read: `replace(error, E'\n', ' ')`; flip the committed strict xfail). **Packet proof:** per row, a planted or live case that the
 old code gets wrong and the new code gets right.
 
 **W2-3 · Deeper detectors.** R20 (follow writer delegation into the seeder so `Idem.pattern` resolves PASS/FAIL

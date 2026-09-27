@@ -172,3 +172,7 @@ None. (L3 production census blocked by inspector timeout → routed to sandbox; 
 
 Both lanes accepted with corrections (A_REVIEW2, B_REVIEW5). Register v2.2: 10 rows CLOSED (R216, R57, R58, R47, R62, R30, R40, R41, R220, R85), R55 annotated (classifier landed, stays OPEN), R219 annotated (reader scan), R222–R231 added. Plan: P3 landed, P4 partly, P9-R85 landed. Details: `wave1/STATE.md`. **Pending native:** R227 (route evidence never counts as coverage). **Preconditions registered:** R222 before any `--emit-gaps` on the production ledger; R225 before migration 1094 where the census emits; R226 before compiler.ts consumes the provenance artifact.
 
+## 2026-09-27 · Wave 2 W2-1 folded
+
+Register v2.3: R222 closed with its precondition MET (the inspector may write to the production ledger — not yet run, awaiting the native), plus R224, R231, R223, R225, R42, R52, R56, R48. R232–R239 added. R45 and R232 gate every emit after the first. Details: `wave2/STATE.md`.
+

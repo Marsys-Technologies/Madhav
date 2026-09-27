@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-27T14:13:31+05:30",
+  "generated_at": "2026-09-27T16:33:16+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "e33e8fe1a0d53545",
+  "fingerprint": "0c723f4a1b6a6ea5",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "c09836648cb5afd32b97f86f0f4201e527b1196d07a75b43c4396374606bfb65",
+      "fingerprint": "30afa77ad836e3615b8b751168986ab6d78167d222c33bb1e96ae6675a2d8be2",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-WAVE2-OPEN-20260927",
+      "last_verified_session": "NIKASHA-W2-1-FOLD-20260927",
       "last_verified_on": "2026-09-27",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
@@ -2024,9 +2024,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "a9b2e11b9220391fd4ea6b8609f0253d539b88ebee828aa61291e4dec35ef0f9",
+      "fingerprint": "f4c9def487282b138efaa72e40de2fecd93d803f13a6683bfcca533cc810b9c3",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-WAVE1-FOLD-20260927",
+      "last_verified_session": "NIKASHA-W2-1-FOLD-20260927",
       "last_verified_on": "2026-09-27",
       "note": "10 ordered packets from the nikasha-test campaign, ~365h"
     },
