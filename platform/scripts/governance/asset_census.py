@@ -440,6 +440,9 @@ def _ts_code(src: str, blank_strings: bool = False) -> str:
     return "".join(out)
 
 
+_DENSITY_DECL = re.compile(r"\bdensity_contract\s*\??\s*:")
+
+
 def capability_scan(caps_dir: str, tables: list[str]) -> dict:
     d = ROOT / caps_dir
     if not d.is_dir():
@@ -459,7 +462,11 @@ def capability_scan(caps_dir: str, tables: list[str]) -> dict:
             mentions.append(f.name)                         # R51: named in a comment only
         if any(t and re.search(r"\b" + re.escape(t) + r"\b", code) for t in tables):
             hits.append(f.name)
-            if "density_contract" in txt:
+            # R232 (W2-1_C1_REVIEW F-S1, review A4): a DECLARED `density_contract:` property in code —
+            # comments stripped, string contents blanked — never a comment (`// no density_contract
+            # yet`) or a string that merely mentions the name. A verdict read from text is not a
+            # measurement of a declaration.
+            if _DENSITY_DECL.search(_ts_code(txt, blank_strings=True)):
                 density += 1
     return dict(modules=hits, density=density, note="", scanned=True, comment_only=mentions)
 

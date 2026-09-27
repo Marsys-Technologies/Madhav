@@ -812,3 +812,44 @@ def test_r54_the_plants_worsening_is_visible_below_the_verdict(monkeypatch, tmp_
 def test_r54_a_clean_alias_census_passes_with_severity_zero(monkeypatch, tmp_path):
     v = _alias(monkeypatch, tmp_path, {"graha": (9, 0)})
     assert v["v"] == ac.PASS and v["severity"] == 0.0, v
+
+
+# ─────────────────────────── R232: Dens.served reads a declared field, never a comment ───────────────────────────
+
+_SERVES = "export const cap = {\n  run: () => query(`SELECT * FROM t_x`),\n"
+
+
+@pytest.mark.parametrize("extra, declares", [
+    ("  // TODO: no density_contract yet\n}\n", 0),                                   # review attack A4
+    ("  /** density_contract: to be added (F-S1) */\n}\n", 0),                        # a JSDoc that looks declared
+    ("  description: 'see the density_contract: docs',\n}\n", 0),                      # a string mention
+    ("  note: `density_contract: pending`,\n}\n", 0),                                 # a template-literal mention
+    ("  density_contract: { paginated: true, empty_reason: true },\n}\n", 1),         # the declared field
+    ("  density_contract?: { paginated: false },\n}\n", 1),                          # an optional-property declaration
+    ("  // density_contract is below\n  density_contract: { paginated: false },\n}\n", 1),  # mention AND declaration
+])
+def test_r232_only_a_declared_density_contract_counts(tmp_path, extra, declares):
+    """Fails without the fix for the four mention cases: a substring match counted a comment or a
+    string as a declaration (review A4: `// TODO: … no density_contract yet` read declaring 1). The
+    three declaring cases are the positive control: a real property still counts."""
+    cap = ac.capability_scan(_caps_dir(tmp_path, {"query_x.ts": _SERVES + extra}), ["t_x"])
+    assert cap["modules"] == ["query_x.ts"] and cap["density"] == declares, cap
+
+
+@pytest.mark.parametrize("extra, verdict, closed", [
+    ("  // TODO: no density_contract yet\n}\n", ac.FAIL, 0),                         # F-S1 / A4: stays OPEN
+    ("  density_contract: { paginated: true },\n}\n", ac.PASS, 1),                    # control: a real declaration closes
+])
+def test_r232_an_open_dens_served_gap_does_not_close_on_a_comment(monkeypatch, tmp_path, extra, verdict, closed):
+    """W2-1_C1_REVIEW F-S1: after the first emit 59 Dens.served rows are open; a later emit must not
+    close one because a comment mentions density_contract. Fails without the fix: the comment case read
+    PASS and the OPEN gap CLOSED. The declared case is the control — the verdict can still read PASS."""
+    reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
+    w1._stub_layer(monkeypatch, tmp_path, reg)
+    caps = _caps_dir(tmp_path, {"query_x.ts": _SERVES + extra})
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t: _REAL["capability_scan"](caps, t))
+    w1._open_gap(tmp_path, "bg_x", "Dens.served")
+    c = ac.measure("L0")
+    assert w1._m(c, "bg_x", "Dens.served")["v"] == verdict
+    assert ac.emit_gaps(c)[2] == closed
+
