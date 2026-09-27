@@ -819,8 +819,21 @@ def _grade_count_floor(r: dict, live: int | None, error: str | None, ctables: li
     the criterion now reads ERRORED with the reason — never absent. A multi-table total is compared
     as a total (the engine compares its writer's multi-table rows_written with the same floor)."""
     floor = r["target_floor"]
-    if floor is None or not r["count_sql"].strip() or not floor.isdigit():
-        return None
+    if floor is None:
+        return None                     # nothing declared: there is no floor claim to measure
+    # R48 (L3 handverify: 20/23 L3 assets declare target_floor, yet Count.floor was absent from the
+    # whole L3 census): every asset that DECLARES a floor gets a verdict, whatever else is missing.
+    floor = floor.strip()
+    if floor == "0":
+        # A floor of zero cannot be breached — `live >= 0` is true of every count, so PASS would be
+        # a detector that cannot read false (§N.8). The registry's declaration is what applies.
+        return dict(v=NA, measured="target_floor=0: the registry declares zero rows complete — "
+                                   f"there is no floor to breach (live={'unmeasured' if live is None else live})")
+    if not floor.isdigit():
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — target_floor {floor!r} is not a whole number of rows")
+    if not r["count_sql"].strip():
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — target_floor={floor} is declared but no count_sql is "
+                                       "registered to measure it")
     if error is not None or live is None:
         return dict(v=ERRORED, measured=f"check errored: {error or 'count_sql produced no value'} — "
                                         f"floor={floor} not measured")

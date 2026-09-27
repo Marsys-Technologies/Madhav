@@ -556,3 +556,49 @@ def test_live_r56_the_differentials_three_breaches_are_reported():
         counts, errored = ac.live_counts({aid: reg[aid]}, CANONICAL)
         cf = ac._grade_count_floor(reg[aid], counts[aid], errored.get(aid), ac._count_tables(reg[aid]["count_sql"]))
         assert cf is not None and cf["v"] == ac.FAIL, (aid, cf)
+
+
+# ─────────────────────────── R48: Count.floor on every asset that declares target_floor ───────────────────────────
+
+def test_r48_a_declared_floor_without_a_count_sql_is_no_detector_not_absent(monkeypatch, tmp_path):
+    """Fails without the fix: the criterion was simply absent — a declared obligation with no
+    verdict and no gap."""
+    reg = {"ka_x": _reg_row("ka_x", "kala_t", count_sql="", target_floor="83")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    cf = _m(ac.measure("L3"), "ka_x", "Count.floor")
+    assert cf is not None and cf["v"] == ac.NO_DET and "target_floor=83" in cf["measured"], cf
+
+
+def test_r48_a_zero_floor_is_a_declaration_not_a_vacuous_pass(monkeypatch, tmp_path):
+    """target_floor=0 cannot be breached; a PASS on `live >= 0` could never read false (§N.8)."""
+    reg = {"ka_svc": _reg_row("ka_svc", None, count_sql="", target_floor="0", asset_kind="service"),
+           "ka_d": _reg_row("ka_d", "kala_t", count_sql="SELECT COUNT(*) FROM kala_t", target_floor="0")}
+    _stub_layer(monkeypatch, tmp_path, reg, thru={"ka_d": {"": _rec(4)}})
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({"kala_t": 4}))
+    c = ac.measure("L3")
+    for aid in ("ka_svc", "ka_d"):
+        cf = _m(c, aid, "Count.floor")
+        assert cf is not None and cf["v"] == ac.NA and "no floor to breach" in cf["measured"], (aid, cf)
+
+
+def test_r48_a_non_integer_floor_is_no_detector():
+    r = _reg_row("ka_x", "kala_t", count_sql="SELECT COUNT(*) FROM kala_t", target_floor="12.5")
+    cf = ac._grade_count_floor(r, 20, None, ["kala_t"])
+    assert cf["v"] == ac.NO_DET and "12.5" in cf["measured"], cf
+
+
+def test_r48_an_undeclared_floor_stays_absent(monkeypatch, tmp_path):
+    reg = {"ka_x": _reg_row("ka_x", "kala_t", count_sql="", target_floor=None)}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    assert _m(ac.measure("L3"), "ka_x", "Count.floor") is None
+
+
+@LIVE
+def test_live_r48_every_l3_asset_declaring_a_floor_gets_a_verdict():
+    reg, _ = ac.registry("L3")
+    counts, errored = ac.live_counts(reg, CANONICAL)
+    declared = [a for a, r in reg.items() if r["target_floor"] is not None]
+    assert len(declared) >= 19, declared
+    for aid in declared:
+        cf = ac._grade_count_floor(reg[aid], counts.get(aid), errored.get(aid), ac._count_tables(reg[aid]["count_sql"]))
+        assert cf is not None and cf["v"] in (ac.PASS, ac.FAIL, ac.NA, ac.NO_DET, ac.ERRORED), (aid, cf)
