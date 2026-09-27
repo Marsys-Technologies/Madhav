@@ -886,6 +886,18 @@ def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> t
                       f"probe {probe}{hop}) — the delete-then-insert path runs only on an output-empty chart, so a "
                       "rebuild of a populated chart does not replace (§N.3 'rebuild replaces' not met)"]
     own = {k: [x for x in facts[k] if x[0] in tset] for k in ("replace", "upsert", "insert", "update")}
+    unresolved = bool(beyond or facts["dynamic"])
+    # R20 (follow-up): the PASS is per TABLE, not per asset — a multi-table writer that replaces one of its
+    # tables and plain-INSERTs into another it never replaces still accretes the second on every rebuild.
+    covered = {x[0] for x in own["replace"] + own["upsert"]}
+    unreplaced = [x for x in own["insert"] if x[0] not in covered]
+    if unreplaced and covered:
+        what = (f"the rebuild replaces {sorted(covered)} but plain-INSERTs into {sorted({x[0] for x in unreplaced})} "
+                f"with no delete or upsert of it: {cite(unreplaced)}")
+        if not unresolved:
+            return FAIL, [f"{what} — that table accretes (or collides) on every rebuild"]
+        return PARTIAL, [f"{what}; the scope is not fully read (a cut delegation chain or an unnamed table may "
+                         f"hold its replacement) [resolved scope: {', '.join(dict.fromkeys(u['rel'] for u in units))}]"]
     if convention == "upsert":
         if own["upsert"]:
             return PASS, [f"INSERT … ON CONFLICT into the asset's own table(s) (upsert): {cite(own['upsert'])}"]
@@ -894,7 +906,6 @@ def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> t
                           "replacement, not the L0 upsert convention, and no accretion"]
     elif own["replace"]:
         return PASS, [f"DELETE FROM the asset's own table(s) (delete-then-insert): {cite(own['replace'])}"]
-    unresolved = bool(beyond or facts["dynamic"])
     if not unresolved:
         if convention != "upsert" and own["upsert"]:
             return FAIL, [f"upsert into the asset's own table(s) with no delete of them anywhere in the resolved scope: "

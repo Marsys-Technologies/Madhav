@@ -734,3 +734,25 @@ def test_live_r23_real_capabilities_read_as_hand_verified():
     yf = ac.field_reach("ga_yoga_firings", cat["cols"]["ga_yoga_firings"], caps)
     assert "L1_ganita/get_yoga_firings.ts" in yf["dynamic_select"], yf
     assert ac.field_reach("mimamsa_export_log", cat["cols"]["mimamsa_export_log"], caps)["modules"] == []
+
+
+# ─────────── R20 (follow-up): the PASS is per table — every own table the rebuild INSERTs into must be replaced ───────────
+
+@pytest.mark.parametrize("extra, verdict, text", [
+    ("", ac.FAIL, "plain-INSERTs into ['t_b'] with no delete or upsert of it"),
+    ('        conn.execute(f"DELETE FROM {self.t} WHERE chart_id = 1")\n', ac.PARTIAL, "the scope is not fully read"),
+    ("        conn.execute('DELETE FROM t_b WHERE chart_id = 1')\n", ac.PASS, "t_b (bo_m.py:"),         # control
+])
+def test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_is_replaced(
+        monkeypatch, tmp_path, extra, verdict, text):
+    """bo_m counts t_a and t_b; it replaces t_a (delete-then-insert) and plain-INSERTs into t_b. t_b accretes
+    on every rebuild: FAIL on a fully-read scope, PARTIAL when an unnamed DELETE might be its replacement,
+    PASS once t_b is deleted too. Fails without the fix: PASS on t_a's DELETE alone (0 live instances —
+    checked over all 127 assets — but the PASS path existed)."""
+    _sidecar(monkeypatch, tmp_path, {"pipeline/orchestrator/writers/bo_m.py": _HDR + (
+        '@register("bo_m")\nclass BoM(WriterBase):\n    def run(self, ctx):\n        conn = ctx.db_conn\n' + extra +
+        "        conn.execute('DELETE FROM t_a WHERE chart_id = 1')\n"
+        "        conn.execute('INSERT INTO t_a (chart_id) VALUES (1)')\n"
+        "        conn.execute('INSERT INTO t_b (chart_id) VALUES (1)')\n")})
+    v, notes = ac.idem_scan("bo_m", ["bo_m.py"], "delete_then_insert", ["t_a", "t_b"])
+    assert v == verdict and text in notes[0], (v, notes)
