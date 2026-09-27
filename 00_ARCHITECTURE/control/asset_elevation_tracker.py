@@ -125,25 +125,40 @@ def jsonl(path):
             except Exception: bad+=1
     return out,bad
 
+# R220 / F6 (nikasha_test/wave1/A_REVIEW.md): the ACTIVE population, the same one asset_census.py
+# measures. `dead_flag` is NULL (not false) on every registry row, so the register's literal
+# `is_active AND NOT dead_flag` is a NULL trap that matches ZERO rows; `dead_flag IS NOT TRUE` is the
+# NULL-safe form. Before F6 this tracker applied no filter at all and counted 129 assets (23 in L3)
+# where the census counts 127 (21) -- two retired L3 rows were being tracked as if live.
+ACTIVE_PREDICATE = "is_active AND dead_flag IS NOT TRUE"
+
 def registry(env_file, layer_key):
-    """Live asset_registry rows for the layer. Returns (rows, reason_if_unavailable)."""
+    """Live asset_registry rows for the layer's ACTIVE population (ACTIVE_PREDICATE).
+    Returns (rows, reason_if_unavailable, population); population states the registry total and
+    names every excluded (inactive/dead) row, so the gap between the two figures is never silent."""
     dsn=None
     if env_file and os.path.exists(env_file):
         for line in io.open(env_file,encoding="utf-8",errors="replace"):
             if line.strip().startswith("DATABASE_URL="):
                 dsn=line.strip().split("=",1)[1].strip().strip('"').strip("'"); break
     dsn = dsn or os.environ.get("DATABASE_URL")
-    if not dsn: return {}, "no DATABASE_URL — registry and production columns not read"
+    if not dsn: return {}, "no DATABASE_URL — registry and production columns not read", None
     try: import psycopg2
-    except ImportError: return {}, "psycopg2 not installed"
+    except ImportError: return {}, "psycopg2 not installed", None
     cfg=LAYERS[layer_key]
     try:
         conn=psycopg2.connect(dsn); conn.set_session(readonly=True, autocommit=False); cur=conn.cursor()
-        cur.execute("""SELECT asset_id, target_table, storage_type, scope, is_active, catalog_status,
-                              has_writer, COALESCE(depends_on,'{}'), count_sql,
+        scope_args=(cfg["registry_layer"], cfg["prefix"].replace("_","\\_")+"%")
+        cur.execute("SELECT count(*) FROM asset_registry WHERE (layer=%s OR asset_id LIKE %s)", scope_args)
+        registry_total=cur.fetchone()[0]
+        cur.execute("SELECT asset_id FROM asset_registry WHERE (layer=%s OR asset_id LIKE %s) "
+                    f"AND ({ACTIVE_PREDICATE}) IS NOT TRUE ORDER BY asset_id", scope_args)
+        excluded=[r[0] for r in cur.fetchall()]
+        cur.execute(f"""SELECT asset_id, target_table, storage_type, scope, is_active, catalog_status,
+                              has_writer, COALESCE(depends_on,'{{}}'), count_sql,
                               (integrity_check_sql IS NOT NULL AND length(integrity_check_sql)>0)
-                       FROM asset_registry WHERE layer=%s OR asset_id LIKE %s
-                       ORDER BY sort_order, asset_id""",(cfg["registry_layer"], cfg["prefix"].replace("_","\\_")+"%"))
+                       FROM asset_registry WHERE (layer=%s OR asset_id LIKE %s) AND {ACTIVE_PREDICATE}
+                       ORDER BY sort_order, asset_id""", scope_args)
         rows={}
         for r in cur.fetchall():
             rows[r[0]]=dict(target_table=r[1],storage_type=r[2],scope=r[3],is_active=r[4],
@@ -171,9 +186,10 @@ def registry(env_file, layer_key):
                         row["rows"]=cur.fetchone()[0]
                     except Exception: pass
         conn.rollback(); cur.close(); conn.close()
-        return rows, None
+        return rows, None, dict(registry_total=registry_total, active=len(rows), excluded_inactive=excluded,
+                                predicate=ACTIVE_PREDICATE)
     except Exception as e:
-        return {}, "registry read failed: %s"%type(e).__name__
+        return {}, "registry read failed: %s"%type(e).__name__, None
 
 def find_brief(layer_key, asset_id):
     cfg=LAYERS[layer_key]; d=os.path.join(ROOT,cfg["briefs"])
@@ -237,7 +253,7 @@ def scan(layer_keys, env_file):
          "gates":crit,"domain_menu":[{"key":k,"label":l,"applies":a,"check":c} for k,l,a,c in DOMAIN_MENU],"layers":{},"ledger_bad_lines":gbad+cbad,
          "gaps_path":os.path.relpath(GAPS,ROOT),"certs_path":os.path.relpath(CERTS,ROOT)}
     for lk in layer_keys:
-        cfg=LAYERS[lk]; rows,reason=registry(env_file,lk)
+        cfg=LAYERS[lk]; rows,reason,population=registry(env_file,lk)
         assets=[]
         for aid in sorted(rows) if rows else []:
             r=rows[aid]; bp=find_brief(lk,aid); b=scan_brief(bp)
@@ -252,7 +268,8 @@ def scan(layer_keys, env_file):
                 certified=len({x["criterion"] for x in c if str(x.get("verdict","")) in PASSING_VERDICTS}),
                 certs_total=len(c),required=len(required),state=state,why=why))
         out["layers"][lk]=dict(name=cfg["name"],prefix=cfg["prefix"],scoring=cfg["scoring"],
-            instance=cfg["instance"],registry_reason=reason,n_assets=len(assets),assets=assets)
+            instance=cfg["instance"],registry_reason=reason,n_assets=len(assets),population=population,
+            assets=assets)
     return out
 
 def main():
@@ -272,6 +289,10 @@ def main():
         for k in keys:
             L=d["layers"][k]
             if L["registry_reason"]: print(f'  {k} {L["name"]}: NOT READ — {L["registry_reason"]}'); continue
+            P=L.get("population") or {}
+            if P and P.get("registry_total")!=P.get("active"):
+                print(f'  {k} population: {P["active"]} active of {P["registry_total"]} registry rows '
+                      f'({P["predicate"]}) — excluded (inactive/dead): {", ".join(P["excluded_inactive"])}')
             st=collections.Counter(x["state"] for x in L["assets"])
             print(f'  {k} {L["name"]} ({L["scoring"]}): {L["n_assets"]} assets | '
                   +", ".join(f"{s}={n}" for s,n in sorted(st.items())))
