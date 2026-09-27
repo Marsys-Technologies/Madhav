@@ -483,3 +483,94 @@ def test_live_d6_2_every_latest_build_attempt_links_to_its_build_record_on_real_
             linked += earn["v"] == ac.PASS
             assert (earn["v"] == ac.PASS) == (is_build and r["has_writer"]), (aid, earn)
     assert builds > 0 and linked == builds, (linked, builds)
+
+
+# ─────────────────────────── R43: constant-indirection, package and shim-imported writers ───────────────────────────
+
+_WRITER_BODY = '''
+class {cls}(WriterBase):
+    def run(self, ctx):
+        ctx.db_conn.cursor().execute("DELETE FROM t_x WHERE chart_id = %s", (1,))
+        return None
+'''
+
+
+def _writer_tree(tmp_path):
+    side = tmp_path / "python-sidecar"
+    w = side / "pipeline" / "orchestrator" / "writers"
+    (w / "ph_pkg").mkdir(parents=True)
+    (side / "services" / "ka_svc").mkdir(parents=True)
+    (w / "__init__.py").write_text('"""framework: @register(\'mi_fake\') is only documented here"""\n')
+    (w / "mi_const.py").write_text('from pipeline.orchestrator.writers import WriterBase, register\n'
+                                   'ASSET_ID = "mi_const"\n@register(ASSET_ID)'
+                                   + _WRITER_BODY.format(cls="MiConst"))
+    (w / "mi_twice.py").write_text('from pipeline.orchestrator.writers import WriterBase, register\n'
+                                   'ASSET_ID = "mi_twice"\nASSET_ID = "mi_other"\n@register(ASSET_ID)'
+                                   + _WRITER_BODY.format(cls="MiTwice"))
+    (w / "ph_pkg" / "__init__.py").write_text('from pipeline.orchestrator.writers import WriterBase, register\n'
+                                              '@register("ph_pkg")' + _WRITER_BODY.format(cls="PhPkg"))
+    (w / "ka_shim.py").write_text('"""@register(\'ka_svc\') fires in the service."""\n'
+                                  'from services.ka_svc.writer import KaSvcWriter  # noqa: F401\n')
+    (side / "services" / "ka_svc" / "__init__.py").write_text("")
+    (side / "services" / "ka_svc" / "writer.py").write_text(
+        'def _build():\n    from pipeline.orchestrator.writers import WriterBase, register\n\n'
+        '    @register("ka_svc")\n    class KaSvcWriter(WriterBase):\n        def run(self, ctx):\n'
+        '            ctx.db_conn.cursor().execute("DELETE FROM t_x WHERE chart_id = %s", (1,))\n'
+        '    return KaSvcWriter\nKaSvcWriter = _build()\n')
+    return side, w
+
+
+def _use_tree(monkeypatch, tmp_path):
+    side, w = _writer_tree(tmp_path)
+    monkeypatch.setattr(ac, "WRITERS", w)
+    monkeypatch.setattr(ac, "SIDECAR", side, raising=False)
+
+
+def test_r43_a_module_constant_register_is_recognised_and_a_twice_assigned_name_is_not_guessed(monkeypatch, tmp_path):
+    """`@register(ASSET_ID)` with `ASSET_ID = "mi_const"` registers mi_const. A name assigned twice is
+    ambiguous and is NOT resolved. Fails without the fix: mi_const was not recognised at all."""
+    _use_tree(monkeypatch, tmp_path)
+    regd = ac.registered_ids("mi_")
+    assert regd.get("mi_const") == ["mi_const.py"], regd
+    assert "mi_twice" not in regd and "mi_other" not in regd and "mi_fake" not in regd, regd
+
+
+def test_r43_package_and_shim_imported_writers_are_recognised(monkeypatch, tmp_path):
+    """writers/ph_pkg/__init__.py registers ph_pkg; writers/ka_shim.py imports the service module whose
+    factory registers ka_svc. Fails without the fix: neither was scanned."""
+    _use_tree(monkeypatch, tmp_path)
+    assert ac.registered_ids("ph_") == {"ph_pkg": ["ph_pkg/__init__.py"]}
+    assert ac.registered_ids("ka_") == {"ka_svc": ["services/ka_svc/writer.py"]}
+
+
+@pytest.mark.parametrize("aid, layer", [("mi_const", "L5"), ("ph_pkg", "L4"), ("ka_svc", "L3")])
+def test_r43_the_resolved_writer_is_measured_not_no_detector(monkeypatch, tmp_path, aid, layer):
+    """End to end through the REAL registered_ids()/contract_scan()/idem_scan(): the writer is
+    registered, its contract is scanned (PASS: WriterBase, run(), no commit) and its idempotency
+    pattern is read (PASS: DELETE FROM). Fails without the fix: Build.registered FAIL "no @register
+    found" and both scans NO_DETECTOR "never scanned"."""
+    _use_tree(monkeypatch, tmp_path)
+    reg = {aid: w1._reg_row(aid, None, has_writer=True, asset_kind="service")}
+    w1._stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "registered_ids", _REAL_REGISTERED_IDS)
+    c = ac.measure(layer)
+    assert w1._m(c, aid, "Build.registered")["v"] == ac.PASS, w1._m(c, aid, "Build.registered")
+    assert w1._m(c, aid, "Build.contract")["v"] == ac.PASS, w1._m(c, aid, "Build.contract")
+    assert w1._m(c, aid, "Idem.pattern")["v"] == ac.PASS, w1._m(c, aid, "Idem.pattern")
+
+
+_REAL_REGISTERED_IDS = ac.registered_ids
+
+
+@LIVE
+def test_live_r43_every_writer_backed_active_asset_is_recognised():
+    """Live, read-only: L4 registers 9 ids (ph_rectification, a package), L5 14 (mi_bhara, mi_sankalpa
+    via ASSET_ID), and every active has_writer=true asset in all six layers is recognised."""
+    counts = {}
+    for layer, cfg in ac.LAYERS.items():
+        reg, _ = ac.registry(layer)
+        regd = ac.registered_ids(cfg["prefix"])
+        counts[layer] = len(set(regd) & set(reg))
+        missing = sorted(a for a, r in reg.items() if r["has_writer"] and a not in regd)
+        assert not missing, (layer, missing)
+    assert counts["L4"] == 9 and counts["L5"] == 14, counts

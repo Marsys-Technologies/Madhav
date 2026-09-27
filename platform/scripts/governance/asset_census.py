@@ -66,7 +66,8 @@ ROOT = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_outp
 # R57/P3: ledger directory is overridable so a sandbox --emit-gaps run never touches the
 # production ledgers (NIKASHA_CONTROL_DIR; ported from harness/asset_census_closing.py).
 CTRL = Path(os.environ.get("NIKASHA_CONTROL_DIR", str(ROOT / "00_ARCHITECTURE" / "control")))
-WRITERS = ROOT / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers"
+SIDECAR = ROOT / "platform" / "python-sidecar"
+WRITERS = SIDECAR / "pipeline" / "orchestrator" / "writers"
 
 LAYERS = {
     "L0": dict(prefix="bg_", name="Brahmagyan", registry_layer="brahmagyan", scoring="fidelity",
@@ -202,13 +203,66 @@ def _parse(f: Path):
         raise Unknown(f"{f.name}: unparseable ({exc})") from exc
 
 
-def _register_id(dec: ast.expr) -> str | None:
+def _register_id(dec: ast.expr, consts: dict[str, str] | None = None) -> str | None:
     """@register('<asset_id>') as a real decorator — via the AST, so a docstring that MENTIONS
-    `@register('bg_x')` is not mistaken for one. The regex version made that mistake twice."""
-    if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "register":
-        if dec.args and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
-            return dec.args[0].value
+    `@register('bg_x')` is not mistaken for one. The regex version made that mistake twice.
+
+    R43 (handverify L4/L5): `@register(ASSET_ID)` — a module-level string constant — is resolved
+    through `consts` (the module's own top-level `NAME = '<str>'` assignments). An unresolvable name
+    is not guessed: it returns None, exactly like any other decorator."""
+    if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "register" and dec.args:
+        a = dec.args[0]
+        if isinstance(a, ast.Constant) and isinstance(a.value, str):
+            return a.value
+        if isinstance(a, ast.Name) and consts and a.id in consts:
+            return consts[a.id]
     return None
+
+
+def _module_constants(tree: ast.AST) -> dict[str, str]:
+    """R43: a module's top-level string constants (`ASSET_ID = "mi_bhara"`, annotated or not). A name
+    assigned more than once, or to anything but one string literal, is dropped — never guessed."""
+    seen: dict[str, list] = {}
+    for node in getattr(tree, "body", []):
+        if isinstance(node, ast.Assign):
+            for tg in node.targets:
+                if isinstance(tg, ast.Name):
+                    seen.setdefault(tg.id, []).append(node.value)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value is not None:
+            seen.setdefault(node.target.id, []).append(node.value)
+    return {k: v[0].value for k, v in seen.items()
+            if len(v) == 1 and isinstance(v[0], ast.Constant) and isinstance(v[0].value, str)}
+
+
+def _writer_path(name: str) -> Path:
+    """R43: a writer-scan name is relative to writers/ (a module, or `<pkg>/<module>.py`) or, for a
+    module reached through a writers/ shim's import, relative to the python sidecar root."""
+    p = WRITERS / name
+    return p if p.exists() else SIDECAR / name
+
+
+def _first_party_imports(tree: ast.AST, here: Path) -> list[Path]:
+    """R43: the first-party modules a writers/ module imports (`from services.ka_tulana.writer import
+    KaTulanaWriter`, relative imports inside a package). The engine discovers writers by importing
+    each writers/ module, and that import runs the imported modules' `@register` decorators — the ten
+    L3 shims register this way. Only modules that exist under the sidecar are returned."""
+    out: list[Path] = []
+    for n in ast.walk(tree):
+        mods = []
+        if isinstance(n, ast.ImportFrom):
+            base = SIDECAR if not n.level else here.parents[n.level - 1]
+            mods.append((base, n.module or ""))
+        elif isinstance(n, ast.Import):
+            mods += [(SIDECAR, a.name) for a in n.names]
+        for base, mod in mods:
+            parts = [x for x in mod.split(".") if x]
+            if not parts:
+                continue
+            for cand in (base.joinpath(*parts).with_suffix(".py"), base.joinpath(*parts, "__init__.py")):
+                if cand.is_file() and cand not in out:
+                    out.append(cand)
+                    break
+    return out
 
 
 def _code_strings(node: ast.AST) -> list[str]:
@@ -224,22 +278,60 @@ def _code_strings(node: ast.AST) -> list[str]:
             if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
 
 
-def registered_ids(prefix: str) -> dict[str, list[str]]:
-    """asset_id -> writer file(s), from real decorators on real classes."""
-    out: dict[str, list[str]] = {}
+def _writer_modules() -> list[tuple[str, Path]]:
+    """R43: every module the engine's writer discovery executes, as (scan name, path):
+    writers/*.py (the framework `__init__.py` excluded), each package directory's modules
+    (`ph_rectification/__init__.py`; test directories and caches skipped), and — one level deep —
+    the first-party modules those import (`services/ka_tulana/writer.py`). De-duplicated by path:
+    a module imported by two shims runs its decorators once."""
+    mods: list[tuple[str, Path]] = []
+    seen: set[Path] = set()
+
+    def add(name: str, path: Path) -> None:
+        rp = path.resolve()
+        if rp not in seen:
+            seen.add(rp)
+            mods.append((name, path))
     for f in _writer_files():
-        for node in ast.walk(_parse(f)):
+        add(f.name, f)
+    for d in sorted(x for x in WRITERS.iterdir() if x.is_dir() and (x / "__init__.py").is_file()
+                    and x.name not in ("tests", "__tests__", "__pycache__")):
+        for f in sorted(d.glob("*.py")):
+            add(f"{d.name}/{f.name}", f)
+    for _name, f in list(mods):
+        for g in _first_party_imports(_parse(f), f.parent):
+            if WRITERS in g.parents and g.parent == WRITERS:
+                continue                                    # a writers/ module: already listed
+            if g.name == "__init__.py" and g.parent == WRITERS:
+                continue                                    # the framework itself
+            try:
+                add(str(g.relative_to(SIDECAR)), g)
+            except ValueError:
+                continue
+    return mods
+
+
+def registered_ids(prefix: str) -> dict[str, list[str]]:
+    """asset_id -> writer file(s), from real decorators on real classes (R43: literal ids, resolved
+    module constants, package writers and shim-imported modules)."""
+    out: dict[str, list[str]] = {}
+    for name, f in _writer_modules():
+        tree = _parse(f)
+        consts = _module_constants(tree)
+        for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 for dec in node.decorator_list:
-                    rid = _register_id(dec)
-                    if rid and rid.startswith(prefix) and f.name not in out.setdefault(rid, []):
-                        out[rid].append(f.name)
+                    rid = _register_id(dec, consts)
+                    if rid and rid.startswith(prefix) and name not in out.setdefault(rid, []):
+                        out[rid].append(name)
     return out
 
 
 def _writer_class(f: Path, asset_id: str) -> ast.ClassDef | None:
-    for node in ast.walk(_parse(f)):
-        if isinstance(node, ast.ClassDef) and any(_register_id(d) == asset_id for d in node.decorator_list):
+    tree = _parse(f)
+    consts = _module_constants(tree)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and any(_register_id(d, consts) == asset_id for d in node.decorator_list):
             return node
     return None
 
@@ -259,7 +351,7 @@ def contract_scan(asset_id: str, files: list[str]) -> tuple[str, list[str]]:
         return NO_DET, ["no writer file recognised — nothing scanned"]
     found = False
     for name in files:
-        f = WRITERS / name
+        f = _writer_path(name)
         cls = _writer_class(f, asset_id)
         if cls is None:
             continue
@@ -295,7 +387,7 @@ def idem_scan(asset_id: str, files: list[str], convention: str) -> tuple[str, li
         return NO_DET, ["no writer file recognised — nothing scanned"]   # R222 / N2, as contract_scan
     sqls = []
     for name in files:
-        sqls += _code_strings(_parse(WRITERS / name))
+        sqls += _code_strings(_parse(_writer_path(name)))
     blob = "\n".join(sqls)
     upsert = bool(re.search(r"ON CONFLICT", blob, re.I))
     delete = bool(re.search(r"DELETE\s+FROM", blob, re.I))
