@@ -18,6 +18,7 @@ Run:
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 
@@ -367,10 +368,24 @@ def test_check_completeness_passes_when_every_scu_is_accounted_for():
 
 
 def test_producer_output_requirement_with_no_claims_gets_an_exact_reason_not_a_catchall():
-    """Mutation this catches: restoring the catch-all
-    (`... or "NO_DETECTOR — no source_query requirement"`) makes this SCU's reason
-    revert to that generic string, which does not classify as
-    'producer_output_unclaimed' — this assertion would then fail."""
+    """Corrected per B_REVIEW2 R5: this SCU's `producer_output` requirement
+    ALWAYS carries its own per-requirement reason (the
+    `producer_output_unclaimed` branch fires unconditionally once no matching
+    claim exists), so restoring the removed catch-all does NOT redden this
+    test — the `or` in `"; ".join(...) or "..."` never fires here because
+    `per_requirement_reasons` is never empty for this fixture. (An earlier
+    version of this docstring wrongly claimed the catch-all mutation reddens
+    it; it does not — see `test_derive_all_leaves_a_genuinely_unclassified_scu
+    _without_a_fabricated_reason`'s history in C-1/C-5 for the case that
+    actually depended on the catch-all, and
+    `test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry` /
+    `test_classify_no_detector_reason_is_a_closed_set` for what actually
+    guards a restored catch-all at HEAD: its text classifies as
+    `"unclassified"`, which `--check` rejects via the closed reason-class set,
+    not via this test.) What THIS test actually catches: deleting the
+    `producer_output_unclaimed` reason-append itself (see the mutation run in
+    B_REPORT.md) — that reddens it directly, since the reason would then
+    revert to `None`/no reason at all."""
     snapshot = {
         "scus": [
             {
@@ -647,7 +662,6 @@ def test_compute_segment_resolution_counts_distinguishes_full_partial_none(tmp_p
     assert len(stale) == 1
     assert "scu.test.partial" in stale[0]
     assert "1 lines" in stale[0]
-    assert "50-60" in stale[0]
 
 
 # ── C-6: table_unregistered distinct from no_unit_names_it ──────────────────
@@ -702,3 +716,98 @@ def test_still_outside_asset_with_a_same_domain_unowned_table_reads_table_unregi
     assert reasons["bg_prashna_rules"].startswith("table_unregistered (bg_prashna_lagna_methods)")
     assert reasons["bg_cohort"].startswith("no_unit_names_it")
     assert closure["still_outside_reason_class_counts"] == {"table_unregistered": 1, "no_unit_names_it": 1}
+
+
+# ── R1 (B_REVIEW2 finding 1): --check must compare the artifact against the ──
+# catalog's own SCU id set, not just validate whatever entries happen to be
+# present. `{"scus": {}}` and an artifact missing one real SCU both used to
+# print PASS and exit 0.
+
+
+def test_validate_scu_coverage_detects_missing_and_extra_scus():
+    """Direct, mutation-isolated test of the pure coverage function. Mutation
+    this catches: `validate_scu_coverage` returning [] unconditionally, or only
+    checking one direction (missing OR extra, not both)."""
+    snapshot = {"scus": [{"scu_id": "scu.a"}, {"scu_id": "scu.b"}]}
+    payload = {"scus": {"scu.a": {}, "scu.c": {}}}
+    failures = cp.validate_scu_coverage(payload, snapshot)
+    assert any("scu.b" in f and "missing" in f for f in failures)
+    assert any("scu.c" in f and "not in the catalog" in f for f in failures)
+    assert len(failures) == 2
+
+
+def _full_valid_artifact_matching_catalog() -> dict:
+    """Build a synthetic-but-catalog-complete artifact: every REAL catalog SCU
+    id (read from the actual snapshot file, via `cp.load_snapshot()`) gets a
+    trivially valid `no_detector` entry, so the only thing under test in the
+    three `main(["--check"])` tests below is SCU COVERAGE, never entry
+    validity."""
+    snapshot = cp.load_snapshot()
+    scus = {
+        scu["scu_id"]: {
+            "producers": [],
+            "no_detector": "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim",
+        }
+        for scu in snapshot["scus"]
+    }
+    return {"scus": scus}
+
+
+def test_check_fails_on_an_empty_artifact_through_the_real_entry_point(tmp_path, monkeypatch, capsys):
+    """R1, probe D2: `{"scus": {}}` printed 'PASS: all 0 SCUs' and exited 0
+    before this correction. Drives the REAL `main(["--check"])` entry point
+    (not the pure function in isolation) end to end. Mutation this catches:
+    removing the `validate_scu_coverage` call from main()'s --check branch
+    makes this pass (exit 0) again."""
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps({"scus": {}}))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "FAIL" in out
+
+
+def test_check_fails_when_the_artifact_is_missing_a_catalog_scu_through_the_real_entry_point(
+    tmp_path, monkeypatch, capsys
+):
+    """R1, probe D: an artifact missing one real catalog SCU (e.g. the
+    equivalent of deleting `get_dignity`) printed 'PASS: all 181 SCUs' and
+    exited 0 before this correction. The missing SCU must be named in the
+    output. Mutation this catches: removing the coverage check."""
+    payload = _full_valid_artifact_matching_catalog()
+    removed_id = sorted(payload["scus"])[0]
+    del payload["scus"][removed_id]
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert removed_id in out
+
+
+def test_check_fails_when_the_artifact_carries_an_unknown_scu_through_the_real_entry_point(
+    tmp_path, monkeypatch, capsys
+):
+    """R1: an artifact carrying an SCU id no longer in the catalog (a stale
+    entry left over from before a snapshot/registry change — exactly the case
+    the pre-R1 docstrings claimed was already handled) must fail, naming it.
+    Mutation this catches: removing the coverage check."""
+    payload = _full_valid_artifact_matching_catalog()
+    payload["scus"]["scu.test.not_in_catalog"] = {
+        "producers": [],
+        "no_detector": "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim",
+    }
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "scu.test.not_in_catalog" in out

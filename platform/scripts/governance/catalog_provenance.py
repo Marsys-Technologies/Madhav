@@ -1362,18 +1362,50 @@ def check_completeness(provenance: Dict[str, ScuProvenance]) -> List[str]:
     return failures
 
 
+def validate_scu_coverage(payload: dict, snapshot: dict) -> List[str]:
+    """R1 (B_REVIEW2 finding 1): the artifact's `scus` map must carry EXACTLY the
+    catalog's own SCU id set — no more, no fewer. `validate_derived_artifact`
+    only ever validates the entries actually PRESENT in the artifact; it has no
+    way to notice an SCU missing entirely (an artifact that predates a catalog
+    addition, or was hand-edited to drop one) or an SCU left over from before a
+    snapshot/registry change (no longer in the catalog at all) — exactly the gap
+    the docstrings on `validate_derived_artifact` and `main()`'s `--check`
+    branch already claimed was covered but wasn't: `{"scus": {}}` printed
+    `PASS: all 0 SCUs` and an artifact missing one real SCU printed
+    `PASS: all 181 SCUs`, both exit 0. Returns one human-readable failure string
+    per missing or extra SCU id, each naming the SCU and which side it's
+    missing from."""
+    catalog_ids = {scu["scu_id"] for scu in snapshot.get("scus", [])}
+    artifact_ids = set((payload.get("scus") or {}).keys())
+    failures: List[str] = []
+    for scu_id in sorted(catalog_ids - artifact_ids):
+        failures.append(
+            f"{scu_id}: in the catalog snapshot but missing from the artifact's scus map"
+        )
+    for scu_id in sorted(artifact_ids - catalog_ids):
+        failures.append(
+            f"{scu_id}: in the artifact but not in the catalog snapshot (stale entry)"
+        )
+    return failures
+
+
 def validate_derived_artifact(payload: dict) -> List[str]:
-    """The real B-4 gate (C-1). Validates the COMMITTED `producer_provenance.derived
-    .json` payload itself — never re-derives — against the invariant: every SCU has
-    (a) >=1 producer that is either a declared-exemption disposition
+    """Part of the B-4 gate (C-1), covering ENTRY validity only. Validates every
+    entry actually PRESENT in the committed `producer_provenance.derived.json`
+    payload — never re-derives — against the invariant: every SCU has (a) >=1
+    producer that is either a declared-exemption disposition
     (`_DECLARED_EXEMPTION_DISPOSITIONS`) carrying a non-empty source_ref, or a
     `derived_from_source_query` producer with a non-null `table` AND a range-shaped
     `source_ref` (validated via `parse_source_ref_segments`, never trusted as a
     bare string) — or (b) a `no_detector` reason whose class is a member of the
     CLOSED `NO_DETECTOR_REASON_CLASSES` set. An SCU with neither, or whose
-    no_detector reason classifies as "unclassified", or that is simply absent from
-    the artifact's `scus` map, is a failure. This is the function that makes
-    `--check` able to read false on a real, stale, or hand-edited artifact."""
+    no_detector reason classifies as "unclassified", is a failure.
+
+    This function has NO way to notice an SCU that is entirely absent from the
+    artifact (nothing to iterate over), or a stale entry left over from a
+    retired SCU — that is `validate_scu_coverage`'s job (R1, B_REVIEW2 finding
+    1); `main()`'s `--check` branch runs both and merges their failures. Neither
+    function alone is "the real B-4 gate" — together they are."""
     failures: List[str] = []
     scus = payload.get("scus") or {}
     for scu_id, entry in scus.items():
@@ -1480,12 +1512,19 @@ def main(argv: List[str]) -> int:
         else:
             with open(DERIVED_OUTPUT_PATH, "r", encoding="utf-8") as fh:
                 payload = json.load(fh)
-            failures = validate_derived_artifact(payload)
-            total = len(payload.get("scus") or {})
+            # R1: coverage against the catalog's own SCU id set is a file read of
+            # the snapshot, no DB — checked BEFORE per-entry validity, so a missing
+            # or stale-extra SCU is named even when every entry that IS present
+            # would otherwise pass.
+            snapshot_for_check = load_snapshot()
+            coverage_failures = validate_scu_coverage(payload, snapshot_for_check)
+            entry_failures = validate_derived_artifact(payload)
+            failures = coverage_failures + entry_failures
+            total = len(snapshot_for_check.get("scus") or [])
             if failures:
                 print(
-                    f"[B-4] --check FAIL: {len(failures)} SCU(s) with neither a valid producer nor a "
-                    f"no_detector reason from the closed reason set (artifact: {DERIVED_OUTPUT_PATH}):"
+                    f"[B-4] --check FAIL: {len(failures)} problem(s) against the catalog's {total} SCUs "
+                    f"(artifact: {DERIVED_OUTPUT_PATH}):"
                 )
                 for f in failures:
                     print(f"  - {f}")
@@ -1493,7 +1532,8 @@ def main(argv: List[str]) -> int:
             else:
                 print(
                     f"[B-4] --check PASS: all {total} SCUs in {DERIVED_OUTPUT_PATH} have a valid producer "
-                    "or a no_detector reason from the closed reason set."
+                    "or a no_detector reason from the closed reason set, and the artifact's SCU coverage "
+                    "matches the catalog exactly."
                 )
 
     return exit_code
