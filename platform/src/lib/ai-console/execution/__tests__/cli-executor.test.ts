@@ -29,11 +29,11 @@ describe('CLI role executor', () => {
       '{"type":"result","subtype":"success","is_error":false,"result":"answer","usage":{"input_tokens":2,"output_tokens":3}}',
     exitCode: 0, signal: null })
     const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
-    await expect(executor.generate(request)).resolves.toMatchObject({ text: 'answer', finishReason: 'stop',
+    await expect(executor.generate({ ...request, maxOutputTokens: 256 })).resolves.toMatchObject({ text: 'answer', finishReason: 'stop',
       usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 }, retryCount: 0 })
     expect(runExecution.mock.calls[0][0]).toBe('alice')
     expect(runExecution.mock.calls[0][1]).toBe('claude_code')
-    expect(runExecution.mock.calls[0][2]).toMatchObject({ modelId: null })
+    expect(runExecution.mock.calls[0][2]).toMatchObject({ modelId: null, maxOutputTokens: 256 })
     expect(runExecution.mock.calls[0][2].stdin).toContain('system')
   })
 

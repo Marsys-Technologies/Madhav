@@ -2,13 +2,58 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const checkRpm = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/mcp/rate_limiter_core', () => ({ checkRpm }))
-import { admitByokTurn, isByokEvidenceWithinLimit } from '../byok_admission'
+import {
+  admitByokTurn, isByokEvidencePayloadWithinLimit, isByokEvidenceWithinLimit, validateByokUiMessages,
+} from '../byok_admission'
 
 describe('admitByokTurn', () => {
+  it('rejects oversized normalized assistant and tool history before turn preparation', async () => {
+    const messages = [
+      { id: 'system-1', role: 'system', parts: [{ type: 'text', text: 'system context' }] },
+      { id: 'assistant-1', role: 'assistant', parts: [
+        { type: 'reasoning', text: 'r'.repeat(1_100_000) },
+        { type: 'dynamic-tool', toolName: 'fixture', toolCallId: 'call-1', state: 'output-available',
+          input: { query: 'q'.repeat(500_000) }, output: { text: 'o'.repeat(500_000) } },
+      ] },
+      { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'short question' }] },
+    ]
+
+    await expect(validateByokUiMessages(messages)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+  })
+
+  it('returns only structurally valid normalized messages within the UTF-8 cap', async () => {
+    await expect(validateByokUiMessages([
+      { id: 'assistant-1', role: 'assistant', ignored: 'strip-me', parts: [
+        { type: 'reasoning', text: 'careful' },
+        { type: 'dynamic-tool', toolName: 'fixture', toolCallId: 'call-1', state: 'output-available',
+          input: { query: 'hello' }, output: { answer: 'world' } },
+      ] },
+      { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'क्या?' }] },
+    ])).resolves.toEqual([
+      { id: 'assistant-1', role: 'assistant', parts: [
+        { type: 'reasoning', text: 'careful' },
+        { type: 'dynamic-tool', toolName: 'fixture', toolCallId: 'call-1', state: 'output-available',
+          input: { query: 'hello' }, output: { answer: 'world' } },
+      ] },
+      { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'क्या?' }] },
+    ])
+  })
+
+  it('rejects malformed message parts instead of silently ignoring them', async () => {
+    await expect(validateByokUiMessages([
+      { id: 'assistant-1', role: 'assistant', parts: [{ type: 'unknown-part', text: 'hidden' }] },
+    ])).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+  })
+
   it('enforces the same evidence ceiling after hydration without consuming admission', () => {
     expect(isByokEvidenceWithinLimit(2_000_000)).toBe(true)
     expect(isByokEvidenceWithinLimit(2_000_001)).toBe(false)
     expect(isByokEvidenceWithinLimit(-1)).toBe(false)
+  })
+
+  it('measures hydrated evidence as UTF-8 bytes rather than JavaScript characters', () => {
+    expect(isByokEvidencePayloadWithinLimit({ text: 'a'.repeat(1_999_980) })).toBe(true)
+    expect(isByokEvidencePayloadWithinLimit({ text: '🙏'.repeat(500_000) })).toBe(false)
   })
   beforeEach(() => checkRpm.mockReset().mockReturnValue({ allowed: true }))
 

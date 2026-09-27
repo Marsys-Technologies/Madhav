@@ -127,7 +127,9 @@ import { runAdapterDispatch } from '@/lib/pipelines/shared'
 import { getConversationSelection } from '@/lib/ai-console/repository'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
-import { BYOK_MAX_OUTPUT_TOKENS, isByokEvidenceWithinLimit } from '@/lib/limits/byok_admission'
+import {
+  BYOK_MAX_OUTPUT_TOKENS, isByokEvidencePayloadWithinLimit, validateByokUiMessages,
+} from '@/lib/limits/byok_admission'
 import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
@@ -275,7 +277,8 @@ export async function POST(request: Request) {
     return res.badRequest('Invalid JSON body')
   }
 
-  const { chartId, messages } = body
+  const { chartId } = body
+  let { messages } = body
   let { conversationId } = body
 
   if (!chartId || !messages) {
@@ -288,6 +291,13 @@ export async function POST(request: Request) {
   }
 
   const byokEnabled = configService.getFlag('AI_CONSOLE_BYOK')
+  if (byokEnabled) {
+    try { messages = await validateByokUiMessages(messages) }
+    catch (error) {
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: 400 })
+    }
+  }
 
   // Resolve synthesis model from stack. Stack takes precedence over the legacy
   // `model` field. Unknown/missing stacks fall back to the default NIM stack.
@@ -461,7 +471,7 @@ export async function POST(request: Request) {
   const attachmentParts = body.attachments?.length
     ? await resolveAttachments(body.attachments)
     : []
-  if (byokRuntime && !isByokEvidenceWithinLimit(JSON.stringify({ messages, attachmentParts }).length)) {
+  if (byokRuntime && !isByokEvidencePayloadWithinLimit({ messages, attachmentParts })) {
     throw new AiConsoleError('AI_EXECUTION_FAILED')
   }
 
@@ -1325,8 +1335,9 @@ export async function POST(request: Request) {
   // `lib/pipelines/shared/run_adapter_dispatch.ts`. The route is a thin
   // selector: auth + chart resolution + planner-context + dispatch().
   if (byokRuntime) {
-    const evidenceChars = JSON.stringify({ messages, attachmentParts, bundle, validToolResults }).length
-    if (!isByokEvidenceWithinLimit(evidenceChars)) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    if (!isByokEvidencePayloadWithinLimit({ messages, attachmentParts, bundle, validToolResults })) {
+      throw new AiConsoleError('AI_EXECUTION_FAILED')
+    }
   }
   return await runAdapterDispatch({
     requestStartedAt: setupStart,

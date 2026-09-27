@@ -437,8 +437,11 @@ export async function runSynthesisStage(args: {
   observability?: SynthesisObservationIdentity
   /** Flag-on authority: exact Synthesizer. Tools are intentionally absent. */
   synthesizerExecutor?: RoleExecutor
+  /** Turn-owned cancellation, including response-reader cancellation. */
+  abortSignal?: AbortSignal
 }): Promise<StageResult<SynthesisStageOutput>> {
   const { em, request, queryText, params, queryPlan, context } = args
+  const abortSignal = args.abortSignal ?? request.signal
   const { systemContentWithSummary, trimmedConversationHistory } = context
   const injectionContained = isInjectionContainmentEnabled()
 
@@ -764,10 +767,12 @@ export async function runSynthesisStage(args: {
       ).flatMap(message => message.role !== 'system' && typeof message.content === 'string'
         ? [{ role: message.role, content: message.content }]
         : []),
-      abortSignal: request.signal,
+      abortSignal,
       maxOutputTokens: Math.min(params.modelMeta.maxOutputTokens, BYOK_MAX_OUTPUT_TOKENS),
     }).getReader()
     let completed = false
+    const cancelOnAbort = () => { void reader.cancel().catch(() => undefined) }
+    abortSignal.addEventListener('abort', cancelOnAbort, { once: true })
     try {
       while (true) {
         const next = await reader.read()
@@ -780,6 +785,7 @@ export async function runSynthesisStage(args: {
         }
       }
     } finally {
+      abortSignal.removeEventListener('abort', cancelOnAbort)
       if (!completed) await reader.cancel().catch(() => undefined)
       reader.releaseLock()
     }
@@ -838,7 +844,7 @@ export async function runSynthesisStage(args: {
       // usage from 'usage' events) without altering it — the same event
       // object flows into the branches below untouched.
       metrics.recordEvent(event)
-      if (request.signal.aborted) {
+      if (abortSignal.aborted) {
         appendCitationFlushText(citationStream?.end() ?? '')
         drainScannerInto()
         assembler.commitBlock()
@@ -962,7 +968,7 @@ export async function runSynthesisStage(args: {
         phase: 'synthesize',
       })
       finalizeObservability()
-      return halt(request.signal.aborted ? 'aborted' : 'error')
+      return halt(abortSignal.aborted ? 'aborted' : 'error')
     }
     em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
   }

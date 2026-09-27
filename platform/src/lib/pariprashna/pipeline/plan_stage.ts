@@ -127,8 +127,10 @@ export async function runPlanStage(args: {
   params: TurnParams
   safetyDecision: SafetyDecision
   runtime?: TurnRuntime
+  abortSignal?: AbortSignal
 }): Promise<StageResult<PlanStageOutput>> {
   const { em, request, messages, identity, params, runtime } = args
+  const abortSignal = args.abortSignal ?? request.signal
   const { chartId, queryId } = identity
 
   // ── Query text + planner context. ──────────────────────────────────────────
@@ -228,7 +230,7 @@ export async function runPlanStage(args: {
           plannerExecutor: runtime.executors.planner,
           deepPlannerExecutor: runtime.executors.deep_planner,
           workerExecutor: runtime.executors.worker,
-          abortSignal: request.signal,
+          abortSignal,
           maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
         }
       : undefined,

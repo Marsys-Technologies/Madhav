@@ -118,6 +118,20 @@ describe('governed CLI runner', () => {
     expect(JSON.stringify(error)).not.toContain('raw-secret')
   })
 
+  it('enforces the per-invocation output ceiling before returning any partial stdout', async () => {
+    const { definition } = await fixture('process.stdout.write("123456789")')
+    const runner = createCliRunner({ registry: { codex: definition } })
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0')
+
+    await expect(runner.runExecution('alice', 'codex', {
+      modelId: null, stdin: '', maxOutputTokens: 8,
+    })).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+    await expect(runner.runExecution('alice', 'codex', {
+      modelId: null, stdin: '', maxOutputTokens: 9,
+    })).resolves.toEqual({ stdout: '123456789', exitCode: 0, signal: null })
+  })
+
   it('rejects non-executable files and invalid UTF-8 machine output', async () => {
     const blocked = await fixture('process.stdout.write("ok")')
     await chmod(blocked.executable, 0o644)

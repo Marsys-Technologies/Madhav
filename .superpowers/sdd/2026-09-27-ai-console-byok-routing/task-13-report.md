@@ -36,13 +36,23 @@ tracked executors.
 
 ## Lifecycle hardening
 
-- One request `AbortSignal` reaches planner-history compression, Planner/Deep
+- Native response streaming now owns a turn-local abort controller combined
+  with the request signal. Cancelling the response reader aborts the exact
+  tracked role stream, cancels an in-flight pull, prevents later Worker/title
+  work, and releases admission idempotently without writing after close.
+- The combined `AbortSignal` reaches planner-history compression, Planner/Deep
   Planner primary and repair, durable summary, interpretation primary and
   repair, title, and Synthesizer/Consult/continuation. Every optional model call
   checks cancellation before it starts; cancellation does not trigger repair.
+- Complete client UI message history is structurally validated and measured as
+  normalized UTF-8 bytes before any flag-on preflight or role call. Assistant,
+  system, reasoning, data, and tool-shaped parts therefore cannot bypass the
+  cap. Hydrated evidence plus attachments are measured again in UTF-8 bytes
+  before consuming stages.
 - Every flag-on role request carries an explicit governed `maxOutputTokens`.
-  Hydrated evidence plus attachments are measured against the hard evidence cap
-  before a consuming stage, without taking a second admission.
+  The CLI runner additionally enforces a conservative per-invocation stdout
+  ceiling of one UTF-8 byte per requested token, bounded by the existing 1 MiB
+  outer limit, and returns no partial output on overflow.
 - The admission release is idempotent and attached to all pre-stream setup,
   writer/on-finish, persistence, stream error, cancellation, and normal terminal
   paths. It remains held while streaming.
@@ -66,10 +76,11 @@ routing metadata.
 
 ## Verification
 
-- Focused AI Console, atomic preflight, typed validation, receipts, planner,
-  interpretation, native, Consult and continuation aggregate: 528 pass, 25
-  prerequisite-skipped.
-- Full Vitest aggregate: 13,158 pass, 732 skipped, 2 todo.
+- Refreshed round-two focused native/Consult/continuation, full-history cap,
+  preflight, tracked/provider/CLI execution and planner/synthesis aggregate:
+  95 pass. POST-level route and cap matrix: 35 pass; provider/CLI/tracked
+  executor aggregate: 57 pass.
+- Full Vitest aggregate: 13,183 pass, 732 skipped, 2 todo.
 - TypeScript: `npx tsc --noEmit --skipLibCheck` passes.
 - Full ESLint: zero errors and 587 repository-baseline warnings. Scoped
   changed-file ESLint excluding the pre-existing warning-heavy Consult monolith
@@ -77,7 +88,7 @@ routing metadata.
 - `git diff --check`: passes.
 - Migration number guard: passes with repository baseline warnings only; next
   allocatable migration remains 1121. Migration contract: 9 pass; disposable
-  PostgreSQL migration/isolation suites: 25 prerequisite-skipped.
+  PostgreSQL migration suite: 13 prerequisite-skipped.
 - Added real-client concurrency tests for picker serialization and first-turn
   rollback; they are present but remain unqualified until the disposable local
   PostgreSQL prerequisite is supplied.

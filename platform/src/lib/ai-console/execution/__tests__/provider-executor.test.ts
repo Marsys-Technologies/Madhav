@@ -60,7 +60,8 @@ describe('provider-backed RoleExecutor', () => {
     ]))
     const owned = execution()
     const executor = createProviderRoleExecutor(owned.value)
-    const result = await executor.generate({ ...request, tools: [{ name: 'lookup', description: 'Lookup', parameters: { type: 'object' } }] })
+    const result = await executor.generate({ ...request, maxOutputTokens: 321,
+      tools: [{ name: 'lookup', description: 'Lookup', parameters: { type: 'object' } }] })
 
     expect(result).toEqual(expect.objectContaining({
       text: '{"ok":true}', structured: { ok: true },
@@ -72,6 +73,7 @@ describe('provider-backed RoleExecutor', () => {
     expect(mocks.streamAdapterRaw.mock.calls[0][0]).toMatchObject({
       disableSdkRetry: true,
       runtimeDescriptor: { providerId: 'openai', connectionId, modelId: 'dynamic-model' },
+      maxOutputTokens: 321,
       tools: [{ name: 'lookup', description: 'Lookup', parameters: { type: 'object' } }],
     })
     expect(owned.disposals[0]).toHaveBeenCalledOnce()

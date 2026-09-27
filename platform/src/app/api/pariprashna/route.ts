@@ -76,7 +76,7 @@ import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stag
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
 import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
 import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
-import { isByokEvidenceWithinLimit } from '@/lib/limits/byok_admission'
+import { isByokEvidencePayloadWithinLimit, validateByokUiMessages } from '@/lib/limits/byok_admission'
 
 export const maxDuration = 120
 
@@ -89,7 +89,8 @@ export async function POST(request: Request): Promise<Response> {
   // byte and every downstream fault is an in-stream `error` event.
   const admission = await admitRequest(request)
   if (!admission.admitted) return admission.response
-  const { user, body, chartId, messages } = admission.value
+  const { user, body, chartId } = admission.value
+  let { messages } = admission.value
 
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.
@@ -123,6 +124,7 @@ export async function POST(request: Request): Promise<Response> {
   let params: TurnParams
   if (byokEnabled) {
     try {
+      messages = await validateByokUiMessages(messages)
       const auth = await authenticateByokUser()
       if (auth.user.uid !== user.uid) throw new AiConsoleError('AI_PERMISSION_DENIED')
       const questionChars = messages
@@ -153,9 +155,26 @@ export async function POST(request: Request): Promise<Response> {
     if (!withinLimits.admitted) return withinLimits.response
   }
 
+  const turnAbort = runtime.kind === 'byok' ? new AbortController() : undefined
+  const turnSignal = turnAbort
+    ? AbortSignal.any([request.signal, turnAbort.signal])
+    : request.signal
+  let sourceCancelled = false
+  let captureEnded = false
+  const endCapture = () => {
+    if (captureEnded) return
+    captureEnded = true
+    endTurnCapture(turnId)
+  }
+
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
+      const execution = (async () => {
+      if (runtime.kind === 'byok' && turnSignal.aborted) {
+        runtime.releaseAdmission()
+        return
+      }
       // PB-2/M-5: seed this turn's ring buffer BEFORE the first event is
       // emitted, so a resume request that races the very first byte still
       // finds turn metadata. Awaited (not fire-and-forget) for exactly that
@@ -163,6 +182,10 @@ export async function POST(request: Request): Promise<Response> {
       // is not on the model-latency critical path.
       try {
         await openTurnBuffer({ turnId, chartId, conversationId })
+        if (runtime.kind === 'byok' && turnSignal.aborted) {
+          runtime.releaseAdmission()
+          return
+        }
       } catch (error) {
         if (runtime.kind === 'byok') runtime.releaseAdmission()
         controller.error(error)
@@ -193,24 +216,30 @@ export async function POST(request: Request): Promise<Response> {
         em.phase({ phase: 'plan', status: 'start' })
       } catch (error) {
         if (runtime.kind === 'byok') runtime.releaseAdmission()
-        endTurnCapture(turnId)
+        endCapture()
         controller.error(error)
         return
       }
 
+      let finished = false
       const finish = (status: 'ok' | 'error' | 'aborted'): void => {
+        if (finished) return
+        finished = true
         if (runtime.kind === 'byok') runtime.releaseAdmission()
-        em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
-        em.close()
+        if (!sourceCancelled) {
+          em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
+          em.close()
+        }
         // Release the in-process capture mark AFTER the terminal turn.close has
         // been emitted (and therefore captured) — never before.
-        endTurnCapture(turnId)
+        endCapture()
       }
 
       try {
         // ── Entitlement + conversation resolution (PPR-11, fail-closed). ─────
         const authorized = await authorizeTurn({ em, user, identity })
         if (authorized.halted) return finish(authorized.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
 
         // ── Safety (PPR-12, lane G1-A). AFTER consent (it needs subject_kind),
         //    BEFORE the planner (a blocked class must never build a plan). ────
@@ -221,11 +250,15 @@ export async function POST(request: Request): Promise<Response> {
           subjectKind: authorized.value.subjectKind,
         })
         if (safetyGate.halted) return finish(safetyGate.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         const safetyDecision = safetyGate.value
 
         // ── Plan: query text → planner → budgets → floors → NO-LEAKAGE. ──────
-        const planned = await runPlanStage({ em, request, messages, identity, params, safetyDecision, runtime })
+        const planned = await runPlanStage({
+          em, request, messages, identity, params, safetyDecision, runtime, abortSignal: turnSignal,
+        })
         if (planned.halted) return finish(planned.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         const {
           plan,
           queryPlan,
@@ -273,11 +306,12 @@ export async function POST(request: Request): Promise<Response> {
           toolsAuthorized,
           orientationPromise,
           inquiryContract,
+          abortSignal: turnSignal,
         })
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         if (runtime.kind === 'byok') {
-          const evidenceChars = JSON.stringify({ messages, bundle: evidence.bundle,
-            toolResults: evidence.validToolResults }).length
-          if (!isByokEvidenceWithinLimit(evidenceChars)) throw new AiConsoleError('AI_EXECUTION_FAILED')
+          if (!isByokEvidencePayloadWithinLimit({ messages, bundle: evidence.bundle,
+            toolResults: evidence.validToolResults })) throw new AiConsoleError('AI_EXECUTION_FAILED')
         }
 
         // ── Synthesis: prompt assembly, then the streaming interpretation. ───
@@ -291,7 +325,7 @@ export async function POST(request: Request): Promise<Response> {
           lengthTier: params.lengthTier,
           ...(runtime.kind === 'byok' ? {
             workerExecutor: runtime.executors.worker,
-            abortSignal: request.signal,
+            abortSignal: turnSignal,
             maxOutputTokens: params.modelMeta.maxOutputTokens,
           } : {}),
         })
@@ -326,10 +360,11 @@ export async function POST(request: Request): Promise<Response> {
           // module has carried since P2-E — see its header for why identity
           // was left optional rather than fabricated.
           observability: { turnId, conversationId, userId: user.uid },
+          abortSignal: turnSignal,
           ...(runtime.kind === 'byok' ? { synthesizerExecutor: runtime.executors.synthesizer } : {}),
         })
         if (synthesized.halted) return finish(synthesized.status)
-        if (request.signal.aborted) return finish('aborted')
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
         // Lane G2-B. Server-derived grounding summary — counts + grade rollup
         // from what the rewriter actually resolved this turn, completeness
@@ -386,7 +421,7 @@ export async function POST(request: Request): Promise<Response> {
           validToolResults: evidence.validToolResults,
           citationGate,
           synthesisStartedAt,
-          abortSignal: request.signal,
+          abortSignal: turnSignal,
           safetyDecision: postPlanSafety,
           citationRewriteEnabled: synthesized.value.citationRewriteEnabled,
           resolvedCitations: synthesized.value.resolvedCitations,
@@ -413,6 +448,7 @@ export async function POST(request: Request): Promise<Response> {
         em.phase({ phase: 'finalize', status: 'end' })
         return finish('ok')
       } catch (fatal) {
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         console.error('[pariprashna] fatal in-stream error:', fatal)
         if (runtime.kind === 'byok') {
           const safe = fatal instanceof AiConsoleError ? fatal : new AiConsoleError('AI_EXECUTION_FAILED')
@@ -422,6 +458,19 @@ export async function POST(request: Request): Promise<Response> {
         }
         return finish('error')
       }
+      })()
+      if (runtime.kind === 'byok') {
+        void execution.catch(() => runtime.releaseAdmission())
+        return
+      }
+      return execution
+    },
+    cancel() {
+      if (runtime.kind !== 'byok') return
+      sourceCancelled = true
+      turnAbort!.abort()
+      runtime.releaseAdmission()
+      endCapture()
     },
   })
 

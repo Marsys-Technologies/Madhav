@@ -42,7 +42,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // header comment). PARIPRASHNA_SAFETY_GATE_ENABLED defaults OFF in production
 // (V3-E-054, a different already-referred finding) — this file forces it ON
 // only within each test's own scope, never touching the flag's real default.
-const { safetyFlagState } = vi.hoisted(() => ({ safetyFlagState: { on: false } }))
+const {
+  safetyFlagState, byokFlagState, mockAuthenticateByokUser, mockPrepareByokTurn,
+  mockByokSynthStream, mockByokWorkerGenerate, mockByokRelease,
+  mockInsertRoleReceipt,
+} = vi.hoisted(() => ({
+  safetyFlagState: { on: false },
+  byokFlagState: { on: false },
+  mockAuthenticateByokUser: vi.fn(),
+  mockPrepareByokTurn: vi.fn(),
+  mockByokSynthStream: vi.fn(),
+  mockByokWorkerGenerate: vi.fn(),
+  mockByokRelease: vi.fn(),
+  mockInsertRoleReceipt: vi.fn(),
+}))
 vi.mock('@/lib/pariprashna/safety/flag', () => ({
   SAFETY_GATE_FLAG: 'PARIPRASHNA_SAFETY_GATE_ENABLED',
   isSafetyGateEnabled: () => safetyFlagState.on,
@@ -68,12 +81,21 @@ vi.mock('@/lib/config/index', () => ({
     getFlag: vi.fn((k: string) => {
       if (k === 'PARIPRASHNA_ENABLED') return true
       if (k === 'PARIPRASHNA_SAFETY_GATE_ENABLED') return safetyFlagState.on
+      if (k === 'AI_CONSOLE_BYOK') return byokFlagState.on
       return false
     }),
   },
 }))
 vi.mock('@/lib/models/runtime_config', () => ({
   getEffectiveModel: vi.fn(async () => 'fake-model'),
+}))
+vi.mock('@/lib/pariprashna/pipeline/byok_preflight', () => ({
+  authenticateByokUser: mockAuthenticateByokUser,
+  prepareByokTurn: mockPrepareByokTurn,
+}))
+vi.mock('@/lib/ai-console/repository', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/ai-console/repository')>(),
+  insertRoleInvocationReceipt: mockInsertRoleReceipt,
 }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({
   authorizeChartAccess: vi.fn(async () => 'view'),
@@ -263,6 +285,8 @@ vi.mock('@/lib/conversations/title', () => ({
 // ═════════════════════════════════════════════════════════════════════════════
 import { POST } from '../route'
 import { HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT } from '@/lib/pariprashna/safety/fixed_responses'
+import { trackRoleExecutor } from '@/lib/ai-console/execution/tracked-executor'
+import { AiConsoleError } from '@/lib/ai-console/errors'
 
 function makeReq(question: string, conversationId?: string): Request {
   return new Request('http://localhost/api/pariprashna', {
@@ -305,13 +329,194 @@ async function runRoute(question: string): Promise<{ status: number; contentType
 
 beforeEach(() => {
   safetyFlagState.on = false
+  byokFlagState.on = false
   mockCallPipelinePlanner.mockReset()
+  mockAuthenticateByokUser.mockReset().mockResolvedValue({
+    user: { uid: 'route-test-uid' }, profile: { role: 'guest' },
+  })
+  mockByokSynthStream.mockReset()
+  mockByokWorkerGenerate.mockReset()
+  mockByokRelease.mockReset()
+  mockInsertRoleReceipt.mockReset().mockResolvedValue(undefined)
+  const roleExecutor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+    descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+    generate: role === 'worker' ? mockByokWorkerGenerate : vi.fn(),
+    stream: role === 'synthesizer' ? mockByokSynthStream : vi.fn(),
+  })
+  mockPrepareByokTurn.mockReset().mockResolvedValue({
+    kind: 'byok', selection: { kind: 'default' }, plan: {}, snapshotId: crypto.randomUUID(),
+    safeSnapshot: { roles: { synthesizer: { kind: 'provider_model', providerId: 'openai',
+      connectionId: 'connection', modelId: 'model' } } },
+    executors: { synthesizer: roleExecutor('synthesizer'), planner: roleExecutor('planner'),
+      deep_planner: roleExecutor('deep_planner'), worker: roleExecutor('worker') },
+    displayModelId: 'model', releaseAdmission: mockByokRelease,
+  })
   mockGetConversation.mockReset().mockResolvedValue(null)
   mockInsertConversationWithId.mockReset().mockResolvedValue(undefined)
 })
 
 afterEach(() => {
   safetyFlagState.on = false
+  byokFlagState.on = false
+})
+
+describe('AI Console BYOK request boundary', () => {
+  it.each([
+    ['owner or chart denial', 'AI_PERMISSION_DENIED', 400],
+    ['stale or broken selection', 'AI_CHOICE_BROKEN', 400],
+    ['snapshot failure', 'AI_EXECUTION_FAILED', 400],
+    ['admission refusal', 'AI_RATE_LIMITED', 429],
+  ] as const)('returns a safe zero-call error for %s', async (_name, code, status) => {
+    byokFlagState.on = true
+    mockPrepareByokTurn.mockRejectedValueOnce(new AiConsoleError(code))
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+        messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+    }))
+    expect(response.status).toBe(status)
+    expect(await response.json()).toMatchObject({ code })
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockByokSynthStream).not.toHaveBeenCalled()
+    expect(mockInsertRoleReceipt).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized assistant/tool history before atomic preflight or any executor exists', async () => {
+    byokFlagState.on = true
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chartId: CHART,
+        ai_selection: { kind: 'default' },
+        messages: [
+          { id: 'assistant-1', role: 'assistant', parts: [
+            { type: 'reasoning', text: 'r'.repeat(1_100_000) },
+            { type: 'dynamic-tool', toolName: 'fixture', toolCallId: 'call-1', state: 'output-available',
+              input: { query: 'q'.repeat(500_000) }, output: { text: 'o'.repeat(500_000) } },
+          ] },
+          { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'short question' }] },
+        ],
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(mockPrepareByokTurn).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it.each(['direct', 'custom'] as const)(
+    'maps the exact four %s role executors through an actual successful POST',
+    async (configurationKind) => {
+      byokFlagState.on = true
+      mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+      mockByokSynthStream.mockImplementation(() => new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'text_delta', text: 'routed answer' })
+          controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+            usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
+          controller.close()
+        },
+      }))
+      const baseRuntime = await mockPrepareByokTurn.getMockImplementation()!({})
+      const directTarget = { providerId: 'openai', connectionId: 'connection-direct', modelId: 'model-direct' }
+      const directExecutor = <T extends { descriptor: Record<string, unknown> }>(executor: T): T => ({
+        ...executor, descriptor: { ...executor.descriptor, ...directTarget },
+      })
+      const executors = configurationKind === 'direct'
+        ? {
+            synthesizer: directExecutor(baseRuntime.executors.synthesizer),
+            planner: directExecutor(baseRuntime.executors.planner),
+            deep_planner: directExecutor(baseRuntime.executors.deep_planner),
+            worker: directExecutor(baseRuntime.executors.worker),
+          }
+        : baseRuntime.executors
+      mockPrepareByokTurn.mockResolvedValueOnce({ ...baseRuntime, executors })
+
+      const response = await POST(new Request('http://localhost/api/pariprashna', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+          messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+      }))
+      expect(response.status).toBe(200)
+      await expect(response.text()).resolves.toContain('routed answer')
+
+      const injected = mockCallPipelinePlanner.mock.calls[0][10]
+      expect(injected).toMatchObject({
+        plannerExecutor: executors.planner,
+        deepPlannerExecutor: executors.deep_planner,
+        workerExecutor: executors.worker,
+        maxOutputTokens: 16_384,
+      })
+      expect(mockByokSynthStream).toHaveBeenCalledWith(expect.objectContaining({
+        abortSignal: expect.any(AbortSignal), maxOutputTokens: 16_384,
+      }))
+      const descriptors = [executors.synthesizer.descriptor, executors.planner.descriptor,
+        executors.deep_planner.descriptor, executors.worker.descriptor]
+      expect(descriptors.map(descriptor => descriptor.role).sort()).toEqual([
+        'deep_planner', 'planner', 'synthesizer', 'worker',
+      ])
+      if (configurationKind === 'direct') {
+        expect(new Set(descriptors.map(descriptor =>
+          `${descriptor.providerId}:${descriptor.connectionId}:${descriptor.modelId}`))).toHaveLength(1)
+      } else {
+        expect(new Set(descriptors.map(descriptor => descriptor.modelId))).toHaveLength(4)
+      }
+    },
+  )
+
+  it('aborts the exact Synthesizer when the response reader cancels and starts no later Worker work', async () => {
+    byokFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+    const delegateCancel = vi.fn()
+    let synthSignal: AbortSignal | undefined
+    mockByokSynthStream.mockImplementation((input: { abortSignal?: AbortSignal }) => {
+      synthSignal = input.abortSignal
+      return new ReadableStream({
+        async pull(controller) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+            usage: { inputTokens: 1, outputTokens: 0, totalTokens: 1 } })
+          controller.close()
+        },
+        cancel: delegateCancel,
+      })
+    })
+    const delegate = {
+      descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,
+        connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' },
+      generate: vi.fn(), stream: mockByokSynthStream,
+    }
+    const trackedSynth = trackRoleExecutor(delegate, {
+      userId: 'route-test-uid', snapshotId: '30000000-0000-4000-8000-000000000003',
+    })
+    const baseRuntime = await mockPrepareByokTurn.getMockImplementation()!({})
+    mockPrepareByokTurn.mockResolvedValueOnce({ ...baseRuntime,
+      executors: { ...baseRuntime.executors, synthesizer: trackedSynth } })
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+        messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+    }))
+    const reader = response.body!.getReader()
+    await reader.read()
+    await vi.waitFor(() => expect(mockByokSynthStream).toHaveBeenCalledOnce())
+    await reader.cancel()
+
+    expect(synthSignal?.aborted).toBe(true)
+    expect(delegateCancel).toHaveBeenCalledOnce()
+    expect(mockByokWorkerGenerate).not.toHaveBeenCalled()
+    expect(mockByokRelease).toHaveBeenCalled()
+    expect(mockInsertRoleReceipt).toHaveBeenCalledTimes(2)
+    expect(mockInsertRoleReceipt.mock.calls[0][0]).toMatchObject({
+      role: 'synthesizer', phase: 'start', status: 'started',
+    })
+    expect(mockInsertRoleReceipt.mock.calls[1][0]).toMatchObject({
+      role: 'synthesizer', phase: 'terminal', status: 'cancelled',
+      invocationId: mockInsertRoleReceipt.mock.calls[0][0].invocationId,
+    })
+  })
 })
 
 describe('V3-E-055: PPR-12 safety gate (WEB door /api/pariprashna) — reaches the SSE wire', () => {

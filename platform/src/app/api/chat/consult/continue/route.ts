@@ -14,7 +14,7 @@ import { configService } from '@/lib/config'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 import { getConversationSelection } from '@/lib/ai-console/repository'
 import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
-import { BYOK_MAX_OUTPUT_TOKENS, isByokEvidenceWithinLimit } from '@/lib/limits/byok_admission'
+import { BYOK_MAX_OUTPUT_TOKENS, validateByokUiMessages } from '@/lib/limits/byok_admission'
 import type { RoleExecutionEvent } from '@/lib/ai-console/execution'
 
 export const maxDuration = 120
@@ -80,6 +80,7 @@ export async function POST(request: Request) {
 
   if (configService.getFlag('AI_CONSOLE_BYOK')) {
     try {
+      uiMessages = await validateByokUiMessages(uiMessages)
       const selection = await getConversationSelection(user.uid, conversation_id)
       const turnId = crypto.randomUUID()
       const runtime = await prepareByokTurn({
@@ -100,9 +101,6 @@ export async function POST(request: Request) {
           .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
           .map(part => part.text).join(''),
       }))
-      if (!isByokEvidenceWithinLimit(JSON.stringify({ uiMessages, history }).length)) {
-        throw new AiConsoleError('AI_EXECUTION_FAILED')
-      }
       const uiStream = createUIMessageStream({
         execute: async ({ writer }) => {
           let reader: ReadableStreamDefaultReader<RoleExecutionEvent> | undefined

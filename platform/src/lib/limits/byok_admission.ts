@@ -1,6 +1,8 @@
 import 'server-only'
 
+import { safeValidateUIMessages, type UIMessage } from 'ai'
 import { checkRpm } from '@/lib/mcp/rate_limiter_core'
+import { AiConsoleError } from '@/lib/ai-console/errors'
 
 export const BYOK_MAX_QUESTION_CHARS = 32_000
 export const BYOK_MAX_EVIDENCE_CHARS = 2_000_000
@@ -55,4 +57,26 @@ export function admitByokTurn(input: {
 export function isByokEvidenceWithinLimit(evidenceChars: number): boolean {
   return Number.isSafeInteger(evidenceChars) && evidenceChars >= 0
     && evidenceChars <= BYOK_MAX_EVIDENCE_CHARS
+}
+
+/** Measure an evidence payload after JSON normalization using its actual UTF-8 wire size. */
+export function isByokEvidencePayloadWithinLimit(payload: unknown): boolean {
+  try {
+    return isByokEvidenceWithinLimit(Buffer.byteLength(JSON.stringify(payload), 'utf8'))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Validate the complete client-controlled UI history and cap its normalized
+ * UTF-8 representation. This deliberately counts every supported part rather
+ * than extracting only user text, so assistant reasoning/tool/data payloads
+ * cannot bypass the pre-execution evidence ceiling.
+ */
+export async function validateByokUiMessages(input: unknown): Promise<UIMessage[]> {
+  const validated = await safeValidateUIMessages({ messages: input })
+  if (!validated.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  if (!isByokEvidencePayloadWithinLimit(validated.data)) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  return validated.data
 }

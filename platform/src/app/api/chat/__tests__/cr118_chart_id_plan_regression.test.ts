@@ -33,6 +33,10 @@ const { plannerSpy, qosSubmitSpy, compileInquirySpy } = vi.hoisted(() => ({
   qosSubmitSpy: vi.fn(async ({ run }: { run: () => Promise<unknown> }) => run()),
   compileInquirySpy: vi.fn(),
 }))
+const { byokFlag, prepareByokTurn, getConversationSelection } = vi.hoisted(() => ({
+  byokFlag: { on: false }, prepareByokTurn: vi.fn(), getConversationSelection: vi.fn(),
+}))
+const { chartPermission } = vi.hoisted(() => ({ chartPermission: { value: 'view' as 'view' | 'deny' } }))
 
 vi.mock('@/lib/firebase/server', () => ({
   getServerUser: vi.fn(async () => ({ uid: 'tester-uid' })),
@@ -46,13 +50,13 @@ vi.mock('@/lib/db/client', () => ({
         rows: [{ id, name: 'Abhisek Mohanty', birth_date: '1984-02-05', birth_time: '10:43', birth_place: 'Bhubaneswar', client_id: 'tester-uid' }],
       }
     }
-    if (/from profiles/i.test(sql)) return { rows: [{ role: 'super_admin' }] }
+    if (/from profiles/i.test(sql)) return { rows: [{ role: 'super_admin', status: 'active' }] }
     return { rows: [] }
   }),
 }))
 
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({
-  authorizeChartAccess: vi.fn(async () => 'view'),
+  authorizeChartAccess: vi.fn(async () => chartPermission.value),
 }))
 
 vi.mock('@/lib/conversations', () => ({
@@ -142,8 +146,10 @@ vi.mock('@/lib/validators/index', () => ({
 }))
 
 vi.mock('@/lib/config/index', () => ({
-  configService: { getFlag: vi.fn(() => false) },
+  configService: { getFlag: vi.fn((name: string) => name === 'AI_CONSOLE_BYOK' && byokFlag.on) },
 }))
+vi.mock('@/lib/pariprashna/pipeline/byok_preflight', () => ({ prepareByokTurn }))
+vi.mock('@/lib/ai-console/repository', () => ({ getConversationSelection }))
 
 vi.mock('@/lib/models/runtime_config', () => ({
   getEffectiveModel: vi.fn(async () => 'gemini-2.5-pro'),
@@ -170,16 +176,20 @@ vi.mock('@/lib/projects', () => ({
 }))
 
 const { dispatchSpy } = vi.hoisted(() => ({
-  dispatchSpy: vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  })),
+  dispatchSpy: vi.fn(async (context: unknown) => {
+    void context
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }),
 }))
 vi.mock('@/lib/pipelines/shared', () => ({
   runAdapterDispatch: dispatchSpy,
 }))
 
 import { POST } from '../consult/route'
+import { AiConsoleError } from '@/lib/ai-console/errors'
 
 function makePost(chartId: string, text: string): Request {
   return new Request('http://localhost/api/chat/consult', {
@@ -193,6 +203,10 @@ function makePost(chartId: string, text: string): Request {
 }
 
 beforeEach(() => {
+  byokFlag.on = false
+  chartPermission.value = 'view'
+  prepareByokTurn.mockReset()
+  getConversationSelection.mockReset().mockResolvedValue({ kind: 'default' })
   dispatchSpy.mockClear()
   qosSubmitSpy.mockClear()
   compileInquirySpy.mockReset()
@@ -216,6 +230,85 @@ beforeEach(() => {
         { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 1 as const, reason: 'CR-118 regression — cgm_graph_walk' },
       ],
     },
+  })
+})
+
+describe('AI Console BYOK Consult POST boundary', () => {
+  it('rejects a chart-authority denial before resolution, role execution, or dispatch', async () => {
+    byokFlag.on = true
+    chartPermission.value = 'deny'
+
+    const response = await POST(makePost(NATIVE, 'Question'))
+
+    expect(response.status).toBe(403)
+    expect(prepareByokTurn).not.toHaveBeenCalled()
+    expect(plannerSpy).not.toHaveBeenCalled()
+    expect(dispatchSpy).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['stale or broken selection', new AiConsoleError('AI_CHOICE_BROKEN'), 400, 'AI_CHOICE_BROKEN'],
+    ['snapshot failure', new AiConsoleError('AI_EXECUTION_FAILED'), 400, 'AI_EXECUTION_FAILED'],
+    ['admission refusal', new AiConsoleError('AI_RATE_LIMITED'), 429, 'AI_RATE_LIMITED'],
+  ] as const)('returns a safe zero-call response for %s', async (_label, failure, status, code) => {
+    byokFlag.on = true
+    prepareByokTurn.mockRejectedValueOnce(failure)
+
+    const response = await POST(makePost(NATIVE, 'Question'))
+
+    expect(response.status).toBe(status)
+    expect(await response.json()).toMatchObject({ code })
+    expect(plannerSpy).not.toHaveBeenCalled()
+    expect(dispatchSpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized assistant/tool history before snapshot, admission, planning, or dispatch', async () => {
+    byokFlag.on = true
+    const response = await POST(new Request('http://localhost/api/chat/consult', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: NATIVE, messages: [
+        { id: 'assistant-1', role: 'assistant', parts: [
+          { type: 'reasoning', text: 'r'.repeat(1_100_000) },
+          { type: 'dynamic-tool', toolName: 'fixture', toolCallId: 'call-1', state: 'output-available',
+            input: { query: 'q'.repeat(500_000) }, output: { text: 'o'.repeat(500_000) } },
+        ] },
+        { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'short question' }] },
+      ] }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(prepareByokTurn).not.toHaveBeenCalled()
+    expect(plannerSpy).not.toHaveBeenCalled()
+    expect(dispatchSpy).not.toHaveBeenCalled()
+  })
+
+  it('passes four distinct custom-role executors through planner and successful dispatch', async () => {
+    byokFlag.on = true
+    const roleExecutor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+      descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+      generate: vi.fn(), stream: vi.fn(),
+    })
+    const executors = { synthesizer: roleExecutor('synthesizer'), planner: roleExecutor('planner'),
+      deep_planner: roleExecutor('deep_planner'), worker: roleExecutor('worker') }
+    const releaseAdmission = vi.fn()
+    prepareByokTurn.mockResolvedValue({
+      kind: 'byok', selection: { kind: 'explicit', choice: { kind: 'custom_configuration',
+        configurationId: '30000000-0000-4000-8000-000000000003' } }, plan: {},
+      safeSnapshot: { roles: { synthesizer: { kind: 'provider_model', providerId: 'openai',
+        connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' } } },
+      snapshotId: '30000000-0000-4000-8000-000000000004', executors,
+      displayModelId: 'model-synthesizer', releaseAdmission,
+    })
+    const response = await POST(makePost(NATIVE, 'Question'))
+    expect(response.status).toBe(200)
+    expect(prepareByokTurn).toHaveBeenCalledOnce()
+    const byokPlanner = plannerSpy.mock.calls[0][10]
+    expect(byokPlanner).toMatchObject({ plannerExecutor: executors.planner,
+      deepPlannerExecutor: executors.deep_planner, workerExecutor: executors.worker,
+      maxOutputTokens: 16_384 })
+    expect(dispatchSpy).toHaveBeenCalledOnce()
+    expect(dispatchSpy.mock.calls[0][0]).toMatchObject({ byokRuntime: { executors } })
   })
 })
 

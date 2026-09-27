@@ -58,7 +58,8 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
     try {
       const result = await runner.runExecution(execution.cliUserId!, definition.id, {
         modelId: execution.target.kind === 'local_cli' ? execution.target.modelId : null,
-        stdin: prompt, responseSchema: request.responseSchema, signal: request.abortSignal,
+        stdin: prompt, responseSchema: request.responseSchema, maxOutputTokens: request.maxOutputTokens,
+        signal: request.abortSignal,
       })
       const parsed = validateMachineOutput(definition.execution!.outputFormat, result.stdout)
       let structured = parsed.structured
