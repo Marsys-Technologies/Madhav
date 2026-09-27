@@ -87,7 +87,8 @@ def _engine_dispositions() -> set[str]:
 
 
 def _grade(attempt, baseline=None):
-    return ac._grade_earn_cost(attempt=attempt, instrument_present=True, baseline=baseline)
+    return ac._grade_earn_cost(attempt=attempt, instrument_present=True, baseline=baseline,
+                               attempt_linkage_wired=True)   # R225: the default is now the safe False
 
 
 _BASELINE = dict(rate=120.0, attempt_id="run-prior", age_days=3)

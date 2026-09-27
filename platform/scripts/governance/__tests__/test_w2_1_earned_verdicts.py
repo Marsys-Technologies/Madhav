@@ -399,3 +399,26 @@ def test_r222_n5_identity_on_an_empty_table_probes_when_depth_errored(monkeypatc
     c = ac.measure("L0")
     assert _m(c, "bg_x", "Complete.depth")["v"] == ac.ERRORED
     assert _m(c, "bg_x", "Vocab.identity")["v"] == ac.NO_DET
+
+
+# ─────────────────────────── R225: the measure() call site, with the instrument present ───────────────────────────
+
+def test_r225_measure_with_the_instrument_present_reads_no_detector_and_closes_nothing(monkeypatch, tmp_path):
+    """The REAL measure() with `duration_instrument_present` forced True (migration 1094 applied):
+    both Earn.build_record and Cost.baseline must read `NO_DETECTOR — attempt linkage not wired`,
+    and an open Earn gap must not close. Fails if the call site passes `attempt_linkage_wired=True`
+    (or, before the safe default, merely omits it) — the G1 mutation F1b that no test caught."""
+    reg = {"bg_x": _reg_row("bg_x", None, has_writer=True, asset_kind="service")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "duration_instrument_present", lambda: True)
+    _open_gap(tmp_path, "bg_x", "Earn.build_record")
+    c = ac.measure("L0")
+    for crit in ("Earn.build_record", "Cost.baseline"):
+        res = _m(c, "bg_x", crit)
+        assert res == dict(v=ac.NO_DET, measured="NO_DETECTOR — attempt linkage not wired"), (crit, res)
+    assert _emit_closes(tmp_path, c) == 0
+
+
+def test_r225_the_default_is_the_safe_value():
+    earn, cost = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None)
+    assert earn["v"] == ac.NO_DET and cost["v"] == ac.NO_DET

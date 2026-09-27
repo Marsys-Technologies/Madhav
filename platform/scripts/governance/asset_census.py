@@ -616,7 +616,7 @@ def duration_instrument_present() -> bool | None:
 
 
 def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, baseline: dict | None,
-                      attempt_linkage_wired: bool = True) -> tuple[dict, dict]:
+                      attempt_linkage_wired: bool = False) -> tuple[dict, dict]:
     """D6 (DECISIONS_RECOMMENDATIONS_v2_0.md D6, R55 re-specified): grade `Earn.build_record` and
     `Cost.baseline` — two SEPARATE measurements, neither certifying the whole Earn gate, Cost not
     one of the nine gates at all (tier 4 §1's build-cost baseline only).
@@ -639,6 +639,11 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
     `NO_DETECTOR — attempt linkage not wired`, not the closable `N/A "never attempted"` a genuine
     no-attempt-row case would use — the latter would falsely CLOSE every `Earn.build_record` gap
     for every asset that was in fact built, the instant the column exists.
+
+    R225 (A_REVIEW2 G1): `attempt_linkage_wired` DEFAULTS TO False — the safe value. With the old
+    default (True) a call site that merely omitted the argument would read `attempt=None` as
+    "confirmed never attempted" and grade the closable N/A the moment migration 1094 lands. Only a
+    caller that has genuinely queried build_run_assets may pass True.
 
     `attempt` is the latest build_run_assets row for (asset, chart scope), or None if the asset
     has never been attempted (only a meaningful "None" when `attempt_linkage_wired` is True — see

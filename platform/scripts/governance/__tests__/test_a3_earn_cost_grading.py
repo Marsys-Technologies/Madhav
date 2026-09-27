@@ -134,7 +134,8 @@ def test_case_never_attempted_grades_na():
     """This is the LEGITIMATE case — attempt linkage genuinely wired (`attempt_linkage_wired`
     defaults True) and the query genuinely found no attempt row. Distinct from F1 below, where
     `attempt=None` means 'never queried', not 'confirmed absent'."""
-    earn, _ = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None)
+    earn, _ = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None,
+                                   attempt_linkage_wired=True)
     assert earn["v"] == ac.NA and "Build.exercised" in earn["measured"]
 
 
@@ -158,15 +159,14 @@ def test_case_instrument_present_attempt_linkage_unwired_grades_no_detector_not_
 
 
 def test_case_attempt_linkage_unwired_is_the_default_measure_call_shape(monkeypatch):
-    """Locks in the actual `measure()` call site shape so this test fails if the call site
-    regresses back to the pre-F1 form (attempt=None with no attempt_linkage_wired argument,
-    which would silently fall back to the default True and grade N/A again)."""
-    import inspect
-    src = inspect.getsource(ac.measure)
-    assert "attempt_linkage_wired=False" in src, (
-        "measure() must pass attempt_linkage_wired=False explicitly — attempt querying (R42-R56) "
-        "is not wired at this call site"
-    )
+    """R225 (A_REVIEW2 G1): this test used to grep `measure()`'s source for the string
+    `attempt_linkage_wired=False` — which a comment inside measure() also contains, so it could not
+    fail. It now asserts the BEHAVIOUR of the default: a call that omits the argument (the pre-F1
+    call-site shape) must grade NO_DETECTOR with the instrument present, never the closable N/A.
+    The call site itself is proven behaviourally in test_w2_1_earned_verdicts.py::test_r225_*."""
+    earn, cost = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None)
+    assert earn["v"] == ac.NO_DET and "attempt linkage not wired" in earn["measured"], earn
+    assert cost["v"] == ac.NO_DET, cost
 
 
 def test_emit_gaps_does_not_close_on_the_unwired_no_detector(tmp_path, monkeypatch):
