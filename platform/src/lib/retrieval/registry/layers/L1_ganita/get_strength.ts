@@ -83,9 +83,12 @@ export const getStrengthCapability: CapabilityDescriptor = {
     build_id: {
       type: 'string',
       description: 'RC-7: served-generation build fence (generation/served_generation.ts). ' +
-        'Composing callers (query_planet, graha_portrait) pass the chart\'s served build set ' +
-        'so every strength read resolves to one generation. Standalone calls omit it and read ' +
-        'the chart\'s current rows unfenced, as before.',
+        'Composing callers (query_planet, graha_portrait) best-effort resolve the chart\'s ' +
+        'served build set and pass it here so the strength read resolves to one generation ' +
+        '(each caller discloses whether resolution actually succeeded via its own ' +
+        '`generation_fence` response field — a resolution failure there falls back to this ' +
+        'same unfenced path, it is never a silent, unstated fence). Standalone calls omit it ' +
+        'and read the chart\'s current rows unfenced, as before.',
     },
     all: {
       type: 'boolean',

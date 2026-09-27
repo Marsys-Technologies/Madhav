@@ -52,6 +52,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
+import { resolveChartServedGeneration, servedGenerationIdentity } from '../../generation/served_generation'
 import { getPositionsCapability } from '../L1_ganita/get_positions'
 import { getDignityCapability } from '../L1_ganita/get_dignity'
 import { getStrengthCapability } from '../L1_ganita/get_strength'
@@ -191,6 +192,25 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     }
     const grahaName = GRAHA_CODE_TO_NAME[grahaCode] ?? grahaInput
 
+    // RC-7 follow-up: best-effort served-generation fence for the one leg that supports it
+    // (get_strength). A resolution failure does not fail the whole portrait — graha_portrait
+    // is a display-oriented synthesis, not an evidentiary verdict tool — it falls back to
+    // get_strength's own unfenced "current rows" read, and discloses which mode actually ran
+    // via `generation_fence` in the response (never silently claims fencing that didn't happen).
+    let buildIds: readonly string[] | null = null
+    let generationFenceNote = 'served-generation resolution not attempted'
+    try {
+      const generation = await resolveChartServedGeneration(chart_id, null)
+      if (servedGenerationIdentity(generation)) {
+        buildIds = generation.served_build_ids
+        generationFenceNote = 'strength (shadbala) reads fenced to the chart\'s served build set'
+      } else {
+        generationFenceNote = 'no served generation resolved for this chart — strength reads fell back to unfenced current rows'
+      }
+    } catch (error) {
+      generationFenceNote = `served-generation resolution failed (${String(error)}) — strength reads fell back to unfenced current rows`
+    }
+
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const operativeVargas = (args['operative_vargas'] as string[] | undefined) ?? [...OPERATIVE_VARGAS]
     const includeRaw = (args['include'] as string[] | undefined) ?? [
@@ -263,7 +283,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     if (want('strength')) {
       try {
         const { content } = unwrap(await getStrengthCapability.handler(
-          { chart_id, ayanamsha_id, graha_key: grahaCode }, ctx,
+          { chart_id, ayanamsha_id, graha_key: grahaCode, ...(buildIds ? { build_id: buildIds } : {}) }, ctx,
         ))
         const rows = (content['rows'] as FactRow[]) ?? []
         sections['strength'] = { rows, count: rows.length }
@@ -398,6 +418,12 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
         completeness,
         notes,
         errors: Object.keys(errors).length > 0 ? errors : undefined,
+        generation_fence: {
+          fenced: buildIds !== null,
+          build_ids: buildIds,
+          note: generationFenceNote,
+          unfenced_sections: ['position', 'dignity', 'functional_nature', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood'],
+        },
         provenance: {
           synthesis_of: [
             'marsys://tool/L1/get_positions', 'marsys://tool/L1/get_dignity',

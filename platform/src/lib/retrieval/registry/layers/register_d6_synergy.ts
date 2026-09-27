@@ -48,7 +48,11 @@ const synergyPipelineTool: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L0',
   name: 'synergy_pipeline',
-  scope: 'global',
+  // R3 boundary review follow-up: required_inputs names chart_id required (never defaulted,
+  // per the description below) and the pipeline's own router/grounding/graph chain operates
+  // per-chart — 'global' had the same defect independent review found and synergy_cross_layer
+  // already fixed in this same file; corrected here to match.
+  scope: 'per_chart',
 
   description: [
     'D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain',

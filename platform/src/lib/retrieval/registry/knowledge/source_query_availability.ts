@@ -4228,12 +4228,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
              WHERE chart_id = $1::uuid
                AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'
                AND build_id = ANY($2::uuid[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
              LIMIT 0
           ), bindu AS (
             SELECT fact_id, fact_subject, fact_value_num
               FROM chart_facts
              WHERE chart_id = $1::uuid AND fact_category = 'ashtakavarga_bindu_sign'
                AND build_id = ANY($2::uuid[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
              ORDER BY fact_subject
              LIMIT 0
           )
