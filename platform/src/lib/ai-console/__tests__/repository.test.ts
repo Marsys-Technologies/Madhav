@@ -355,6 +355,119 @@ describe('owned AI configuration repository', () => {
   })
 })
 
+describe('atomic routing resolution read', () => {
+  it('locks an active owner and resolves only the current exact default target', async () => {
+    respond((sql, params) => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', configuration_id: null, cli_id: null }]
+      if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES, available: true }]
+      expect(params).not.toContain('alternative-model')
+    })
+    const resolution = await repository.loadRoutingResolution('alice', { kind: 'default' })
+    expect(resolution.resolvedChoice).toEqual(choice)
+    expect(resolution.configurationVersion).toBeNull()
+    expect(resolution.roles.worker).toMatchObject({ ...choice, providerId: 'openai', credentialVersion: 1 })
+    expect(calls()[0].sql).toBe('BEGIN')
+    expect(calls().find(c => c.sql.includes('FROM profiles'))?.sql).toContain("status='active'")
+    expect(calls().find(c => c.sql.includes('FROM profiles'))?.sql).toContain('FOR SHARE')
+    expect(calls().filter(c => c.sql.includes('FROM ai_provider_connections'))).toHaveLength(1)
+    expect(calls().filter(c => c.sql.includes('FROM ai_connection_models'))).toHaveLength(1)
+    expect(calls().at(-1)?.sql).toBe('COMMIT')
+  })
+
+  it('fails disabled users before reading defaults or any target', async () => {
+    await expect(repository.loadRoutingResolution('disabled', { kind: 'default' })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    expect(calls().some(c => c.sql.includes('ai_user_defaults') || c.sql.includes('ai_provider_connections') || c.sql.includes('ai_cli_'))).toBe(false)
+    expect(calls().at(-1)?.sql).toBe('ROLLBACK')
+  })
+
+  it('does not auto-select when the active user has no default', async () => {
+    respond(sql => sql.includes('FROM profiles') ? [{ id: 'alice' }] : undefined)
+    await expect(repository.loadRoutingResolution('alice', { kind: 'default' })).rejects.toMatchObject({ code: 'AI_DEFAULT_REQUIRED' })
+    expect(calls().some(c => c.sql.includes('ai_provider_connections') || c.sql.includes('ai_cli_models'))).toBe(false)
+  })
+
+  it('returns one current configuration version with four independently validated assignments', async () => {
+    const cliTarget = { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: null }
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_custom_configurations')) return [{ id: configurationId, version: '8' }]
+      if (sql.includes('FROM ai_custom_configuration_roles')) return [
+        { role: 'synthesizer', kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', cli_id: null },
+        { role: 'planner', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'codex' },
+        { role: 'deep_planner', kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', cli_id: null },
+        { role: 'worker', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'codex' },
+      ]
+      if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES, available: true }]
+      if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'codex', revoked_at: null }]
+      if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'codex', validation_state: 'reachable' }]
+      if (sql.includes('FROM ai_cli_models')) return [{ model_id: 'builtin', display_name: 'Built in', compatible_roles: AI_ROLES, available: true, is_builtin_default: true }]
+    })
+    const selected = { kind: 'explicit' as const, choice: { kind: 'custom_configuration' as const, configurationId } }
+    const resolution = await repository.loadRoutingResolution('alice', selected)
+    expect(resolution.resolvedChoice).toEqual(selected.choice)
+    expect(resolution.configurationVersion).toBe(8)
+    expect(resolution.roles.planner).toMatchObject(cliTarget)
+    expect(calls().filter(c => c.sql.includes('FROM ai_provider_connections'))).toHaveLength(1)
+    expect(calls().filter(c => c.sql.includes('FROM ai_cli_grants'))).toHaveLength(1)
+  })
+
+  it('stops a revoked CLI exact choice before querying installation or model alternatives', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_cli_grants')) return []
+    })
+    const selected = { kind: 'explicit' as const, choice: { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: 'exact-model' } }
+    await expect(repository.loadRoutingResolution('alice', selected)).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+    expect(calls().some(c => c.sql.includes('FROM ai_cli_installations') || c.sql.includes('FROM ai_cli_models'))).toBe(false)
+  })
+
+  it.each([
+    ['invalid', 'invalid', 'AI_CONNECTION_INVALID'],
+    ['unreachable', 'valid', 'AI_PROVIDER_UNREACHABLE'],
+  ] as const)('maps provider state %s to stable %s-free failure %s', async (state, validity, code) => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: state, credential_validity: validity }]
+    })
+    const selected = { kind: 'explicit' as const, choice }
+    await expect(repository.loadRoutingResolution('alice', selected)).rejects.toMatchObject({ code })
+    expect(calls().some(c => c.sql.includes('FROM ai_connection_models'))).toBe(false)
+  })
+
+  it.each([
+    ['not_installed', 'AI_CLI_NOT_INSTALLED'],
+    ['auth_unavailable', 'AI_CLI_AUTH_UNAVAILABLE'],
+    ['unreachable', 'AI_CLI_UNREACHABLE'],
+  ] as const)('maps exact CLI state %s to stable %s without a model search', async (state, code) => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'codex', revoked_at: null }]
+      if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'codex', validation_state: state }]
+    })
+    const selected = { kind: 'explicit' as const, choice: { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: 'exact-model' } }
+    await expect(repository.loadRoutingResolution('alice', selected)).rejects.toMatchObject({ code })
+    expect(calls().some(c => c.sql.includes('FROM ai_cli_models'))).toBe(false)
+  })
+
+  it('uses stable errors for an unavailable exact model and a malformed saved default', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
+      if (sql.includes('FROM ai_connection_models')) return []
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice })).rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    execute.mockClear()
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model', connection_id: null, model_id: null }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'default' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+  })
+})
+
 describe('immutable history and safe audit', () => {
   const snapshot = { userId: 'alice', correlationId: 'turn', source: 'backend' as const, conversationId: null, selection: { kind: 'default' as const }, resolvedChoice: choice, configurationVersion: null, roles: Object.fromEntries(AI_ROLES.map(r => [r, { ...choice, providerId: 'openai' }])) }
   it('rejects secret-bearing snapshots before touching persistence', async () => {

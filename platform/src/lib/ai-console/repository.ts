@@ -127,6 +127,144 @@ export async function listAiConsoleState(userId: string) {
     clis: clis.rows, cliModels: cliModels.rows }
 }
 
+export interface RoutingProviderTarget {
+  kind: 'provider_model'
+  connectionId: string
+  providerId: z.infer<typeof ProviderIdSchema>
+  credentialVersion: number
+  modelId: string
+  displayName: string
+  compatibleRoles: AiRole[]
+}
+export interface RoutingCliTarget {
+  kind: 'local_cli'
+  cliId: z.infer<typeof CliIdSchema>
+  modelId: string | null
+  displayName: string
+  compatibleRoles: AiRole[]
+}
+export type RoutingTarget = RoutingProviderTarget | RoutingCliTarget
+export interface RoutingResolution {
+  resolvedChoice: AiChoiceRef
+  configurationVersion: number | null
+  roles: Record<AiRole, RoutingTarget>
+}
+
+function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readonly AiRole[]): AiRole | undefined {
+  return roles.find(role => !compatibleRoles.includes(role))
+}
+
+/** Exact target read for one resolution. It never decrypts, spawns, repairs, or searches alternatives. */
+async function loadRoutingTarget(client: Client, userId: string, target: RoleTarget, roles: readonly AiRole[]): Promise<RoutingTarget> {
+  if (target.kind === 'provider_model') {
+    const connection = (await client.query(`SELECT c.id,c.provider_id,c.credential_version,c.credential_validity,c.validation_state
+      FROM ai_provider_connections c WHERE c.user_id=$1 AND c.id=$2 AND c.deleted_at IS NULL FOR SHARE`,
+    [userId, target.connectionId])).rows[0]
+    if (!connection) throw new AiConsoleError('AI_CHOICE_BROKEN')
+    if (connection.validation_state === 'unreachable') throw new AiConsoleError('AI_PROVIDER_UNREACHABLE')
+    if (connection.validation_state !== 'validated' || connection.credential_validity !== 'valid') {
+      throw new AiConsoleError('AI_CONNECTION_INVALID')
+    }
+    const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.available
+      FROM ai_connection_models m WHERE m.connection_id=$1 AND m.model_id=$2 FOR SHARE`,
+    [target.connectionId, target.modelId])).rows[0]
+    if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    const compatibleRoles = z.array(AiRoleSchema).min(1).parse(model.compatible_roles)
+    const incompatible = firstIncompatibleRole(compatibleRoles, roles)
+    if (incompatible) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', incompatible)
+    return {
+      kind: 'provider_model', connectionId: target.connectionId,
+      providerId: ProviderIdSchema.parse(connection.provider_id),
+      credentialVersion: z.coerce.number().int().positive().parse(connection.credential_version),
+      modelId: target.modelId, displayName: z.string().min(1).parse(model.display_name), compatibleRoles,
+    }
+  }
+
+  const grant = (await client.query(`SELECT g.cli_id,g.revoked_at FROM ai_cli_grants g
+    WHERE g.user_id=$1 AND g.cli_id=$2 FOR SHARE`, [userId, target.cliId])).rows[0]
+  if (!grant || grant.revoked_at !== null) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+  const installation = (await client.query(`SELECT i.cli_id,i.validation_state FROM ai_cli_installations i
+    WHERE i.cli_id=$1 FOR SHARE`, [target.cliId])).rows[0]
+  if (!installation || installation.validation_state === 'not_installed') throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
+  if (installation.validation_state === 'auth_unavailable') throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
+  if (installation.validation_state !== 'reachable') throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.available,m.is_builtin_default
+    FROM ai_cli_models m WHERE m.cli_id=$1
+      AND (($2::text IS NULL AND m.is_builtin_default=true) OR m.model_id=$2) FOR SHARE`,
+  [target.cliId, target.modelId])).rows[0]
+  if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+  const compatibleRoles = z.array(AiRoleSchema).min(1).parse(model.compatible_roles)
+  const incompatible = firstIncompatibleRole(compatibleRoles, roles)
+  if (incompatible) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', incompatible)
+  return { kind: 'local_cli', cliId: target.cliId, modelId: target.modelId,
+    displayName: z.string().min(1).parse(model.display_name), compatibleRoles }
+}
+
+/**
+ * Resolve one live default/explicit choice under the same user lock used by all
+ * AI Console mutations. The returned graph contains only safe identity and
+ * capability metadata; executable bindings are constructed outside the DB transaction.
+ */
+export async function loadRoutingResolution(userId: string, input: unknown): Promise<RoutingResolution> {
+  if (typeof userId !== 'string' || userId.trim().length === 0) throw new AiConsoleError('AI_PERMISSION_DENIED')
+  const selection = ConversationAiSelectionSchema.parse(input)
+  return withUserTransaction(userId, async client => {
+    const owner = (await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [userId])).rows
+    if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
+
+    let resolvedChoice: AiChoiceRef
+    if (selection.kind === 'default') {
+      const row = (await client.query(`SELECT kind,connection_id,model_id,configuration_id,cli_id
+        FROM ai_user_defaults WHERE user_id=$1 FOR SHARE`, [userId])).rows[0]
+      if (!row) throw new AiConsoleError('AI_DEFAULT_REQUIRED')
+      try { resolvedChoice = rowChoice(row) }
+      catch { throw new AiConsoleError('AI_CHOICE_BROKEN') }
+    } else {
+      resolvedChoice = selection.choice
+    }
+
+    let assignments: RoleAssignments
+    let configurationVersion: number | null = null
+    if (resolvedChoice.kind === 'custom_configuration') {
+      const configuration = (await client.query(`SELECT id,version FROM ai_custom_configurations
+        WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR SHARE`,
+      [userId, resolvedChoice.configurationId])).rows[0]
+      if (!configuration) throw new AiConsoleError('AI_CHOICE_BROKEN')
+      const rows = (await client.query(`SELECT role,kind,connection_id,model_id,cli_id
+        FROM ai_custom_configuration_roles WHERE user_id=$1 AND configuration_id=$2 ORDER BY role FOR SHARE`,
+      [userId, resolvedChoice.configurationId])).rows
+      let rawAssignments: Record<string, AiChoiceRef>
+      try { rawAssignments = Object.fromEntries(rows.map(row => [String(row.role), rowChoice(row)])) }
+      catch { throw new AiConsoleError('AI_CHOICE_BROKEN') }
+      const parsed = RoleAssignmentsSchema.safeParse(rawAssignments)
+      if (!parsed.success) throw new AiConsoleError('AI_CHOICE_BROKEN')
+      assignments = parsed.data
+      configurationVersion = z.coerce.number().int().positive().parse(configuration.version)
+    } else {
+      assignments = Object.fromEntries(AI_ROLES.map(role => [role, resolvedChoice])) as RoleAssignments
+    }
+
+    const grouped = new Map<string, { target: RoleTarget; roles: AiRole[] }>()
+    for (const role of AI_ROLES) {
+      const target = assignments[role]
+      const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId, target.modelId])
+      const current = grouped.get(key) ?? { target, roles: [] }
+      current.roles.push(role)
+      grouped.set(key, current)
+    }
+    const resolvedByKey = new Map<string, RoutingTarget>()
+    for (const [key, group] of grouped) {
+      resolvedByKey.set(key, await loadRoutingTarget(client, userId, group.target, group.roles))
+    }
+    const roles = Object.fromEntries(AI_ROLES.map(role => {
+      const target = assignments[role]
+      const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId, target.modelId])
+      return [role, resolvedByKey.get(key)!]
+    })) as Record<AiRole, RoutingTarget>
+    return { resolvedChoice, configurationVersion, roles }
+  })
+}
+
 export async function createConnection(userId: string, input: unknown, encrypted: EncryptedCredential) {
   const data = z.object({ providerId: ProviderIdSchema, name: nameSchema }).strict().parse(input)
   return withUserTransaction(userId, async client => {
