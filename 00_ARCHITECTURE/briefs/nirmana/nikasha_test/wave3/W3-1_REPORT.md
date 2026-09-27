@@ -355,9 +355,30 @@ stubs".
 
 - R218's PASS criterion (top-ranked resolution must carry a producer) is this harness's own
   explicit interpretation of R218's prose, not a native ruling — reported alongside the full
-  producer-coverage aggregate specifically so a reviewer can judge or overrule it.
-- R81's migration covers exactly the 11 pairs the wave prompt's own condensed pointer names
-  (T5_LEDGER_DRIFT.md §A), not the register's fuller "30 hand rows across five pilots" language —
-  the wave prompt's §3 bullet for R81 explicitly scopes to the 11 measured pairs, and that
-  narrower scope is what was executed.
+  producer-coverage aggregate specifically so a reviewer can judge or overrule it. F8 (gate
+  review): the criterion is semantically weak in places (several PASSes resolve through a few
+  catch-all SCUs — `finance.prosperity_assessment` alone accounts for P09/P10/P15/P22/P24's
+  PASS), and the live test's `summary.failed > 0` assertion is an anti-invariant: it will turn red
+  the day the 5 provenance gaps this wave found are fixed and all 24 pass, encoding today's known
+  defect as if it were a permanent property. Neither blocks this packet; both are recorded here so
+  17/24 is read as a snapshot of today's producer-provenance coverage, not as a stable ceiling, and
+  so a future session updates the test's assertion deliberately rather than being surprised by it.
+  F9 (cosmetic): P16's transcribed question text is a faithful paraphrase merging two of T1's
+  quoted phrasings, not a verbatim single quote.
+- **R81's register status is PARTIAL, not CLOSED, against D4's full re-scope — and that is by this
+  wave's own explicit, committed design, not a shortfall.** T5_LEDGER_DRIFT.md §A measured exactly
+  11 hand↔census overlap pairs; that is the entire overlap set T5 ever found or claimed. The
+  register's D4 re-scope (register v2.6, R81's status column) separately describes a broader
+  ambition — "a reviewed migration table over all 30 hand gap rows across the five pilots" (10
+  ontology + 8 rules + 6 ephemeris + 4 panchanga + 2 sarvatobhadra) — because D4's identity rule
+  ("hand-written gap rows use a registered criterion") implies every hand row, not only the 11
+  that happen to overlap a census row, should eventually resolve through a registered criterion.
+  **This wave's own execution prompt (§3, the R81 bullet) explicitly narrows the wave's committed
+  scope to the 11 T5-measured pairs, not the register's fuller 30-row ambition** — so R81 is
+  **COMPLETE against what this wave committed to**, and **PARTIAL (11 of 30) against the
+  register's full D4 re-scope**, both true at once. The independent reviewer's own §5 measurement
+  confirms the gap concretely: 42 criterion strings still in live use by hand rows are
+  unregistered (e.g. `Earn.count_sql_scope`, `Completeness.universe_blocked`, `Vocab.future_gate`,
+  `Synergy.*`, `Architecture.*`) — the remaining ~19 hand rows (30 minus the 11 folded) and this
+  42-string tail are named here as a future row's worklist, not silently treated as done.
 - Four out-of-scope findings named in §3 are real and worth a future row, not silently fixed.
