@@ -139,6 +139,13 @@ interface WriteThroughEvent {
   data?: unknown
 }
 
+/**
+ * The turn's terminal status as persistence determined it: 'error' when the
+ * final recheck refused the write or the write did not verify, so the shell
+ * never closes a refused or failed turn with 'ok'.
+ */
+export type PersistenceOutcome = { status: 'ok' | 'error' }
+
 export async function runPersistenceStage(args: {
   em: PariprashnaEmitter
   identity: TurnIdentity
@@ -192,7 +199,7 @@ export async function runPersistenceStage(args: {
   citationHallucinationCount?: number
   /** Wave 4: deterministic fact/delivery denominator persisted for export parity. */
   responseAccountability?: InquiryResponseAccountability | null
-}): Promise<void> {
+}): Promise<PersistenceOutcome> {
   const {
     em,
     identity,
@@ -225,7 +232,7 @@ export async function runPersistenceStage(args: {
     // No prose produced — persistence is skipped by the shared helper, so
     // report the honest gap rather than silently omitting turn.commit.
     em.flag({ code: 'empty_synthesis', level: 'warn', detail: 'No assistant text produced.' })
-    return
+    return { status: 'ok' }
   }
 
   const historyMsgs: UIMessage[] = (messages as UIMessage[]).map(
@@ -253,6 +260,7 @@ export async function runPersistenceStage(args: {
   // Paripraśna vocabulary. Typed with a narrow event interface (NOT `any`) —
   // assignable to WriteThroughWriter because its `write` param is `any`, so no
   // cast is needed at the boundary.
+  let commitFailed = false
   const bridgeWriter: WriteThroughWriter = {
     write: (evt: WriteThroughEvent): void => {
       switch (evt.type) {
@@ -263,6 +271,7 @@ export async function runPersistenceStage(args: {
         }
         case 'data-persistence': {
           const d = evt.data as PersistenceDataPart
+          if (d.status === 'error') commitFailed = true
           em.turnCommit({
             turn_id: turnId,
             conversation_id: d.conversation_id,
@@ -838,5 +847,8 @@ export async function runPersistenceStage(args: {
   // reader believe this turn was saved.
   if (!writeThrough.persisted) {
     em.error({ code: writeThrough.refusal.code, message: writeThrough.refusal.message, retryable: false, phase: 'finalize' })
+    return { status: 'error' }
   }
+  // A turn whose write did not verify is a failed turn: it must not close 'ok'.
+  return { status: commitFailed ? 'error' : 'ok' }
 }

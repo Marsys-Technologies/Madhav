@@ -535,6 +535,18 @@ describe('Jātaka chart workspace — Paripraśna write gates', () => {
 })
 
 describe('Jātaka chart workspace — persistence-boundary race (deterministic)', () => {
+  // The refused turn's terminal sequence: the refusal error, then exactly one
+  // turn.close with status 'error' as the last event — never a successful finish.
+  function expectRefusedTerminal(events: Array<Record<string, any>>) {
+    const errorIdx = events.findIndex((e) => e.type === 'error' && e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')
+    const closes = events.filter((e) => e.type === 'turn.close')
+    expect(closes).toHaveLength(1)
+    expect(closes[0].status).toBe('error')
+    expect(events.at(-1)?.type).toBe('turn.close')
+    expect(errorIdx).toBeGreaterThanOrEqual(0)
+    expect(errorIdx).toBeLessThan(events.length - 1)
+  }
+
   // These turns must reach persistence, so synthesis produces real text.
   async function useTextSynthesis(text = 'Your tenth house is strongly placed this year.') {
     const { runAgenticLoop } = await import('@/lib/synthesis/agentic_loop')
@@ -571,17 +583,22 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
       return planOutcome(['chart_facts_query'])
     })
 
-    const { events } = await runRoute('What does my chart say about work?')
+    try {
+      const { events } = await runRoute('What does my chart say about work?')
 
-    expect(mockInsertConversationWithId).toHaveBeenCalled() // admitted before the correction
-    expect(mockCallPipelinePlanner).toHaveBeenCalled()
-    // 3. The final write is refused at the persistence boundary.
-    expect(vi.mocked(writeConversationMessages)).not.toHaveBeenCalled()
-    expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
-    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
-
-    dbQuery.mockImplementation(original)
-    restoreSynthesis()
+      expect(mockInsertConversationWithId).toHaveBeenCalled() // admitted before the correction
+      expect(mockCallPipelinePlanner).toHaveBeenCalled()
+      // 3. The final write is refused at the persistence boundary.
+      expect(vi.mocked(writeConversationMessages)).not.toHaveBeenCalled()
+      expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+      expectRefusedTerminal(events)
+    } finally {
+      dbQuery.mockImplementation(original)
+      mockCallPipelinePlanner.mockReset()
+      mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
   })
 
   it('a correction that commits after the first guard (during the history write) still stops the canonical write', async () => {
@@ -615,6 +632,7 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
       expect(vi.mocked(writeConversationMessages)).toHaveBeenCalled()
       expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
       expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+      expectRefusedTerminal(events)
     } finally {
       dbQuery.mockImplementation(original)
       mockReadinessState.value = 'ready'
@@ -670,10 +688,30 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
       expect(corrected).toBe(true)
       expect(vi.mocked(captureDetectedCandidates)).not.toHaveBeenCalled()
       expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+      expectRefusedTerminal(events)
     } finally {
       dbQuery.mockImplementation(original)
       if (originalWriteTurn) vi.mocked(writeTurn).mockImplementation(originalWriteTurn)
       mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
+  })
+
+  it('a turn whose history write fails ends with an error terminal, never ok', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    vi.mocked(writeConversationMessages).mockResolvedValueOnce({ verified: false, messageIds: [], missingMessageIds: ['m'] })
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    try {
+      const { events } = await runRoute('What does my chart say about work?')
+      const commit = events.find((e) => e.type === 'turn.commit')
+      expect(commit?.status).toBe('error')
+      const closes = events.filter((e) => e.type === 'turn.close')
+      expect(closes).toHaveLength(1)
+      expect(closes[0].status).toBe('error')
+      expect(events.at(-1)?.type).toBe('turn.close')
+    } finally {
       restoreSynthesis()
     }
   })
@@ -687,6 +725,7 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
     const { events } = await runRoute('What does my chart say about work?')
     expect(vi.mocked(writeConversationMessages)).toHaveBeenCalled()
     expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(false)
+    expect(events.filter((e) => e.type === 'turn.close').map((e) => e.status)).toEqual(['ok'])
     restoreSynthesis()
   })
 })
