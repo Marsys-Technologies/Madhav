@@ -2717,6 +2717,10 @@ def measure(layer_key: str) -> dict:
 
     extra = sorted(set(regd) - known)
     never = [a["asset_id"] for a in assets if a["measurements"]["Build.exercised"]["v"] == FAIL]
+    # R15/R29 (hand_row_provenance.py): `generated` below IS the census_run_id a hand-written gap/
+    # opportunity/disposition row is required to carry — no second identifier is invented. Everything
+    # MEASURABLE belongs to this function; a hand row records only its judgement plus which run of
+    # THIS output it was judged against.
     return dict(generated=dt.datetime.now().astimezone().isoformat(timespec="seconds"), layer=layer_key,
                 layer_name=cfg["name"], scoring=cfg["scoring"], n_assets=len(assets),
                 # R220: the population this census measured, stated explicitly — `n_assets` above IS
