@@ -142,11 +142,17 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
     // silently drop any calibration row whose prediction row is missing — a data-integrity
     // condition the caller should see as a row, not lose to a join (§N.8: never let a
     // convenience path quietly change what "all rows" means).
+    // Jātaka Phase-A2 (migration 1122): exclude a prediction a correction has
+    // marked chart_context_stale_at — defense-in-depth, since mi_pramana only
+    // ever rebuilds mimamsa_calibration from current predictions (its own read
+    // already excludes stale rows), so this join should never actually match
+    // one in practice. Never a lifecycle_status/outcome rewrite.
     const domainJoin = domain
       ? `JOIN mimamsa_predictions p
            ON  p.chart_id      = c.chart_id
            AND p.prediction_id = c.prediction_id
-          AND p.domain         = $2`
+          AND p.domain         = $2
+          AND p.chart_context_stale_at IS NULL`
       : ''
 
     const verdictSql = `

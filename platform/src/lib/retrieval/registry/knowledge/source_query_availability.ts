@@ -3489,6 +3489,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM mimamsa_calibration c
               LEFT JOIN mimamsa_predictions p
                 ON p.chart_id = c.chart_id AND p.prediction_id = c.prediction_id
+               AND p.chart_context_stale_at IS NULL
              WHERE c.chart_id = $1::uuid
                AND c.leakage_status != 'held_out'
                AND (NULL::text IS NULL OR p.domain = NULL::text)
