@@ -1,114 +1,76 @@
 ---
-artifact: CLAUDECODE_BRIEF_L3_KALA
-type: CLAUDECODE_BRIEF (governing scope for execution sessions)
+artifact: CLAUDECODE_BRIEF_PURNA_ANVESANA_RESUMPTION
 version: 1.0
-status: ACTIVE
-authored_by: L3 Kāla autonomous conductor session (Claude Code, Sonnet 5, run 2), 2026-09-20
-supersedes: >
-  CLAUDECODE_BRIEF_PURNATA (this file's prior content, status COMPLETE, 2026-08-01). That arc is
-  closed and its record remains at 00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md —
-  nothing there is retracted. This file now governs the currently-active L3 campaign per
-  CLAUDE.md §C item 0; it is not a "shortcut" edit — it is the exact governance-refresh packet
-  (B3 / P0-4) the campaign's own governing plan authorizes.
-authority: >
-  DP-SD-017/018/019/020/021 (00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md
-  §9-§13) and MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md. Native authorization for autonomous
-  overnight execution recorded in MADHAV_L3_AUTONOMOUS_EXECUTION_PACKAGE_v1_0.md frontmatter,
-  2026-09-20.
+status: PREPARATION_COMPLETE_AWAITING_NATIVE_SOURCE_EXECUTION_AUTHORIZATION
+date: 2026-09-27
+native_authority: preparation only
+source_execution_authorized: false
+merge_authorized: false
+production_authorized: false
+worktree: /Users/Dev/.codex/worktrees/purna-anvesana-resumption-v2/Madhav
+branch: codex/purna-anvesana-resumption-v2
+frozen_base: 6b26f3ff05ee0aba3cdd964bce62292496ae6b62
 ---
 
-# L3 Kāla data-plane elevation — ACTIVE
+# ACTIVE CHECKOUT BRIEF — Pūrṇa Anveṣaṇa preparation lock
 
-**Scope:** elevate the 22 active `ka_*` identities to terminal acceptance
-(`LAYER_DATA_ACCEPTED + scoped CONSUMER_INTEGRATED + DEPLOYED_ACCEPTED + VALUE_EVALUATED`) for the
-canonical chart `482012f1-710e-4a25-994a-93821f5871aa` against campaign definition
-`t3-2026-09-11-8b884eac`. Headline metric: **`Accepted N/22`**. Live state:
-`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/STATE.md` (authoritative, updated every packet
-close) — this brief is a scope pointer, not a progress tracker.
+This file governs Claude Code whenever it opens this branch. It intentionally replaces the L3 root
+brief **only on the isolated Pūrṇa branch**. L3 and all other campaigns remain outside this
+worktree and outside this authority.
 
-Governing documents, read in order: `MADHAV_L3_AUTONOMOUS_EXECUTION_PACKAGE_v1_0.md` §B (the
-conductor's operating instructions), `MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (the two-
-campaign platform split), `MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` +
-`..._EXECUTION_BRIEF_v1_0.md` (the frozen L3 strategy/brief content, DP-SD-017), `..._ASTRA_REVIEW_RECORD_v1_0.md`,
-`..._UNBLOCK_AND_RESUME_AMENDMENT_v1_0.md` (DP-SD-018).
+## Current authority
 
-## may_touch
+The Native authorized preparation only. Preservation, read-only reconciliation, the isolated
+worktree, and the resumption briefs may be inspected and verified. Source implementation has not
+been authorized.
 
-Lifted from `MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md` (DP-SD-017), unchanged:
+Until this file is explicitly revised after a separate Native authorization, Claude Code must:
 
-- `platform/python-sidecar/pipeline/orchestrator/writers/ka_*.py` except protected retired sweep
-- `platform/python-sidecar/services/ka_*/**`, `services/gochara_v3/**`, `services/w2g/**`
-- `platform/python-sidecar/services/gochara_intensity/**`, `services/gochara_grammar/**`,
-  `services/kala_trigger/**` (L3 contribution only, no method/source ratification)
-- `platform/python-sidecar/pipeline/transit_search.py`
-- `platform/python-sidecar/pipeline/orchestrator/service_probes.py` (L3 clauses only)
-- `platform/python-sidecar/tests/l3/**` and exact changed-surface test files
-- `platform/python-sidecar/scripts/validate_data_plane_l3_*.py`
-- `platform/migrations/<reserved>_data_plane_l3_*.sql` in range **1070–1119** (see partition rule
-  below) and explicitly reviewed upstream integration migrations
-- `platform/src/lib/retrieval/registry/layers/L3_kala/**`
-- `platform/src/lib/retrieval/registry/layers/register_d10_pact.ts` and L3 timing delegation in
-  `register_d9_judgment.ts`
-- `platform-mcp/src/tools/kala_views/**` and `platform-mcp/src/lib/promise_spine.ts`
-- Generated writer/layer pins through their real generators after the appropriate gate
-- `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_*` execution evidence, excluding pinned
-  strategy/brief/review authority content
-- `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md`
-- `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/**` (this campaign's own durable state)
-- Own campaign-coordination rows on `origin/campaign-coordination` (L3 party only)
-- **Added by DP-SD-021 / Packet B3 (this brief's own authorized exception to "must_not_touch
-  CLAUDE.md/CLAUDECODE_BRIEF.md as a shortcut" below):** this file; `CLAUDE.md` §C item 5 and §E's
-  L3 row only; `CURRENT_STATE_v1_0.md` §2 top banner only — one governance-refresh act, not a
-  standing license to edit these files routinely
+1. verify the exact cwd, branch, base, and clean preparation state;
+2. read the preparation corpus;
+3. perform read-only inspection if asked;
+4. report the preparation state;
+5. make no additional repository change.
 
-## must_not_touch
+## Required reading
 
-- Pinned strategy, execution brief, prior acceptances and historical review/receipt content
-- Frozen `WriterBase`, `runner`/`asset_runner` transaction and build-state contracts
-- Shared Swiss-state serialization span and method/source/admission authority
-- `ka_gochara_sweep` implementation, retained corpus/snapshot or its non-rebuild protection
-- Foreign worktrees/campaign definitions, events, queues, goals, automations or branches —
-  **including all Pūrṇa Anveṣaṇa territory**: `retrieval/registry/knowledge/**`,
-  `register_prashna_*`, `purna/**`, `managed_prashna_jobs.ts`, `prashna_ask_bridge.ts`,
-  planner/inquiry lifecycle, `capability_*` generators (regenerate via the shared generator only)
-- Applied migrations **1033–1041**; anything in **1042–1069** (Pūrṇa's range)
-- `.github/workflows/deploy.yml`, the data-plane/Pūrṇa ownership scripts
-  (`data-plane-ownership-*.ts`, `purna-inquiry-ownership-*.ts`, `data-plane-protected-cutover.ts`,
-  `data-plane-secret-isolation-preflight.ts`, `data-plane-admin-credential-diagnostic.ts`)
-- Credentials/secrets/IAM/infra; branch protection; security/safety/CI gates
-- `WATCHDOG_SECRET` (GCP secret) and revision `amjis-web-02826-huf` — human-owned incident
-- L4/L5 writer/evaluation/issuance/model implementation outside separately approved later-layer work
-- CLAUDE.md / CURRENT_STATE / SESSION_LOG / CAPABILITY_MANIFEST **beyond the one-time exception
-  named above** — no routine edits as a shortcut to avoid real asset work
+1. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PREPARATION_MANIFEST_2026-09-27_v1_0.md`
+2. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RESUMPTION_SALVAGE_MATRIX_v1_0.md`
+3. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RESUMPTION_ARCHITECTURE_ADDENDUM_v1_0.md`
+4. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PURNA_ANVESANA_INDEPENDENT_REVIEW_v1_0.md`
+5. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PURNA_ANVESANA_INDEPENDENT_REVIEW_HANDOFF_v1_0.md`
+6. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PURNA_ANVESANA_CLAUDE_CODE_RESUMPTION_STRATEGY_v1_0.md`
+7. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CLAUDE_CODE_RESUMPTION_KICKOFF_v1_0.md`
+8. `00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md`
 
-## activation_prohibitions
+## Preparation-only writable surface
 
-- No production mutation before exact environment, authority, protected source, canary,
-  backup/restore, ownership and upstream-data gates pass
-- No automatic lifting of century, source/method, protected-history, NIRMANA_HOLD or other named
-  holds — the `ka_gochara_v3_century_materialize` hold is decided by the native, not this session
-- No private event/outcome corpus or derived selector in prospective input; no claim/observation
-  rewrites or unauthorized disclosure
-- No grandfathered freeze, manual green status, fabricated generation/convergence pin or skipped
-  required proof — an asset is `Accepted` only via an authenticated terminal/freeze event
-- No blanket L0–L2 semantic redesign, new doctrine, planner-campaign takeover, or L4/L5 campaign
-  start
-- No production mutation while Codex holds a conflicting, unexpired lease on
-  `origin/campaign-coordination` — check before every merge and before Wave E
+No further files are writable under the present authority. The preparation artifacts are expected
+to be committed locally and the worktree left clean.
 
-## Migration numbering (DP-SD-021 / dual-campaign plan §3.3 rule 2)
+## Forbidden under current authority
 
-Pūrṇa **1042–1069**; **L3 1070–1119**; anything cross-cutting **1120+** by a logged coordination
-request. Never edit an applied migration (1033–1041 belong to the delivery gate now closed by
-Codex; leave them alone).
+- application, test, generated, workflow, migration, campaign-state, or acceptance-corpus edits;
+- cherry-pick, rebase, merge, push, PR creation/modification, or branch retargeting;
+- database queries requiring secrets, database writes, rebuilds, live collection, deployment, or
+  production/configuration changes;
+- modifying, cleaning, switching, archiving, or deleting any other worktree;
+- reading or committing the raw private live-evidence payload;
+- resuming the old Codex task as an executor;
+- representing source, candidate, live, or product completion.
 
-## Delivery target
+## Activation rule
 
-`LAYER_DATA_ACCEPTED + scoped CONSUMER_INTEGRATED + DEPLOYED_ACCEPTED + VALUE_EVALUATED`; empirical
-outcome evaluation excluded. `L4` and `L5` remain `WAITING_FOR_STRATEGIC_BRIEF`.
+Source execution begins only after all of the following:
 
-## Close condition
+1. the Native explicitly authorizes source execution in the product-strategy conversation;
+2. that authority and its exact boundary are recorded here;
+3. status changes to `ACTIVE_SOURCE_EXECUTION`;
+4. current `origin/main`, open PRs, migration allocations, and cross-campaign ownership are refreshed;
+5. the kickoff prompt is issued to Claude Code in this exact worktree.
 
-Per CLAUDE.md §C item 0: this brief flips to `status: COMPLETE` when the L3 data-plane elevation
-campaign closes (22/22 accepted, or an honestly-scoped native-ruled partial close per the
-governing plan's Phase 3 exit). Until then it stays `ACTIVE` and every session reads it first.
+Merge, database mutation/rebuild, deployment, live collection, and product acceptance remain separate
+authority gates even after source execution is activated.
+
+If this brief and another branch's brief conflict, this file governs only this isolated worktree.
+Stop rather than editing another campaign's surface.
