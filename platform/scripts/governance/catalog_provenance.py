@@ -1216,18 +1216,22 @@ def write_closure_report_md(closure: dict, out_path: Path = CLOSURE_REPORT_PATH)
         "Population: `SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag IS NOT TRUE` "
         f"= **{closure['population_active_count']}** (R220). NOTE: `dead_flag` is NULL on every "
         "production row today, so a literal `is_active AND NOT dead_flag` reads 0 rows "
-        "(three-valued-logic trap) — `dead_flag IS NOT TRUE` is the correct predicate and reproduces "
-        "the documented population of 127."
+        "(three-valued-logic trap) — `dead_flag IS NOT TRUE` is the correct predicate, read from "
+        f"`closure['population_active_count']` (**{closure['population_active_count']}**), never "
+        "hardcoded (N2)."
     )
     lines.append("")
     lines.append("## How this closure is computed (R6)")
     lines.append("")
     lines.append(
         "**Seed sets** — `reviewed_seed` is every `asset_id` carried by a `disposition: "
-        "reviewed_output` producer across all 182 SCUs (the \"before\" seed, 14 assets); "
+        "reviewed_output` producer across all SCUs "
+        f"(the \"before\" seed, **{closure['before']['named_producers']}** assets); "
         "`all_seed` is every `asset_id` carried by ANY producer of any disposition "
         "(`reviewed_output` ∪ `derived_from_source_query` ∪ `derived_from_service_probe` ∪ "
-        "`route_evidence_only`) across all 182 SCUs (the \"after\" seed, 94 assets)."
+        f"`route_evidence_only`) across all SCUs (the \"after\" seed, "
+        f"**{closure['after']['named_producers']}** assets — read from `closure['before'/'after']"
+        "['named_producers']`, never hardcoded, so this stays true if the catalog changes; N2)."
     )
     lines.append("")
     lines.append(
@@ -1358,8 +1362,43 @@ NO_DETECTOR_REASON_CLASSES: Set[str] = {
 # Each of these already carries its own evidence citation (a migration line, a
 # service asset_id, or a hand-authored gap_reason) by construction, not by a regex
 # parse of application SQL, so a range-shaped source_ref / non-null table is not
-# expected of them.
+# expected of them. R7 (B_REVIEW3): a non-empty source_ref alone is NOT enough for
+# these — see `validate_derived_artifact`'s snapshot-backing check.
 _DECLARED_EXEMPTION_DISPOSITIONS = {"reviewed_output", "derived_from_service_probe", "route_evidence_only"}
+
+
+def snapshot_producer_output_claim_keys(snapshot: dict) -> Dict[str, Set[Tuple[str, str]]]:
+    """R7 (B_REVIEW3 finding): scu_id -> the set of `(asset_id, disposition)` pairs
+    the CATALOG itself declares via `producer_output_claims`, for every
+    disposition (`reviewed_output` AND `route_evidence_only` alike). This is the
+    ground truth `validate_derived_artifact` checks a `reviewed_output` or
+    `route_evidence_only` producer against — an artifact claiming either
+    disposition for a pair the catalog never declared is fabricated, no matter
+    how plausible its `source_ref` string reads. Never trusts the artifact's own
+    say-so; always re-reads the snapshot."""
+    out: Dict[str, Set[Tuple[str, str]]] = {}
+    for scu in snapshot.get("scus", []):
+        keys = {
+            (c["asset_id"], c["disposition"])
+            for c in (scu.get("producer_output_claims") or [])
+            if c.get("asset_id") and c.get("disposition")
+        }
+        if keys:
+            out[scu["scu_id"]] = keys
+    return out
+
+
+def snapshot_service_probe_asset_ids(snapshot: dict) -> Dict[str, Set[str]]:
+    """R7 (B_REVIEW3 finding): scu_id -> the set of asset_ids named by a
+    `kind: service_probe` requirement ON THAT SCU, per the catalog. This is the
+    ground truth `validate_derived_artifact` checks a `derived_from_service_probe`
+    producer's `asset_id` against — a service-probe producer for an asset this
+    SCU's own contract never names as a probed service is fabricated."""
+    out: Dict[str, Set[str]] = {}
+    for scu_id, req in iter_scu_requirements(snapshot):
+        if req.get("kind") == "service_probe" and req.get("asset_id"):
+            out.setdefault(scu_id, set()).add(req["asset_id"])
+    return out
 
 
 def classify_no_detector_reason(reason: Optional[str]) -> str:
@@ -1432,39 +1471,66 @@ def validate_scu_coverage(payload: dict, snapshot: dict) -> List[str]:
     return failures
 
 
-def validate_derived_artifact(payload: dict) -> List[str]:
-    """Part of the B-4 gate (C-1), covering ENTRY validity only. Validates every
-    entry actually PRESENT in the committed `producer_provenance.derived.json`
-    payload — never re-derives — against the invariant: every SCU has (a) >=1
-    producer that is either a declared-exemption disposition
-    (`_DECLARED_EXEMPTION_DISPOSITIONS`) carrying a non-empty source_ref, or a
-    `derived_from_source_query` producer with a non-null `table` AND a range-shaped
-    `source_ref` (validated via `parse_source_ref_segments`, never trusted as a
-    bare string) — or (b) a `no_detector` reason whose class is a member of the
-    CLOSED `NO_DETECTOR_REASON_CLASSES` set. An SCU with neither, or whose
-    no_detector reason classifies as "unclassified", is a failure.
+def validate_derived_artifact(payload: dict, snapshot: dict) -> List[str]:
+    """Part of the B-4 gate (C-1 + R7), covering ENTRY validity only. Validates
+    every entry actually PRESENT in the committed `producer_provenance.derived
+    .json` payload against the invariant: every SCU has (a) >=1 producer that is
+    valid for its disposition, or (b) a `no_detector` reason whose class is a
+    member of the CLOSED `NO_DETECTOR_REASON_CLASSES` set. An SCU with neither,
+    or whose no_detector reason classifies as "unclassified", is a failure.
+
+    Per-disposition validity (R7, B_REVIEW3: a non-empty `source_ref` string
+    alone used to be accepted for every exemption disposition — a fabricated
+    `{"asset_id": "zz_fake", "disposition": "route_evidence_only",
+    "source_ref": "x"}` on all 75 NO_DETECTOR SCUs made the artifact read
+    182/182 and PASS. Never again: every exemption producer must be backed by
+    something the CATALOG itself declares, read from `snapshot`, not from the
+    artifact's own claim):
+    - `derived_from_source_query`: non-null `table` AND a range-shaped
+      `source_ref` (via `parse_source_ref_segments`, never trusted as a bare
+      string).
+    - `reviewed_output` / `route_evidence_only`: `source_ref` non-empty AND
+      `(asset_id, disposition)` is a member of the snapshot's own
+      `producer_output_claims` for this SCU (`snapshot_producer_output_claim_
+      keys`) — the catalog must have declared exactly this claim.
+    - `derived_from_service_probe`: `source_ref` non-empty AND `asset_id` is
+      named by a `kind: service_probe` requirement on this SCU
+      (`snapshot_service_probe_asset_ids`) — the catalog must probe that asset.
 
     This function has NO way to notice an SCU that is entirely absent from the
     artifact (nothing to iterate over), or a stale entry left over from a
     retired SCU — that is `validate_scu_coverage`'s job (R1, B_REVIEW2 finding
     1); `main()`'s `--check` branch runs both and merges their failures. Neither
-    function alone is "the real B-4 gate" — together they are."""
+    function alone is "the real B-4 gate" — together they are. E (a fabricated
+    `derived_from_source_query` table/asset that happens to be shape-valid) is
+    NOT closed here — confirming a table/asset actually exists needs the DB,
+    and is a stated limit (§7), not this function's job."""
+    claim_keys_by_scu = snapshot_producer_output_claim_keys(snapshot)
+    probe_assets_by_scu = snapshot_service_probe_asset_ids(snapshot)
+
     failures: List[str] = []
     scus = payload.get("scus") or {}
     for scu_id, entry in scus.items():
         producers = entry.get("producers") or []
         no_detector = entry.get("no_detector")
+        claim_keys = claim_keys_by_scu.get(scu_id, set())
+        probe_assets = probe_assets_by_scu.get(scu_id, set())
 
         producer_ok = False
         for p in producers:
             disposition = p.get("disposition")
             source_ref = p.get("source_ref") or ""
+            asset_id = p.get("asset_id")
             if disposition == "derived_from_source_query":
                 if p.get("table") and parse_source_ref_segments(source_ref):
                     producer_ok = True
                     break
-            elif disposition in _DECLARED_EXEMPTION_DISPOSITIONS:
-                if source_ref:
+            elif disposition in ("reviewed_output", "route_evidence_only"):
+                if source_ref and (asset_id, disposition) in claim_keys:
+                    producer_ok = True
+                    break
+            elif disposition == "derived_from_service_probe":
+                if source_ref and asset_id in probe_assets:
                     producer_ok = True
                     break
         if producer_ok:
@@ -1546,9 +1612,15 @@ def main(argv: List[str]) -> int:
 
     if args.check:
         # C-1: --check validates the COMMITTED artifact itself — it never re-derives
-        # silently. A stale artifact (e.g. hand-edited, or left over from before a
-        # snapshot/registry change) must be able to fail this even though nothing in
-        # today's DB/snapshot would reproduce the problem.
+        # silently. A malformed/shape-defective entry (e.g. a source_ref edited into
+        # an unresolvable shape, or a no_detector string that classifies as
+        # "unclassified") must be able to fail this even though nothing in today's
+        # DB/snapshot would reproduce the problem. R7 (B_REVIEW3): this does NOT
+        # extend to a fabricated exemption-tier producer with a plausible-looking
+        # but uncatalogued asset_id/source_ref — validate_derived_artifact now
+        # cross-checks every reviewed_output/route_evidence_only/
+        # derived_from_service_probe producer against the loaded snapshot itself
+        # (see its docstring), so THAT class of hand-edit fails too.
         if not DERIVED_OUTPUT_PATH.is_file():
             print(f"[B-4] --check FAIL: no derived artifact at {DERIVED_OUTPUT_PATH} — run --derive first.")
             exit_code = 1
@@ -1561,7 +1633,7 @@ def main(argv: List[str]) -> int:
             # would otherwise pass.
             snapshot_for_check = load_snapshot()
             coverage_failures = validate_scu_coverage(payload, snapshot_for_check)
-            entry_failures = validate_derived_artifact(payload)
+            entry_failures = validate_derived_artifact(payload, snapshot_for_check)
             failures = coverage_failures + entry_failures
             total = len(snapshot_for_check.get("scus") or [])
             if failures:
@@ -1574,9 +1646,11 @@ def main(argv: List[str]) -> int:
                 exit_code = 1
             else:
                 print(
-                    f"[B-4] --check PASS: all {total} SCUs in {DERIVED_OUTPUT_PATH} have a valid producer "
-                    "or a no_detector reason from the closed reason set, and the artifact's SCU coverage "
-                    "matches the catalog exactly."
+                    f"[B-4] --check PASS: all {total} SCUs in {DERIVED_OUTPUT_PATH} have either a "
+                    "snapshot-backed producer (a shape-valid derived_from_source_query, or an "
+                    "exemption-tier producer matching a producer_output_claim / service_probe "
+                    "requirement the catalog itself declares) or a no_detector reason from the closed "
+                    "reason set, and the artifact's SCU coverage matches the catalog exactly."
                 )
 
     return exit_code

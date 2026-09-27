@@ -496,7 +496,9 @@ def test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry():
             },
         }
     }
-    failures = cp.validate_derived_artifact(payload)
+    # None of this fixture's SCUs use an exemption disposition, so an empty
+    # snapshot is sufficient — R7's snapshot-backing check simply never applies.
+    failures = cp.validate_derived_artifact(payload, {"scus": []})
     assert set(failures) == {"scu.stale_bad_source_ref", "scu.stale_unclassified_reason"}
 
 
@@ -662,6 +664,7 @@ def test_compute_segment_resolution_counts_distinguishes_full_partial_none(tmp_p
     assert len(stale) == 1
     assert "scu.test.partial" in stale[0]
     assert "1 lines" in stale[0]
+    assert "50-60" in stale[0]
 
 
 def test_out_of_range_handler_segment_wins_priority_over_a_still_resolving_migration_segment(tmp_path):
@@ -878,3 +881,140 @@ def test_write_closure_report_md_states_the_closure_computation(tmp_path):
     assert "How this closure is computed" in text
     assert "depends_on" in text
     assert "RECURSIVE" in text
+
+
+# ── R7 (B_REVIEW3): --check must not accept a fabricated exemption-tier ──────
+# producer that never traces to anything the catalog itself declares. Before
+# this correction, ANY non-empty source_ref string was enough for
+# reviewed_output / route_evidence_only / derived_from_service_probe.
+
+
+def _load_real_committed_artifact() -> dict:
+    with open(cp.DERIVED_OUTPUT_PATH, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def test_check_fails_when_all_no_detector_scus_get_a_fake_route_evidence_only_producer(
+    tmp_path, monkeypatch, capsys
+):
+    """R7, probe G2 (the gate review's own attack): replace every NO_DETECTOR SCU
+    in a copy of the REAL committed artifact with a fabricated
+    `{"asset_id": "zz_fake", "disposition": "route_evidence_only",
+    "source_ref": "x"}` producer. Before this correction this read as 182/182
+    covered and PASSED (exit 0). Mutation this catches: removing the
+    snapshot-backing cross-check in `validate_derived_artifact` makes this pass
+    again."""
+    payload = _load_real_committed_artifact()
+    faked = []
+    for scu_id, entry in payload["scus"].items():
+        if entry.get("no_detector"):
+            entry["producers"] = [
+                {"asset_id": "zz_fake", "disposition": "route_evidence_only", "source_ref": "x"}
+            ]
+            entry["no_detector"] = None
+            faked.append(scu_id)
+    assert len(faked) == 75  # the exact count the gate review's own attack used
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    for scu_id in faked:
+        assert scu_id in out
+
+
+def test_check_fails_when_get_dignity_is_given_a_fake_reviewed_output_producer(
+    tmp_path, monkeypatch, capsys
+):
+    """R7, probe G1: `get_dignity` has no `reviewed_output` claim in the snapshot
+    at all. Giving it a fabricated `{"asset_id": "zz_fake", "disposition":
+    "reviewed_output", "source_ref": "x"}` producer used to pass. Mutation this
+    catches: removing the snapshot-backing check."""
+    payload = _load_real_committed_artifact()
+    target = "scu.catalog.get_dignity"
+    assert target in payload["scus"]
+    payload["scus"][target]["producers"] = [
+        {"asset_id": "zz_fake", "disposition": "reviewed_output", "source_ref": "x"}
+    ]
+    payload["scus"][target]["no_detector"] = None
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_check_fails_on_a_service_probe_producer_for_an_unprobed_asset(
+    tmp_path, monkeypatch, capsys
+):
+    """R7: a `derived_from_service_probe` producer must name an asset the SCU's
+    OWN `kind: service_probe` requirement actually probes — not just any
+    asset_id that happens to sound plausible."""
+    payload = _load_real_committed_artifact()
+    target = None
+    for scu_id, entry in payload["scus"].items():
+        if any(p.get("disposition") == "derived_from_service_probe" for p in entry.get("producers", [])):
+            target = scu_id
+            break
+    assert target is not None, "expected >=1 derived_from_service_probe producer in the committed artifact"
+    payload["scus"][target]["producers"] = [
+        {
+            "asset_id": "zz_fake_probe",
+            "disposition": "derived_from_service_probe",
+            "source_ref": "service_probe:fake",
+            "table": None,
+        }
+    ]
+    payload["scus"][target]["no_detector"] = None
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert target in out
+
+
+def test_check_passes_on_the_real_committed_artifact_unmodified(capsys):
+    """R7 (d): the real, unmodified committed artifact must still PASS after the
+    snapshot-backing correction lands."""
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    assert "PASS" in out
+
+
+def test_all_committed_exemption_producers_are_snapshot_backed():
+    """R7 (d): confirms the exact count the gate review found — 24 exemption-tier
+    producers (reviewed_output + route_evidence_only + derived_from_service_probe)
+    in the real committed artifact, ALL backed by the snapshot (0 unbacked).
+    This is precisely what makes the unmodified artifact pass."""
+    payload = _load_real_committed_artifact()
+    snapshot = cp.load_snapshot()
+    claim_keys = cp.snapshot_producer_output_claim_keys(snapshot)
+    probe_assets = cp.snapshot_service_probe_asset_ids(snapshot)
+
+    exemption_count = 0
+    unbacked = []
+    for scu_id, entry in payload["scus"].items():
+        for p in entry.get("producers", []):
+            disp = p.get("disposition")
+            if disp in ("reviewed_output", "route_evidence_only"):
+                exemption_count += 1
+                if (p.get("asset_id"), disp) not in claim_keys.get(scu_id, set()):
+                    unbacked.append((scu_id, p.get("asset_id"), disp))
+            elif disp == "derived_from_service_probe":
+                exemption_count += 1
+                if p.get("asset_id") not in probe_assets.get(scu_id, set()):
+                    unbacked.append((scu_id, p.get("asset_id"), disp))
+    assert unbacked == []
+    assert exemption_count == 24

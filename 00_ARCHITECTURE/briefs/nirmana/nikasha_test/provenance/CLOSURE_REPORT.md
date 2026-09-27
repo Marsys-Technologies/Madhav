@@ -1,17 +1,17 @@
 ---
 artifact: NIKASHA_WAVE1_B2_CLOSURE_REPORT
 version: "1.0"
-generated_at: 2026-09-27T06:24:30.633199+00:00
+generated_at: 2026-09-27T06:38:56.630144+00:00
 generator: platform/scripts/governance/catalog_provenance.py --closure
 ---
 
 # Nikaṣa wave 1 — B-2 necessity closure report
 
-Population: `SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag IS NOT TRUE` = **127** (R220). NOTE: `dead_flag` is NULL on every production row today, so a literal `is_active AND NOT dead_flag` reads 0 rows (three-valued-logic trap) — `dead_flag IS NOT TRUE` is the correct predicate and reproduces the documented population of 127.
+Population: `SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag IS NOT TRUE` = **127** (R220). NOTE: `dead_flag` is NULL on every production row today, so a literal `is_active AND NOT dead_flag` reads 0 rows (three-valued-logic trap) — `dead_flag IS NOT TRUE` is the correct predicate, read from `closure['population_active_count']` (**127**), never hardcoded (N2).
 
 ## How this closure is computed (R6)
 
-**Seed sets** — `reviewed_seed` is every `asset_id` carried by a `disposition: reviewed_output` producer across all 182 SCUs (the "before" seed, 14 assets); `all_seed` is every `asset_id` carried by ANY producer of any disposition (`reviewed_output` ∪ `derived_from_source_query` ∪ `derived_from_service_probe` ∪ `route_evidence_only`) across all 182 SCUs (the "after" seed, 94 assets).
+**Seed sets** — `reviewed_seed` is every `asset_id` carried by a `disposition: reviewed_output` producer across all SCUs (the "before" seed, **14** assets); `all_seed` is every `asset_id` carried by ANY producer of any disposition (`reviewed_output` ∪ `derived_from_source_query` ∪ `derived_from_service_probe` ∪ `route_evidence_only`) across all SCUs (the "after" seed, **94** assets — read from `closure['before'/'after']['named_producers']`, never hardcoded, so this stays true if the catalog changes; N2).
 
 **Edges** — `asset_registry.depends_on` (a `text[]` column on each asset row), read once via `load_asset_registry()`'s single SELECT and never re-queried per traversal step.
 
