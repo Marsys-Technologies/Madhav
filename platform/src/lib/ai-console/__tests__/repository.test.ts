@@ -138,6 +138,37 @@ describe('owned AI configuration repository', () => {
     expect(calls().find(c => c.sql.startsWith('INSERT INTO ai_user_defaults'))?.sql).toContain('ON CONFLICT(user_id) DO UPDATE')
     expect(calls().some(c => c.sql.startsWith('DELETE'))).toBe(false)
   })
+  it.each([
+    ['valid', true],
+    ['unknown', false],
+    ['invalid', false],
+  ] as const)('allows a validating direct default only with %s retained credential authority', async (validity, accepted) => {
+    respond(sql => {
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: 'validating', credential_validity: validity }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true }]
+      return undefined
+    })
+    const result = repository.setUserDefault('alice', choice)
+    if (accepted) await expect(result).resolves.toBeUndefined()
+    else await expect(result).rejects.toMatchObject({ code: 'AI_CONNECTION_INVALID' })
+    expect(calls().some(c => c.sql.startsWith('INSERT INTO ai_user_defaults'))).toBe(accepted)
+  })
+  it.each([
+    ['valid', true],
+    ['unknown', false],
+    ['invalid', false],
+  ] as const)('allows a validating provider in a saved configuration only with %s retained credential authority', async (validity, accepted) => {
+    respond(sql => {
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: 'validating', credential_validity: validity }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true }]
+      if (sql.includes('RETURNING')) return [{ id: configurationId, version: '1' }]
+      return undefined
+    })
+    const result = repository.saveConfiguration('alice', { name: 'Revalidating', roles: assignments })
+    if (accepted) await expect(result).resolves.toMatchObject({ id: configurationId, roles: assignments })
+    else await expect(result).rejects.toMatchObject({ code: 'AI_CONNECTION_INVALID' })
+    expect(calls().filter(c => c.sql.startsWith('INSERT INTO ai_custom_configuration_roles'))).toHaveLength(accepted ? 4 : 0)
+  })
   it('requires every role for direct defaults and explicit conversation models', async () => {
     respond(sql => {
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]

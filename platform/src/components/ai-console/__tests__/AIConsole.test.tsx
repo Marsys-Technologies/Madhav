@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import axe from 'axe-core'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -71,7 +71,7 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
   return { calls }
 }
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); onlineManager.setOnline(true); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('AI Console', () => {
   it('renders exactly the three approved sections and one unchecked shared default group', async () => {
@@ -340,6 +340,37 @@ describe('AI Console', () => {
       expect(dialog.querySelector(`#aic-${role}-model`)).toBeDisabled()
     }
     expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
+  })
+
+  it.each([
+    ['missing', [{ ...state.models[0], modelId: 'replacement-model', displayName: 'Replacement model' }]],
+    ['unavailable', [{ ...state.models[0], available: false }]],
+    ['role-incompatible', [{ ...state.models[0], compatibleRoles: ['planner', 'deep_planner', 'worker'] }]],
+  ] satisfies Array<[string, AiConsoleStateDto['models']]>)('keeps an exact saved %s model visible for repair without silently substituting it', async (_reason, models) => {
+    const user = userEvent.setup()
+    setup({ models: [...models] })
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog')
+    const synthesizerModel = dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement
+    expect(synthesizerModel.value).toBe('gpt-safe')
+    expect(within(synthesizerModel).getByRole('option', { name: /saved model.*no longer available/i })).toBeDisabled()
+    expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
+    expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')
+    expect(within(dialog).getByText(/saved model choices are no longer available or compatible/i)).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
+  })
+
+  it('treats paused offline queries as pending instead of ready empty resources', async () => {
+    onlineManager.setOnline(false)
+    setup()
+    expect(await screen.findByText('Loading provider connections…')).toBeTruthy()
+    expect(screen.getByText('Loading custom configurations…')).toBeTruthy()
+    expect(screen.getByText('Checking local CLI access…')).toBeTruthy()
+    expect(document.querySelector('.aic-sections')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText(/no provider connections yet/i)).toBeNull()
+    expect(screen.queryByText(/no custom configurations yet/i)).toBeNull()
+    expect(screen.queryByText(/no local CLI connections are available/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /add connection|new configuration/i })).toBeNull()
   })
 
   it('associates duplicate-name server errors only with the duplicate name repair control', async () => {

@@ -95,7 +95,9 @@ async function ownedConversation(client: Client, userId: string, conversationId:
 async function assertTarget(client: Client, userId: string, target: RoleTarget, roles: readonly AiRole[]) {
   if (target.kind === 'provider_model') {
     const connection = await ownedConnection(client, userId, target.connectionId)
-    if (connection.validation_state !== 'validated') throw new AiConsoleError('AI_CONNECTION_INVALID')
+    const hasAuthority = connection.validation_state === 'validated'
+      || (connection.validation_state === 'validating' && connection.credential_validity === 'valid')
+    if (!hasAuthority) throw new AiConsoleError('AI_CONNECTION_INVALID')
     const model = required((await client.query(`SELECT m.compatible_roles,m.available FROM ai_connection_models m
       JOIN ai_provider_connections c ON c.id=m.connection_id
       WHERE c.user_id=$1 AND c.id=$2 AND m.model_id=$3 AND m.available=true`, [userId, target.connectionId, target.modelId])).rows)

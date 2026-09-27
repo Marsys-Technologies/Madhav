@@ -95,9 +95,11 @@ export function AIConsole() {
     method: 'PUT', body: JSON.stringify({ choice }),
   }, 'Default AI updated.')
 
-  const state = stateQuery.data
+  const stateStatus = stateQuery.isSuccess ? 'ready' : stateQuery.isError ? 'error' : 'loading'
+  const cliStatus = cliQuery.isSuccess ? 'ready' : cliQuery.isError ? 'error' : 'loading'
+  const state = stateQuery.isSuccess ? stateQuery.data : undefined
   const clis = cliQuery.isSuccess ? cliQuery.data.clis : []
-  const loading = stateQuery.isLoading || cliQuery.isLoading
+  const loading = stateStatus === 'loading' || cliStatus === 'loading'
 
   return (
     <div className="pp-root min-h-full">
@@ -113,8 +115,8 @@ export function AIConsole() {
         <div className="aic-sections" aria-busy={loading}>
           <ProviderConnectionsSection
             state={state}
-            loading={stateQuery.isLoading}
-            error={stateQuery.isError}
+            loading={stateStatus === 'loading'}
+            error={stateStatus === 'error'}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
@@ -122,9 +124,9 @@ export function AIConsole() {
           <CustomConfigurationsSection
             state={state}
             clis={clis}
-            loading={stateQuery.isLoading}
-            error={stateQuery.isError}
-            cliStatus={cliQuery.isLoading ? 'loading' : cliQuery.isError ? 'error' : 'ready'}
+            loading={stateStatus === 'loading'}
+            error={stateStatus === 'error'}
+            cliStatus={cliStatus}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
@@ -132,9 +134,9 @@ export function AIConsole() {
           <LocalClisSection
             state={state}
             clis={clis}
-            loading={cliQuery.isLoading}
-            error={cliQuery.isError}
-            aggregateStatus={stateQuery.isLoading ? 'loading' : stateQuery.isError ? 'error' : 'ready'}
+            loading={cliStatus === 'loading'}
+            error={cliStatus === 'error'}
+            aggregateStatus={stateStatus}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
