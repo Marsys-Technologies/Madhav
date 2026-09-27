@@ -815,9 +815,24 @@ def measure(layer_key: str) -> dict:
                     # exists, and never needs the second full DISTINCT pass either way.
                     has_dup = (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl} GROUP BY {kd} "
                                       "HAVING count(*) > 1)::text") or "f") in ("t", "true")
-                    m["Vocab.identity"] = dict(
-                        v=(FAIL if has_dup else PASS),
-                        measured=f"declared key ({kd}): {'duplicate group(s) exist' if has_dup else 'no duplicates'}")
+                    # F9 (A_REVIEW.md): R40's EXISTS probe decides the verdict but dropped the figure
+                    # the ledger `_schema` requires ("measured: <figure …>"). The figure is restored —
+                    # "N duplicate(s)" means rows beyond the first per key, the same quantity the
+                    # pre-R40 `count(*) - count(DISTINCT key)` reported — but it is counted ONLY when
+                    # the probe found a duplicate, so the clean case (kala_field) keeps R40's cost. A
+                    # count that errors keeps the probe's FAIL and says the figure is missing.
+                    if not has_dup:
+                        figure = "0 duplicate(s)"
+                    else:
+                        try:
+                            dup_groups, dup_rows = psql(
+                                "SELECT count(*)::text, coalesce(sum(n - 1), 0)::text FROM "
+                                f"(SELECT count(*) AS n FROM {tbl} GROUP BY {kd} HAVING count(*) > 1) d")[0]
+                            figure = f"{dup_rows} duplicate(s) in {dup_groups} duplicate group(s)"
+                        except Unknown as exc:
+                            figure = f"duplicate group(s) exist; the count errored ({exc})"
+                    m["Vocab.identity"] = dict(v=(FAIL if has_dup else PASS),
+                                               measured=f"declared key ({kd}): {figure}")
                 except Unknown as exc:
                     m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 

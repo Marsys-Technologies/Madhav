@@ -225,3 +225,46 @@ def test_f8_a_clean_detector_verdict_is_still_adopted(monkeypatch, tmp_path):
     _detector(tmp_path, "bg_x", 'import json\nprint(json.dumps({"verdict": "FAIL", "measured": "3 mismatches"}))\n')
     res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
     assert res == dict(v=ac.FAIL, measured="bg_x_D1.py: 3 mismatches")
+
+
+# ─────────────────────────── F9: Vocab.identity states its duplicate figure ───────────────────────────
+
+_T = {"bg_t": (["id", "a", "b", "v"], [["id"], ["a", "b"]])}
+
+
+def _identity_psql(exists: str, count_row=None, count_raises=False):
+    def fake(sql, sep="\x1f", timeout=None):
+        if "SELECT EXISTS(SELECT 1 FROM bg_t GROUP BY a, b HAVING count(*) > 1)" in sql:
+            return [[exists]]
+        if "HAVING count(*) > 1) d" in sql:
+            if count_raises:
+                raise ac.Unknown("SIMULATED: statement timeout")
+            return [count_row]
+        raise AssertionError(f"unexpected query in F9 stub: {sql[:80]}")
+    return fake
+
+
+def test_f9_identity_fail_states_the_duplicate_count(monkeypatch, tmp_path):
+    """Fails without the fix: the measurement read "duplicate group(s) exist" with no figure."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x", "bg_t")}, _T)
+    monkeypatch.setattr(ac, "psql", _identity_psql("t", ["2", "7"]))
+    res = _measured(ac.measure("L0"), "bg_x", "Vocab.identity")
+    assert res == dict(v=ac.FAIL, measured="declared key (a, b): 7 duplicate(s) in 2 duplicate group(s)")
+
+
+def test_f9_identity_pass_states_zero_and_never_runs_the_count(monkeypatch, tmp_path):
+    """The clean case keeps R40's cost: the count query is never issued (the stub would count it),
+    and the figure is the explicit 0 the pre-R40 text carried."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x", "bg_t")}, _T)
+    monkeypatch.setattr(ac, "psql", _identity_psql("f"))
+    res = _measured(ac.measure("L0"), "bg_x", "Vocab.identity")
+    assert res == dict(v=ac.PASS, measured="declared key (a, b): 0 duplicate(s)")
+
+
+def test_f9_a_count_that_errors_keeps_the_probe_fail(monkeypatch, tmp_path):
+    """The verdict is the probe's; a failed count must neither turn it ERRORED nor hide the defect."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x", "bg_t")}, _T)
+    monkeypatch.setattr(ac, "psql", _identity_psql("t", count_raises=True))
+    res = _measured(ac.measure("L0"), "bg_x", "Vocab.identity")
+    assert res["v"] == ac.FAIL
+    assert "the count errored (SIMULATED: statement timeout)" in res["measured"]
