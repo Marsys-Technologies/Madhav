@@ -1,10 +1,10 @@
 ---
 artifact: JATAKA_CHART_WORKSPACE_CONTROLLED_PRODUCTION_ROLLOUT_ADDENDUM_v1_0.md
-version: 1.0
+version: 1.1
 status: ACTIVE
-decision: CCD-018
+decision: CCD-018; CCD-019
 session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
-branch: codex/jataka-chart-workspace
+branch: codex/jataka-chart-workspace; successor: codex/jataka-prod-schema-capability
 worktree: /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
 parent: JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
 purpose: >
@@ -50,6 +50,20 @@ The production envelope is limited to:
 No existing important chart may be edited, rebuilt, archived or deleted. No credential may be
 printed, copied into the repository, rotated or persisted. No IAM, networking, Firebase, Cloud SQL,
 runtime topology or unrelated database configuration change is authorized.
+
+### CCD-019 — exact temporary schema-capability exception
+
+The first controlled deploy attempt stopped at migration 1120 because the routine `amjis_app`
+migration login intentionally has `USAGE` but not `CREATE` on the protected `public` schema. The
+native explicitly authorized the narrow corrective production permission change on 2026-09-28.
+
+CCD-019 permits one reviewed protected workflow to grant `CREATE ON SCHEMA public` to `amjis_app`
+only for the exact migration set 1120–1123, then revoke it on every exit and attest the closed
+state before any service deploys. The grant must be issued only through the existing
+`data_plane_migrator` → `data_plane_schema_owner` delegate inside the protected production
+environment and an explicit manual exact-SHA dispatch. It does not authorize a permanent grant,
+role membership, credential/IAM change, direct SQL application, emergency override, different
+migration, or any unrelated database mutation.
 
 ## 3. Mandatory pre-deploy gates
 
@@ -115,4 +129,3 @@ The final record must distinguish source, CI, protected integration, deployment 
 It must include the deployed commit/revision, migration state, backup/recovery evidence, exact test
 results, disposable chart identifier and disposition, production observations, rollback status and
 the coordination lease release commit. Anything not directly proven remains `NOT_RUN` or `BLOCKED`.
-
