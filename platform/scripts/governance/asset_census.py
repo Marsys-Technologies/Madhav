@@ -1618,9 +1618,18 @@ def measure(layer_key: str) -> dict:
                 ac = alias_census(tbl, cat["cols"].get(tbl, []))
                 if ac:
                     bad = {k: v for k, v in ac.items() if v["no_alias"]}
+                    # R54 (T1 plant vocab_alias): the verdict saturates — one empty alias set FAILs as
+                    # hard as all of them (79/741 -> 741/741 empty moved nothing at verdict level). The
+                    # measured fraction is stated in the evidence and carried as `severity` (0.0-1.0,
+                    # rows lacking an alias set / rows), so a worsening is visible below the verdict.
+                    rows_t = sum(v["rows"] for v in ac.values())
+                    empty_t = sum(v["no_alias"] for v in ac.values())
+                    frac = (empty_t / rows_t) if rows_t else 0.0
                     m["Vocab.alias"] = dict(v=(PASS if not bad else FAIL),
-                                            measured=(f"{len(ac)} class(es); empty alias sets: "
-                                                      + (", ".join(f"{k} {v['no_alias']}/{v['rows']}" for k, v in bad.items()) or "none")))
+                                            measured=(f"{len(ac)} class(es); {empty_t}/{rows_t} row(s) lack an alias set "
+                                                      f"({frac:.1%}); empty alias sets: "
+                                                      + (", ".join(f"{k} {v['no_alias']}/{v['rows']}" for k, v in bad.items()) or "none")),
+                                            severity=round(frac, 4))
             except Unknown as exc:
                 m["Vocab.alias"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 

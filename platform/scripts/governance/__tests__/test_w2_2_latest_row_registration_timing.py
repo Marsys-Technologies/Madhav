@@ -785,3 +785,30 @@ def test_live_r53_no_writer_backed_data_asset_reads_the_closable_na():
                 continue
             seen[aid] = ac._grade_target_less(r, lambda: owners)["v"]
     assert seen == {"bg_prashna_rules": ac.PASS, "ga_strength": ac.PASS, "ga_structural": ac.PASS}, seen
+
+
+# ─────────────────────────── R54: Vocab.alias severity below the verdict ───────────────────────────
+
+def _alias(monkeypatch, ctrl, classes):
+    reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
+    w1._stub_layer(monkeypatch, ctrl, reg, tables={"t_x": (["entity_class", "synonyms"], [])})
+    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t_x": 741}))
+    monkeypatch.setattr(ac, "alias_census", lambda t, c: {k: dict(rows=r, no_alias=e) for k, (r, e) in classes.items()})
+    return w1._m(ac.measure("L0"), "bg_x", "Vocab.alias")
+
+
+def test_r54_the_plants_worsening_is_visible_below_the_verdict(monkeypatch, tmp_path):
+    """T1 vocab_alias: 79/741 rows without an alias set, then all 741 emptied. Both FAIL; the measured
+    fraction and `severity` show the worsening. Fails without the fix: no severity field, and the
+    evidence carried no overall fraction (only per-class counts)."""
+    before = _alias(monkeypatch, tmp_path, {"graha": (400, 40), "rasi": (341, 39)})
+    after = _alias(monkeypatch, tmp_path, {"graha": (400, 400), "rasi": (341, 341)})
+    assert before["v"] == after["v"] == ac.FAIL
+    assert before["severity"] == round(79 / 741, 4) and after["severity"] == 1.0, (before, after)
+    assert "79/741 row(s) lack an alias set (10.7%)" in before["measured"], before
+    assert "741/741 row(s) lack an alias set (100.0%)" in after["measured"], after
+
+
+def test_r54_a_clean_alias_census_passes_with_severity_zero(monkeypatch, tmp_path):
+    v = _alias(monkeypatch, tmp_path, {"graha": (9, 0)})
+    assert v["v"] == ac.PASS and v["severity"] == 0.0, v
