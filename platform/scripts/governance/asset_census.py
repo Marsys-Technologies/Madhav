@@ -709,7 +709,16 @@ def build_history(prefix: str, ids=None) -> dict:
                 # runs created at the same instant (12 such pairs live, 2026-09-27) no longer come back
                 # in an arbitrary order; "last" below is the latest attempt, deterministically.
                 "ORDER BY a.asset_id, r.created_at, a.run_id")
-    for aid, scope, state, disp, when, err, started in ((x + [""] * 7)[:7] for x in rows):
+    # R50 (L1 handverify: ga_dashas "108 run(s)" against 107 rows): every attempt must parse into
+    # EXACTLY the seven selected fields. The read used to pad a short line (`(x + [""] * 7)[:7]`) and
+    # count it as a run under whatever its first field held — so a split error fragment whose last
+    # line was an asset id would add a phantom run to that REAL asset. R233 removed the known source
+    # of split lines; a line of the wrong shape now fails the read (fail-closed), never counted.
+    bad = [x for x in rows if len(x) != 7]
+    if bad:
+        raise Unknown(f"build_history: {len(bad)} line(s) did not parse into the 7 selected fields "
+                      f"(first: {bad[0][:3]!r}) — the attempt tallies would be wrong; not counted")
+    for aid, scope, state, disp, when, err, started in rows:
         d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
                                      blocked=0, scopes=set(), last_state="", last_when="",
                                      last_disposition="", sample_error="", sample_blocked="",

@@ -632,3 +632,38 @@ def test_live_r46_bo_samvada_is_counted_by_its_view():
     counts, errs = ac.live_counts({"bo_samvada": reg["bo_samvada"]}, CANONICAL, vc)
     direct = int(ac.scalar(f"SELECT count(*)::text FROM vw_chart_digest WHERE chart_id = '{CANONICAL}'"))
     assert not errs and counts["bo_samvada"] == direct > 0, (counts, errs, direct)
+
+
+# ─────────────────────────── R50: attempt tallies reconcile with a direct count ───────────────────────────
+
+def test_r50_a_line_that_is_not_one_whole_attempt_fails_the_read_instead_of_adding_a_run(monkeypatch):
+    """One real attempt for ga_x, plus the tail of a split error whose last line is `ga_x` followed by
+    the started flag — the shape that adds a phantom run to a REAL asset. Fails without the fix: the
+    padded fragment was counted, ga_x read 2 runs for 1 row (the handverify's 108 against 107)."""
+    rows = [["ga_x", "layer", "error", "", "2026-09-20", "Traceback (most recent call last):", "t"],
+            ["ga_x", "t"]]
+
+    def fake(sql, sep="\x1f", timeout=None):
+        if "FROM build_run_assets a JOIN build_runs r" in sql:
+            return [list(r) for r in rows]
+        return [["0"]]
+    monkeypatch.setattr(ac, "psql", fake)
+    monkeypatch.setattr(ac, "scalar", _scalar_via(fake))
+    with pytest.raises(ac.Unknown, match="did not parse into the 7 selected fields"):
+        ac.build_history("ga_", ["ga_x"])
+
+
+@LIVE
+def test_live_r50_runs_and_executed_equal_direct_counts_on_every_layer():
+    """Live, read-only, all six layers: build_history()'s `runs` and `executed` equal a direct
+    count(*) / count(started_at) over build_run_assets ⋈ build_runs for every asset with rows."""
+    for layer, cfg in ac.LAYERS.items():
+        reg, _ = ac.registry(layer)
+        per = ac.build_history(cfg["prefix"], sorted(reg))["per"]
+        ids = ", ".join(f"'{a}'" for a in sorted(reg))
+        direct = {r[0]: (int(r[1]), int(r[2])) for r in ac.psql(
+            "SELECT a.asset_id, count(*)::text, count(a.started_at)::text FROM build_run_assets a "
+            f"JOIN build_runs r ON r.id = a.run_id WHERE a.asset_id IN ({ids}) GROUP BY 1")}
+        assert set(per) == set(direct), (layer, set(per) ^ set(direct))
+        for aid, (runs, started) in direct.items():
+            assert (per[aid]["runs"], per[aid]["executed"]) == (runs, started), (layer, aid)

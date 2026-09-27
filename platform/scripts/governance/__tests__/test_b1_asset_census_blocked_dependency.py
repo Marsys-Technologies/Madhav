@@ -149,13 +149,15 @@ def test_build_history_separates_blocked_from_genuine_error(monkeypatch):
     """build_history() must tally disposition='blocked_dependency' rows into
     `blocked` (and NOT let them contaminate `sample_error`), while a genuine error
     row still populates `sample_error`."""
+    # 7 columns, the real read's shape since W2-1 C1 (the last is `started_at IS NOT NULL`); W2-2 R50
+    # made build_history() refuse a line of any other shape instead of padding it.
     rows = [
         ["bg_x", "layer", "error", "blocked_dependency", "2026-09-20",
-         "BLOCKED: upstream dependency(ies) bg_root did not complete in this run; skipped to avoid building on incomplete data"],
+         "BLOCKED: upstream dependency(ies) bg_root did not complete in this run; skipped to avoid building on incomplete data", "f"],
         ["bg_x", "layer", "error", "blocked_dependency", "2026-09-21",
-         "BLOCKED: upstream dependency(ies) bg_root did not complete in this run; skipped to avoid building on incomplete data"],
-        ["bg_x", "layer", "error", "", "2026-09-22", "TIMEOUT: writer exceeded its writer_timeout_seconds budget (600s)"],
-        ["bg_x", "layer", "complete", "", "2026-09-23", ""],
+         "BLOCKED: upstream dependency(ies) bg_root did not complete in this run; skipped to avoid building on incomplete data", "f"],
+        ["bg_x", "layer", "error", "", "2026-09-22", "TIMEOUT: writer exceeded its writer_timeout_seconds budget (600s)", "t"],
+        ["bg_x", "layer", "complete", "", "2026-09-23", "", "t"],
     ]
 
     def _fake_psql(sql, sep="\x1f"):
