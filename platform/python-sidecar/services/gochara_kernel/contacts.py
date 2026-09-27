@@ -103,11 +103,18 @@ def swiss_bisect(
     """Refine a root by DIRECT Swiss bisection at the instant.
 
     Objective: wrapped angular separation of the body's sidereal longitude
-    from `level_wrapped_deg`, ((lon - level + 180) % 360) - 180, continuous
-    over a sub-day bracket for every body (the Moon moves < 14°/day and the
-    arc-index bracket is at most an arc or two long). Every calc_ut asserts
-    the SWIEPH backend via the returned retflag (F-14); retflag & 4 raises
-    EphemerisBackendError (the caller reports NOT_RUN, never PASS).
+    from `level_wrapped_deg`, ((lon - level + 180) % 360) - 180. That
+    objective is continuous only while the body's travel over the bracket
+    stays under 180° from the level — the caller MUST pass a bracket that
+    satisfies this (`_refine_root` does so by construction: a narrow window
+    around the spline root, clamped inside the arc, capped at well under
+    180° of travel). Bracketing a whole arc is NOT valid: a wrap-band arc
+    can span up to a year of travel (Sun), and the objective then crosses
+    its ±180° branch cut mid-arc, leaving both endpoints with the same
+    sign (the ADK-0019 defect: "lost its bracket" on real 2029 curves).
+    Every calc_ut asserts the SWIEPH backend via the returned retflag
+    (F-14); retflag & 4 raises EphemerisBackendError (the caller reports
+    NOT_RUN, never PASS).
 
     Returns (refined_jd, retflag).
     """
@@ -149,6 +156,51 @@ def swiss_bisect(
     return 0.5 * (lo + hi), 2
 
 
+# Refinement window around the spline root (ADK-0019). The wrapped objective
+# in swiss_bisect is continuous only under <180° of travel from the level, so
+# the refinement bracket is a narrow window around the already-computed
+# spline root — never the whole arc. The initial half-window is one day
+# (spline error on daily knots is far below that even near a station); on a
+# lost bracket (spline/Swiss disagreement near a station) the window is
+# expanded by ×4, capped so the arc's average travel over the half-window
+# stays at or under _REFINE_MAX_TRAVEL_DEG — comfortably short of the 180°
+# branch cut. If the capped window still does not bracket, that is a real
+# spline/Swiss divergence and swiss_bisect's ValueError propagates.
+_REFINE_INITIAL_HALF_WINDOW_DAYS = 1.0
+_REFINE_WINDOW_GROWTH = 4.0
+_REFINE_MAX_TRAVEL_DEG = 90.0
+
+
+def _refine_root(
+    body: str,
+    arc: MonotoneArc,
+    spline_jd: float,
+    level_wrapped_deg: float,
+    ephe_path: str | None,
+) -> tuple[float, int]:
+    """Swiss-refine one spline root inside a narrow, branch-cut-safe window."""
+    arc_span = arc.end_jd - arc.start_jd
+    travel = abs(arc.end_lon_unwrapped - arc.start_lon_unwrapped)
+    rate = travel / arc_span if arc_span > 0.0 else 0.0  # mean deg/day
+    max_half = (
+        min(arc_span / 2.0, _REFINE_MAX_TRAVEL_DEG / rate)
+        if rate > 0.0
+        else arc_span / 2.0
+    )
+    half = min(_REFINE_INITIAL_HALF_WINDOW_DAYS, max_half)
+    while True:
+        jd_lo = max(arc.start_jd, spline_jd - half)
+        jd_hi = min(arc.end_jd, spline_jd + half)
+        try:
+            return swiss_bisect(body, jd_lo, jd_hi, level_wrapped_deg, ephe_path)
+        except ValueError:
+            if jd_lo <= arc.start_jd and jd_hi >= arc.end_jd:
+                raise  # the whole arc is already the bracket: real failure
+            if half >= max_half:
+                raise  # widening further risks the ±180° cut: real failure
+            half = min(half * _REFINE_WINDOW_GROWTH, max_half)
+
+
 def _levels_for_relation(body: str, relation: str, target_deg: float) -> list[tuple[float, float]]:
     """[(aspect_deg, effective_level_deg)] for (body, relation, target)."""
     t = float(target_deg) % 360.0
@@ -183,9 +235,7 @@ def find_roots(
             spline_jd = _bisect_arc(arc, level_u, tol_deg)
             exact_jd = spline_jd
             if refine:
-                exact_jd, _ = swiss_bisect(
-                    body, arc.start_jd, arc.end_jd, level, ephe_path
-                )
+                exact_jd, _ = _refine_root(body, arc, spline_jd, level, ephe_path)
             roots.append(
                 ContactRoot(
                     body=body,
@@ -243,9 +293,7 @@ def find_boundary_roots(
             spline_jd = _bisect_arc(arc, level_u, tol_deg)
             exact_jd = spline_jd
             if refine:
-                exact_jd, _ = swiss_bisect(
-                    body, arc.start_jd, arc.end_jd, level, ephe_path
-                )
+                exact_jd, _ = _refine_root(body, arc, spline_jd, level, ephe_path)
             roots.append(
                 ContactRoot(
                     body=body,

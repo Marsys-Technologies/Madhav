@@ -90,3 +90,141 @@ operate on are missing.
   for the two authority charts should run now as its own reviewed change
   (branch writers are ready and gate-tested) so the §12.9 gate is green when
   step 6 is re-attempted.
+
+## 2026-09-27 — Link 1 (E-018 ii) — §12.9 overlay fingerprint rebuild RUN
+
+Per the native's E-018 ruling (2026-09-24, "Approved on point number two. Go
+ahead to everything.") and review `GO-BOTH` on
+`REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md` (item `39063a94`), the overlay
+fingerprint rebuild ran in production for both authority charts via the
+direct-runner `platform/python-sidecar/run_wp10_overlay_rebuild.py`
+(writer + ContextSpec, orchestrator bypassed; writers never commit — one
+explicit transaction per chart; pre/post `check_overlay_freshness` checkpointed;
+exit 0 only if `gate_allows_overlays(post)`).
+
+**Rollback anchor:** pre-run dump `.run/wp10_tranche2/pre_run_dump_20260927.dump`
+(30,464,307 bytes, sha256
+`392985ab6c86c9ab6a9d646853520878e051660f9bdf87d9116bbbd68f786b4a`), restore-drilled
+and content-verified identical to production (see step02_evidence.md, 2026-09-27
+section). Rollback of this link = restore the `kala_vedha_gochara` /
+`kala_moorti_nirnaya` tables from that dump.
+
+**Commands** (each: `cd platform/python-sidecar && PRODUCTION_TRANCHE_2_AUTHORIZED=true python3 run_wp10_overlay_rebuild.py --dsn <prod via own proxy 127.0.0.1:55440> --chart-id <uuid>`; full JSON reports in `.run/wp10_tranche2/link1_<chart>.json`):
+
+| chart | pre (house_vedha / moorti) | vedha rows inserted | moorti rows inserted | post (house_vedha / moorti) | gate_allows_overlays |
+|---|---|---|---|---|---|
+| `482012f1-…871aa` (canonical) | stale 132 / stale 71 | 171 (127 house_vedha, 24 sarvatobhadra, 20 latta) | 74 (66 moorti-computed, 8/8 grahas) | **fresh 127 / fresh 74** (missing 0, mismatched 0) | **true** |
+| `1c826d5a-…5f75a` (abhinandan) | stale 135 / stale 72 | 173 (132 house_vedha, 19 sarvatobhadra, 22 latta) | 74 (66 moorti-computed, 8/8 grahas) | **fresh 132 / fresh 74** (missing 0, mismatched 0) | **true** |
+
+- Row-count drift vs the pre-run rows (177/178 vedha, 71/72 moorti) is the
+  expected horizon effect: writers rebuild the day-grade horizon
+  **2026-07-29 → 2027-11-01** (today−60d…+400d) with delete-then-insert per
+  chart. Old-row values are preserved in the pre-run dump.
+- New rows carry the current `sha256/canonical-json/v1` fingerprints:
+  house_vedha `bg_transit_rules=b78cd26f…` (42 rules) + `bg_vedha_malefic_scale=6b4ee79a…` (5 rows); moorti `bg_transit_moorti=6d3c0d58…` (27 rows). `latta`/`sarvatobhadra` kinds carry no per-row detail fingerprint by design — the §12.9 freshness gate evaluates the `house_vedha` kind and moorti only; both are fresh with missing=0/mismatched=0.
+- M-8 exceptions applied: chart 1 = 7 windows, chart 2 = 5 windows (Moon/Mercury
+  excluded-obstructor cases; see JSON reports for the exact windows).
+- §12.10b honesty fix active in the stamps; moorti notes carry
+  `kernel_instant_graded=61`, `day_grade_misclassification_rate=0.4918` per chart.
+- Production side effects beyond the two overlay tables: none (single
+  transaction per chart covering only that chart's overlay rows; writers do not
+  touch windows/authority/publication).
+- **Operator / principal:** subagent (l3/gochara-autonomous-wp0-7, WP10 tranche 2).
+
+**Verdict: Link 1 RUN and GREEN for both charts — `check_overlay_freshness` fresh, `gate_allows_overlays` true.**
+
+## 2026-09-27 — Link 2 (E-018 candidate build) — HALTED at enumeration (kernel refine bracket loss)
+
+After Link 1 went green for both charts (see the Link-1 section above), Link 2
+was attempted in packet order. The very first producer step failed before any
+write:
+
+- **Command:** `step06_enumerate_episodes.py --dsn <prod via own proxy 127.0.0.1:55440> --chart-id 482012f1-710e-4a25-994a-93821f5871aa --episodes-out .run/wp10_tranche2/episodes_482012f1.json --coverage-out .run/wp10_tranche2/coverage_482012f1.json` (defaults: horizon 2020-01-01→2030-01-01, orb 5.0, refine on; `PRODUCTION_TRANCHE_2_AUTHORIZED=true`). Log: `.run/wp10_tranche2/step06_enum_482012f1.log`.
+- **Result:** exit 1 — `ValueError: Sun: separation root at 30.0000° lost its bracket under direct Swiss (2462240.4338207245..2462504.0)` raised from `gochara_kernel/contacts.py::swiss_bisect` via `find_boundary_roots` ← `episodes.py::residence_spans` ← `step06_enumerate_episodes.py::enumerate_body`. The §12.9 overlay gate itself PASSED (enumeration started — Link 1 did its job); the failure is inside kernel root refinement, on the first body's residence-span enumeration.
+- **Mechanism (chart-independent):** `find_boundary_roots` (contacts.py:246) refines each boundary root by calling `swiss_bisect(body, arc.start_jd, arc.end_jd, level, …)` over the **whole arc**. For the Sun a wrap-band arc spans up to a full year (~260–365 days, e.g. the failing arc 2029-04-14→2029-12-30); the pointwise wrapped separation `((lon − level + 180) % 360) − 180` crosses its ±180° branch cut inside any arc whose travel extends more than 180° past the level, so both arc endpoints evaluate with the same sign and the bracket is reported lost (the ±25% widen-once rescue cannot fix a branch-cut crossing). `swiss_bisect`'s own docstring assumes "a sub-day bracket". **Scope correction (PRAMĀṆIN, per ADK-0019):** the defect is not Sun-only — on a 2029 horizon Sun, Moon AND Venus fail, Mars/Mercury can fail in other years (any arc with >180° of travel past the level loses the bracket), and the same defect fires through `find_roots` for conjunction/drishti levels; the docstring's sub-day-bracket design assumption was wrong, not just the code. Consequence: with `refine=True`, sign-ingress enumeration over full arcs fails for any chart/horizon — this path was never exercised green: all branch-local tests call the kernel with `refine=False` on synthetic curves (`tests/l3/gochara/test_step06_enumeration.py`), and the packet's 363/363 evidence is disposable-DB test evidence only.
+- **Not done, deliberately:** (i) `--no-refine` was NOT used — it would silently downgrade every persisted `t_exact` to spline-only precision, a precision-regime deviation the review packet does not disclose; (ii) no kernel patch was attempted — narrowing the Swiss bracket around the spline root (or bisecting on the unwrapped longitude with the arc's wrap band) is new engineering in the solving library, barred inside the tranche by the standing order. Both are ruled decisions for the native, not the executor.
+- **Production state after the halt:** unchanged by Link 2 — no episodes/coverage payloads consumed, no `'4.0'` rows in publication/contacts/coverage/windows (verified: all still 0 rows / v1=38,287 / 3.0=1,830 / authority both `'3.0'`). Link 1's rebuilt overlay rows remain live and fresh.
+- **Escalation requested:** a native ruling on (a) authorizing the enumeration with `--no-refine` (spline exacts, disclosed as such), or (b) commissioning a reviewed kernel fix for boundary-root refinement brackets (e.g. refine over a narrow window around `_bisect_arc`'s spline root, not the full arc) plus a regression test with `refine=True` on a real Sun curve, after which Link 2 can be re-attempted as written.
+
+**Verdict: Link 2 HALTED at step-6 enumeration precondition — kernel refine defect, no production writes made, no gates bypassed.**
+
+## 2026-09-27 — ADK-0019 path (b) kernel patch + disposable-DB rehearsal — GREEN (production re-run NOT attempted)
+
+ADHIKARIN ruling ADK-0019 chose path (b): a narrow-window refinement patch in
+the gochara kernel, with a mandatory regression test, a green full battery, and
+a step06 disposable-DB rehearsal as preconditions for any production re-run of
+Link 2 (which additionally awaits PRAMĀṆIN re-verification). This section
+records the patch, its verification, and the rehearsal. **No production write
+path was run.**
+
+### Patch (kernel internals only — no flag, gate, shape, contract, or parameter change)
+
+- `services/gochara_kernel/contacts.py`:
+  - `swiss_bisect` docstring corrected: the wrapped-separation objective is
+    continuous only while the bracket keeps <180° of travel from the level;
+    whole-arc bracketing is invalid (the ADK-0019 defect), replacing the old
+    false "sub-day bracket" design assumption.
+  - New module constants `_REFINE_INITIAL_HALF_WINDOW_DAYS = 1.0`,
+    `_REFINE_WINDOW_GROWTH = 4.0`, `_REFINE_MAX_TRAVEL_DEG = 90.0`, and a new
+    `_refine_root(body, arc, spline_jd, level_wrapped_deg, ephe_path)` helper:
+    the refinement bracket is a ±1-day window around the spline root, clamped
+    inside the arc; on a lost bracket (spline/Swiss disagreement near a
+    station) the window grows ×4 up to a cap derived from the arc's mean
+    travel rate (≤90° of travel, comfortably short of the ±180° branch cut);
+    if the capped or whole-arc window still does not bracket, `swiss_bisect`'s
+    ValueError propagates as a real failure.
+  - Both call sites — `find_roots` (conjunction/drishti) and
+    `find_boundary_roots` (sign ingress) — now refine via `_refine_root`
+    instead of bisecting the whole arc.
+- `services/gochara_kernel/episodes.py` — **scope extension beyond ADK-0019's
+  literal two call sites, disclosed for PRAMĀṆIN re-verification (escalate on
+  dissent):** `residence_spans` wrapped a span end of exactly 360.0 to 0.0 and
+  refused the legitimate Pisces whole-sign span `(330.0, 360.0)` that the
+  driver's `_sign_span` emits for sign 12. Fix: after wrapping, restore
+  `hi_w = 360.0` when the unwrapped end exceeds the start. Additive only
+  (accepts a previously-refused valid span; no accepted input changes
+  meaning), reversible, 5 lines.
+- Regression tests in `tests/l3/gochara/test_wp3a_kernel.py`:
+  - `test_adk0019_refine_real_long_arcs_2029` (requires_swieph): real
+    Sun/Moon/Venus arc indexes over calendar 2029 (the PRAMĀṆIN failure year);
+    every sign-ingress root refines under refine=True (Sun ≥11, Moon ≥140,
+    Venus ≥11 roots), each refined instant within 0.1 d of the spline root and
+    landing the body within 1″ of the level.
+  - `test_adk0019_refine_find_roots_conjunction_2029` (requires_swieph): the
+    shared `find_roots` path refines green on a real Sun conjunction target.
+  - `test_pisces_whole_sign_span_not_refused`: synthetic regression for the
+    episodes.py span-wrap fix.
+
+### Battery
+
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+(disposable containers `gochara-wp6-disposable` on :55435 and
+`gochara-wp6-remainder` on :55434): **366 passed, 0 skipped** (365 prior + 1
+new Pisces-span test). Log: `.run/wp10_tranche2/battery_after_pisces_fix.log`.
+
+### Rehearsal (step06 enumeration, disposable DB `wp10_rehearsal` on :55434, refine ON, candidate-1 flags `linear_no_box` + orb 5.0°)
+
+The rehearsal DB was rebuilt from production content (schema + overlay tables
++ reference_signs + chart-scoped chart_facts: 143,299 rows chart 1 / 139,717
+rows chart 2) so the §12.9 overlay gate passes on the post-Link-1 fresh rows.
+
+| chart | command exit | resonance rows → targets | resolution (resolved/unavailable) | episodes emitted | excluded w/o exact | coverage partitions | refine | backends |
+|---|---|---|---|---|---|---|---|---|
+| `482012f1-…871aa` | 0 (~32 min) | 765 → 1140 | 493 / 647 | **1,353,278** | 1,452 | 48 | true | swieph ×8 (retflag 65602) |
+| `1c826d5a-…5f75a` | 0 (~33 min) | 753 → 1131 | 493 / 638 | **1,353,288** | 1,098 | 48 | true | swieph ×8 (retflag 65602) |
+
+- Logs: `.run/wp10_tranche2/rehearsal_enum_{482012f1,1c826d5a}.log`; payloads:
+  `rehearsal_episodes_*.json`, `rehearsal_coverage_*.json` in the same dir.
+- Upstream fingerprints match production exactly: `bg_transit_rules`
+  b78cd26f…, `bg_vedha_malefic_scale` 6b4ee79a…, `bg_transit_moorti`
+  6d3c0d58….
+- **Unavailable-target disclosure:** the `unavailable` counts (647 / 638:
+  `yoga_constituent` 595/586 + `lord` 52/52) reproduce **byte-identically when
+  the same resolution is run against production** (read-only check via
+  127.0.0.1:55440) — this is the honest pre-existing resolution state of the
+  current resonance rows, not a stripped-rehearsal-DB artifact. (The map
+  rows' own stored `target_resolution_state` says 'resolved'; live
+  re-resolution against current L1 facts disagrees for those target types.
+  Recorded, not "fixed" — disposition belongs to the native/PRAMĀṆIN.)
+
+**Verdict: ADK-0019 preconditions met — patch landed, regression tests green, battery 366/366, step06 disposable rehearsal GREEN for both charts under candidate-1 flags with refine on. Link 2 production re-run NOT attempted: it awaits PRAMĀṆIN's re-verification (drift check) per the ruling.**

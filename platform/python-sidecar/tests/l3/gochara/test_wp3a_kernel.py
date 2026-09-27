@@ -568,3 +568,104 @@ def test_rahu_ketu_mean_node_calc_unaffected():
     assert 0.0 <= lon < 360.0
     assert knots.GRAHA_TO_SWE["Rahu"] == swe.MEAN_NODE
     assert knots.GRAHA_TO_SWE["Ketu"] == swe.MEAN_NODE
+
+
+# ── ADK-0019 regression: refine=True over REAL long arcs ────────────────────
+# The pre-ADK-0019 kernel refined each boundary/conjunction root by
+# Swiss-bisecting the WHOLE arc; the wrapped-separation objective crosses its
+# ±180° branch cut when the arc spans >180° of travel past the level, so the
+# bracket was "lost" (ValueError) for Sun, Moon and Venus on a 2029 horizon
+# (PRAMĀṆIN reproduction). The fix brackets a narrow window around the spline
+# root instead. These tests build REAL arc indexes from the pinned ephemeris
+# and require refine=True to complete and to stay within tolerance of the
+# spline stage — the coverage hole (all-synthetic, refine=False) is closed
+# here, per the ruling's mandatory-regression clause.
+
+
+def _real_arc_index(body: str, start: date, end: date) -> arcs.ArcIndex:
+    def real_curve(jd: float) -> float:
+        lon, retflag = calc_sidereal_lon(body, jd, EPHE_PATH)
+        if not (retflag & 2) or (retflag & 4):
+            raise EphemerisBackendError(body, retflag)
+        return lon
+
+    jds, lons = daily_knots(start, end, real_curve)
+    # Production tolerance (DEFAULT_ROOT_FIND_TOLERANCE_ARCSEC), not the
+    # synthetic-fixture one: the spline only approximates the real curve.
+    return arcs.build_arc_index(body, jds, lons)
+
+
+@requires_swieph
+def test_adk0019_refine_real_long_arcs_2029():
+    """Sun, Moon AND Venus over calendar 2029 (the PRAMĀṆIN failure year):
+    every sign-ingress root must refine under refine=True, and the refined
+    instant must (i) stay within 0.1 day of the spline root and (ii) land the
+    body on the level to under an arcsecond."""
+    assert_real_ephemeris()
+    start, end = date(2029, 1, 1), date(2030, 1, 1)
+    expected_min_roots = {"Sun": 11, "Moon": 140, "Venus": 11}
+    for body, min_roots in expected_min_roots.items():
+        idx = _real_arc_index(body, start, end)
+        roots = contacts.find_boundary_roots(
+            idx, body, "sign_ingress", ephe_path=EPHE_PATH, refine=True
+        )
+        assert len(roots) >= min_roots, (
+            f"{body}: {len(roots)} sign-ingress roots in 2029, expected >= {min_roots}"
+        )
+        for r in roots:
+            assert abs(r.exact_jd - r.spline_exact_jd) < 0.1, (
+                f"{body} level {r.level_deg}: refined {r.exact_jd} drifted "
+                f"{r.exact_jd - r.spline_exact_jd:+.4f}d from spline"
+            )
+            lon, retflag = calc_sidereal_lon(body, r.exact_jd, EPHE_PATH)
+            assert retflag & 2
+            sep = abs(((lon - r.level_deg + 180.0) % 360.0) - 180.0)
+            assert sep < 1.0 / 3600.0, (
+                f"{body} level {r.level_deg}: refined root off by {sep * 3600:.2f}\""
+            )
+
+
+@requires_swieph
+def test_adk0019_refine_find_roots_conjunction_2029():
+    """find_roots shares the defect (conjunction/drishti levels): a real Sun
+    conjunction target in 2029 must refine green."""
+    assert_real_ephemeris()
+    idx = _real_arc_index("Sun", date(2029, 1, 1), date(2030, 1, 1))
+    target, _ = calc_sidereal_lon("Sun", swe.julday(2029, 6, 15, 12.0), EPHE_PATH)
+    roots = contacts.find_roots(
+        idx, "Sun", "conjunction", target, ephe_path=EPHE_PATH, refine=True
+    )
+    assert len(roots) == 1
+    r = roots[0]
+    assert abs(r.exact_jd - r.spline_exact_jd) < 0.1
+    lon, retflag = calc_sidereal_lon("Sun", r.exact_jd, EPHE_PATH)
+    assert retflag & 2
+    sep = abs(((lon - r.level_deg + 180.0) % 360.0) - 180.0)
+    assert sep < 1.0 / 3600.0
+
+
+# ── Pisces whole-sign span wrap fix (beyond ADK-0019's two call sites) ───────
+
+def test_pisces_whole_sign_span_not_refused():
+    """The driver's _sign_span legitimately emits (330.0, 360.0) for sign 12;
+    before the episodes.py fix, residence_spans wrapped 360.0 → 0.0 and
+    raised ValueError for the one whole-sign span that ends on the circle's
+    end. Now it must produce a normal residence span."""
+    h0 = jd_from_iso("2026-01-01T00:00:00Z")
+
+    def curve(jd):
+        return 300.0 + 0.5 * (jd - h0)  # sweeps 300°→330°(60d)→360°(120d)
+
+    jds, lons = daily_knots(date(2025, 12, 15), date(2026, 6, 1), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (jds[0], jds[-1])
+    spans = episodes.residence_spans(
+        idx, "Saturn", (330.0, 360.0), horizon, "bhava", refine=False
+    )
+    assert len(spans) == 1
+    span = spans[0]
+    assert (span.span_lo_deg, span.span_hi_deg) == (330.0, 360.0)
+    assert span.t_enter == pytest.approx(h0 + 30.0 / 0.5, abs=1e-4)  # λ=330 at t=60 d
+    assert span.t_exit == pytest.approx(h0 + 60.0 / 0.5, abs=1e-4)  # egress at λ=360, t=120 d
+    assert span.truncated_at_horizon is None
+    assert span.ingress_episode.relation == "sign_ingress"

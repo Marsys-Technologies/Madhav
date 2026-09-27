@@ -433,6 +433,11 @@ def residence_spans(
     (the WP1 §2.2 resolution contract is the caller's job; this function
     refuses point-shaped input by construction — it only accepts spans)."""
     lo_w, hi_w = float(span[0]) % 360.0, float(span[1]) % 360.0
+    if hi_w == 0.0 and float(span[1]) > float(span[0]):
+        # A span ending exactly on the circle's end (e.g. the Pisces
+        # whole-sign span (330, 360)) wraps hi to 0 under % 360 and would be
+        # wrongly refused; the end of the circle is 360, not 0.
+        hi_w = 360.0
     if hi_w <= lo_w:
         raise ValueError(f"span must satisfy lo < hi in [0,360): got {span}")
     ingress_roots = [
