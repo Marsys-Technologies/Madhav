@@ -729,3 +729,59 @@ def test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na(mon
     ds = w1._m(c, "bg_x", "Dens.served")
     assert ds["v"] == verdict, ds
     assert ac.emit_gaps(c)[2] == (1 if verdict == ac.NA else 0)
+
+
+# ─────────────────────────── R53: Build.target's FAIL is reachable ───────────────────────────
+
+def _target(monkeypatch, ctrl, count_sql, kind="data", writer=True, owners=None):
+    reg = {"bg_x": w1._reg_row("bg_x", None, has_writer=writer, count_sql=count_sql, asset_kind=kind)}
+    w1._stub_layer(monkeypatch, ctrl, reg)
+    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t_main": 7, "t_a": 1, "chart_facts": 3}))
+    if isinstance(owners, Exception):
+        def boom():
+            raise owners
+        monkeypatch.setattr(ac, "target_owners", boom, raising=False)
+    else:
+        monkeypatch.setattr(ac, "target_owners", lambda: dict(owners or {}), raising=False)
+    return w1._m(ac.measure("L0"), "bg_x", "Build.target")
+
+
+@pytest.mark.parametrize("count_sql, owners, verdict, text", [
+    ("", {}, ac.FAIL, "nothing to aim at"),                                       # no table at all
+    ("SELECT count(*) FROM t_main", {}, ac.FAIL, "declaration is missing"),        # T1 build_target_null
+    ("SELECT (SELECT count(*) FROM t_main) + (SELECT count(*) FROM t_a) AS count", {}, ac.PASS, "multi-table"),
+    ("SELECT count(*) FROM chart_facts WHERE chart_id = $1", {"chart_facts": ["ga_positions"]}, ac.PASS,
+     "partition of chart_facts, the declared target of ga_positions"),
+])
+def test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through(
+        monkeypatch, tmp_path, count_sql, owners, verdict, text):
+    """Fails without the fix for every case: asset_kind is never empty (NOT NULL CHECK), so the old
+    branch read the closable N/A "no target_table" for all of them and its FAIL was dead code."""
+    bt = _target(monkeypatch, tmp_path, count_sql, owners=owners)
+    assert bt["v"] == verdict and text in bt["measured"], bt
+
+
+def test_r53_a_declared_service_and_a_writerless_asset_stay_na(monkeypatch, tmp_path):
+    assert _target(monkeypatch, tmp_path, "", kind="service")["v"] == ac.NA
+    assert _target(monkeypatch, tmp_path, "", writer=False)["v"] == ac.NA
+
+
+def test_r53_an_unreadable_ownership_map_is_errored(monkeypatch, tmp_path):
+    bt = _target(monkeypatch, tmp_path, "SELECT count(*) FROM t_main", owners=ac.Unknown("relation gone"))
+    assert bt["v"] == ac.ERRORED, bt
+
+
+@LIVE
+def test_live_r53_no_writer_backed_data_asset_reads_the_closable_na():
+    """Live, read-only: bg_prashna_rules (5-table count) and ga_strength / ga_structural (chart_facts
+    partitions) read PASS by what their count_sql declares; no writer-backed data/artifact asset reads
+    Build.target N/A anywhere."""
+    owners = ac.target_owners()
+    seen = {}
+    for layer in ac.LAYERS:
+        reg, _ = ac.registry(layer)
+        for aid, r in reg.items():
+            if r["target_table"] or r["asset_kind"] == "service" or not r["has_writer"]:
+                continue
+            seen[aid] = ac._grade_target_less(r, lambda: owners)["v"]
+    assert seen == {"bg_prashna_rules": ac.PASS, "ga_strength": ac.PASS, "ga_structural": ac.PASS}, seen

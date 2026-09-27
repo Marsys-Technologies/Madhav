@@ -1177,6 +1177,44 @@ def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool)
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
+def target_owners() -> dict[str, list[str]]:
+    """R53: table -> the active assets (registry-wide, every layer) that declare it as target_table."""
+    out: dict[str, list[str]] = {}
+    for t, aid in psql("SELECT target_table, asset_id FROM asset_registry WHERE target_table IS NOT NULL "
+                       "AND is_active AND NOT coalesce(dead_flag,false) ORDER BY 1, 2"):
+        out.setdefault(t, []).append(aid)
+    return out
+
+
+def _grade_target_less(r: dict, owners) -> dict:
+    """R53 (T1 plant build_target_null; W2-1 OS-1/#18): Build.target for a writer-backed data/artifact
+    asset with NO target_table. The FAIL branch used to be dead — `asset_kind` is NOT NULL
+    CHECK(data|service|artifact), so "no target_table" always read the closable N/A.
+
+    The engine never clears or counts by target_table: its produced-table rule is target_table ∪ the
+    tables its count_sql names (`dag_edge_guard._producer_tables`), and target_table otherwise feeds
+    cowriter-peer detection. So, from the count_sql (`owners()` is called only when needed):
+      ≥2 tables                      → PASS: a multi-table asset, its produced tables declared
+                                        (bg_prashna_rules: 5 tables);
+      1 table, another asset's target → PASS: a partition writer into that asset's table
+                                        (ga_strength, ga_structural → chart_facts, 7 declaring assets);
+      1 table nobody declares         → FAIL: the declaration is missing (the plant's exact shape);
+      no table                        → FAIL: nothing to aim at."""
+    ct = _count_tables(r["count_sql"])
+    if len(ct) >= 2:
+        return dict(v=PASS, measured=f"no single target_table: a multi-table asset whose count_sql declares the "
+                                     f"{len(ct)} tables it produces ({', '.join(ct)}) — the engine's produced-table rule")
+    if len(ct) == 1:
+        own = [a for a in owners().get(ct[0], []) if a != r["asset_id"]]
+        if own:
+            return dict(v=PASS, measured=f"no target_table: writes a partition of {ct[0]}, the declared target of "
+                                         f"{', '.join(own)} (count_sql counts its share)")
+        return dict(v=FAIL, measured=f"target_table not declared: count_sql counts {ct[0]}, which no active asset "
+                                     "declares as its target — the declaration is missing")
+    return dict(v=FAIL, measured="has a writer and neither a target_table nor a count_sql naming a table — the "
+                                 "orchestrator's clear/count steps have nothing to aim at")
+
+
 def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
     """R45 (L2 handverify; W2-1_REVIEW C2): Build.dep_liveness at the census's CHART SCOPE.
 
@@ -1353,6 +1391,7 @@ def measure(layer_key: str) -> dict:
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
 
     known = set(reg)
+    owners: dict = {}                                     # R53: read lazily, at most once per layer
     assets = []
     for aid, r in reg.items():
         m: dict[str, dict] = {}
@@ -1377,10 +1416,13 @@ def measure(layer_key: str) -> dict:
         # Build.target
         if r["target_table"]:
             m["Build.target"] = dict(v=PASS, measured=f"target_table={r['target_table']}")
-        elif r["asset_kind"] or not r["has_writer"]:
+        elif r["asset_kind"] == "service" or not r["has_writer"]:
             m["Build.target"] = dict(v=NA, measured=f"no target_table; asset_kind='{r['asset_kind']}', has_writer={r['has_writer']}")
         else:
-            m["Build.target"] = dict(v=FAIL, measured="has a writer and NO target_table declared — the orchestrator's clear/count steps have nothing to aim at")
+            try:
+                m["Build.target"] = _grade_target_less(r, lambda: owners.setdefault("map", target_owners()))
+            except Unknown as exc:
+                m["Build.target"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
         missing = [d for d in r["depends_on"] if d not in known and not d.startswith(cfg["prefix"]) is False]
         unknown_deps = [d for d in r["depends_on"] if d.startswith(cfg["prefix"]) and d not in known]
