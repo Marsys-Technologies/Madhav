@@ -150,6 +150,44 @@ const QUERY_PLANET_LEGS = [
 ] as const
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  // R3 proof typing (review §4, "direct-DB composites"): PROMISE delegates to judgment_query
+  // (already contracted) and CONFIRMATION's own direct chart_facts read is fenced to the same
+  // served generation (register_d10_pact.ts). ACTIVATION reuses judgment_query's own timing
+  // hooks with no independent fetch. TRIGGER makes a live sidecar ephemeris call this static
+  // contract cannot attest to — a genuinely reachable-or-not external dependency, not a
+  // source-provable one; the handler discloses that stage's live outcome at request time
+  // (chain_incomplete_infra etc.), honestly outside this contract's scope.
+  pact_query: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ['registry:marsys://tool/L-JUDGMENT/judgment_query'],
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d10_pact.ts',
+    }],
+  },
+  // R3 proof typing (review §4, "direct-DB composites"): synergy_cross_layer runs
+  // runWholeChartRead in 'cross_domain' mode (register_d6_synergy.ts), which composes exactly
+  // query_ucd, query_domain_reading, query_signals, traverse_chart_graph and
+  // query_contradictions via their own registered handlers (getCapability, orchestrator.ts) —
+  // never a parallel unreviewed query path. The temporal step (L3 Kāla-owned legs) is gated on
+  // queryClass 'predictive'/'holistic' and never runs for 'cross_domain', so it is correctly
+  // outside this contract.
+  synergy_cross_layer: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: [
+        'registry:marsys://tool/L2/query_ucd',
+        'registry:marsys://tool/L2/query_domain_reading',
+        'registry:marsys://tool/L2/query_signals',
+        'registry:marsys://tool/L2/traverse_chart_graph',
+        'registry:marsys://tool/L2/query_contradictions',
+      ],
+      source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead',
+    }],
+  },
   graha_portrait: {
     producer_output_claims: [],
     requirements: [{

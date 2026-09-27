@@ -38,6 +38,21 @@ vi.mock('../register_d9_judgment', async (importOriginal) => {
 
 import { pactQueryCapability } from '../register_d10_pact'
 
+// A minimal resolvable served generation (RC-1/RC-2, generation/served_generation.ts) —
+// resolveChartServedGeneration issues exactly one query, always the FIRST call in this
+// handler, so a `mockResolvedValueOnce` in beforeEach satisfies it while leaving each test's
+// own `mockResolvedValue` as the fallback for every subsequent (dignity) query.
+const SERVED_BUILD_ID = '11111111-1111-4111-8111-111111111111'
+function servedReceiptRow() {
+  return {
+    asset_id: 'ga_structural', partition_key: '__whole_asset__', receipt_version: 'v1',
+    receipt_build_id: SERVED_BUILD_ID, rows_build_id: SERVED_BUILD_ID, receipt_state: 'proven',
+    freshness_state: 'fresh', output_digest_spec_sha256: 'a'.repeat(64), spec_active: true,
+    receipt_run_state: 'completed', receipt_asset_present: true, receipt_disposition: 'build',
+    observed_at: '2026-09-07T00:00:00Z',
+  }
+}
+
 function judgmentContent(overrides: Record<string, unknown> = {}) {
   return {
     chart_id: CHART_ID,
@@ -59,6 +74,7 @@ function judgmentContent(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.unstubAllGlobals()
   mockQuery.mockReset()
+  mockQuery.mockResolvedValueOnce({ rows: [servedReceiptRow()] })
   mockJudgmentHandler.mockReset()
 })
 
@@ -79,8 +95,10 @@ describe('pact_query — Stage 1 PROMISE denial halts the chain (design §28.3)'
     expect(stages[0]!['stage']).toBe('PROMISE')
     expect(stages[0]!['status']).toBe('denied')
 
-    // Chain honesty: CONFIRMATION never ran — no chart_facts dignity query was fired at all.
-    expect(mockQuery).not.toHaveBeenCalled()
+    // Chain honesty: CONFIRMATION never ran — the only query fired at all was the served-
+    // generation fence resolved before PROMISE; no chart_facts dignity query was ever issued.
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+    expect(String(mockQuery.mock.calls[0]![0])).not.toContain('graha_dignity_per_varga')
 
     const drillPointers = content['drill_pointers'] as Array<Record<string, unknown>>
     expect(drillPointers.some(p => p['pact_stage'] === 'promise')).toBe(true)

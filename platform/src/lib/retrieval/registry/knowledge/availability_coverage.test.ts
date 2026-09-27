@@ -167,6 +167,48 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
   return loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [...rows] }), new Date('2026-09-17T00:05:00.000Z'))
 }
 
+describe('pact_query / synergy_cross_layer — R3 proof typing (direct-DB composites)', () => {
+  it('pact_query becomes available only once judgment_query resolves, and stays scoped to that one leg', async () => {
+    const scu = findScu('scu.catalog.pact_query')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-PACT/pact_query',
+      requirements: [expect.objectContaining({
+        kind: 'derived', scope: 'chart',
+        required_binding_ids: ['registry:marsys://tool/L-JUDGMENT/judgment_query'],
+      })],
+    })])
+    const available = await overlayFor([transitProbeAnchor()])
+    expect(available.availability.find((entry) => entry.scu_id === 'scu.catalog.pact_query')).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/L-PACT/pact_query'], gaps: [],
+    })
+  })
+
+  it('synergy_cross_layer becomes available only once every cross_domain leg resolves, and names the one leg that fails', async () => {
+    const scu = findScu('scu.catalog.synergy_cross_layer')
+    expect(scu.scope).toBe('chart')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/synergy/cross_layer',
+      requirements: [expect.objectContaining({ kind: 'derived', scope: 'chart' })],
+    })])
+
+    const available = await overlayFor([transitProbeAnchor()])
+    expect(available.availability.find((entry) => entry.scu_id === 'scu.catalog.synergy_cross_layer')).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/synergy/cross_layer'], gaps: [],
+    })
+
+    // Withhold query_ucd's own source-query success and confirm only that leg is named.
+    const failing = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('FROM vw_chart_digest')) throw new Error('leg source unavailable')
+      return { rows: [transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    const entry = failing.availability.find((candidate) => candidate.scu_id === 'scu.catalog.synergy_cross_layer')!
+    expect(entry.state).toBe('dark')
+    expect(entry.gaps.length).toBeGreaterThan(0)
+  })
+})
+
 describe('graha_portrait / query_planet — R3 proof typing (strength group)', () => {
   const GA_POSITIONS = adjacentProducerReceipt('ga_positions', '474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f')
   const GA_DASHAS = adjacentProducerReceipt('ga_dashas', '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14')

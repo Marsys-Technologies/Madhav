@@ -168,7 +168,10 @@ const synergyCrossLayerTool: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L0',
   name: 'synergy_cross_layer',
-  scope: 'global',
+  // R3 proof typing (review §4): required_inputs names chart_id required, and every
+  // composed leg (runWholeChartRead) is chart-scoped — 'global' misrepresented reality and
+  // blocked an honest derived availability contract (its legs cannot be global AND chart).
+  scope: 'per_chart',
 
   description: [
     'D6 cross-layer signal reconciliation. Accepts a chart_id and a set of signals',
