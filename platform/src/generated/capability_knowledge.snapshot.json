@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-27T13:41:17.000Z",
-  "content_hash": "sha256:d5356060fd29038a78d5a62d88132343e3cceb298129c0bb8d67e08f45cc9d7b",
+  "generated_at": "2026-09-27T15:25:22.000Z",
+  "content_hash": "sha256:6a595916dda6ba2b23c2c567c97cc50ddc1d218c353ea56aa383ffceb62dad7b",
   "source_catalog_fingerprint": "sha256:d47ae2508878589ee7a0a42648f4a9cfb9275a00f2faa2599bba0afd2cb50516",
-  "semantic_review_fingerprint": "sha256:574d9d095f6a21adff675a0f3aad52bd5c95ba084f165b53e501adb5a06f4ff6",
+  "semantic_review_fingerprint": "sha256:e152b94171072c717aa45093ffcaaca9a859e97142e25116b6edf29736714845",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -23894,9 +23894,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prospective-ledger:v1",
               "capability_uri": "marsys://tool/L4/query_prospective_ledger",
-              "contract_sha256": "sha256:334cda1ae2dbc4dec773abbf67b85a7cc677f21c87a5a83694d56f1ee1be30ef",
+              "contract_sha256": "sha256:deb1e53d0fee2fc455fcc76875402c6598d6450350f3c0410bdded88a80f74df",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:197-211"
             }
           ]
         }
