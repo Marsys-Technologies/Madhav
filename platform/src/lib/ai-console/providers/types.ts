@@ -86,13 +86,15 @@ export async function boundedFetch(url: string, init: RequestInit, timeoutMs: nu
     if (controller.signal.aborted) throw expired ? new AiConsoleError('AI_PROVIDER_UNREACHABLE') : fail()
     const response = await Promise.race([fetch(url, { ...init, signal: controller.signal, redirect: 'error', cache: 'no-store' }), abortRace])
     if (response.status < 200 || response.status >= 300) {
-      // A small complete JSON error may distinguish billing from rate limiting.
+      // Only these 429s need body evidence to distinguish billing from throttling.
+      // Definitive HTTP states must survive stalled/reset/erroring response bodies.
+      const needsDiscriminator = response.status === 429 && (providerId === 'openai' || providerId === 'kimi')
       // Retain no message/body: only allowlisted machine discriminators escape.
       let billing = false
       const bytes = new Uint8Array(4096)
       let length = 0
       try {
-        if (response.body && Number(response.headers.get('content-length')) <= bytes.length) {
+        if (needsDiscriminator && response.body && Number(response.headers.get('content-length')) <= bytes.length) {
           reader = response.body.getReader()
           while (true) {
             const chunk = await Promise.race([reader.read(), abortRace])

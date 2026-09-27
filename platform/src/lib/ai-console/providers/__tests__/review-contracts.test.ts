@@ -50,6 +50,34 @@ describe('conservative capability evidence', () => {
   })
 })
 describe('bounded machine-only billing discriminators', () => {
+  describe.each(['stalled', 'reset'] as const)('%s definitive error body', bodyFailure => {
+    it.each([
+      ['openai', 401, 'AI_CONNECTION_INVALID'], ['kimi', 401, 'AI_CONNECTION_INVALID'],
+      ['openai', 402, 'AI_BILLING_UNAVAILABLE'], ['openai', 403, 'AI_PERMISSION_DENIED'],
+      ['openai', 404, 'AI_MODEL_UNAVAILABLE'], ['openai', 500, 'AI_PROVIDER_UNREACHABLE'],
+      ['anthropic', 529, 'AI_PROVIDER_UNREACHABLE'], ['anthropic', 429, 'AI_RATE_LIMITED'],
+    ] as const)('%s HTTP %i remains %s on probe and runtime without reading its body', async (provider, status, code) => {
+      vi.useFakeTimers()
+      const pull = vi.fn((controller: ReadableStreamDefaultController<Uint8Array>) => {
+        if (bodyFailure === 'reset') controller.error(new TypeError(key))
+      })
+      const cancel = vi.fn()
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(new ReadableStream({ pull, cancel }, { highWaterMark: 0 }), { status })))
+      const adapter = getProviderAdapter(provider)
+      const binding = adapter.createRuntimeBinding(key, model)
+      try {
+        for (const op of [() => adapter.probe(key, model, signal()), () => binding.model.doGenerate({ prompt: [] })]) {
+          const pending = Promise.resolve(op()).catch(error => error)
+          await vi.advanceTimersByTimeAsync(120_001)
+          const error = await pending
+          expect(error).toMatchObject({ code })
+          expect(inspect(error)).not.toContain(key)
+        }
+        expect(pull).not.toHaveBeenCalled()
+        expect(cancel).toHaveBeenCalledTimes(2)
+      } finally { binding.dispose() }
+    })
+  })
   it.each(['insufficient_quota', 'credit_balance_exhausted', 'organization_spend_limit_exceeded', 'project_spend_limit_exceeded', 'organization_usage_limit_exceeded'])('classifies OpenAI %s on probe and runtime without retaining bodies', async code => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json({ error: { code, message: key, private: key } }, { status: 429 })))
     const adapter = getProviderAdapter('openai')
