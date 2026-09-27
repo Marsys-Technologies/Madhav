@@ -19,6 +19,12 @@ import {
   type CollectionProvenance,
 } from './collection_types'
 import { stableFingerprint } from '../../src/lib/retrieval/registry/knowledge/stable'
+import {
+  boundedInsufficiencyReceipt,
+  namedMissingEvidenceReceipt,
+  requiredEvidenceDimensionsReceipt,
+  type TypedGateResult,
+} from './typed_gate_receipts'
 
 function evidence(gate_id: string, passed: boolean, receipt_ref: string | null, detail?: string): DeterministicEvidence {
   return { gate_id, passed, receipt_ref, ...(detail ? { detail } : {}) }
@@ -75,8 +81,16 @@ function gateEvidence(
       return evidence(gate, row.materialFactIds.length > 0 && allMaterialDelivered, row.receiptRefs[0] ?? null,
         row.materialFactIds.length > 0 && allMaterialDelivered ? undefined : 'MATERIAL_FACT_DELIVERY_RECEIPT_INCOMPLETE')
     }
-    // Collection intentionally has no heuristic substitute for these semantic
-    // receipts. A door must expose typed proof before this bridge can pass it.
+    // Typed receipts derive only from the door's own accountability envelope; there is no
+    // heuristic substitute, and an unproven gate fails with the specific missing proof.
+    const typed = (result: TypedGateResult) => evidence(gate, result.passed, result.receipt_ref, result.detail)
+    if (gate === 'required_evidence_dimensions') {
+      return typed(requiredEvidenceDimensionsReceipt(input.required_dimensions, row.responseAccountability))
+    }
+    if (gate === 'named_missing_evidence') return typed(namedMissingEvidenceReceipt(row.responseAccountability))
+    if (gate === 'bounded_insufficiency') {
+      return typed(boundedInsufficiencyReceipt({ terminal: row.terminal, answer: row.answer, envelope: row.responseAccountability }))
+    }
     return evidence(gate, false, null, `CHANNEL_${gate.toUpperCase()}_RECEIPT_UNAVAILABLE`)
   })
 }
