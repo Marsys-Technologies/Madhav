@@ -386,12 +386,16 @@ export async function GET(
     created_at: string
     cells_jsonb: unknown
   }>(
+    // Jātaka Phase-A3 (migration 1123): a snapshot a correction has marked
+    // chart_context_stale_at was proposed under former birth details — never
+    // offered for the native's co-sign review.
     `SELECT snapshot_id, formula_version, publication_status,
             created_at::text, cells_jsonb
      FROM mimamsa_calibration_snapshot
      WHERE chart_id = $1
        AND two_key_complete = false
        AND publication_status = 'proposed'
+       AND chart_context_stale_at IS NULL
      ORDER BY created_at DESC
      LIMIT 5`,
     [chartId],

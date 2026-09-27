@@ -171,4 +171,17 @@ describe('GET /api/clients/[id]/learning — unaffected read path (regression)',
 
     expect(res.status).toBe(403)
   })
+
+  it('the co-sign queue excludes a chart-context-stale snapshot (Jātaka Phase-A3)', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
+    setupMocks({ role: 'guest', isOwner: true, hasGrant: false })
+
+    await GET(new NextRequest(`http://localhost/api/clients/${CHART_ID}/learning`), paramsFor())
+
+    const snapshotCall = mockQuery.mock.calls.find(
+      ([sql]) => typeof sql === 'string' && sql.includes('FROM mimamsa_calibration_snapshot'),
+    )
+    expect(snapshotCall, 'expected the proposed-snapshot co-sign query').toBeDefined()
+    expect(snapshotCall![0] as string).toMatch(/chart_context_stale_at\s+IS\s+NULL/)
+  })
 })
