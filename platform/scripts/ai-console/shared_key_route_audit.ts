@@ -236,12 +236,14 @@ function usesSharedProviderEnvironment(source: string, path: string): { found: b
     const member = staticMember(current)
     if (member) {
       const base = taintOf(member.base)
+      if (base === 'global' && member.key === 'global') return 'global'
       if (base === 'global' && member.key === 'process') return 'process'
       if (base === 'process' && member.key === 'env') return 'environment'
     }
     if (ts.isCallExpression(current) && isReflectGet(current.expression) && current.arguments.length >= 2) {
       const base = taintOf(current.arguments[0])
       const key = staticString(current.arguments[1], strings)
+      if (base === 'global' && key === 'global') return 'global'
       if (base === 'global' && key === 'process') return 'process'
       if (base === 'process' && key === 'env') return 'environment'
     }
