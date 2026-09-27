@@ -2,6 +2,9 @@ import { readFile, readdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { expect, test, type APIRequestContext, type BrowserContext, type TestInfo } from '@playwright/test'
 import { preflightOwnerFixture, type OwnerConfig } from '../../../scripts/ai-console/owner_preflight'
+import { captureLeakageBaseline, containsForbiddenLeakage, readFreshLeakageEvidence,
+  type LeakageBaseline } from '../../../scripts/ai-console/leakage_evidence'
+import { requestWithValidationThrottle } from '../../../scripts/ai-console/validation_scheduler'
 import {
   assertSafeRoutingEvidence, parseConsultTerminal, parsePariprashnaTerminal,
   type SafeRoleMap, type SafeRoleTarget, type SafeSelection,
@@ -49,8 +52,12 @@ const cliCases: Array<{ label: string; id: CliId }> = [
 let owner: OwnerConfig | undefined
 let fixtureCode = 'AIC_ACCEPTANCE_OWNER_FIXTURE_MISSING'
 let restore: RestoreState | undefined
+let currentPrefix: string | undefined
+let runStartedAtMs = 0
+let leakageBaselines: LeakageBaseline[] = []
 const createdConnectionIds = new Set<string>()
 const createdConfigurationIds = new Set<string>()
+const currentRunMarkers = new Set<string>()
 
 test.use({ trace: 'off', screenshot: 'off', video: 'off' })
 test.describe.configure({ mode: 'serial' })
@@ -79,11 +86,15 @@ async function assertIdentity(request: APIRequestContext, config: OwnerConfig) {
 }
 
 async function createConnection(request: APIRequestContext, providerId: ProviderId, secret: ProviderSecret, name: string) {
-  const created = await json<{ connection: { id: string }; validation: { state: string } }>(request, '/api/ai-console/connections', {
+  const response = await requestWithValidationThrottle(() => fetchNoRedirect(request, '/api/ai-console/connections', {
     method: 'POST', data: { name, providerId, apiKey: secret.apiKey, acknowledgeCharge: true },
-  })
-  expect(created.validation.state).toBe('validated')
+  }))
+  if (!response.ok()) throw new Error(`AIC_E2E_HTTP_${response.status()}`)
+  let created: { connection: { id: string }; validation: { state: string } }
+  try { created = await response.json() as typeof created } catch { throw new Error('AIC_E2E_RESPONSE_INVALID') }
   createdConnectionIds.add(created.connection.id)
+  currentRunMarkers.add(created.connection.id)
+  expect(created.validation.state).toBe('validated')
   const candidates = (await state(request)).models.filter(model => model.connectionId === created.connection.id && model.available
     && ['synthesizer', 'planner', 'deep_planner', 'worker'].every(role => model.compatibleRoles.includes(role)))
   const model = secret.preferredModel ? candidates.find(candidate => candidate.modelId === secret.preferredModel) : candidates[0]
@@ -119,6 +130,7 @@ async function runNativeTurn(request: APIRequestContext, selection: SafeSelectio
   })
   if (!response.ok()) throw new Error(`AIC_E2E_HTTP_${response.status()}`)
   const turnId = parsePariprashnaTerminal(await response.text())
+  currentRunMarkers.add(turnId)
   const path = config.inspection.routingEvidenceUrlTemplate.replace('{turnId}', encodeURIComponent(turnId))
   await pollEvidence(request, path, { userId: config.userId, correlationId: turnId, selection, resolvedChoice, roles })
   return turnId
@@ -135,7 +147,8 @@ async function latestEvidence(request: APIRequestContext, after: string, selecti
         const evidence = await response.json() as { correlationId?: unknown }
         if (typeof evidence.correlationId === 'string') {
           assertSafeRoutingEvidence(evidence, { userId: config.userId, correlationId: evidence.correlationId, selection, resolvedChoice, roles })
-          return
+          currentRunMarkers.add(evidence.correlationId)
+          return evidence.correlationId
         }
       } catch { /* bounded retry for asynchronous Observatory persistence */ }
     }
@@ -159,42 +172,54 @@ async function snapshotMutableState(request: APIRequestContext, title: string) {
   }
 }
 async function cleanup(request: APIRequestContext) {
-  if (restore?.conversationSelection) await setConversation(request, restore.conversationSelection)
-  if (restore?.defaultChoice) await setDefault(request, restore.defaultChoice)
+  const errors: unknown[] = []
+  const attempt = async (operation: () => Promise<unknown>) => {
+    try { await operation() } catch (error) { errors.push(error) }
+  }
+  const prefix = currentPrefix
+  let discovered: ConsoleState | undefined
+  if (prefix) await attempt(async () => { discovered = await state(request) })
+  for (const row of discovered?.connections ?? []) if (row.name.startsWith(prefix!)) createdConnectionIds.add(row.id)
+  for (const row of discovered?.configurations ?? []) if (row.name.startsWith(prefix!)) createdConfigurationIds.add(row.id)
+  if (restore?.conversationSelection) await attempt(() => setConversation(request, restore!.conversationSelection!))
+  if (restore?.defaultChoice) await attempt(() => setDefault(request, restore!.defaultChoice))
   if (restore?.grants) {
     for (const [cliId, granted] of restore.grants) {
-      await json(request, `/api/admin/users/${encodeURIComponent(configuredOwner().userId)}/ai-cli-grants`, {
+      await attempt(() => json(request, `/api/admin/users/${encodeURIComponent(configuredOwner().userId)}/ai-cli-grants`, {
         method: 'PATCH', data: { cliId, granted },
-      })
+      }))
     }
   }
   for (const id of createdConfigurationIds) {
-    await json(request, `/api/ai-console/configurations/${id}`, { method: 'DELETE', data: { confirm: true } })
-    expect((await fetchNoRedirect(request, `/api/ai-console/configurations/${id}`)).status()).toBe(404)
+    await attempt(async () => {
+      await json(request, `/api/ai-console/configurations/${id}`, { method: 'DELETE', data: { confirm: true } })
+      expect((await fetchNoRedirect(request, `/api/ai-console/configurations/${id}`)).status()).toBe(404)
+    })
   }
   for (const id of createdConnectionIds) {
-    await json(request, `/api/ai-console/connections/${id}`, { method: 'DELETE', data: { confirm: true } })
-    expect((await fetchNoRedirect(request, `/api/ai-console/connections/${id}`)).status()).toBe(404)
+    await attempt(async () => {
+      await json(request, `/api/ai-console/connections/${id}`, { method: 'DELETE', data: { confirm: true } })
+      expect((await fetchNoRedirect(request, `/api/ai-console/connections/${id}`)).status()).toBe(404)
+    })
   }
-  const current = await state(request)
-  for (const id of createdConfigurationIds) expect(current.configurations.find(row => row.id === id)?.deletedAt).toBeTruthy()
-  for (const id of createdConnectionIds) expect(current.connections.find(row => row.id === id)?.deletedAt).toBeTruthy()
+  await attempt(async () => {
+    const current = await state(request)
+    for (const id of createdConfigurationIds) expect(current.configurations.find(row => row.id === id)?.deletedAt).toBeTruthy()
+    for (const id of createdConnectionIds) expect(current.connections.find(row => row.id === id)?.deletedAt).toBeTruthy()
+    if (prefix) {
+      expect(current.configurations.filter(row => row.name.startsWith(prefix) && !row.deletedAt)).toEqual([])
+      expect(current.connections.filter(row => row.name.startsWith(prefix) && !row.deletedAt)).toEqual([])
+    }
+  })
   createdConfigurationIds.clear()
   createdConnectionIds.clear()
   restore = undefined
+  currentPrefix = undefined
+  if (errors.length > 0) throw new Error('AIC_E2E_CLEANUP_FAILED')
 }
 function providerRoles(target: { providerId: ProviderId; connectionId: string; modelId: string }): SafeRoleMap {
   const roleTarget: SafeRoleTarget = { kind: 'provider_model', ...target }
   return { synthesizer: roleTarget, planner: roleTarget, deep_planner: roleTarget, worker: roleTarget }
-}
-function containsForbiddenSecret(value: unknown, secrets: readonly string[]): boolean {
-  if (typeof value === 'string') return secrets.some(secret => secret.length > 0 && value.includes(secret))
-    || /(?:authorization\s*:\s*bearer|\bsk-[a-z0-9_-]{8,})/i.test(value)
-  if (Array.isArray(value)) return value.some(item => containsForbiddenSecret(item, secrets))
-  if (!value || typeof value !== 'object') return false
-  return Object.entries(value).some(([key, child]) =>
-    /^(?:ciphertext|wrappedDataKey|wrapped_data_key|authTag|auth_tag|nonce|apiKey|api_key|credential|authorization|stdout|stderr|token|accessToken|access_token|refreshToken|refresh_token|prompt|probe|completion)$/i.test(key)
-      || containsForbiddenSecret(child, secrets))
 }
 async function artifactFiles(root: string): Promise<string[]> {
   const files: string[] = []
@@ -210,8 +235,13 @@ async function artifactFiles(root: string): Promise<string[]> {
 test.describe('AI Console owner-operated local cutover', () => {
   test.skip(!ENV_READY, 'UNQUALIFIED: local flags, authenticated disposable user, and private owner fixture are required')
   test.beforeAll(async () => {
+    runStartedAtMs = Date.now()
     const checked = await preflightOwnerFixture(CONFIG_PATH!, { platformRoot: process.cwd(), baseUrl: BASE_URL })
-    if (checked.ok && process.env.AI_CONSOLE_E2E_ARTIFACT_DIR === checked.config.leakage.artifactDirectory) owner = checked.config
+    if (checked.ok && process.env.AI_CONSOLE_E2E_ARTIFACT_DIR === checked.config.leakage.artifactDirectory) {
+      owner = checked.config
+      leakageBaselines = await Promise.all([checked.config.leakage.serverLogPath, checked.config.leakage.routingSnapshotPath,
+        checked.config.leakage.observatoryPath, checked.config.leakage.auditPath].map(captureLeakageBaseline))
+    }
     else if (checked.ok) fixtureCode = 'AIC_ACCEPTANCE_LEAKAGE_INPUT_INVALID'
     else fixtureCode = checked.code
   })
@@ -220,9 +250,12 @@ test.describe('AI Console owner-operated local cutover', () => {
     await authenticate(context)
     await assertIdentity(context.request, config)
     const current = await state(context.request)
-    expect(current.connections.filter(row => !row.deletedAt && row.name.startsWith(PREFIX))).toEqual([])
-    expect(current.configurations.filter(row => !row.deletedAt && row.name.startsWith(PREFIX))).toEqual([])
-    if (/@routing|@backend|@cli-/.test(testInfo.title)) await snapshotMutableState(context.request, testInfo.title)
+    currentPrefix = `${PREFIX}${crypto.randomUUID()} `
+    currentRunMarkers.add(currentPrefix)
+    expect(current.connections.filter(row => row.name.startsWith(currentPrefix!))).toEqual([])
+    expect(current.configurations.filter(row => row.name.startsWith(currentPrefix!))).toEqual([])
+    if (/@routing|@backend|@cli-|@leakage/.test(testInfo.title)) await snapshotMutableState(context.request,
+      testInfo.title.includes('@leakage') ? `${testInfo.title} @routing` : testInfo.title)
   })
   test.afterEach(async ({ context }) => { if (owner) await cleanup(context.request) })
 
@@ -243,7 +276,7 @@ test.describe('AI Console owner-operated local cutover', () => {
     test(`@provider-${provider.label} validates a real owner-supplied ${provider.label} connection`, async ({ context }) => {
       const config = configuredOwner()
       test.skip(!PROVIDER_AUTHORIZED || !config.providers[provider.id], `UNQUALIFIED: authorized ${provider.label} credential is absent`)
-      const created = await createConnection(context.request, provider.id, config.providers[provider.id]!, `${PREFIX}${provider.label} ${crypto.randomUUID().slice(0, 8)}`)
+      const created = await createConnection(context.request, provider.id, config.providers[provider.id]!, `${currentPrefix}${provider.label}`)
       expect(created.connectionId).toBeTruthy()
       expect(created.modelId).toBeTruthy()
     })
@@ -253,17 +286,18 @@ test.describe('AI Console owner-operated local cutover', () => {
     const config = configuredOwner()
     test.skip(!PROVIDER_AUTHORIZED, 'UNQUALIFIED: real provider execution was not explicitly authorized')
     const suffix = crypto.randomUUID().slice(0, 8)
-    const first = await createConnection(context.request, config.sameProvider.providerId, config.sameProvider.first, `${PREFIX}first ${suffix}`)
-    const second = await createConnection(context.request, config.sameProvider.providerId, config.sameProvider.second, `${PREFIX}second ${suffix}`)
+    const first = await createConnection(context.request, config.sameProvider.providerId, config.sameProvider.first, `${currentPrefix}first ${suffix}`)
+    const second = await createConnection(context.request, config.sameProvider.providerId, config.sameProvider.second, `${currentPrefix}second ${suffix}`)
     const firstChoice: Choice = { kind: 'provider_model', connectionId: first.connectionId, modelId: first.modelId }
     const secondChoice: Choice = { kind: 'provider_model', connectionId: second.connectionId, modelId: second.modelId }
     const firstTarget: SafeRoleTarget = { kind: 'provider_model', providerId: first.providerId, connectionId: first.connectionId, modelId: first.modelId }
     const secondTarget: SafeRoleTarget = { kind: 'provider_model', providerId: second.providerId, connectionId: second.connectionId, modelId: second.modelId }
     const roles = { synthesizer: firstChoice, planner: secondChoice, deep_planner: firstChoice, worker: secondChoice }
     const configuration = await json<{ configuration: { id: string; version: number } }>(context.request, '/api/ai-console/configurations', {
-      method: 'POST', data: { name: `${PREFIX}quartet ${suffix}`, roles },
+      method: 'POST', data: { name: `${currentPrefix}quartet ${suffix}`, roles },
     })
     createdConfigurationIds.add(configuration.configuration.id)
+    currentRunMarkers.add(configuration.configuration.id)
     const configurationChoice: Choice = { kind: 'custom_configuration', configurationId: configuration.configuration.id }
     await runNativeTurn(context.request, { kind: 'explicit', choice: firstChoice }, firstChoice, providerRoles(first))
     await runNativeTurn(context.request, { kind: 'explicit', choice: configurationChoice }, configurationChoice, {
@@ -278,14 +312,15 @@ test.describe('AI Console owner-operated local cutover', () => {
 
     const edited = await json<{ configuration: { version: number } }>(context.request,
       `/api/ai-console/configurations/${configuration.configuration.id}`, {
-        method: 'PATCH', data: { name: `${PREFIX}quartet edited ${suffix}`, expectedVersion: configuration.configuration.version,
+        method: 'PATCH', data: { name: `${currentPrefix}quartet edited ${suffix}`, expectedVersion: configuration.configuration.version,
           roles: { synthesizer: secondChoice, planner: firstChoice, deep_planner: secondChoice, worker: firstChoice } },
       })
     expect(edited.configuration.version).toBe(configuration.configuration.version + 1)
     const duplicate = await json<{ configuration: { id: string } }>(context.request, '/api/ai-console/configurations', {
-      method: 'POST', data: { name: `${PREFIX}quartet copy ${suffix}`, duplicateFrom: configuration.configuration.id },
+      method: 'POST', data: { name: `${currentPrefix}quartet copy ${suffix}`, duplicateFrom: configuration.configuration.id },
     })
     createdConfigurationIds.add(duplicate.configuration.id)
+    currentRunMarkers.add(duplicate.configuration.id)
     const secondContext = await browser.newContext()
     await authenticate(secondContext)
     try {
@@ -302,7 +337,7 @@ test.describe('AI Console owner-operated local cutover', () => {
   test('@backend consumes a terminal Consult event and exact default routing evidence', async ({ context }) => {
     const config = configuredOwner()
     test.skip(!PROVIDER_AUTHORIZED || !config.providers.openai, 'UNQUALIFIED: authorized OpenAI credential is absent')
-    const direct = await createConnection(context.request, 'openai', config.providers.openai!, `${PREFIX}backend ${crypto.randomUUID().slice(0, 8)}`)
+    const direct = await createConnection(context.request, 'openai', config.providers.openai!, `${currentPrefix}backend`)
     const choice: Choice = { kind: 'provider_model', connectionId: direct.connectionId, modelId: direct.modelId }
     await setDefault(context.request, choice)
     const after = new Date().toISOString()
@@ -330,8 +365,10 @@ test.describe('AI Console owner-operated local cutover', () => {
       await json(context.request, `/api/admin/users/${encodeURIComponent(config.userId)}/ai-cli-grants`, {
         method: 'PATCH', data: { cliId: cli.id, granted: true },
       })
-      const validation = await json<{ validation: { state: string } }>(context.request,
-        `/api/ai-console/clis/${cli.id}/validate`, { method: 'POST', data: {} })
+      const validationResponse = await requestWithValidationThrottle(() => fetchNoRedirect(context.request,
+        `/api/ai-console/clis/${cli.id}/validate`, { method: 'POST', data: {} }))
+      if (!validationResponse.ok()) throw new Error(`AIC_E2E_HTTP_${validationResponse.status()}`)
+      const validation = await validationResponse.json() as { validation: { state: string } }
       expect(validation.validation.state).toBe('reachable')
       const cards = await json<{ clis: Array<{ cliId: CliId; state: string; models: Array<{ modelId: string | null }> }> }>(context.request, '/api/ai-console/clis')
       const card = cards.clis.find(row => row.cliId === cli.id)
@@ -355,16 +392,22 @@ test.describe('AI Console owner-operated local cutover', () => {
   }
   test('@leakage inspects mandatory logs, snapshot, Observatory, audit, URLs, and capture artifacts', async ({ context }) => {
     const config = configuredOwner()
-    const values: unknown[] = [await state(context.request), await json(context.request, '/api/ai-console/clis')]
-    for (const url of config.leakage.urls) values.push(await json(context.request, url))
-    for (const path of [config.leakage.serverLogPath, config.leakage.routingSnapshotPath,
-      config.leakage.observatoryPath, config.leakage.auditPath]) values.push(await readFile(path, 'utf8'))
+    test.skip(!PROVIDER_AUTHORIZED, 'UNQUALIFIED: a current-run provider turn is required for leakage evidence')
+    const direct = await createConnection(context.request, config.sameProvider.providerId, config.sameProvider.first,
+      `${currentPrefix}leakage`)
+    const choice: Choice = { kind: 'provider_model', connectionId: direct.connectionId, modelId: direct.modelId }
+    await runNativeTurn(context.request, { kind: 'explicit', choice }, choice, providerRoles(direct))
+    const values: string[] = [JSON.stringify(await state(context.request)), JSON.stringify(await json(context.request, '/api/ai-console/clis'))]
+    for (const url of config.leakage.urls) values.push(JSON.stringify(await json(context.request, url)))
+    for (const baseline of leakageBaselines) values.push(await readFreshLeakageEvidence(baseline, {
+      runStartedAtMs, markers: [...currentRunMarkers],
+    }))
     const artifacts = await artifactFiles(config.leakage.artifactDirectory)
     expect(artifacts.map(path => basename(path)).some(name => /(?:trace.*\.zip|.*\.(?:png|jpe?g|webm|har))$/i.test(name))).toBe(false)
     for (const path of artifacts) values.push(await readFile(path, 'utf8'))
     const secrets = [...Object.values(config.providers).map(row => row?.apiKey ?? ''),
       config.sameProvider.first.apiKey, config.sameProvider.second.apiKey, SESSION_COOKIE!,
       ...Object.values(config.mcp?.headers ?? {})]
-    expect(values.some(value => containsForbiddenSecret(value, secrets))).toBe(false)
+    expect(values.some(value => containsForbiddenLeakage(value, secrets))).toBe(false)
   })
 })

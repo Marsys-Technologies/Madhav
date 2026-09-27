@@ -3,6 +3,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { preflightOwnerFixture } from './owner_preflight'
+import { assertDisposableAiConsoleDatabaseUrl } from './test_database_guard'
 
 export type AcceptanceStatus = 'PASS' | 'FAIL' | 'UNQUALIFIED'
 export type AcceptanceCommandKind = 'command' | 'test'
@@ -82,14 +83,8 @@ function cliPrerequisite(env: AcceptanceEnvironment): string | null {
 
 function databasePrerequisite(env: AcceptanceEnvironment): string | null {
   if (env.RUN_DB_TESTS !== '1' || !env.AI_CONSOLE_TEST_DATABASE_URL) return 'AIC_ACCEPTANCE_DB_PREREQUISITE_MISSING'
-  try {
-    const target = new URL(env.AI_CONSOLE_TEST_DATABASE_URL)
-    const host = target.hostname.startsWith('[') ? target.hostname.slice(1, -1) : target.hostname
-    const local = host === 'localhost' || host === '::1'
-      || (/^127(?:\.\d{1,3}){3}$/.test(host) && host.split('.').slice(1).every(part => Number(part) <= 255))
-    const database = target.pathname.slice(1)
-    return local && database.startsWith('ai_console_test_') ? null : 'AIC_ACCEPTANCE_DB_NOT_DISPOSABLE_LOCAL'
-  } catch { return 'AIC_ACCEPTANCE_DB_NOT_DISPOSABLE_LOCAL' }
+  try { assertDisposableAiConsoleDatabaseUrl(env.AI_CONSOLE_TEST_DATABASE_URL); return null }
+  catch { return 'AIC_ACCEPTANCE_DB_NOT_DISPOSABLE_LOCAL' }
 }
 
 function e2e(id: string, tag: string, prerequisite = browserPrerequisite): AcceptanceCommand {

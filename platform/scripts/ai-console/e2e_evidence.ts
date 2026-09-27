@@ -46,21 +46,33 @@ function sseData(text: string): unknown[] {
 
 export function parsePariprashnaTerminal(text: string): string {
   const events = sseData(text) as Array<Record<string, unknown>>
-  const opened = events.find(event => event.type === 'turn.open')
-  const committed = events.find(event => event.type === 'turn.commit')
-  const persisted = events.find(event => event.type === 'turn.persisted')
-  const terminal = events.findLast(event => event.type === 'turn.close')
-  if (!opened || !terminal || terminal.status !== 'ok' || typeof opened.turn_id !== 'string'
+  const indexes = (type: string) => events.flatMap((event, index) => event.type === type ? [index] : [])
+  const opens = indexes('turn.open')
+  const contents = events.flatMap((event, index) => ['block.delta', 'block.commit'].includes(String(event.type)) ? [index] : [])
+  const commits = indexes('turn.commit')
+  const persistedEvents = indexes('turn.persisted')
+  const closes = indexes('turn.close')
+  const opened = events[opens[0]]
+  const committed = events[commits[0]]
+  const persisted = events[persistedEvents.at(-1) ?? -1]
+  const terminal = events[closes[0]]
+  if (opens.length !== 1 || commits.length !== 1 || closes.length !== 1 || contents.length === 0
+    || persistedEvents.length === 0 || opens[0] !== 0 || !(opens[0] < contents[0] && contents.at(-1)! < commits[0]
+      && commits[0] < persistedEvents[0] && persistedEvents.at(-1)! < closes[0])
+    || !opened || !terminal || terminal.status !== 'ok' || typeof opened.turn_id !== 'string'
     || terminal.turn_id !== opened.turn_id || events.at(-1) !== terminal
     || !committed || committed.status !== 'ok' || committed.turn_id !== opened.turn_id
     || !persisted || persisted.status !== 'durable' || persisted.turn_id !== opened.turn_id
+    || persistedEvents.some(index => events[index].turn_id !== opened.turn_id)
     || events.some(event => event.type === 'error')) throw new Error('AIC_E2E_TURN_NOT_SUCCESSFUL')
   return opened.turn_id
 }
 
 export function parseConsultTerminal(text: string): true {
   const events = sseData(text) as Array<Record<string, unknown>>
-  if (!events.some(event => event.type === 'finish' && event.finishReason === 'stop')) {
+  const finishes = events.filter(event => event.type === 'finish')
+  if (finishes.length !== 1 || finishes[0].finishReason !== 'stop' || events.at(-1) !== finishes[0]
+    || events.some(event => event.type === 'error')) {
     throw new Error('AIC_E2E_TERMINAL_EVENT_MISSING')
   }
   return true
@@ -80,8 +92,9 @@ export function assertSafeRoutingEvidence(
     || !isDeepStrictEqual(evidence.roles, expected.roles)) {
     throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
   }
-  const required = new Set(['planner', 'synthesizer'])
-  if ([...required].some(role => !evidence.invocations.some(row => row.role === role && row.status === 'succeeded'))) {
+  const invokedRoles = new Set(evidence.invocations.map(row => row.role))
+  if (!invokedRoles.has('planner') || !invokedRoles.has('synthesizer')
+    || invokedRoles.size !== evidence.invocations.length || evidence.observatory.length !== invokedRoles.size) {
     throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
   }
   for (const row of evidence.observatory) {
@@ -96,7 +109,9 @@ export function assertSafeRoutingEvidence(
       throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
     }
   }
-  if ([...required].some(role => !evidence.observatory.some(row => row.role === role))) {
+  const observedRoles = new Set(evidence.observatory.map(row => row.role))
+  if (observedRoles.size !== evidence.observatory.length || observedRoles.size !== invokedRoles.size
+    || [...invokedRoles].some(role => !observedRoles.has(role))) {
     throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
   }
   return true

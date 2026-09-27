@@ -30,7 +30,11 @@ Apply migration `1120_ai_console_byok_routing.sql` only to the approved disposab
 RUN_DB_TESTS=1 AI_CONSOLE_TEST_DATABASE_URL=postgresql://...@127.0.0.1:5432/ai_console_test_<name> npm run test -- src/lib/ai-console/__tests__/migration_db.test.ts src/lib/ai-console/__tests__/repository_isolation.db.test.ts
 ```
 
-The database lane is `UNQUALIFIED` unless both the local host and `ai_console_test_` database-name boundary are satisfied.
+The database lane is `UNQUALIFIED` unless the effective parsed PostgreSQL
+target is an unambiguous loopback host and an `ai_console_test_*` database.
+Do not add URI query parameters or libpq `host`, `hostaddr`, `service`, socket,
+or equivalent overrides; the shared guard used by the runner and both database
+test suites rejects those forms before a client can connect.
 
 ## 2. Prepare the private browser fixture
 
@@ -100,13 +104,18 @@ entry when it is unavailable:
 ```
 
 For every exact turn, the routing inspection response must be a strict safe
-object with `userId`, `correlationId`, persisted `selection`, all four resolved
-`roles`, succeeded terminal invocation receipts for the roles actually called,
-and matching Observatory rows with `fallbackUsed:false`. The latest endpoint
+object with `userId`, `correlationId`, persisted `selection`, exact
+`resolvedChoice`, all four resolved `roles`, succeeded terminal invocation
+receipts for the roles actually called, and exactly one matching Observatory
+row for every such role, including Worker or Deep Planner when invoked, with
+`fallbackUsed:false`. Extra or mismatched identities fail acceptance. The latest endpoint
 accepts `conversationId` and `after` query parameters for Consult/CLI evidence.
 The identity endpoint returns only `{ "userId": "<exact-disposable-user>" }`.
 The four leakage files and artifact directory must already exist outside the
 repository with owner-only permissions; every leakage input is mandatory.
+The runner snapshots each file's inode, size, modification time, and byte
+offset before the run. Every one must then contain a non-empty current-run
+record or timestamp/correlation; an unchanged or stale `{}` is not evidence.
 
 Set these local environment entries without printing their values:
 
@@ -119,6 +128,9 @@ Set these local environment entries without printing their values:
 - `AI_CONSOLE_CLI_SMOKE_AUTHORIZED=true` only when real subscription calls and the applicable terms are approved
 
 Leave either authorization unset to produce an honest `UNQUALIFIED` row for that lane. The acceptance runner passes subprocesses a minimal environment: only the database lane receives `AI_CONSOLE_TEST_DATABASE_URL`, and only browser lanes receive the session/fixture/authorization entries. Every command has a deadline; timeout terminates its detached process group with a bounded TERM/KILL sequence and records `FAIL`.
+Real validation requests are globally throttled per user. The browser harness
+sequences them and honors bounded `Retry-After` responses; a throttle generated
+by the harness itself must not be mistaken for an invalid credential.
 
 ## 3. Owner onboarding
 
@@ -162,16 +174,16 @@ Its exit code is `0` only when every row is `PASS`, `1` when any row is `FAIL`, 
 With the disposable user, verify desktop and 390×844 mobile behavior without credential-entry capture:
 
 - two same-provider connections remain distinguishable by connection name and exact model;
-- direct, custom-configuration, moved-Default, and explicit-pinned selections each execute a real native turn through successful `turn.commit`, durable `turn.persisted`, and final `turn.close{status:"ok"}`;
+- direct, custom-configuration, moved-Default, and explicit-pinned selections each execute a real native turn through ordered `turn.open`, content, successful `turn.commit`, durable `turn.persisted`, and final `turn.close{status:"ok"}` with no error event;
 - the exact immutable selection and all four resolved roles match the safe routing evidence; every actual invocation/Observatory row matches the expected provider/model or CLI and records `fallbackUsed:false`;
 - configuration create, edit, duplicate, and delete work;
 - a conversation on `Default` follows a changed global default on its next question;
 - an explicit direct selection remains pinned;
 - a picker change affects subsequent turns and is visible from another browser context;
-- logged-in backend and CLI work consume semantic `finish{finishReason:"stop"}` events and exact safe routing evidence; generic HTTP 2xx is insufficient;
+- logged-in backend and CLI work consume a final semantic `finish{finishReason:"stop"}` with no error event and exact safe routing evidence; generic HTTP 2xx is insufficient;
 - MCP returns `madhav.evidence.v1` with external synthesis and no Madhav reading;
 - each granted CLI validates, executes a permitted request, and stops after revocation;
-- application projections, required server logs, routing snapshots, Observatory, audit outputs, safe URLs, and artifact directories contain no secret material or credential-bearing screenshot/trace/video/HAR artifact;
+- application projections, current-run server-log deltas, routing snapshots/receipts, Observatory, audit outputs, safe URLs, and artifact directories contain no credential values, secret-bearing fields, broad credential formats, or credential-bearing screenshot/trace/video/HAR artifact;
 - the authenticated UID equals the configured disposable user, the reserved test namespace begins clean, previous default/conversation/grants are restored, cleanup errors fail the test, and every test-created connection/configuration is verified deleted.
 
 ## 6. Retirement decision

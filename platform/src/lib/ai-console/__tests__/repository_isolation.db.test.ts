@@ -5,10 +5,12 @@ import { Pool, type PoolClient } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import * as repo from '../repository'
 import { AI_ROLES, type RoleAssignments } from '../types'
+import { assertDisposableAiConsoleDatabaseUrl } from '../../../../scripts/ai-console/test_database_guard'
 
 // Never use DATABASE_URL, dotenv, an application pool, or a shared host.
 const databaseUrl = process.env.AI_CONSOLE_TEST_DATABASE_URL
 const enabled = process.env.RUN_DB_TESTS === '1' && !!databaseUrl
+const guardedDatabaseUrl = enabled ? assertDisposableAiConsoleDatabaseUrl(databaseUrl!) : undefined
 if (!enabled) console.info('UNQUALIFIED: repository DB behavior requires RUN_DB_TESTS=1 and AI_CONSOLE_TEST_DATABASE_URL (localhost ai_console_test_* disposable database)')
 
 describe.skipIf(!enabled).sequential('AI Console real repository isolation', () => {
@@ -91,11 +93,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
   }
 
   beforeAll(async () => {
-    const url = new URL(databaseUrl!)
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || !url.pathname.slice(1).startsWith('ai_console_test_')) {
-      throw new Error('Only a localhost ai_console_test_* disposable database is permitted')
-    }
-    pool = new Pool({ connectionString: databaseUrl, options: `-c search_path=${schema},public -c statement_timeout=5000`, max: 6 })
+    pool = new Pool({ connectionString: guardedDatabaseUrl, options: `-c search_path=${schema},public -c statement_timeout=5000`, max: 6 })
     await pool.query(`CREATE SCHEMA ${schema}`)
     await pool.query(`CREATE TABLE profiles(id text PRIMARY KEY, status text NOT NULL DEFAULT 'active',role text NOT NULL DEFAULT 'guest');
       CREATE TABLE charts(id uuid PRIMARY KEY,owner_id text REFERENCES profiles(id));

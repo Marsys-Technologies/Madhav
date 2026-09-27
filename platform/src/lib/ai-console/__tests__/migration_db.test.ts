@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { Pool, type PoolClient } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { assertDisposableAiConsoleDatabaseUrl } from '../../../../scripts/ai-console/test_database_guard'
 
 // Deliberately never fall back to DATABASE_URL or the application credential pool.
 const databaseUrl = process.env.AI_CONSOLE_TEST_DATABASE_URL
 const enabled = process.env.RUN_DB_TESTS === '1' && !!databaseUrl
+const guardedDatabaseUrl = enabled ? assertDisposableAiConsoleDatabaseUrl(databaseUrl!) : undefined
 const roles = ['synthesizer', 'planner', 'deep_planner', 'worker']
 if (!enabled) console.info('UNQUALIFIED: RUN_DB_TESTS=1 and AI_CONSOLE_TEST_DATABASE_URL (localhost ai_console_test_* disposable database) are required')
 
@@ -66,12 +68,7 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
   }
 
   beforeAll(async () => {
-    const url = new URL(databaseUrl!)
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-      || !url.pathname.slice(1).startsWith('ai_console_test_')) {
-      throw new Error('AI_CONSOLE_TEST_DATABASE_URL must identify a localhost ai_console_test_* disposable database')
-    }
-    pool = new Pool({ connectionString: databaseUrl, options: `-c search_path=${schema},public`, max: 4 })
+    pool = new Pool({ connectionString: guardedDatabaseUrl, options: `-c search_path=${schema},public`, max: 4 })
     await pool.query(`CREATE SCHEMA ${schema}`)
     await pool.query(`CREATE TABLE profiles(id text PRIMARY KEY);
       CREATE TABLE charts(id uuid PRIMARY KEY);

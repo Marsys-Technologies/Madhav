@@ -26,7 +26,7 @@ function config(root: string, roots = ['src/root.ts']): ImportAuditConfig {
     platformRoot: root,
     roots,
     forbidden: [
-      { ruleId: 'AIC_SHARED_PROVIDER_ENV', sourcePatterns: [/process\.env\.OPENAI_API_KEY/] },
+      { ruleId: 'AIC_SHARED_PROVIDER_ENV' },
       { ruleId: 'AIC_LEGACY_MODEL_AUTHORITY', paths: ['src/lib/models/runtime_config.ts'] },
     ],
   }
@@ -129,6 +129,77 @@ describe('AI Console shared-key route import audit', () => {
     })
     const result = await auditImportGraph(config(root))
     expect(result.violations.filter(row => row.ruleId === 'AIC_SHARED_PROVIDER_ENV')).toHaveLength(3)
+  })
+
+  it('derives every legacy provider key and implicit sink from one guarded registry', async () => {
+    const keys = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY', 'DEEPSEEK_API_KEY',
+      'NVIDIA_NIM_API_KEY', 'XAI_API_KEY', 'KIMI_API_KEY', 'MOONSHOT_API_KEY', 'OPENROUTER_API_KEY']
+    const files = Object.fromEntries(keys.map((key, index) => [`src/key-${index}.ts`, `export const value = process.env.${key}\n`]))
+    const root = await fixture({
+      'src/root.ts': keys.map((_, index) => `import './key-${index}'`).join('\n')
+        + "\nimport './lib/providers/nvidia/adapter'\n",
+      'src/lib/providers/nvidia/adapter.ts': 'export const sharedSingleton = true\n',
+      ...files,
+    })
+    const defaults = defaultImportAuditConfig(root)
+    const result = await auditImportGraph({ ...defaults, roots: ['src/root.ts'] })
+    expect(result.scannerErrors).toEqual([])
+    expect(result.violations.filter(row => row.ruleId === 'AIC_SHARED_PROVIDER_ENV')).toHaveLength(keys.length)
+    expect(result.violations).toContainEqual({
+      ruleId: 'AIC_LEGACY_PROVIDER_SINK',
+      chain: ['src/root.ts', 'src/lib/providers/nvidia/adapter.ts'],
+    })
+  })
+
+  it('propagates process and environment taint through wrappers, assignments, defaults, and computed aliases', async () => {
+    const root = await fixture({
+      'src/root.ts': [
+        'const ENV = ("env" as const); const KEY = ("NVIDIA_" + "NIM_API_KEY") as const;',
+        'let p, e; p = (process); e = (p.env as NodeJS.ProcessEnv); const one = e[KEY];',
+        'const { env: other } = process; const two = other.OPENAI_API_KEY;',
+        'function read(from = process.env) { return from["ANTHROPIC_API_KEY"] }',
+        'function readProcess(proc = process) { return proc[ENV].DEEPSEEK_API_KEY }',
+        'export { one, two, read, readProcess }',
+      ].join('\n'),
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.violations).toEqual([{ ruleId: 'AIC_SHARED_PROVIDER_ENV', chain: ['src/root.ts'] }])
+    expect(result.scannerErrors).toEqual([])
+  })
+
+  it('fails closed on a dynamic key read from a tainted environment', async () => {
+    const root = await fixture({ 'src/root.ts': 'const e = process.env; export const value = e[getCredentialName()]\n' })
+    const result = await auditImportGraph(config(root))
+    expect(result.scannerErrors).toEqual([{
+      ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: ['src/root.ts', 'dynamic-environment-key'],
+    }])
+  })
+
+  it('traverses createRequire and module.require aliases and fails closed on dynamic loader calls', async () => {
+    const root = await fixture({
+      'src/root.ts': [
+        "import { createRequire as make } from 'node:module';",
+        'const load = make(import.meta.url);',
+        "load('./one'); module['require']('./two');",
+        "const direct = require; direct('./three');",
+        'const bound = module.require.bind(module); bound(target);',
+      ].join('\n'),
+      'src/one.ts': "export { read } from './lib/models/runtime_config'\n",
+      'src/two.ts': 'export const value = true\n',
+      'src/three.ts': 'export const value = process.env.NVIDIA_NIM_API_KEY\n',
+      'src/lib/models/runtime_config.ts': 'export const read = true\n',
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.violations).toContainEqual({
+      ruleId: 'AIC_LEGACY_MODEL_AUTHORITY',
+      chain: ['src/root.ts', 'src/one.ts', 'src/lib/models/runtime_config.ts'],
+    })
+    expect(result.scannerErrors).toContainEqual({
+      ruleId: 'AIC_IMPORT_UNSUPPORTED', chain: ['src/root.ts', 'dynamic-require'],
+    })
+    expect(result.violations).toContainEqual({
+      ruleId: 'AIC_SHARED_PROVIDER_ENV', chain: ['src/root.ts', 'src/three.ts'],
+    })
   })
 
   it('fails closed on unsupported dynamic internal import edges', async () => {

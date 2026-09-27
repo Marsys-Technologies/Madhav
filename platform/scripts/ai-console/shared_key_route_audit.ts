@@ -40,10 +40,18 @@ const DEFAULT_ROOTS = [
   'src/app/api/admin/cron/revalidate-ai-connections/route.ts',
 ] as const
 
-const PROVIDER_ENV_KEYS = new Set([
-  'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY', 'DEEPSEEK_API_KEY',
-  'XAI_API_KEY', 'KIMI_API_KEY', 'MOONSHOT_API_KEY', 'OPENROUTER_API_KEY',
-])
+const LEGACY_PROVIDER_AUTHORITIES = [
+  { envKeys: ['OPENAI_API_KEY'], paths: ['src/lib/providers/openai/adapter.ts', 'src/lib/adapters/providers/adapter_openai.ts', 'src/lib/models/openai.ts'] },
+  { envKeys: ['ANTHROPIC_API_KEY'], paths: ['src/lib/providers/anthropic/adapter.ts', 'src/lib/adapters/providers/adapter_anthropic.ts'] },
+  { envKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'], paths: ['src/lib/providers/google/adapter.ts', 'src/lib/adapters/providers/adapter_gemini.ts'] },
+  { envKeys: ['DEEPSEEK_API_KEY'], paths: ['src/lib/providers/deepseek/adapter.ts', 'src/lib/adapters/providers/adapter_deepseek.ts'] },
+  { envKeys: ['NVIDIA_NIM_API_KEY'], paths: ['src/lib/providers/nvidia/adapter.ts', 'src/lib/adapters/providers/adapter_nim.ts', 'src/lib/models/nvidia.ts', 'src/lib/llm/providers/nim_observed.ts'] },
+  { envKeys: ['XAI_API_KEY'], paths: [] },
+  { envKeys: ['KIMI_API_KEY', 'MOONSHOT_API_KEY'], paths: [] },
+  { envKeys: ['OPENROUTER_API_KEY'], paths: [] },
+] as const
+const PROVIDER_ENV_KEYS: ReadonlySet<string> = new Set(LEGACY_PROVIDER_AUTHORITIES.flatMap(entry => [...entry.envKeys]))
+const LEGACY_PROVIDER_SINKS = [...new Set(LEGACY_PROVIDER_AUTHORITIES.flatMap(entry => [...entry.paths]))]
 
 export function defaultImportAuditConfig(platformRoot: string): ImportAuditConfig {
   return {
@@ -51,6 +59,7 @@ export function defaultImportAuditConfig(platformRoot: string): ImportAuditConfi
     roots: DEFAULT_ROOTS,
     forbidden: [
       { ruleId: 'AIC_SHARED_PROVIDER_ENV' },
+      { ruleId: 'AIC_LEGACY_PROVIDER_SINK', paths: LEGACY_PROVIDER_SINKS },
       {
         ruleId: 'AIC_LEGACY_MODEL_AUTHORITY',
         paths: [
@@ -99,105 +108,232 @@ async function resolveInternalImport(platformRoot: string, importer: string, spe
 
 interface InternalEdges { readonly specifiers: readonly string[]; readonly unsupported: readonly string[] }
 
-function internalEdges(source: string, path: string): InternalEdges {
-  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
-  const values = new Set<string>()
-  const unsupported = new Set<string>()
-  const add = (node: ts.Expression | undefined) => {
-    if (node && ts.isStringLiteralLike(node) && (node.text.startsWith('.') || node.text.startsWith('@/'))) {
-      values.add(node.text)
-    }
-  }
-  const visit = (node: ts.Node) => {
-    if (ts.isImportDeclaration(node)) add(node.moduleSpecifier)
-    if (ts.isExportDeclaration(node)) add(node.moduleSpecifier)
-    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-      add(node.moduleReference.expression)
-    }
-    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      if (node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) add(node.arguments[0])
-      else unsupported.add('dynamic-import')
-    }
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
-      if (node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) add(node.arguments[0])
-      else unsupported.add('dynamic-require')
-    }
-    ts.forEachChild(node, visit)
-  }
-  visit(sourceFile)
-  return { specifiers: [...values].sort(), unsupported: [...unsupported].sort() }
+function unwrapExpression(node: ts.Expression): ts.Expression {
+  let current = node
+  while (ts.isParenthesizedExpression(current) || ts.isAsExpression(current)
+    || ts.isTypeAssertionExpression(current) || ts.isNonNullExpression(current)
+    || ts.isSatisfiesExpression(current) || ts.isPartiallyEmittedExpression(current)) current = current.expression
+  return current
 }
 
 function staticString(node: ts.Expression | undefined, values: ReadonlyMap<string, string>): string | null {
   if (!node) return null
-  if (ts.isStringLiteralLike(node)) return node.text
-  return ts.isIdentifier(node) ? values.get(node.text) ?? null : null
-}
-
-function isProcessEnv(node: ts.Expression): boolean {
-  if (ts.isPropertyAccessExpression(node)) {
-    return ts.isIdentifier(node.expression) && node.expression.text === 'process' && node.name.text === 'env'
+  const current = unwrapExpression(node)
+  if (ts.isStringLiteralLike(current)) return current.text
+  if (ts.isIdentifier(current)) return values.get(current.text) ?? null
+  if (ts.isBinaryExpression(current) && current.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = staticString(current.left, values)
+    const right = staticString(current.right, values)
+    return left === null || right === null ? null : left + right
   }
-  if (ts.isElementAccessExpression(node)) {
-    return ts.isIdentifier(node.expression) && node.expression.text === 'process'
-      && ts.isStringLiteralLike(node.argumentExpression) && node.argumentExpression.text === 'env'
-  }
-  return false
-}
-
-function usesSharedProviderEnvironment(source: string, path: string): boolean {
-  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
-  const strings = new Map<string, string>()
-  const declarations: ts.VariableDeclaration[] = []
-  const collect = (node: ts.Node) => {
-    if (ts.isVariableDeclaration(node)) {
-      declarations.push(node)
-      if (ts.isIdentifier(node.name) && node.initializer && ts.isStringLiteralLike(node.initializer)) {
-        strings.set(node.name.text, node.initializer.text)
-      }
+  if (ts.isTemplateExpression(current)) {
+    let value = current.head.text
+    for (const span of current.templateSpans) {
+      const expression = staticString(span.expression, values)
+      if (expression === null) return null
+      value += expression + span.literal.text
     }
-    ts.forEachChild(node, collect)
+    return value
   }
-  collect(sourceFile)
+  return null
+}
 
-  const aliases = new Set<string>()
+function assignments(sourceFile: ts.SourceFile): Array<{ readonly name: ts.BindingName | ts.Expression; readonly value: ts.Expression }> {
+  const result: Array<{ name: ts.BindingName | ts.Expression; value: ts.Expression }> = []
+  const visit = (node: ts.Node) => {
+    if ((ts.isVariableDeclaration(node) || ts.isParameter(node)) && node.initializer) result.push({ name: node.name, value: node.initializer })
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) result.push({ name: node.left, value: node.right })
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return result
+}
+
+function collectStaticStrings(sourceFile: ts.SourceFile): Map<string, string> {
+  const strings = new Map<string, string>()
+  const flows = assignments(sourceFile)
   let changed = true
   while (changed) {
     changed = false
-    for (const declaration of declarations) {
-      if (!ts.isIdentifier(declaration.name) || !declaration.initializer || aliases.has(declaration.name.text)) continue
-      const initializer = declaration.initializer
-      if (isProcessEnv(initializer) || (ts.isIdentifier(initializer) && aliases.has(initializer.text))) {
-        aliases.add(declaration.name.text)
-        changed = true
+    for (const flow of flows) {
+      if (!ts.isIdentifier(flow.name) || strings.has(flow.name.text)) continue
+      const value = staticString(flow.value, strings)
+      if (value !== null) { strings.set(flow.name.text, value); changed = true }
+    }
+  }
+  return strings
+}
+
+function propertyName(node: ts.Expression | ts.PropertyName | undefined, strings: ReadonlyMap<string, string>): string | null {
+  if (!node) return null
+  if (ts.isComputedPropertyName(node)) return staticString(node.expression, strings)
+  if (ts.isIdentifier(node) || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node)) return node.text
+  return staticString(node as ts.Expression, strings)
+}
+
+function usesSharedProviderEnvironment(source: string, path: string): { found: boolean; unsupported: boolean } {
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  const strings = collectStaticStrings(sourceFile)
+  const flows = assignments(sourceFile)
+  const processAliases = new Set(['process'])
+  const environmentAliases = new Set<string>()
+  const isProcess = (node: ts.Expression): boolean => {
+    const current = unwrapExpression(node)
+    return ts.isIdentifier(current) && processAliases.has(current.text)
+  }
+  const isEnvironment = (node: ts.Expression): boolean => {
+    const current = unwrapExpression(node)
+    if (ts.isIdentifier(current)) return environmentAliases.has(current.text)
+    if (ts.isPropertyAccessExpression(current)) return isProcess(current.expression) && current.name.text === 'env'
+    return ts.isElementAccessExpression(current) && isProcess(current.expression)
+      && staticString(current.argumentExpression, strings) === 'env'
+  }
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const flow of flows) {
+      if (ts.isIdentifier(flow.name)) {
+        if (isProcess(flow.value) && !processAliases.has(flow.name.text)) { processAliases.add(flow.name.text); changed = true }
+        if (isEnvironment(flow.value) && !environmentAliases.has(flow.name.text)) { environmentAliases.add(flow.name.text); changed = true }
+      } else if (ts.isObjectBindingPattern(flow.name) && isProcess(flow.value)) {
+        for (const element of flow.name.elements) {
+          const name = element.propertyName ?? (ts.isIdentifier(element.name) ? element.name : undefined)
+          if (propertyName(name, strings) === 'env' && ts.isIdentifier(element.name)
+            && !environmentAliases.has(element.name.text)) { environmentAliases.add(element.name.text); changed = true }
+          }
+      } else if (ts.isObjectLiteralExpression(unwrapExpression(flow.name as ts.Expression)) && isProcess(flow.value)) {
+        for (const property of (unwrapExpression(flow.name as ts.Expression) as ts.ObjectLiteralExpression).properties) {
+          if (ts.isPropertyAssignment(property) && propertyName(property.name, strings) === 'env'
+            && ts.isIdentifier(unwrapExpression(property.initializer))
+            && !environmentAliases.has((unwrapExpression(property.initializer) as ts.Identifier).text)) {
+            environmentAliases.add((unwrapExpression(property.initializer) as ts.Identifier).text); changed = true
+          }
+        }
       }
     }
   }
-  const isEnvironment = (node: ts.Expression) => isProcessEnv(node) || (ts.isIdentifier(node) && aliases.has(node.text))
   let found = false
+  let unsupported = false
+  const inspectPattern = (name: ts.BindingName | ts.Expression, value: ts.Expression) => {
+    if (!isEnvironment(value)) return
+    if (ts.isObjectBindingPattern(name)) {
+      for (const element of name.elements) {
+        const key = element.propertyName ?? (ts.isIdentifier(element.name) ? element.name : undefined)
+        if (PROVIDER_ENV_KEYS.has(propertyName(key, strings) ?? '')) found = true
+      }
+    } else if (ts.isObjectLiteralExpression(unwrapExpression(name as ts.Expression))) {
+      for (const property of (unwrapExpression(name as ts.Expression) as ts.ObjectLiteralExpression).properties) {
+        if (PROVIDER_ENV_KEYS.has(propertyName(property.name, strings) ?? '')) found = true
+      }
+    }
+  }
+  for (const flow of flows) inspectPattern(flow.name, flow.value)
   const inspect = (node: ts.Node) => {
-    if (found) return
     if (ts.isPropertyAccessExpression(node) && isEnvironment(node.expression) && PROVIDER_ENV_KEYS.has(node.name.text)) {
       found = true
-      return
     }
     if (ts.isElementAccessExpression(node) && isEnvironment(node.expression)) {
       const key = staticString(node.argumentExpression, strings)
-      if (key && PROVIDER_ENV_KEYS.has(key)) { found = true; return }
+      if (key === null) unsupported = true
+      else if (PROVIDER_ENV_KEYS.has(key)) found = true
     }
-    if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer
-      && isEnvironment(node.initializer)) {
-      for (const element of node.name.elements) {
-        const key = element.propertyName
-          ? (ts.isIdentifier(element.propertyName) || ts.isStringLiteralLike(element.propertyName) ? element.propertyName.text : null)
-          : ts.isIdentifier(element.name) ? element.name.text : null
-        if (key && PROVIDER_ENV_KEYS.has(key)) { found = true; return }
-      }
-    }
+    if (ts.isElementAccessExpression(node) && isProcess(node.expression)
+      && staticString(node.argumentExpression, strings) === null) unsupported = true
     ts.forEachChild(node, inspect)
   }
   inspect(sourceFile)
-  return found
+  return { found, unsupported }
+}
+
+function isImportMetaUrl(node: ts.Expression): boolean {
+  const current = unwrapExpression(node)
+  return ts.isPropertyAccessExpression(current) && current.name.text === 'url'
+    && current.expression.kind === ts.SyntaxKind.MetaProperty
+}
+
+function internalEdges(source: string, path: string): InternalEdges {
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  const strings = collectStaticStrings(sourceFile)
+  const values = new Set<string>()
+  const unsupported = new Set<string>()
+  const createRequireFactories = new Set<string>()
+  const moduleNamespaces = new Set<string>()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier)
+      || !['module', 'node:module'].includes(statement.moduleSpecifier.text)) continue
+    const bindings = statement.importClause?.namedBindings
+    if (bindings && ts.isNamedImports(bindings)) {
+      for (const element of bindings.elements) if ((element.propertyName ?? element.name).text === 'createRequire') {
+        createRequireFactories.add(element.name.text)
+      }
+    } else if (bindings && ts.isNamespaceImport(bindings)) moduleNamespaces.add(bindings.name.text)
+  }
+  const isCreateRequire = (node: ts.Expression): boolean => {
+    const current = unwrapExpression(node)
+    if (ts.isIdentifier(current)) return createRequireFactories.has(current.text)
+    return ts.isPropertyAccessExpression(current) && current.name.text === 'createRequire'
+      && ts.isIdentifier(current.expression) && moduleNamespaces.has(current.expression.text)
+  }
+  const loaderAliases = new Set<string>()
+  const flows = assignments(sourceFile)
+  const isModuleRequire = (node: ts.Expression): boolean => {
+    const current = unwrapExpression(node)
+    if (ts.isPropertyAccessExpression(current)) return ts.isIdentifier(current.expression)
+      && current.expression.text === 'module' && current.name.text === 'require'
+    return ts.isElementAccessExpression(current) && ts.isIdentifier(current.expression)
+      && current.expression.text === 'module' && staticString(current.argumentExpression, strings) === 'require'
+  }
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const flow of flows) {
+      if (!ts.isIdentifier(flow.name) || loaderAliases.has(flow.name.text)) continue
+      const value = unwrapExpression(flow.value)
+      if (isCreateRequire(value) && !createRequireFactories.has(flow.name.text)) {
+        createRequireFactories.add(flow.name.text); changed = true; continue
+      }
+      const fromFactory = ts.isCallExpression(value) && isCreateRequire(value.expression)
+      if (fromFactory && (value.arguments.length !== 1
+        || !(isImportMetaUrl(value.arguments[0]) || (ts.isIdentifier(unwrapExpression(value.arguments[0]))
+          && (unwrapExpression(value.arguments[0]) as ts.Identifier).text === '__filename')))) unsupported.add('create-require-base')
+      const boundModuleRequire = ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression)
+        && value.expression.name.text === 'bind' && isModuleRequire(value.expression.expression)
+      if ((fromFactory && value.arguments.length === 1 && (isImportMetaUrl(value.arguments[0])
+        || (ts.isIdentifier(unwrapExpression(value.arguments[0])) && (unwrapExpression(value.arguments[0]) as ts.Identifier).text === '__filename')))
+        || isModuleRequire(value)
+        || boundModuleRequire || (ts.isIdentifier(value) && (value.text === 'require' || loaderAliases.has(value.text)))) {
+        loaderAliases.add(flow.name.text); changed = true
+      }
+    }
+  }
+  const isLoader = (node: ts.Expression) => {
+    const current = unwrapExpression(node)
+    return (ts.isIdentifier(current) && (current.text === 'require' || loaderAliases.has(current.text))) || isModuleRequire(current)
+  }
+  const add = (node: ts.Expression | undefined, dynamicCode: string) => {
+    const specifier = staticString(node, strings)
+    if (specifier === null) { unsupported.add(dynamicCode); return }
+    if (specifier.startsWith('.') || specifier.startsWith('@/')) values.add(specifier)
+  }
+  const visit = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node)) add(node.moduleSpecifier, 'dynamic-import')
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier) add(node.moduleSpecifier, 'dynamic-import')
+    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) add(node.moduleReference.expression, 'dynamic-require')
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      if (node.arguments[0] && ts.isStringLiteralLike(unwrapExpression(node.arguments[0]))) add(node.arguments[0], 'dynamic-import')
+      else unsupported.add('dynamic-import')
+    }
+    if (ts.isCallExpression(node) && isCreateRequire(node.expression)
+      && (node.arguments.length !== 1 || !(isImportMetaUrl(node.arguments[0])
+        || (ts.isIdentifier(unwrapExpression(node.arguments[0]))
+          && (unwrapExpression(node.arguments[0]) as ts.Identifier).text === '__filename')))) {
+      unsupported.add('create-require-base')
+    }
+    if (ts.isCallExpression(node) && isLoader(node.expression)) add(node.arguments[0], 'dynamic-require')
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return { specifiers: [...values].sort(), unsupported: [...unsupported].sort() }
 }
 
 function findingKey(finding: ImportAuditFinding): string {
@@ -240,10 +376,15 @@ export async function auditImportGraph(config: ImportAuditConfig): Promise<Impor
         continue
       }
 
+      const providerEnvironment = usesSharedProviderEnvironment(source, current.path)
+      if (providerEnvironment.unsupported) {
+        const finding = { ruleId: 'AIC_PROVIDER_ENV_UNSUPPORTED', chain: [...current.chain, 'dynamic-environment-key'] }
+        scannerErrors.set(findingKey(finding), finding)
+      }
       for (const rule of config.forbidden) {
         const pathMatch = rule.paths?.includes(currentRelative) === true
         const providerEnvironmentMatch = rule.ruleId === 'AIC_SHARED_PROVIDER_ENV'
-          && usesSharedProviderEnvironment(source, current.path)
+          && providerEnvironment.found
         const sourceMatch = rule.sourcePatterns?.some(pattern => {
           pattern.lastIndex = 0
           return pattern.test(source)
