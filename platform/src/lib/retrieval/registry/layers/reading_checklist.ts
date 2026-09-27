@@ -207,9 +207,11 @@ async function fetchSourceReceiptFence(
                    AND fenced_asset.asset_id = required_asset.asset_id
                    AND (
                      fenced_run.state IN ('planned', 'running', 'paused')
-                     OR fenced_asset.state IN ('queued', 'building')
                      OR (
-                       selected.observed_at IS NOT NULL
+                       -- A queued row that a terminal run never dispatched cannot have
+                       -- mutated served rows; it is orphan hygiene, not replacement work.
+                       NOT (fenced_asset.state = 'queued' AND fenced_asset.started_at IS NULL)
+                       AND selected.observed_at IS NOT NULL
                        AND COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= selected.observed_at
                        AND NOT EXISTS (
                          SELECT 1

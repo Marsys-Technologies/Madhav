@@ -684,9 +684,11 @@ export const getDashasCapability: CapabilityDescriptor = {
                 AND fenced_asset.asset_id = $${assetIdParam}::text
                 AND (
                   fenced_run.state IN ('planned', 'running', 'paused')
-                  OR fenced_asset.state IN ('queued', 'building')
                   OR (
-                    EXISTS (
+                    -- A queued row that a terminal run never dispatched cannot have
+                    -- mutated served rows; it is orphan hygiene, not replacement work.
+                    NOT (fenced_asset.state = 'queued' AND fenced_asset.started_at IS NULL)
+                    AND EXISTS (
                       SELECT 1 FROM eligible_receipt eligible
                        WHERE COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL
                           OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at

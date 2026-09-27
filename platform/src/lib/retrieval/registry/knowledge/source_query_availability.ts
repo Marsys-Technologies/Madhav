@@ -401,7 +401,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist',
     sql: `WITH eligible_receipts AS (
             SELECT receipt.receipt_version, receipt.partition_key, receipt.output_digest,
-                   receipt.output_digest_spec_sha256
+                   receipt.output_digest_spec_sha256, receipt.observed_at
               FROM asset_provenance_receipts receipt
               JOIN asset_freshness freshness
                 ON freshness.asset_id = receipt.asset_id
@@ -426,8 +426,18 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               SELECT 1 FROM build_run_assets asset
               JOIN build_runs run ON run.id = asset.run_id
               WHERE asset.asset_id = 'bg_texts'
-                AND (run.state IN ('planned', 'running', 'paused')
-                  OR asset.state IN ('queued', 'building'))
+                AND (
+                  run.state IN ('planned', 'running', 'paused')
+                  OR (
+                    asset.state IN ('queued', 'building')
+                    AND NOT (asset.state = 'queued' AND asset.started_at IS NULL)
+                    AND (
+                      COALESCE(asset.ended_at, run.ended_at) IS NULL
+                      OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MAX(observed_at) FROM eligible_receipts)
+                      OR NOT EXISTS (SELECT 1 FROM eligible_receipts)
+                    )
+                  )
+                )
             ) AS replacement_in_progress
           ), hybrid_source_probe AS (
             SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,

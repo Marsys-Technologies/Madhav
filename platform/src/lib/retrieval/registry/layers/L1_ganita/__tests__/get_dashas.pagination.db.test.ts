@@ -36,7 +36,7 @@ function migration(relativePath: string): string {
 }
 
 const signingEnvironment = {
-  INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'dasha-db-v1',
+  INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1',
   INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: Buffer.alloc(32, 3).toString('base64url'),
 }
 const originalSigningEnvironment = {
@@ -155,5 +155,85 @@ run('get_dashas disposable PostgreSQL overlapping terminal replacement fence', (
       is_error: true,
       content: { code: 'ga_dashas_replacement_in_progress', restart_required: true },
     })
+  })
+
+  // Replacement-fence state matrix (RC-2). A fence must represent a producer that
+  // can still mutate — or may already have mutated — the served asset. A queued
+  // asset row that was never dispatched inside a terminal run is an orphan needing
+  // hygiene; it cannot mutate rows and must not block serving forever.
+  const runC = '44444444-4444-4444-8444-444444444444'
+
+  async function withFencedRun(
+    run: { state: string; ended_at: string | null },
+    asset: { state: string; started_at: string | null; ended_at: string | null },
+    assertion: () => Promise<void>,
+  ): Promise<void> {
+    await scoped.query(`
+      INSERT INTO build_runs(id, chart_id, scope, action, state, plan, triggered_by, started_at, ended_at)
+      VALUES ($1, $2, 'asset', 'build', $3, '{}'::jsonb, 'test', '2026-09-18T08:00:00Z', $4)
+    `, [runC, chartId, run.state, run.ended_at])
+    await scoped.query(`
+      INSERT INTO build_run_assets(run_id, asset_id, position, state, started_at, ended_at)
+      VALUES ($1, 'ga_dashas', 0, $2, $3, $4)
+    `, [runC, asset.state, asset.started_at, asset.ended_at])
+    try {
+      await assertion()
+    } finally {
+      await scoped.query('DELETE FROM build_runs WHERE id = $1', [runC])
+    }
+  }
+
+  async function readDashas() {
+    return getDashasCapability.handler({
+      chart_id: chartId, fields: 'all', limit: 10,
+      window_start: '2000-01-01', window_end: '2100-01-01',
+    }, undefined)
+  }
+
+  const served = { is_error: false, content: { build_id: runB, rows: [expect.objectContaining({ dasha_row_id: dashaRowB })] } }
+  const fenced = { is_error: true, content: { code: 'ga_dashas_replacement_in_progress', restart_required: true } }
+
+  it('serves B when a never-dispatched queued asset belongs to a failed run that ended before the receipt', async () => {
+    await withFencedRun(
+      { state: 'failed', ended_at: '2026-08-06T10:00:00Z' },
+      { state: 'queued', started_at: null, ended_at: null },
+      async () => expect(await readDashas()).toMatchObject(served),
+    )
+  })
+
+  it('serves B when a never-dispatched queued asset belongs to a terminal run that ended after the receipt', async () => {
+    for (const state of ['failed', 'stopped', 'completed']) {
+      await withFencedRun(
+        { state, ended_at: '2026-09-18T12:00:00Z' },
+        { state: 'queued', started_at: null, ended_at: null },
+        async () => expect(await readDashas()).toMatchObject(served),
+      )
+    }
+  })
+
+  it('fences while any run that holds the asset is still active', async () => {
+    for (const state of ['planned', 'running', 'paused']) {
+      await withFencedRun(
+        { state, ended_at: null },
+        { state: 'queued', started_at: null, ended_at: null },
+        async () => expect(await readDashas()).toMatchObject(fenced),
+      )
+    }
+  })
+
+  it('fences a dispatched asset left building by a terminal run that ended after the receipt without a proven receipt', async () => {
+    await withFencedRun(
+      { state: 'failed', ended_at: '2026-09-18T12:00:00Z' },
+      { state: 'building', started_at: '2026-09-18T09:00:00Z', ended_at: null },
+      async () => expect(await readDashas()).toMatchObject(fenced),
+    )
+  })
+
+  it('serves B when a building orphan belongs to a terminal run that ended before the receipt', async () => {
+    await withFencedRun(
+      { state: 'failed', ended_at: '2026-08-06T10:00:00Z' },
+      { state: 'building', started_at: '2026-08-06T09:00:00Z', ended_at: null },
+      async () => expect(await readDashas()).toMatchObject(served),
+    )
   })
 })
