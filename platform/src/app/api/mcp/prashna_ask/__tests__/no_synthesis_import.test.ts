@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildMcpEvidenceEnvelope } from '@/lib/mcp/prashna_ask/evidence'
+import { buildMcpEvidenceEnvelope, projectMcpEvidencePlan } from '@/lib/mcp/prashna_ask/evidence'
 import type { SafeRoutingSnapshot } from '@/lib/ai-console/execution/types'
 
 const evidencePath = path.join(
@@ -58,5 +58,31 @@ describe('MCP BYOK evidence boundary', () => {
     expect(envelope).not.toHaveProperty('model')
     expect(envelope).not.toHaveProperty('identity')
     expect(envelope.routing.roles).not.toHaveProperty('synthesizer')
+  })
+
+  it('projects only safe plan fields for normal and safety-withheld evidence', () => {
+    const unsafePlan = {
+      query_class: 'timing',
+      query_intent_summary: 'summary',
+      domains: ['career'],
+      forward_looking: true,
+      tool_calls: [{
+        tool_name: 'safe_tool', priority: 1, token_budget: 400,
+        params: { secret_query: 'must not escape' },
+        reason: 'private planner rationale',
+        runtime_binding: { credential: 'must not escape' },
+      }],
+      synthesis_guidance: 'hidden guidance',
+      query_text: 'hidden raw query',
+      prompt: 'hidden prompt',
+    }
+    const projected = projectMcpEvidencePlan(unsafePlan)
+
+    expect(projected).toEqual({
+      query_class: 'timing', query_intent_summary: 'summary', domains: ['career'],
+      forward_looking: true,
+      tools: [{ tool_name: 'safe_tool', priority: 1, token_budget: 400 }],
+    })
+    expect(JSON.stringify(projected)).not.toMatch(/secret_query|private planner|runtime_binding|hidden guidance|hidden raw query|hidden prompt/)
   })
 })

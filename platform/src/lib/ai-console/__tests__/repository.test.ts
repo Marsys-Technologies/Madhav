@@ -127,6 +127,68 @@ describe('owned AI configuration repository', () => {
     })).rejects.toMatchObject({ code: 'AI_DEFAULT_REQUIRED' })
     expect(calls().some(call => call.sql.startsWith('INSERT INTO ai_turn_routing_snapshots'))).toBe(false)
   })
+
+  it('reuses a managed retry snapshot after Default/configuration changes and revalidates its pinned targets', async () => {
+    const pinnedRoles = Object.fromEntries(AI_ROLES.map(role => [role, {
+      kind: 'provider_model', connectionId, providerId: 'openai', modelId: 'model-a',
+    }]))
+    respond(sql => {
+      if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
+      if (sql.includes('FROM profiles')) return [{ id: 'alice', role: 'guest' }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'alice' }]
+      if (sql.includes('FROM ai_turn_routing_snapshots')) return [{
+        id: configurationId, source: 'mcp', conversation_id: null,
+        selection: { kind: 'default' },
+        resolved_choice: { kind: 'custom_configuration', configurationId },
+        configuration_version: 7, roles: pinnedRoles,
+      }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, provider_id: 'openai' }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Pinned A', compatible_roles: AI_ROLES,
+        supports_tools: true, supports_structured_output: true, available: true }]
+      if (sql.includes('FROM ai_user_defaults') || sql.includes('FROM ai_custom_configurations')) {
+        throw new Error('managed retry must not re-resolve live Default/configuration')
+      }
+      return undefined
+    })
+
+    const prepared = await repository.prepareMcpRouting({
+      userId: 'alice', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: conversationId,
+      correlationId: mcpCorrelationId,
+    })
+
+    expect(prepared.snapshotId).toBe(configurationId)
+    expect(prepared.resolution).toMatchObject({
+      resolvedChoice: { kind: 'custom_configuration', configurationId },
+      configurationVersion: 7,
+      roles: { planner: { connectionId, modelId: 'model-a', credentialVersion: 1 } },
+    })
+    expect(calls().some(call => call.sql.includes('FROM ai_user_defaults'))).toBe(false)
+    expect(calls().some(call => call.sql.startsWith('INSERT INTO ai_turn_routing_snapshots'))).toBe(false)
+  })
+
+  it('fails a managed retry when its pinned target is no longer currently authorized, without Default fallback', async () => {
+    const pinnedRoles = Object.fromEntries(AI_ROLES.map(role => [role, {
+      kind: 'provider_model', connectionId, providerId: 'openai', modelId: 'model-a',
+    }]))
+    respond(sql => {
+      if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
+      if (sql.includes('FROM profiles')) return [{ id: 'alice', role: 'guest' }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'alice' }]
+      if (sql.includes('FROM ai_turn_routing_snapshots')) return [{
+        id: configurationId, source: 'mcp', conversation_id: null,
+        selection: { kind: 'default' }, resolved_choice: choice,
+        configuration_version: null, roles: pinnedRoles,
+      }]
+      return undefined
+    })
+
+    await expect(repository.prepareMcpRouting({
+      userId: 'alice', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: conversationId,
+      correlationId: mcpCorrelationId,
+    })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(calls().some(call => call.sql.includes('FROM ai_user_defaults'))).toBe(false)
+    expect(calls().some(call => call.sql.startsWith('INSERT INTO ai_turn_routing_snapshots'))).toBe(false)
+  })
   it('lists only safe columns and isolates every user-owned list', async () => {
     expect(repository).toHaveProperty('listAiConsoleState')
     await repository.listAiConsoleState('alice')

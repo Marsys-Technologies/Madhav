@@ -333,6 +333,27 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
 })
 
 describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
+  it('rejects a forged managed job before snapshot preflight or any model call', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    managedInquiry.getJob.mockResolvedValue(null)
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'forged managed request',
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000099',
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(401)
+    expect(managedInquiry.getJob).toHaveBeenCalledWith({
+      job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
+      principal_uid: 'owner-uid',
+      principal_key_id: 'mcp_test_KEY001',
+    })
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
   it('uses the mapped Default executors and returns evidence without invoking Madhav synthesis', async () => {
     configService.setFlag('AI_CONSOLE_BYOK', true)
     const releaseAdmission = vi.fn()
@@ -378,6 +399,44 @@ describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
     })
     expect(final).not.toHaveProperty('reading')
     expect((final?.routing as { roles: object }).roles).not.toHaveProperty('synthesizer')
+    expect(releaseAdmission).toHaveBeenCalledTimes(1)
+  })
+
+  it('logs only a stable code, trace, and allowlisted tool for BYOK retrieval failures', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const releaseAdmission = vi.fn()
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1',
+      executors: { planner: { execute: vi.fn() }, deep_planner: { execute: vi.fn() }, worker: { execute: vi.fn() } },
+      releaseAdmission,
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['safe_tool']))
+    mockGetToolByName.mockReturnValue({
+      name: 'safe_tool', version: '1.0', dispatch_units: 1,
+      retrieve: vi.fn().mockRejectedValue(new Error('provider-secret-value must not be logged')),
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const res = await POST(makeReq(
+        { chart_id: CHART, question: 'Trigger a safe retrieval failure.' },
+        { 'x-mcp-auth-kind': 'api_key' },
+      ))
+      await readNdjson(res)
+      const rendered = errorSpy.mock.calls.map(args => args.map(String).join(' ')).join('\n')
+      expect(rendered).toContain('MCP_TOOL_DISPATCH_FAILED')
+      expect(rendered).toContain('tool=safe_tool')
+      expect(rendered).not.toContain('provider-secret-value')
+    } finally {
+      errorSpy.mockRestore()
+    }
     expect(releaseAdmission).toHaveBeenCalledTimes(1)
   })
 })

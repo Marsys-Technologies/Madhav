@@ -945,6 +945,79 @@ const PrepareMcpRoutingSchema = z.object({
   }
 })
 
+async function loadPinnedMcpRouting(
+  client: Client,
+  userId: string,
+  correlationId: string,
+): Promise<Omit<PreparedMcpRouting, 'role'> | null> {
+  const row = (await client.query(`SELECT id,source,conversation_id,selection,resolved_choice,configuration_version,roles
+    FROM ai_turn_routing_snapshots WHERE user_id=$1 AND correlation_id=$2 FOR SHARE`,
+  [userId, correlationId])).rows[0]
+  if (!row) return null
+
+  let safeSnapshot: z.infer<typeof RoutingSnapshotSchema>
+  let snapshotId: string
+  try {
+    safeSnapshot = RoutingSnapshotSchema.parse({
+      source: row.source,
+      userId,
+      correlationId,
+      conversationId: row.conversation_id,
+      selection: row.selection,
+      resolvedChoice: row.resolved_choice,
+      configurationVersion: row.configuration_version === null ? null : Number(row.configuration_version),
+      roles: row.roles,
+    })
+    snapshotId = z.string().uuid().parse(row.id)
+  } catch {
+    throw new AiConsoleError('AI_CHOICE_BROKEN')
+  }
+  if (safeSnapshot.source !== 'mcp' || safeSnapshot.conversationId !== null) {
+    throw new AiConsoleError('AI_CHOICE_BROKEN')
+  }
+
+  const grouped = new Map<string, { target: RoleTarget; roles: AiRole[] }>()
+  for (const roleName of AI_ROLES) {
+    const pinned = safeSnapshot.roles[roleName]
+    const target: RoleTarget = pinned.kind === 'provider_model'
+      ? { kind: pinned.kind, connectionId: pinned.connectionId, modelId: pinned.modelId }
+      : { kind: pinned.kind, cliId: pinned.cliId, modelId: pinned.modelId }
+    const key = JSON.stringify(target)
+    const current = grouped.get(key) ?? { target, roles: [] }
+    current.roles.push(roleName)
+    grouped.set(key, current)
+  }
+  const resolvedByKey = new Map<string, RoutingTarget>()
+  for (const [key, group] of grouped) {
+    resolvedByKey.set(key, await loadRoutingTarget(client, userId, group.target, group.roles))
+  }
+  const roles = Object.fromEntries(AI_ROLES.map(roleName => {
+    const pinned = safeSnapshot.roles[roleName]
+    const target: RoleTarget = pinned.kind === 'provider_model'
+      ? { kind: pinned.kind, connectionId: pinned.connectionId, modelId: pinned.modelId }
+      : { kind: pinned.kind, cliId: pinned.cliId, modelId: pinned.modelId }
+    const resolved = resolvedByKey.get(JSON.stringify(target))!
+    const identityMatches = pinned.kind === 'provider_model' && resolved.kind === 'provider_model'
+      ? pinned.connectionId === resolved.connectionId && pinned.providerId === resolved.providerId
+        && pinned.modelId === resolved.modelId
+      : pinned.kind === 'local_cli' && resolved.kind === 'local_cli'
+        && pinned.cliId === resolved.cliId && pinned.modelId === resolved.modelId
+    if (!identityMatches) throw new AiConsoleError('AI_CHOICE_BROKEN')
+    return [roleName, resolved]
+  })) as Record<AiRole, RoutingTarget>
+
+  return {
+    selection: safeSnapshot.selection,
+    resolution: {
+      resolvedChoice: safeSnapshot.resolvedChoice,
+      configurationVersion: safeSnapshot.configurationVersion,
+      roles,
+    },
+    safeSnapshot,
+    snapshotId,
+  }
+}
+
 /**
  * Re-verify the authenticated MCP credential mapping, active user, chart authority,
  * live Default, full four-role resolution and immutable snapshot under one user lock.
@@ -975,6 +1048,9 @@ export async function prepareMcpRouting(input: unknown): Promise<PreparedMcpRout
       [parsed.chartId, parsed.userId])).rows[0]
       if (!grant) throw new AiConsoleError('AI_PERMISSION_DENIED')
     }
+
+    const pinned = await loadPinnedMcpRouting(client, parsed.userId, parsed.correlationId)
+    if (pinned) return { role, ...pinned }
 
     const selection = ConversationAiSelectionSchema.parse({ kind: 'default' })
     const resolution = await loadRoutingResolutionWithClient(client, parsed.userId, selection)

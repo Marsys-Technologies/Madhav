@@ -96,7 +96,9 @@ import {
   MCP_EVIDENCE_ENVELOPE_MAX_BYTES,
   MCP_RAW_EVIDENCE_MAX_BYTES,
   mcpEvidenceBudgetTokens,
+  projectMcpEvidencePlan,
 } from '@/lib/mcp/prashna_ask/evidence'
+import { logSafeByokToolFailure } from '@/lib/mcp/prashna_ask/logging'
 
 // Wall-clock generous enough for the elevated super_admin cost cap (300s) plus
 // margin for the HTTP round trip; the resolved per-entitlement cap enforces the
@@ -263,7 +265,30 @@ export async function POST(request: Request) {
   if (byokEnabled && body.managed_inquiry_id !== undefined && !uuidPattern.test(body.managed_inquiry_id)) {
     return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_inquiry_id must be a UUID' }), { status: 400 })
   }
-  const correlationCandidate = byokEnabled ? body.managed_job_id ?? body.managed_inquiry_id : undefined
+  let authorizedManagedJob: Awaited<ReturnType<typeof getManagedPrashnaJob>> = null
+  if (byokEnabled && body.managed_job_id && body.managed_inquiry_id) {
+    try {
+      authorizedManagedJob = await getManagedPrashnaJob({
+        job_id: body.managed_job_id,
+        principal_uid: userUid,
+        principal_key_id: keyId,
+      })
+    } catch {
+      return NextResponse.json(buildErrorEnvelope({
+        error_class: 'internal',
+        message: 'Managed inquiry authorization is temporarily unavailable',
+        remediation: 'Retry the authenticated managed request.',
+      }), { status: 422 })
+    }
+    if (!authorizedManagedJob || authorizedManagedJob.chart_id !== chartId
+      || authorizedManagedJob.request_jsonb.inquiry_id !== body.managed_inquiry_id) {
+      return NextResponse.json(buildErrorEnvelope({
+        error_class: 'auth',
+        message: 'managed inquiry does not match the authenticated durable job',
+      }), { status: 401 })
+    }
+  }
+  const correlationCandidate = byokEnabled && authorizedManagedJob ? body.managed_job_id : undefined
   const queryId = correlationCandidate ?? crypto.randomUUID()
 
   // A malformed scope_tuple is a caller bug worth surfacing (400), not something
@@ -706,10 +731,8 @@ export async function POST(request: Request) {
       return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry requires a resolved scope tuple' }), { status: 409 })
     }
     const resolvedInquiryContract = initialInquiryContract
-    const managedJob = await getManagedPrashnaJob({
-      job_id: body.managed_job_id,
-      principal_uid: userUid,
-      principal_key_id: keyId,
+    const managedJob = byokEnabled ? authorizedManagedJob : await getManagedPrashnaJob({
+      job_id: body.managed_job_id, principal_uid: userUid, principal_key_id: keyId,
     })
     if (!managedJob || managedJob.chart_id !== chartId || managedJob.request_jsonb.inquiry_id !== body.managed_inquiry_id) {
       byokRuntime?.releaseAdmission()
@@ -792,7 +815,7 @@ export async function POST(request: Request) {
         try {
           return NextResponse.json(buildMcpEvidenceEnvelope({
             question,
-            plan,
+            plan: projectMcpEvidencePlan(plan),
             results: [],
             completeness,
             judgmentFlags: [
@@ -1111,7 +1134,8 @@ export async function POST(request: Request) {
             }
           }
           toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - toolStart })
-          console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
+          if (byokRuntime) logSafeByokToolFailure('MCP_TOOL_DISPATCH_FAILED', queryId, toolName)
+          else console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
         }
 
         emitProgress(toolName)
@@ -1173,7 +1197,8 @@ export async function POST(request: Request) {
               break
             }
           } catch (error) {
-            console.error(`[mcp:prashna_ask] managed inquiry continuation failed for ${toolName}`, error)
+            if (byokRuntime) logSafeByokToolFailure('MCP_MANAGED_CONTINUATION_FAILED', queryId, toolName)
+            else console.error(`[mcp:prashna_ask] managed inquiry continuation failed for ${toolName}`, error)
             await managedInquirySession.persistAcceptedObservation({
               plan_item_id: item.item_id,
               obligation_ids: item.obligation_ids,
@@ -1287,7 +1312,8 @@ export async function POST(request: Request) {
               })
             }
           } catch (error) {
-            console.error(`[mcp:prashna_ask] inquiry continuation failed for ${toolName}`, error)
+            if (byokRuntime) logSafeByokToolFailure('MCP_INQUIRY_CONTINUATION_FAILED', queryId, toolName)
+            else console.error(`[mcp:prashna_ask] inquiry continuation failed for ${toolName}`, error)
             toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
             inquiryContract = recordInquiryExecution(inquiryContract, {
               item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
@@ -1416,17 +1442,7 @@ export async function POST(request: Request) {
       }
 
       if (byokRuntime) {
-        const safePlan = {
-          query_class: plan.query_class,
-          query_intent_summary: plan.query_intent_summary,
-          domains: plan.domains ?? [],
-          forward_looking: plan.forward_looking ?? false,
-          tools: plan.tool_calls.map(call => ({
-            tool_name: call.tool_name,
-            priority: call.priority,
-            token_budget: call.token_budget,
-          })),
-        }
+        const safePlan = projectMcpEvidencePlan(plan)
         let evidenceEnvelope
         try {
           evidenceEnvelope = buildMcpEvidenceEnvelope({

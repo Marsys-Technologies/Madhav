@@ -76,6 +76,31 @@ export function safeMcpRoutingSummary(snapshot: SafeRoutingSnapshot): SafeMcpRou
   }
 }
 
+/** Closed public projection. Planner prompts, params, reasons and guidance never cross the MCP evidence boundary. */
+export function projectMcpEvidencePlan(plan: {
+  query_class?: unknown
+  query_intent_summary?: unknown
+  domains?: unknown
+  forward_looking?: unknown
+  tool_calls?: ReadonlyArray<{
+    tool_name?: unknown
+    priority?: unknown
+    token_budget?: unknown
+  }>
+}): Record<string, unknown> {
+  return {
+    query_class: typeof plan.query_class === 'string' ? plan.query_class : null,
+    query_intent_summary: typeof plan.query_intent_summary === 'string' ? plan.query_intent_summary : null,
+    domains: Array.isArray(plan.domains) ? plan.domains.filter((domain): domain is string => typeof domain === 'string') : [],
+    forward_looking: plan.forward_looking === true,
+    tools: Array.isArray(plan.tool_calls) ? plan.tool_calls.map(call => ({
+      tool_name: typeof call.tool_name === 'string' ? call.tool_name : 'unresolved',
+      priority: typeof call.priority === 'number' ? call.priority : null,
+      token_budget: typeof call.token_budget === 'number' ? call.token_budget : null,
+    })) : [],
+  }
+}
+
 export function buildMcpEvidenceEnvelope(input: {
   question: string
   plan: unknown

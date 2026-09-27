@@ -60,3 +60,19 @@ without inventing synthesis.
 - `npm ci --ignore-scripts` in `platform-mcp` reported the repository dependency
   baseline of 16 audit findings (9 moderate, 6 high, 1 critical); dependencies
   and lockfiles were not changed by this task.
+
+## Fix round 1
+
+- Managed retries now authorize the durable job before using its id as routing
+  correlation or creating a snapshot/executor. Existing snapshots bypass live
+  Default and custom-assignment reads, while each pinned role target is
+  revalidated against current credential/model or CLI-grant authority.
+- Normal and safety-withheld evidence use the same closed plan projection;
+  planner parameters, reasons, guidance, raw query fields, and runtime objects
+  cannot enter the terminal plan.
+- BYOK retrieval/continuation failures log only stable codes plus allowlisted
+  trace and tool fields. Provider/adapter error text and objects are excluded;
+  flag-off logging remains unchanged.
+- Fix-round platform aggregate: 12 files, 273 tests passed; TypeScript, scoped
+  zero-warning ESLint, whitespace, credential, import-boundary, and raw-error
+  log scans passed.
