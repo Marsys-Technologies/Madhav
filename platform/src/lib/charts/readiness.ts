@@ -36,6 +36,12 @@ export interface ChartReadiness {
   refreshWarning?: string | null
 }
 
+export interface UnresolvedFailure {
+  assets: number
+  /** True when any unresolved failed run never started (JOB_DISPATCH_FAILED). */
+  dispatchFailed: boolean
+}
+
 export type ReadinessThroughputRow = {
   asset_id: string
   state: string
@@ -52,11 +58,6 @@ export type ReadinessRunRow = {
   created_at?: string
   started_at?: string | null
   ended_at?: string | null
-  /**
-   * Latest run: its planned assets that no longer hold valid data (not lit/stale).
-   * Latest full rebuild: its per-chart planned assets not rebuilt since it started.
-   */
-  outstanding?: number | null
 }
 
 type ThroughputRow = ReadinessThroughputRow & {
@@ -104,11 +105,17 @@ function assetLayer(assetId: string): BrahmaLayerId | null {
 export function deriveChartReadiness(input: {
   throughput: ReadinessThroughputRow[]
   latestRun: ReadinessRunRow | null
-  /** Latest global `rebuild` run (a chart correction's recompute or an operator full rebuild). */
-  latestFullRebuild?: ReadinessRunRow | null
+  /**
+   * Failed or stopped runs of any age that still own broken per-chart assets:
+   * for a small run, an asset it planned that no longer holds valid data; for a
+   * full rebuild (a correction's recompute or an operator full rebuild), an
+   * asset it planned that has not been rebuilt since it started. Omitted →
+   * unknown, which fails closed after a failed/stopped latest run.
+   */
+  unresolvedFailure?: UnresolvedFailure | null
 }): ChartReadiness {
   const { throughput, latestRun } = input
-  const latestFullRebuild = input.latestFullRebuild ?? null
+  const unresolvedFailure = input.unresolvedFailure ?? null
 
   // A layer holds data when any of its active assets is lit (zero-row-by-design
   // assets count) or has written rows (stale data is still present data).
@@ -137,26 +144,19 @@ export function deriveChartReadiness(input: {
   const anyBuilding = throughput.some((row) => row.state === 'building')
   const runActive = latestRun !== null && ACTIVE_RUN_STATES.has(latestRun.state)
   const endedIncomplete = (run: ReadinessRunRow | null) => run?.state === 'failed' || run?.state === 'stopped'
-  const isDispatchFailure = (run: ReadinessRunRow | null) =>
-    run?.state === 'failed' && (run.last_error ?? '').startsWith(JOB_DISPATCH_FAILED_PREFIX)
+  const latestDispatchFailed =
+    latestRun?.state === 'failed' && (latestRun.last_error ?? '').startsWith(JOB_DISPATCH_FAILED_PREFIX)
 
-  // A full rebuild (a chart correction's recompute or an operator full rebuild)
-  // that failed or stopped keeps the chart out of Ready until every per-chart
-  // asset it planned has been rebuilt after it started — no later small run can
-  // mask it. Unknown outstanding counts are treated as incomplete (fail closed).
-  const fullRebuildIncomplete =
-    endedIncomplete(latestFullRebuild) && (latestFullRebuild?.outstanding ?? 1) > 0
-  // A failed/stopped small refresh leaves a previously complete chart Ready only
-  // if every asset it touched still holds valid data; the failure then surfaces
-  // as a non-blocking warning.
-  const refreshBroke = endedIncomplete(latestRun) && (latestRun?.outstanding ?? 1) > 0
-  const refreshWarningApplies = endedIncomplete(latestRun) && !refreshBroke
+  // Any failed or stopped run — of any age, not only the latest — that still owns
+  // broken per-chart assets keeps the chart out of Ready: a later run can never
+  // mask it. Without a known failure picture, a failed/stopped latest run fails closed.
+  const unresolved = unresolvedFailure ? unresolvedFailure.assets > 0 : endedIncomplete(latestRun)
+  const refreshWarningApplies = endedIncomplete(latestRun) && !unresolved
 
   let state: ChartReadinessState
   if (runActive || anyBuilding) state = 'building'
-  else if (fullRebuildIncomplete) state = isDispatchFailure(latestFullRebuild) ? 'needs-rebuild' : 'failed'
-  else if (isDispatchFailure(latestRun)) state = 'needs-rebuild'
-  else if (refreshBroke) state = 'failed'
+  else if (unresolved) state = unresolvedFailure?.dispatchFailed || latestDispatchFailed ? 'needs-rebuild' : 'failed'
+  else if (latestDispatchFailed) state = 'needs-rebuild'
   else if (allLit) state = 'ready'
   else if (latestRun?.state === 'failed') state = 'failed'
   else if (perChartLit > 0) state = 'partially-built'
@@ -198,7 +198,7 @@ export function isDerivedChartReady(readiness: ChartReadiness): boolean {
 
 export async function getChartReadinessMap(chartIds: string[]): Promise<Map<string, ChartReadiness>> {
   if (chartIds.length === 0) return new Map()
-  const [throughput, runs, fullRebuilds] = await Promise.all([
+  const [throughput, runs, failures] = await Promise.all([
     query<ThroughputRow>(
       `SELECT at.chart_id, at.asset_id, at.state, at.rows_written, at.last_built_at
          FROM asset_throughput at
@@ -206,47 +206,49 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
         WHERE at.chart_id = ANY($1::uuid[])`,
       [chartIds],
     ),
-    // Latest run of any kind, with how many of its planned per-chart assets no
-    // longer hold valid data (cleared, errored or never built).
+    // Latest run of any kind and any state (a failed dispatch must be visible).
     query<LatestRunRow>(
       `SELECT DISTINCT ON (r.chart_id)
-              r.id, r.chart_id, r.state, r.scope, r.action, r.last_error, r.created_at, r.started_at, r.ended_at,
-              (SELECT COUNT(*)
-                 FROM build_run_assets bra
-                 JOIN asset_registry ar ON ar.asset_id = bra.asset_id AND ar.is_active = true AND ar.scope = 'per_chart'
-                 LEFT JOIN asset_throughput at ON at.chart_id = r.chart_id AND at.asset_id = bra.asset_id
-                WHERE bra.run_id = r.id
-                  AND NOT COALESCE(at.state IN ('lit', 'stale'), false))::int AS outstanding
+              r.id, r.chart_id, r.state, r.scope, r.action, r.last_error, r.created_at, r.started_at, r.ended_at
          FROM build_runs r
         WHERE r.chart_id = ANY($1::uuid[])
         ORDER BY r.chart_id, r.created_at DESC, r.id DESC`,
       [chartIds],
     ),
-    // Latest full rebuild, with how many of its planned per-chart assets have not
-    // been rebuilt since it started.
-    query<LatestRunRow>(
-      `SELECT DISTINCT ON (r.chart_id)
-              r.id, r.chart_id, r.state, r.scope, r.action, r.last_error, r.created_at, r.started_at, r.ended_at,
-              (SELECT COUNT(*)
-                 FROM build_run_assets bra
-                 JOIN asset_registry ar ON ar.asset_id = bra.asset_id AND ar.is_active = true AND ar.scope = 'per_chart'
-                 LEFT JOIN asset_throughput at ON at.chart_id = r.chart_id AND at.asset_id = bra.asset_id
-                WHERE bra.run_id = r.id
-                  AND NOT COALESCE(at.state IN ('lit', 'stale') AND at.last_built_at >= r.created_at, false))::int AS outstanding
+    // Failed/stopped runs of any age that still own broken active per-chart
+    // assets. A small run's asset is broken when it no longer holds valid data;
+    // a full rebuild's asset is broken until rebuilt after the rebuild started.
+    query<{ chart_id: string; assets: number; dispatch_failed: boolean }>(
+      `SELECT r.chart_id,
+              COUNT(DISTINCT bra.asset_id)::int AS assets,
+              COALESCE(bool_or(r.last_error LIKE 'JOB_DISPATCH_FAILED%'), false) AS dispatch_failed
          FROM build_runs r
-        WHERE r.chart_id = ANY($1::uuid[]) AND r.scope = 'global' AND r.action = 'rebuild'
-        ORDER BY r.chart_id, r.created_at DESC, r.id DESC`,
+         JOIN build_run_assets bra ON bra.run_id = r.id
+         JOIN asset_registry ar ON ar.asset_id = bra.asset_id AND ar.is_active = true AND ar.scope = 'per_chart'
+         LEFT JOIN asset_throughput at ON at.chart_id = r.chart_id AND at.asset_id = bra.asset_id
+        WHERE r.chart_id = ANY($1::uuid[])
+          AND r.state IN ('failed', 'stopped')
+          AND NOT COALESCE(
+                at.state IN ('lit', 'stale')
+                AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at),
+                false)
+        GROUP BY r.chart_id`,
       [chartIds],
     ),
   ])
   return new Map(
-    chartIds.map((id) => [
-      id,
-      deriveChartReadiness({
-        throughput: throughput.rows.filter((row) => row.chart_id === id),
-        latestRun: runs.rows.find((row) => row.chart_id === id) ?? null,
-        latestFullRebuild: fullRebuilds.rows.find((row) => row.chart_id === id) ?? null,
-      }),
-    ]),
+    chartIds.map((id) => {
+      const failure = failures.rows.find((row) => row.chart_id === id)
+      return [
+        id,
+        deriveChartReadiness({
+          throughput: throughput.rows.filter((row) => row.chart_id === id),
+          latestRun: runs.rows.find((row) => row.chart_id === id) ?? null,
+          unresolvedFailure: failure
+            ? { assets: Number(failure.assets), dispatchFailed: Boolean(failure.dispatch_failed) }
+            : { assets: 0, dispatchFailed: false },
+        }),
+      ]
+    }),
   )
 }
