@@ -71,6 +71,7 @@ import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
 // F-23: compared against directly so the metric is proven to be READ from the
 // deterministic classifier rather than restated as a literal.
 import { classifyScope } from '@/lib/vidhi/scope_classifier'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,59 @@ const CLASSIFIED_QUERY = 'What is my current dasha period?'
 
 beforeEach(() => {
   runAdapter.mockReset()
+})
+
+function fakeExecutor(role: 'planner' | 'deep_planner' | 'worker', outputs: string[]): RoleExecutor {
+  return {
+    descriptor: { role, providerId: 'openai', connectionId: `${role}-connection`, modelId: `${role}-model` },
+    generate: vi.fn(async () => {
+      const text = outputs.shift() ?? VALID_PLAN_JSON
+      return { text, toolCalls: [], finishReason: 'stop', retryCount: 0,
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }
+    }),
+    stream: vi.fn(),
+  }
+}
+
+describe('callPipelinePlanner — exact BYOK role injection', () => {
+  it('uses Planner for normal scope and never reaches the legacy adapter', async () => {
+    const planner = fakeExecutor('planner', [VALID_PLAN_JSON])
+    const deep = fakeExecutor('deep_planner', [])
+    const worker = fakeExecutor('worker', [])
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: deep, workerExecutor: worker })
+    expect(outcome.outcome).toBe('plan')
+    expect(planner.generate).toHaveBeenCalledOnce()
+    expect(deep.generate).not.toHaveBeenCalled()
+    expect(runAdapter).not.toHaveBeenCalled()
+  })
+
+  it('uses Deep Planner for deterministic deep policy', async () => {
+    const planner = fakeExecutor('planner', [])
+    const deep = fakeExecutor('deep_planner', [VALID_PLAN_JSON])
+    const worker = fakeExecutor('worker', [])
+    const suppliedDeepScope = { intent: 'domain_assessment' as const, domains: ['wealth' as const],
+      width: 'broad' as const, depth: 'deep' as const, horizon: 'far' as const,
+      intervention: 'none' as const, entitlement: 'native' as const }
+    await callPipelinePlanner('Explain this wealth outlook.', [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, suppliedDeepScope, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: deep, workerExecutor: worker })
+    expect(deep.generate).toHaveBeenCalledOnce()
+    expect(planner.generate).not.toHaveBeenCalled()
+  })
+
+  it('uses the same exact Planner again for structured repair', async () => {
+    const planner = fakeExecutor('planner', ['not json', VALID_PLAN_JSON])
+    const deep = fakeExecutor('deep_planner', [])
+    const worker = fakeExecutor('worker', [])
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: deep, workerExecutor: worker })
+    expect(outcome.outcome).toBe('plan')
+    expect(planner.generate).toHaveBeenCalledTimes(2)
+    expect(runAdapter).not.toHaveBeenCalled()
+  })
 })
 
 describe('callPipelinePlanner — clarification outcome', () => {

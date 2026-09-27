@@ -54,14 +54,19 @@ import { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/ring_buffer'
 import { beginTurnCapture, captureEvent, endTurnCapture } from '@/lib/pariprashna/protocol/stream_capture'
 
-import type { TurnIdentity } from '@/lib/pariprashna/pipeline/stage_context'
+import type { TurnIdentity, TurnParams } from '@/lib/pariprashna/pipeline/stage_context'
 import {
   admitRequest,
   admitWithinLimits,
   bindTurnParams,
+  bindByokTurnParams,
   authorizeTurn,
   runSafetyPolicyGate,
 } from '@/lib/pariprashna/pipeline/safety_gate'
+import { configService } from '@/lib/config'
+import { AiConsoleError } from '@/lib/ai-console/errors'
+import { authenticateByokUser, prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
+import { LEGACY_TURN_RUNTIME, type TurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 import { runPlanStage } from '@/lib/pariprashna/pipeline/plan_stage'
 import { runEvidenceStage } from '@/lib/pariprashna/pipeline/evidence_stage'
 import { assembleSynthesisContext, runSynthesisStage } from '@/lib/pariprashna/pipeline/synthesis_stage'
@@ -76,6 +81,7 @@ export const maxDuration = 120
 
 export async function POST(request: Request): Promise<Response> {
   const requestStartedAt = Date.now()
+  const byokEnabled = configService.getFlag('AI_CONSOLE_BYOK')
 
   // ── Pre-stream: auth + validation only (fast; real HTTP responses). ────────
   // Everything DB/LLM-bound runs INSIDE the stream so `turn.open` is the first
@@ -83,17 +89,6 @@ export async function POST(request: Request): Promise<Response> {
   const admission = await admitRequest(request)
   if (!admission.admitted) return admission.response
   const { user, body, chartId, messages } = admission.value
-
-  // ── Bind request params (pure — no DB/LLM). ────────────────────────────────
-  const params = await bindTurnParams(body, request)
-
-  // ── NCD-8 pre-dispatch limits (web door). ──────────────────────────────────
-  // Still PRE-STREAM, so a ceiling refusal is a real HTTP 429 with a branchable
-  // code rather than an in-stream error — and it lands before the planner, the
-  // first LLM call of the turn. Needs `params` because the ceiling is evaluated
-  // against the model this turn actually bound. Flag-OFF by default.
-  const withinLimits = await admitWithinLimits({ user, params })
-  if (!withinLimits.admitted) return withinLimits.response
 
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.
@@ -122,6 +117,39 @@ export async function POST(request: Request): Promise<Response> {
     queryId: turnId,
   }
   const { conversationId } = identity
+
+  let runtime: TurnRuntime = LEGACY_TURN_RUNTIME
+  let params: TurnParams
+  if (byokEnabled) {
+    try {
+      const auth = await authenticateByokUser()
+      if (auth.user.uid !== user.uid) throw new AiConsoleError('AI_PERMISSION_DENIED')
+      const questionChars = messages
+        .filter(message => message.role === 'user')
+        .flatMap(message => message.parts ?? [])
+        .filter(part => part.type === 'text')
+        .reduce((total, part) => total + ((part as { text?: string }).text?.length ?? 0), 0)
+      runtime = await prepareByokTurn({
+        userId: user.uid,
+        role: auth.profile.role,
+        chartId,
+        conversationId,
+        isFirstTurn: identity.isFirstTurn,
+        turnId,
+        requestedSelection: body.ai_selection,
+        questionChars,
+      })
+      params = bindByokTurnParams(body, runtime)
+    } catch (error) {
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
+    }
+  } else {
+    // Flag-off order remains exactly the established bind → legacy admission.
+    params = await bindTurnParams(body, request)
+    const withinLimits = await admitWithinLimits({ user, params })
+    if (!withinLimits.admitted) return withinLimits.response
+  }
 
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
@@ -155,6 +183,7 @@ export async function POST(request: Request): Promise<Response> {
       em.phase({ phase: 'plan', status: 'start' })
 
       const finish = (status: 'ok' | 'error' | 'aborted'): void => {
+        if (runtime.kind === 'byok') runtime.releaseAdmission()
         em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
         em.close()
         // Release the in-process capture mark AFTER the terminal turn.close has
@@ -179,7 +208,7 @@ export async function POST(request: Request): Promise<Response> {
         const safetyDecision = safetyGate.value
 
         // ── Plan: query text → planner → budgets → floors → NO-LEAKAGE. ──────
-        const planned = await runPlanStage({ em, request, messages, identity, params, safetyDecision })
+        const planned = await runPlanStage({ em, request, messages, identity, params, safetyDecision, runtime })
         if (planned.halted) return finish(planned.status)
         const {
           plan,
@@ -239,6 +268,7 @@ export async function POST(request: Request): Promise<Response> {
           conversationId,
           safetyDecision: postPlanSafety,
           lengthTier: params.lengthTier,
+          ...(runtime.kind === 'byok' ? { workerExecutor: runtime.executors.worker } : {}),
         })
         const synthesized = await runSynthesisStage({
           em,
@@ -271,8 +301,10 @@ export async function POST(request: Request): Promise<Response> {
           // module has carried since P2-E — see its header for why identity
           // was left optional rather than fabricated.
           observability: { turnId, conversationId, userId: user.uid },
+          ...(runtime.kind === 'byok' ? { synthesizerExecutor: runtime.executors.synthesizer } : {}),
         })
         if (synthesized.halted) return finish(synthesized.status)
+        if (request.signal.aborted) return finish('aborted')
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
         // Lane G2-B. Server-derived grounding summary — counts + grade rollup
         // from what the rewriter actually resolved this turn, completeness
@@ -341,6 +373,7 @@ export async function POST(request: Request): Promise<Response> {
           completenessReceipt: evidence.completenessReceipt,
           citationHallucinationCount: synthesized.value.citationHallucinationCount,
           responseAccountability,
+          runtime,
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).
@@ -355,7 +388,12 @@ export async function POST(request: Request): Promise<Response> {
         return finish('ok')
       } catch (fatal) {
         console.error('[pariprashna] fatal in-stream error:', fatal)
-        em.error({ code: 'INTERNAL', message: fatal instanceof Error ? fatal.message : String(fatal), retryable: false })
+        if (runtime.kind === 'byok') {
+          const safe = fatal instanceof AiConsoleError ? fatal : new AiConsoleError('AI_EXECUTION_FAILED')
+          em.error(safe.toJSON())
+        } else {
+          em.error({ code: 'INTERNAL', message: fatal instanceof Error ? fatal.message : String(fatal), retryable: false })
+        }
         return finish('error')
       }
     },

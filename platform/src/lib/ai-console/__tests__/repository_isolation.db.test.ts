@@ -212,13 +212,17 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     const ids = await Promise.all([repo.insertRoutingSnapshot(snapshot('same-turn')), repo.insertRoutingSnapshot(snapshot('same-turn'))])
     expect(ids[0]).toBe(ids[1])
     await expect(repo.insertRoutingSnapshot({ ...snapshot('same-turn'), source: 'backend' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
-    const start = { userId: user, snapshotId: ids[0], role: 'planner', phase: 'start', status: 'started' }
+    const start = { userId: user, snapshotId: ids[0], invocationId: randomUUID(),
+      role: 'planner', phase: 'start', status: 'started' }
     await expect(repo.insertRoleInvocationReceipt({ ...start, userId: other })).rejects.toBeDefined()
     await expect(repo.insertRoleInvocationReceipt({ ...start, phase: 'terminal', status: 'succeeded' })).rejects.toBeDefined()
     await Promise.all([repo.insertRoleInvocationReceipt(start), repo.insertRoleInvocationReceipt(start)])
     await repo.insertRoleInvocationReceipt({ ...start, phase: 'terminal', status: 'succeeded' })
+    const second = { ...start, invocationId: randomUUID() }
+    await repo.insertRoleInvocationReceipt(second)
+    await repo.insertRoleInvocationReceipt({ ...second, phase: 'terminal', status: 'succeeded' })
     await expect(repo.insertRoleInvocationReceipt({ ...start, phase: 'terminal', status: 'failed' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
-    expect((await pool.query('SELECT * FROM ai_turn_role_invocations WHERE snapshot_id=$1', [ids[0]])).rowCount).toBe(2)
+    expect((await pool.query('SELECT * FROM ai_turn_role_invocations WHERE snapshot_id=$1', [ids[0]])).rowCount).toBe(4)
   })
   it('pins in-flight credentials and rejects stale validation/catalog completion after replacement', async () => {
     const pinned = await repo.loadConnectionCredential(user, connectionId, 1)

@@ -624,7 +624,8 @@ describe('immutable history and safe audit', () => {
   })
   it('requires snapshot ownership and ordered immutable role receipts', async () => {
     expect(repository).toHaveProperty('insertRoleInvocationReceipt')
-    await expect(repository.insertRoleInvocationReceipt({ userId: 'mallory', snapshotId: configurationId, role: 'planner', phase: 'start', status: 'started' })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
+    await expect(repository.insertRoleInvocationReceipt({ userId: 'mallory', snapshotId: configurationId,
+      invocationId: crypto.randomUUID(), role: 'planner', phase: 'start', status: 'started' })).rejects.toMatchObject({ code: 'AI_PERMISSION_DENIED' })
     expect(calls().some(c => c.sql.includes('user_id=$1') && c.params[0] === 'mallory')).toBe(true)
   })
   it('accepts identical receipt retries but rejects changed terminal results', async () => {
@@ -632,9 +633,10 @@ describe('immutable history and safe audit', () => {
       if (sql.startsWith('SELECT id FROM ai_turn_routing_snapshots')) return [{ id: configurationId }]
       if (sql.includes('FROM ai_turn_role_invocations')) return [{ status: 'succeeded', error_code: null }]
     })
-    const receipt = { userId: 'alice', snapshotId: configurationId, role: 'planner', phase: 'terminal', status: 'succeeded' }
+    const receipt = { userId: 'alice', snapshotId: configurationId, invocationId: crypto.randomUUID(),
+      role: 'planner', phase: 'terminal', status: 'succeeded' }
     await repository.insertRoleInvocationReceipt(receipt)
-    expect(calls().some(c => c.sql.includes('ON CONFLICT(snapshot_id,role,phase) DO NOTHING'))).toBe(true)
+    expect(calls().some(c => c.sql.includes('ON CONFLICT(snapshot_id,role,invocation_id,phase) DO NOTHING'))).toBe(true)
     await expect(repository.insertRoleInvocationReceipt({ ...receipt, status: 'failed' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(calls().some(c => c.sql.startsWith('UPDATE'))).toBe(false)
   })

@@ -58,6 +58,7 @@ import { resolveProvider } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { getStorageClient } from '@/lib/storage'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 import type { SignificantJudgment } from './detect'
 import { MIN_INTERPRETATION_CANDIDATES, type InterpretationSetEntry } from './schema'
@@ -511,6 +512,27 @@ const INTERPRETATION_SETS_REPAIR_NOTE =
   'Reply again with ONLY a JSON object matching this EXACT shape — the top-level key MUST be ' +
   '"sets", not "judgments" or anything else. No prose, no markdown fences, nothing before or ' +
   'after the JSON.'
+
+/** Exact Worker-backed caller for BYOK turns; one separate receipt per attempt. */
+export function createInterpretationCaller(executor: RoleExecutor): InterpretationLlmCaller {
+  return async (judgments) => {
+    const invoke = async (repairNote?: string) => {
+      const result = await executor.generate({
+        systemPrompt: systemPrompt(),
+        messages: [
+          { role: 'user', content: userMessage(judgments) },
+          ...(repairNote ? [{ role: 'user' as const, content: repairNote }] : []),
+        ],
+        temperature: 0,
+        reasoning: 'disable',
+        responseSchema: RESPONSE_SCHEMA,
+      })
+      return parseAndValidateSets(result.text)
+    }
+    try { return await invoke() }
+    catch { return invoke(INTERPRETATION_SETS_REPAIR_NOTE) }
+  }
+}
 
 async function defaultCaller(
   judgments: readonly SignificantJudgment[],

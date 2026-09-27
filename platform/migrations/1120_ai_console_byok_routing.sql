@@ -228,13 +228,14 @@ END $$;
 CREATE TABLE IF NOT EXISTS ai_turn_role_invocations (
   snapshot_id uuid NOT NULL REFERENCES ai_turn_routing_snapshots(id) ON DELETE CASCADE,
   role text NOT NULL CHECK (role IN ('synthesizer','planner','deep_planner','worker')),
+  invocation_id uuid NOT NULL,
   phase text NOT NULL CHECK (phase IN ('start', 'terminal')),
   status text NOT NULL CHECK (status IN ('started','succeeded','failed','cancelled')),
   error_code text CHECK (error_code IN ('AI_DEFAULT_REQUIRED','AI_CHOICE_BROKEN','AI_CONNECTION_INVALID','AI_MODEL_UNAVAILABLE','AI_ROLE_INCOMPATIBLE','AI_CLI_NOT_GRANTED','AI_CLI_UNREACHABLE','AI_PROVIDER_UNREACHABLE','AI_PERMISSION_DENIED','AI_BILLING_UNAVAILABLE','AI_RATE_LIMITED','AI_CLI_NOT_INSTALLED','AI_CLI_AUTH_UNAVAILABLE','AI_CLI_TIMEOUT','AI_CLI_OUTPUT_LIMIT','AI_EXECUTION_FAILED')),
   start_phase text GENERATED ALWAYS AS (CASE WHEN phase = 'terminal' THEN 'start' END) STORED,
   created_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (snapshot_id, role, phase),
-  FOREIGN KEY (snapshot_id, role, start_phase) REFERENCES ai_turn_role_invocations(snapshot_id, role, phase) ON DELETE RESTRICT,
+  PRIMARY KEY (snapshot_id, role, invocation_id, phase),
+  FOREIGN KEY (snapshot_id, role, invocation_id, start_phase) REFERENCES ai_turn_role_invocations(snapshot_id, role, invocation_id, phase) ON DELETE RESTRICT,
   CHECK ((phase = 'start' AND status = 'started' AND error_code IS NULL)
     OR (phase = 'terminal' AND status IN ('succeeded','failed','cancelled') AND (status <> 'succeeded' OR error_code IS NULL)))
 );

@@ -826,7 +826,7 @@ export async function insertRoutingSnapshot(input: unknown): Promise<string> {
     return row.id
   })
 }
-const ReceiptSchema = z.object({ userId: z.string().min(1), snapshotId: z.string().uuid(), role: AiRoleSchema,
+const ReceiptSchema = z.object({ userId: z.string().min(1), snapshotId: z.string().uuid(), invocationId: z.string().uuid(), role: AiRoleSchema,
   phase: z.enum(['start', 'terminal']), status: z.enum(['started', 'succeeded', 'failed', 'cancelled']), errorCode: AiErrorCodeSchema.optional(),
 }).strict().refine(r => r.phase === 'start' ? r.status === 'started' && !r.errorCode : r.status !== 'started' && (r.status !== 'succeeded' || !r.errorCode))
 export async function insertRoleInvocationReceipt(input: unknown): Promise<void> {
@@ -836,16 +836,18 @@ export async function insertRoleInvocationReceipt(input: unknown): Promise<void>
     if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
     if (receipt.phase === 'terminal') {
       required((await client.query(`SELECT r.status FROM ai_turn_role_invocations r JOIN ai_turn_routing_snapshots s ON s.id=r.snapshot_id
-        WHERE s.user_id=$1 AND s.id=$2 AND r.role=$3 AND r.phase='start'`, [receipt.userId, receipt.snapshotId, receipt.role])).rows)
+        WHERE s.user_id=$1 AND s.id=$2 AND r.role=$3 AND r.invocation_id=$4 AND r.phase='start'`,
+      [receipt.userId, receipt.snapshotId, receipt.role, receipt.invocationId])).rows)
     }
-    const inserted = await client.query(`INSERT INTO ai_turn_role_invocations(snapshot_id,role,phase,status,error_code)
-      SELECT id,$3,$4,$5,$6 FROM ai_turn_routing_snapshots WHERE user_id=$1 AND id=$2
-      ON CONFLICT(snapshot_id,role,phase) DO NOTHING RETURNING status`,
-    [receipt.userId, receipt.snapshotId, receipt.role, receipt.phase, receipt.status, receipt.errorCode ?? null])
+    const inserted = await client.query(`INSERT INTO ai_turn_role_invocations(snapshot_id,role,invocation_id,phase,status,error_code)
+      SELECT id,$3,$4,$5,$6,$7 FROM ai_turn_routing_snapshots WHERE user_id=$1 AND id=$2
+      ON CONFLICT(snapshot_id,role,invocation_id,phase) DO NOTHING RETURNING status`,
+    [receipt.userId, receipt.snapshotId, receipt.role, receipt.invocationId, receipt.phase, receipt.status, receipt.errorCode ?? null])
     if (!inserted.rows.length) {
       const row = required((await client.query(`SELECT r.status,r.error_code FROM ai_turn_role_invocations r
-        JOIN ai_turn_routing_snapshots s ON s.id=r.snapshot_id WHERE s.user_id=$1 AND s.id=$2 AND r.role=$3 AND r.phase=$4`,
-      [receipt.userId, receipt.snapshotId, receipt.role, receipt.phase])).rows)
+        JOIN ai_turn_routing_snapshots s ON s.id=r.snapshot_id WHERE s.user_id=$1 AND s.id=$2
+        AND r.role=$3 AND r.invocation_id=$4 AND r.phase=$5`,
+      [receipt.userId, receipt.snapshotId, receipt.role, receipt.invocationId, receipt.phase])).rows)
       if (row.status !== receipt.status || row.error_code !== (receipt.errorCode ?? null)) throw notFound()
     }
   })

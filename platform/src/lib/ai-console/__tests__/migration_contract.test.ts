@@ -75,7 +75,9 @@ describe('AI Console governed persistence contract', () => {
   it('retains immutable snapshots and append-only correlated start/terminal receipts', () => {
     const text = sql()
     expect(text).toContain('UNIQUE (user_id, correlation_id)')
-    expect(text).toContain('PRIMARY KEY (snapshot_id, role, phase)')
+    expect(text).toContain('invocation_id uuid NOT NULL')
+    expect(text).toContain('PRIMARY KEY (snapshot_id, role, invocation_id, phase)')
+    expect(text).toContain('FOREIGN KEY (snapshot_id, role, invocation_id, start_phase)')
     expect(text).toContain("phase IN ('start', 'terminal')")
     expect(text).toContain('ai_reject_history_mutation')
     expect(text).toContain('BEFORE UPDATE OR DELETE')

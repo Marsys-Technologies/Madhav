@@ -10,6 +10,10 @@ import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { resolveModel } from '@/lib/models/resolver'
 import type { ModelMessage } from 'ai'
+import { configService } from '@/lib/config'
+import { AiConsoleError } from '@/lib/ai-console/errors'
+import { getConversationSelection } from '@/lib/ai-console/repository'
+import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
 
 export const maxDuration = 120
 
@@ -44,10 +48,13 @@ export async function POST(request: Request) {
   // Resolve access: owner or super_admin.
   let isSuperAdmin = false
   try {
-    const result = await query<{ role: string }>(
-      'SELECT role FROM profiles WHERE id=$1',
+    const result = await query<{ role: string; status: string }>(
+      'SELECT role,status FROM profiles WHERE id=$1',
       [user.uid],
     )
+    if (configService.getFlag('AI_CONSOLE_BYOK') && result.rows[0]?.status !== 'active') {
+      return Response.json(new AiConsoleError('AI_PERMISSION_DENIED').toJSON(), { status: 403 })
+    }
     isSuperAdmin = result.rows[0]?.role === 'super_admin'
   } catch {
     return res.dbError()
@@ -67,6 +74,64 @@ export async function POST(request: Request) {
     uiMessages = await loadConversationMessagesV2(conversation_id)
   } catch {
     return res.dbError()
+  }
+
+  if (configService.getFlag('AI_CONSOLE_BYOK')) {
+    try {
+      const selection = await getConversationSelection(user.uid, conversation_id)
+      const turnId = crypto.randomUUID()
+      const runtime = await prepareByokTurn({
+        userId: user.uid,
+        role: isSuperAdmin ? 'super_admin' : 'guest',
+        chartId: conv.chart_id,
+        conversationId: conversation_id,
+        isFirstTurn: false,
+        turnId,
+        requestedSelection: selection,
+        questionChars: CONTINUATION_INSTRUCTION.length,
+        source: 'consult',
+      })
+      const history = uiMessages.map(message => ({
+        role: message.role as 'user' | 'assistant',
+        content: message.parts
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map(part => part.text).join(''),
+      }))
+      const uiStream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          const id = crypto.randomUUID()
+          writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
+          writer.write({ type: 'text-start', id } as never)
+          const reader = runtime.executors.synthesizer.stream({
+            systemPrompt: CONTINUATION_INSTRUCTION,
+            messages: history,
+            abortSignal: request.signal,
+          }).getReader()
+          try {
+            while (true) {
+              const next = await reader.read()
+              if (next.done) break
+              if (next.value.type === 'text_delta') {
+                writer.write({ type: 'text-delta', id, delta: next.value.text } as never)
+              }
+            }
+            writer.write({ type: 'text-end', id } as never)
+            writer.write({ type: 'finish', finishReason: 'stop' } as never)
+          } catch (error) {
+            const safe = error instanceof AiConsoleError
+              ? error : new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
+            writer.write({ type: 'error', errorText: safe.message } as never)
+          } finally {
+            runtime.releaseAdmission()
+            reader.releaseLock()
+          }
+        },
+      })
+      return createUIMessageStreamResponse({ stream: uiStream })
+    } catch (error) {
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
+    }
   }
 
   // Resolve synthesis model — use stack stored in conversation metadata if available;

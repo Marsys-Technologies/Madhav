@@ -41,6 +41,7 @@ import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } fr
 import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
+import type { TurnRuntime } from './turn_runtime'
 
 /**
  * Lane P2-C (PPR-09/16) — honest depth disclosure. Maps the CLASSIFIER's own
@@ -124,8 +125,9 @@ export async function runPlanStage(args: {
   identity: TurnIdentity
   params: TurnParams
   safetyDecision: SafetyDecision
+  runtime?: TurnRuntime
 }): Promise<StageResult<PlanStageOutput>> {
-  const { em, request, messages, identity, params } = args
+  const { em, request, messages, identity, params, runtime } = args
   const { chartId, queryId } = identity
 
   // ── Query text + planner context. ──────────────────────────────────────────
@@ -162,12 +164,20 @@ export async function runPlanStage(args: {
     }))
     .filter((m) => m.content.length > 0)
 
-  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
-    getEffectiveModel(params.selectedStack, 'planner_fast', 'primary', request),
-    getEffectiveModel(params.selectedStack, 'planner_fast', 'fallback', request),
-    getEffectiveModel(params.selectedStack, 'planner_deep', 'primary', request),
-    getEffectiveModel(params.selectedStack, 'planner_deep', 'fallback', request),
-  ])
+  const descriptorModel = (role: 'planner' | 'deep_planner'): string => {
+    if (!runtime || runtime.kind === 'legacy') return ''
+    const descriptor = runtime.executors[role].descriptor
+    return descriptor.modelId ?? ('cliId' in descriptor ? `${descriptor.cliId}:built-in-default` : 'selected-model')
+  }
+  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] =
+    runtime?.kind === 'byok'
+      ? [descriptorModel('planner'), undefined, descriptorModel('deep_planner'), undefined]
+      : await Promise.all([
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_fast', 'primary', request),
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_fast', 'fallback', request),
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_deep', 'primary', request),
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_deep', 'fallback', request),
+        ])
 
   // ── INJECTION CONTAINMENT: the planner's own inputs (lane G1-G · PPR-13). ──
   // TA §14A.1 names this surface first and by line number: "`queryText` flows
@@ -212,6 +222,14 @@ export async function runPlanStage(args: {
     undefined,
     deepPlannerModelId,
     deepPlannerFallbackModelId,
+    runtime?.kind === 'byok'
+      ? {
+          plannerExecutor: runtime.executors.planner,
+          deepPlannerExecutor: runtime.executors.deep_planner,
+          workerExecutor: runtime.executors.worker,
+          abortSignal: request.signal,
+        }
+      : undefined,
   )
 
   if (plannerOutcome.outcome === 'clarification_needed') {

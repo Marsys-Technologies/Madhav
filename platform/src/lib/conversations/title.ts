@@ -13,6 +13,7 @@ import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 function fallbackTitle(text: string): string {
   const firstLine = text.split('\n')[0].trim()
@@ -25,6 +26,7 @@ function fallbackTitle(text: string): string {
 export async function generateConversationTitle(
   messages: UIMessage[],
   monCtx?: { queryId?: string; conversationId?: string | null; userId?: string },
+  workerExecutor?: RoleExecutor,
 ): Promise<string | null> {
   const firstUser = messages.find(m => m.role === 'user')
   if (!firstUser) return null
@@ -34,6 +36,20 @@ export async function generateConversationTitle(
     .join(' ')
     .trim()
   if (!text) return null
+
+  if (workerExecutor) {
+    try {
+      const result = await workerExecutor.generate({
+        systemPrompt: 'Summarize the user question as a concise 3-6 word chat title. No quotes, no trailing punctuation, Title Case.',
+        messages: [{ role: 'user', content: text.slice(0, 500) }],
+        maxOutputTokens: 40,
+      })
+      const cleaned = result.text.replace(/^["']|["']$/g, '').trim().slice(0, 80)
+      return cleaned || fallbackTitle(text)
+    } catch {
+      return fallbackTitle(text)
+    }
+  }
 
   const start = Date.now()
   let usage: { inputTokens?: number; outputTokens?: number } | undefined

@@ -76,8 +76,10 @@ import {
   type ReceiptInterpretationSets,
 } from '@/lib/pariprashna/interpretation'
 import { isTypedConfidenceEnabled } from '@/lib/pariprashna/confidence/flag'
+import { createInterpretationCaller } from '@/lib/pariprashna/interpretation/worker'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
+import type { TurnRuntime } from './turn_runtime'
 import {
   buildCanonicalParts,
   detectTurnCitations,
@@ -191,6 +193,7 @@ export async function runPersistenceStage(args: {
   citationHallucinationCount?: number
   /** Wave 4: deterministic fact/delivery denominator persisted for export parity. */
   responseAccountability?: InquiryResponseAccountability | null
+  runtime?: TurnRuntime
 }): Promise<void> {
   const {
     em,
@@ -239,6 +242,12 @@ export async function runPersistenceStage(args: {
     ...historyMsgs,
     { id: assistantMessageId, role: 'assistant' as const, parts: [{ type: 'text', text: accumulatedText }] } as UIMessage,
   ]
+  // BYOK title work belongs to this turn. Await the optional Worker path now;
+  // the shared on-finish helper receives only the settled value and cannot
+  // start an untracked global worker after runtime authority disappears.
+  const byokTitle = isFirstTurn && args.runtime?.kind === 'byok'
+    ? await generateConversationTitle(persistMsgs, undefined, args.runtime.executors.worker)
+    : undefined
   const lastUserText = ((lastUserMessage?.parts ?? []) as Array<{ type: string; text?: string }>)
     .filter((p) => p.type === 'text')
     .map((p) => p.text ?? '')
@@ -336,6 +345,7 @@ export async function runPersistenceStage(args: {
             length_tier: params.lengthTier,
             pipeline: 'pariprashna',
             conversationId,
+            ...(args.runtime?.kind === 'byok' ? { ai_routing_snapshot_id: args.runtime.snapshotId } : {}),
           },
         },
         provenanceStamp,
@@ -537,6 +547,9 @@ export async function runPersistenceStage(args: {
                     // without semantic blocks on (see assemble.ts's own doc
                     // comment on this field).
                     semanticBlocksEnabled: isSemanticBlocksEnabled(),
+                    ...(args.runtime?.kind === 'byok'
+                      ? { caller: createInterpretationCaller(args.runtime.executors.worker) }
+                      : {}),
                   })
                   if ((interpretationSets.truncated_count ?? 0) > 0) {
                     console.warn(
@@ -792,7 +805,9 @@ export async function runPersistenceStage(args: {
       fetchMsrSnippets: (ids) => fetchMsrSnippets(ids),
       pendingStreamWriter,
       title: {
-        generate: (msgs, c) => generateConversationTitle(msgs, c),
+        generate: (msgs, c) => args.runtime?.kind === 'byok'
+          ? Promise.resolve(byokTitle ?? null)
+          : generateConversationTitle(msgs, c),
         update: (cid, t) => updateConversationTitle(cid, t).then(() => undefined),
       },
       predictionLedger: async (entry) => {

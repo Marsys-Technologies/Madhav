@@ -61,9 +61,13 @@ export interface TurnIdentity {
 
 /** The bound, validated request parameters (the NormalizedQuery port). */
 export interface TurnParams {
-  selectedStack: ModelStack
+  selectedStack: ModelStack | 'byok'
   modelId: string
-  modelMeta: NonNullable<ReturnType<typeof import('@/lib/models/registry').getModelMeta>>
+  modelMeta: {
+    provider: string
+    maxInputTokens?: number
+    maxOutputTokens: number
+  }
   readingDepth: ReadingDepth
   deepDive: boolean
   lengthTier: LengthTier
