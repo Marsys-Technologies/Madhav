@@ -42274,3 +42274,93 @@ Resume WP10 tranche 1 at step 3 once the native acts on E-015 (run
 evidence. Tranche 2 additionally waits on the E-012 `'4.0'` windows writer owner. The K3 review
 loop runs over the `wp7_packets/` review notes; PR #2731 remains the review surface, nothing
 merges until the native decides.
+
+## L3-GOCHARA-WP0-7-ADK0018-20260927 — 2026-09-27
+
+```yaml
+session_open:
+  session_id: L3-GOCHARA-WP0-7-ADK0018-20260927
+  reconstructed_at_close: true
+  reconstruction_note: >
+    STUB — no session_open handshake was emitted when this session opened (same
+    autonomous-conductor convention as the two WP0-7 sessions it follows). Written at
+    close per the AC.3 orphan-entry precedent; timestamps/reads are close-time values,
+    honestly labelled.
+  tool: Claude Code
+  worktree_path: /Users/Dev/madhav-l3/gochara-wp0-7
+  step_number_or_layer: "L3 gochara WP0-7 — ADK-0018 final runway (items a-d)"
+  predecessor_session: L3-GOCHARA-WP0-7-CLOSE-20260924
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: null
+    lease_status_verified: true
+    lease_verified_at: 2026-09-27T18:10:00+05:30
+    work_order_surface: 00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md (ADK-0017/ADK-0018)
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-27T18:10:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-27T18:10:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-27T18:10:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-27T18:10:00+05:30}
+```
+
+**ADK-0018 final runway session**, same branch/worktree/PR (`l3/gochara-autonomous-wp0-7`,
+PR #2731 open against `main`).
+
+**Outcome — all four runway items landed.** (a) **Class-context permission wiring CLOSED
+on-branch** (ADK-0017 carried block 4, E-012 follow-through): new producer
+`platform/python-sidecar/scripts/kala_gochara_cutover/step06a_class_context.py` emits the
+`--class-context-json` step06b consumes from the real L1 machinery —
+`gochara_intensity.permission.compute_permission` (DR-14 12-generator plurality) evaluated at
+each class's candidate-contact `t_exact` instants, union of `systems_active`, plus the served
+resonance-map fetch and valence read; honest skip preserved (unresolved targets omit the class,
+never fabricated; `t_exact`-NULL contacts excluded and counted). **The interface was fully
+definable off-production, so (a) needed no production access and no E-020 escalation was
+required.** (b) **12.10c merge-hygiene runbook** documented (NOT executed):
+`gochara_wp0_7/MERGE_HYGIENE_12_10c_RUNBOOK.md` — verified generator commands
+(`pipeline.orchestrator.provenance_inventory`,
+`scripts.generate.nirmana_analysis_layer_pins --admit-successor --layer L3`,
+`codegen:capability-estate-census`), run-after-merge ordering, the
+`NATIVE-2026-09-24-L0-REPAIR-REPIN` generation ids, and the conjunct-(j)/1072 note. (c)
+`wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md` drafted
+(**DRAFT_AWAITING_NATIVE**) — three-link chain (§12.9 overlay fingerprint rebuild → candidate
+build production run 6/6a/6b, E-018 candidate-1 params → authority flip steps 7–10 with
+`evidence_ref=manifest_id`), evidence bundle index, preconditions checklist, per-link rollback
+(`step03_reversal.sql`/`step05_reversal.sql` + candidate delete-then-insert), and the owed
+`_migrations_applied` backfill (1080–1084/1087/1091) as a same-session native item. (d) close
+artifacts per §H.
+
+**Verification.** Gochara battery **363 passed, 0 failed** (357 prior + 6 new step06a tests)
+on the disposable WP6 container (`localhost:55435`); step06a alone 6/6; no cross-module
+regressions. No production contact at any point.
+
+**Teardown.** Both disposable containers (`gochara-wp6-disposable`,
+`gochara-wp10-disposable`) torn down at close (`docker rm -fv`); none remain. Nothing marked
+REVIEWED; the 12.10c runbook was not executed; root `CLAUDECODE_BRIEF.md` stays
+`status: ACTIVE` (WP10 production tranches incomplete).
+
+**Governance runs at close.** close-checklist validation `--close-checklist` on
+`SESSION_CLOSE_WP07_TRANCHE_PHASE_v1_0.yaml` exit 0 (0 violations); drift_detector and
+full-corpus schema_validator NOT_RUN this session (inherited baseline 79/42 carried as a known
+residual, none introduced by this session); mirror_enforcer NOT_RUN (retired 834164b78);
+build-state serializer not run (no build shards). No coordination lease taken or held.
+
+```yaml
+# session_close block: see
+# 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/SESSION_CLOSE_WP07_TRANCHE_PHASE_v1_0.yaml
+# (validated exit 0 via schema_validator --close-checklist; embedded by reference to avoid a
+#  stale duplicate — the yaml file is the canonical close artifact for this session)
+session_close_pointer:
+  session_id: L3-GOCHARA-WP0-7-ADK0018-20260927
+  canonical_checklist: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/SESSION_CLOSE_WP07_TRANCHE_PHASE_v1_0.yaml
+  close_criteria_met: true
+```
+
+### Next session objective
+
+Native review of `wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md`
+(DRAFT_AWAITING_NATIVE); on authorization, execute the three-link chain — §12.9 overlay
+fingerprint rebuild, candidate build production run (step06 → step06a → step06b, E-018
+candidate-1 params), then the authority flip steps 7–10 — with per-step evidence, plus the
+same-session `_migrations_applied` backfill (1080–1084/1087/1091). Whoever merges PR #2731
+second runs `MERGE_HYGIENE_12_10c_RUNBOOK.md` against the merged tree. PR #2731 remains the
+review surface; nothing merges until the native decides.

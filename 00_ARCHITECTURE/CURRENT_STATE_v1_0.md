@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.81
+version: 6.82
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,17 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.82 (2026-09-27, L3-GOCHARA-WP0-7-ADK0018-20260927): §2 top banner replaced for the
+    ADK-0018 final-runway session — (a) ADK-0017 carried block 4 CLOSED on-branch:
+    step06a_class_context.py wires the step06b --class-context-json from the real L1
+    permission machinery (gochara_intensity.permission union over candidate-contact t_exact
+    instants + served resonance-map fetch + valence), honest skip preserved, no production
+    access needed; (b) 12.10c merge-hygiene runbook documented (not executed) with verified
+    generator commands and the conjunct-(j)/1072 note; (c)
+    REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md drafted (DRAFT_AWAITING_NATIVE — three-link
+    chain, evidence index, preconditions, rollback, owed-ledger backfill); gochara battery
+    363 passed, 0 failed (357 + 6 new step06a); disposable containers torn down at close;
+    CLAUDECODE_BRIEF.md stays ACTIVE (WP10 production tranches still incomplete).
   - v6.81 (2026-09-24, L3-GOCHARA-WP0-7-CLOSE-20260924): §2 top banner updated for the WP0-7
     closing session — §12 close-out items landed (12.3/12.4/12.5/12.9), gochara battery 334
     passed, WP10 tranche 1 attempted per the now-true flags and HALTED at step 3 (E-015:
@@ -5952,27 +5963,29 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟣 **L3 GOCHARA WP0–7 — CLOSING SESSION (2026-09-24, session
-> L3-GOCHARA-WP0-7-CLOSE-20260924).** Follow-up to the remainder close: the §12 close-out
-> items landed on branch `l3/gochara-autonomous-wp0-7` (**PR #2731 open against `main`,
-> unmerged**) — §12.3 WriterBase conformance (migration 1087 + tests), §12.4 plan v2.3 +
-> binding detectors, §12.5 disposable-DB test isolation guard, §12.9/§12.12 WP9 overlay
-> stamps + `upstream_fingerprint`; gochara battery **334 passed, 0 failed**; cutover gate
-> 16/16. **WP10 tranche 1 was attempted** — the native flipped
-> `PRODUCTION_TRANCHE_1_AUTHORIZED`/`_2_` to `true` (ruling §3) — and **HALTED at step 3**
-> per the failed-gate rule: `amjis_app` lacks CREATE on schema `public` (E-015; operator
-> path: run step 3 as `data_plane_schema_owner`/`postgres`, or grant CREATE to `amjis_app`).
-> Steps 0/1/2/4/5 NOT RUN; production verified byte-identical pre/post. **Tranche 2 NOT
-> STARTED** (tranche-1 precondition unmet + E-012 `'4.0'` windows writer unassigned). All
-> disposable containers (`gochara-wp6-disposable`, `gochara-wp10-disposable`) torn down at
-> close; none remain. Review requests for §12.3/§12.5/§7.B written under
-> `gochara_wp0_7/wp7_packets/` (IMPLEMENTED_AWAITING_REVIEW / STOPPED_AWAITING_NATIVE;
-> nothing marked REVIEWED). Authoritative account:
-> `briefs/nirmana/l3_autonomous/gochara_wp0_7/REMAINDER_FINAL_REPORT_v1_0.md` (updated this
-> session). The **Kṣetra rulings 7/8/9 reviewer is now named (O-3, §8.6)**; the E-015 native
-> action and the E-012 writer owner remain open. Root `CLAUDECODE_BRIEF.md` stays
-> `status: ACTIVE` — the L3 data-plane elevation close condition is not met while the WP10
-> production tranches are incomplete.
+> 🟣 **L3 GOCHARA WP0–7 — ADK-0018 FINAL RUNWAY (2026-09-27, session
+> L3-GOCHARA-WP0-7-ADK0018-20260927).** Branch `l3/gochara-autonomous-wp0-7` (**PR #2731 open
+> against `main`, unmerged**). All four ADK-0018 runway items landed: **(a) class-context
+> permission wiring CLOSED on-branch** (ADK-0017 carried block 4 / E-012 follow-through) —
+> new producer `step06a_class_context.py` emits step06b's `--class-context-json` from the
+> real L1 machinery (`gochara_intensity.permission.compute_permission` union over the class's
+> candidate-contact `t_exact` instants, served resonance-map fetch, valence read); honest skip
+> preserved (unresolved targets omit the class; `t_exact`-NULL contacts excluded and counted);
+> **no production access was needed**, so no E-020 escalation. **(b) 12.10c merge-hygiene
+> runbook** written (`gochara_wp0_7/MERGE_HYGIENE_12_10c_RUNBOOK.md`) — verified generator
+> commands for the writer digests, the L3 pin re-admission and the capability-estate census
+> under `NATIVE-2026-09-24-L0-REPAIR-REPIN`, conjunct-(j)/1072 note carried; documented, NOT
+> executed. **(c)** `wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md` drafted
+> (**DRAFT_AWAITING_NATIVE**) — the three-link chain (§12.9 overlay fingerprint rebuild →
+> candidate build production run 6/6a/6b with E-018 candidate-1 params → authority flip steps
+> 7–10 with `evidence_ref=manifest_id`), evidence index, preconditions, per-link rollback, and
+> the owed `_migrations_applied` backfill (1080–1084/1087/1091) as a same-session native item;
+> nothing marked REVIEWED. **(d)** close artifacts per §H. Gochara battery **363 passed, 0
+> failed** (357 + 6 new step06a tests) on disposable DBs only; no production contact at any
+> point. Both disposable containers (`gochara-wp6-disposable`, `gochara-wp10-disposable`) torn
+> down at close; none remain. Root `CLAUDECODE_BRIEF.md` stays `status: ACTIVE` — the L3
+> data-plane elevation close condition is not met while the WP10 production tranches are
+> incomplete.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
