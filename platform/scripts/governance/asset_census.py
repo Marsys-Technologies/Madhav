@@ -596,7 +596,11 @@ def build_history(prefix: str, ids=None) -> dict:
                 "coalesce(left(translate(a.error, E'\\n\\r' || chr(31), '   '),200),''), "
                 "(a.started_at IS NOT NULL)::text "
                 "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
-                f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} ORDER BY a.asset_id, r.created_at")
+                f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} "
+                # R49: a TOTAL order — (asset_id, run_id) is build_run_assets' primary key, so rows of
+                # runs created at the same instant (12 such pairs live, 2026-09-27) no longer come back
+                # in an arbitrary order; "last" below is the latest attempt, deterministically.
+                "ORDER BY a.asset_id, r.created_at, a.run_id")
     for aid, scope, state, disp, when, err, started in ((x + [""] * 7)[:7] for x in rows):
         d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
                                      blocked=0, scopes=set(), last_state="", last_when="",
@@ -625,8 +629,12 @@ def build_history(prefix: str, ids=None) -> dict:
                 d["sample_blocked"] = err
         d["scopes"].add(scope)
         d["last_state"], d["last_when"], d["last_disposition"] = state, when, disp
-        if state == "error" and disp != "blocked_dependency" and err and not d["sample_error"]:
-            d["sample_error"] = err
+        if state == "error" and disp != "blocked_dependency" and err:
+            # R49 (L3 handverify ka_avadhi, ka_kshetra): the quoted error is the LATEST one, dated —
+            # the read is in ascending attempt order, so each later error replaces the earlier. It
+            # used to keep the FIRST error ever recorded ("not d['sample_error']"), so a FAIL reading
+            # "most recent run error" quoted a months-old error the asset had long since moved past.
+            d["sample_error"], d["sample_error_when"] = err, when
     glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
     glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
                          f"WHERE r.scope='global' AND {_asset_scope(prefix, ids, 'a.asset_id')}") or 0)
@@ -658,13 +666,17 @@ def _grade_build_history(h: dict) -> dict:
     """
     genuine_error = h["error"] - h["blocked"]
     bad = genuine_error + h["aborted"]
+    # R49: the quoted error is dated — it is the latest non-cascade error, not necessarily the last
+    # run's (the last run may have completed, or ended with no error text).
+    se = (f"latest error ({h['sample_error_when']}): {h['sample_error']}"
+          if h.get("sample_error_when") and h.get("sample_error") else h.get("sample_error", ""))
     last_run_was_blocked_only = (
         h["last_state"] == "error" and h["last_disposition"] == "blocked_dependency"
     )
     if h["last_state"] in ("error", "aborted") and not last_run_was_blocked_only:
-        return dict(v=FAIL, measured=f"most recent run {h['last_state']} ({h['last_when']}); {genuine_error} error(s), {h['aborted']} abort(s), {h['blocked']} blocked_dependency (cascade, not counted as failure). {h['sample_error']}")
+        return dict(v=FAIL, measured=f"most recent run {h['last_state']} ({h['last_when']}); {genuine_error} error(s), {h['aborted']} abort(s), {h['blocked']} blocked_dependency (cascade, not counted as failure). {se}")
     if bad:
-        return dict(v=PARTIAL, measured=f"latest run complete, but {genuine_error} error(s) and {h['aborted']} abort(s) on record ({h['blocked']} additional blocked_dependency row(s) excluded as cascade-only). {h['sample_error']}")
+        return dict(v=PARTIAL, measured=f"latest run complete, but {genuine_error} error(s) and {h['aborted']} abort(s) on record ({h['blocked']} additional blocked_dependency row(s) excluded as cascade-only). {se}")
     if h["blocked"]:
         # C-4 (review B1_review_20260926T182200Z.md, §N.8): PASS must require at
         # least one EARNED completion, not merely "zero genuine errors". Without
