@@ -389,3 +389,132 @@ def test_live_r20_no_idem_verdict_is_na_unless_the_registry_says_no_writer_and_e
                 assert not r["has_writer"], (aid, res)
             if res["v"] == ac.PASS:
                 assert any(f"{t} (" in res["measured"] for t in targets if t), (aid, res)
+
+
+# ─────────── R241: the refusal-guard blind spots W2-2 disclosed (RC-1 a–d), closed on the resolved scope ───────────
+
+_HOLD_METHODS = '''
+    @staticmethod
+    def _populated(conn):
+        return conn.execute("SELECT EXISTS (SELECT 1 FROM t_h WHERE chart_id = %s)", (1,)).fetchone()[0]
+
+    @staticmethod
+    def _count(conn):
+        return conn.execute("SELECT count(*) FROM t_h WHERE chart_id = %s", (1,)).fetchone()[0]
+
+    @staticmethod
+    def _upstream(conn):
+        return conn.execute("SELECT count(*) FROM t_input WHERE chart_id = %s", (1,)).fetchone()[0]
+
+    @staticmethod
+    def _already_this_build(conn, build_id):
+        return conn.execute("SELECT count(*) FROM t_h WHERE chart_id = %s AND build_id_uuid = %s", (1, build_id)).fetchone()[0]
+
+    @staticmethod
+    def _unchanged(conn):
+        return True
+
+    @staticmethod
+    def _delete_prior(conn):
+        conn.execute("DELETE FROM t_h WHERE chart_id = %s", (1,))
+'''
+_THEN_REPLACE = "        self._delete_prior(conn)\n        conn.execute('INSERT INTO t_h (chart_id) VALUES (1)')\n"
+
+
+def _hold_writer(run_body: str) -> dict[str, str]:
+    return {"pipeline/orchestrator/writers/ka_h.py": _HDR + '@register("ka_h")\nclass KaH(WriterBase):\n'
+            "    def run(self, ctx):\n        conn = ctx.db_conn\n" + run_body + _HOLD_METHODS}
+
+
+_HOLDS = {
+    # RC-1(a): a hold that RETURNS instead of raising
+    "early_return": ("        if self._populated(conn):\n            return None\n" + _THEN_REPLACE, "return"),
+    # RC-1(b): the count(*) probe form, `n > 0`
+    "count_probe": ("        n = self._count(conn)\n        if n > 0:\n            raise RuntimeError('held')\n" + _THEN_REPLACE,
+                    "raise RuntimeError"),
+    # RC-1(d): walrus polarity
+    "walrus": ("        if (n := self._count(conn)) > 0:\n            raise RuntimeError('held')\n" + _THEN_REPLACE,
+               "raise RuntimeError"),
+    # RC-1(d): a negated test — the replacement runs only in the `not populated` branch, the else raises
+    "negated": ("        if not self._populated(conn):\n            self._delete_prior(conn)\n"
+                "        else:\n            raise RuntimeError('held')\n", "raise RuntimeError"),
+    # RC-1(a): a loop that skips populated tables with `continue`
+    "continue": ("        for t in ('t_h',):\n            if self._populated(conn):\n                continue\n"
+                 "            self._delete_prior(conn)\n", "continue"),
+    # RC-1(a): a skip with no raise/return — the delete sits only in the empty branch
+    "skip_no_raise": ("        if self._populated(conn):\n            print('kept')\n        else:\n"
+                      "            self._delete_prior(conn)\n", "the delete runs only in the output-empty branch"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_HOLDS))
+def test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold(monkeypatch, tmp_path, case):
+    """Each shape W2-2_C_KSHETRA_REVIEW §7 RC-1 named as a blind spot of C-KSHETRA's guard (which recognised
+    only `if <EXISTS probe result>: raise` in one file). Each holds the replacement on a populated chart,
+    so each reads FAIL naming the hold. Fails without the fix: every one PASSed on its reachable DELETE."""
+    body, what = _HOLDS[case]
+    _sidecar(monkeypatch, tmp_path, _hold_writer(body))
+    v, notes = ac.idem_scan("ka_h", ["ka_h.py"], "delete_then_insert", ["t_h"])
+    assert v == ac.FAIL and "rebuild refused when target is populated: ka_h.py:" in notes[0] and what in notes[0], (case, notes)
+
+
+def test_r241_a_guard_in_a_delegated_module_is_seen(monkeypatch, tmp_path):
+    """RC-1(c): the probe and the raise live in a helper module the writer calls (hop 1), which then
+    deletes. FAIL naming the helper and the chain. Fails without the fix: the guard was looked for only
+    in the writer's own file, so the helper's reachable DELETE PASSed."""
+    _sidecar(monkeypatch, tmp_path, {
+        "services/__init__.py": "", "services/h/__init__.py": "",
+        "services/h/prep.py": ('def _probe(conn):\n'
+                               '    return conn.execute("SELECT EXISTS (SELECT 1 FROM t_h WHERE chart_id = %s)", (1,)).fetchone()[0]\n\n\n'
+                               'def prepare_replace(conn):\n    if _probe(conn):\n        raise RuntimeError("held")\n'
+                               '    conn.execute("DELETE FROM t_h WHERE chart_id = %s", (1,))\n'),
+        "pipeline/orchestrator/writers/ka_h.py": _HDR + "from services.h.prep import prepare_replace\n"
+                                                 '@register("ka_h")\nclass KaH(WriterBase):\n    def run(self, ctx):\n'
+                                                 "        prepare_replace(ctx.db_conn)\n"
+                                                 "        ctx.db_conn.execute('INSERT INTO t_h (chart_id) VALUES (1)')\n"})
+    v, notes = ac.idem_scan("ka_h", ["ka_h.py"], "delete_then_insert", ["t_h"])
+    assert v == ac.FAIL and "services/h/prep.py:" in notes[0] and "reached via ka_h.py → services/h/prep.py:prepare_replace" in notes[0], notes
+
+
+@pytest.mark.parametrize("case, body", [
+    # mi_jivanaghatana: raises when its UPSTREAM input exists but it built nothing — not a refusal
+    ("upstream_probe", "        if self._upstream(conn) > 0:\n            raise RuntimeError('input present, nothing built')\n" + _THEN_REPLACE),
+    # ga_vargas: skips what THIS build already wrote (a resume check, a new build has a new id)
+    ("this_build_resume", "        for v in ('D1',):\n            if self._already_this_build(conn, ctx.build_id):\n"
+                          "                continue\n            self._delete_prior(conn)\n"),
+    # an EMPTY-polarity raise (C-KSHETRA's own control)
+    ("empty_polarity", "        if self._count(conn) == 0:\n            raise RuntimeError('nothing to replace yet')\n" + _THEN_REPLACE),
+    # the legitimate incremental skip: populated AND inputs unchanged (deliberately not a hold; see report)
+    ("incremental_skip", "        if self._populated(conn) and self._unchanged(conn):\n            return None\n" + _THEN_REPLACE),
+])
+def test_r241_controls_that_are_not_holds_still_pass(monkeypatch, tmp_path, case, body):
+    """The guard must not manufacture a FAIL: an upstream probe, a same-build resume probe, an empty-polarity
+    raise and a populated-AND-unchanged incremental skip each replace on a rebuild — PASS."""
+    _sidecar(monkeypatch, tmp_path, _hold_writer(body))
+    v, notes = ac.idem_scan("ka_h", ["ka_h.py"], "delete_then_insert", ["t_h"])
+    assert v == ac.PASS, (case, notes)
+
+
+def test_r241_an_open_gap_does_not_close_on_an_early_return_hold(monkeypatch, tmp_path):
+    """measure() + emit_gaps() on a ledger copy: the early-return hold's OPEN Idem.pattern gap stays OPEN.
+    Fails without the fix: it CLOSED on the reachable DELETE."""
+    _sidecar(monkeypatch, tmp_path, _hold_writer(_HOLDS["early_return"][0]))
+    reg = {"ka_h": w1._reg_row("ka_h", "t_h")}
+    w1._stub_layer(monkeypatch, tmp_path, reg, writers={"ka_h": ["ka_h.py"]})
+    w1._open_gap(tmp_path, "ka_h", "Idem.pattern")
+    c = ac.measure("L3")
+    assert w1._m(c, "ka_h", "Idem.pattern")["v"] == ac.FAIL
+    assert ac.emit_gaps(c)[2] == 0
+
+
+def test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified():
+    """Real sources (targets read live 2026-09-27): ka_kshetra still FAILs on its KshetraReplacementHeld raise;
+    mi_jivanaghatana's `count_chart_lel_events` probe counts life_events (its input), and ga_vargas's
+    `_check_already_written` is pinned to the current build — neither is a hold, both PASS."""
+    ids = {**ac.registered_ids("ka_"), **ac.registered_ids("mi_"), **ac.registered_ids("ga_")}
+    v, n = ac.idem_scan("ka_kshetra", ids["ka_kshetra"], "delete_then_insert", ["kala_field"])
+    assert v == ac.FAIL and "services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld" in n[0], n
+    v, n = ac.idem_scan("mi_jivanaghatana", ids["mi_jivanaghatana"], "delete_then_insert", ["mimamsa_event_provenance"] * 2)
+    assert v == ac.PASS, n
+    v, n = ac.idem_scan("ga_vargas", ids["ga_vargas"], "delete_then_insert", ["chart_divisionals"] * 2)
+    assert v == ac.PASS and "chart_divisionals" in n[0], n

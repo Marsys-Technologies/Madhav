@@ -395,11 +395,6 @@ def contract_scan(asset_id: str, files: list[str]) -> tuple[str, list[str]]:
     return (PASS if not hard else FAIL), (notes or ["conformant"])
 
 
-_DELETE_TABLE = re.compile(r"DELETE\s+FROM\s+(?:ONLY\s+)?(?:public\.)?\"?([A-Za-z_][A-Za-z_0-9]*)", re.I)
-_DELETE_OPEN = re.compile(r"DELETE\s+FROM\s+(?:ONLY\s+)?(?:public\.)?\"?$", re.I)
-_EXISTS_PROBE = re.compile(r"SELECT\s+EXISTS\s*\(\s*SELECT\s+1\s+FROM|SELECT\s+1\s+FROM\s+\S+\s+WHERE\s+chart_id", re.I)
-
-
 def _docstring_ids(tree: ast.AST) -> set[int]:
     docs = set()
     for n in ast.walk(tree):
@@ -440,88 +435,10 @@ def _literal_names(node: ast.AST) -> list[str]:
     return out
 
 
-def _deleted_tables(tree: ast.AST) -> list[tuple[str, int]]:
-    """C-KSHETRA (W2-2 gate): every table a DELETE in this module NAMES, with its line — a literal
-    `DELETE FROM <t>`, or an f-string `DELETE FROM {X}` whose X resolves to a module-level string constant
-    (`TABLE = "kala_gochara_windows_v2"`) or to the enclosing `for X in <literal / module-level sequence>`
-    (`for table, predicate in _OWNED_TABLES`). A bare `'DELETE FROM '` fragment names nothing and counts
-    for nothing; an unresolvable `{X}` names nothing (never guessed). Docstrings are prose, not SQL."""
-    docs, consts, seqs = _docstring_ids(tree), _module_constants(tree), _module_sequences(tree)
-    out: list[tuple[str, int]] = []
-
-    def resolve(n: ast.AST, loops: dict[str, list[str]]) -> list[str]:
-        if isinstance(n, ast.Name):
-            if n.id in loops:
-                return loops[n.id]
-            if n.id in consts:
-                return [consts[n.id]]
-        return []
-
-    def visit(n: ast.AST, loops: dict[str, list[str]]) -> None:
-        if isinstance(n, (ast.For, ast.AsyncFor)):
-            it = n.iter
-            names = _literal_names(it) or (seqs.get(it.id, []) if isinstance(it, ast.Name) else [])
-            tg = n.target.elts[0] if isinstance(n.target, ast.Tuple) and n.target.elts else n.target
-            if names and isinstance(tg, ast.Name):
-                loops = dict(loops, **{tg.id: names})
-        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs:
-            out.extend((m.group(1), n.lineno) for m in _DELETE_TABLE.finditer(n.value))
-        elif isinstance(n, ast.JoinedStr):
-            vals = n.values
-            for i, v in enumerate(vals[:-1]):
-                if isinstance(v, ast.Constant) and isinstance(v.value, str) and _DELETE_OPEN.search(v.value) \
-                        and isinstance(vals[i + 1], ast.FormattedValue):
-                    out.extend((t, n.lineno) for t in resolve(vals[i + 1].value, loops))
-        for c in ast.iter_child_nodes(n):
-            visit(c, loops)
-    visit(tree, {})
-    return out
-
-
 def _call_name(c: ast.AST) -> str | None:
     if isinstance(c, ast.Call):
         f = c.func
         return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
-    return None
-
-
-def _populated_refusal_guard(tree: ast.AST) -> tuple[int, str, str] | None:
-    """C-KSHETRA (W2-2 gate, review §4.1): a rebuild that REFUSES when the chart's output already exists is
-    not an idempotent replacement, whatever DELETE sits behind the refusal. Found structurally: a function
-    that (1) takes the result of an output-existence probe (a function whose SQL is `SELECT EXISTS (SELECT 1
-    FROM …` / `SELECT 1 FROM <t> WHERE chart_id …`), (2) RAISES in an `if` on its POPULATED polarity (`if
-    x`, `if x is not None`, `if probe(...)`), and (3) only AFTER that `if` reaches a DELETE (its own, or a
-    call to a function holding one). Returns (raise line, exception, probe) or None. ka_kshetra
-    (services/ka_kshetra/writer.py): `_run_prepare_replace` raises KshetraReplacementHeld when
-    `_populated_owned_table` finds output, and only then calls `_delete_prior_rows`."""
-    funcs = [f for f in ast.walk(tree) if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
-    probes = {f.name for f in funcs if any(_EXISTS_PROBE.search(s) for s in _code_strings(f))}
-    deleters = {f.name for f in funcs if _deleted_tables(f) or any(_DELETE_OPEN.search(s) or
-                                                                  _DELETE_TABLE.search(s) for s in _code_strings(f))}
-    if not probes:
-        return None
-    for f in funcs:
-        probed = {t.id for a in ast.walk(f) if isinstance(a, ast.Assign) and _call_name(a.value) in probes
-                  for t in a.targets if isinstance(t, ast.Name)}
-        for node in ast.walk(f):
-            if not isinstance(node, ast.If):
-                continue
-            t = node.test
-            populated = (_call_name(t) in probes
-                         or (isinstance(t, ast.Name) and t.id in probed)
-                         or (isinstance(t, ast.Compare) and isinstance(t.left, ast.Name) and t.left.id in probed
-                             and len(t.ops) == 1 and isinstance(t.ops[0], ast.IsNot)
-                             and isinstance(t.comparators[0], ast.Constant) and t.comparators[0].value is None))
-            raise_ = next((b for b in node.body if isinstance(b, ast.Raise)), None)
-            if not (populated and raise_):
-                continue
-            later = [c for c in ast.walk(f) if getattr(c, "lineno", 0) > node.end_lineno]
-            if any(_call_name(c) in deleters for c in later) or \
-                    any(isinstance(c, ast.Constant) and isinstance(c.value, str) and _DELETE_TABLE.search(c.value)
-                        for c in later):
-                exc = _call_name(raise_.exc) or (raise_.exc.id if isinstance(raise_.exc, ast.Name) else "an exception")
-                probe = next(iter(sorted(probes)))
-                return raise_.lineno, exc, probe
     return None
 
 
@@ -543,6 +460,11 @@ _SQL_INSERT = re.compile(r"INSERT\s+INTO\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*|\{
 _SQL_UPDATE = re.compile(r"\bUPDATE\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*)\s+SET\b", re.I)
 _SQL_VIEW = re.compile(r"CREATE\s+OR\s+REPLACE\s+(?:MATERIALIZED\s+)?VIEW\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*)", re.I)
 _ON_CONFLICT = re.compile(r"ON\s+CONFLICT", re.I)
+# C-KSHETRA's output-existence probe, widened by R241 to the count form, now CAPTURING the probed table:
+# a probe is an OUTPUT probe only when it reads one of the asset's own tables (or a table the scan cannot
+# name) — mi_jivanaghatana's `count_chart_lel_events` counts its UPSTREAM life events and is no hold.
+_PROBE_SQL = re.compile(r"SELECT\s+(?:EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*|\{\?\})"
+                        r"|(?:1|count\(\s*\*\s*\))\s+FROM\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*|\{\?\})\s+WHERE\s+chart_id)", re.I)
 
 
 
@@ -801,6 +723,132 @@ def _write_facts(units: list[dict]) -> dict[str, list[tuple[str, str, int, str]]
     return {k: sorted(set(v), key=lambda x: (x[1], x[2], x[0])) for k, v in facts.items()}
 
 
+_FETCH_CALLS = ("fetchone", "fetchall", "fetchval", "scalar")
+# R241: a probe whose predicate pins the CURRENT build (`… AND build_id_uuid = %s`) asks whether this build
+# already wrote the rows — a substep-resume check (ga_vargas `_check_already_written`); a rebuild carries a
+# new build id and is never held by it. Only a probe of the chart's output as such is a hold.
+_BUILD_SCOPED = re.compile(r"\bbuild_id\w*\s*=", re.I)
+
+
+def _probe_polarity(t: ast.AST, probes: set[str], probed: dict[str, str]) -> tuple[str, str] | None:
+    """R20/R241: is an `if` test the POPULATED or the EMPTY reading of an output-existence probe?
+    Returns ('populated'|'empty', probe name) or None. Recognised: the probe call itself (also inside a
+    walrus or `bool(...)`), a name bound to its result, `x is not None` / `x is None`, `x > 0`,
+    `x >= 1`, `x != 0` / `x == 0`, `0 < x`, and `not <any of these>` (polarity inverted)."""
+    if isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not):
+        r = _probe_polarity(t.operand, probes, probed)
+        return (("empty" if r[0] == "populated" else "populated"), r[1]) if r else None
+    if isinstance(t, (ast.NamedExpr, ast.Subscript, ast.Await)):         # `(n := probe())`, `row[0]`, `await p()`
+        return _probe_polarity(t.value, probes, probed)
+    if isinstance(t, ast.Call) and _call_name(t) == "bool" and t.args:
+        return _probe_polarity(t.args[0], probes, probed)
+    if isinstance(t, ast.Call) and _call_name(t) in probes:
+        return "populated", _call_name(t)
+    if isinstance(t, ast.Name) and t.id in probed:
+        return "populated", probed[t.id]
+    if isinstance(t, ast.Compare) and len(t.ops) == 1:
+        left, op, right = t.left, t.ops[0], t.comparators[0]
+        if isinstance(left, ast.Constant) and isinstance(right, ast.Name):          # 0 < x  ->  x > 0
+            left, right = right, left
+            op = {ast.Lt: ast.Gt(), ast.LtE: ast.GtE(), ast.Gt: ast.Lt(), ast.GtE: ast.LtE()}.get(type(op), op)
+        base = _probe_polarity(left, probes, probed)
+        if base is None or not isinstance(right, ast.Constant):
+            return None
+        v, name = right.value, base[1]
+        if v is None and isinstance(op, ast.IsNot):
+            return "populated", name
+        if v is None and isinstance(op, ast.Is):
+            return "empty", name
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            if (isinstance(op, ast.Gt) and v == 0) or (isinstance(op, ast.GtE) and v == 1) \
+                    or (isinstance(op, ast.NotEq) and v == 0):
+                return "populated", name
+            if isinstance(op, ast.Eq) and v == 0:
+                return "empty", name
+    return None
+
+
+def _refusal_guard(units: list[dict], tset=frozenset()) -> tuple[str, int, str, str] | None:
+    """C-KSHETRA, generalised by R20/R241 to the whole resolved scope: a rebuild that is HELD when the
+    chart's output already exists is not an idempotent replacement, whatever DELETE sits behind the hold.
+    Across every function the writer's rebuild reaches (the writer class and its delegates — not merely
+    one file), find an `if` on the POPULATED reading of an output-existence probe (a function or block
+    whose SQL is `SELECT EXISTS (SELECT 1 FROM …`, `SELECT 1 FROM <t> WHERE chart_id …` or
+    `SELECT count(*) FROM <t> WHERE chart_id …`) READING ONE OF THE ASSET'S OWN TABLES (`tset`, or a
+    table the scan cannot name) whose populated branch RAISES, RETURNS, CONTINUEs or BREAKs with a delete
+    reachable only past it (after the `if`, or in its empty branch) — or whose only delete sits in the
+    empty branch (a skip with no raise). A probe of an UPSTREAM table is no hold (mi_jivanaghatana raises
+    when its input life_events exist but it built nothing — the opposite of a refusal), nor is a probe
+    pinned to the current build (`_BUILD_SCOPED`, a resume check). Returns (file,
+    line, 'raise X' | 'return' | 'continue' | 'break' | 'the delete runs only in the output-empty branch',
+    probe) or None."""
+    funcs, seen = [], set()
+    for u in units:
+        for n in u["nodes"]:
+            for f in ast.walk(n):
+                if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)) and id(f) not in seen:
+                    seen.add(id(f))
+                    funcs.append((u, f))
+    def probes_own(u, f) -> bool:
+        for t, _ in _sql_texts(dict(u, nodes=[f])):
+            for m in _PROBE_SQL.finditer(t):
+                tb = (m.group(1) or m.group(2) or "").lower()
+                if _BUILD_SCOPED.search(t[m.end():]):
+                    continue            # "did THIS build already write it" — a resume check, not a hold
+                if tb in tset or tb == "{?}":
+                    return True
+        return False
+    own_probe = {id(f): probes_own(u, f) for u, f in funcs}
+    probes = {f.name for _, f in funcs if own_probe[id(f)]}
+    deleters = {f.name for _, f in funcs if any(_SQL_DELETE.search(s) or _SQL_TRUNCATE.search(s)
+                                                 for s in _code_strings(f))}
+    grew = True
+    while grew:                                            # a function that calls a deleter deletes
+        before = len(deleters)
+        deleters |= {f.name for _, f in funcs if any(_call_name(c) in deleters for c in ast.walk(f))}
+        grew = len(deleters) > before
+    for u, f in funcs:
+        inline = own_probe[id(f)]
+        probed: dict[str, str] = {}
+        for a in ast.walk(f):
+            if isinstance(a, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+                val = a.value
+                while isinstance(val, (ast.Subscript, ast.Await)) or (
+                        isinstance(val, ast.Call) and _call_name(val) in ("bool", "int", "len") and val.args):
+                    val = val.value if not isinstance(val, ast.Call) else val.args[0]   # `bool(probe())`
+                tgts = a.targets if isinstance(a, ast.Assign) else [a.target]
+                if _call_name(val) in probes or (inline and _call_name(val) in _FETCH_CALLS):
+                    src = _call_name(val) if _call_name(val) in probes else f"{f.name} (inline)"
+                    probed.update({t.id: src for t in tgts if isinstance(t, ast.Name)})
+        for node in ast.walk(f):
+            if not isinstance(node, ast.If):
+                continue
+            pol = _probe_polarity(node.test, probes, probed)
+            if pol is None:
+                continue
+            held, path = (node.body, node.orelse) if pol[0] == "populated" else (node.orelse, node.body)
+            stop = next((s for s in held if isinstance(s, (ast.Raise, ast.Return, ast.Continue, ast.Break))), None)
+            after = [c for c in ast.walk(f) if getattr(c, "lineno", 0) > node.end_lineno]
+
+            def deletes(nodes) -> bool:
+                return any(_call_name(c) in deleters for c in nodes) or \
+                    any(isinstance(c, ast.Constant) and isinstance(c.value, str)
+                        and (_SQL_DELETE.search(c.value) or _SQL_TRUNCATE.search(c.value)) for c in nodes)
+            on_path = [c for s in path for c in ast.walk(s)]
+            if stop is not None and deletes(on_path + after):
+                if isinstance(stop, ast.Raise):
+                    exc = stop.exc
+                    what = "raise " + (_call_name(exc) or (exc.id if isinstance(exc, ast.Name) else "an exception"))
+                else:
+                    what = type(stop).__name__.lower()          # return / continue / break
+                return u["rel"], stop.lineno, what, pol[1]
+            # R241: a hold that neither raises nor returns — the delete sits ONLY in the empty branch, and
+            # nothing in the populated branch or after the `if` deletes: a populated chart is skipped.
+            if stop is None and deletes(on_path) and not deletes([c for s in held for c in ast.walk(s)] + after):
+                return u["rel"], node.lineno, "the delete runs only in the output-empty branch", pol[1]
+    return None
+
+
 def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> tuple[str, list[str]]:
     """§N.3, over real SQL strings (docstrings excluded), measured on the code a rebuild RUNS.
 
@@ -827,11 +875,11 @@ def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> t
     def cite(rows) -> str:
         return ", ".join(dict.fromkeys(f"{t} ({rel}:{ln}{f' via {via}' if via else ''})" for t, rel, ln, via in rows))
 
-    guard = next(((u["rel"], *g) for u in units if u["hop"] == 0
-                  for g in [_populated_refusal_guard(u["tree"])] if g), None)
+    guard = _refusal_guard(units, tset)          # R241: across the whole resolved scope, not one file
     if guard:
-        rel, ln, exc, probe = guard
-        what, hop = f"raise {exc}", ""
+        rel, ln, what, probe = guard
+        u = next((x for x in units if x["rel"] == rel), None)
+        hop = f", reached via {u['via']}" if u and u["hop"] else ""
         return FAIL, [f"rebuild refused when target is populated: {rel}:{ln} ({what} after the output-existence "
                       f"probe {probe}{hop}) — the delete-then-insert path runs only on an output-empty chart, so a "
                       "rebuild of a populated chart does not replace (§N.3 'rebuild replaces' not met)"]
