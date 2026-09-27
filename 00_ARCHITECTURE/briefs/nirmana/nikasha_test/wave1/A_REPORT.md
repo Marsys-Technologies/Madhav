@@ -1,13 +1,34 @@
 ---
 artifact: NIKASHA_WAVE1_LANE_A_REPORT
 canonical_id: NIKASHA_WAVE1_LANE_A_REPORT
-version: "1.0"
-status: LANE COMPLETE — awaiting the reviewer gate (§5 of the execution prompt)
+version: "1.1"
+status: CORRECTIONS COMPLETE — awaiting the reviewer re-gate (§5 of the execution prompt); v1.0 was REJECTED (narrow) at A_REVIEW.md
+review: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/A_REVIEW.md (8a57a3320)
 lane: A
 commits:
   - e2819e625e152427a98876865d8cf733a8f2b457   # A-1: R216 rebase
   - 432ed07dae3511596a20a057e49f8b68570eff77   # A-2: P3 closure loop
   - 7ed8707757195e680fc972fc42dc82f1ebc1d50b   # A-3: P4 precursors
+corrections:   # after the gate review — §10 maps each finding to its commit, test and mutation
+  - a77d50005   # F1 unwired D6 attempt path reads NO_DETECTOR, not N/A
+  - 065e620b2   # F2 errored count_sql grades ERRORED, never N/A
+  - cf955e3a3   # F3 behavioural replacements for tests that could not fail
+  - 3a9c66cf9   # F4 WITHDRAWN terminal
+  - cbc8b6724   # F5 superseded_by permanent across history
+  - 6574d729b   # F6 tracker scoped to the active population
+  - 0c16969a3   # F7 zero-active population is UNKNOWN (+ 64af00534 test stub follow-up)
+  - e4505eafc   # F8 detector exit code + verdict vocabulary checked
+  - 705d20058   # F9 Vocab.identity duplicate figure restored
+  - 8ef861e0b   # F11 D6 classifier tested against the engine at 8edba0533 (read-only)
+  - afa1d4146   # F12 R41 scope limit + ledger merge-order limit disclosed
+changelog:
+  - "1.1 (2026-09-27): corrections after the gate review (A_REVIEW.md F1–F12). Corrected in place: the
+    'no further code change' claim (§3); D6 item 5 is PARTLY, not yes (§3); R41/R220 test coverage as it
+    stands after F3 (§3); Build.exercised flips inversely, not in lockstep (§5); the tracker figures are
+    now verified (§5); kala_field recounted, depth_census cost measured (§3, §7); §9's 'no proof was
+    found to be false' withdrawn. New: §4 re-run, §10 corrections map, §11 L0 verdict diff vs
+    7ed870775, §12 T3 re-run, §13 manifest/drift at close. Sections 0–2 are unchanged from v1.0."
+  - "1.0 (2026-09-27): written from committed evidence by a report writer."
 written_by: report writer from committed evidence — the builder was interrupted (machine sleep) before it could write this report; every claim below is reconstructed from the three commits, their diffs, their test files, the committed proof ledger, and independent re-runs performed by this report writer
 written_on: 2026-09-27
 authority: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §2, §3, §5
@@ -249,37 +270,70 @@ production this time (`test_live_e2e_one_simulated_query_timeout_degrades_not_ab
 | item | D6 ruling text | code | test(s) | covered? |
 |---|---|---|---|---|
 | 1 | Feature-detects the instrument; absent/unreachable → `NO_DETECTOR`, scoped, never `PARTIAL` | `duration_instrument_present()`; `_grade_earn_cost`'s `reason` branch | `test_case_absent_column_grades_no_detector_never_partial`, `test_case_instrument_unreachable_is_a_distinct_reason` | yes |
-| 2 | Attributes timing to an attempt — measurement identity is `(asset, chart scope, latest build_run_assets attempt)`, not `duration + last_built_at` alone | `_grade_earn_cost(attempt, ...)`'s parameter shape and docstring specify the identity | **structurally present, not live-wired.** `measure()` calls `_grade_earn_cost(attempt=None, instrument_present=instrument_present, baseline=None)` unconditionally — the commit is explicit that the actual per-attempt query wiring "lands with migration 1094, with no further code change." No test exercises a real `attempt` dict sourced from a live `build_run_assets` row; the 11 tests all hand-construct `attempt`/`baseline` dicts. This is an honest gap, not a hidden one — the commit message itself says so. |
+| 2 | Attributes timing to an attempt — measurement identity is `(asset, chart scope, latest build_run_assets attempt)`, not `duration + last_built_at` alone | `_grade_earn_cost(attempt, ...)`'s parameter shape and docstring specify the identity | **not wired (v1.1 correction).** `measure()` passes `attempt=None` unconditionally. v1.0 repeated the A-3 commit's claim that grading would begin "with migration 1094, with no further code change" — **that was false** (A_REVIEW F1): once the column exists, `attempt=None` graded `N/A "never attempted"`, which is closable, and would have closed all 40 open L0 `Earn.build_record` gaps. Since `a77d50005` the call site passes `attempt_linkage_wired=False` and reads `NO_DETECTOR — attempt linkage not wired`. Real grading needs the attempt query (R42–R56, a separate lane) as well as migration 1094. No census code reads a real `build_run_assets` attempt today. |
 | 3 | Grades `Earn.build_record` by cause (finite duration incl. zero-row → PASS; healthy non-execution/no-writer service → N/A; legacy `_telemetry` completion-no-duration → FAIL; failed/aborted before completion → N/A; unclassified NULL → NO_DETECTOR, never PASS) | `_grade_earn_cost`'s five-branch cause classifier | `test_case_zero_rows_with_finite_duration_grades_pass_with_rate_zero`, `test_case_skip_no_delta_grades_na_and_preserves_prior_baseline`, `test_case_probe_green_grades_na`, `test_case_legacy_health_probe_service_no_writer_grades_na`, `test_case_legacy_telemetry_path_grades_fail`, `test_case_failure_before_completion_grades_earn_na_cost_by_prior_baseline`, `test_case_unclassified_null_grades_no_detector_never_pass`, `test_case_never_attempted_grades_na` | yes, all five named branches covered |
 | 4 | Grades `Cost.baseline` against the most recent sanctioned (measured) completion, independent of the latest attempt's outcome; no measured completion ever → `FAIL — no sanctioned baseline build` | `_grade_earn_cost`'s `cost = ...` branch | `test_case_failure_does_not_erase_a_prior_cost_baseline` (plus the cost side of several of the item-3 tests, which assert `Cost.baseline` alongside `Earn.build_record`) | yes |
-| 5 | Tested before adoption against the engine implementation: failure, zero rows, skip after a prior timing, probe-green, the legacy `ga_*` path, the absent column, an unknown NULL (seven named scenarios) | n/a (a testing obligation, not a code branch) | 11 tests total in `test_a3_earn_cost_grading.py`; the seven named scenarios each have a directly-named test (absent column → `test_case_absent_column_grades_no_detector_never_partial`; zero rows → `test_case_zero_rows_with_finite_duration_grades_pass_with_rate_zero`; skip-after-prior-timing → `test_case_skip_no_delta_grades_na_and_preserves_prior_baseline`; probe-green → `test_case_probe_green_grades_na`; unknown NULL → `test_case_unclassified_null_grades_no_detector_never_pass`; failure → `test_case_failure_before_completion_grades_earn_na_cost_by_prior_baseline`); plus two tests beyond the seven (`test_case_instrument_unreachable_is_a_distinct_reason`, `test_case_never_attempted_grades_na`), matching the commit's own count ("11 tests cover the seven named scenarios... plus instrument-unreachable and never-attempted"). One honest caveat: the ruling's phrase "the legacy `ga_*` path" does not map unambiguously onto a single test name — this report identifies `test_case_legacy_health_probe_service_no_writer_grades_na` and `test_case_legacy_telemetry_path_grades_fail` as the two candidates (a no-writer health-probe service and the pre-1094 `_telemetry` completion-with-no-duration path, respectively) but the commit does not state which one the ruling's exact wording refers to, so this report does not force a single mapping it cannot verify | yes, with the one naming caveat above |
+| 5 | Tested before adoption against the engine implementation: failure, zero rows, skip after a prior timing, probe-green, the legacy `ga_*` path, the absent column, an unknown NULL (seven named scenarios) | n/a (a testing obligation, not a code branch) | 11 tests total in `test_a3_earn_cost_grading.py`; the seven named scenarios each have a directly-named test (absent column → `test_case_absent_column_grades_no_detector_never_partial`; zero rows → `test_case_zero_rows_with_finite_duration_grades_pass_with_rate_zero`; skip-after-prior-timing → `test_case_skip_no_delta_grades_na_and_preserves_prior_baseline`; probe-green → `test_case_probe_green_grades_na`; unknown NULL → `test_case_unclassified_null_grades_no_detector_never_pass`; failure → `test_case_failure_before_completion_grades_earn_na_cost_by_prior_baseline`); plus two tests beyond the seven (`test_case_instrument_unreachable_is_a_distinct_reason`, `test_case_never_attempted_grades_na`), matching the commit's own count ("11 tests cover the seven named scenarios... plus instrument-unreachable and never-attempted"). One honest caveat: the ruling's phrase "the legacy `ga_*` path" does not map unambiguously onto a single test name — this report identifies `test_case_legacy_health_probe_service_no_writer_grades_na` and `test_case_legacy_telemetry_path_grades_fail` as the two candidates (a no-writer health-probe service and the pre-1094 `_telemetry` completion-with-no-duration path, respectively) but the commit does not state which one the ruling's exact wording refers to, so this report does not force a single mapping it cannot verify | **PARTLY (v1.1 correction; v1.0 said "yes").** The 11 tests above use hand-built dicts only, which does not meet "against the engine implementation" (A_REVIEW F11). Since `8ef861e0b`, `test_a4_d6_engine_conformance.py` reads the engine at `8edba0533` read-only and covers all seven scenarios: it pins what each engine path writes and grades the attempt that path produces, with the engine's `_compute_duration_and_rate` executed from its own source. It passes 13/13 at `8edba0533` and at engine HEAD `e5dd65b8f`. It found one census defect: the census column probe was not schema-qualified and the engine's is. That is fixed. It also found one adapter obligation: the engine never writes a `probe_green` disposition. **Not met:** running the engine's write paths against a database that carries migration 1094 and grading the real rows. That needs a migration applied and builds run, both outside this wave, and a census attempt query, which is R42–R56 and unwired. See §10 F11. |
 
-R41/R220 test coverage (not part of D6, listed separately since the execution prompt names them
-alongside D6 in A-3): `test_contract_scan_exception_degrades_to_errored_not_layer_abort`,
-`test_errored_never_closes_a_gap_and_never_opens_one`,
-`test_live_e2e_one_simulated_query_timeout_degrades_not_aborts` (live, PASSED against production —
-see above), `test_depth_census_timeout_does_not_block_vocab_or_ldgr_checks_from_running` (R41);
-`test_population_filter_excludes_null_dead_flag_correctly`, `test_registry_returns_population_tuple_shape`,
-`test_measure_states_the_population_never_silently_drops_it` (R220). All PASS, live-DB included.
+R41/R220 test coverage. **v1.1 correction:** v1.0 listed seven tests as coverage and said "All
+PASS". Four of the seven could not fail: they grepped source text, or tested helpers defined inside
+the test file (A_REVIEW F3; mutations M8 and M9 survived them). This is the coverage after
+`cf955e3a3` (F3) and this pass:
+
+- **R41 `Build.contract` / `Idem.pattern`.** Behavioural.
+  `test_contract_scan_exception_degrades_to_errored_not_layer_abort` and
+  `test_idem_scan_exception_degrades_to_errored_not_layer_abort` call the extracted
+  `_measure_contract` / `_measure_idem` with the scan raising, and assert that the result is ERRORED.
+  M8 (the guard re-raises) now fails them offline.
+- **R41 per-asset target-table checks.** Behavioural, live only.
+  - `test_live_e2e_depth_census_failure_does_not_blind_identity_for_the_same_asset` runs
+    `measure("L0")` twice.
+  - `test_live_e2e_one_simulated_query_timeout_degrades_not_aborts` runs `measure("L1")`.
+  - `test_errored_never_closes_a_gap_and_never_opens_one` is behavioural and offline.
+- **Structural backstops, which cannot fail on behaviour and are not claimed as proof.**
+  `test_measure_calls_the_extracted_guarded_helpers` and
+  `test_depth_census_timeout_does_not_block_vocab_or_ldgr_checks_from_running` both grep `measure()`.
+- **R220 census population.**
+  - `test_live_registry_l3_excludes_the_two_retired_rows` is behavioural and live: it runs the real
+    `registry("L3")` and expects 21 of 23 with the two ids named.
+  - **M9, which reverts the census filter to `is_active AND NOT dead_flag`, still survives the whole
+    offline suite** (re-run this pass: 71 passed, 4 skipped under M9). No offline test executes the
+    census's `registry()` SQL.
+  - Live, M9 fails that test. Since F7 it also makes the census exit 4 with "zero active bg_* rows
+    in asset_registry (40 registry row(s) for this prefix)", where before it exited 0 on nothing.
+  - `test_population_filter_null_trap_illustration` is illustrative only and relabelled as such.
+  - `test_registry_returns_population_tuple_shape` and
+    `test_measure_states_the_population_never_silently_drops_it` are structural (source text).
+- **R220 tracker population (F6).** `test_f6_tracker_counts_only_the_active_population_and_states_it`
+  runs the tracker's real SQL on SQLite and catches the NULL trap offline.
 
 **Honest limits:**
 
 - D6 item 2 (attempt-linked provenance) is specified in the function signature and docstring but
-  not wired into `measure()`'s call site with a real attempt — `measure()` passes `attempt=None`
-  unconditionally today because `asset_throughput.duration_seconds` (migration 1094) is confirmed
-  absent in both production and the nikasha_sandbox proof DB. The commit is explicit this wiring
-  "lands... with no further code change" once the migration is applied; until then, `Earn.build_record`
-  and `Cost.baseline` read `NO_DETECTOR` for every asset in every layer, which this report confirmed
-  live (`--layer L3` re-run above: `Earn.build_record`/`Cost.baseline` do not appear among the FAIL
-  lines at all, consistent with a blanket `NO_DETECTOR`).
-- **Out-of-scope finding registered by the commit itself, not fixed:** `depth_census`'s per-column
-  `count(c)` over the same 10.9M-row `kala_field` table is a further, unfixed cost. The commit states
-  it "did not dominate the pre-fix runtime in this measurement, but is a candidate for the same R40
-  treatment in a later pass." This report did not independently re-measure `depth_census`'s cost in
-  isolation; it is carried forward here exactly as the commit states it, not re-verified further.
+  not wired: `measure()` passes `attempt=None` unconditionally. **v1.1 correction:** v1.0 repeated
+  the commit's "lands... with no further code change" once migration 1094 is applied. That was false
+  (A_REVIEW F1). With the column present, the unwired call graded a closable `N/A "never attempted"`
+  for every asset. Since `a77d50005` it reads `NO_DETECTOR — attempt linkage not wired`. Real grading
+  needs both migration 1094 and the attempt query (R42–R56). Today the instrument is absent, so both
+  measurements read `NO_DETECTOR — instrument absent (migration 1094), scoped to this run`. This was
+  re-measured this pass on all 40 L0 assets: 80/80 rows.
+- **Out-of-scope finding registered by the commit itself, not fixed:** `depth_census` makes
+  per-column `count(c)` passes over `kala_field`.
+  - **Row count, recounted exactly this pass (v1.1):** `SELECT count(*) FROM kala_field` =
+    **10,982,957** (12.1 s). That matches the A-3 commit's figure. The planner estimate
+    (`pg_class.reltuples`) is 10,280,842. The "10.9M" above is the exact count; "10.3M" in the code
+    comments is the estimate.
+  - **Cost, measured in isolation this pass (v1.1):**
+    `depth_census("kala_field", <23 columns>)` took **24.3 s**. That is two full scans: `count(*)`,
+    then one pass of 23 `count(c)`. It found one never-populated column, `refinement_residual`.
+  - This is well under the 180 s default timeout. It is still a real cost and a candidate for the
+    same R40 treatment. Not fixed; out of scope.
 - A-4 (below) is the explicit stop point; R42–R56 were not started.
 
 ## 4 — Combined test run (all four Lane A test files, live DB)
+
+> **v1.1:** the run below is v1.0's run of 41 tests. After the corrections the Lane A suite has six
+> files and 75 tests. Re-run live this pass: **75 passed, 0 skipped**. Details in §10.
 
 ```
 $ source .../pgenv.sh   # PGPORT=5433, read-only confirmed
@@ -316,9 +370,12 @@ This is **exactly** the OPEN → CLOSED → RE-OPENED → CLOSED cycle the commi
 prompt both require, on one row, driven by real `has_writer` flips and real census runs against the
 `nikasha_sandbox` DB (not a fixture) — timestamps are 14–36 seconds apart, consistent with the
 commit's description of a live, sequential A/B run. A companion gap_id
-(`bg_nakshatra_medical-Build.exercised`, lines 214/216/218) flips in lockstep as a side effect of the
-same `has_writer` toggles, which is expected (both criteria read the same registry field) and is not
-a defect.
+(`bg_nakshatra_medical-Build.exercised`, lines 214/216/218) moves with the same `has_writer` toggles.
+**v1.1 correction:** it moves **inversely**, not "in lockstep" as v1.0 said. Line 214 is its first
+OPEN, when `has_writer` became true and an asset with a writer has never been run. Line 216 is
+CLOSED, back to "no writer, never run" = N/A. Line 218 is RE-OPENED. So each toggle closes one of the
+two gap rows and opens the other. Both rows read the same registry field, so this is expected and is
+not a defect. It does explain why the asset's total `gaps_open` stays flat through the cycle (§12).
 
 **Not independently re-run:** this report did not re-execute the sandbox toggle sequence against the
 `nikasha_sandbox` DB (the `.sandbox/` Postgres instance is still running at
@@ -328,6 +385,10 @@ committed ledger, which already shows the full cycle unambiguously). The `test_f
 unit test (§2 above, re-run and PASSING) exercises the identical logic in-process against a
 disposable temp ledger, which this report treats as sufficient corroboration of the mechanism
 without touching the sandbox.
+
+**v1.1:** the paragraph below is superseded. The tracker figures 9/12 → 6/7 were **VERIFIED** by
+the gate reviewer with both real trackers (A_REVIEW §2 item 1). This pass re-ran the tracker after
+every step of a live T3 cycle (§12). The v1.0 text is kept for the record.
 
 The tracker-side "0 → 1 → 0 → 1" claim (execution prompt §3) is **cited from the commit message
 only, not independently re-verified**: the commit states "the pre-A2 tracker (no last-wins) reports
@@ -360,8 +421,9 @@ the interruption.
 
 ## 7 — Findings outside scope
 
-1. `depth_census`'s per-column `count(c)` cost over `kala_field` (10.9M rows) is unfixed and
-   registered by the A-3 commit itself as a candidate for a later R40-style pass (§3, honest limits).
+1. `depth_census`'s per-column `count(c)` cost over `kala_field` is unfixed. The A-3 commit
+   registered it as a candidate for a later R40-style pass (§3, honest limits). **v1.1:** measured at
+   24.3 s over the exact 10,982,957 rows.
 2. A-2's non-port of `idem_scan`'s seeder-following enhancement and the F1/F3/F4/F5/F6 data/writer-run
    fixes has a stated-but-unquantified consequence for the tracker's `ELEVATED` figure (§2, honest
    limits) — this report could not find a quantification of that consequence anywhere in the
@@ -414,8 +476,161 @@ and required no cleanup.
 | manifest/fingerprint | no registered file touched | yes | confirmed absent from manifest; `--check` MATCH |
 | drift | exit 0 or 3 only | yes | exit 3, 1 pre-existing unrelated LOW finding |
 
+**v1.1 correction:** the next sentence is withdrawn. The gate review found claims in the three
+commits and in this report that were false: "no further code change" (F1), the N/A closure on an
+errored `count_sql` (F2), tests that could not fail (F3), the WITHDRAWN re-open (F4), D6 item 5 =
+"yes" (F11), and "lockstep" (§5). §10 maps each one to its correction. v1.0 text follows:
+
 No proof claimed in the three commits was found to be false. Two items could not be independently
 re-verified beyond what the commit states (the tracker's exact `gaps_open` A/B numbers in §5, and the
 `depth_census` cost characterization in §3/§7) and are labelled as commit-message claims, not
 independent confirmations. R42–R56 remain untouched, and the "background timing comparison job" the
 builder's last words referenced could not be found anywhere in the committed evidence.
+
+## 10 — Corrections after gate review (v1.1)
+
+The gate (`A_REVIEW.md`, commit `8a57a3320`) rejected v1.0 on a narrow basis. Each finding maps to
+the table row below. F1–F5 were committed by the previous builder. F6–F9, F11 and F12 were committed
+in this pass. Every mutation was applied to the working file, the suite was run, and the file was
+restored (`git diff` empty after each run).
+
+| # | finding | commit | test(s) that fail without the fix | mutation evidence |
+|---|---|---|---|---|
+| F1 | unwired D6 attempt path read closable `N/A "never attempted"` once 1094 lands | `a77d50005` | `test_case_instrument_present_attempt_linkage_unwired_grades_no_detector_not_na`, `test_case_attempt_linkage_unwired_is_the_default_measure_call_shape`, `test_emit_gaps_does_not_close_on_the_unwired_no_detector` | guard reverted → 2 failed (grading + emit_gaps closure) |
+| F2 | errored `count_sql` → `N/A "no count_sql"` → gap CLOSED | `065e620b2` | `test_live_counts_distinguishes_errored_query_from_no_count_sql` (offline), `test_live_e2e_a_broken_count_sql_grades_errored_not_na` (live) | `errored[aid]` line removed → offline test fails |
+| F3 | proofs that could not fail (M8, M9 survived) | `cf955e3a3` | `_measure_contract` / `_measure_idem` behavioural tests; `test_live_e2e_depth_census_failure_…`; `test_live_registry_l3_excludes_the_two_retired_rows` | M8 → offline failure (uncaught `Unknown`). **M9 still survives offline**, re-run this pass: 71 passed, 4 skipped under M9. It is caught live only: the L3 registry test fails, and the CLI exits 4 via F7. |
+| F4 | WITHDRAWN re-opened, contrary to the code's comment | `3a9c66cf9` | `test_case_withdrawn_is_terminal_never_reopened` | bare `else: reopen` → (0,0,1) instead of (0,0,0) |
+| F5 | `superseded_by` read from the latest row only | `cbc8b6724` | `test_case4b_superseded_survives_a_later_row_that_omits_the_flag` | latest-row check → (0,0,1,0) instead of (0,0,0,0) |
+| F6 | tracker counted 129/23, not the 127/21 active | `6574d729b` | `test_f6_tracker_counts_only_the_active_population_and_states_it` (tracker's real SQL on SQLite) | `NOT dead_flag` → 1 row; no filter → 4 rows; pre-fix tracker → shape error |
+| F7 | zero-active population exited 0 silently | `0c16969a3`, `64af00534` | `test_f7_registry_raises_unknown_on_zero_active_rows`, `test_f7_main_exits_4_with_a_message_on_zero_active_rows` | old guard → "DID NOT RAISE"; main prints "0 assets … assets measured 0" and does not return 4 |
+| F8 | detector return code / verdict vocabulary unchecked | `e4505eafc` | `test_f8_a_detector_that_crashes_after_printing_pass_is_not_a_pass`, `test_f8_a_verdict_outside_the_closed_set_is_not_adopted` (+ positive control) | rc check off → PASS adopted; vocab check off → `'GREEN'` adopted |
+| F9 | `Vocab.identity` lost its duplicate figure | `705d20058` | `test_f9_identity_fail_states_the_duplicate_count`, `test_f9_identity_pass_states_zero_and_never_runs_the_count`, `test_f9_a_count_that_errors_keeps_the_probe_fail` | pre-fix → 3 fail; inner guard off → 1 fail; count always run → 1 fail |
+| F10 | report overstated | this file, v1.1 | — | corrected in place: §3 (no-further-code-change, D6 item 5, R41/R220 coverage, kala_field, depth_census), §5 (inverse, tracker), §7, §9 |
+| F11 | D6 item 5 not tested against the engine | `8ef861e0b` | `test_a4_d6_engine_conformance.py`, 13 tests (see below) | 6 census mutations, all caught (see below) |
+| F12 | R41 scope limit (and ledger merge order) undisclosed | `afa1d4146` | `test_f12_a_failed_layer_wide_read_names_itself_and_the_r41_limit` | pre-fix → fails; read name dropped → fails |
+
+**F11 in detail.** The test suite reads `/Users/Dev/madhav-engine` at `8edba0533` read-only, using
+`git show`. Nothing is imported, run against a database, or written.
+
+The seven scenarios:
+
+| scenario | engine fact pinned | census grade asserted |
+|---|---|---|
+| absent column | `_duration_columns_present` probes `public.asset_throughput.duration_seconds`, the column 1094 adds | the census probe is now identical (it lacked `table_schema`; fixed) |
+| zero rows | `_compute_duration_and_rate(0, 2.5)` = (2.5, 0.0), executed from engine source | PASS, rate 0.0 |
+| unknown NULL | six durations the engine refuses | NO_DETECTOR, never PASS |
+| completion write | only `_run_data_writer` writes `duration_seconds`, and it marks `disposition='build'` | (the adapter contract) |
+| skip after prior timing | the skip path leaves the prior duration in place | N/A, prior baseline kept |
+| failure | the error path never touches duration or disposition | N/A, not a timing defect |
+| probe-green | the engine writes `state='complete'` with **no disposition** | N/A given an adapter-derived `probe_green` |
+| legacy `ga_*` | `_telemetry.update_asset_throughput` defaults `duration_seconds=None` and upserts it | FAIL |
+
+- **Runs:** 13/13 at `8edba0533`. 13/13 at engine HEAD `e5dd65b8f`, where `asset_runner.py` is
+  identical. With the checkout absent, all tests skip and state the reason.
+- **Mutations** (each caught): the probe without `table_schema`; zero-row not PASS; unknown NULL →
+  PASS (6/6 caught); duration checked before disposition; `reached_completion_write` ignored; the
+  legacy branch removed.
+- **Findings for the R42–R56 adapter:**
+  - The engine never writes a `probe_green` disposition. The adapter must derive it from complete +
+    NULL disposition + probe receipt.
+  - `reached_completion_write` is `disposition = 'build'`.
+- **Still not testable here:** running the engine's write paths against a database carrying migration
+  1094 and grading the real rows. Two reasons:
+  - It needs migration 1094 applied and builds run, and this wave allows no migration and no
+    production write.
+  - The census has no attempt query to read such rows (F1: unwired).
+- **D6 item 5 verdict: PARTLY met.**
+
+**Scope incident, disclosed rather than repaired.** The F5 commit `cbc8b6724` also swept in Lane B's
+then-uncommitted working-tree edits:
+- `catalog_provenance.py` and its test;
+- `provenance/BUILD_DEPENDENCIES_READER_SCAN.md`, `CLOSURE_REPORT.md` and
+  `producer_provenance.derived.json`.
+
+These are 7 files in total, 5 of them Lane B's. The content is Lane B's work, not Lane A's. The
+commit's own message does not mention it. History was not rewritten, because Lane B has committed on
+top since. Every commit in this pass uses `git commit -- <explicit paths>` (only-mode), which commits
+nothing else staged in the shared index.
+
+**Test count.** At the start of this pass the Lane A suite had 52 tests: offline 48 passed, 4 skipped
+(the 4 are live-only). After this pass it has **75**: 10 new in `test_a4_gate_corrections.py`, 13 new
+in `test_a4_d6_engine_conformance.py`.
+
+- **Offline:** 71 passed, 4 skipped.
+- **Live** (read-only production, `default_transaction_read_only = on`): **75 passed, 0 skipped**
+  (232.9 s).
+- **First live attempt:** 74 passed, 1 failed. The failing test was
+  `test_live_e2e_one_simulated_query_timeout_degrades_not_aborts`, and the cause was
+  `server closed the connection unexpectedly` inside the layer-wide `build_history` read. That is the
+  R41 limit F12 discloses, showing up live on a transient connection drop. It is not a code defect.
+  The DB was re-checked and the whole suite re-run green.
+
+## 11 — L0 census at HEAD vs `7ed870775` (live, read-only)
+
+Both runs were made against production on the same code inputs. Base is the `7ed870775`
+`asset_census.py` run from scratch. HEAD includes F1–F12.
+
+| | base `7ed870775` | HEAD |
+|---|---|---|
+| runtime / exit | 63 s / 2 | 57 s / 2 |
+| assets | 40 | 40 (same set) |
+| FAIL · PARTIAL/NO_DETECTOR · ERRORED | 39 · 170 · 0 | 39 · 170 · 0 |
+| verdict tally | PASS 413 · PARTIAL 50 · NO_DETECTOR 120 · FAIL 39 · NOT_GENERIC 80 · N/A 68 | identical |
+
+**Verdict flips: none.** The per-asset, per-criterion diff shows zero verdict changes. Why each
+correction leaves L0 unchanged today:
+
+- **F1:** the instrument is absent, so the unwired branch is unreachable. Earn and Cost read
+  `instrument absent (migration 1094)` on 80/80 rows in both runs.
+- **F2:** no L0 `count_sql` errors. `Build.completion` has 0 ERRORED.
+- **F7:** the population is 40 of 40 active.
+- **F8:** no detector file is registered.
+- **F11:** the probe answers "absent" whether or not it is schema-qualified.
+- **F12:** the only change is the message on failure.
+
+**Text-only change:** `Vocab.identity` on 37 assets, from "no duplicates" to "0 duplicate(s)" (F9).
+That is the pre-R40 wording, restored. None of the 37 has duplicates, so the count query never runs
+on L0. It was checked separately against production (`brahma_class_priors`) and returns `0, 0`.
+
+**The base figure.** The gate measured L0 FAIL **119 → 39** from `9981b8f5d` to `7ed870775`.
+The A-3 commit's "~122" was the base figure at its own measurement time.
+
+**The 80 fewer FAILs** are `Earn.build_record` and `Cost.baseline`, 40 each. Both moved FAIL →
+NO_DETECTOR because the instrument is absent (A_REVIEW §4). That is unchanged by this pass.
+
+## 12 — T3 closure cycle, re-run against a ledger copy (live, read-only)
+
+Setup:
+- The production `measure("L0")` and `emit_gaps()` ran against read-only production.
+- `NIKASHA_CONTROL_DIR` pointed at a scratch copy of both production ledgers.
+- `bg_nakshatra_medical.has_writer` was flipped **in memory only**; its production value is `false`.
+- The HEAD tracker (with F6) was read after every step.
+- Target row: `bg_nakshatra_medical-Build.registered`.
+
+| step | has_writer | emit (added, skipped, closed, reopened) | ledger lines | target row (line, state) | tracker gaps_open/total for the asset |
+|---|---|---|---|---|---|
+| 0 | — | — | 263 | 137 OPEN | 6 / 6 |
+| 1 | false | (0, 209, 0, 0) | 263 | 137 OPEN | 6 / 6 |
+| 2 | true | (1, 208, 1, 0) | 265 | 264 **CLOSED** | 6 / 7 |
+| 3 | false | (0, 208, 1, 1) | 267 | 266 **OPEN** (RE-OPENED) | 6 / 7 |
+| 4 | true | (0, 208, 1, 1) | 269 | 268 **CLOSED** | 6 / 7 |
+| idempotency | true again | (0, 209, 0, 0) | 269 → 269 | — | — |
+
+- The target row cycles OPEN → CLOSED → RE-OPENED → CLOSED. Its closed state reads 0 → 1 → 0 → 1.
+- The asset's `gaps_open` stays at 6 because `Build.exercised` moves inversely (§5): each toggle closes
+  one of the two rows and opens the other.
+- Production `asset_gaps.jsonl` / `asset_certs.jsonl` are byte-identical before and after (md5
+  compared). `git status` shows them clean.
+
+## 13 — Manifest, fingerprint, drift at close (this pass)
+
+- **Registration:** none of `asset_census.py`, `asset_elevation_tracker.py` or the new test files is
+  registered in `CAPABILITY_MANIFEST.json` (grep count 0). No fingerprint rotation applies.
+- **`manifest_fingerprint.py --check`:** entries 141 (declared 141), fingerprint `f484f581767ad641`,
+  **MATCH**.
+- **`drift_detector.py`** (pgenv.sh, read-only, `timeout 600`): **exit 3**, 1 finding. It is LOW
+  `a3_category_not_yet_populated`, pre-existing, the same as v1.0 §8, and unrelated to Lane A. The
+  report file `DRIFT_REPORT_adhoc_20260927T073612Z.*` is gitignored and was not committed.
+- **Tracker live:** `--layer all` with F6, against read-only production and a ledger copy, reads
+  **127** assets. L3 prints "21 active of 23 registry rows (is_active AND dead_flag IS NOT TRUE) —
+  excluded (inactive/dead): ka_gochara_sweep, ka_gochara_v3_century_materialize".
