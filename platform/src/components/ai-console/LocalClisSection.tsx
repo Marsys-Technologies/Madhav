@@ -20,12 +20,13 @@ interface Props {
   clis: CliCardDto[]
   loading: boolean
   error: boolean
+  aggregateStatus: 'loading' | 'error' | 'ready'
   mutationPending: boolean
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
 }
 
-export function LocalClisSection({ state, clis, loading, error, mutationPending, mutate, onSelectDefault }: Props) {
+export function LocalClisSection({ state, clis, loading, error, aggregateStatus, mutationPending, mutate, onSelectDefault }: Props) {
   async function testCli(cli: CliCardDto) {
     try {
       await mutate(`/api/ai-console/clis/${cli.cliId}/validate`, { method: 'POST', body: JSON.stringify({}) }, `${cli.productName} validation completed.`)
@@ -33,7 +34,7 @@ export function LocalClisSection({ state, clis, loading, error, mutationPending,
   }
   const cliDefault = state?.defaultChoice?.kind === 'local_cli' ? state.defaultChoice : null
 
-  const defaultMissing = cliDefault !== null
+  const defaultMissing = aggregateStatus === 'ready' && !loading && !error && cliDefault !== null
     && !clis.some(cli => cli.cliId === cliDefault.cliId
       && cli.state === 'reachable' && cli.models.some(model => model.modelId === cliDefault.modelId))
 
@@ -59,7 +60,8 @@ export function LocalClisSection({ state, clis, loading, error, mutationPending,
                 const choice = { kind: 'local_cli' as const, cliId: cli.cliId, modelId: model.modelId }
                 const checked = choicesEqual(state?.defaultChoice ?? null, choice)
                 const usable = cli.state === 'reachable' && supportsEveryRole(model.compatibleRoles)
-                return <div className="aic-model-row" data-default={checked} key={model.modelId ?? '__builtin__'}><div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId ?? 'Built-in default'}{!usable ? ' · unavailable for all four roles' : ''}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || mutationPending} unavailable={checked && !usable} label={`${cli.productName} ${model.displayName}`} onSelect={onSelectDefault} /></div>
+                const aggregateUnverified = aggregateStatus !== 'ready'
+                return <div className="aic-model-row" data-default={checked} key={model.modelId ?? '__builtin__'}><div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId ?? 'Built-in default'}{!usable ? ' · unavailable for all four roles' : ''}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || aggregateUnverified || mutationPending} unavailable={checked && !aggregateUnverified && !usable} unverified={aggregateUnverified} label={`${cli.productName} ${model.displayName}`} onSelect={onSelectDefault} /></div>
               })}
             </div>}
           </article>

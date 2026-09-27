@@ -81,8 +81,10 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
       : []
     return [...providerSources, ...cliSources]
   }, [state, clis, cliStatus])
+  const selectableSourceValues = useMemo(() => new Set(sources.map(source => source.value)), [sources])
 
   function modelOptions(source: string, role: AiRole) {
+    if (!selectableSourceValues.has(source)) return []
     const [kind, id] = source.split(':', 2)
     if (kind === 'provider') return (state?.models ?? []).filter(model => model.connectionId === id && model.available && model.compatibleRoles.includes(role))
       .map(model => ({ value: encodeModel(model.modelId), label: model.displayName, target: { kind: 'provider_model' as const, connectionId: id, modelId: model.modelId } }))
@@ -114,6 +116,10 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
     return modelOptions(draft.source, role).find(option => option.value === draft.model)?.target ?? null
   }
 
+  function sourceUnavailable(role: AiRole): boolean {
+    return Boolean(drafts[role].source) && !selectableSourceValues.has(drafts[role].source)
+  }
+
   function targetLabel(target: RoleTarget): string {
     if (target.kind === 'provider_model') {
       const connection = state?.connections.find(item => item.id === target.connectionId)
@@ -126,6 +132,7 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
   }
 
   const complete = Boolean(name.trim()) && AI_ROLES.every(role => targetFor(role) !== null)
+  const hasUnavailableSource = AI_ROLES.some(sourceUnavailable)
   const fillAllTarget = targetFor('synthesizer')
   const canFillAll = fillAllTarget !== null && AI_ROLES.every(role => modelOptions(drafts.synthesizer.source, role).some(option => option.value === drafts.synthesizer.model))
 
@@ -196,7 +203,7 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
               <div className="aic-role-grid">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{targetLabel(configuration.roles[role])}</span></div>)}</div>
               {!configuration.deletedAt && <div className="aic-actions"><button className="aic-button" type="button" disabled={requiresCliState && cliStatus !== 'ready'} onClick={() => openEdit(configuration)}>Edit</button><button className="aic-button" type="button" onClick={() => { setDuplicateTarget(configuration); setDuplicateName(`${configuration.name} copy`); setDuplicateError('') }}><Copy aria-hidden="true" className="inline size-3" /> Duplicate</button><button className="aic-button" data-danger="true" type="button" onClick={() => previewDelete(configuration)}>Delete</button></div>}
             </div>
-            <div className="aic-model-list"><div className="aic-model-row" data-default={checked}><div><span className="aic-model-name">Use this configuration</span><span className="aic-model-id">{usable ? 'All four roles are currently available' : availability === 'unknown' ? 'Local CLI availability could not be verified' : 'One or more exact role choices are unavailable'}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || mutationPending} unavailable={checked && !usable} label={configuration.name} onSelect={onSelectDefault} /></div></div>
+            <div className="aic-model-list"><div className="aic-model-row" data-default={checked}><div><span className="aic-model-name">Use this configuration</span><span className="aic-model-id">{usable ? 'All four roles are currently available' : availability === 'unknown' ? 'Local CLI availability could not be verified' : 'One or more exact role choices are unavailable'}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || mutationPending} unavailable={checked && availability === 'unusable'} unverified={availability === 'unknown'} label={configuration.name} onSelect={onSelectDefault} /></div></div>
           </article>
         })}</div>
       )}
@@ -205,7 +212,14 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
         <DialogHeader><DialogTitle>{editing ? 'Edit custom configuration' : 'New custom configuration'}</DialogTitle><DialogDescription>Choose a source first, then one compatible model for each role. Configurations save only when all four roles are complete.</DialogDescription></DialogHeader>
         <div className="aic-form">
           <div className="aic-field"><label htmlFor="aic-config-name">Configuration name</label><input id="aic-config-name" value={name} onChange={event => { setName(event.target.value); if (fieldError?.target === 'name') setFieldError(null) }} aria-invalid={fieldError?.target === 'name' || undefined} aria-describedby={fieldError?.target === 'name' ? 'aic-config-error' : undefined} /></div>
-          {AI_ROLES.map(role => <div className="aic-editor-role" role="group" aria-labelledby={`aic-${role}-label`} key={role}><span id={`aic-${role}-label`}>{ROLE_LABELS[role]}</span><div className="aic-field"><label htmlFor={`aic-${role}-source`}>Source <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-source`} value={drafts[role].source} aria-invalid={fieldError?.target === 'roles' && !drafts[role].source || undefined} aria-describedby={fieldError?.target === 'roles' && !drafts[role].source ? 'aic-config-error' : undefined} onChange={event => { updateDraft(role, 'source', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose source</option>{sources.map(source => <option key={source.value} value={source.value}>{source.label}</option>)}</select></div><div className="aic-field"><label htmlFor={`aic-${role}-model`}>Model <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-model`} value={drafts[role].model} disabled={!drafts[role].source} aria-invalid={fieldError?.target === 'roles' && !drafts[role].model || undefined} aria-describedby={fieldError?.target === 'roles' && !drafts[role].model ? 'aic-config-error' : undefined} onChange={event => { updateDraft(role, 'model', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose model</option>{modelOptions(drafts[role].source, role).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div></div>)}
+          {AI_ROLES.map(role => {
+            const unavailableSource = sourceUnavailable(role)
+            const missingRoleSource = fieldError?.target === 'roles' && !drafts[role].source
+            const missingRoleModel = fieldError?.target === 'roles' && !drafts[role].model
+            const sourceDescription = [unavailableSource ? 'aic-source-repair' : null, missingRoleSource ? 'aic-config-error' : null].filter(Boolean).join(' ') || undefined
+            return <div className="aic-editor-role" role="group" aria-labelledby={`aic-${role}-label`} key={role}><span id={`aic-${role}-label`}>{ROLE_LABELS[role]}</span><div className="aic-field"><label htmlFor={`aic-${role}-source`}>Source <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-source`} value={drafts[role].source} aria-invalid={unavailableSource || missingRoleSource || undefined} aria-describedby={sourceDescription} onChange={event => { updateDraft(role, 'source', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose source</option>{sources.map(source => <option key={source.value} value={source.value}>{source.label}</option>)}</select></div><div className="aic-field"><label htmlFor={`aic-${role}-model`}>Model <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-model`} value={drafts[role].model} disabled={!drafts[role].source || unavailableSource} aria-invalid={missingRoleModel || undefined} aria-describedby={missingRoleModel ? 'aic-config-error' : undefined} onChange={event => { updateDraft(role, 'model', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose model</option>{modelOptions(drafts[role].source, role).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div></div>
+          })}
+          {hasUnavailableSource && <p id="aic-source-repair" className="aic-field-error" role="status">One or more saved sources are no longer selectable. Choose an available source and model for every affected role.</p>}
           <button className="aic-button" type="button" disabled={!canFillAll} onClick={fillAllRoles}>Use this model for every role</button>
           {fieldError && <p id="aic-config-error" className="aic-field-error" role="alert">{fieldError.message}</p>}
         </div>

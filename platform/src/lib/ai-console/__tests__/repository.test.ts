@@ -63,9 +63,16 @@ describe('owned AI configuration repository', () => {
     expect(repository).toHaveProperty('createConnection')
     respond(sql => sql.includes('RETURNING') ? [{ ...safeConnection, credential_ciphertext: Buffer.alloc(2) }] : undefined)
     const result = await repository.createConnection('alice', { providerId: 'openai', name: 'Personal' }, encrypted)
-    expect(result).toEqual({ id: connectionId, providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated' })
+    expect(result).toEqual({ id: connectionId, providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated', confirmedValid: true })
     const insert = calls().find(c => c.sql.startsWith('INSERT INTO ai_provider_connections'))!
     expect(insert.params).toEqual(['alice', 'openai', 'Personal', encrypted.ciphertext, encrypted.nonce, encrypted.authTag, encrypted.wrappedDataKey, encrypted.wrapNonce, encrypted.wrapAuthTag, 'test', '••••1234', encrypted.fingerprint])
+  })
+  it('selects credential validity only to derive the safe confirmation boolean', async () => {
+    respond(sql => sql.includes('FROM ai_provider_connections') ? [safeConnection] : undefined)
+    const state = await repository.listAiConsoleState('alice')
+    const list = calls().find(c => c.sql.includes('FROM ai_provider_connections'))!
+    expect(list.sql).toContain('credential_validity')
+    expect(state.connections[0]).toMatchObject({ credential_validity: 'valid' })
   })
   it('replaces credentials with a version increment and invalidates catalog in the same transaction', async () => {
     expect(repository).toHaveProperty('replaceConnectionCredential')

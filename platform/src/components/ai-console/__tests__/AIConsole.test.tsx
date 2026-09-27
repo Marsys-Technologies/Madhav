@@ -15,7 +15,7 @@ const state: AiConsoleStateDto = {
   connections: [{
     id: CONNECTION_ID, providerId: 'openai', name: 'Personal OpenAI', maskedSuffix: '•••1234',
     validationState: 'validated', lastValidatedAt: '2026-09-27T10:00:00.000Z', lastCheckedAt: '2026-09-27T10:00:00.000Z',
-    lastErrorCode: null, deletedAt: null,
+    confirmedValid: true, lastErrorCode: null, deletedAt: null,
   }],
   models: [{ connectionId: CONNECTION_ID, modelId: 'gpt-safe', displayName: 'GPT Safe',
     compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false, supportsStructuredOutput: true, available: true }],
@@ -42,7 +42,9 @@ function response(body: unknown, status = 200) {
 
 interface SetupOptions {
   aggregateError?: boolean
+  aggregatePending?: boolean
   cliError?: boolean
+  cliPending?: boolean
   duplicateNameError?: boolean
 }
 
@@ -51,9 +53,11 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
   const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
   vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
     calls.push([url, init])
+    if (String(url) === '/api/ai-console/clis' && options.cliPending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console/clis') return options.cliError
       ? response({ error: 'AI_CLI_UNREACHABLE' }, 503)
       : response(cliState)
+    if (String(url) === '/api/ai-console' && options.aggregatePending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
     if (String(url) === '/api/ai-console/configurations' && init?.method === 'POST'
@@ -240,6 +244,10 @@ describe('AI Console', () => {
     expect(screen.queryByText(/no provider connections yet/i)).toBeNull()
     expect(screen.queryByText(/no custom configurations yet/i)).toBeNull()
     expect(screen.queryByRole('button', { name: /add connection|new configuration/i })).toBeNull()
+    const unverifiedCli = screen.getByRole('radio', { name: /claude code.*default verification unavailable/i })
+    expect(unverifiedCli).toBeDisabled()
+    expect(unverifiedCli).not.toBeChecked()
+    expect(unverifiedCli.parentElement).toHaveTextContent('Default verification unavailable')
     expect(aggregateFailure.calls).toBeTruthy()
     cleanup()
 
@@ -267,19 +275,71 @@ describe('AI Console', () => {
   })
 
   it('uses retained validation evidence while validating and blocks a first or replaced credential with no confirmation', async () => {
-    setup({ connections: [{ ...state.connections[0], validationState: 'validating' }] })
+    setup({ connections: [{ ...state.connections[0], validationState: 'validating', confirmedValid: true }] })
     const retainedDirect = await screen.findByRole('radio', { name: /personal openai gpt safe/i })
     expect(retainedDirect).not.toBeDisabled()
     const retainedConfiguration = screen.getByText('Research quartet').closest('article')!
     expect(within(retainedConfiguration).getByRole('radio')).not.toBeDisabled()
     cleanup()
 
-    setup({ connections: [{ ...state.connections[0], validationState: 'validating', lastValidatedAt: null }] })
+    setup({ connections: [{ ...state.connections[0], validationState: 'validating', confirmedValid: false, lastValidatedAt: '2026-09-01T10:00:00.000Z' }] })
     const unknownDirect = await screen.findByRole('radio', { name: /personal openai gpt safe/i })
     expect(unknownDirect).toBeDisabled()
     const unknownConfiguration = screen.getByText('Research quartet').closest('article')!
     expect(within(unknownConfiguration).getByText(/needs repair/i)).toBeTruthy()
     expect(within(unknownConfiguration).getByRole('radio')).toBeDisabled()
+  })
+
+  it('does not enable reachable CLI defaults until aggregate default authority is ready', async () => {
+    setup(undefined, { aggregatePending: true })
+    const radio = await screen.findByRole('radio', { name: /claude code.*default verification unavailable/i })
+    expect(radio).toBeDisabled()
+    expect(radio).not.toBeChecked()
+    expect(radio.parentElement).toHaveTextContent('Default verification unavailable')
+  })
+
+  it('does not call a saved CLI default broken while CLI authority is still loading', async () => {
+    setup({ defaultChoice: { kind: 'local_cli', cliId: 'claude_code', modelId: null } }, { cliPending: true })
+    await screen.findByText('Personal OpenAI')
+    expect(screen.getByText('Checking local CLI access…')).toBeTruthy()
+    expect(screen.queryByText(/broken default/i)).toBeNull()
+  })
+
+  it('distinguishes a checked unverified configuration default from a proven unavailable default', async () => {
+    const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
+    const cliConfiguration = { ...state.configurations[0], roles: {
+      synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget,
+    } }
+    setup({ configurations: [cliConfiguration], defaultChoice: { kind: 'custom_configuration', configurationId: CONFIG_ID } }, { cliError: true })
+    let card = (await screen.findByText('Research quartet')).closest('article')!
+    let radio = within(card).getByRole('radio')
+    expect(radio).toBeChecked()
+    expect(radio).toBeDisabled()
+    expect(radio.parentElement).toHaveTextContent('Default unverified')
+    expect(radio.parentElement).not.toHaveTextContent('Default unavailable')
+    cleanup()
+
+    const unavailableTarget = { kind: 'local_cli' as const, cliId: 'kimi_code' as const, modelId: null }
+    setup({ configurations: [{ ...cliConfiguration, roles: {
+      synthesizer: unavailableTarget, planner: unavailableTarget, deep_planner: unavailableTarget, worker: unavailableTarget,
+    } }], defaultChoice: { kind: 'custom_configuration', configurationId: CONFIG_ID } })
+    card = (await screen.findByText('Research quartet')).closest('article')!
+    radio = within(card).getByRole('radio')
+    expect(radio).toBeChecked()
+    expect(radio).toBeDisabled()
+    expect(radio.parentElement).toHaveTextContent('Default unavailable')
+  })
+
+  it('keeps retained catalog rows incomplete when their provider source is no longer selectable', async () => {
+    const user = userEvent.setup()
+    setup({ connections: [{ ...state.connections[0], validationState: 'invalid', confirmedValid: false }] })
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/saved sources are no longer selectable/i)).toBeTruthy()
+    for (const role of ['synthesizer', 'planner', 'deep_planner', 'worker']) {
+      expect(dialog.querySelector(`#aic-${role}-model`)).toBeDisabled()
+    }
+    expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
   })
 
   it('associates duplicate-name server errors only with the duplicate name repair control', async () => {

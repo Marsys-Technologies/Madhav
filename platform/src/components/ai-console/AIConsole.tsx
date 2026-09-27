@@ -134,6 +134,7 @@ export function AIConsole() {
             clis={clis}
             loading={cliQuery.isLoading}
             error={cliQuery.isError}
+            aggregateStatus={stateQuery.isLoading ? 'loading' : stateQuery.isError ? 'error' : 'ready'}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}

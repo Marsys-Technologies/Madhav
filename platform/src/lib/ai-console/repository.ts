@@ -17,7 +17,7 @@ type Client = Pick<PoolClient, 'query'>
 type Row = Record<string, unknown>
 const nameSchema = z.string().trim().min(1).max(120)
 const uuidSchema = z.string().uuid()
-const safeColumns = 'id,provider_id,name,masked_suffix,validation_state'
+const safeColumns = 'id,provider_id,name,masked_suffix,validation_state,credential_validity'
 const notFound = () => new AiConsoleError('AI_CHOICE_BROKEN')
 const providerConnectionErrorSchema = z.enum([
   'AI_CONNECTION_INVALID', 'AI_MODEL_UNAVAILABLE', 'AI_ROLE_INCOMPATIBLE',
@@ -53,7 +53,8 @@ async function assertAssignments(client: Client, userId: string, assignments: Ro
 function required<T>(rows: T[]): T { if (!rows.length) throw notFound(); return rows[0] }
 function safeConnection(row: Row): SafeProviderConnection {
   return SafeProviderConnectionSchema.parse({ id: row.id, providerId: row.provider_id,
-    name: row.name, maskedSuffix: row.masked_suffix, validationState: row.validation_state })
+    name: row.name, maskedSuffix: row.masked_suffix, validationState: row.validation_state,
+    confirmedValid: row.credential_validity === 'valid' })
 }
 function credentialParams(e: EncryptedCredential) {
   return [e.ciphertext, e.nonce, e.authTag, e.wrappedDataKey, e.wrapNonce, e.wrapAuthTag, e.keyVersion, e.mask, e.fingerprint]
@@ -77,7 +78,7 @@ function assertChoiceUuid(choice: AiChoiceRef): void {
 }
 async function ownedConnection(client: Client, userId: string, id: string) {
   if (!uuidSchema.safeParse(id).success) throw notFound()
-  return required((await client.query(`SELECT ${safeColumns},credential_version,credential_validity FROM ai_provider_connections
+  return required((await client.query(`SELECT ${safeColumns},credential_version FROM ai_provider_connections
     WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR NO KEY UPDATE`, [userId, id])).rows)
 }
 async function invalidateCatalog(client: Client, userId: string, id: string) {

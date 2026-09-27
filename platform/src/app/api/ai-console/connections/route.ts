@@ -3,7 +3,7 @@ import { createConnection, listAiConsoleState } from '@/lib/ai-console/repositor
 import { encryptCredential } from '@/lib/ai-console/crypto'
 import { validateConnection } from '@/lib/ai-console/validation'
 import { ProviderIdSchema } from '@/lib/ai-console/types'
-import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, projectConnection, projectState, projectValidation, readBody, reserveValidationFlight, withAiConsole, withAiConsoleMutation, withValidationAdmission } from '../_shared'
+import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, ownedConnection, projectConnection, projectState, projectValidation, readBody, reserveValidationFlight, withAiConsole, withAiConsoleMutation, withValidationAdmission } from '../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +27,8 @@ export async function POST(request: Request) {
     const release = reserveValidationFlight(userId, connection.id)
     try {
       const validation = projectValidation(await validateConnection(userId, connection.id, { credentialVersion: 1, signal: request.signal }))
-      return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE }, 201)
+      const confirmed = (await ownedConnection(userId, connection.id)).connection
+      return json({ connection: { ...confirmed, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE }, 201)
     } finally { release() }
   }))
 }

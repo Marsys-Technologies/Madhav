@@ -75,7 +75,7 @@ describe('AI Console safe contracts', () => {
 
   it.each(['apiKey', 'ciphertext', 'wrappedKey', 'nonce', 'tag', 'authorization', 'cliToken', 'unknown'])('rejects extra %s fields at every safe boundary', field => {
     const extra = { [field]: 'SYNTHETIC_SENSITIVE_SENTINEL' }
-    const connection = { id: 'c', providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated' }
+    const connection = { id: 'c', providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated', confirmedValid: true }
     const model = { connectionId: 'c', modelId: 'm', displayName: 'Model', compatibleRoles: ['worker'], available: true, supportsTools: false, supportsStructuredOutput: true }
     expect(SafeProviderConnectionSchema.safeParse({ ...connection, ...extra }).success).toBe(false)
     expect(ProviderModelSchema.safeParse({ ...model, ...extra }).success).toBe(false)
@@ -87,8 +87,9 @@ describe('AI Console safe contracts', () => {
   })
 
   it('round-trips only safe catalog metadata and immutable routing data', () => {
-    const connection = { id: 'c', providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated' }
+    const connection = { id: 'c', providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated', confirmedValid: true }
     expect(SafeProviderConnectionSchema.parse(connection)).toEqual(connection)
+    expect(SafeProviderConnectionSchema.safeParse(({ ...connection, confirmedValid: undefined })).success).toBe(false)
     const model = { connectionId: 'c', modelId: 'm', displayName: 'Model', compatibleRoles: ['worker'], available: true, supportsTools: false, supportsStructuredOutput: true }
     expect(ProviderModelSchema.parse(model)).toEqual(model)
     expect(ProviderModelSchema.safeParse({ ...model, compatibleRoles: ['inspector'] }).success).toBe(false)

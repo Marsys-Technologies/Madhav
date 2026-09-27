@@ -205,11 +205,13 @@ const nullableText = (value: unknown) => value == null ? null : text(value)
 
 export function projectConnection(connection: SafeProviderConnection) {
   return SafeProviderConnectionSchema.parse({ id: connection.id, providerId: connection.providerId,
-    name: connection.name, maskedSuffix: connection.maskedSuffix, validationState: connection.validationState })
+    name: connection.name, maskedSuffix: connection.maskedSuffix, validationState: connection.validationState,
+    confirmedValid: connection.confirmedValid })
 }
 function projectConnectionRow(row: Row) {
   return { ...projectConnection({ id: row.id, providerId: row.provider_id, name: row.name,
-    maskedSuffix: row.masked_suffix, validationState: row.validation_state } as SafeProviderConnection),
+    maskedSuffix: row.masked_suffix, validationState: row.validation_state,
+    confirmedValid: row.credential_validity === 'valid' } as SafeProviderConnection),
   lastValidatedAt: date(row.last_validated_at), lastCheckedAt: date(row.last_checked_at),
   lastErrorCode: row.last_error_code == null ? null : AiErrorCodeSchema.parse(row.last_error_code), deletedAt: date(row.deleted_at) }
 }

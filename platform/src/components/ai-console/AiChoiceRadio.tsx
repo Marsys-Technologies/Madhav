@@ -9,9 +9,16 @@ interface AiChoiceRadioProps {
   label: string
   onSelect: (choice: AiChoice) => Promise<unknown> | void
   unavailable?: boolean
+  unverified?: boolean
 }
 
-export function AiChoiceRadio({ choice, checked, disabled, label, onSelect, unavailable }: AiChoiceRadioProps) {
+export function AiChoiceRadio({ choice, checked, disabled, label, onSelect, unavailable, unverified }: AiChoiceRadioProps) {
+  const accessibleLabel = unverified
+    ? `${label} default verification unavailable`
+    : `Use ${label} as default AI`
+  const statusLabel = checked
+    ? unavailable ? 'Default unavailable' : unverified ? 'Default unverified' : 'Default'
+    : unverified ? 'Default verification unavailable' : 'Make default'
   return (
     <label className="aic-default-control">
       <input
@@ -20,9 +27,9 @@ export function AiChoiceRadio({ choice, checked, disabled, label, onSelect, unav
         checked={checked}
         disabled={disabled}
         onChange={() => { void Promise.resolve(onSelect(choice)).catch(() => {}) }}
-        aria-label={`Use ${label} as default AI`}
+        aria-label={accessibleLabel}
       />
-      <span>{checked ? (unavailable ? 'Default unavailable' : 'Default') : 'Make default'}</span>
+      <span>{statusLabel}</span>
     </label>
   )
 }

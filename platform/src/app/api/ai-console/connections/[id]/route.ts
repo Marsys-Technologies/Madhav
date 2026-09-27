@@ -33,7 +33,7 @@ export async function PATCH(request: Request, context: IdContext) {
       await ownedConnection(userId, id)
       const replaced = await replaceConnectionCredential(userId, id, encryptCredential(input.apiKey))
       const validation = projectValidation(await validateConnection(userId, id, { credentialVersion: replaced.credentialVersion, signal: request.signal }))
-      const connection = projectConnection(replaced.connection)
+      const connection = (await ownedConnection(userId, id)).connection
       return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE })
     })
   })

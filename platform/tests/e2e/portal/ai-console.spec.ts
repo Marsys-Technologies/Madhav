@@ -12,10 +12,10 @@ const configurationId = '22222222-2222-4222-8222-222222222222'
 const safeConsoleState = {
   connections: [{ id: connectionId, providerId: 'openai', name: 'Personal OpenAI', maskedSuffix: '•••1234',
     validationState: 'invalid', lastValidatedAt: null, lastCheckedAt: '2026-09-27T10:00:00.000Z',
-    lastErrorCode: 'AI_CONNECTION_INVALID', deletedAt: null },
+    confirmedValid: false, lastErrorCode: 'AI_CONNECTION_INVALID', deletedAt: null },
   { id: validConnectionId, providerId: 'anthropic', name: 'Research Anthropic', maskedSuffix: '•••9876',
     validationState: 'validated', lastValidatedAt: '2026-09-27T10:00:00.000Z', lastCheckedAt: '2026-09-27T10:00:00.000Z',
-    lastErrorCode: null, deletedAt: null }],
+    confirmedValid: true, lastErrorCode: null, deletedAt: null }],
   models: [{ connectionId, modelId: 'removed-model', displayName: 'Removed model',
     compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false,
     supportsStructuredOutput: true, available: false },

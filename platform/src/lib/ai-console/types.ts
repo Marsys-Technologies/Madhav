@@ -64,6 +64,7 @@ export const SafeProviderConnectionSchema = z.object({
   name: IdentifierSchema,
   maskedSuffix: IdentifierSchema,
   validationState: ConnectionValidationStateSchema,
+  confirmedValid: z.boolean(),
 }).strict()
 export type SafeProviderConnection = z.infer<typeof SafeProviderConnectionSchema>
 

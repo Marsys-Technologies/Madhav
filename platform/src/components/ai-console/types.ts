@@ -15,6 +15,7 @@ export interface ProviderConnectionDto {
   name: string
   maskedSuffix: string
   validationState: 'untested' | 'validating' | 'validated' | 'needs_attention' | 'invalid' | 'unreachable'
+  confirmedValid: boolean
   lastValidatedAt: string | null
   lastCheckedAt: string | null
   lastErrorCode: string | null
@@ -104,12 +105,12 @@ export function supportsEveryRole(roles: readonly AiRole[]): boolean {
 
 /**
  * A revalidation may retain the last confirmed catalog under AIC-R017. A
- * first validation (or a replacement credential) has no confirmation time
+ * first validation (or a replacement credential) has no server confirmation
  * and must remain unavailable until the server confirms it.
  */
 export function hasCurrentProviderConfirmation(connection: ProviderConnectionDto): boolean {
-  return connection.validationState === 'validated'
-    || (connection.validationState === 'validating' && Boolean(connection.lastValidatedAt))
+  return connection.confirmedValid
+    && (connection.validationState === 'validated' || connection.validationState === 'validating')
 }
 
 export function formatCheckedAt(value: string | null): string {

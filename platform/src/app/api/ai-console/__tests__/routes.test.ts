@@ -30,9 +30,9 @@ const configId = '22222222-2222-4222-8222-222222222222'
 const context = (value = id) => ({ params: Promise.resolve({ id: value }) })
 const target = { kind: 'provider_model' as const, connectionId: id, modelId: 'test-model' }
 const roles = Object.fromEntries(AI_ROLES.map(role => [role, target]))
-const safeConnection = { id, providerId: 'openai', name: 'Personal', maskedSuffix: '••••abcd', validationState: 'untested' }
+const safeConnection = { id, providerId: 'openai', name: 'Personal', maskedSuffix: '••••abcd', validationState: 'untested', confirmedValid: false }
 const row = { id, provider_id: 'openai', name: 'Personal', masked_suffix: '••••abcd', validation_state: 'validated',
-  credential_version: 2, deleted_at: null, last_validated_at: null, last_checked_at: null, last_error_code: null }
+  credential_version: 2, credential_validity: 'valid', deleted_at: null, last_validated_at: null, last_checked_at: null, last_error_code: null }
 const makeState = () => ({ connections: [{ ...row }],
   models: [{ connection_id: id, model_id: 'test-model', display_name: 'Test model', compatible_roles: [...AI_ROLES],
     supports_tools: false, supports_structured_output: true, available: true }],
@@ -336,17 +336,30 @@ describe('AI Console safe API contracts', () => {
     const response = await root.GET()
     const body = await response.json()
     expect(response.status).toBe(200)
-    expect(body.connections[0]).toMatchObject({ id, maskedSuffix: '••••abcd', deletedAt: '2026-09-27T00:00:00Z' })
+    expect(body.connections[0]).toMatchObject({ id, maskedSuffix: '••••abcd', confirmedValid: true, deletedAt: '2026-09-27T00:00:00Z' })
     expect(body.defaultChoice).toEqual(state.defaultChoice)
     expect(body.configurations[0].roles).toEqual(roles)
     expect(body.validationDisclosure).toMatch(/tiny.*provider charge/i)
     expect(JSON.stringify(body)).not.toContain(sentinel)
     expect(JSON.stringify(body)).not.toMatch(/credential_version|ciphertext|fingerprint|apiKey/)
+    expect(JSON.stringify(body)).not.toContain('credential_validity')
   })
 
   it('lists connections and configurations using the same safe shape', async () => {
     expect((await (await connections.GET()).json()).connections[0]).toMatchObject({ id, providerId: 'openai' })
     expect((await (await configurations.GET()).json()).configurations[0]).toMatchObject({ id: configId, version: 3, roles })
+  })
+
+  it('derives confirmedValid only from current credential authority, never historical validation time', async () => {
+    const state = makeState()
+    Object.assign(state.connections[0], {
+      validation_state: 'validating', credential_validity: 'invalid', last_validated_at: '2026-09-01T00:00:00Z',
+    })
+    mocks.listAiConsoleState.mockResolvedValue(state)
+    const body = await (await root.GET()).json()
+    expect(body.connections[0]).toMatchObject({ validationState: 'validating', confirmedValid: false,
+      lastValidatedAt: '2026-09-01T00:00:00Z' })
+    expect(JSON.stringify(body)).not.toContain('credential_validity')
   })
 
   it('redacts CLI host metadata and models for ungranted or revoked users', async () => {
@@ -376,6 +389,7 @@ describe('AI Console safe API contracts', () => {
     expect(mocks.validate).toHaveBeenCalledWith('owner', id, expect.objectContaining({ credentialVersion: 1, signal: expect.any(AbortSignal) }))
     const body = await response.json()
     expect(body.connection.validationState).toBe('validated')
+    expect(body.connection.confirmedValid).toBe(true)
     expect(body.validation).toEqual({ state: 'validated', modelCount: 1 })
     expect(JSON.stringify(body)).not.toContain(apiKey)
     expect(mocks.setUserDefault).not.toHaveBeenCalled()
@@ -383,9 +397,14 @@ describe('AI Console safe API contracts', () => {
 
   it.each(['invalid', 'unreachable', 'needs_attention'] as const)('returns the saved connection with honest %s validation', async state => {
     mocks.validate.mockResolvedValue({ state, modelCount: 0, error: new AiConsoleError('AI_PROVIDER_UNREACHABLE').toJSON() })
+    const persisted = makeState()
+    Object.assign(persisted.connections[0], { validation_state: state, credential_validity: state === 'invalid' ? 'invalid' : 'unknown' })
+    mocks.listAiConsoleState.mockResolvedValue(persisted)
     const response = await connections.POST(request('POST', { name: 'Personal', providerId: 'openai', apiKey: randomUUID(), acknowledgeCharge: true }))
     expect(response.status).toBe(201)
-    expect((await response.json()).connection.validationState).toBe(state)
+    const body = await response.json()
+    expect(body.connection.validationState).toBe(state)
+    expect(body.connection.confirmedValid).toBe(false)
     expect(mocks.deleteConnection).not.toHaveBeenCalled()
   })
 
