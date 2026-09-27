@@ -408,21 +408,60 @@ def idem_scan(asset_id: str, files: list[str], convention: str) -> tuple[str, li
     return PARTIAL, ["no idempotency pattern in the writer's own SQL — it likely delegates; verify there"]
 
 
+def _ts_code(src: str, blank_strings: bool = False) -> str:
+    """R51: TypeScript source with its comments removed (`// …` and `/* … */`, JSDoc included), string
+    and template literals respected — a `//` inside `'http://…'` or a backticked SQL string is code,
+    not a comment. Newlines inside removed comments are kept so positions stay line-true. With
+    `blank_strings`, literal CONTENTS are blanked too (the quotes stay). Limit, disclosed: a regex
+    literal containing a quote or `//` is not recognised as a regex (no such literal is needed by the
+    capability modules' table references or declarations)."""
+    out: list[str] = []
+    i, n = 0, len(src)
+    while i < n:
+        c, nx = src[i], src[i + 1] if i + 1 < n else ""
+        if c == "/" and nx == "/":
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "/" and nx == "*":
+            j = src.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            out.append("\n" * src.count("\n", i, j) or " ")
+            i = j
+        elif c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                j += 2 if src[j] == "\\" else 1
+            body = src[i + 1:min(j, n)]
+            out.append(c + (re.sub(r"[^\n]", " ", body) if blank_strings else body) + (c if j < n else ""))
+            i = j + 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
 def capability_scan(caps_dir: str, tables: list[str]) -> dict:
     d = ROOT / caps_dir
     if not d.is_dir():
         # R222 / N3: `scanned=False` — "no module references the table" was never established.
         return dict(modules=[], density=0, note=f"no capability directory at {caps_dir}", scanned=False)
-    hits, density = [], 0
+    hits, density, mentions = [], 0, []
     for f in sorted(d.glob("*.ts")):
         if f.name.endswith(".test.ts"):
             continue
         txt = f.read_text(encoding="utf-8", errors="replace")
-        if any(t and re.search(r"\b" + re.escape(t) + r"\b", txt) for t in tables):
+        # R51 (L4 handverify): a module SERVES the table only if its code references it — a comment
+        # that names the table (index.ts's catalogue header, a `//` aside, a JSDoc on a CHECK list)
+        # is not serving it. Strings stay: the SQL lives in them.
+        code = _ts_code(txt)
+        if not any(t and re.search(r"\b" + re.escape(t) + r"\b", code) for t in tables) and \
+                any(t and re.search(r"\b" + re.escape(t) + r"\b", txt) for t in tables):
+            mentions.append(f.name)                         # R51: named in a comment only
+        if any(t and re.search(r"\b" + re.escape(t) + r"\b", code) for t in tables):
             hits.append(f.name)
             if "density_contract" in txt:
                 density += 1
-    return dict(modules=hits, density=density, note="", scanned=True)
+    return dict(modules=hits, density=density, note="", scanned=True, comment_only=mentions)
 
 
 def local_map_candidates(prefix: str) -> int:
@@ -1564,6 +1603,15 @@ def measure(layer_key: str) -> dict:
             # ledger-copy run closed all 24 open L0 Dens.served gaps with the dir pointed elsewhere.
             m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — {cap.get('note') or 'capability scan did not run'}; "
                                                        "the served surface was never scanned")
+        elif not cap["modules"] and cap.get("comment_only"):
+            # R51 + §N.8: no module's CODE references the table, but comments do — the asset is named
+            # as served (e.g. "already-served-elsewhere bg_dignity_reference", served by the generic
+            # MCP DB route; ga_strength, served through chart_facts). "Not served" was never
+            # established, so never the closable N/A.
+            m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — no capability module's code references "
+                                                       f"{tbl or aid}; named in comments only in: "
+                                                       f"{', '.join(cap['comment_only'])} — the served surface "
+                                                       "cannot be attributed by code (never the closable N/A)")
         else:
             m["Dens.served"] = dict(v=(NA if not cap["modules"] else (PASS if cap["density"] else FAIL)),
                                     measured=(f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "

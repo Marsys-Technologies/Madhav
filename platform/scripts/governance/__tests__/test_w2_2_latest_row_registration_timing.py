@@ -667,3 +667,65 @@ def test_live_r50_runs_and_executed_equal_direct_counts_on_every_layer():
         assert set(per) == set(direct), (layer, set(per) ^ set(direct))
         for aid, (runs, started) in direct.items():
             assert (per[aid]["runs"], per[aid]["executed"]) == (runs, started), (layer, aid)
+
+
+# ─────────────────────────── R51: a serving module is one whose CODE references the table ───────────────────────────
+
+def _caps_dir(tmp_path, files):
+    d = tmp_path / "caps"
+    d.mkdir()
+    for name, body in files.items():
+        (d / name).write_text(body, encoding="utf-8")
+    return str(d)
+
+
+_R51_FILES = {
+    "index.ts": "/**\n *   query_x — ph_x (t_x, 150 rows)\n */\nexport * from './query_real'\n",
+    "query_comment.ts": "// calibration is L5's job, and ph_x's leakage is t_x's\nexport const y = 1\n",
+    "salience.ts": "/** `t_x.severity` — CHECK: critical | minor */\nexport const ORDER = ['critical']\n",
+    # A `//` and a `/*` inside string literals must not be read as comments: the table reference that
+    # follows them on the same line is code.
+    "query_real.ts": ("const glob = '/api/*'\nexport const cap = {\n  run: () => query('https://host', "
+                      "`SELECT * FROM t_x WHERE chart_id = $1`),\n}\nconst end = '*/'\n"),
+}
+
+
+def test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it(tmp_path):
+    """L4's three misattributions, reproduced: a catalogue header comment (index.ts), a `//` aside
+    (query_predictive_anchors.ts), a JSDoc on a CHECK list (salience_order.ts). Only the module whose
+    code queries the table serves it. Fails without the fix: all four were listed."""
+    cap = ac.capability_scan(_caps_dir(tmp_path, _R51_FILES), ["t_x", "ph_x"])
+    assert cap["modules"] == ["query_real.ts"], cap["modules"]
+
+
+@LIVE
+def test_live_r51_l4_modules_are_attributed_by_code():
+    """Live source, L4: query_predictive_anchors.ts no longer serves ph_pramana / ph_sodhana, and
+    index.ts no longer serves ph_rectification / ph_suddha_sodhana; the module that queries each
+    table still does."""
+    reg, _ = ac.registry("L4")
+    caps = ac.LAYERS["L4"]["caps"]
+    for aid, stray in (("ph_pramana", "query_predictive_anchors.ts"), ("ph_sodhana", "query_predictive_anchors.ts"),
+                       ("ph_rectification", "index.ts"), ("ph_suddha_sodhana", "index.ts")):
+        mods = ac.capability_scan(caps, [reg[aid]["target_table"], aid])["modules"]
+        assert stray not in mods and "query_phala_calibration.ts" in mods, (aid, mods)
+
+
+@pytest.mark.parametrize("files, verdict", [
+    ({"index.ts": "// already-served-elsewhere t_x\nexport {}\n"}, ac.NO_DET),   # named, never attributed
+    ({"index.ts": "export {}\n"}, ac.NA),                                        # genuinely unreferenced
+])
+def test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na(monkeypatch, tmp_path, files, verdict):
+    """§N.8 guard on R51: when comments name the table but no module's code references it, "not served"
+    was never established — NO_DETECTOR, and an OPEN Dens.served gap stays OPEN (bg_dignity_reference,
+    served by the generic MCP DB route; ga_strength, served through chart_facts). Only a directory that
+    never names it reads N/A. Fails if the comment-only case falls through to the closable N/A."""
+    reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
+    w1._stub_layer(monkeypatch, tmp_path, reg)
+    caps = _caps_dir(tmp_path, files)
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t: _REAL["capability_scan"](caps, t))
+    w1._open_gap(tmp_path, "bg_x", "Dens.served")
+    c = ac.measure("L0")
+    ds = w1._m(c, "bg_x", "Dens.served")
+    assert ds["v"] == verdict, ds
+    assert ac.emit_gaps(c)[2] == (1 if verdict == ac.NA else 0)
