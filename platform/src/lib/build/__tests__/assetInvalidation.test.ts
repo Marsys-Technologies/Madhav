@@ -70,6 +70,22 @@ describe('correction preservation boundary', () => {
     await invalidateAssets({ db, chartId: CHART, assets: [asset('mi_bhavisya', { layer: 'mimamsa' })], policy: 'chart-correction-strict' })
     expect(calls.map((c) => c.sql)).toEqual((EXPLICIT_CLEAR_OPS.mi_bhavisya ?? []).map((op) => op.sql))
   })
+
+  it('attested intervention filings survive: mi_sankalpa clears only the writer\'s own unresolved-elected rows, never a blanket per-chart wipe', async () => {
+    const { db, calls } = recorder()
+    await invalidateAssets({
+      db,
+      chartId: CHART,
+      assets: [asset('mi_sankalpa', { layer: 'mimamsa', target_table: null, count_sql: 'SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1' })],
+      policy: 'chart-correction-strict',
+    })
+    // Mirrors services/mi_sankalpa/db.py's own delete_unresolved() predicate exactly —
+    // never the generic count_sql-derived unconditional per-chart DELETE, which would
+    // destroy attested performed/outcome_event_id filings a native has already made.
+    expect(calls.map((c) => c.sql)).toEqual([
+      "DELETE FROM mimamsa_intervention_ledger WHERE chart_id = $1 AND study_arm = 'elected_pending' AND performed IS NULL AND outcome_event_id IS NULL",
+    ])
+  })
 })
 
 describe('invalidateAssets — chart-correction-strict', () => {
