@@ -1,15 +1,23 @@
 ---
 artifact: NIKASHA_WAVE1_LANE_B_REPORT
 canonical_id: NIKASHA_WAVE1_LANE_B_REPORT
-version: "1.0"
-status: SUBMITTED — awaiting the wave1 gate (Opus, fresh context, read-only)
-produced_on: 2026-09-26/27
+version: "2.0"
+status: SUBMITTED — corrections after gate REJECT (packet_commit 4e586118d, reviewed 2026-09-27)
+produced_on: 2026-09-26/27 (v1.0) / 2026-09-27 (v2.0 corrections)
 lane: B (the catalog names its producers) — R85, D5 rev. 2.1
 authority: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §4
 builder: Claude (Sonnet), Lane B sub-agent
+gate_review: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW.md (verdict REJECT; corrections C-1..C-6 in its §3)
 ---
 
 # Nikaṣa wave 1 — Lane B report (the catalog names its producers)
+
+**This version (2.0) states only what reproduces as of the corrections below.** The
+original submission (packet_commit `4e586118d`) was REJECTED at the gate
+(`B_REVIEW.md`). Every figure in this document was re-verified against the
+POST-CORRECTION pipeline this session, not carried over from the rejected v1.0 text —
+where a v1.0 figure changed as a side effect of a correction (not just a rewording), that
+is stated explicitly.
 
 ## 0 — Scope discipline note (read before anything else)
 
@@ -18,368 +26,355 @@ DIFFERENT, unrelated, still-ACTIVE campaign ("L3 Kāla data-plane elevation", au
 2026-09-20). Per `CLAUDE.md` §C item 0 its `may_touch`/`must_not_touch` would normally
 override all other scope guidance for this session. It does not name this Nikaṣa wave-1
 task, the D5/R85 provenance work, or any file this lane touches — the branch's own commit
-history (`5d7d2baef`, `9931dc9fe`, `badc3f9bc`, …) shows this worktree has in fact been
-running the Nikaṣa campaign for many cycles, so the root brief reads as a stale pointer
-left over from a different worktree/branch context, not a live constraint on this work.
-I did not edit it (editing `CLAUDECODE_BRIEF.md` is itself gated and out of my lane). I
-proceeded with the explicit, detailed, native-authorized Lane B assignment
-(`NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md`), reasoning that: (a) my file scope — a new
-script plus new files under `nikasha_test/provenance/**` — does not touch anything in the
-L3 brief's `must_not_touch` (I only *read* `retrieval/registry/knowledge/**`, never wrote
-to it, and never touched a writer, the orchestrator, or `editorial.ts`); (b) the L3 brief's
-own text is about an unrelated campaign and does not contemplate this work either way.
-**Registering this, not fixing it or the brief file** — a native/executor call on which
-governing-scope pointer is live in this worktree is outside my lane.
+history shows this worktree has in fact been running the Nikaṣa campaign for many
+cycles, so the root brief reads as a stale pointer left over from a different
+worktree/branch context, not a live constraint on this work. I did not edit it (editing
+`CLAUDECODE_BRIEF.md` is itself gated and out of my lane). I proceeded with the explicit,
+detailed, native-authorized Lane B assignment (`NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md`)
+and, for this corrections pass, the gate's own `B_REVIEW.md`. **Registering this, not
+fixing it or the brief file** — a native/executor call on which governing-scope pointer
+is live in this worktree is outside my lane.
 
 ## 1 — Files touched, and why
 
 | File | Status | Reason |
 |---|---|---|
-| `platform/scripts/governance/catalog_provenance.py` | **new** | B-1/B-2/B-3/B-4, one module, read-only DB access only (SELECT). |
-| `platform/scripts/governance/__tests__/test_catalog_provenance.py` | **new** | B-4's four named test cases + two completeness-gate tests, all fixture-driven (no DB, no live snapshot needed to run). |
-| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/producer_provenance.derived.json` | **new (generated)** | B-1 output. |
-| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/CLOSURE_REPORT.md` | **new (generated)** | B-2 output. |
-| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/BUILD_DEPENDENCIES_READER_SCAN.md` | **new (generated)** | B-3 output. |
-| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REPORT.md` | **new** | this file. |
+| `platform/scripts/governance/catalog_provenance.py` | modified (6 commits) | C-1..C-6 corrections, each below. |
+| `platform/scripts/governance/__tests__/test_catalog_provenance.py` | modified (6 commits) | New/rewritten tests per correction, each with recorded mutation evidence. |
+| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/producer_provenance.derived.json` | regenerated | B-1 output, re-derived after every correction. |
+| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/CLOSURE_REPORT.md` | regenerated | B-2 output, re-derived after every correction. |
+| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/BUILD_DEPENDENCIES_READER_SCAN.md` | regenerated | B-3 output; now excludes this lane's own wave1/ prose (C-5). |
+| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REPORT.md` | rewritten (this file) | v2.0, corrections pass. |
 
-**Path note:** the execution prompt's own text refers to `nikasha_test/**` as if it were
-a repo-root directory; the campaign's actual, pre-existing location (matching
-`DECISIONS_RECOMMENDATIONS_v2_0.md`, `STATE.md`, and Lane A's own `wave1/STATE.md`, all
-already present there) is `00_ARCHITECTURE/briefs/nirmana/nikasha_test/`. I wrote there,
-not to a new top-level `nikasha_test/` — creating a second, competing directory tree
-under that name would have forked the campaign's file layout.
-
-I did not touch: any writer, the orchestrator, `editorial.ts`, `compiler.ts`, the
+Not touched: any writer, the orchestrator, `editorial.ts`, `compiler.ts`, the
 register/plan/decisions/STATE files, `asset_census.py`, `asset_elevation_tracker.py`,
-`00_ARCHITECTURE/control/*.jsonl`, or `nikasha_test/harness/**` (Lane A's territory —
-confirmed untouched; I noticed `wave1/a2_t3_proof/` appeared as untracked during this
-session, presumably from a concurrent Lane A run, and left it alone).
+`00_ARCHITECTURE/control/*.jsonl`, `nikasha_test/harness/**`, `wave1/A_REPORT.md`,
+`wave1/a2_t3_proof/**` (Lane A's territory).
 
-## 2 — B-1: the derivation
+## 2 — Corrections after gate review (C-1 … C-6)
 
-### 2.1 — Read-only DB verification (constraint §2.1)
+Each correction below maps to one commit on `campaign/nikasha-test`, its own test(s), and
+a recorded mutation run (the mutation applied, the exact tests that failed under it, then
+reverted and reconfirmed green). C-2 and C-4 share one commit because they are the same
+underlying code fix (`resolve_segment_text`'s out-of-range honesty) reached from two
+different gate-blocking findings; every other correction is its own commit.
 
-```
-$ source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433
-$ psql -h localhost -p 5433 -U amjis_app -d amjis -c "SHOW default_transaction_read_only;"
- default_transaction_read_only
---------------------------------
- on
-(1 row)
-```
+| # | commit | what it fixes | test(s) | mutation run |
+|---|---|---|---|---|
+| C-1 | `a4fef0f7c` | Removed the catch-all NO_DETECTOR fallback in `derive_all`; `--check` now reads the committed `producer_provenance.derived.json` via new `validate_derived_artifact()` against a closed `NO_DETECTOR_REASON_CLASSES` set, instead of re-deriving in memory. | `test_producer_output_requirement_with_no_claims_gets_an_exact_reason_not_a_catchall`, `test_derive_all_leaves_a_genuinely_unclassified_scu_without_a_fabricated_reason` (superseded by C-5's rename below), `test_classify_no_detector_reason_is_a_closed_set`, `test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry` | Restored the catch-all (`"; ".join(...) or "NO_DETECTOR — no source_query requirement"`) → 1 failed, 12 passed (the constructed route_evidence_only orphan regressed to a fabricated generic reason). Reverted; 13 passed. |
+| C-2 + C-4 | `6fa514fc5` | `resolve_segment_text` now returns `(text, out_of_range_reason)` distinguishing missing-file / out-of-bounds / genuinely-resolved. New `source_ref_out_of_range` reason class, taking priority over "resolved, no relation" even when another segment in the same `source_ref` did resolve. New `compute_segment_resolution_counts()` recounts every source_query SCU's declared pieces bounds-checked. | `test_unresolvable_range_yields_no_detector_with_reason` (rewritten to assert 3 distinct exact classes), `test_compute_segment_resolution_counts_distinguishes_full_partial_none` | Removed the bounds-check guard (`if a < 1 or b > n or a > b: return None, ...`) → 2 failed ( both tests above), 12 passed. Reverted; 14 passed. |
+| C-3 | `91658a6a9` | (a) `one_hop_helper_texts` skips any call match immediately preceded by `def`/`function` — a definition header is not a call. (b)/(c) new `classify_segment_kind()` excludes migration- and writer-path segments from producing relation candidates (they still count toward "resolved" for out-of-range purposes, never toward producers). Producer gained `via_helper` for auditability. | `test_one_hop_follower_skips_a_definition_header_not_a_call`, `test_migration_segment_is_never_a_producer_source`, `test_writer_segment_input_read_is_never_a_producer_source` | Removed the def-prefix guard → 1 failed, 16 passed (`ga_decoy` reappeared via `via_helper='unrelated_function'`). Removed the segment-kind exclusion → 2 failed, 15 passed (`bg_decoy`/`bg_texts`/`bg_text_index` reappeared). Reverted each; 17 passed. |
+| C-5 | `f1e244c09` | New `get_non_reviewed_producer_output_claims()` carries a claim whose disposition is anything other than `reviewed_output` (today: `route_evidence_only` for `ka_kalasutra`) through `derive_all` under its OWN disposition — never dropped, never relabeled. New `WAVE1_DIR` exclusion in the reader scan, alongside the existing `PROVENANCE_DIR` one. | `test_producer_output_claim_with_non_reviewed_disposition_is_carried_through` (renamed/rewritten from C-1's interim test), `test_reader_scan_excludes_its_own_wave1_report_and_review` | Removed the non-reviewed carry-through loop → 1 failed, 16 passed (regressed to `producers=[]`). Removed the `WAVE1_DIR` exclusion → 1 failed, 17 passed (20 synthetic prose lines reappeared as hits). Reverted each; 18 passed. |
+| C-6 | `875809a7b` | New `_domain_stem()` + `compute_closure_report`'s `reason_class_and_text()`: a still-outside asset sharing a domain stem with a `relation_unowned_by_registry` table now reports `table_unregistered (<tables>)`, distinct from the generic `no_unit_names_it`. | `test_still_outside_asset_with_a_same_domain_unowned_table_reads_table_unregistered` | Removed the `table_unregistered` branch → 1 failed, 18 passed (`bg_prashna_rules` misreported as the generic reason). Reverted; 19 passed. |
 
-### 2.2 — Population (R220) — a real trap, caught before it produced a wrong number
+Final state: **19/19 tests pass** (`python -m pytest platform/scripts/governance/__tests__/test_catalog_provenance.py -v`).
 
-```sql
-SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag IS NOT TRUE;
-```
-→ **127**. The literal `is_active AND NOT dead_flag` (as R220/D5's own prose states it)
-reads **0** rows in production today, because `dead_flag` is `NULL` on every one of the
-129 rows (2 inactive, 127 active) — `NOT NULL` is `NULL` in three-valued SQL logic, not
-`TRUE`. Verified:
-```sql
-SELECT is_active, dead_flag, count(*) FROM asset_registry GROUP BY 1,2;
---  f |     | 2
---  t |     | 127
-```
-`dead_flag IS NOT TRUE` is the correct predicate and is what `catalog_provenance.py`
-uses throughout (`active_population()`). This is registered as a finding, not fixed
-outside my lane: any other reader of this table using the literal `NOT dead_flag` form
-(the census, the tracker) will silently read zero rows the same way.
+## 3 — B-1: the derivation (post-corrections)
 
-### 2.3 — Snapshot structure confirmed
-
-`capability_knowledge.snapshot.json` has 182 SCUs. Requirement-kind counts across all
-`availability_contracts[].requirements[]`:
-
-| kind | SCU count |
-|---|---|
-| `source_query` | 137 |
-| `producer_output` | 12 |
-| `service_probe` | 9 |
-| `derived` | 3 |
-| *(no availability_contracts at all)* | 28 |
-
-(137+12+9+3=161 distinct SCUs carry at least one contract kind; some SCUs carry more
-than one kind, e.g. `scu.finance.prosperity_assessment` carries both `producer_output`
-and `derived`, so kind-counts don't sum to 182 minus 28 directly — 182 total, 28 with no
-contract at all, 154 with ≥1 contract.)
-
-### 2.4 — Reviewed `producer_output_claims` recount (a finding, not a fix)
-
-The D5 ruling text (`DECISIONS_RECOMMENDATIONS_v2_0.md` §D5) states "Today 12 of 182 units
-[name their producer], naming 15 assets." I independently recomputed this directly off
-`producer_output_claims[].disposition == 'reviewed_output'`:
+### 3.1 — Read-only DB verification
 
 ```
-12 SCUs carry a reviewed_output claim (exact match to the ruling's "12 of 182").
-14 DISTINCT assets are named across those 12 SCUs (not 15):
-  bo_yantra_mechanism, ga_dashas, ga_vargas, ga_positions, bo_chart_gestalt, bg_texts,
-  bg_medical_mappings, bg_nakshatra_medical, bg_sign_medical, bo_cdlm_summary,
-  bo_vargottama_dhana, ka_yojaka, ka_bhavishya_lekha, ga_yoga
+$ source .../pgenv.sh   # pre-resolved read-only DSN, port 5433
+$ psql -Atc "SHOW default_transaction_read_only"
+on
 ```
-This 14-asset figure is corroborated independently by the closure calibration below,
-where seeding the necessity closure with exactly these 14 assets reproduces the ruling's
-own stated baseline (63/127 necessary, 64 not reachable) byte-for-byte, including the
-exact per-layer split (§4.2). The ruling's "15" is very likely a pre-existing
-off-by-one in the D5 prose, not a different asset set — registered here, not corrected in
-`DECISIONS_RECOMMENDATIONS_v2_0.md` (outside this lane).
 
-### 2.5 — `source_ref` resolution (the "135 resolve" figure)
+### 3.2 — Population (R220), unchanged from v1.0
 
-Of the 137 `source_query` SCUs, each `source_ref` is one or more ` | `-joined
-`<file>:<a>-<b>` segments. Resolving every segment (file exists, range in-bounds):
+`SELECT count(*) FROM asset_registry WHERE is_active AND dead_flag IS NOT TRUE` → **127**.
+`dead_flag` is `NULL` on every row today, so the literal `is_active AND NOT dead_flag`
+reads **0** (three-valued-logic trap; `dead_flag IS NOT TRUE` is correct and is what
+`active_population()` uses throughout). Registered as a finding, not fixed outside this
+lane's files.
 
-```
-136 of 137 SCUs have at least one segment that resolves to a real, in-bounds range.
-  1 fully unresolved: scu.catalog.query_classical_texts
-    (both its segments are non-standard shapes: a `#receiptBoundarySql` anchor and a
-    `:new_texts_spec` named-anchor citation, neither is a numeric line range)
- 11 partially resolved (a mix of good numeric-range segments and non-standard ones,
-    e.g. whole-file citations or single-line `:N` migration citations)
-125 fully resolved (every segment is a valid numeric range)
-```
-This is **136**, one more than the execution prompt's stated "135 resolve" — registered
-as a minor discrepancy, not adjudicated (I did not find a resolution method that yields
-exactly 135; the prompt's figure may have used a stricter "every segment must resolve"
-definition, which gives 125, or counted differently — I report my own reproducible
-number and the exact command/logic, not a guess at which prior figure is "right").
-
-### 2.6 — What the derivation actually classifies
-
-Running `catalog_provenance.py --derive` against production:
+### 3.3 — `--derive` against production
 
 ```
 $ python3 platform/scripts/governance/catalog_provenance.py --derive
-[B-1] 108/182 SCUs have a named producer -> .../provenance/producer_provenance.derived.json
+[B-1] 107/182 SCUs have a named producer -> .../provenance/producer_provenance.derived.json
 ```
-
-Full summary from the output file:
 
 ```json
 {
   "total_scus": 182,
-  "scus_with_producers": 108,
-  "scus_no_detector": 74,
+  "scus_with_producers": 107,
+  "scus_no_detector": 75,
   "no_detector_reason_counts": {
-    "no availability_contracts requirement and no reviewed_output claim": 28,
-    "relation name": 29,
-    "resolved source range": 16,
-    "no source_query requirement": 1
+    "no_contract": 28,
+    "relation_unowned_by_registry": 28,
+    "no_relation_in_range": 11,
+    "source_ref_out_of_range": 7,
+    "derived_kind_no_source_query": 1
   }
 }
 ```
 
-Reading the 74 NO_DETECTOR units by class:
+**107, not 108** (v1.0's figure). The one SCU that moved is
+`scu.catalog.query_graha_naisargika_friendship`, whose only v1.0 producer
+(`bg_dignity_reference`) was a false positive from a migration segment (C-3(b)); it now
+correctly reports `NO_DETECTOR — relation_unowned_by_registry` (its handler's actual read,
+`bg_graha_naisargika_friendship`, is a real but unregistered table). Every other SCU
+affected by C-3 still has ≥1 producer, just fewer/correct ones — the named-SCU count only
+moves by the one SCU that lost its sole (wrong) producer.
 
-- **28** — the SCU has no `availability_contracts` entry at all and no reviewed claim
-  (the 28 counted in §2.3). Honest: there is nothing for this lane to derive from.
-- **16** — the source_ref resolved to real file text, but no `FROM`/`JOIN`/`UPDATE`/`INTO`
-  relation name inside a string literal in that exact range matched
-  `asset_registry.target_table ∪ information_schema.tables`. Traced by hand for
-  `scu.catalog.call_dasha_eligibility`: its declared range
-  (`call_service_wrappers.ts:298-325`) sits entirely inside the capability's
-  `input_schema` block (parameter descriptions, e.g. the literal word "today" in
-  `"...Default: today."` at line 305/308 — the exact noise-word trap the prompt names);
-  the handler's actual `SELECT ... FROM chart_dashas` is at line ~352, **outside** the
-  declared range. This is a real gap in the *source_ref annotation itself*, not a
-  derivation bug — I did not widen the search past the declared range (that would
-  silently redefine what "resolves" means); flagged as a finding for whoever owns
-  `source_query_availability.ts`'s annotations.
-- **29** — a real relation name was found (it exists in `information_schema.tables`),
-  but no `asset_registry` row claims it as `target_table`. Verified by hand these are
-  genuinely-existing tables with zero registry ownership, e.g. `bg_combustion_orbs`,
-  `bg_avastha_schemes`, `bodha_rm_chart_summary`, `mimamsa_discoveries`,
-  `brahma_vichara_constants`, `ga_prashna_lagna`, `charts`, `asset_registry` itself.
-  This is the single largest honest-limits finding of this lane: **~20 real, queried
-  tables have no owning asset_registry row at all**, so no amount of better SQL parsing
-  closes these — they need either a registry row (if they should be an asset) or a
-  documented reason they aren't one. Registered, not fixed (asset_registry is out of
-  this lane's write scope).
-- **1** — `scu.catalog.query_current_transit_snapshot`'s only requirement is `kind:
-  derived` (points at another binding, not a source_query), per spec correctly routed
-  to NO_DETECTOR.
+Reason classes, exactly as C-2/C-4 and C-3 leave them:
 
-### 2.7 — Calibration against the 12 reviewed SCUs
+- **28 `no_contract`** — no availability_contracts entry at all, no reviewed claim.
+  Honest: nothing to derive from.
+- **28 `relation_unowned_by_registry`** (the "29-class" from v1.0's own recount, now
+  net-adjusted by C-3's fixes — see §3.5 for the reconciliation) — a real relation name
+  was found, exists in `information_schema.tables`, but no `asset_registry` row claims it
+  as `target_table`. **27 distinct tables** (not "~20" — v1.0's figure was a rough
+  estimate; C-5(iv) computes it exactly by parsing every `relation_unowned_by_registry`
+  message: `asset_registry`, `bg_avastha_schemes`, `bg_combustion_orbs`, `bg_graha_dik`,
+  `bg_graha_naisargika_friendship`, `bg_motion_state_thresholds`,
+  `bg_prashna_fructification_rules`, `bg_prashna_lagna_methods`, `bg_prashna_significators`,
+  `bg_prashna_special_techniques`, `bg_prashna_tajik_yogas`, `bg_shashtiamsha_deities`,
+  `bg_transit_av_gates`, `bg_transit_moorti`, `bg_transit_vedha`,
+  `bg_vastu_direction_remedials`, `bodha_rm_chart_summary`,
+  `bodha_rm_dasha_windowed_prescriptions`, `bodha_rm_dosha_remedy_bundles`,
+  `bodha_rm_pattern_remedies`, `bodha_rm_remedy_prescriptions`, `bodha_triangulation`,
+  `brahma_vichara_constants`, `ga_prashna_lagna`, `kala_paddhati_profile`,
+  `mimamsa_attribution`, `mimamsa_discoveries`).
+- **11 `no_relation_in_range`** (down from 16 in v1.0) + **7 `source_ref_out_of_range`**
+  (new class) — v1.0's single "resolved source range(s) contain no relation name" bucket
+  of 16 conflated two different causes; C-2/C-4 split it. The 7 that moved to
+  `source_ref_out_of_range` are exactly: `get_aspects` (declared 55-91, file has 86
+  lines), `get_avasthas` (71-100, 91 lines), `get_dignity` (78-108, 104 lines),
+  `get_eclipse_flags` (38-62, 60 lines), `get_ashtakavarga`, `get_panchanga`,
+  `get_structural` (each loses its one handler segment to an out-of-bounds ref while a
+  migration segment happens to still resolve). The remaining 11 are real limits of the
+  method (six remedy handlers whose range holds no SQL; `query_cdlm_summary`'s
+  `FROM ${table}` via a `TIER_TABLE` map; `call_dasha_eligibility`'s annotation gap).
+- **1 `derived_kind_no_source_query`** — `scu.catalog.query_current_transit_snapshot`,
+  correctly routed by spec.
 
-5 of the 12 reviewed SCUs also carry a `kind: source_query` contract (the other 7 carry
-only `producer_output`, so there's nothing for the source_query derivation path to
-compare against on those 7 — correctly reported as "no source_query contract... nothing
-to compare", not a disagreement).
+### 3.4 — `source_ref` resolution recount (C-4, replaces v1.0's 125/11/1)
 
-| SCU | reviewed | derived (from source_query) | verdict |
+v1.0 reported "125 fully resolved / 11 partial" under the definition "file exists, range
+in-bounds" — but that 125 was actually the SHAPE-VALID count (137 − 12 non-numeric-range
+citations), never bounds-checked. `compute_segment_resolution_counts()` now resolves
+EVERY declared `|`-joined piece of every `source_query` SCU's `source_ref` and checks
+bounds on each:
+
+```
+113 full (every declared piece is a real, in-bounds range)
+ 23 partial (some pieces in-bounds, at least one stale/OOB or non-numeric)
+  1 none (scu.catalog.query_classical_texts — both its pieces are #anchor/:name citations)
+```
+
+**12 SCUs carry at least one stale (out-of-bounds) or missing numeric piece** — registered
+here as an outside-scope finding for whoever owns `source_query_availability.ts`'s
+annotations; none of these 12 refs were edited by this lane:
+
+`get_ashtakavarga`, `get_aspects`, `get_avasthas`, `get_database_schema`, `get_dignity`,
+`get_eclipse_flags`, `get_medical_indications`, `get_panchanga`, `get_structural`,
+`get_vastu_directions`, `query_contradictions`, `query_question_lenses`.
+
+(7 of these — `get_ashtakavarga`, `get_aspects`, `get_avasthas`, `get_dignity`,
+`get_eclipse_flags`, `get_panchanga`, `get_structural` — are the ones whose stale segment
+actually changes their NO_DETECTOR reason class, per §3.3; the other 5 have a working
+segment elsewhere in the same `source_ref` and are unaffected in outcome, only in this
+stricter count.)
+
+### 3.5 — The 4 false producers (C-3), and the closure impact
+
+| SCU | wrong producer (v1.0) | cause | now |
 |---|---|---|---|
-| `scu.catalog.get_divisionals` | `ga_vargas` | `ga_vargas` | **agree** |
-| `scu.catalog.get_positions` | `ga_positions` | `ga_ayurdaya, ga_nakshatra, ga_panchanga, ga_positions, ga_sade_sati, ga_sensitive, ga_sensitive_degree` (all 7 `chart_facts` co-producers, flagged `shared`) | **agree** (superset — see below) |
-| `scu.kala.temporal_activation` | `ka_yojaka, ka_bhavishya_lekha` | 10 assets incl. both reviewed ones, plus the `bodha_msr_signals`/`kala_gochara_windows` co-producers the handler also queries | **agree** (superset) |
-| `scu.catalog.query_classical_texts` | `bg_texts` | *(none — this is the one fully-unresolved SCU, §2.5)* | **disagree** (NO_DETECTOR, not wrong) |
-| `scu.yoga.firing_and_cancellation` | `ga_yoga` | `bo_laksana, ka_kalasutra` | **disagree, with nuance (see below)** |
+| `scu.catalog.get_ayurdaya` | `ga_dashas` / `chart_dashas` | C-3(a): one-hop follower matched `def replace_prior_chart_dashas(` (a definition header, the LAST line of the `_idempotency.py:54-78` range) as a call, then ingested that function's body | producer removed; `ga_ayurdaya`/`chart_facts` (the handler's real query) unaffected |
+| `scu.catalog.get_sensitive_degrees` | `ga_dashas` / `chart_dashas` | same cause, same shared helper file | producer removed; the 7 real `chart_facts` co-producers unaffected |
+| `scu.catalog.query_compendium_index` | `bg_texts`/`bg_text_index` / `classical_text_chunks` | C-3(c): the writer's own INPUT read (`bg_compendium_index.py` reading `classical_text_chunks` to build its index) was taken as the SCU's query | producers removed; `bg_compendium_index`/`brahma_compendium_index` (the handler's real query) unaffected |
+| `scu.catalog.query_graha_naisargika_friendship` | `bg_dignity_reference` | C-3(b): migration 606's own unrelated integrity-check SQL was taken as the SCU's query | now correctly `NO_DETECTOR — relation_unowned_by_registry` (the handler's real read, `bg_graha_naisargika_friendship`, is unregistered) |
 
-**`get_positions` / `temporal_activation` "supersets":** the handler queries the shared
-table `chart_facts` (7 producing `ga_*` assets) / `bodha_msr_signals` +
-`kala_gochara_windows` (their own shared-table producers). The query in both cases pins
-its category filter through a **bound SQL parameter** (`fact_category = ANY($2::text[])`
-with the actual category list built as a plain JS array literal elsewhere in the
-handler, not inlined into the SQL string), so this lane's textual pin-narrowing (which
-only reads pins written directly inside the SQL string literal, e.g.
-`fact_category = 'ayurdaya'` or an inline `ARRAY['a','b']`) cannot narrow it — per B-1's
-own rule ("otherwise keep all, flagged"), every co-producer of the shared table is kept,
-correctly flagged `shared: true`. This is not a false positive: `ga_positions` is
-correctly present in the set, just not alone. Registered as an honest limit (§5).
+**Closure headline does not move**: `bg_dignity_reference` was never load-bearing for the
+111 figure (reached via another path already) — confirmed by re-running `--closure` after
+the fix and getting the same 111/127.
 
-**`scu.yoga.firing_and_cancellation`:** this SCU carries BOTH a `producer_output`
-requirement (`ga_yoga`, the reviewed claim) AND a separate `source_query` requirement
-for a *different* capability route (`yoga_activation_by_dasha`,
-`register_d8_assess_domain.ts:1906-1963|2024-2039`) that queries `bodha_msr_signals`
-(→ `bo_laksana`) and `kala_gochara_windows` (→ `ka_kalasutra`) for activation timing —
-not `ga_yoga_firings`. Both are correct at once: the SCU draws on `ga_yoga` for the
-classical firing/cancellation facts and on `bo_laksana`/`ka_kalasutra` for the timing
-route the source_query contract specifically covers. My derivation, scoped to the
-`source_query` requirement only (per B-1's instruction), never claims to reproduce
-`ga_yoga` — the merged `producers[]` for this SCU in the output file correctly contains
-all three (`ga_yoga` via the carried-through reviewed claim, `bo_laksana` and
-`ka_kalasutra` via the derivation), so nothing is actually lost; the calibration
-"disagree" verdict is about the source_query-only comparison, not about the SCU's final
-producer set.
+An incidental, positive side effect noticed while verifying: `scu.catalog.get_chart_header`
+previously reported ALL 7 `ga_*` co-producers of `chart_facts` as `shared: true`, because
+`query_pins` extraction was reading pin literals out of excluded migration segments too,
+diluting the real pin. With migration/writer segments excluded from literal extraction,
+the handler's own `fact_category = 'graha_position'` pin now correctly narrows this SCU to
+its single real owner, `ga_positions` (plus the equally-real `ga_dashas`/`chart_dashas`
+producer from the SAME handler's own `chart_dashas` query — a genuine read, not a false
+positive, verified by reading `chart_header.ts:72-94` directly).
 
-## 3 — B-2: the necessity closure
+## 4 — B-2: the necessity closure
 
 ```
 $ python3 platform/scripts/governance/catalog_provenance.py --closure
 [B-2] necessary before=63, after=111 (of 127) -> .../provenance/CLOSURE_REPORT.md
 ```
 
-**Before** (seeded from the 14 reviewed-only producer assets — reproducing the D5
-ruling's own baseline exactly):
+**Before** (14 reviewed-seed assets — unchanged from v1.0 and from the D5 ruling's own
+baseline): **63/127** necessary, 64 not reachable, split 21 brahmagyan / 4 bodha / 6
+ganita / 9 kala / **24** phala+mimamsa (9 phala + 15 mimamsa — the ruling's own stated "23"
+undercounts by one; the ruling's total of 64 is only internally consistent with 24, not
+23; registered, not corrected in `DECISIONS_RECOMMENDATIONS_v2_0.md`).
 
-```sql
--- transitive closure over asset_registry.depends_on, seeded from the 14 reviewed assets
-```
-→ **63 / 127** necessary, **64** not reachable. Per-layer breakdown of the 64
-(independently recomputed this session, not read off the ruling text):
+**After** (all reviewed ∪ derived ∪ route-evidence producer assets): **94 distinct named
+assets** (not 95 — one fewer than v1.0's figure, because `bg_dignity_reference` no longer
+appears anywhere in the seed set once C-3 removed its one false-positive citation) →
+**111/127** necessary, **16** not reachable. This is unchanged from v1.0 — the closure
+headline does not move on any of the six corrections.
 
-| layer | count |
-|---|---|
-| brahmagyan | 21 |
-| bodha | 4 |
-| ganita | 6 |
-| kala | 9 |
-| mimamsa | 15 |
-| phala | 9 |
-| **total** | **64** |
+The 16 still outside, now split by C-6's two distinct reason classes:
 
-This exactly matches the D5 ruling's "21 L0, 9 L3, 6 L1, 4 L2" and its total of 64. The
-ruling's own text bundles phala+mimamsa as "23" — my independent count is **9 + 15 = 24**,
-one more than stated (the 64 total is still correct either way: 21+4+6+9+24=64 with my
-split, or 21+4+6+9+23=63 with the ruling's, which would make its own stated total wrong
-by one). Registered as the same class of off-by-one as the 14-vs-15 asset count in §2.4
-— not corrected in the ruling document (outside this lane).
-
-**After** (seeded from all 95 reviewed ∪ derived producer assets — this session's B-1
-output):
-
-→ **111 / 127** necessary, **16** not reachable — a gain of 48 assets shown necessary
-purely from naming more of the catalog's real producers (14 → 95 named producer assets).
-By layer, the 16 still outside (full reasons in `CLOSURE_REPORT.md`):
-
-| layer | count | assets |
+| reason class | count | assets |
 |---|---|---|
-| brahmagyan | 7 | `bg_cohort`, `bg_concordance`, `bg_gochara_arcs`, `bg_gochara_citation_resolution`, `bg_prashna_rules`, `bg_vidhi_floors`, `bg_vidhi_primitives` |
-| bodha | 1 | `bo_grounding` |
-| ganita | 1 | `ga_prashna` |
-| kala | 2 | `ka_kshetra`, `ka_tulana` |
-| mimamsa | 5 | `lel_events`, `mi_bhara`, `mi_sankalpa`, `mi_seva`, `mi_vistara` |
+| `table_unregistered` | 2 | `bg_prashna_rules`, `ga_prashna` — both share the `prashna` domain stem with 6 unregistered tables (`bg_prashna_fructification_rules`, `bg_prashna_lagna_methods`, `bg_prashna_significators`, `bg_prashna_special_techniques`, `bg_prashna_tajik_yogas`, `ga_prashna_lagna`) that real catalog SCUs (`query_prashna_*`, `get_prashna_lagna`) DO query. These two assets likely DO produce a unit; the registry, not the catalog, has the gap. Under D5 part 3 this is a merge/retire candidate, never a true closure failure. Honest limit: the stem heuristic correlates by shared domain word, not by parsing each writer's actual `INSERT`/`COPY` targets, so it lists all 6 same-domain tables as candidates for BOTH assets rather than asserting a precise 1:1 assignment. |
+| `no_unit_names_it` | 14 | `bg_cohort`, `bg_concordance`, `bg_gochara_arcs`, `bg_gochara_citation_resolution`, `bg_vidhi_floors`, `bg_vidhi_primitives`, `bo_grounding`, `ka_kshetra`, `ka_tulana`, `lel_events`, `mi_bhara`, `mi_sankalpa`, `mi_seva`, `mi_vistara` |
 
-Every remaining-outside asset's reason (from `compute_closure_report`'s `reason_for()`)
-is one of exactly two honest classes: "no catalog unit names this asset as a producer,
-and no unit-producing asset depends on it (transitively)" — the only class actually
-produced against the live registry. (A second class in the code path — "appears in some
-necessary asset's depends_on only outside the active set" — never fired in this run; kept
-because it is a real possible cause the closure logic must distinguish, not dead code.)
+**Phala, corrected (C-5(v)):** zero phala assets are outside the closure — but NOT
+"chiefly via service_probe-derived chains reaching L4" as v1.0 wrongly stated. Verified
+directly from the regenerated artifact: all 9 `ph_*` assets
+(`ph_muhurta`, `ph_nimitta`, `ph_phaladesa`, `ph_pramana`, `ph_pratikara`,
+`ph_rectification`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`) are **direct**
+`derived_from_source_query` producers of some catalog SCU. No service_probe chain is
+involved, and an L0 service probe could not pull an L4 asset into the seed set that way in
+any case (L4 depends on lower layers, not the reverse).
 
-**phala**: notably, **zero** phala assets remain outside the closure after this lane's
-derivation (all 9 are now necessary, chiefly via `service_probe`-derived
-`bg_ephemeris_engine`/`bg_panchanga`/`ka_graha_sancara`/`ka_muhurta_seva` and
-`source_query`-derived chains reaching L4). This is a real result of naming more
-producers, not a construction artifact — worth the gate reviewer's attention as the
-single largest before/after swing.
+**The yoga SCU's timing route (C-5(v)):** `scu.kala.temporal_activation`'s `source_query`
+requirement resolves to `kala_activation` (via `ka_kalasutra`), **not**
+`kala_gochara_windows` as v1.0 stated. Verified directly from the regenerated artifact —
+the producer entry's `table` field reads `kala_activation`. `scu.yoga.firing_and_cancellation`
+(the SCU that carries BOTH the `producer_output` claim for `ga_yoga` and, separately, a
+`source_query` route through `bo_laksana`/`ka_kalasutra`) is unaffected by this correction;
+only the table name in the narrative was wrong.
 
-## 4 — B-3: `build_dependencies` reader scan
+## 5 — B-3: `build_dependencies` reader scan
 
 ```
 $ python3 platform/scripts/governance/catalog_provenance.py --reader-scan
-[B-3] build_dependencies reader scan: 80 hits -> .../provenance/BUILD_DEPENDENCIES_READER_SCAN.md
+[B-3] build_dependencies reader scan: 76 hits -> .../provenance/BUILD_DEPENDENCIES_READER_SCAN.md
 ```
 
-**A bug caught and fixed in this lane's own code before finalizing:** the first run
-reported 67 hits; a second consecutive run (with no repo change) reported **144** —
-because the scan's own prior output file
-(`provenance/BUILD_DEPENDENCIES_READER_SCAN.md`, which lists the term on every hit line)
-lives inside the repo tree and got re-scanned as a new source of hits, a runaway
-self-referential loop. Fixed by excluding `PROVENANCE_DIR` (this lane's own generated
-output) from the walk; verified stable at **80 hits across 37 files** across two more
-consecutive runs. The stable 80 (vs. the original 67) legitimately includes this lane's
-own new files (`catalog_provenance.py`'s docstrings, this report, the test file) which
-mention `build_dependencies` in prose — a real, non-runaway count, confirmed idempotent.
-A regression test (`test_reader_scan_excludes_its_own_provenance_output_dir`) is in the
-test file. Full file list with line numbers in `BUILD_DEPENDENCIES_READER_SCAN.md`.
+**76, stable (C-5(iv))** — not 80, and not the 81 the gate review found on re-running
+v1.0's script. v1.0 already excluded `PROVENANCE_DIR` (this lane's own generated JSON/MD
+output) after finding a 67→144 self-referential runaway; what it did NOT exclude was
+`wave1/` (this lane's own `B_REPORT.md`/`B_REVIEW.md`), which discuss
+"build_dependencies" at length while describing the scan itself — a real, if
+non-runaway, source of drift (observed 80→81 the moment `B_REPORT.md` gained one line).
+`WAVE1_DIR` is now excluded the same way `PROVENANCE_DIR` is, and the figure is now stable
+across repeated runs (confirmed twice consecutively).
 
-Of the 80 hits, **the only live code that actually queries the table** (not a comment, a
-doc, a retired-route note, this lane's own report, or a teardown script) is:
+Same 37 files, same conclusion as v1.0: the only LIVE code that actually queries the
+table is `platform/python-sidecar/pipeline/dispatcher.py` (`_load_dep_graph()` /
+`rebuild_asset()`), and `pipeline.dispatcher` is imported nowhere else in the repo —
+observed fact, not a recommendation to drop anything (B-3 is read-only; the table is
+untouched). Everything else is comments on already-repointed TS routes, historical
+migrations, governance docs, and one unapplied teardown script.
 
-- `platform/python-sidecar/pipeline/dispatcher.py` — `_load_dep_graph()` (line 33:
-  `SELECT asset_id, depends_on FROM build_dependencies`) and `rebuild_asset()` (line 213:
-  `SELECT asset_id, category_prefix FROM build_dependencies WHERE asset_id = ANY(%s)`).
-- `platform/python-sidecar/tests/test_ga_idempotency.py` — mocks these two exact query
-  strings (lines 266/268), i.e. it tests `dispatcher.py`'s own behavior, not a second
-  independent reader.
-
-I additionally checked (read-only) whether `dispatcher.py` is imported/called from
-anywhere live: **no other module in the repo imports `pipeline.dispatcher`** — its only
-"caller" is its own test file. So `build_dependencies`'s one live reader is itself an
-apparently-uncalled module today; I state this as observed fact, not as a recommendation
-to drop anything (B-3 is a reader scan only, per the constraint — the table is untouched).
-
-Everything else in the 67 hits is: TS routes that have already been repointed to
-`asset_registry.depends_on` and only mention `build_dependencies` in a comment
-explaining *why* (`cascade-preview/route.ts`, `cascade/route.ts`,
-`data-readiness/route.ts`); a `plan.test.ts` assertion that the plan builder does NOT
-read `build_dependencies`; historical migrations (`154`, archived `158`, `343` — 343
-itself documents that the TS routes were retired but `dispatcher.py` was not); governance
-docs/handoffs discussing the two-DAG problem; and one teardown script
-(`infra/teardown/01_drop_tables.sql`, an unapplied `DROP TABLE IF EXISTS`, not live).
-
-## 5 — B-4: `--check`
+## 6 — B-4: `--check`
 
 ```
 $ python3 platform/scripts/governance/catalog_provenance.py --check
-[B-4] --check PASS: all 182 SCUs have a producer or a no_detector reason.
+[B-4] --check PASS: all 182 SCUs in .../provenance/producer_provenance.derived.json have a valid producer or a no_detector reason from the closed reason set.
 ```
 
-Four named test cases (`__tests__/test_catalog_provenance.py`), each independently
-mutation-checked this session (mutated the code, confirmed the specific test fails,
-reverted, confirmed the suite is clean again — not asserted, actually run):
-
-| case | test(s) | mutation applied | result without fix |
-|---|---|---|---|
-| 1. resolvable range → derived producer | `test_resolvable_range_yields_derived_producer` | `resolve_segment_text` forced to always return `None` | **FAILS** (`reason` is a NO_DETECTOR string instead of `None`) |
-| 2. unresolvable range → no_detector with reason | `test_unresolvable_range_yields_no_detector_with_reason` | (same mutation also exercises this path; the out-of-bounds sub-case is the one proven to fail without the fix) | **FAILS** under the same mutation as case 1; the file-existence check is a second, independently-verified line of defense for the bad-shape sub-case (a loosened source_ref regex still can't resolve a nonexistent path — verified experimentally, not just asserted) |
-| 3. shared table → all producers flagged | `test_shared_table_flags_every_producer`, `test_natural_key_partition_pin_narrows_to_one_owner` | `narrow_producers_by_partition` forced to always return `candidates[:1], False` | **FAILS** (`owner_b` missing from the shared-table test) |
-| 4. noise words never appear as producers | `test_noise_words_never_appear_as_producers`, `test_find_relation_candidates_can_produce_noise_without_the_filter` | `filter_known_relations` made a no-op passthrough | **FAILS** (both; the fixture gives `unnest`/`today` registered decoy asset owners specifically so a bypassed filter surfaces them as real producers, not just "no owner existed anyway") |
-
-Plus three tests not among the four named cases: two directly on the `--check` gate
-itself (`test_check_completeness_fails_on_a_scu_with_neither_producer_nor_reason`,
-`test_check_completeness_passes_when_every_scu_is_accounted_for`) proving the gate can
-read both PASS and FAIL, and one regression test for the self-referential reader-scan
-bug found and fixed this session (`test_reader_scan_excludes_its_own_provenance_output_dir`,
-§4).
+**Now a real gate (C-1):** `--check` reads the committed JSON artifact directly via
+`validate_derived_artifact()` — it never re-derives. A `derived_from_source_query`
+producer must carry a non-null `table` AND a range-shaped `source_ref`; a
+`reviewed_output`/`derived_from_service_probe`/`route_evidence_only` producer is a
+declared exemption from that (each already carries its own evidence citation) but must
+still carry a non-empty `source_ref`; a `no_detector` reason must classify into the closed
+`NO_DETECTOR_REASON_CLASSES` set via `classify_no_detector_reason()` — anything that
+doesn't match a named pattern comes back `"unclassified"`, which is deliberately NOT a
+member of that set. The gate review's own constructed cases (an SCU with only an
+unreviewed `producer_output` requirement; a stale/hand-edited artifact entry) now both
+correctly fail when they should.
 
 ```
 $ python -m pytest platform/scripts/governance/__tests__/test_catalog_provenance.py -v
-======================== 9 passed in 0.04s ========================
+======================== 19 passed in 0.05s ========================
 ```
 
-## 6 — Governance checks (constraint §2.7)
+Full test list and per-correction mutation evidence: §2 above.
+
+## 7 — Honest limits (every reason class, with counts) — post-corrections
+
+Of 182 SCUs: **107 have a named producer** (12 reviewed SCUs / 14 reviewed assets + **95**
+derived-only SCUs / **80** derived-only assets = **94** distinct assets total, not the
+v1.0 figures of "14+94=108 SCUs" / "14+81=95 assets" — both corrected downward by exactly
+the one false-producer SCU C-3 removed). **75 are `NO_DETECTOR`** (up from 74 — the same
+one SCU), broken down exactly as in §3.3.
+
+**The `producer_output` requirement count is 11 SCUs, not 12** (C-5(iv)) — 12 is the
+requirement COUNT (`scu.finance.prosperity_assessment` carries two, one per co-producer),
+11 is the distinct-SCU count.
+
+**"15 assets" is not an off-by-one (C-5(i)) — both 14 and 15 are correct, for different
+sets.** `{c['asset_id'] for scu in scus for c in scu['producer_output_claims']}` (every
+claim, any disposition) → **15**, because `ka_kalasutra` enters via
+`scu.kala.temporal_activation`'s `route_evidence_only` claim. Filtering to
+`disposition == 'reviewed_output'` only → **14**. The D5 ruling counted claims ("naming 15
+assets"); v1.0 counted only reviewed claims and then wrongly called the ruling's 15 an
+off-by-one. **v1.0's "the 63/127 calibration corroborates 14" claim is retracted**: seeding
+the closure with the 15-asset set (adding `ka_kalasutra`) also gives 63, because
+`ka_kalasutra` is already upstream of `ka_yojaka`/`ka_bhavishya_lekha` — the baseline
+cannot distinguish 14 from 15 seeds, so it corroborates neither over the other.
+
+**A third disposition, `derived_from_service_probe` (C-5(ii)):** 9 rows, `table: null`,
+an anchor (`service_probe:...` or the requirement's own `source_ref`) instead of a numeric
+range. These are read directly off a `kind: service_probe` requirement's own `asset_id` —
+no SQL parsing attempted or needed. `validate_derived_artifact` treats this disposition as
+a declared exemption from the table+range requirement, same as `reviewed_output` and
+`route_evidence_only`.
+
+**The `route_evidence_only` claim is carried, not dropped (C-5(iii)):**
+`scu.kala.temporal_activation` now carries `ka_kalasutra` twice in its `producers[]` — once
+via the carried `route_evidence_only` claim (evidence: "query_temporal_activation handler
+reads kala_activation") and once via the independently-derived `derived_from_source_query`
+route (table `kala_activation`) — both correct at once, neither overwrites the other.
+
+**Calibration set:** unchanged in substance from v1.0 — 5 of 12 reviewed SCUs are directly
+comparable (carry a `source_query` contract); 3 agree (2 as an honest superset via a
+correctly-flagged shared table), 2 "disagree" (one genuinely unresolvable, one covering a
+different producing route than the reviewed claim — both correct, nothing lost in the
+merged output).
+
+## 8 — Findings outside scope (registered, not fixed)
+
+1. `dead_flag` is `NULL` on every production row; `is_active AND NOT dead_flag` silently
+   reads 0 rows. `dead_flag IS NOT TRUE` is correct. (§3.2)
+2. The D5 ruling's per-layer "23 Phala/Mīmāṃsā" sums to 24 by direct count (9 phala + 15
+   mimamsa); the ruling's own total of 64 is internally consistent only with 24. (§4)
+3. 12 SCUs carry a stale (out-of-bounds) or non-numeric `source_ref` piece — named
+   individually in §3.4 — a `source_query_availability.ts` annotation-drift finding, not a
+   derivation bug. None of the 12 refs were edited by this lane.
+4. **27** real, queried tables have no owning `asset_registry` row at all (§3.3's full
+   list) — a genuine registry-coverage gap. Two of them (the `bg_prashna_*` family and
+   `ga_prashna_lagna`) are flagged `table_unregistered` in the closure report (§4) because
+   they share a domain stem with a still-outside asset; the other 25 have no such
+   correlated asset and are registered here as a flat list.
+5. `pipeline/dispatcher.py` (the one live reader of `build_dependencies`) is imported
+   nowhere else in the repo — may itself be dead code, independent of the
+   `build_dependencies` retirement question.
+6. The `table_unregistered` correlation (C-6) is a same-domain-stem heuristic, not a
+   parse of each writer's actual `INSERT`/`COPY` targets — it lists candidate tables, not
+   a precise 1:1 assignment. Stated in §4, not hidden.
+7. `producer_provenance.derived.json` records `via_helper` (C-3) but does not separately
+   report an aggregate "N producers found via helper vs. directly" count — a future pass
+   could add this if the provenance is valuable at that granularity.
+
+None of these were fixed silently; all are visible in this report and the generated
+artifacts.
+
+## 9 — Stop conditions
+
+Not triggered, in either the original pass or this corrections pass. No writer,
+orchestrator, or sealed-tier change was needed; no production write occurred; no
+migration was applied. §0 (the stale `CLAUDECODE_BRIEF.md` pointer) was registered rather
+than treated as a stop condition, per the reasoning given there.
+
+## 10 — Not in this lane (confirmed untouched)
+
+`compiler.ts` was not read or modified. `editorial.ts` was read only, never edited. Lane
+A's files (`asset_census.py`, `asset_elevation_tracker.py`, `00_ARCHITECTURE/control/
+*.jsonl`, `nikasha_test/harness/**`, `wave1/A_REPORT.md`, `wave1/a2_t3_proof/**`) were
+neither staged nor reverted at any point in this corrections pass.
+
+## 11 — Governance checks (constraint §2.7)
 
 ```
 $ python3 platform/scripts/governance/manifest_fingerprint.py --check
@@ -388,94 +383,26 @@ fingerprint declared: f484f581767ad641
 fingerprint observed: f484f581767ad641
 MATCH
 ```
+No rotation needed — `catalog_provenance.py` and its test file are not registered in
+`CAPABILITY_MANIFEST.json`.
 
 ```
-$ source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433
-$ python3 platform/scripts/governance/drift_detector.py --session-id nikasha-wave1-laneB
+$ source .../pgenv.sh
+$ python3 platform/scripts/governance/drift_detector.py --session-id nikasha-wave1-laneB-corrections
 drift_detector: 1 findings; exit=3
 ```
-Exit **3** (sanctioned: "exit 0 or 3 only"). The one finding is pre-existing and
-unrelated to this lane: `a3_category_not_yet_populated`, LOW severity — 73
-`CHART_FACTS_SCHEMA.json` categories not yet written to `chart_facts` by any writer
-("a soft check — writers are expected to be added incrementally"). Nothing this lane
-touched (`asset_registry`, `chart_facts`, any writer) caused or could cause this
-finding. `manifest_fingerprint.py` needed no rotation (no `CAPABILITY_MANIFEST.json`
-row references any file this lane created).
+Exit **3** (sanctioned: "exit 0 or 3 only"). The one finding is the same pre-existing,
+unrelated one v1.0 reported: `a3_category_not_yet_populated`, LOW severity — 73
+`CHART_FACTS_SCHEMA.json` categories not yet written to `chart_facts` by any writer (a
+soft check; writers are expected to be added incrementally). Nothing this lane touched
+(`asset_registry`, `chart_facts`, any writer) caused or could cause this finding.
 
-## 7 — Honest limits (every reason class, with counts)
+## 12 — What is NOT done
 
-Of 182 SCUs: **108 have a named producer** (14 reviewed + 94 newly derived by this
-lane's script — 95 distinct assets total including overlaps with the reviewed set),
-**74 are `NO_DETECTOR`**, broken down exactly as in §2.6:
-
-| reason class | count | fixable by this lane? |
-|---|---|---|
-| No availability contract at all, no reviewed claim | 28 | No — nothing to derive from; a catalog-completeness gap (D5 part 1), not this lane's job |
-| Relation found, but no `asset_registry` row owns it as `target_table` | 29 | No — `asset_registry` writes are out of scope; needs a registry decision |
-| Resolved range contains no matching relation (annotation gap or bound-parameter category filter) | 16 | No — would require either widening past the declared `source_ref` range (redefines "resolves") or JS data-flow analysis beyond a regex-based script |
-| `kind: derived` with no source_query requirement | 1 | No — by spec, routed to NO_DETECTOR |
-
-None of these 74 were "fixed" by guessing; every one carries its exact reason in
-`producer_provenance.derived.json`.
-
-**Calibration set** (§2.7): 5 of 12 reviewed SCUs are directly comparable (have a
-`source_query` contract); 3 agree (2 as an honest superset via a correctly-flagged
-shared table), 2 "disagree" — one because the SCU is genuinely unresolvable (not a
-derivation error), one because the source_query contract legitimately covers a
-different producing route than the reviewed claim (both are correct, nothing is lost
-in the merged output).
-
-**One-hop helper following**: implemented (`one_hop_helper_texts`, TS brace-matching /
-Python indent-block extraction, non-recursive) but its practical yield on this
-snapshot's 137 units was not separately measured (no field distinguishes "found via a
-helper hop" from "found directly" in the output — an omission I noticed only while
-writing this report; a future pass could add a `via_helper: <name>` note per producer
-if that provenance is valuable).
-
-**Shared-table narrowing**: implemented via `natural_key_partition` text parsing;
-successfully narrows in the synthetic test case, but on the two real
-calibration SCUs that hit a shared table (`get_positions`, `temporal_activation`) it
-could not narrow, because both handlers pass their category filter as a bound SQL
-parameter built from a plain JS array literal outside the query string — the narrowing
-logic only reads pins written literally inside the SQL text. This is the single
-largest quality gap in the derivation and is registered, not silently worked around.
-
-## 8 — Findings outside scope (registered, not fixed)
-
-1. `dead_flag` is `NULL` on every production row; `is_active AND NOT dead_flag` (the
-   literal form used in R220's own prose and, per this scan, potentially in the census)
-   silently reads 0 rows. `dead_flag IS NOT TRUE` is correct. (§2.2)
-2. The D5 ruling text states "naming 15 assets" for the 12 reviewed SCUs; this session's
-   exact recount is 14, independently corroborated by the closure calibration
-   reproducing 63/127 exactly with 14 seeds. (§2.4)
-3. The D5 ruling's stated per-layer "23 Phala/Mīmāṃsā" sums to 24 by direct count (9
-   phala + 15 mimamsa); the ruling's own total of 64 is internally consistent only with
-   24, not 23. (§3)
-4. `scu.catalog.call_dasha_eligibility`'s `source_ref` (298-325) does not cover its
-   handler's actual query (~line 352) — an annotation-range gap, not a derivation bug.
-   Fifteen more SCUs share this "resolved, no relation found in range" symptom; each is
-   named in `producer_provenance.derived.json`. (§2.6)
-5. ~20 real, queried tables have no owning `asset_registry` row at all (e.g.
-   `bg_combustion_orbs`, `bodha_rm_chart_summary`, `mimamsa_discoveries`,
-   `brahma_vichara_constants`) — a genuine registry-coverage gap, not a parsing failure.
-   (§2.6)
-6. `pipeline/dispatcher.py` (the one live reader of `build_dependencies`) is not
-   imported anywhere else in the repo — it may itself be dead code, independent of the
-   `build_dependencies` retirement question. (§4)
-7. `producer_provenance.derived.json` does not currently record which producers came
-   via the one-hop helper path vs. directly in the declared range. (§7)
-
-None of these were fixed silently; all are visible in this report and the generated
-artifacts.
-
-## 9 — Stop conditions
-
-Not triggered. No writer, orchestrator, or sealed-tier change was needed; no production
-write occurred; no migration was applied. §0 (the stale `CLAUDECODE_BRIEF.md` pointer)
-was registered rather than treated as a stop condition, per the reasoning given there.
-
-## 10 — Not in this lane (confirmed untouched)
-
-`compiler.ts` was not read or modified (no wiring of the derived file into it —
-explicitly deferred to a follow-on lane per the prompt). `editorial.ts` was read only,
-never edited.
+Nothing from the six corrections is left undone. All of C-1 through C-6 are committed
+(commit hashes in §2), each with its own passing test and recorded mutation evidence, and
+the full pipeline (`--derive --closure --reader-scan --check`, then the test suite) has
+been re-run against production after the LAST correction, not just after each individual
+one. `compiler.ts` wiring remains explicitly out of this lane's scope, per the wave1
+prompt's own "Not in this lane" line — unchanged from v1.0, not a gap this corrections
+pass was asked to close.
