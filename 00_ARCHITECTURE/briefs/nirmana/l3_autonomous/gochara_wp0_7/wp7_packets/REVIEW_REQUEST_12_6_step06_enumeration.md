@@ -74,8 +74,16 @@ Four files, all on `l3/gochara-autonomous-wp0-7`:
 - Full battery from `platform/python-sidecar`:
   `WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
   → **344 passed, 0 skipped** (re-run 2026-09-27). This includes
-  `test_wp10_cutover.py` 14/14 on the 55434 container, proving the
+  `test_wp10_cutover.py` 17/17 on the 55434 container (an earlier draft of this line
+  said 14/14 — stale; the ADK-0013 harness fix at 537d5022c grew it to 17; corrected on
+  PRAMĀṆIN's 2026-09-27 pass), proving the
   `step06_candidate_build.py` edit is non-breaking, and wp3a kernel 17/17.
+- **PRAMĀṆIN independent pass, 2026-09-27 (post-dating the headline figure, per the
+  native's direction):** re-created both disposable DBs, re-ran the exact command above
+  → **344 passed / 0 skipped / 0 failed / 344 collected**, reproduced exactly at
+  `3dda35052`; exit-7 negative and producer→consumer round-trip inspected and found
+  non-vacuous; containers torn down after. The verifier's pass and the cited figure
+  name the same run.
 - WP1 golden loop: 22/22 fixture cases.
 - Disposable-DB end-to-end: fresh fingerprints → driver exit 0, episodes feed
   `step06_candidate_build` into real candidate rows (consumer row counts equal payload
