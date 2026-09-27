@@ -35,18 +35,22 @@ const DEFAULT_ROOTS = [
   'src/app/api/chat/consult/continue/route.ts',
   'src/app/api/mcp/prashna_ask/route.ts',
   'src/app/api/ai-console/connections/route.ts',
+  'src/app/api/ai-console/connections/[id]/route.ts',
   'src/app/api/ai-console/connections/[id]/validate/route.ts',
   'src/app/api/admin/cron/revalidate-ai-connections/route.ts',
 ] as const
 
-const SHARED_PROVIDER_ENV = /process\s*\.\s*env\s*(?:\.\s*(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|GOOGLE_GENERATIVE_AI_API_KEY|DEEPSEEK_API_KEY|XAI_API_KEY|KIMI_API_KEY|MOONSHOT_API_KEY|OPENROUTER_API_KEY)|\[\s*['"](?:OPENAI_API_KEY|ANTHROPIC_API_KEY|GOOGLE_GENERATIVE_AI_API_KEY|DEEPSEEK_API_KEY|XAI_API_KEY|KIMI_API_KEY|MOONSHOT_API_KEY|OPENROUTER_API_KEY)['"]\s*\])/
+const PROVIDER_ENV_KEYS = new Set([
+  'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY', 'DEEPSEEK_API_KEY',
+  'XAI_API_KEY', 'KIMI_API_KEY', 'MOONSHOT_API_KEY', 'OPENROUTER_API_KEY',
+])
 
 export function defaultImportAuditConfig(platformRoot: string): ImportAuditConfig {
   return {
     platformRoot,
     roots: DEFAULT_ROOTS,
     forbidden: [
-      { ruleId: 'AIC_SHARED_PROVIDER_ENV', sourcePatterns: [SHARED_PROVIDER_ENV] },
+      { ruleId: 'AIC_SHARED_PROVIDER_ENV' },
       {
         ruleId: 'AIC_LEGACY_MODEL_AUTHORITY',
         paths: [
@@ -93,9 +97,12 @@ async function resolveInternalImport(platformRoot: string, importer: string, spe
   return null
 }
 
-function internalSpecifiers(source: string, path: string): string[] {
+interface InternalEdges { readonly specifiers: readonly string[]; readonly unsupported: readonly string[] }
+
+function internalEdges(source: string, path: string): InternalEdges {
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
   const values = new Set<string>()
+  const unsupported = new Set<string>()
   const add = (node: ts.Expression | undefined) => {
     if (node && ts.isStringLiteralLike(node) && (node.text.startsWith('.') || node.text.startsWith('@/'))) {
       values.add(node.text)
@@ -104,11 +111,93 @@ function internalSpecifiers(source: string, path: string): string[] {
   const visit = (node: ts.Node) => {
     if (ts.isImportDeclaration(node)) add(node.moduleSpecifier)
     if (ts.isExportDeclaration(node)) add(node.moduleSpecifier)
-    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) add(node.arguments[0])
+    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      add(node.moduleReference.expression)
+    }
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      if (node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) add(node.arguments[0])
+      else unsupported.add('dynamic-import')
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+      if (node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) add(node.arguments[0])
+      else unsupported.add('dynamic-require')
+    }
     ts.forEachChild(node, visit)
   }
   visit(sourceFile)
-  return [...values].sort()
+  return { specifiers: [...values].sort(), unsupported: [...unsupported].sort() }
+}
+
+function staticString(node: ts.Expression | undefined, values: ReadonlyMap<string, string>): string | null {
+  if (!node) return null
+  if (ts.isStringLiteralLike(node)) return node.text
+  return ts.isIdentifier(node) ? values.get(node.text) ?? null : null
+}
+
+function isProcessEnv(node: ts.Expression): boolean {
+  if (ts.isPropertyAccessExpression(node)) {
+    return ts.isIdentifier(node.expression) && node.expression.text === 'process' && node.name.text === 'env'
+  }
+  if (ts.isElementAccessExpression(node)) {
+    return ts.isIdentifier(node.expression) && node.expression.text === 'process'
+      && ts.isStringLiteralLike(node.argumentExpression) && node.argumentExpression.text === 'env'
+  }
+  return false
+}
+
+function usesSharedProviderEnvironment(source: string, path: string): boolean {
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  const strings = new Map<string, string>()
+  const declarations: ts.VariableDeclaration[] = []
+  const collect = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node)) {
+      declarations.push(node)
+      if (ts.isIdentifier(node.name) && node.initializer && ts.isStringLiteralLike(node.initializer)) {
+        strings.set(node.name.text, node.initializer.text)
+      }
+    }
+    ts.forEachChild(node, collect)
+  }
+  collect(sourceFile)
+
+  const aliases = new Set<string>()
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const declaration of declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer || aliases.has(declaration.name.text)) continue
+      const initializer = declaration.initializer
+      if (isProcessEnv(initializer) || (ts.isIdentifier(initializer) && aliases.has(initializer.text))) {
+        aliases.add(declaration.name.text)
+        changed = true
+      }
+    }
+  }
+  const isEnvironment = (node: ts.Expression) => isProcessEnv(node) || (ts.isIdentifier(node) && aliases.has(node.text))
+  let found = false
+  const inspect = (node: ts.Node) => {
+    if (found) return
+    if (ts.isPropertyAccessExpression(node) && isEnvironment(node.expression) && PROVIDER_ENV_KEYS.has(node.name.text)) {
+      found = true
+      return
+    }
+    if (ts.isElementAccessExpression(node) && isEnvironment(node.expression)) {
+      const key = staticString(node.argumentExpression, strings)
+      if (key && PROVIDER_ENV_KEYS.has(key)) { found = true; return }
+    }
+    if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer
+      && isEnvironment(node.initializer)) {
+      for (const element of node.name.elements) {
+        const key = element.propertyName
+          ? (ts.isIdentifier(element.propertyName) || ts.isStringLiteralLike(element.propertyName) ? element.propertyName.text : null)
+          : ts.isIdentifier(element.name) ? element.name.text : null
+        if (key && PROVIDER_ENV_KEYS.has(key)) { found = true; return }
+      }
+    }
+    ts.forEachChild(node, inspect)
+  }
+  inspect(sourceFile)
+  return found
 }
 
 function findingKey(finding: ImportAuditFinding): string {
@@ -153,18 +242,25 @@ export async function auditImportGraph(config: ImportAuditConfig): Promise<Impor
 
       for (const rule of config.forbidden) {
         const pathMatch = rule.paths?.includes(currentRelative) === true
+        const providerEnvironmentMatch = rule.ruleId === 'AIC_SHARED_PROVIDER_ENV'
+          && usesSharedProviderEnvironment(source, current.path)
         const sourceMatch = rule.sourcePatterns?.some(pattern => {
           pattern.lastIndex = 0
           return pattern.test(source)
         }) === true
-        if (pathMatch || sourceMatch) {
+        if (pathMatch || providerEnvironmentMatch || sourceMatch) {
           const finding = { ruleId: rule.ruleId, chain: current.chain }
           violations.set(findingKey(finding), finding)
         }
       }
 
       if (!SCRIPT_EXTENSIONS.has(extname(current.path))) continue
-      for (const specifier of internalSpecifiers(source, current.path)) {
+      const edges = internalEdges(source, current.path)
+      for (const unsupported of edges.unsupported) {
+        const finding = { ruleId: 'AIC_IMPORT_UNSUPPORTED', chain: [...current.chain, unsupported] }
+        scannerErrors.set(findingKey(finding), finding)
+      }
+      for (const specifier of edges.specifiers) {
         const resolved = await resolveInternalImport(platformRoot, current.path, specifier)
         if (!resolved) {
           const unresolved = specifier.startsWith('@/')

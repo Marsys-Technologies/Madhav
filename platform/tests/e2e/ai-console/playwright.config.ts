@@ -1,10 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
+import { parseLoopbackHttpUrl } from '../../../scripts/ai-console/owner_preflight'
 
 const baseURL = process.env.AI_CONSOLE_E2E_BASE_URL ?? 'http://localhost:3000'
+if (!parseLoopbackHttpUrl(baseURL, true)) throw new Error('AIC_E2E_BASE_URL_NOT_LOOPBACK')
 
 export default defineConfig({
   testDir: '.',
   testMatch: ['byok-routing.spec.ts'],
+  outputDir: process.env.AI_CONSOLE_E2E_ARTIFACT_DIR ?? '/tmp/madhav-ai-console-e2e-unqualified',
   timeout: 180_000,
   expect: { timeout: 10_000 },
   workers: 1,
@@ -17,12 +20,4 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: process.env.AI_CONSOLE_E2E_EXTERNAL_SERVER === 'true' ? undefined : {
-    command: 'npm run dev',
-    url: `${baseURL}/api/health`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
 })

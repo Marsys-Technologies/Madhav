@@ -1,7 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
+import { preflightOwnerFixture } from './owner_preflight'
 
 export type AcceptanceStatus = 'PASS' | 'FAIL' | 'UNQUALIFIED'
 export type AcceptanceCommandKind = 'command' | 'test'
@@ -13,6 +14,8 @@ export interface AcceptanceCommand {
   readonly command: string
   readonly args: readonly string[]
   readonly kind: AcceptanceCommandKind
+  readonly timeoutMs: number
+  readonly environment: 'base' | 'database' | 'browser' | 'build'
   readonly prerequisite?: (env: AcceptanceEnvironment) => string | null
 }
 
@@ -20,6 +23,7 @@ export interface AcceptanceCommandResult {
   readonly exitCode: number
   readonly executedCount?: number
   readonly skippedCount?: number
+  readonly timedOut?: boolean
 }
 
 export interface AcceptanceDimension {
@@ -49,6 +53,8 @@ export interface LocalAcceptanceOptions {
 }
 
 const PLATFORM_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const LOCAL_BIN = (name: string) => resolve(PLATFORM_ROOT, 'node_modules/.bin', name)
+const DEFAULT_TIMEOUT_MS = 300_000
 const PROVIDERS = ['openai', 'anthropic', 'gemini', 'xai', 'deepseek', 'kimi', 'openrouter'] as const
 const CLIS = ['codex', 'claude_code', 'gemini_antigravity', 'kimi_code'] as const
 
@@ -58,7 +64,10 @@ function browserPrerequisite(env: AcceptanceEnvironment): string | null {
     && Boolean(env.SMOKE_SESSION_COOKIE?.trim())
     && Boolean(env.AI_CONSOLE_E2E_OWNER_CONFIG_PATH?.trim())
     && isAbsolute(env.AI_CONSOLE_E2E_OWNER_CONFIG_PATH ?? '')
-    ? null : 'AIC_ACCEPTANCE_BROWSER_PREREQUISITE_MISSING'
+    && env.AI_CONSOLE_E2E_EXTERNAL_SERVER === 'true'
+    && Boolean(env.AI_CONSOLE_E2E_ARTIFACT_DIR)
+    && env.__AIC_OWNER_FIXTURE_VALIDATED === 'true'
+    ? null : env.__AIC_OWNER_FIXTURE_CODE ?? 'AIC_ACCEPTANCE_BROWSER_PREREQUISITE_MISSING'
 }
 
 function providerPrerequisite(env: AcceptanceEnvironment): string | null {
@@ -72,10 +81,12 @@ function cliPrerequisite(env: AcceptanceEnvironment): string | null {
 }
 
 function databasePrerequisite(env: AcceptanceEnvironment): string | null {
-  if (env.RUN_DB_TESTS !== '1' || !env.DATABASE_URL) return 'AIC_ACCEPTANCE_DB_PREREQUISITE_MISSING'
+  if (env.RUN_DB_TESTS !== '1' || !env.AI_CONSOLE_TEST_DATABASE_URL) return 'AIC_ACCEPTANCE_DB_PREREQUISITE_MISSING'
   try {
-    const target = new URL(env.DATABASE_URL)
-    const local = target.hostname === 'localhost' || target.hostname === '127.0.0.1' || target.hostname === '::1'
+    const target = new URL(env.AI_CONSOLE_TEST_DATABASE_URL)
+    const host = target.hostname.startsWith('[') ? target.hostname.slice(1, -1) : target.hostname
+    const local = host === 'localhost' || host === '::1'
+      || (/^127(?:\.\d{1,3}){3}$/.test(host) && host.split('.').slice(1).every(part => Number(part) <= 255))
     const database = target.pathname.slice(1)
     return local && database.startsWith('ai_console_test_') ? null : 'AIC_ACCEPTANCE_DB_NOT_DISPOSABLE_LOCAL'
   } catch { return 'AIC_ACCEPTANCE_DB_NOT_DISPOSABLE_LOCAL' }
@@ -83,20 +94,21 @@ function databasePrerequisite(env: AcceptanceEnvironment): string | null {
 
 function e2e(id: string, tag: string, prerequisite = browserPrerequisite): AcceptanceCommand {
   return {
-    id, kind: 'test', prerequisite, command: 'npx',
-    args: ['playwright', 'test', '--config=tests/e2e/ai-console/playwright.config.ts', '--project=chromium', '--grep', tag],
+    id, kind: 'test', prerequisite, command: LOCAL_BIN('playwright'), timeoutMs: DEFAULT_TIMEOUT_MS,
+    environment: 'browser',
+    args: ['test', '--config=tests/e2e/ai-console/playwright.config.ts', '--project=chromium', '--grep', tag],
   }
 }
 
-function commands(): AcceptanceCommand[] {
+export function acceptanceCommands(): AcceptanceCommand[] {
   return [
-    { id: 'migration_guard', kind: 'command', command: 'npm', args: ['run', 'guard:migration-numbers'] },
-    { id: 'typecheck', kind: 'command', command: 'npx', args: ['tsc', '--noEmit'] },
-    { id: 'eslint', kind: 'command', command: 'npm', args: ['run', 'lint', '--', 'scripts/ai-console', 'src/lib/ai-console', 'src/app/api/ai-console', 'src/components/ai-console', 'src/components/pariprashna', 'tests/e2e/ai-console'] },
-    { id: 'focused_tests', kind: 'test', command: 'npx', args: ['vitest', 'run', 'src/lib/ai-console', 'src/app/api/ai-console', 'src/app/api/pariprashna', 'src/app/api/chat/consult', 'src/app/api/mcp/prashna_ask'] },
-    { id: 'disposable_database', kind: 'test', prerequisite: databasePrerequisite, command: 'npx', args: ['vitest', 'run', 'src/lib/ai-console/__tests__/migration_db.test.ts', 'src/lib/ai-console/__tests__/repository_isolation.db.test.ts'] },
-    { id: 'pariprashna_desktop_gates', kind: 'test', command: 'npm', args: ['run', 'pariprashna:gates'] },
-    { id: 'pariprashna_mobile_gates', kind: 'test', command: 'npm', args: ['run', 'pariprashna:gates:mobile'] },
+    { id: 'migration_guard', kind: 'command', command: 'npm', args: ['run', 'guard:migration-numbers'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
+    { id: 'typecheck', kind: 'command', command: LOCAL_BIN('tsc'), args: ['--noEmit'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
+    { id: 'eslint', kind: 'command', command: LOCAL_BIN('eslint'), args: ['--max-warnings=0', 'scripts/ai-console', 'src/lib/ai-console', 'src/app/api/ai-console', 'src/components/ai-console', 'src/components/pariprashna', 'tests/e2e/ai-console'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
+    { id: 'focused_tests', kind: 'test', command: LOCAL_BIN('vitest'), args: ['run', 'src/lib/ai-console', 'src/app/api/ai-console', 'src/app/api/pariprashna', 'src/app/api/chat/consult', 'src/app/api/mcp/prashna_ask'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
+    { id: 'disposable_database', kind: 'test', prerequisite: databasePrerequisite, command: LOCAL_BIN('vitest'), args: ['run', 'src/lib/ai-console/__tests__/migration_db.test.ts', 'src/lib/ai-console/__tests__/repository_isolation.db.test.ts'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'database' },
+    { id: 'pariprashna_desktop_gates', kind: 'test', command: 'npm', args: ['run', 'pariprashna:gates'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
+    { id: 'pariprashna_mobile_gates', kind: 'test', command: 'npm', args: ['run', 'pariprashna:gates:mobile'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
     e2e('authenticated_desktop', '@desktop'),
     e2e('authenticated_mobile', '@mobile'),
     e2e('direct_custom_default_pinning', '@routing'),
@@ -105,9 +117,29 @@ function commands(): AcceptanceCommand[] {
     ...PROVIDERS.map(provider => e2e(`provider_${provider}`, `@provider-${provider}`, providerPrerequisite)),
     ...CLIS.map(cli => e2e(`cli_${cli}`, `@cli-${cli.replaceAll('_', '-')}`, cliPrerequisite)),
     e2e('leakage_inspection', '@leakage'),
-    { id: 'route_graph_clean', kind: 'command', command: 'npm', args: ['run', 'ai-console:audit-shared-keys'] },
-    { id: 'build', kind: 'command', command: 'npm', args: ['run', 'build'] },
+    { id: 'route_graph_clean', kind: 'command', command: LOCAL_BIN('tsx'), args: ['scripts/ai-console/shared_key_route_audit.ts'], timeoutMs: DEFAULT_TIMEOUT_MS, environment: 'base' },
+    { id: 'build', kind: 'command', command: LOCAL_BIN('next'), args: ['build', '--webpack'], timeoutMs: 600_000, environment: 'build' },
   ]
+}
+
+const BASE_ENVIRONMENT = ['PATH', 'HOME', 'TMPDIR', 'CI'] as const
+const BROWSER_ENVIRONMENT = ['MARSYS_FLAG_AI_CONSOLE_BYOK', 'NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK',
+  'SMOKE_SESSION_COOKIE', 'AI_CONSOLE_E2E_OWNER_CONFIG_PATH', 'AI_CONSOLE_E2E_BASE_URL',
+  'AI_CONSOLE_E2E_EXTERNAL_SERVER', 'AI_CONSOLE_E2E_ARTIFACT_DIR',
+  'AI_CONSOLE_PROVIDER_SMOKE_AUTHORIZED', 'AI_CONSOLE_CLI_SMOKE_AUTHORIZED'] as const
+const BUILD_ENVIRONMENT = ['NEXT_PUBLIC_FIREBASE_API_KEY', 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID', 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET', 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'NEXT_PUBLIC_FIREBASE_APP_ID', 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID'] as const
+
+export function environmentForCommand(command: AcceptanceCommand, source: AcceptanceEnvironment): Record<string, string> {
+  const keys = [...BASE_ENVIRONMENT,
+    ...(command.environment === 'browser' ? BROWSER_ENVIRONMENT : []),
+    ...(command.environment === 'database' ? ['AI_CONSOLE_TEST_DATABASE_URL'] as const : []),
+    ...(command.environment === 'build' ? BUILD_ENVIRONMENT : [])]
+  const environment: Record<string, string> = {}
+  for (const key of keys) if (source[key] !== undefined) environment[key] = source[key]!
+  if (command.environment === 'database') environment.RUN_DB_TESTS = '1'
+  return environment
 }
 
 const LABELS: Record<string, string> = {
@@ -131,7 +163,7 @@ export function parseTestCounts(output: string): { executedCount: number; skippe
 
 export async function runLocalAcceptance(options: LocalAcceptanceOptions): Promise<LocalAcceptanceReport> {
   const dimensions: AcceptanceDimension[] = []
-  for (const command of commands()) {
+  for (const command of acceptanceCommands()) {
     const missing = command.prerequisite?.(options.env) ?? null
     if (missing) {
       dimensions.push({ id: command.id, label: LABELS[command.id] ?? command.id, status: 'UNQUALIFIED', code: missing,
@@ -140,11 +172,12 @@ export async function runLocalAcceptance(options: LocalAcceptanceOptions): Promi
     }
     const result = await options.execute(command)
     const testUnqualified = command.kind === 'test' && (result.executedCount ?? 0) === 0
+    const failedCode = result.timedOut ? 'AIC_ACCEPTANCE_COMMAND_TIMEOUT' : 'AIC_ACCEPTANCE_COMMAND_FAILED'
     dimensions.push({
       id: command.id,
       label: LABELS[command.id] ?? (command.id.startsWith('provider_') ? `Provider ${command.id.slice(9)}` : command.id.startsWith('cli_') ? `CLI ${command.id.slice(4)}` : command.id),
       status: result.exitCode !== 0 ? 'FAIL' : testUnqualified ? 'UNQUALIFIED' : 'PASS',
-      code: result.exitCode !== 0 ? 'AIC_ACCEPTANCE_COMMAND_FAILED' : testUnqualified ? 'AIC_ACCEPTANCE_ZERO_EXECUTED' : 'AIC_ACCEPTANCE_PASSED',
+      code: result.exitCode !== 0 ? failedCode : testUnqualified ? 'AIC_ACCEPTANCE_ZERO_EXECUTED' : 'AIC_ACCEPTANCE_PASSED',
       commandKind: command.kind,
       exitCode: result.exitCode,
       executedCount: command.kind === 'test' ? result.executedCount ?? 0 : null,
@@ -169,29 +202,75 @@ export function acceptanceExitCode(report: LocalAcceptanceReport): 0 | 1 | 2 {
   return report.summary.unqualified > 0 ? 2 : 0
 }
 
-async function execute(command: AcceptanceCommand): Promise<AcceptanceCommandResult> {
+function terminateProcessGroup(child: ChildProcess, signal: NodeJS.Signals): void {
+  try {
+    if (child.pid && process.platform !== 'win32') process.kill(-child.pid, signal)
+    else child.kill(signal)
+  } catch { child.kill(signal) }
+}
+
+export async function executeAcceptanceCommand(
+  command: AcceptanceCommand,
+  sourceEnvironment: AcceptanceEnvironment,
+): Promise<AcceptanceCommandResult> {
   return new Promise(resolveResult => {
-    const child = spawn(command.command, command.args, { cwd: PLATFORM_ROOT, env: process.env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child: ChildProcess = spawn(command.command, command.args, { cwd: PLATFORM_ROOT,
+      env: environmentForCommand(command, sourceEnvironment) as NodeJS.ProcessEnv, shell: false,
+      detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] })
     let output = ''
     let overflow = false
+    let settled = false
+    let timedOut = false
+    let forceTimer: ReturnType<typeof setTimeout> | undefined
+    let boundedCloseTimer: ReturnType<typeof setTimeout> | undefined
+    const finish = (result: AcceptanceCommandResult) => {
+      if (settled) return
+      settled = true
+      if (deadlineTimer) clearTimeout(deadlineTimer)
+      if (forceTimer) clearTimeout(forceTimer)
+      if (boundedCloseTimer) clearTimeout(boundedCloseTimer)
+      resolveResult(result)
+    }
     const append = (chunk: Buffer) => {
       if (overflow) return
       output += chunk.toString('utf8')
       if (Buffer.byteLength(output, 'utf8') > 2_000_000) {
         overflow = true
         output = ''
-        child.kill('SIGTERM')
+        terminateProcessGroup(child, 'SIGTERM')
       }
     }
-    child.stdout.on('data', append)
-    child.stderr.on('data', append)
-    child.once('error', () => resolveResult({ exitCode: 1 }))
-    child.once('close', code => {
-      if (overflow) return resolveResult({ exitCode: 1 })
+    child.stdout?.on('data', append)
+    child.stderr?.on('data', append)
+    const deadlineTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      timedOut = true
+      output = ''
+      terminateProcessGroup(child, 'SIGTERM')
+      forceTimer = setTimeout(() => terminateProcessGroup(child, 'SIGKILL'), 1_000)
+      boundedCloseTimer = setTimeout(() => finish({ exitCode: 124, timedOut: true }), 3_000)
+    }, command.timeoutMs)
+    child.once('error', () => finish({ exitCode: timedOut ? 124 : 1, timedOut }))
+    child.once('close', (code: number | null) => {
+      if (timedOut) return finish({ exitCode: 124, timedOut: true })
+      if (overflow) return finish({ exitCode: 1 })
       const counts = command.kind === 'test' ? parseTestCounts(output) : {}
-      resolveResult({ exitCode: code ?? 1, ...counts })
+      finish({ exitCode: code ?? 1, ...counts })
     })
   })
+}
+
+export async function prepareAcceptanceEnvironment(source: AcceptanceEnvironment): Promise<AcceptanceEnvironment> {
+  const prepared: Record<string, string | undefined> = { ...source }
+  const path = source.AI_CONSOLE_E2E_OWNER_CONFIG_PATH
+  if (!path) return prepared
+  const result = await preflightOwnerFixture(path, { platformRoot: PLATFORM_ROOT,
+    baseUrl: source.AI_CONSOLE_E2E_BASE_URL ?? 'http://localhost:3000' })
+  if (result.ok) {
+    prepared.__AIC_OWNER_FIXTURE_VALIDATED = 'true'
+    prepared.AI_CONSOLE_E2E_ARTIFACT_DIR = result.config.leakage.artifactDirectory
+  }
+  else prepared.__AIC_OWNER_FIXTURE_CODE = result.code
+  return prepared
 }
 
 function safeReportPath(createdAt: string): string | null {
@@ -214,7 +293,9 @@ async function revision(): Promise<string> {
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   if (argv.length > 0) throw new Error('AIC_ACCEPTANCE_ARGUMENTS_FORBIDDEN')
-  const report = await runLocalAcceptance({ env: process.env, revision: await revision(), execute })
+  const env = await prepareAcceptanceEnvironment(process.env)
+  const report = await runLocalAcceptance({ env, revision: await revision(),
+    execute: command => executeAcceptanceCommand(command, env) })
   process.stdout.write(`AI Console local acceptance ${report.createdAt} ${report.revision}\n`)
   for (const row of report.dimensions) {
     const counts = row.commandKind === 'test' ? ` executed=${row.executedCount ?? 0} skipped=${row.skippedCount ?? 0}` : ''

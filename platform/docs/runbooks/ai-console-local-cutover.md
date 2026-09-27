@@ -27,14 +27,32 @@ Keep both feature flags false while preparing the database:
 Apply migration `1120_ai_console_byok_routing.sql` only to the approved disposable database, then run:
 
 ```text
-RUN_DB_TESTS=1 DATABASE_URL=postgresql://...@127.0.0.1:5432/ai_console_test_<name> npm run test -- src/lib/ai-console/__tests__/migration_db.test.ts src/lib/ai-console/__tests__/repository_isolation.db.test.ts
+RUN_DB_TESTS=1 AI_CONSOLE_TEST_DATABASE_URL=postgresql://...@127.0.0.1:5432/ai_console_test_<name> npm run test -- src/lib/ai-console/__tests__/migration_db.test.ts src/lib/ai-console/__tests__/repository_isolation.db.test.ts
 ```
 
 The database lane is `UNQUALIFIED` unless both the local host and `ai_console_test_` database-name boundary are satisfied.
 
 ## 2. Prepare the private browser fixture
 
-Create an absolute-path JSON file outside the repository, readable only by the owner. It supplies the disposable user ID, an existing disposable conversation, the Paripraśna URL for that conversation, owner-supplied provider credentials, two credentials for the same provider, a minimal valid Consult request, and—only when separately available—authenticated MCP bridge details. Never put this file in the repository or a test artifact directory. Use this shape; replace every placeholder locally and omit any provider or MCP entry that is not authorized:
+Create a regular, non-symlink JSON file outside both the repository and every
+artifact directory. Its containing directories must be owner-only and the file
+must have mode `0600`. The runner resolves its real path, verifies ownership and
+permissions, and validates the complete schema before starting a browser; a
+missing or malformed fixture is `UNQUALIFIED`. All HTTP targets, including the
+base URL and optional MCP bridge, must parse as loopback-only HTTP(S) URLs.
+Secret-bearing requests reject redirects instead of forwarding credentials to a
+different origin.
+
+The application currently has no public HTTP read route for immutable routing
+snapshots, invocation receipts, or configuration audit rows. Therefore the
+owner must expose a narrow, read-only, loopback local inspection helper over the
+disposable database. It must return only the safe schema described below, scoped
+to the exact disposable user and turn correlation. Do not expose prompts,
+outputs, credentials, encryption material, arbitrary metadata, or raw errors.
+The browser lane is `UNQUALIFIED` when these inspection URLs are absent.
+
+Use this shape; replace every placeholder locally and omit only the optional MCP
+entry when it is unavailable:
 
 ```json
 {
@@ -55,24 +73,52 @@ Create an absolute-path JSON file outside the repository, readable only by the o
     "first": { "apiKey": "<private-first-credential>" },
     "second": { "apiKey": "<private-second-credential>" }
   },
+  "pariprashnaRequest": {
+    "chartId": "<owned-disposable-chart-uuid>",
+    "messages": [{ "id": "owner-test-question", "role": "user", "parts": [{ "type": "text", "text": "<approved-small-question>" }] }]
+  },
   "consultRequest": { "<required-consult-field>": "<disposable-value>" },
+  "inspection": {
+    "identityUrl": "http://127.0.0.1:<port>/local-ai-acceptance/identity",
+    "routingEvidenceUrlTemplate": "http://127.0.0.1:<port>/local-ai-acceptance/turn/{turnId}",
+    "latestEvidenceUrl": "http://127.0.0.1:<port>/local-ai-acceptance/latest"
+  },
+  "leakage": {
+    "serverLogPath": "/private/owner-only/server.log",
+    "routingSnapshotPath": "/private/owner-only/routing-snapshots.json",
+    "observatoryPath": "/private/owner-only/observatory.json",
+    "auditPath": "/private/owner-only/audit.json",
+    "artifactDirectory": "/private/owner-only/artifacts",
+    "urls": ["http://127.0.0.1:<port>/api/ai-console", "http://127.0.0.1:<port>/api/admin/audit-log"]
+  },
   "mcp": {
-    "url": "<local-authenticated-mcp-route>",
+    "url": "http://127.0.0.1:<port>/<local-authenticated-mcp-route>",
     "headers": { "<required-header>": "<private>" },
     "request": { "<required-request-field>": "<disposable-value>" }
-  },
-  "inspectionUrls": ["<optional-safe-observatory-or-audit-projection-url>"]
+  }
 }
 ```
+
+For every exact turn, the routing inspection response must be a strict safe
+object with `userId`, `correlationId`, persisted `selection`, all four resolved
+`roles`, succeeded terminal invocation receipts for the roles actually called,
+and matching Observatory rows with `fallbackUsed:false`. The latest endpoint
+accepts `conversationId` and `after` query parameters for Consult/CLI evidence.
+The identity endpoint returns only `{ "userId": "<exact-disposable-user>" }`.
+The four leakage files and artifact directory must already exist outside the
+repository with owner-only permissions; every leakage input is mandatory.
 
 Set these local environment entries without printing their values:
 
 - `SMOKE_SESSION_COOKIE`
 - `AI_CONSOLE_E2E_OWNER_CONFIG_PATH` (absolute path to the private JSON file)
+- `AI_CONSOLE_E2E_BASE_URL=http://127.0.0.1:<local-port>` (origin only)
+- `AI_CONSOLE_E2E_EXTERNAL_SERVER=true` (the runner never starts a server or forwards the application database/Firebase environment)
+- `AI_CONSOLE_E2E_ARTIFACT_DIR=/private/owner-only/artifacts` (must exactly match the fixture; the acceptance runner derives it after successful preflight)
 - `AI_CONSOLE_PROVIDER_SMOKE_AUTHORIZED=true` only when real provider probes are approved
 - `AI_CONSOLE_CLI_SMOKE_AUTHORIZED=true` only when real subscription calls and the applicable terms are approved
 
-Leave either authorization unset to produce an honest `UNQUALIFIED` row for that lane.
+Leave either authorization unset to produce an honest `UNQUALIFIED` row for that lane. The acceptance runner passes subprocesses a minimal environment: only the database lane receives `AI_CONSOLE_TEST_DATABASE_URL`, and only browser lanes receive the session/fixture/authorization entries. Every command has a deadline; timeout terminates its detached process group with a bounded TERM/KILL sequence and records `FAIL`.
 
 ## 3. Owner onboarding
 
@@ -82,7 +128,7 @@ Start the local server with both feature flags set to true. Sign in as the dispo
 2. Custom configurations
 3. Local CLIs
 
-Manually add or validate the intended provider connections. Confirm authenticated discovery and the small generation probe complete, then explicitly choose one exact model or complete custom configuration as the default. No option is selected automatically.
+Manually add or validate the intended provider connections. Confirm authenticated discovery and the small generation probe complete, then explicitly choose one exact model or complete custom configuration as the default. No option is selected automatically. The disposable user must already have a restorable default because the current API has no clear-default operation; otherwise mutation lanes are `UNQUALIFIED`.
 
 For a local CLI, a super-admin must grant the exact `(user, CLI)` pair before the user validates it. A detected executable alone is not subscription qualification.
 
@@ -116,15 +162,17 @@ Its exit code is `0` only when every row is `PASS`, `1` when any row is `FAIL`, 
 With the disposable user, verify desktop and 390×844 mobile behavior without credential-entry capture:
 
 - two same-provider connections remain distinguishable by connection name and exact model;
-- direct default selection and all four custom roles work;
+- direct, custom-configuration, moved-Default, and explicit-pinned selections each execute a real native turn through successful `turn.commit`, durable `turn.persisted`, and final `turn.close{status:"ok"}`;
+- the exact immutable selection and all four resolved roles match the safe routing evidence; every actual invocation/Observatory row matches the expected provider/model or CLI and records `fallbackUsed:false`;
 - configuration create, edit, duplicate, and delete work;
 - a conversation on `Default` follows a changed global default on its next question;
 - an explicit direct selection remains pinned;
 - a picker change affects subsequent turns and is visible from another browser context;
-- logged-in backend work resolves the user's default;
+- logged-in backend and CLI work consume semantic `finish{finishReason:"stop"}` events and exact safe routing evidence; generic HTTP 2xx is insufficient;
 - MCP returns `madhav.evidence.v1` with external synthesis and no Madhav reading;
 - each granted CLI validates, executes a permitted request, and stops after revocation;
-- application projections, logs, Observatory/audit views, and generated artifacts contain no secret material.
+- application projections, required server logs, routing snapshots, Observatory, audit outputs, safe URLs, and artifact directories contain no secret material or credential-bearing screenshot/trace/video/HAR artifact;
+- the authenticated UID equals the configured disposable user, the reserved test namespace begins clean, previous default/conversation/grants are restored, cleanup errors fail the test, and every test-created connection/configuration is verified deleted.
 
 ## 6. Retirement decision
 

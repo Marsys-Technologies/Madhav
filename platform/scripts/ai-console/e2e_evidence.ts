@@ -1,0 +1,103 @@
+import { isDeepStrictEqual } from 'node:util'
+import { z } from 'zod'
+
+const RoleSchema = z.enum(['synthesizer', 'planner', 'deep_planner', 'worker'])
+const ProviderTargetSchema = z.object({
+  kind: z.literal('provider_model'), providerId: z.string().min(1), connectionId: z.string().min(1), modelId: z.string().min(1),
+}).strict()
+const CliTargetSchema = z.object({
+  kind: z.literal('local_cli'), cliId: z.string().min(1), modelId: z.string().nullable(),
+}).strict()
+const TargetSchema = z.discriminatedUnion('kind', [ProviderTargetSchema, CliTargetSchema])
+const ChoiceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('provider_model'), connectionId: z.string().min(1), modelId: z.string().min(1) }).strict(),
+  z.object({ kind: z.literal('custom_configuration'), configurationId: z.string().min(1) }).strict(),
+  z.object({ kind: z.literal('local_cli'), cliId: z.string().min(1), modelId: z.string().nullable() }).strict(),
+])
+const SelectionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('default') }).strict(),
+  z.object({ kind: z.literal('explicit'), choice: ChoiceSchema }).strict(),
+])
+const RolesSchema = z.object({
+  synthesizer: TargetSchema, planner: TargetSchema, deep_planner: TargetSchema, worker: TargetSchema,
+}).strict()
+const EvidenceSchema = z.object({
+  userId: z.string().min(1), correlationId: z.string().min(1), selection: SelectionSchema,
+  resolvedChoice: ChoiceSchema, roles: RolesSchema,
+  invocations: z.array(z.object({ role: RoleSchema, status: z.literal('succeeded') }).strict()).min(2),
+  observatory: z.array(z.object({
+    role: RoleSchema, providerId: z.string().min(1), modelId: z.string().nullable(),
+    fallbackUsed: z.literal(false), status: z.literal('success'),
+  }).strict()).min(2),
+}).strict()
+
+export type SafeRoleTarget = z.infer<typeof TargetSchema>
+export type SafeRoleMap = z.infer<typeof RolesSchema>
+export type SafeSelection = z.infer<typeof SelectionSchema>
+
+function sseData(text: string): unknown[] {
+  const values: unknown[] = []
+  for (const line of text.split('\n')) {
+    if (!line.startsWith('data: ')) continue
+    try { values.push(JSON.parse(line.slice(6))) } catch { throw new Error('AIC_E2E_TERMINAL_EVENT_INVALID') }
+  }
+  return values
+}
+
+export function parsePariprashnaTerminal(text: string): string {
+  const events = sseData(text) as Array<Record<string, unknown>>
+  const opened = events.find(event => event.type === 'turn.open')
+  const committed = events.find(event => event.type === 'turn.commit')
+  const persisted = events.find(event => event.type === 'turn.persisted')
+  const terminal = events.findLast(event => event.type === 'turn.close')
+  if (!opened || !terminal || terminal.status !== 'ok' || typeof opened.turn_id !== 'string'
+    || terminal.turn_id !== opened.turn_id || events.at(-1) !== terminal
+    || !committed || committed.status !== 'ok' || committed.turn_id !== opened.turn_id
+    || !persisted || persisted.status !== 'durable' || persisted.turn_id !== opened.turn_id
+    || events.some(event => event.type === 'error')) throw new Error('AIC_E2E_TURN_NOT_SUCCESSFUL')
+  return opened.turn_id
+}
+
+export function parseConsultTerminal(text: string): true {
+  const events = sseData(text) as Array<Record<string, unknown>>
+  if (!events.some(event => event.type === 'finish' && event.finishReason === 'stop')) {
+    throw new Error('AIC_E2E_TERMINAL_EVENT_MISSING')
+  }
+  return true
+}
+
+export function assertSafeRoutingEvidence(
+  input: unknown,
+  expected: { readonly userId: string; readonly correlationId: string; readonly selection: SafeSelection;
+    readonly resolvedChoice: z.infer<typeof ChoiceSchema>; readonly roles: SafeRoleMap },
+): true {
+  const parsed = EvidenceSchema.safeParse(input)
+  if (!parsed.success) throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
+  const evidence = parsed.data
+  if (evidence.userId !== expected.userId || evidence.correlationId !== expected.correlationId
+    || !isDeepStrictEqual(evidence.selection, expected.selection)
+    || !isDeepStrictEqual(evidence.resolvedChoice, expected.resolvedChoice)
+    || !isDeepStrictEqual(evidence.roles, expected.roles)) {
+    throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
+  }
+  const required = new Set(['planner', 'synthesizer'])
+  if ([...required].some(role => !evidence.invocations.some(row => row.role === role && row.status === 'succeeded'))) {
+    throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
+  }
+  for (const row of evidence.observatory) {
+    const target = expected.roles[row.role]
+    const providerId =
+      target.kind === 'local_cli'
+        ? 'cli'
+        : target.providerId === 'google'
+          ? 'gemini'
+          : target.providerId
+    if (row.providerId !== providerId || row.modelId !== target.modelId || row.fallbackUsed !== false) {
+      throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
+    }
+  }
+  if ([...required].some(role => !evidence.observatory.some(row => row.role === role))) {
+    throw new Error('AIC_E2E_ROUTING_EVIDENCE_INVALID')
+  }
+  return true
+}

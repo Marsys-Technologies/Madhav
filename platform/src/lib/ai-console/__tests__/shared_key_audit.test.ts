@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   auditImportGraph,
+  defaultImportAuditConfig,
   type ImportAuditConfig,
 } from '../../../../scripts/ai-console/shared_key_route_audit'
 
@@ -93,5 +94,48 @@ describe('AI Console shared-key route import audit', () => {
     await expect(auditImportGraph(config(root))).resolves.toMatchObject({
       violations: [], scannerErrors: [], visitedFiles: 1,
     })
+  })
+
+  it('includes credential replacement PATCH and every validation/revalidation entry root', () => {
+    expect(defaultImportAuditConfig('/platform').roots).toEqual(expect.arrayContaining([
+      'src/app/api/ai-console/connections/route.ts',
+      'src/app/api/ai-console/connections/[id]/route.ts',
+      'src/app/api/ai-console/connections/[id]/validate/route.ts',
+      'src/app/api/admin/cron/revalidate-ai-connections/route.ts',
+    ]))
+  })
+
+  it('traverses static require and TypeScript import-equals edges', async () => {
+    const root = await fixture({
+      'src/root.ts': "const one = require('./one'); import two = require('./two'); export { one, two }\n",
+      'src/one.ts': "export { read } from './lib/models/runtime_config'\n",
+      'src/two.ts': 'export const two = true\n',
+      'src/lib/models/runtime_config.ts': 'export const read = true\n',
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.scannerErrors).toEqual([])
+    expect(result.violations).toContainEqual({
+      ruleId: 'AIC_LEGACY_MODEL_AUTHORITY',
+      chain: ['src/root.ts', 'src/one.ts', 'src/lib/models/runtime_config.ts'],
+    })
+  })
+
+  it('detects provider environment destructuring, aliases, and static computed access', async () => {
+    const root = await fixture({
+      'src/root.ts': "import './destructure'; import './alias'; import './computed'\n",
+      'src/destructure.ts': 'const { OPENAI_API_KEY: key } = process.env; export { key }\n',
+      'src/alias.ts': 'const env = process.env; export const key = env.OPENAI_API_KEY\n',
+      'src/computed.ts': "const name = 'OPENAI_API_KEY'; export const key = process.env[name]\n",
+    })
+    const result = await auditImportGraph(config(root))
+    expect(result.violations.filter(row => row.ruleId === 'AIC_SHARED_PROVIDER_ENV')).toHaveLength(3)
+  })
+
+  it('fails closed on unsupported dynamic internal import edges', async () => {
+    const root = await fixture({ 'src/root.ts': "const target = './internal'; void import(target)\n" })
+    const result = await auditImportGraph(config(root))
+    expect(result.scannerErrors).toEqual([{
+      ruleId: 'AIC_IMPORT_UNSUPPORTED', chain: ['src/root.ts', 'dynamic-import'],
+    }])
   })
 })
