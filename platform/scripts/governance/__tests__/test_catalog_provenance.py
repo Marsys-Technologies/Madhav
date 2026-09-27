@@ -1269,8 +1269,13 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
     exit_code = cp.main(["--check"])
     out = capsys.readouterr().out
     assert exit_code != 0
+    # B2 (review-4 corrections): each failure names BOTH the SCU and the unbound
+    # producer (asset id + disposition), on one line — not just the SCU.
+    lines = out.splitlines()
     for scu_id in faked:
-        assert scu_id in out
+        assert any(
+            scu_id in ln and "'zz_fake'" in ln and "'derived_from_source_query'" in ln for ln in lines
+        ), scu_id
 
 
 def test_all_committed_source_query_producers_are_snapshot_bound():
