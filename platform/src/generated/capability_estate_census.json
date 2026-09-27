@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "2f2b6ed5dc2af26e963671252de5b75b95d51113b38edc939881472258149bc1",
+  "content_sha256": "ff3d8f85c88f1d46d443c54d26b8099c93c06b9e8b58a43bea6793037c18202f",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -103,8 +103,8 @@
         "L5": 15
       },
       "by_scope": {
-        "global": 72,
-        "per_chart": 114
+        "global": 71,
+        "per_chart": 115
       },
       "callable": 186,
       "output_schema_declared": 5,
@@ -5372,7 +5372,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "RC-7: served-generation build fence (generation/served_generation.ts). Composing callers (query_planet, graha_portrait) pass the chart's served build set so every strength read resolves to one generation. Standalone calls omit it and read the chart's current rows unfenced, as before.",
+            "description": "RC-7: served-generation build fence (generation/served_generation.ts). Composing callers (query_planet, graha_portrait) best-effort resolve the chart's served build set and pass it here so the strength read resolves to one generation (each caller discloses whether resolution actually succeeded via its own `generation_fence` response field — a resolution failure there falls back to this same unfenced path, it is never a silent, unstated fence). Standalone calls omit it and read the chart's current rows unfenced, as before.",
             "type": "string"
           },
           "categories": {
@@ -20816,7 +20816,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-27T17:20:00.000Z",
+  "generated_at": "2026-09-27T17:45:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20838,7 +20838,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "1e9d0238b897e931ac7df3356762a64952e79ebc324b539e7af72cf8b882b81e"
+        "sha256": "3b612896bf5fafa0269db1a39dd5a4214103e031bde2627f27edef42251e64a6"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21497,7 +21497,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "b76a25f9a407ecf7bcc9b91205442ec98f87d72f001603ddd5c73e55285b9bc8"
+            "sha256": "fd634acbcad2e5057ed887ddc38939cba41cf88a6ab248515fa104774270c07b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21825,7 +21825,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
-            "sha256": "77efe88d765c8e01bc29ad8e11e69fb5380594f83daa1b0555f0e83fbcefa0bc"
+            "sha256": "4dd73828e8426ff54b9ac0fdfd8e17106ea1dd6cb5dcac9f75b6908aa75e0a6d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
@@ -21865,7 +21865,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "3420b6747309c60ef279b7d8514416825a22d850c20ca3c20230c660335549c2"
+            "sha256": "0efc481cc3f09eeaa77036ee3fe3ce878040c82e66b1fdc1782b4070e555e901"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -21873,7 +21873,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "c599258d512337148637231f65d5aec3664c935d4246c43c12aecb7297fa315d"
+            "sha256": "f3653b3d99f1b146cd86cc331becf1bbf61dd999dbb61a6d865146c5c47b1afc"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -22145,7 +22145,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts",
-            "sha256": "861e8afc6cbd160f53feb24cf6f84878e733ff1f4caef5a7044300434a24133e"
+            "sha256": "c16247bd9ba742c89c9365447883b626805511602190baa925544d9b9ebcc859"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
@@ -22225,7 +22225,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f9ffdaac9167bbf29b4dff545b7f65023b02f9b298bc8463d32dc0e8357c1d7e"
+        "sha256": "05973959040a8cf4421a4666bc0f6dc0dc5992ad511a6181cf08b97258afb37e"
       },
       {
         "id": "service_effect_contracts",
@@ -22250,5 +22250,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "ff22f2048ac530a71ebf40b06a674511145b8076"
+  "source_revision": "8ea19c33839124d624e5e988dbbb676e4dd8650a"
 }

@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-27T17:20:00.000Z",
-  "content_hash": "sha256:7f9b800042f9f84d5d2c7441948ccbccb2759cc932eb7475a833c71675273300",
-  "source_catalog_fingerprint": "sha256:ed97ba89becc99d6320e98430c6e4028949ebd765f5499efec72a9499c54227e",
-  "semantic_review_fingerprint": "sha256:55f6b5b3f1d1d1566c6472cf012af06d444a69f76a98087fa316631c26ddb625",
+  "generated_at": "2026-09-27T17:45:00.000Z",
+  "content_hash": "sha256:cdb9e5ad93149497046f16d6789bfd4e939db2c4429ef00cb42cdaff5b5d6903",
+  "source_catalog_fingerprint": "sha256:9c61e6f518f54e9f93ab5f95e73cb31497df2a83bc6094e07117e66fdb0e9f2d",
+  "semantic_review_fingerprint": "sha256:91f446696ab22b52901690f9f47691971fcab6ccaba330047cf76e08623dad01",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -4677,7 +4677,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-av-transit-gating:v1",
               "capability_uri": "marsys://tool/L1/get_av_transit_gating",
-              "contract_sha256": "sha256:e626c3cfafd6a1d6685f59cb53f02f784f649630f9dbd187647fa3b633a19041",
+              "contract_sha256": "sha256:72c23b177cba67e35638331a1094c6555c092961277d90642a85e1a3888bc0ec",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating | platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY"
             }
@@ -32473,7 +32473,7 @@
         "current",
         "natal"
       ],
-      "scope": "global",
+      "scope": "chart",
       "inputs": [
         "chart_id",
         "dry_run",
