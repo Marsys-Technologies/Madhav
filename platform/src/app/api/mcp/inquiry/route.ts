@@ -45,7 +45,11 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
-import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry/response_accountability'
+import {
+  buildStructuredResponseAccountability,
+  inquiryCitedHandles,
+  stripInquiryCitationMarkers,
+} from '@/lib/vidhi/inquiry/response_accountability'
 
 export const maxDuration = 60
 
@@ -62,6 +66,17 @@ const AiProposalSchema = z.object({
   }).strict()).max(16),
   hypotheses: z.array(z.string().trim().min(1).max(500)).max(16),
 }).strict()
+
+const MAX_RESULT_BYTES = 512 * 1024
+const MAX_CERTIFY_PAYLOADS = 64
+// Bound the certify body before it is parsed: every committed payload at its maximum size, the
+// answer, and envelope overhead. Execution bodies are far smaller.
+const MAX_REQUEST_BYTES = MAX_CERTIFY_PAYLOADS * MAX_RESULT_BYTES + 1024 * 1024
+// Bound certification work: each cited span re-hashes the findings it cites.
+const MAX_CERTIFY_CITED_SPANS = 256
+const MAX_CERTIFY_CITATIONS = 2048
+// A cited span must carry some interpretation of its own, not markers alone.
+const MIN_INTERPRETATION_CHARS = 24
 
 const BodySchema = z.discriminatedUnion('action', [
   z.object({
@@ -80,12 +95,11 @@ const BodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('certify'), lifecycle_token: z.string().min(1).max(16384),
     response_text: z.string().min(1).max(200_000),
-    evidence_payloads: z.array(z.unknown()).max(64),
+    evidence_payloads: z.array(z.unknown()).max(MAX_CERTIFY_PAYLOADS),
   }).strict(),
 ])
 type Body = z.infer<typeof BodySchema>
 
-const MAX_RESULT_BYTES = 512 * 1024
 const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_TOKEN_MALFORMED', 'INQUIRY_TOKEN_INVALID_SIGNATURE', 'INQUIRY_TOKEN_WRONG_AUDIENCE',
   'INQUIRY_TOKEN_UNKNOWN_KID', 'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
@@ -180,6 +194,9 @@ export async function POST(request: Request) {
   const principalKeyId = request.headers.get('x-mcp-key-id')
   if (!principalUid || !principalKeyId) return response({ ok: false, error: 'X-MCP-User and X-MCP-Key-Id headers required' }, 401)
   const principalSubject = `${principalUid}:${principalKeyId}`
+  if (Number(request.headers.get('content-length') ?? 0) > MAX_REQUEST_BYTES) {
+    return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
+  }
   let rawBody: unknown
   try { rawBody = await request.json() } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }
   const parsedBody = BodySchema.safeParse(rawBody)
@@ -332,6 +349,10 @@ export async function POST(request: Request) {
         raw = { ok: false, error: gapReason, trace_id: traceId, result_hash: oversizedHash }
         serialized = JSON.stringify(raw)
       }
+      // Commit, derive from, and hand back exactly the JSON the client receives, so a payload
+      // the client later presents for certification hashes to the ref committed here
+      // (in-memory values such as undefined fields or Dates do not survive the wire).
+      raw = JSON.parse(serialized)
       const pagination = deriveInquiryPaginationReceipt(binding, raw, invocationArgs)
       const observed = recordInquiryExecution(contract, {
         item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
@@ -461,7 +482,15 @@ function certifyExternalAnswer(
     }
     const hash = stableFingerprint(payload)
     if (!committedHashes.has(hash)) return response({ ok: false, error: 'INQUIRY_CERTIFICATION_EVIDENCE_UNCOMMITTED' }, 409)
+    if (supplied.has(hash)) return response({ ok: false, error: 'INQUIRY_CERTIFICATION_EVIDENCE_DUPLICATED' }, 400)
     supplied.set(hash, payload)
+  }
+  const citedSpans = body.response_text.split(/\n{2,}/)
+    .map((span) => ({ span, handles: inquiryCitedHandles(span) }))
+    .filter((entry) => entry.handles.length > 0)
+  if (citedSpans.length > MAX_CERTIFY_CITED_SPANS
+    || citedSpans.reduce((total, entry) => total + entry.handles.length, 0) > MAX_CERTIFY_CITATIONS) {
+    return response({ ok: false, error: 'INQUIRY_CERTIFICATION_TOO_MANY_CITATIONS' }, 400)
   }
   const missingEvidence = [...committedHashes].filter((hash) => !supplied.has(hash)).sort()
   const envelope = buildStructuredResponseAccountability(final, {
@@ -470,12 +499,26 @@ function certifyExternalAnswer(
     knowledge_snapshot: snapshot,
   })
   const receipt = envelope.response_coverage_receipt
+  // Certification attests evidence COVERAGE: every committed payload was delivered and every
+  // required finding is cited by a span that says something of its own. Whether that prose is
+  // faithful to the evidence it cites is not decidable here; the independent judge owns it.
+  const uncertifiedReasons = [
+    ...(receipt.status === 'COMPLETE' ? [] : [`coverage_${receipt.status.toLowerCase()}`]),
+    ...(missingEvidence.length ? ['committed_evidence_missing'] : []),
+    ...(citedSpans.some(({ span }) => stripInquiryCitationMarkers(span).replace(/[^\p{L}\p{N}]/gu, '').length < MIN_INTERPRETATION_CHARS)
+      ? ['citation_without_interpretation'] : []),
+  ]
   return response({
     ok: true,
     inquiry_id: row.inquiry_id,
-    certified_complete: receipt.status === 'COMPLETE' && missingEvidence.length === 0,
+    coverage_certified: uncertifiedReasons.length === 0,
     certification: {
+      attests: 'evidence_coverage',
+      does_not_attest: 'faithfulness of the prose to the evidence it cites (independent judgment)',
+      uncertified_reasons: uncertifiedReasons,
       contract_id: final.contract_id,
+      contract_status: final.status,
+      chart_build_id: final.chart_build_id,
       response_text_hash: stableFingerprint(body.response_text),
       coverage_receipt_hash: receipt.receipt_hash,
       missing_committed_evidence: missingEvidence,

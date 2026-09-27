@@ -79,6 +79,11 @@ function citedHandles(text: string): string[] {
   return uniqueSorted([...text.matchAll(CITATION_MARKER_RE)].map((match) => match[1]!.toUpperCase()))
 }
 
+/** A text span with its citation markers removed — the prose actually offered as interpretation. */
+export function stripInquiryCitationMarkers(text: string): string {
+  return text.replace(CITATION_MARKER_RE, ' ')
+}
+
 /** Register handles cited in a text span (`[[F7]]` or the Portal `⟦cite: F7⟧` family). */
 export function inquiryCitedHandles(text: string): string[] {
   return citedHandles(text)

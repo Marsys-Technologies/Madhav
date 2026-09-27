@@ -581,6 +581,20 @@ describe('raw MCP inquiry route', () => {
     }))
   })
 
+  it('commits the hash of the JSON the client receives, not of in-memory values that do not survive the wire', async () => {
+    primeStoredLifecycle()
+    const inMemory = { results: [{ content: 'served', optional: undefined }], observed: new Date(0) }
+    mocks.retrieve.mockResolvedValueOnce(inMemory)
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(200)
+    const received = (await response.json()).raw_result
+    const wireHash = stableFingerprint(received)
+    expect(wireHash).not.toBe(stableFingerprint(inMemory))
+    expect(mocks.commitObservation).toHaveBeenCalledWith(expect.objectContaining({
+      evidence: expect.objectContaining({ raw_result_hash: wireHash }),
+    }))
+  })
+
   it('consumes a replayed action before dispatch so only one concurrent request executes', async () => {
     const value = contract()
     mocks.verify.mockReturnValue({
@@ -790,7 +804,7 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json).toMatchObject({
-      ok: true, inquiry_id: 'inquiry-1', certified_complete: true,
+      ok: true, inquiry_id: 'inquiry-1', coverage_certified: true,
       certification: { contract_id: final.contract_id, response_text_hash: stableFingerprint(text), missing_committed_evidence: [] },
     })
     expect(json.certification.coverage_receipt_hash).toBe(json.response_accountability.response_coverage_receipt.receipt_hash)
@@ -806,11 +820,11 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     const withheld = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: citingAnswer(final), evidence_payloads: [] }))
     expect(withheld.status).toBe(200)
     expect(await withheld.json()).toMatchObject({
-      certified_complete: false,
+      coverage_certified: false,
       certification: { missing_committed_evidence: [stableFingerprint(payload)] },
     })
     const uncited = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'A confident answer with no citations.', evidence_payloads: [payload] }))
-    expect(await uncited.json()).toMatchObject({ certified_complete: false })
+    expect(await uncited.json()).toMatchObject({ coverage_certified: false })
   })
 
   it('certifies a BLOCKED closure honestly, never as complete', async () => {
@@ -818,7 +832,38 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     primeTerminal(final, { allowed_transition: 'execute', next_action_ids: ['item-001'] })
     const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: citingAnswer(final), evidence_payloads: [payload] }))
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ ok: true, certified_complete: false })
+    expect(await res.json()).toMatchObject({ ok: true, coverage_certified: false })
+  })
+
+  it('does not certify a span that carries citation markers but no interpretation of its own', async () => {
+    const final = finalized()
+    primeTerminal(final)
+    const markers = citingAnswer(final).match(/\[\[F[0-9]+\]\]/g)!.join(' ')
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: markers, evidence_payloads: [payload] }))
+    expect(await res.json()).toMatchObject({
+      coverage_certified: false,
+      certification: { attests: 'evidence_coverage', uncertified_reasons: ['citation_without_interpretation'] },
+    })
+  })
+
+  it('bounds certification work: duplicate evidence, citation floods and oversized bodies', async () => {
+    primeTerminal(finalized())
+    const duplicate = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload, payload] }))
+    expect(duplicate.status).toBe(400)
+    expect(await duplicate.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_EVIDENCE_DUPLICATED' })
+
+    const flood = Array.from({ length: 257 }, (_, index) => `Span ${index} interprets the evidence [[F1]]`).join('\n\n')
+    const flooded = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: flood, evidence_payloads: [payload] }))
+    expect(flooded.status).toBe(400)
+    expect(await flooded.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_TOO_MANY_CITATIONS' })
+
+    mocks.verify.mockClear()
+    const oversized = await POST(request(
+      { action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [] },
+      { 'content-length': String(64 * 512 * 1024 + 2 * 1024 * 1024) },
+    ))
+    expect(oversized.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
   })
 
   it('rejects evidence the server never committed', async () => {
