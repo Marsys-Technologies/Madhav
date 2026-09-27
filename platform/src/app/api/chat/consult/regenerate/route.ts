@@ -2,6 +2,7 @@ import 'server-only'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { getConversation } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { res } from '@/lib/errors'
 
 /**
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
   }).catch(() => null)
 
   if (!conv) return res.notFound('conversation')
+  // Jātaka chart workspace: history archived by a chart-details correction is read-only.
+  if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 
   // Get the created_at timestamp of the parent message so we can delete everything after it.
   let parentCreatedAt: string | null = null

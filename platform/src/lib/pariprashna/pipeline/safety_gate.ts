@@ -48,6 +48,8 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import { getConversation, insertConversationWithId } from '@/lib/conversations'
+import { isCorrectionArchived } from '@/lib/conversations/readOnly'
+import { getChartReadinessMap, isDerivedChartReady } from '@/lib/charts/readiness'
 import { configService } from '@/lib/config/index'
 import { enforceTurnLimits } from '@/lib/limits'
 import {
@@ -257,6 +259,44 @@ export async function authorizeTurn(args: {
     return halt('error')
   }
 
+  // ── Chart-correction history is read-only (Jātaka chart workspace). ────────
+  // A conversation archived because the chart's birth details were corrected
+  // belongs to the old details; it may be read but never continued. Checked
+  // before readiness so the refusal names the real reason.
+  const existingConversation = clientConversationId
+    ? await getConversation({ id: clientConversationId, userId: user.uid, isSuperAdmin })
+    : null
+  if (existingConversation && existingConversation.chart_id === chartId && isCorrectionArchived(existingConversation)) {
+    em.error({
+      code: 'CONVERSATION_ARCHIVED_READ_ONLY',
+      message: 'This reading belongs to chart details from before a correction. It is kept as read-only history.',
+      retryable: false,
+      phase: 'plan',
+    })
+    return halt('error')
+  }
+
+  // ── Shared readiness gate (Jātaka chart workspace). ─────────────────────────
+  // Readings run only on a fully computed chart, so results computed for earlier
+  // birth details are never presented as this chart's. Same authority the
+  // workspace and directory use. Fails closed if readiness cannot be read.
+  let chartReady = false
+  try {
+    const readiness = (await getChartReadinessMap([chartId])).get(chartId)
+    chartReady = Boolean(readiness && isDerivedChartReady(readiness))
+  } catch (err) {
+    console.error('[pariprashna/safety_gate] readiness lookup failed:', (err as Error)?.message)
+  }
+  if (!chartReady) {
+    em.error({
+      code: 'CHART_RECOMPUTE_REQUIRED',
+      message: 'This chart is being recomputed. New readings will be available when it is ready.',
+      retryable: true,
+      phase: 'plan',
+    })
+    return halt('error')
+  }
+
   // ── SUBJECT CONSENT (P1 G1-B · NCD-9 · PPR-14 · abuse case A9). ────────────
   // `authorizeChartAccess` above answered "may this CALLER touch this chart?".
   // This answers the question nothing used to ask: "may this SUBJECT's L2+
@@ -291,7 +331,7 @@ export async function authorizeTurn(args: {
 
   // ── Conversation resolution / eager insert (mirrors consult). ──────────────
   if (clientConversationId) {
-    const existing = await getConversation({ id: clientConversationId, userId: user.uid, isSuperAdmin })
+    const existing = existingConversation
     if (!existing || existing.chart_id !== chartId) {
       em.error({ code: 'CONVERSATION_NOT_FOUND', message: 'Conversation not found.', retryable: false, phase: 'plan' })
       return halt('error')

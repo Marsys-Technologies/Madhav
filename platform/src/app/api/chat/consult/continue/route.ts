@@ -4,6 +4,7 @@ import { streamText } from 'ai'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { getConversation } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
@@ -60,6 +61,8 @@ export async function POST(request: Request) {
   }).catch(() => null)
 
   if (!conv) return res.notFound('conversation')
+  // Jātaka chart workspace: history archived by a chart-details correction is read-only.
+  if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 
   // Load conversation messages for context.
   let uiMessages

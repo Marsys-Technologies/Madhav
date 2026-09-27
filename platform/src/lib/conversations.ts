@@ -20,19 +20,8 @@ export interface ConversationSummary {
   archived_by_run_id: string | null
 }
 
-/**
- * True when this conversation was archived by a chart-details correction and is
- * therefore historical, read-only material. Every turn-writing and mutating door
- * checks this. Fails closed on the reason alone: migration 1120's CHECK already
- * guarantees such a row stays archived, and a correction reason must never be
- * writable even if that invariant were somehow broken. Manual archives (reason
- * NULL) keep their existing semantics.
- */
-export function isCorrectionArchived(
-  conversation: Pick<ConversationSummary, 'archived_at' | 'archive_reason'>,
-): boolean {
-  return conversation.archive_reason === 'chart_details_changed'
-}
+/** Single read-only predicate for chart-correction archives; see ./conversations/readOnly. */
+export { isCorrectionArchived } from '@/lib/conversations/readOnly'
 
 function archiveContext(row: Record<string, unknown>) {
   return {

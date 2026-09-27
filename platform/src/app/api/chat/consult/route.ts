@@ -41,6 +41,7 @@ import {
   insertConversationWithId,
   updateConversationTitle,
 } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
@@ -380,6 +381,8 @@ export async function POST(request: Request) {
     if (!existing || existing.chart_id !== chartId) {
       return res.notFound('conversation')
     }
+    // Jātaka chart workspace: history archived by a chart-details correction is read-only.
+    if (isCorrectionArchived(existing)) return archivedReadOnlyResponse()
   } else {
     conversationId = crypto.randomUUID()
     isFirstTurn = true

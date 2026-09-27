@@ -103,10 +103,23 @@ vi.mock('@/lib/db/client', () => ({
 
 // ── conversations (no clientConversationId in any scenario here, so only
 // `insertConversationWithId` is ever actually called). ──────────────────────
-const { mockInsertConversationWithId } = vi.hoisted(() => ({ mockInsertConversationWithId: vi.fn() }))
+const { mockInsertConversationWithId, mockGetConversation, mockReadinessState } = vi.hoisted(() => ({
+  mockInsertConversationWithId: vi.fn(),
+  mockGetConversation: vi.fn(),
+  mockReadinessState: { value: 'ready' as string },
+}))
 vi.mock('@/lib/conversations', () => ({
-  getConversation: vi.fn(async () => null),
+  getConversation: mockGetConversation,
   insertConversationWithId: mockInsertConversationWithId,
+}))
+
+// ── shared chart readiness (Jātaka chart workspace): every scenario below runs
+// against a Ready chart unless a test says otherwise. ──────────────────────────
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) =>
+    new Map(ids.map((id) => [id, { state: mockReadinessState.value }])),
+  ),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
 }))
 
 // ── manifest / orientation (plan-stage front matter; only reached by the
@@ -304,6 +317,8 @@ beforeEach(() => {
   safetyFlagState.on = false
   mockCallPipelinePlanner.mockReset()
   mockInsertConversationWithId.mockReset().mockResolvedValue(undefined)
+  mockGetConversation.mockReset().mockResolvedValue(null)
+  mockReadinessState.value = 'ready'
 })
 
 afterEach(() => {
@@ -437,5 +452,70 @@ describe('V3-E-055: PPR-12 safety gate (WEB door /api/pariprashna) — reaches t
     // but never a refusal action.
     const flagEvent = events.find((e) => e.type === 'flag' && typeof e.code === 'string' && (e.code as string).startsWith('safety_decision:'))
     expect(flagEvent?.code).toBe('safety_decision:proceed')
+  })
+})
+
+describe('Jātaka chart workspace — Paripraśna write gates', () => {
+  const ARCHIVED_ID = '0f0e0d0c-0b0a-4908-8706-050403020100'
+
+  function continueReq(question: string): Request {
+    return new Request('http://localhost/api/pariprashna', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chartId: CHART,
+        conversationId: ARCHIVED_ID,
+        messages: [{ role: 'user', parts: [{ type: 'text', text: question }] }],
+      }),
+    })
+  }
+
+  it.each(['building', 'needs-rebuild', 'not-built', 'partially-built', 'failed'])(
+    'a %s chart refuses a new reading with CHART_RECOMPUTE_REQUIRED before planning',
+    async (state) => {
+      mockReadinessState.value = state
+      mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+      const { events } = await runRoute('What does my chart say about work?')
+      expect(events.some((e) => e.code === 'CHART_RECOMPUTE_REQUIRED')).toBe(true)
+      expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+      expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+    },
+  )
+
+  it('a correction-archived conversation refuses a new turn with CONVERSATION_ARCHIVED_READ_ONLY', async () => {
+    mockGetConversation.mockResolvedValue({
+      id: ARCHIVED_ID,
+      chart_id: CHART,
+      user_id: 'route-test-uid',
+      module: 'consume',
+      archived_at: '2026-09-27T10:00:00Z',
+      archive_reason: 'chart_details_changed',
+      archived_chart_snapshot: { birth_date: '1984-02-05', birth_time: '10:43:00' },
+      archived_by_run_id: null,
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(continueReq('Continue please'))
+    const events = parseSse(await res.text())
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+  })
+
+  it('a manually archived conversation keeps its existing semantics', async () => {
+    mockGetConversation.mockResolvedValue({
+      id: ARCHIVED_ID,
+      chart_id: CHART,
+      user_id: 'route-test-uid',
+      module: 'consume',
+      archived_at: '2026-09-27T10:00:00Z',
+      archive_reason: null,
+      archived_chart_snapshot: null,
+      archived_by_run_id: null,
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(continueReq('Continue please'))
+    const events = parseSse(await res.text())
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(false)
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
   })
 })
