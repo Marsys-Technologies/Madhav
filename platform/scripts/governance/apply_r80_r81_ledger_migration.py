@@ -9,10 +9,20 @@ Applies, in a single pass:
 
 Every existing data line (everything after line 1) is preserved BYTE-FOR-BYTE — this script never
 re-serialises a line it did not itself compute the new content of, so no line's key order,
-escaping or whitespace can silently drift. Only line 1 (`_schema`) is replaced in place (a
-one-time documentation update, not a "gap" data row — the ledger's append-only discipline binds
-kind=gap/opportunity rows, per the _schema doc's own text); every new gap-fold row is APPENDED,
-nothing is ever deleted.
+escaping or whitespace can silently drift. Every new gap-fold row is APPENDED, nothing is ever
+deleted.
+
+**Line 1 (`_schema`) is the one disclosed exception to strict append-only, not a quotation of the
+doc's own text** (W3-1_REVIEW.md §10 C4: an earlier version of this docstring claimed "the
+ledger's append-only discipline binds kind=gap/opportunity rows, per the _schema doc's own text"
+— the `_schema` row's `_doc` field contains no such carve-out; it says only "Append-only" with no
+exception named. The real justification is precedent, not a quotation: commit `a72cdf460` already
+rewrote this same line in place once before, to add `kind` to the field list, and this migration
+does the same thing again, disclosed here and in the R80/R81 commit messages and the wave report.
+The `_schema` row documents the ledger's shape; it is not itself a `kind=gap`/`kind=opportunity`
+data row, so rewriting it in place — while every actual gap/opportunity row is still only ever
+appended to, never edited or deleted — is the established, precedented mechanism for evolving the
+schema documentation, not a violation of the data rows' own append-only guarantee.
 
 Both migration functions were already proven idempotent on a copy in
 platform/scripts/governance/__tests__/test_r80_schema_superseded_by_field.py and

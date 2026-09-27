@@ -139,6 +139,22 @@ post-write: every line parses as JSON (857/857); re-running `--apply` against th
 real file is a confirmed live no-op (0 new rows, unchanged md5) — the idempotency proof repeated
 against the real file itself, not only the copies used to develop it.
 
+**C4 (gate review correction): the `_schema` line-1 rewrite is a disclosed, precedented exception
+to strict append-only, not a claim of full append-only purity.** 829 of 830 pre-existing lines are
+byte-identical and in the same position — every actual `kind=gap`/`kind=opportunity` data row is
+untouched, and every fold is an appended line, never an edit or a deletion. Line 1 (the `_schema`
+documentation row) is the one line this migration rewrites in place, changing only its `_doc`
+field's text (the field list gains `superseded_by`; a clause is appended) — its keys are
+unchanged, and its original bytes survive verbatim in git history and in
+`_r81_pre_migration_fixture.PRE_MIGRATION_SCHEMA_ROW`. This is not new: commit `a72cdf460` already
+rewrote this same line in place once before, to add `kind` to the field list — the same mechanism,
+disclosed the same way, is used again here. The apply script's own docstring previously claimed
+this in-place rewrite was authorized "per the `_schema` doc's own text" (implying the doc itself
+carves out an exception); the `_schema` row's `_doc` field contains no such carve-out — it says
+only "Append-only" — so that phrasing was the builder's own reading stated as a quotation. Fixed
+in the docstring itself (a separate commit, `apply_r80_r81_ledger_migration.py`): the real
+justification is precedent (`a72cdf460`), not doc text, and is now stated as such.
+
 Test: `test_r81_ledger_overlap_fold.py` (13 tests: synthetic same-criterion / distinct-criterion /
 partial-overlap / idempotency / missing-row cases; a FROZEN pre-migration fixture
 (`_r81_pre_migration_fixture.py`, transcribed verbatim from T5_LEDGER_DRIFT.md §A) proving the
