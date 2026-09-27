@@ -246,18 +246,31 @@ def parse_source_ref_segments(source_ref: str) -> List[Tuple[str, int, int]]:
     return segments
 
 
-def resolve_segment_text(repo_root: Path, file_rel: str, a: int, b: int) -> Optional[str]:
-    """Return the exact text of lines a..b (1-indexed, inclusive) of file_rel under
-    repo_root, or None if the file is missing or the range is out of bounds. Never
-    reads outside [a, b] — that would silently widen the declared contract."""
+def resolve_segment_text(
+    repo_root: Path, file_rel: str, a: int, b: int
+) -> Tuple[Optional[str], Optional[str]]:
+    """Return (text, out_of_range_reason) for lines a..b (1-indexed, inclusive) of
+    file_rel under repo_root. Never reads outside [a, b] — that would silently
+    widen the declared contract.
+
+    C-2/C-4: a missing file and an out-of-bounds range are DISTINCT failure modes
+    that used to both collapse into a bare `None`, which made a stale
+    `source_ref` annotation (the declared range no longer matches the file's
+    current length — e.g. code was edited/moved and the annotation was never
+    updated) silently indistinguishable from "this range genuinely has no
+    relation name in it". `out_of_range_reason` names exactly which segment
+    failed and why, including the file's actual current line count, so a caller
+    can classify this honestly as `source_ref_out_of_range` rather than the
+    misleading "resolved source range(s) contain no relation name"."""
     fpath = repo_root / file_rel
     if not fpath.is_file():
-        return None
+        return None, f"{file_rel} does not exist"
     with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
         lines = fh.readlines()
-    if a < 1 or b > len(lines) or a > b:
-        return None
-    return "".join(lines[a - 1 : b])
+    n = len(lines)
+    if a < 1 or b > n or a > b:
+        return None, f"{file_rel} has {n} lines, ref {a}-{b}"
+    return "".join(lines[a - 1 : b]), None
 
 
 def resolve_full_file_text(repo_root: Path, file_rel: str) -> Optional[str]:
@@ -550,10 +563,13 @@ def derive_from_source_query(
         return [], f"NO_DETECTOR — source_ref did not resolve to any <file>:<a>-<b> segment ({source_ref!r})"
 
     all_literals: List[str] = []
+    oob_reasons: List[str] = []
     resolved_any = False
     for file_rel, a, b in segments:
-        text = resolve_segment_text(repo_root, file_rel, a, b)
+        text, oob_reason = resolve_segment_text(repo_root, file_rel, a, b)
         if text is None:
+            if oob_reason:
+                oob_reasons.append(oob_reason)
             continue
         resolved_any = True
         ext = Path(file_rel).suffix
@@ -563,6 +579,13 @@ def derive_from_source_query(
             all_literals.extend(extract_string_literals(body, ext))
 
     if not resolved_any:
+        # C-2/C-4: a stale source_ref annotation (file exists but the declared range
+        # no longer matches its current length) is a DISTINCT, more actionable cause
+        # than "no segment even parsed as <file>:<a>-<b>" — name it precisely,
+        # including the file's actual current line count, rather than folding both
+        # into one vague "does not exist or is out of bounds" message.
+        if oob_reasons:
+            return [], f"NO_DETECTOR — source_ref_out_of_range ({'; '.join(oob_reasons)})"
         return [], (
             "NO_DETECTOR — every segment in source_ref names a file that does not "
             f"exist or a range out of bounds ({source_ref!r})"
@@ -571,6 +594,15 @@ def derive_from_source_query(
     candidates = find_relation_candidates(all_literals)
     known = filter_known_relations(candidates, known_tables)
     if not known:
+        # C-4: even when SOME segment resolved, an out-of-range segment sitting
+        # alongside a resolved-but-irrelevant one must not be silently reported as
+        # "resolved, no relation" — the true cause is the stale annotation, and
+        # burying it there is exactly finding 4's defect.
+        if oob_reasons:
+            return [], (
+                f"NO_DETECTOR — source_ref_out_of_range ({'; '.join(oob_reasons)}); no relation name "
+                f"found in the remaining resolved segment(s) ({source_ref!r})"
+            )
         return [], (
             "NO_DETECTOR — resolved source range(s) contain no relation name in "
             "asset_registry.target_table ∪ information_schema.tables "
@@ -745,6 +777,60 @@ def calibration_report(snapshot: dict, provenance: Dict[str, ScuProvenance]) -> 
             ),
         }
     return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# §8b — C-4 segment resolution recount (full / partial / none, bounds checked)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def compute_segment_resolution_counts(
+    snapshot: dict, repo_root: Path = REPO_ROOT
+) -> Tuple[int, int, int, List[str]]:
+    """C-4: for every `kind: source_query` requirement, resolve EVERY `|`-joined
+    piece of its declared source_ref (not just until one resolves) under the
+    definition the gate review used — "file exists, range in-bounds" — and
+    classify the SCU as fully resolved (every declared piece meets that
+    definition), partially resolved (some but not all), or unresolved (none do,
+    including a piece that never even parsed as `<file>:<a>-<b>`, e.g. a bare
+    `#anchor` or `:name` citation).
+
+    This is a stricter, more honest count than the "shape-valid" figure
+    (`parse_source_ref_segments` silently drops non-numeric-range pieces before
+    counting) — it surfaces the SCUs whose numeric ranges parse fine but are
+    stale against the file's CURRENT length, which the shape-valid count hides
+    entirely. Returns (full, partial, none, stale_refs) where stale_refs names
+    each individual out-of-range piece found, prefixed with its owning SCU id —
+    the exact, non-truncated list this lane registers as a finding for
+    `source_query_availability.ts`'s owner (never edited by this lane)."""
+    full = partial = none = 0
+    stale: List[str] = []
+    for scu_id, req in iter_scu_requirements(snapshot):
+        if req.get("kind") != "source_query":
+            continue
+        source_ref = req.get("source_ref") or ""
+        raw_pieces = [p.strip() for p in source_ref.split("|") if p.strip()]
+        if not raw_pieces:
+            none += 1
+            continue
+        good = 0
+        for piece in raw_pieces:
+            m = _SEGMENT_RE.match(piece)
+            if not m:
+                continue  # non-numeric-range citation (#anchor, :name, whole-file) — never resolves here
+            file_rel, a, b = m.group(1), int(m.group(2)), int(m.group(3))
+            text, oob_reason = resolve_segment_text(repo_root, file_rel, a, b)
+            if text is not None:
+                good += 1
+            elif oob_reason:
+                stale.append(f"{scu_id}: {piece} ({oob_reason})")
+        if good == len(raw_pieces):
+            full += 1
+        elif good == 0:
+            none += 1
+        else:
+            partial += 1
+    return full, partial, none, stale
 
 
 # ─────────────────────────────────────────────────────────────────────────────

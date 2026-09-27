@@ -78,31 +78,66 @@ def test_resolvable_range_yields_derived_producer(tmp_path):
 
 
 def test_unresolvable_range_yields_no_detector_with_reason(tmp_path):
-    """Mutation this catches: if an out-of-bounds or missing-file source_ref were
-    treated as 'resolved to empty text' rather than 'unresolved', the SCU would
-    silently get producers=[] with NO reason — exactly the guessed/blank outcome
-    B-1 forbids ('a unit nothing resolves is NO_DETECTOR — never guessed')."""
+    """Mutation this catches (C-2/C-4): if an out-of-bounds or missing-file
+    source_ref were treated as 'resolved to empty text' rather than 'unresolved',
+    the SCU would silently get producers=[] with NO reason — exactly the
+    guessed/blank outcome B-1 forbids ('a unit nothing resolves is NO_DETECTOR —
+    never guessed'). Per the gate review finding 2/4 (B_REVIEW.md: 'a mutation
+    this test claims to catch — deleting the out-of-bounds guard — actually
+    leaves it green'), this test now asserts the EXACT, distinct reason class for
+    each of three genuinely different causes, not just a 'starts with
+    NO_DETECTOR' string match a mutation could still satisfy."""
     f = tmp_path / "handler.ts"
     f.write_text("const sql = `SELECT 1`\n")  # 1 line only
 
-    # Range 50-60 is out of bounds for a 1-line file.
+    # Case 2a: range 50-60 is out-of-bounds for this 1-line file. This is the
+    # exact mutation the review named: deleting the bounds check in
+    # `resolve_segment_text` used to leave this test green (it would return ""
+    # instead of None, which still yields producers=[] with SOME reason — just
+    # the WRONG one). Asserting the exact class + that the file's actual current
+    # line count and the declared range both appear in the message is what makes
+    # that specific mutation fail here.
     req_oob = {"kind": "source_query", "source_ref": f"{f.name}:50-60"}
     producers, reason = cp.derive_from_source_query(
         "scu.test.oob", req_oob, {"real_table"}, {}, tmp_path
     )
     assert producers == []
-    assert reason is not None
-    assert reason.startswith("NO_DETECTOR")
+    assert reason is not None and reason.startswith("NO_DETECTOR")
+    assert cp.classify_no_detector_reason(reason) == "source_ref_out_of_range"
+    assert "1 lines" in reason
+    assert "50-60" in reason
 
-    # A source_ref that doesn't even match <file>:<a>-<b> (e.g. a bare filename or
-    # a '#anchor' citation) must also fail honestly, not silently pass through.
+    # Case 2b: a source_ref that doesn't even match <file>:<a>-<b> (e.g. a bare
+    # filename or a '#anchor' citation) is a DIFFERENT failure — the segment
+    # never had a shape to check bounds on at all. Must classify differently
+    # from case 2a, proving "segment unresolved" (bad shape) and "resolved,
+    # no relation" are not conflated.
     req_bad_shape = {"kind": "source_query", "source_ref": f"{f.name}#someAnchor"}
     producers2, reason2 = cp.derive_from_source_query(
         "scu.test.badshape", req_bad_shape, {"real_table"}, {}, tmp_path
     )
     assert producers2 == []
-    assert reason2 is not None
-    assert reason2.startswith("NO_DETECTOR")
+    assert reason2 is not None and reason2.startswith("NO_DETECTOR")
+    assert cp.classify_no_detector_reason(reason2) == "source_ref_unresolvable_shape"
+
+    # Case 2c: a fully in-bounds, real range that genuinely contains no relation
+    # name at all — "resolved, no relation" — must classify as a THIRD, distinct
+    # class from both of the above (not "out of range", not "unresolvable shape").
+    f2 = tmp_path / "handler2.ts"
+    f2.write_text("const notSql = 'no table mentioned here at all'\n")
+    req_no_relation = {"kind": "source_query", "source_ref": f"{f2.name}:1-1"}
+    producers3, reason3 = cp.derive_from_source_query(
+        "scu.test.norelation", req_no_relation, {"real_table"}, {}, tmp_path
+    )
+    assert producers3 == []
+    assert reason3 is not None and reason3.startswith("NO_DETECTOR")
+    assert cp.classify_no_detector_reason(reason3) == "no_relation_in_range"
+
+    assert len({
+        cp.classify_no_detector_reason(reason),
+        cp.classify_no_detector_reason(reason2),
+        cp.classify_no_detector_reason(reason3),
+    }) == 3
 
 
 # ── Case 3: a shared table → all producers flagged ───────────────────────────
@@ -413,3 +448,59 @@ def test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry():
     }
     failures = cp.validate_derived_artifact(payload)
     assert set(failures) == {"scu.stale_bad_source_ref", "scu.stale_unclassified_reason"}
+
+
+# ── C-4: full/partial/none recount, bounds-checked ───────────────────────────
+
+
+def test_compute_segment_resolution_counts_distinguishes_full_partial_none(tmp_path):
+    """C-4: the recount must distinguish a fully-resolved SCU (every declared
+    piece in-bounds), a partially-resolved one (some pieces in-bounds, one
+    stale/OOB), and a fully-unresolved one (no numeric-range piece at all) — and
+    must name the exact stale piece, including the file's CURRENT line count,
+    for the partial case. Mutation this catches: if the bounds check inside
+    `resolve_segment_text` were removed, the partial SCU below would misreport
+    as 'full' (its stale piece would 'resolve' to a truncated slice instead of
+    failing)."""
+    full_file = tmp_path / "full.ts"
+    full_file.write_text("const sql = `SELECT 1`\n")
+    partial_good_file = tmp_path / "partial_good.ts"
+    partial_good_file.write_text("const sql = `SELECT 1`\n")
+    partial_bad_file = tmp_path / "partial_bad.ts"
+    partial_bad_file.write_text("const sql = `SELECT 1`\n")  # 1 line; ref below is 50-60 (OOB)
+
+    snapshot = {
+        "scus": [
+            {
+                "scu_id": "scu.test.full",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "source_query", "source_ref": f"{full_file.name}:1-1"}]}
+                ],
+            },
+            {
+                "scu_id": "scu.test.partial",
+                "availability_contracts": [
+                    {
+                        "requirements": [
+                            {
+                                "kind": "source_query",
+                                "source_ref": f"{partial_good_file.name}:1-1 | {partial_bad_file.name}:50-60",
+                            }
+                        ]
+                    }
+                ],
+            },
+            {
+                "scu_id": "scu.test.none_shape",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "source_query", "source_ref": f"{full_file.name}#anchor"}]}
+                ],
+            },
+        ]
+    }
+    full, partial, none, stale = cp.compute_segment_resolution_counts(snapshot, repo_root=tmp_path)
+    assert (full, partial, none) == (1, 1, 1)
+    assert len(stale) == 1
+    assert "scu.test.partial" in stale[0]
+    assert "1 lines" in stale[0]
+    assert "50-60" in stale[0]
