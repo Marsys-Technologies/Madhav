@@ -312,8 +312,13 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
             has_integrity=bool(r["has_integrity"]), depends_on=list(r["depends_on"] or []),
             target_floor=(str(r["target_floor"]) if r["target_floor"] is not None else None),
             catalog_status=r["catalog_status"], asset_kind=r["asset_kind"])
-    if not out and total == 0:
-        raise Unknown(f"no {cfg['prefix']}* rows in asset_registry")
+    if not out:
+        # F7 (A_REVIEW.md): before R220 this raised on zero rows; R220 narrowed it to zero REGISTRY
+        # rows, so a population filter that matched nothing (the `NOT dead_flag` NULL trap, M9)
+        # measured zero assets and exited 0 — a clean-looking census of nothing. An empty active
+        # population is never a clean result: it is UNKNOWN (exit 4), with both figures stated.
+        raise Unknown(f"zero active {cfg['prefix']}* rows in asset_registry ({total} registry row(s) for this "
+                      "prefix) — an empty population is not a clean census; check the population filter")
     population = dict(registry_total=total, active=len(out), excluded_inactive=excluded)
     return out, population
 

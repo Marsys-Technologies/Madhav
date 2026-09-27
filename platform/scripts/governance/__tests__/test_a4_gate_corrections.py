@@ -124,3 +124,35 @@ def test_f6_tracker_counts_only_the_active_population_and_states_it(monkeypatch,
     assert layer["n_assets"] == 2
     assert layer["population"]["active"] + len(layer["population"]["excluded_inactive"]) \
         == layer["population"]["registry_total"]
+
+
+# ─────────────────────────── F7: a zero-active population is UNKNOWN, never exit 0 ───────────────────────────
+
+def _registry_psql_with_nothing_active(sql, sep="\x1f", timeout=None):
+    """asset_registry holds 5 rows for the prefix and none of them is active — the shape the
+    `NOT dead_flag` NULL trap (M9) produces on production, where every row's dead_flag is NULL."""
+    if sql.startswith("SELECT count(*)::text FROM asset_registry"):
+        return [["5"]]
+    if "NOT (is_active AND NOT coalesce(dead_flag,false))" in sql:
+        return [[f"bg_{i}", "t", ""] for i in range(5)]
+    if "json_agg" in sql:
+        return [["[]"]]
+    raise AssertionError(f"unexpected query in F7 stub: {sql[:80]}")
+
+
+def test_f7_registry_raises_unknown_on_zero_active_rows(monkeypatch):
+    """Fails without the fix: registry() returned ({}, population) and measure() ran on nothing."""
+    monkeypatch.setattr(ac, "psql", _registry_psql_with_nothing_active)
+    with pytest.raises(ac.Unknown, match="zero active bg_"):
+        ac.registry("L0")
+
+
+def test_f7_main_exits_4_with_a_message_on_zero_active_rows(monkeypatch, tmp_path, capsys):
+    """End to end through main(): a census that finds zero active assets must exit 4 (UNKNOWN) and
+    say why. Fails without the fix: main() printed "0 assets" and returned 0 (clean)."""
+    monkeypatch.setattr(ac, "psql", _registry_psql_with_nothing_active)
+    monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L0", "--out", str(tmp_path / "c.json")])
+    rc = ac.main()
+    out = capsys.readouterr().out
+    assert rc == 4, out
+    assert "UNKNOWN" in out and "zero active bg_" in out and "5 registry row(s)" in out
