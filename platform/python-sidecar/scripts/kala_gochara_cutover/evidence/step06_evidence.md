@@ -458,3 +458,96 @@ against `prod_episodes_482012f1.json`): amended dedupe — no refusal,
 Link 2 (enumeration + candidate build) is GREEN on both rehearsal charts
 under ADK-0021 option (A). Production was NOT touched; the production
 Link 2 re-run proceeds only after PRAMĀṆIN re-verifies naming this run.
+
+## ADK-0022 — dissent-rule re-rule: citation null-and-disclose on citation-divergent groups; Link 2 rehearsal GREEN
+
+ADK-0022 (`00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md`) amends ADK-0021 on
+its operative point: PRAMĀṆIN's deeper_tie census (weight: 0,
+weight_tie_lexicographic: 0, deeper_tie: 138,767 — every duplicate group)
+falsified ADK-0021's premise that a weight RULE earned the surviving
+citation; the actual selector was `json.dumps` lexicographic order — a
+property of the encoding, not of provenance (§N.8 earned signal). Re-ruled:
+on citation-DIVERGENT groups the surviving row's classical_citation is NULL
+(null-and-disclose, §N.7); groups whose citations AGREE non-null keep that
+citation; all-null groups stay null; every citation of a nulled group is
+recoverable in `.dropped_refs.json` (survivor_citation null there too,
+dropped_citations carries EVERY group citation). The deeper-tie selector is
+unaffected for row survival (a row must survive; the pick is immaterial
+once the citation is nulled). Exit-5 refusal for divergence in any other
+field stands. No schema/contract/flag/gate change. Implemented in
+`step06_enumerate_episodes.py` (`survivor["classical_citation"] = None` on
+divergent groups; dropped-refs entries now also created for
+same-target_ref divergent groups; amended `citation_rule`; new record-only
+`weight_tier_note`).
+
+### Disclosure wording as shipped (substance-verbatim in report AND payload)
+
+> ADK-0022 (amending ADK-0021): classical_citation follows the surviving map row where the group's citations agree; on {N} citation-divergent groups no rule earns a single citation and the field is NULL — all group citations recoverable in .dropped_refs.json keyed by contact_id
+
+N = 46,353 (chart 482012f1), 46,354 (chart 1c826d5a) — matching the
+ADK-0021 counts exactly.
+
+### Uniform weight 0 — record-only (ADK-0022 (3))
+
+Every run report now carries `weight_tier_note` when all duplicate groups
+resolve at deeper_tie: weight is uniform (0) across all 138,767/138,766
+duplicate groups; the weight and weight_tie_lexicographic tiers never fired
+on this data. Recorded as an observation; NO action — weight semantics
+belong to WP8 (E-008); a never-firing tier is a disclosure item, not a
+defect to repair in this lane.
+
+### Tests (driver unit + e2e, `tests/l3/gochara/test_step06_enumeration.py`)
+
+- `test_dedupe_divergent_citations_nulled_with_disclosure` (replaces the
+  ADK-0021 survive test) — survivor's citation is NULL, N=1 disclosure
+  substrings (new wording), dropped_refs entry carries survivor_citation
+  null and BOTH group citations.
+- `test_dedupe_agreeing_non_null_citations_keep_the_citation` (NEW) —
+  identical non-null citations survive unambiguous: the survivor KEEPS the
+  agreed citation; group not counted divergent.
+- `test_dedupe_deeper_tie_with_divergent_citations_surfaces_defect` —
+  updated: deeper_tie surfaced AND survivor citation NULL.
+- `test_dedupe_non_citation_divergence_refuses` — exit-5 residual domain
+  intact (unchanged).
+- `test_dedupe_two_map_rows_one_physical_target` (mandatory e2e) — asserts
+  the new citation_rule wording embeds N.
+
+### Battery
+
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+(disposable pg16 containers `gochara-wp6-disposable` :55435,
+`gochara-wp6-remainder` :55434, torn down after): **377 passed, 0 failed,
+0 skipped**.
+
+### Rehearsal (disposable DB `wp10_rehearsal` on :55434, rebuilt from retained production dumps; candidate-1 flags: linear_no_box, orb 5.0°, refine ON)
+
+| chart | enumeration | dedupe | citation-divergent groups NULLED | candidate build |
+|---|---|---|---|---|
+| `482012f1-…871aa` | exit **0** (~32 min) | 1,353,278 → 138,837; 138,767 dup groups; 1,214,441 dropped | **46,353** | exit **0**; contacts_written **138,837**; coverage 48; zero UniqueViolation |
+| `1c826d5a-…5f75a` | exit **0** (~13 min) | 1,353,288 → 138,836; 138,766 dup groups; 1,214,452 dropped | **46,354** | exit **0**; contacts_written **138,836**; coverage 48; zero UniqueViolation |
+
+Payload citation census: chart 1 — null 138,697 / non-null 140 (the 140 =
+the 70 citation-agreeing groups' survivors plus citation-carrying
+singletons); chart 2 — null 138,696 / non-null 140. Per-relation dropped
+(chart 1): kakshya 826,893 / nakshatra 257,382 / sign_ingress 113,198 /
+drishti 9,462 / conjunction 6,801 / return 705. Survival tiers again
+100% deeper_tie (138,767 / 138,766 groups surfaced; ~32 MB report;
+mandated disclosure, not a defect). Ledger cross-check:
+`kala_gochara_contacts` holds exactly 138,837 / 138,836 generation-4.0 rows
+per chart, coverage 48 each. Freshness fresh; identical vedha/moorti
+fingerprints on both charts. Logs:
+`.run/wp10_tranche2/adk0022_rehearsal_{enum,build}_*.log` (zero-length
+stderr throughout).
+
+Retained-payload validation (`.run/wp10_tranche2/validate_adk0022_on_prod_payload.py`
+against `prod_episodes_482012f1.json`): no refusal, 138,837 survivors,
+46,353 divergent groups nulled + disclosed, survivor citations null
+138,697 / non-null 140, multi-IG 0, `_map_weight` stripped, weight_tier_note
+present. Matches the rehearsal exactly.
+
+### Verdict
+
+Link 2 (enumeration + candidate build) is GREEN on both rehearsal charts
+under ADK-0022 null-and-disclose. Production was NOT touched; the
+production Link 2 re-run proceeds only after PRAMĀṆIN re-verifies naming
+this run.

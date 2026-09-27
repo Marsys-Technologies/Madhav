@@ -22,11 +22,13 @@ consumes. What this file proves:
   * end-to-end on the disposable WP6 Postgres (NOT_RUN when unreachable):
     §12.9 overlay-freshness gate (exit 7 on stale, 0 on fresh), the
     produced JSON feeding step06_candidate_build.py to real candidate rows;
-  * ADK-0020/ADK-0021 dedupe (one ledger row per pinned WP1 §3.2 physical
-    contact): weight-order survival, weight-tie → lexicographic target_ref,
-    deeper ties surfaced as map defects, citation-only divergence surviving
-    with the surviving row's citation + disclosure (ADK-0021 option A),
-    divergence in any other field refusing (DedupeRefusal, exit 5),
+  * ADK-0020/ADK-0021/ADK-0022 dedupe (one ledger row per pinned WP1 §3.2
+    physical contact): weight-order survival, weight-tie → lexicographic
+    target_ref, deeper ties surfaced as map defects, citation-DIVERGENT
+    groups carrying NULL with disclosure and every group citation
+    recoverable in dropped_refs (ADK-0022 null-and-disclose; agreeing
+    citations keep the survivor's), divergence in any other field refusing
+    (DedupeRefusal, exit 5),
     _map_weight stripped from the payload, dropped-refs artifact content
     (incl. dropped citations), and the mandatory e2e regression — two map
     rows on one physical target yield one emitted row and one ledger row per
@@ -807,9 +809,10 @@ def test_dedupe_two_map_rows_one_physical_target(wp6_enum_schema, tmp_path):
     # from the weight tier
     assert dedupe["per_survival_tier"]["weight"] > 0
     assert dedupe["deeper_tie_groups"] == []
-    # ADK-0021 disclosure ships in every run report, N per chart per run
+    # ADK-0022 disclosure ships in every run report, N per chart per run
     assert "citation_rule" in dedupe
-    assert f"{dedupe['groups_with_divergent_citations']} groups had divergent" \
+    assert f"on {dedupe['groups_with_divergent_citations']} citation-divergent " \
+        "groups no rule earns a single citation and the field is NULL" \
         in dedupe["citation_rule"]
 
     episodes = json.loads((tmp_path / "eps.json").read_text())
@@ -951,11 +954,12 @@ def test_dedupe_none_weight_loses_to_any_number():
     assert report["per_survival_tier"]["weight"] == 1
 
 
-def test_dedupe_divergent_citations_survive_with_disclosure(tmp_path):
-    """ADK-0021 option (A): a group whose rows differ ONLY in
-    classical_citation survives — the citation follows the surviving
-    weight-selected row (its event-class provenance, not a synthesis); the
-    divergent group is counted and disclosed; dropped citations are
+def test_dedupe_divergent_citations_nulled_with_disclosure(tmp_path):
+    """ADK-0022 (amending ADK-0021): a group whose rows differ ONLY in
+    classical_citation survives, but the surviving row's citation is NULL —
+    no rule earns a single citation when the group diverges (on real data
+    every divergent group resolves at deeper_tie, i.e. json.dumps order).
+    The divergent group is counted and disclosed; EVERY group citation is
     recoverable in the dropped-refs artifact keyed by contact_id."""
     eps = [_dedupe_ep("winner", 0.9, citation="BPHS ch.7 (vivaha)"),
            _dedupe_ep("loser", 0.6, citation="BPHS ch.4 (sukha)")]
@@ -964,20 +968,42 @@ def test_dedupe_divergent_citations_survive_with_disclosure(tmp_path):
         method_version=DEDUPE_MV,
         dropped_refs_path=str(tmp_path / "dropped.json"))
     assert [e["target_ref"] for e in survivors] == ["winner"]
-    assert survivors[0]["classical_citation"] == "BPHS ch.7 (vivaha)"
+    assert survivors[0]["classical_citation"] is None  # null-and-disclose
     assert report["groups_with_divergent_citations"] == 1
-    # disclosure wording: substance verbatim per ADK-0021 (2), N per run
+    # disclosure wording: substance verbatim per ADK-0022 (1), N per run
     rule = report["citation_rule"]
-    assert "classical_citation follows the surviving weight-selected map row" in rule
-    assert "event-class provenance, not a synthesis of the duplicate group" in rule
-    assert "1 groups had divergent non-null citations" in rule
-    assert "dropped citations are recoverable in .dropped_refs.json" in rule
-    # dropped citation recoverable, keyed by contact_id
+    assert "classical_citation follows the surviving map row where the " \
+        "group's citations agree" in rule
+    assert "on 1 citation-divergent groups no rule earns a single citation " \
+        "and the field is NULL" in rule
+    assert "all group citations recoverable in .dropped_refs.json keyed by " \
+        "contact_id" in rule
+    # every group citation recoverable, keyed by contact_id; the entry's
+    # survivor_citation is null too (the field IS null on the row)
     dropped = json.loads((tmp_path / "dropped.json").read_text())
     (cid, entry), = dropped.items()
     assert cid.startswith("sha256:")
+    assert entry["survivor_citation"] is None
+    assert entry["dropped_citations"] == ["BPHS ch.4 (sukha)",
+                                          "BPHS ch.7 (vivaha)"]
+
+
+def test_dedupe_agreeing_non_null_citations_keep_the_citation(tmp_path):
+    """ADK-0022 (1)(a): identical non-null citations survive unambiguous —
+    the surviving row KEEPS the agreed citation and the group is not counted
+    as divergent."""
+    eps = [_dedupe_ep("winner", 0.9, citation="BPHS ch.7 (vivaha)"),
+           _dedupe_ep("loser", 0.6, citation="BPHS ch.7 (vivaha)")]
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV,
+        dropped_refs_path=str(tmp_path / "dropped.json"))
+    assert survivors[0]["classical_citation"] == "BPHS ch.7 (vivaha)"
+    assert report["groups_with_divergent_citations"] == 0
+    dropped = json.loads((tmp_path / "dropped.json").read_text())
+    (entry,) = dropped.values()
     assert entry["survivor_citation"] == "BPHS ch.7 (vivaha)"
-    assert entry["dropped_citations"] == ["BPHS ch.4 (sukha)"]
+    assert entry["dropped_citations"] == ["BPHS ch.7 (vivaha)"]
 
 
 def test_dedupe_non_citation_divergence_refuses():
@@ -994,9 +1020,10 @@ def test_dedupe_non_citation_divergence_refuses():
 
 
 def test_dedupe_deeper_tie_with_divergent_citations_surfaces_defect():
-    """ADK-0021 (1): divergent citations coinciding with a deeper weight tie
-    still surface the map defect (deeper_tie_groups) — the citation follows
-    the deterministic survivor."""
+    """ADK-0022 (1)(c): divergent citations coinciding with a deeper weight
+    tie still surface the map defect (deeper_tie_groups) — and the surviving
+    row's citation is NULL (the deeper-tie pick is json.dumps order, so no
+    rule earns a single citation)."""
     eps = [_dedupe_ep("same", 0.7, citation="BPHS ch.4"),
            _dedupe_ep("same", 0.7, citation="BPHS ch.7")]
     survivors, report = drv.dedupe_episodes(
@@ -1006,7 +1033,7 @@ def test_dedupe_deeper_tie_with_divergent_citations_surfaces_defect():
     assert report["per_survival_tier"]["deeper_tie"] == 1
     assert len(report["deeper_tie_groups"]) == 1
     assert report["groups_with_divergent_citations"] == 1
-    assert survivors[0]["classical_citation"] in ("BPHS ch.4", "BPHS ch.7")
+    assert survivors[0]["classical_citation"] is None
 
 
 def test_dedupe_identical_null_citations_do_not_refuse():
