@@ -131,6 +131,15 @@ describe('prediction_lifecycle_sweep — mimamsa_predictions half', () => {
     const calls = vi.mocked(mockQuery).mock.calls
     expect(calls.every(c => !/UPDATE mimamsa_predictions.*confirmed|denied/i.test(String(c[0])))).toBe(true)
   })
+
+  it('the lapsed-candidate read excludes chart-context-stale rows (Jātaka Phase-A2)', async () => {
+    mockDb([{ match: /FROM mimamsa_predictions/, rows: [] }])
+    await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'mimamsa_predictions' }, {})
+    const call = vi.mocked(mockQuery).mock.calls.find(c => /FROM mimamsa_predictions/.test(String(c[0])))!
+    expect(String(call[0])).toMatch(/chart_context_stale_at\s+IS\s+NULL/)
+    // The staleness clause is orthogonal metadata — never a lifecycle rewrite.
+    expect(String(call[0])).not.toMatch(/SET\s+chart_context/)
+  })
 })
 
 describe('prediction_lifecycle_sweep — brahma_prospective_ledger half', () => {
