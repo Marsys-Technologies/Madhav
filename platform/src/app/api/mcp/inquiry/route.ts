@@ -189,17 +189,65 @@ function authorizedArgs(base: Readonly<Record<string, unknown>>, current: Readon
   return writeGuardedPath(base, path, position.value)
 }
 
+/**
+ * Read a request body up to `maxBytes`, aborting the stream as soon as the cumulative byte
+ * count exceeds it — never buffering an unbounded body in full and measuring it afterward
+ * (R3 boundary, native ruling "actual certify-request byte limit"). `Content-Length` is only
+ * an early-rejection optimization for an HONEST, oversized declaration: it can be omitted
+ * entirely, understated, or simply not reflect what a chunked-transfer client actually sends
+ * — the limit enforced here is the only one that cannot be bypassed by a malformed or absent
+ * header.
+ */
+export type BoundedBodyResult =
+  | { readonly ok: true; readonly text: string }
+  | { readonly ok: false; readonly reason: 'too_large' }
+
+export async function readBoundedRequestBody(request: Request, maxBytes: number): Promise<BoundedBodyResult> {
+  const body = request.body
+  if (!body) return { ok: true, text: '' }
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value || value.byteLength === 0) continue
+      total += value.byteLength
+      if (total > maxBytes) {
+        await reader.cancel('request body exceeds the configured limit').catch(() => {})
+        return { ok: false, reason: 'too_large' }
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return { ok: true, text: new TextDecoder('utf-8').decode(merged) }
+}
+
 export async function POST(request: Request) {
   if (!(await validateMcpServiceRequest(request))) return response({ ok: false, error: 'Unauthorized' }, 401)
   const principalUid = request.headers.get('x-mcp-user')
   const principalKeyId = request.headers.get('x-mcp-key-id')
   if (!principalUid || !principalKeyId) return response({ ok: false, error: 'X-MCP-User and X-MCP-Key-Id headers required' }, 401)
   const principalSubject = `${principalUid}:${principalKeyId}`
+  // Early-rejection optimization only: an honestly oversized Content-Length lets us refuse
+  // before reading a single byte. It is never trusted as the enforcement mechanism itself —
+  // see readBoundedRequestBody below for the actual, unbypassable limit.
   if (Number(request.headers.get('content-length') ?? 0) > MAX_REQUEST_BYTES) {
     return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
   }
+  const bounded = await readBoundedRequestBody(request, MAX_REQUEST_BYTES)
+  if (!bounded.ok) return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
   let rawBody: unknown
-  try { rawBody = await request.json() } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }
+  try { rawBody = JSON.parse(bounded.text) } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }
   const parsedBody = BodySchema.safeParse(rawBody)
   if (!parsedBody.success) return response({ ok: false, error: 'INVALID_REQUEST' }, 400)
   const body: Body = parsedBody.data

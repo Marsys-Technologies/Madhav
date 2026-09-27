@@ -67,7 +67,7 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 }))
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
-import { POST } from '../route'
+import { POST, readBoundedRequestBody } from '../route'
 import { compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes as realAuthorizationHashes, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
@@ -866,6 +866,73 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     expect(mocks.verify).not.toHaveBeenCalled()
   })
 
+  // R3 boundary ("actual certify-request byte limit"): Content-Length is only an early-
+  // rejection optimization for an honest, accurately-declared oversized value (covered
+  // above) — it must never be the enforcement mechanism itself, since it can be omitted or
+  // understated while the actual body sent is still oversized. These two prove the real
+  // limit (readBoundedRequestBody, enforced against bytes actually received) still fires
+  // when the header lies or is absent.
+  const REAL_MAX_REQUEST_BYTES = 64 * 512 * 1024 + 1024 * 1024
+  function oversizedChunkedBody(totalBytes: number): ReadableStream<Uint8Array> {
+    const chunkSize = 8 * 1024 * 1024
+    let sent = 0
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= totalBytes) { controller.close(); return }
+        const size = Math.min(chunkSize, totalBytes - sent)
+        controller.enqueue(new Uint8Array(size).fill(120)) // 'x'
+        sent += size
+      },
+    })
+  }
+
+  it('rejects an oversized ACTUAL body even when Content-Length is omitted entirely', async () => {
+    mocks.verify.mockClear()
+    const req = new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1' },
+      body: oversizedChunkedBody(REAL_MAX_REQUEST_BYTES + 1024 * 1024),
+      duplex: 'half',
+    } as RequestInit)
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  it('rejects an oversized ACTUAL body even when Content-Length understates it', async () => {
+    mocks.verify.mockClear()
+    const req = new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1',
+        'content-length': '10', // lies — the actual stream below sends far more
+      },
+      body: oversizedChunkedBody(REAL_MAX_REQUEST_BYTES + 1024 * 1024),
+      duplex: 'half',
+    } as RequestInit)
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  it('accepts a valid request just below the limit and rejects invalid JSON below the limit', async () => {
+    // "Just below the limit" at the readBoundedRequestBody layer itself (see the dedicated
+    // unit tests below for the exact-boundary cases) — here, a well-formed, ordinary-sized
+    // certify body must still succeed end to end.
+    primeTerminal(finalized())
+    const ok = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload] }))
+    expect(ok.status).not.toBe(413)
+
+    const invalidJson = new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1' },
+      body: '{not valid json',
+    })
+    const res = await POST(invalidJson)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: 'INVALID_JSON' })
+  })
+
   it('rejects evidence the server never committed', async () => {
     primeTerminal(finalized())
     const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload, { forged: true }] }))
@@ -902,5 +969,66 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_PAYLOAD_TOO_LARGE' })
     const malformed = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: '', evidence_payloads: [] }))
     expect(malformed.status).toBe(400)
+  })
+})
+
+describe('readBoundedRequestBody', () => {
+  function streamOf(chunks: readonly string[]): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder()
+    let i = 0
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (i >= chunks.length) { controller.close(); return }
+        controller.enqueue(encoder.encode(chunks[i]!))
+        i += 1
+      },
+    })
+  }
+  function streamedRequest(chunks: readonly string[]): Request {
+    return new Request('http://localhost/x', { method: 'POST', body: streamOf(chunks), duplex: 'half' } as RequestInit)
+  }
+
+  it('reads a body with no size problem in full', async () => {
+    const result = await readBoundedRequestBody(streamedRequest(['hello ', 'world']), 100)
+    expect(result).toEqual({ ok: true, text: 'hello world' })
+  })
+
+  it('accepts a body exactly at the limit', async () => {
+    const result = await readBoundedRequestBody(streamedRequest(['a'.repeat(10)]), 10)
+    expect(result).toEqual({ ok: true, text: 'a'.repeat(10) })
+  })
+
+  it('rejects a body one byte over the limit', async () => {
+    const result = await readBoundedRequestBody(streamedRequest(['a'.repeat(11)]), 10)
+    expect(result).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  it('aborts as soon as the CUMULATIVE total across chunks crosses the limit, not on a single oversized chunk', async () => {
+    // Each individual chunk is small; only their sum exceeds the limit — proves the check is
+    // a running total across the stream (chunked-transfer shaped), not a per-chunk check.
+    const result = await readBoundedRequestBody(streamedRequest(['aaaa', 'bbbb', 'cccc']), 10)
+    expect(result).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  it('never accumulates past the limit before rejecting (bounded memory, not measure-after-buffering)', async () => {
+    let pulls = 0
+    const totalChunks = 1000
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1
+        if (pulls > totalChunks) { controller.close(); return }
+        controller.enqueue(new TextEncoder().encode('a'.repeat(10)))
+      },
+    })
+    const req = new Request('http://localhost/x', { method: 'POST', body: stream, duplex: 'half' } as RequestInit)
+    const result = await readBoundedRequestBody(req, 25) // crosses mid-third chunk
+    expect(result).toEqual({ ok: false, reason: 'too_large' })
+    // Only enough chunks to cross the limit were ever pulled — not all 1000.
+    expect(pulls).toBeLessThan(totalChunks)
+  })
+
+  it('treats a request with no body as empty text', async () => {
+    const result = await readBoundedRequestBody(new Request('http://localhost/x', { method: 'GET' }), 10)
+    expect(result).toEqual({ ok: true, text: '' })
   })
 })
