@@ -325,7 +325,7 @@ export async function POST(request: Request): Promise<Response> {
         })
 
         // ── Finalize: provenance stamp, write-through, canonical turn write. ─
-        await runPersistenceStage({
+        const persisted = await runPersistenceStage({
           em,
           identity,
           params,
@@ -364,7 +364,8 @@ export async function POST(request: Request): Promise<Response> {
         })
 
         em.phase({ phase: 'finalize', status: 'end' })
-        return finish('ok')
+        // A refused or unverified write closes the turn as an error, never 'ok'.
+        return finish(persisted.status)
       } catch (fatal) {
         console.error('[pariprashna] fatal in-stream error:', fatal)
         em.error({ code: 'INTERNAL', message: fatal instanceof Error ? fatal.message : String(fatal), retryable: false })

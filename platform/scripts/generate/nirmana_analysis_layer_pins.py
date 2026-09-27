@@ -37,6 +37,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -44,7 +45,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 GENERATED = Path(__file__).resolve().parents[2] / "src" / "generated"
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -88,6 +89,18 @@ LAYER_PREFIX = {
 }
 
 AUTHORITY_BINDINGS = {
+    "CCD-018": {
+        # The native-authorized controlled Jataka production rollout includes
+        # fresh source review and release-blocker correction before protected
+        # integration.  The decision register binds that narrow authority to
+        # this exact session; it does not grant a general L5 re-pin capability.
+        "authority_commit": "463c1dd66796356380fe2cab3103ad68b0d08d21",
+        "evidence_commit": "463c1dd66796356380fe2cab3103ad68b0d08d21",
+        "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "sha256": "dbe44c43c8df047d8e0de560aa5584217b4c0ffbaa963efed8c282dbcbf672a5",
+        "decision_binding": "## CCD-018 — Jātaka controlled production rollout authority",
+        "authority_identity_binding": "`JATAKA-CONTROLLED-PROD-ROLLOUT-20260927`",
+    },
     "DP-SD-018": {
         # The approval identity remains immutable metadata.  Validation reads
         # the later integrated unblock record, which quotes that exact identity
@@ -136,6 +149,12 @@ SOURCE_INVENTORY_BINDINGS = {
 }
 
 EXPECTED_REVIEW_ARTIFACTS = {
+    "L5": [{
+        "commit": "a97fc8ffb0268954fb4bf8c7fb7e838c4bf6e558",
+        "path": "00_ARCHITECTURE/SESSION_LOG.md",
+        "sha256": "78273beef6032e0216916167f52b943e49605d6e11a7248f626d2b3205bf779f",
+        "decision_binding": "**Reviewed technical head:** `ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b`.",
+    }],
     "L0": [{
         "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
         "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md",
@@ -174,6 +193,9 @@ EXPECTED_REVIEW_ARTIFACTS = {
 }
 
 AUTHORIZED_SOURCE_COMMITS = {
+    "CCD-018": {
+        "L5": frozenset({"ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b"}),
+    },
     "DP-SD-018": {
         "L0": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
         "L1": frozenset({
@@ -432,9 +454,32 @@ def build_pins(
     manifest_assets: list[dict[str, Any]],
     convergence_commit: str,
     definition_snapshot_commit: str,
+    *,
+    layers: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    layers: dict[str, Any] = {}
-    for layer, prefix in LAYER_PREFIX.items():
+    """Derive each requested layer's pin, validated against its OWN authority only.
+
+    `layers` scopes both which layers get a freshly-derived pin AND which
+    layers' frozen/definition-binding invariants are checked. Omitting it (the
+    whole-file regeneration path) preserves the original behaviour: every
+    layer, including L0, is derived and validated.
+
+    This scoping is the fix for the cross-layer coupling NIRMANA issue #1930
+    found: a caller asking only for L5's pin (`--layer L5`) was forced through
+    L0's frozen-pin comparison too, because the loop below used to run over
+    every layer unconditionally regardless of which one the caller actually
+    wanted. A legitimate, reviewed L5-only successor must never require,
+    rewrite, or re-accept L0 — see NIRMANA_L0_L5_RECEIPT_COUPLING_FIX_ADDENDUM_v1_0.md.
+    Requesting L0 itself (whole-file regeneration, or an explicit `layers={"L0"}`)
+    still runs L0's frozen-pin check and still fails closed on genuine L0 drift.
+    """
+    requested = list(LAYER_PREFIX) if layers is None else list(layers)
+    unknown = [layer for layer in requested if layer not in LAYER_PREFIX]
+    if unknown:
+        raise SystemExit(f"unknown layer(s) requested: {unknown}")
+    layer_pins: dict[str, Any] = {}
+    for layer in requested:
+        prefix = LAYER_PREFIX[layer]
         manifest_ids = sorted(
             asset["asset_id"] for asset in manifest_assets if asset["layer"] == layer
         )
@@ -456,7 +501,9 @@ def build_pins(
             # The other two ARE derived, so they must still agree with the frozen
             # record.  Drift here means the L0 writer inventory or manifest cohort
             # has moved under 29 already-frozen capsules — a real finding.  Stop
-            # rather than silently re-pin it.
+            # rather than silently re-pin it.  This branch is unreachable unless
+            # L0 was actually requested (see `requested` above) — an L5-only
+            # caller never reaches it and never compares against L0_FROZEN_PINS.
             for key in ("writer_inventory_sha256", "receipt_count"):
                 if pin[key] != L0_FROZEN_PINS[key]:
                     raise SystemExit(
@@ -464,9 +511,9 @@ def build_pins(
                         f"{L0_FROZEN_PINS[key]!r}; re-pinning L0 would invalidate "
                         "its accepted analyses. Investigate before regenerating."
                     )
-        layers[layer] = pin
-    definition_bindings = build_definition_bindings(definition_snapshot_commit)
-    for layer, pin in layers.items():
+        layer_pins[layer] = pin
+    definition_bindings = build_definition_bindings(definition_snapshot_commit, layers=requested)
+    for layer, pin in layer_pins.items():
         membership = receipt_membership(layer, pin, writer_digests)
         if membership_sha256(membership) != definition_bindings[layer]["membership_sha256"]:
             raise SystemExit(
@@ -474,10 +521,52 @@ def build_pins(
             )
     return {
         "version": PINS_VERSION,
-        "layers": layers,
-        "history": {layer: [] for layer in LAYER_PREFIX},
+        "layers": layer_pins,
+        "history": {layer: [] for layer in requested},
         "definition_bindings": definition_bindings,
     }
+
+
+def splice_layer_pin(
+    committed: dict[str, Any],
+    layer: str,
+    fresh: dict[str, Any],
+    *,
+    accepted_definition_binding: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Merge one freshly-derived layer's pin into an already-committed record.
+
+    `fresh` is `build_pins()`'s output scoped to exactly `layer` (via its
+    `layers=[layer]` argument) -- never the whole-file result, so no other
+    layer's derivation or L0 validation ever ran to produce it. Every other
+    layer's committed data, and the WHOLE `history` block for every layer
+    including `layer` itself, is carried through byte-for-byte: a per-layer
+    splice regenerates a layer's live PIN, never its successor history (that
+    is `admit_successor()`'s job, gated on its own authority-binding registry).
+    """
+    updated = copy.deepcopy(committed)
+    updated["layers"][layer] = fresh["layers"][layer]
+    definitions = updated.setdefault("definition_bindings", {})
+    fresh_definition = fresh["definition_bindings"][layer]
+    accepted_definition = (
+        accepted_definition_binding
+        if accepted_definition_binding is not None
+        else definitions.get(layer)
+    )
+    if accepted_definition is None:
+        definitions[layer] = fresh_definition
+    elif (
+        accepted_definition.get("schema_version")
+        != fresh_definition.get("schema_version")
+        or accepted_definition.get("membership_sha256")
+        != fresh_definition.get("membership_sha256")
+    ):
+        raise SystemExit(
+            f"{layer} scoped re-pin membership differs from its accepted definition binding"
+        )
+    else:
+        definitions[layer] = copy.deepcopy(accepted_definition)
+    return updated
 
 
 def render(pins: dict[str, Any]) -> str:
@@ -678,12 +767,14 @@ def membership_sha256(membership: dict[str, Any]) -> str:
     ).hexdigest()
 
 
-def build_definition_bindings(snapshot_commit: str) -> dict[str, Any]:
+def build_definition_bindings(
+    snapshot_commit: str, *, layers: Iterable[str] | None = None
+) -> dict[str, Any]:
     _validate_sha(snapshot_commit, "definition snapshot commit")
     snapshot_pins = _pins_at_commit(snapshot_commit).get("layers", {})
     snapshot_inventory = _inventory_at_commit(snapshot_commit)
     bindings: dict[str, Any] = {}
-    for layer in LAYER_PREFIX:
+    for layer in (LAYER_PREFIX if layers is None else layers):
         snapshot_pin = snapshot_pins.get(layer)
         if not isinstance(snapshot_pin, dict):
             raise SystemExit(
@@ -1099,6 +1190,61 @@ def _resolve_definition_bindings(
         ):
             return json.loads(json.dumps(existing))
     return build_definition_bindings(definition_snapshot_commit)
+
+
+def recover_direct_splice_predecessor(
+    committed: dict[str, Any],
+    *,
+    layer: str,
+    historical_snapshot_commit: str,
+    candidate_writer_digests: dict[str, str],
+    source_commit: str,
+) -> dict[str, Any]:
+    """Recover the predecessor of one exact unversioned direct splice.
+
+    This is deliberately narrower than a generic rewind.  It is only for a
+    layer whose candidate pin was already spliced into the live slot without
+    a successor admission.  The layer history and immutable definition must
+    still be byte-identical to the historical snapshot, and the live pin must
+    be exactly the candidate core derived from ``source_commit``.  Only then
+    is the historical predecessor restored in memory so ``admit_successor``
+    can archive it and append the governed candidate generation.
+    """
+    if layer not in LAYER_PREFIX:
+        raise SystemExit(f"unknown layer {layer!r}; expected one of {sorted(LAYER_PREFIX)}")
+    historical = _pins_at_commit(historical_snapshot_commit)
+    historical_pin = historical.get("layers", {}).get(layer)
+    active_pin = committed.get("layers", {}).get(layer)
+    if not isinstance(historical_pin, dict) or not isinstance(active_pin, dict):
+        raise SystemExit(f"{layer} direct-splice recovery needs both active and historical pins")
+
+    historical_history = historical.get("history", {}).get(layer, [])
+    active_history = committed.get("history", {}).get(layer, [])
+    if active_history != historical_history:
+        raise SystemExit(f"{layer} history differs from historical snapshot; refusing recovery")
+    historical_definition = historical.get("definition_bindings", {}).get(layer)
+    active_definition = committed.get("definition_bindings", {}).get(layer)
+    if active_definition != historical_definition:
+        raise SystemExit(
+            f"{layer} definition binding differs from historical snapshot; refusing recovery"
+        )
+
+    lineage_keys = {"generation_id", "supersedes_generation_id", "admission"}
+    if lineage_keys & set(active_pin) or lineage_keys & set(historical_pin):
+        raise SystemExit(f"{layer} direct-splice recovery only accepts unversioned pins")
+    expected_candidate = copy.deepcopy(historical_pin)
+    expected_candidate["convergence_commit"] = source_commit
+    expected_candidate["writer_inventory_sha256"] = layer_inventory_sha256(
+        candidate_writer_digests, LAYER_PREFIX[layer]
+    )
+    if active_pin != expected_candidate:
+        raise SystemExit(
+            f"{layer} active pin is not the exact candidate direct splice; refusing recovery"
+        )
+
+    recovered = copy.deepcopy(committed)
+    recovered["layers"][layer] = copy.deepcopy(historical_pin)
+    return recovered
 
 
 def admit_successor(
@@ -1770,6 +1916,15 @@ def main() -> int:
         action="store_true",
         help="append one reviewed layer successor while retaining the complete predecessor",
     )
+    parser.add_argument(
+        "--recover-direct-splice",
+        action="store_true",
+        help=(
+            "before successor admission, recover the exact unversioned predecessor from "
+            "--historical-snapshot-commit; fails unless history, definition and candidate "
+            "pin are otherwise byte-identical"
+        ),
+    )
     parser.add_argument("--source-commit", help="immutable implementation predecessor")
     parser.add_argument(
         "--historical-snapshot-commit",
@@ -1848,6 +2003,14 @@ def main() -> int:
             return 1
         previous_inventory = _inventory_at_commit(args.historical_snapshot_commit)
         committed = json.loads(args.output.read_text(encoding="utf-8"))
+        if args.recover_direct_splice:
+            committed = recover_direct_splice_predecessor(
+                committed,
+                layer=args.layer,
+                historical_snapshot_commit=args.historical_snapshot_commit,
+                candidate_writer_digests=writer_digests,
+                source_commit=args.source_commit,
+            )
         successor = admit_successor(
             committed,
             layer=args.layer,
@@ -1882,12 +2045,6 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    pins = build_pins(
-        writer_digests,
-        load_frozen_manifest_assets(),
-        args.convergence_commit,
-        args.definition_snapshot_commit,
-    )
 
     if args.layer:
         # Per-layer regeneration (NIRMANA issue #1814, Conductor ruling option A).
@@ -1901,7 +2058,11 @@ def main() -> int:
         # fight over one file.
         #
         # So: splice in ONLY the named layer's freshly-derived record and carry
-        # every other layer's committed record through byte-for-byte.
+        # every other layer's committed record through byte-for-byte. These
+        # checks -- and which layers build_pins() below actually computes and
+        # validates -- happen BEFORE any L0 work, so an L5-only (or any non-L0)
+        # request never reaches L0's frozen-pin comparison at all (NIRMANA issue
+        # #1930; see NIRMANA_L0_L5_RECEIPT_COUPLING_FIX_ADDENDUM_v1_0.md).
         if not args.output.is_file():
             print(f"ERROR: --layer needs an existing {args.output}", file=sys.stderr)
             return 1
@@ -1923,19 +2084,49 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
-        fresh = pins["layers"][args.layer]
+        pins = build_pins(
+            writer_digests,
+            load_frozen_manifest_assets(),
+            args.convergence_commit,
+            args.definition_snapshot_commit,
+            layers=[args.layer],
+        )
         before = committed["layers"][args.layer]
-        committed["layers"][args.layer] = fresh
-        committed.setdefault("definition_bindings", {})[args.layer] = pins[
-            "definition_bindings"
-        ][args.layer]
-        args.output.write_text(render(committed), encoding="utf-8")
+        accepted_definition_binding = None
+        if args.protected_baseline_commit:
+            _require_reachable_commit(
+                args.protected_baseline_commit, "protected baseline"
+            )
+            accepted_definition_binding = _pins_at_commit(
+                args.protected_baseline_commit
+            ).get("definition_bindings", {}).get(args.layer)
+            if not isinstance(accepted_definition_binding, dict):
+                print(
+                    f"ERROR: protected baseline has no {args.layer} definition binding",
+                    file=sys.stderr,
+                )
+                return 1
+        updated = splice_layer_pin(
+            committed,
+            args.layer,
+            pins,
+            accepted_definition_binding=accepted_definition_binding,
+        )
+        fresh = updated["layers"][args.layer]
+        args.output.write_text(render(updated), encoding="utf-8")
         moved = [k for k in fresh if before.get(k) != fresh.get(k)]
         print(f"Wrote {args.output} -- {args.layer} only.")
         print(f"  fields changed: {', '.join(moved) if moved else '(none)'}")
-        print(f"  layers untouched: {', '.join(k for k in committed['layers'] if k != args.layer)}")
+        print(f"  layers untouched: {', '.join(k for k in updated['layers'] if k != args.layer)}")
         return 0
 
+    # Whole-file regeneration: every layer, L0 included, is derived and validated.
+    pins = build_pins(
+        writer_digests,
+        load_frozen_manifest_assets(),
+        args.convergence_commit,
+        args.definition_snapshot_commit,
+    )
     args.output.write_text(render(pins), encoding="utf-8")
     print(f"Wrote {args.output}")
     return 0

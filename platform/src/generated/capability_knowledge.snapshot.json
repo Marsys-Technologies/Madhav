@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-27T20:30:00.000Z",
-  "content_hash": "sha256:c8ca0178d99cf38c7914454489dea9f1f8a6c5ab38cf7fa9815f30b752a7de7f",
-  "source_catalog_fingerprint": "sha256:b3f25fe5c4bddcdc3af5770be5ef8d30a3e846a64c7307a04bae2df3168e2e04",
-  "semantic_review_fingerprint": "sha256:1e2daf140605cdb8c203997b7f5f3a4ba3560803dc8aee46887b2bfa6d8be851",
+  "generated_at": "2026-09-27T21:23:19.000Z",
+  "content_hash": "sha256:0556249e1b779895b5927acfd6b45ec8ad6508ae3f8fb8d78e620b92550429da",
+  "source_catalog_fingerprint": "sha256:943c437107dc570f23f5155bc70f2b3d988eb33903630fdbb11c5335ab8f3f4b",
+  "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -14406,7 +14406,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-calibration:v1",
               "capability_uri": "marsys://tool/L5/query_calibration",
-              "contract_sha256": "sha256:fe0afbd1f892596bde67cfb1e3edf56c68c71beb57df0ed8e0ca1675bc3b25ae",
+              "contract_sha256": "sha256:46eb4e09dea47dc56465d09e1c9cfa9b54d77fe5a3db498ad03fce7377767732",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197"
             }
@@ -24146,6 +24146,7 @@
       "inputs": [
         "chart_id",
         "domain",
+        "include_stale",
         "limit",
         "status"
       ],
@@ -24177,9 +24178,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prospective-ledger:v1",
               "capability_uri": "marsys://tool/L4/query_prospective_ledger",
-              "contract_sha256": "sha256:334cda1ae2dbc4dec773abbf67b85a7cc677f21c87a5a83694d56f1ee1be30ef",
+              "contract_sha256": "sha256:deb1e53d0fee2fc455fcc76875402c6598d6450350f3c0410bdded88a80f74df",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:197-211"
             }
           ]
         }
@@ -24194,6 +24195,7 @@
           "input_contract": {
             "chart_id": "string:required",
             "domain": "string:optional",
+            "include_stale": "boolean:optional",
             "limit": "number:optional",
             "status": "string:optional"
           },

@@ -33,6 +33,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // Same reason as `prashna_ask/__tests__/route.test.ts`: `configService.setFlag`
 // does not reach the safety module's own resolved instance from a route test.
 const { safetyFlagState } = vi.hoisted(() => ({ safetyFlagState: { on: false } }))
+// Jātaka chart workspace: every reading door admits only a Ready chart (shared
+// readiness gate) — this harness exercises a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/pariprashna/safety/flag', () => ({
   SAFETY_GATE_FLAG: 'PARIPRASHNA_SAFETY_GATE_ENABLED',
   isSafetyGateEnabled: () => safetyFlagState.on,

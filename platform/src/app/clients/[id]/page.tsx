@@ -1,20 +1,59 @@
-import { query } from '@/lib/db/client'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ZoneRoot } from '@/components/shared/ZoneRoot'
-import { ChartHero } from '@/components/profile/ChartHero'
-import { RoomCard } from '@/components/profile/RoomCard'
-import { ProfileSideRail } from '@/components/profile/ProfileSideRail'
-import { JourneyStrip } from '@/components/build/JourneyStrip'
-import { getForensicSnapshot } from '@/lib/forensic/snapshot'
+import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { emptyChartReadiness, getChartReadinessMap, isDerivedChartReady, type ChartReadiness } from '@/lib/charts/readiness'
+import { getChartWorkspaceSummary } from '@/lib/charts/workspaceSummary'
+import { formatDate } from '@/lib/utils/date'
+import { ChartHero } from '@/components/profile/ChartHero'
+import { ChartReadinessBand } from '@/components/profile/ChartReadinessBand'
+import { CapabilityCard } from '@/components/profile/CapabilityCard'
+import { ChartActionsMenu } from '@/components/profile/ChartActionsMenu'
 import { SharingPanel } from '@/components/sharing/SharingPanel'
-import type { MacroPhaseEntry } from '@/lib/build/types'
+import '@/components/profile/jataka-workspace.css'
 
-export default async function ClientPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+/**
+ * Jātaka workspace — the durable home for one chart.
+ *
+ * D1/Rāśi hero and identity, the shared readiness band (same authority as the
+ * Jātakas directory), an extensible capability deck, and only grounded
+ * at-a-glance summaries. D1, daśā and yogas come from this chart's own L1 rows;
+ * nothing is borrowed from another chart or invented for a missing value.
+ */
+
+function pariprashnaReason(readiness: ChartReadiness): string {
+  switch (readiness.state) {
+    case 'building':
+      return 'Chart recomputation is in progress. New readings open when it is ready.'
+    case 'needs-rebuild':
+      return 'Chart details changed and recomputation has not completed yet.'
+    case 'failed':
+      return 'The latest build failed. Readings open again once the chart is rebuilt.'
+    default:
+      return 'Readings open once the full chart has been computed.'
+  }
+}
+
+function panchangReason(readiness: ChartReadiness): string {
+  if (readiness.state === 'building') return 'Chart recomputation is in progress.'
+  if (readiness.state === 'needs-rebuild' || readiness.state === 'failed') return 'The chart needs rebuilding first.'
+  return 'Needs this chart’s Gaṇita facts.'
+}
+
+function GlanceItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <dt className="jw-eyebrow">{label}</dt>
+      <dd className="text-sm text-[var(--jw-ink)]">{children}</dd>
+    </div>
+  )
+}
+
+function Unavailable({ children }: { children: React.ReactNode }) {
+  return <span className="text-[var(--jw-ink-dim)]">{children}</span>
+}
+
+export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const access = await resolveChartPageAccess(id)
   if (!access) redirect('/login')
@@ -26,182 +65,164 @@ export default async function ClientPage({
     birth_date: string
     birth_time: string
     birth_place: string
+    timezone_id: string | null
+    owner_id: string | null
     client_id: string
-  }>('SELECT id, name, birth_date, birth_time, birth_place, client_id FROM charts WHERE id=$1', [id])
-
+  }>(
+    `SELECT id, name, birth_date::text AS birth_date, birth_time::text AS birth_time,
+            birth_place, timezone_id, owner_id, client_id
+       FROM charts WHERE id=$1`,
+    [id],
+  )
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 
-  const role = access.role === 'super_admin' ? 'super_admin' : 'guest'
+  const isSuperAdmin = access.role === 'super_admin'
   const canBuild = access.canBuild
+  // Sharing follows its existing authorisation: the grant panel is super-admin only.
+  const canShare = isSuperAdmin
 
-  const [forensicChart, conversationsResult, layersResult, buildManifestResult] = await Promise.all([
-    getForensicSnapshot(id),
+  const [readinessMap, summary, conversationsResult] = await Promise.all([
+    getChartReadinessMap([id]),
+    getChartWorkspaceSummary(id),
     query<{ id: string; title: string | null; created_at: string }>(
       `SELECT id, title, created_at FROM conversations
-       WHERE chart_id=$1 AND module='consume'
-       ORDER BY created_at DESC LIMIT 3`,
-      [id],
+        WHERE chart_id=$1 AND user_id=$2 AND module='consume' AND archived_at IS NULL
+        ORDER BY created_at DESC, id DESC LIMIT 3`,
+      [id, access.user.uid],
     ),
-    canBuild
-      ? query<{ layer: string; sublayer: string; status: string }>(
-          'SELECT layer, sublayer, status FROM pyramid_layers WHERE chart_id=$1 ORDER BY layer, sublayer',
-          [id],
-        )
-      : Promise.resolve({ rows: [] }),
-    // TODO(ws-2): build_manifests dropped WS-0; repoint to builds table once migrations 124+ applied.
-    Promise.resolve({ rows: [] as { promoted_at: string | null; build_id: string }[] }),
   ])
-
+  const readiness = readinessMap.get(id) ?? emptyChartReadiness()
   const recentConversations = conversationsResult.rows
-  const pyramidLayers = layersResult.rows
-  const lastBuild = buildManifestResult.rows[0] ?? null
 
-  const pyramidTotal = pyramidLayers.length
-  const pyramidDone = pyramidLayers.filter((l) => l.status === 'complete').length
-  const pyramidPercent = pyramidTotal > 0 ? Math.round((pyramidDone / pyramidTotal) * 100) : 0
-
-  const buildArc: MacroPhaseEntry[] = pyramidLayers.slice(0, 5).map((l) => ({
-    id: l.sublayer,
-    title: l.sublayer,
-    status: l.status === 'complete' ? 'completed' : l.status === 'in_progress' ? 'active' : 'pending',
-    milestones: [],
-  }))
-  const activeBuildId = buildArc.find((e) => e.status === 'active')?.id ?? ''
-
-  const generatedAt = lastBuild?.promoted_at ?? null
+  const pariprashnaAvailable = isDerivedChartReady(readiness)
+  const panchangAvailable =
+    !['building', 'needs-rebuild', 'failed'].includes(readiness.state) &&
+    readiness.layerPips.some((pip) => pip.layer === 'ganita' && pip.state === 'lit')
 
   return (
-    <ZoneRoot zone="ink" className="min-h-full" data-permission={access.permission}>
+    <div className="jw-root min-h-full" data-permission={access.permission}>
       <ChartHero
-        chart={forensicChart}
+        chart={summary.d1}
         nativeName={chart.name}
         birthDate={chart.birth_date}
         birthTime={chart.birth_time}
         birthPlace={chart.birth_place}
+        timezoneId={chart.timezone_id}
+        actions={
+          <ChartActionsMenu
+            chartId={id}
+            chartName={chart.name}
+            canBuild={canBuild}
+            isSuperAdmin={isSuperAdmin}
+            canShare={canShare}
+          />
+        }
       />
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 p-6 md:flex-row md:items-start md:p-8">
-        <div className="flex flex-1 flex-col gap-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {canBuild && (
-              <div data-testid="build-room-card">
-              <RoomCard
-                title="Build Room"
-                description="Chart corpus construction"
-                cta={{ label: 'Continue building', href: `/clients/${id}/nirmana` }}
-              >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--brand-gold)', opacity: 0.65 }}>
-                    <span>Pyramid</span>
-                    <span>{pyramidPercent}%</span>
-                  </div>
-                  <div
-                    className="h-1 w-full overflow-hidden rounded-full"
-                    style={{ background: 'color-mix(in oklch, var(--brand-gold) 20%, transparent)' }}
-                  >
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pyramidPercent}%`, background: 'var(--brand-gold)' }}
-                    />
-                  </div>
-                  {buildArc.length > 0 && (
-                    <div className="overflow-x-hidden">
-                      <JourneyStrip arc={buildArc} activeId={activeBuildId} />
-                    </div>
-                  )}
-                  {generatedAt && (
-                    <p className="text-xs opacity-50" style={{ color: 'var(--brand-gold)' }}>
-                      Last build · {new Date(generatedAt).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              </RoomCard>
-              </div>
-            )}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-16 sm:px-6">
+        <ChartReadinessBand readiness={readiness} chartId={id} canBuild={canBuild} />
 
-            <div data-testid="consult-room-card">
-            <RoomCard
-              title="Consult Room"
-              description="Query the chart"
-              cta={{ label: 'Ask anything', href: `/clients/${id}/consult` }}
-            >
-              {recentConversations.length > 0 ? (
-                <ul className="flex flex-col gap-2">
-                  {recentConversations.map((conv) => (
-                    <li key={conv.id}>
-                      <a
-                        href={`/clients/${id}/consume/${conv.id}`}
-                        className="block truncate text-xs transition-opacity hover:opacity-80"
-                        style={{ color: 'var(--brand-gold)', opacity: 0.75 }}
-                      >
-                        {conv.title ?? 'Untitled conversation'}
-                      </a>
+        <section aria-labelledby="jw-capabilities-heading" className="flex flex-col gap-3">
+          <h2 id="jw-capabilities-heading" className="jw-eyebrow">
+            Capabilities
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {canBuild && (
+              <CapabilityCard
+                testId="build-room-card"
+                name="Nirmāṇa"
+                description="Construct, inspect and maintain this chart’s computed corpus."
+                href={`/clients/${id}/nirmana`}
+                available
+                stateHint={readiness.label}
+              />
+            )}
+            <CapabilityCard
+              testId="consult-room-card"
+              name="Paripraśna"
+              description="Ask and explore this chart."
+              href={`/clients/${id}/pariprashna`}
+              available={pariprashnaAvailable}
+              stateHint="Ask"
+              reason={pariprashnaAvailable ? undefined : pariprashnaReason(readiness)}
+            />
+            <CapabilityCard
+              testId="panchang-room-card"
+              name="Pañcāṅga"
+              description="Personalised daily timing for this chart."
+              href={`/clients/${id}/panchang`}
+              available={panchangAvailable}
+              stateHint="Today"
+              reason={panchangAvailable ? undefined : panchangReason(readiness)}
+            />
+          </div>
+        </section>
+
+        <section aria-labelledby="jw-glance-heading" className="jw-panel px-5 py-5">
+          <h2 id="jw-glance-heading" className="jw-eyebrow mb-4">
+            At a glance
+          </h2>
+          <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <GlanceItem label="Current daśā">
+              {summary.currentDasha ? (
+                <>
+                  {summary.currentDasha.md} mahādaśā · {summary.currentDasha.ad} antardaśā
+                  <span className="block text-xs text-[var(--jw-ink-dim)]">
+                    Antardaśā until {formatDate(summary.currentDasha.adEnd)}
+                  </span>
+                </>
+              ) : (
+                <Unavailable>Not yet computed</Unavailable>
+              )}
+            </GlanceItem>
+            <GlanceItem label="Confirmed yogas">
+              {summary.confirmedYogas.length > 0 ? (
+                <ul className="flex flex-wrap gap-1.5" aria-label="Confirmed yoga firings">
+                  {summary.confirmedYogas.map((yoga) => (
+                    <li key={yoga.id} className="rounded-full border border-[var(--jw-rule)] px-2.5 py-0.5 text-xs">
+                      {yoga.name}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs opacity-40" style={{ color: 'var(--brand-gold)' }}>
-                  No conversations yet
-                </p>
+                <Unavailable>{summary.flags.includes('yogas_unresolved') ? 'Unavailable' : 'None confirmed yet'}</Unavailable>
               )}
-            </RoomCard>
-            </div>
+            </GlanceItem>
+            <GlanceItem label="Recent readings">
+              {recentConversations.length > 0 ? (
+                <ul className="flex flex-col gap-1">
+                  {recentConversations.map((conversation) => (
+                    <li key={conversation.id}>
+                      <Link
+                        href={`/clients/${id}/consult/${conversation.id}`}
+                        className="jw-touch inline-flex min-h-11 items-center truncate text-[var(--jw-gold)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]"
+                      >
+                        {conversation.title ?? 'Untitled reading'}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Unavailable>No readings yet</Unavailable>
+              )}
+            </GlanceItem>
+            <GlanceItem label="Data freshness">
+              {readiness.lastActivity ? (
+                <>Last built {formatDate(readiness.lastActivity)}</>
+              ) : (
+                <Unavailable>No computed data yet</Unavailable>
+              )}
+            </GlanceItem>
+          </dl>
+        </section>
 
-            <div data-testid="panchang-room-card">
-            <RoomCard
-              title="Panchang"
-              description="Personalized daily timing"
-              cta={{ label: 'Open Panchang', href: `/clients/${id}/panchang` }}
-            >
-              <p className="text-xs opacity-50" style={{ color: 'var(--brand-gold)' }}>
-                Tithi · vara · nakshatra · yoga · karana — aligned to this chart.
-              </p>
-            </RoomCard>
-            </div>
-
-            {/* Timeline Room — intentionally disabled until R5 */}
-            <RoomCard
-              title="Timeline Room"
-              description="Life events · predictions"
-              cta={{
-                label: 'Open timeline (coming in R5)',
-                href: '#',
-                disabled: true,
-                tooltip: 'Timeline view lands in Portal Redesign R5',
-              }}
-            >
-              <p className="text-xs opacity-40" style={{ color: 'var(--brand-gold)' }}>
-                Event log and prospective predictions — available after R5.
-              </p>
-            </RoomCard>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4 md:w-80 md:shrink-0">
-          <ProfileSideRail
-            chart={forensicChart}
-            role={role}
-            freshnessAt={generatedAt}
-            audienceTier="Acharya"
-            chartId={id}
-            generatedAt={generatedAt ?? undefined}
-          />
-          {role === 'super_admin' && <SharingPanel chartId={id} />}
-        </div>
+        {canShare && (
+          <section id="sharing" aria-label="Sharing" className="scroll-mt-8">
+            <SharingPanel chartId={id} />
+          </section>
+        )}
       </div>
-
-      {role === 'super_admin' && (
-        <footer
-          className="mx-auto max-w-7xl border-t px-8 py-4 text-xs opacity-40"
-          style={{
-            borderColor: 'color-mix(in oklch, var(--brand-gold) 15%, transparent)',
-            color: 'var(--brand-gold)',
-          }}
-        >
-          Mirror pairs: active · Last governance close: 2026-04-24 (Step 15)
-        </footer>
-      )}
-    </ZoneRoot>
+    </div>
   )
 }

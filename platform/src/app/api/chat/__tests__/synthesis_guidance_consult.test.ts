@@ -18,6 +18,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const NATIVE = '482012f1-710e-4a25-994a-93821f5871aa'
 
+// Jātaka chart workspace: every reading door admits only a Ready chart (shared
+// readiness gate) — this harness exercises a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/firebase/server', () => ({
   getServerUser: vi.fn(async () => ({ uid: 'tester-uid' })),
 }))

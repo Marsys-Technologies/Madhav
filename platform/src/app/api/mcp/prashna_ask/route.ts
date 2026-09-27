@@ -59,6 +59,8 @@
  * builds the async job-handle wrapper around this call on the platform-mcp side.
  */
 
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
+import type { McpErrorEnvelope } from '@/lib/mcp/types'
 import 'server-only'
 import { NextResponse } from 'next/server'
 // Trigger capability registration for all layers (L0–L5) at module load — same
@@ -263,6 +265,32 @@ export async function POST(request: Request) {
       buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
       { status: 401 },
     )
+  }
+
+  // ── Shared chart readiness gate (Jātaka Phase-A2) ─────────────────────────────
+  // The same admission check as the web reading doors: only a Ready chart starts
+  // a reading. Evaluated before turn limits, safety, planning, retrieval,
+  // synthesis and the managed caller's persistence, and re-evaluated on every
+  // managed-job recovery (this route runs again). The code leads the message so
+  // it survives a job store that keeps only the message; `retryable` is true only
+  // for an actively progressing build or an unreadable readiness. This door has
+  // no conversation to continue, so the correction-history lock does not apply.
+  const readingGate = await checkReadingReadiness(chartId)
+  if (!readingGate.ok) {
+    const refusal: McpErrorEnvelope = {
+      ok: false,
+      trace_id: '',
+      error: {
+        class: 'chart_not_ready',
+        code: readingGate.code,
+        message: `${readingGate.code}: ${readingGate.message}`,
+        retryable: readingGate.retryable,
+        remediation: readingGate.retryable
+          ? 'Retry after the chart finishes computing.'
+          : 'Rebuild the chart in Nirmāṇa before starting a new reading.',
+      },
+    }
+    return NextResponse.json(refusal, { status: 409 })
   }
 
   // ── Cost-cap resolution — SERVER-VERIFIED role only, never the request body's

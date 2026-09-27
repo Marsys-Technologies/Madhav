@@ -74,6 +74,9 @@ function makeRecorder() {
 
 function makeDeps(rec: ReturnType<typeof makeRecorder>): OnFinishWriteThroughDeps {
   return {
+    // Parity scenarios exercise a writable conversation (the guard itself is
+    // covered by lib/pipelines/shared/__tests__/onfinish_write_guard.test.ts).
+    writeGuard: async () => ({ ok: true }),
     persistence: {
       writeMessages: async (args) => {
         rec.calls.push({ fn: 'persistence.writeMessages', args })

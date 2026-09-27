@@ -1,9 +1,9 @@
 /**
- * ClientCard — Nirmāṇa affordance access control (Phase 2B).
+ * ClientCard — minimal Jātaka directory card (Jātaka chart workspace, Task 2).
  *
- * When canBuild=true  → Nirmāṇa renders as a navigable link.
- * When canBuild=false → Nirmāṇa renders as a disabled button with
- *                       title="View-only — build restricted".
+ * The card is one semantic link to the chart workspace. It carries only the
+ * name, a quiet birth line and the shared readiness bar/label. Nirmāṇa,
+ * Paripraśna, edit and delete live in the workspace, never on the card.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -37,6 +37,16 @@ const BASE_CHART: ChartWithMeta = {
   ayanamsa: 'lahiri',
   house_system: 'whole_sign',
   created_at: '2026-01-01T00:00:00Z',
+  readiness: {
+    state: 'not-built',
+    percent: 0,
+    label: 'Not built',
+    layerPips: [],
+    lastActivity: null,
+    activeRunId: null,
+    latestRunId: null,
+    latestError: null,
+  },
   pyramidPercent: 0,
   lastLayerActivity: null,
   buildState: null,
@@ -51,31 +61,53 @@ const BASE_CHART: ChartWithMeta = {
   canBuild: true,
 }
 
-describe('ClientCard — Nirmāṇa affordance (Phase 2B canBuild gate)', () => {
-  it('canBuild=true → Nirmāṇa is a link to /nirmana', () => {
-    render(<ClientCard chart={{ ...BASE_CHART, canBuild: true }} />)
-    const link = screen.getByRole('link', { name: /nirmāṇa \(build\)/i })
-    expect(link).toBeTruthy()
-    expect((link as HTMLAnchorElement).href).toContain('/clients/chart-abc/nirmana')
-    expect(screen.queryByTestId('nirmana-disabled')).toBeNull()
-  })
+function withReadiness(state: ChartWithMeta['readiness']['state'], label: string, percent: number): ChartWithMeta {
+  return { ...BASE_CHART, readiness: { ...BASE_CHART.readiness, state, label, percent } }
+}
 
-  it('canBuild=false → Nirmāṇa is a disabled button (not a link)', () => {
-    render(<ClientCard chart={{ ...BASE_CHART, canBuild: false }} />)
-    const btn = screen.getByTestId('nirmana-disabled')
-    expect(btn.tagName).toBe('BUTTON')
-    expect(btn).toHaveAttribute('disabled')
-    expect(btn).toHaveAttribute('title', 'View-only — build restricted')
-    // No navigable link for nirmana
+describe('ClientCard — minimal directory contract', () => {
+  it('renders exactly one link, to the chart workspace', () => {
+    render(<ClientCard chart={BASE_CHART} />)
     const links = screen.getAllByRole('link')
-    const nirmanaLink = links.find((el) => (el as HTMLAnchorElement).href?.includes('nirmana'))
-    expect(nirmanaLink).toBeUndefined()
+    expect(links).toHaveLength(1)
+    expect(links[0]).toHaveAttribute('href', '/clients/chart-abc')
   })
 
-  it('canBuild=false → Pariprashna (consult) link is still present', () => {
-    render(<ClientCard chart={{ ...BASE_CHART, canBuild: false }} />)
-    const link = screen.getByRole('link', { name: /pariprashna \(consult\)/i })
-    expect(link).toBeTruthy()
-    expect((link as HTMLAnchorElement).href).toContain('/clients/chart-abc/pariprashna')
+  it('renders no direct actions, overflow controls or nested interactive targets', () => {
+    const { container } = render(<ClientCard chart={BASE_CHART} />)
+    expect(screen.queryByText('Nirmāṇa')).not.toBeInTheDocument()
+    expect(screen.queryByText('Paripraśna')).not.toBeInTheDocument()
+    expect(screen.queryByText(/pariprashna/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(container.querySelectorAll('a a, a button, a input, a [tabindex]')).toHaveLength(0)
+  })
+
+  it('shows the name, one birth line and the shared readiness', () => {
+    render(<ClientCard chart={withReadiness('partially-built', 'Partially built', 33)} />)
+    expect(screen.getByText(BASE_CHART.name)).toBeInTheDocument()
+    expect(screen.getByText('1984-02-05 · Bhubaneswar')).toBeInTheDocument()
+    const bar = screen.getByLabelText(/readiness/i)
+    expect(bar).toHaveAttribute('role', 'progressbar')
+    expect(bar).toHaveAttribute('aria-valuenow', '33')
+    expect(screen.getByText(/Partially built/)).toBeInTheDocument()
+  })
+
+  it('gives the link a descriptive accessible name carrying the readiness label', () => {
+    render(<ClientCard chart={withReadiness('needs-rebuild', 'Needs rebuild', 0)} />)
+    expect(screen.getByRole('link', { name: 'Open Test Chart Jātaka — Needs rebuild' })).toBeInTheDocument()
+  })
+
+  it('has a visible keyboard focus treatment', () => {
+    render(<ClientCard chart={BASE_CHART} />)
+    expect(screen.getByRole('link').className).toMatch(/focus-visible:ring/)
+  })
+
+  it('renders the same view for owners and view-only grantees', () => {
+    const owner = render(<ClientCard chart={{ ...BASE_CHART, canBuild: true }} />)
+    const ownerHtml = owner.container.innerHTML
+    owner.unmount()
+    const grantee = render(<ClientCard chart={{ ...BASE_CHART, canBuild: false }} />)
+    expect(grantee.container.innerHTML).toBe(ownerHtml)
   })
 })

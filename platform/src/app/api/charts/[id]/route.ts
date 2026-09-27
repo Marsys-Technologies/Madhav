@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
+import { ChartUpdateError, updateChartAndMaybeRecompute } from '@/lib/charts/recomputeChart'
 
 export async function GET(
   _req: NextRequest,
@@ -112,4 +114,56 @@ export async function DELETE(
   }
 
   return NextResponse.json({ deleted: true, chart_id: chartId }, { status: 200 })
+}
+
+/**
+ * PATCH /api/charts/[id] — correct a chart's details (Jātaka chart workspace).
+ *
+ * Owner/super-admin only (`write`; a view grant or an absent chart gets the same
+ * non-enumerating 403). The server validates, normalises and classifies the
+ * change; a computation-affecting correction keeps the chart UUID and grants,
+ * archives prior conversations read-only, invalidates old derived data and
+ * starts one full recomputation. Every failure carries a stable `code`.
+ */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getServerUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required', code: 'UNAUTHENTICATED' }, { status: 401 })
+  }
+  const { id: chartId } = await params
+  const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'write' })
+  if (denied) return denied
+
+  let input: unknown
+  try {
+    input = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: 'Request body must be JSON.', code: 'VALIDATION_FAILED', fields: { body: 'Invalid JSON' } },
+      { status: 422 },
+    )
+  }
+
+  try {
+    const result = await updateChartAndMaybeRecompute({ chartId, principalId: user.uid, input })
+    if (result.mode === 'needs-rebuild') {
+      return NextResponse.json(
+        { error: 'Chart details were saved, but the rebuild did not start.', code: 'JOB_DISPATCH_FAILED', data: result },
+        { status: 503 },
+      )
+    }
+    return NextResponse.json({ data: result }, { status: result.mode === 'recompute-started' ? 202 : 200 })
+  } catch (error) {
+    if (error instanceof ChartUpdateError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code, ...(error.fields ? { fields: error.fields } : {}) },
+        { status: error.status },
+      )
+    }
+    console.error('[PATCH /api/charts/:id] unexpected failure', error)
+    return NextResponse.json(
+      { error: 'Chart correction could not be prepared; nothing was changed.', code: 'RECOMPUTE_PREPARATION_FAILED' },
+      { status: 500 },
+    )
+  }
 }

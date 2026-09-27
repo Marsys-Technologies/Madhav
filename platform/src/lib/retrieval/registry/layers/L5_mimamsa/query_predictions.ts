@@ -74,6 +74,14 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
       type: 'number',
       description: `Max predictions to return (default ${MAX_LIMIT}, max ${MAX_LIMIT}).`,
     },
+    include_stale: {
+      type: 'boolean',
+      description:
+        'A chart correction marks a preserved prediction chart-context-stale (superseded by ' +
+        'former birth details) rather than deleting it. Default false serves only current ' +
+        'predictions. true also includes stale rows, each stamped with chart_context ' +
+        'historical-context metadata — never silently indistinguishable from a current row.',
+    },
   },
 
   llm_hints: {
@@ -100,6 +108,14 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
     const lifecycle_status = args['lifecycle_status'] as string | undefined
     const domain           = args['domain'] as string | undefined
     const limit            = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
+    // Jātaka Phase-A2 (migration 1122): a chart correction preserves a row past
+    // its former lifecycle rather than deleting it, marking it
+    // chart_context_stale_at instead. The current-chart view (default) excludes
+    // it, exactly like every other current-query consumer of this table;
+    // include_stale opts into seeing it, stamped with explicit historical-
+    // context metadata below — never silently indistinguishable from a
+    // current row. Never a lifecycle_status/outcome rewrite.
+    const includeStale = args['include_stale'] === true
 
     try {
       const conds: string[] = ['chart_id = $1']
@@ -109,13 +125,16 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
       if (prediction_id)    { conds.push(`prediction_id = $${p++}`);    params.push(prediction_id) }
       if (lifecycle_status) { conds.push(`lifecycle_status = $${p++}`); params.push(lifecycle_status) }
       if (domain)           { conds.push(`domain = $${p++}`);          params.push(domain) }
+      if (!includeStale)    { conds.push('chart_context_stale_at IS NULL') }
 
       const where = conds.join(' AND ')
       const sql = `
         SELECT prediction_id, source_pramana_id, domain, outcome_claim,
                confidence_band, magnitude_expected, lifecycle_status,
                observation_window, eval_date, falsifier_jsonb, base_rate,
-               driving_signals, emitted_at, created_at
+               driving_signals, emitted_at, created_at,
+               chart_context_stale_at, chart_context_stale_reason,
+               chart_context_superseded_by_run_id
         FROM mimamsa_predictions
         WHERE ${where}
         ORDER BY confidence_band DESC NULLS LAST, created_at DESC
@@ -145,8 +164,9 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
       // assume a floor when the source is genuinely unresolvable.
       const predictionsWithProvenance = (result.rows as Array<Record<string, unknown>>).map(row => {
         const baseRate = row['base_rate'] as number | null
+        const { chart_context_stale_at, chart_context_stale_reason, chart_context_superseded_by_run_id, ...rest } = row
         return {
-          ...row,
+          ...rest,
           base_rate_provenance: baseRate == null ? null : {
             source: 'brahma_event_ontology.base_rate (flat per-event-class prior; distinct from the age-banded base_rate_by_age vector L4 phala_anchors.posterior uses)',
             fallback_value: 0.10,
@@ -156,6 +176,18 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
             cardinality: null,
             cardinality_note: 'base_rate is a prior lookup, not a sample-fit statistic — no N of observations underlies this value.',
           },
+          // Jātaka Phase-A2. Explicit historical-context metadata — a stale row
+          // (included only via include_stale) is never silently indistinguishable
+          // from a current one. current:true / stale fields null when this
+          // prediction still reflects the chart's current birth details.
+          chart_context: chart_context_stale_at == null
+            ? { current: true }
+            : {
+                current: false,
+                stale_at: chart_context_stale_at,
+                stale_reason: chart_context_stale_reason,
+                superseded_by_run_id: chart_context_superseded_by_run_id,
+              },
         }
       })
 

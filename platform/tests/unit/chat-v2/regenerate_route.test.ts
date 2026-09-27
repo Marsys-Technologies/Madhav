@@ -35,7 +35,15 @@ vi.mock('@/lib/conversations', () => ({
   getConversation: vi.fn(async () => mockConv),
 }))
 
+// Jātaka chart workspace: every reading door admits only a Ready chart (shared
+// readiness gate) — this harness exercises a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
+
 vi.mock('@/lib/errors', () => ({
+  errorResponse: (code: string, message: string, status: number) => Response.json({ error: { code, message } }, { status }),
   res: {
     unauthenticated: () => new Response('Unauthorized', { status: 401 }),
     badRequest: (msg: string) => new Response(msg, { status: 400 }),

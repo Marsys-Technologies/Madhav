@@ -179,11 +179,24 @@ export interface McpErrorEnvelope {
     /** Error class for programmatic handling. R5.1 C2: 'entitlement_denied' is additive —
      *  existing consumers keying on 'auth' are unaffected; new consumers can branch on the
      *  more specific class. */
-    class: 'auth' | 'validation' | 'planner_error' | 'orchestrator_error' | 'rate_limit' | 'internal' | 'entitlement_denied'
+    class:
+      | 'auth'
+      | 'validation'
+      | 'planner_error'
+      | 'orchestrator_error'
+      | 'rate_limit'
+      | 'internal'
+      | 'entitlement_denied'
+      /** Jātaka Phase-A2 — additive: the chart is not Ready for a new reading. */
+      | 'chart_not_ready'
     /** Human-readable error message. */
     message: string
     /** Optional remediation hint. */
     remediation?: string
+    /** Stable, branchable code shared with the web reading doors (e.g. CHART_RECOMPUTE_REQUIRED). */
+    code?: string
+    /** True only when the refusal clears on its own (an actively progressing build). */
+    retryable?: boolean
   }
   /** R5.1 C2 item 3 — additive, present only when `error.class === 'entitlement_denied'`.
    *  Structured, honest denial detail distinct from a legitimately-empty result. */
