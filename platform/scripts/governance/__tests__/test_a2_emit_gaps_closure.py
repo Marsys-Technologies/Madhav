@@ -128,6 +128,26 @@ def test_case4_superseded_id_never_resurrected(ctrl):
     assert len(rows) == 1, "no new row may ever be appended under a superseded gap_id"
 
 
+# ── F4 (A_REVIEW.md): WITHDRAWN is terminal, never re-opened by inference ──
+
+def test_case_withdrawn_is_terminal_never_reopened(ctrl):
+    """emit_gaps()'s own docstring says a row whose state is anything other than OPEN/IN_PROGRESS/
+    CLOSED "is left alone rather than re-opened by inference" — but the code re-opened WITHDRAWN
+    rows anyway (treating any non-live, non-OPEN state as "CLOSED or terminal" and reopening it on
+    a failing measurement). WITHDRAWN is a human, out-of-band decision (the schema's own _schema
+    line names it) and must stay WITHDRAWN even when the census now measures FAIL for that
+    criterion."""
+    _write_ledger(ctrl, [dict(asset="bg_x", gap_id="bg_x-Foo.bar", kind="gap", criterion="Foo.bar",
+                             what="withdrawn by the native — accepted risk", change="", detector="d",
+                             owner="asset_census", gate="this asset's certification",
+                             state="WITHDRAWN", ts="t0")])
+    added, skipped, closed, reopened = asset_census.emit_gaps(_census("bg_x", "Foo.bar", "FAIL", "still broken"))
+    assert (added, closed, reopened) == (0, 0, 0), "a WITHDRAWN row must never be re-opened by measurement"
+    assert skipped == 1
+    rows = _read_ledger(ctrl)
+    assert len(rows) == 1 and rows[0]["state"] == "WITHDRAWN", "no new row may be appended over a WITHDRAWN one"
+
+
 # ── Acceptance case 5: hand change/owner/gate carried onto every transition row ──
 
 def test_case5_hand_metadata_carried_onto_closed_row(ctrl):

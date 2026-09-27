@@ -887,8 +887,12 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
       not an implicit close).
     - check failing (FAIL/PARTIAL/NO_DETECTOR), no row with this gap_id yet     -> append OPEN
     - check failing, latest row OPEN or IN_PROGRESS                            -> skip (already open)
-    - check failing, latest row CLOSED (or any other terminal state)           -> append OPEN
+    - check failing, latest row CLOSED                                        -> append OPEN
       ("RE-OPENED by measurement" — the defect regressed; a loop that only counts up is not a loop)
+    - check failing, latest row WITHDRAWN (or any other terminal state this script never wrote)
+      -> nothing to do; WITHDRAWN is a terminal, human decision (F4, A_REVIEW.md) and is "left
+      alone rather than re-opened by inference" exactly as documented below — the code used to
+      contradict this comment by re-opening WITHDRAWN rows too.
     - check closable (PASS/N-A) now, latest row OPEN or IN_PROGRESS            -> append CLOSED
       (closure BY MEASUREMENT: the same detector now passes; the row quotes the new measured value)
     - check closable, latest row CLOSED or no row                             -> nothing to do
@@ -940,13 +944,18 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                         added += 1
                     elif prior_state in LIVE_GAP_STATES:
                         skipped += 1
-                    else:  # CLOSED (or any other terminal/unknown state) — regression re-opens
+                    elif prior_state == "CLOSED":  # regression re-opens
                         f.write(json.dumps(dict(
                             asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
                             what=f"RE-OPENED by measurement: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
                             change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
                             owner=owner, gate=gate, state="OPEN", ts=ts), ensure_ascii=False) + "\n")
                         reopened += 1
+                    else:
+                        # F4 (A_REVIEW.md): WITHDRAWN (or any other terminal state this script
+                        # never assigned) is a human, out-of-band decision — left alone rather than
+                        # re-opened by inference, matching this function's own documented contract.
+                        skipped += 1
                 else:  # v in CLOSABLE
                     if prior is not None and prior_state in LIVE_GAP_STATES:
                         f.write(json.dumps(dict(
