@@ -1,7 +1,7 @@
 # Jātaka Chart Workspace and Safe Recompute — Design Specification
 
 **Date:** 2026-09-27
-**Status:** Draft for user review
+**Status:** Approved for implementation planning
 **Scope:** Local-first redesign of the Jātakas roster and chart page, plus a safe edit-and-recompute workflow for chart-defining birth details.
 
 ## 1. Goal
