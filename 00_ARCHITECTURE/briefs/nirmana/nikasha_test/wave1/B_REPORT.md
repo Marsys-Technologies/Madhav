@@ -1,9 +1,9 @@
 ---
 artifact: NIKASHA_WAVE1_LANE_B_REPORT
 canonical_id: NIKASHA_WAVE1_LANE_B_REPORT
-version: "2.3"
-status: SUBMITTED — corrections after gate review 4 REJECT (narrow basis), packet v2.2 commits a171addc7 + 61ff5a09d, reviewed 2026-09-27
-produced_on: 2026-09-26/27 (v1.0) / 2026-09-27 (v2.0 corrections) / 2026-09-27 (v2.1 re-review corrections) / 2026-09-27 (v2.2 review-3 corrections) / 2026-09-27 (v2.3 review-4 corrections)
+version: "2.4"
+status: ACCEPTED_WITH_CORRECTIONS at gate review 5 (B_REVIEW5.md, d562221e7); report-wording corrections W1–W3 applied in v2.4
+produced_on: 2026-09-26/27 (v1.0) / 2026-09-27 (v2.0 corrections) / 2026-09-27 (v2.1 re-review corrections) / 2026-09-27 (v2.2 review-3 corrections) / 2026-09-27 (v2.3 review-4 corrections) / 2026-09-27 (v2.4 review-5 wording corrections)
 lane: B (the catalog names its producers) — R85, D5 rev. 2.1
 authority: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §4
 builder: Claude (Sonnet), Lane B sub-agent
@@ -12,7 +12,11 @@ gate_re_review: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW2.md (
 gate_review_3: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW3.md (verdict REJECT, narrow; correction R7 + wording R8 + non-blocking N1/N2 in its §4)
 gate_review_4: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW4.md (verdict REJECT, narrow; B1/B2/B3 + test gap T1 + N3/N4 in its §5)
 builder_v2_3: Claude (Opus 5.5), Lane B corrections builder
+gate_review_5: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW5.md (verdict ACCEPT_WITH_CORRECTIONS; report wording W1–W3 in its §7; W4 is the executor's register row)
 native_confirmation_requested: B1 — route_evidence_only never counts as coverage is an EXECUTOR application of D5 rev. 2.1's wording, not a recorded native ruling (§2d)
+changelog:
+  - "2.4 (2026-09-27): report wording only, per gate review 5 (B_REVIEW5.md §5.4, §7) — no code, test or artifact change. W1: the E table/asset-half text in §7, §8 item 8 and §12 item 4 replaced by B_REVIEW5 §5.4's exact wording (three residuals the offline --check passes: fabrication 46 → 153/182; erasure of the 86 derived-only SCUs → 21/182; unchecked summary + snapshot_content_hash; figures rest on a manual live re-derivation; --live re-derive-and-diff required before the compiler.ts wiring lane). W2: 'cannot demote a declared producer' → 'cannot hide a snapshot-declared (claim or probe) producer'. W3: §6's every-probe-fails sentence gains the E-residual exception."
+  - "2.3 (2026-09-27): corrections after gate review 4 (B1, B2, B3, T, F, N), §2d."
 ---
 
 # Nikaṣa wave 1 — Lane B report (the catalog names its producers)
@@ -590,7 +594,8 @@ database.
   producers are bound route evidence must carry exactly that class.
 
 The gate's own constructed cases all fail: an empty artifact, a missing SCU, an extra SCU,
-a stale entry, and every forgery probe in §2d.2. The unmodified artifact passes.
+a stale entry, and every forgery probe in §2d.2 except the E-residual row, which is OPEN
+(§7): it exits 0. The unmodified artifact passes.
 
 ```
 $ python3 -m pytest platform/scripts/governance/__tests__/test_catalog_provenance.py -q
@@ -654,25 +659,34 @@ was false for E. What is true now:
   read **PASS, 182/182**. Now every such producer's `source_ref` must equal a same-SCU
   `kind: source_query` requirement's `source_ref`, so that probe exits 1. v2.2's "fixing E
   needs a DB round-trip" was false for this half: the snapshot alone decides it.
-- **E, table/asset half — STILL OPEN, and still a coverage bypass. Measured, not
-  estimated.** `--check` cannot tell whether a producer's `table` exists, or whether its
-  `asset_id` owns that table (`asset_registry.target_table`); both are database facts. 46
-  of the 75 NO_DETECTOR SCUs carry a `source_query` requirement: `relation_unowned_by_registry`
-  28, `no_relation_in_range` 11, `source_ref_out_of_range` 7. Giving each of the 46 a fake
-  producer (`zz_fake`, `no_such_table_xyz`) that reuses the SCU's **real** `source_ref`
-  reads **PASS, exit 0, 153/182**. Closing it means either:
-  - a DB-backed check of ownership and existence, which is a design change to `--check`
-    (C-1 fixed it as a file-only gate); or
-  - partly, without the DB, re-parsing the cited range and requiring `table` to be one of
-    its relation names. That would catch the 18 whose ranges have no usable relation
-    (11 + 7), but not the 28 whose ranges do name real, unowned tables.
+- **E, table/asset half — the database-dependent limit (v2.4: gate review 5 §5.4 wording,
+  verbatim; ruled non-blocking for the R85 fold, B_REVIEW5 §5.2).**
 
-  Neither was done in this pass (§12 item 4).
+  **`--check` is an offline consistency check between the artifact and the catalog snapshot. It is
+  not a check of the artifact against the database.** It proves that every producer of every tier
+  cites what the snapshot declares for that same SCU, that every snapshot-declared claim and probe is
+  present, and that every NO_DETECTOR reason is an exact closed-set class. It cannot see database
+  facts. Measured on copies of the committed artifact, each of the following **passes** `--check`:
+  **(1)** a fabricated `derived_from_source_query` producer (`zz_fake`, `no_such_table_xyz`) that
+  reuses the SCU's real `source_ref`, on each of the 46 NO_DETECTOR SCUs that carry a `source_query`
+  requirement, would read **153/182** covered. **(2)** Erasing the producers of the 86 SCUs whose
+  producers are all derived (no snapshot claim or probe), each given a well-formed closed-set reason,
+  would read **21/182** covered. Dropping one derived producer from a still-covered SCU also passes.
+  **(3)** The artifact's `summary` counts and `snapshot_content_hash` are not checked against its
+  entries or the snapshot. The one detector for all three is a re-derivation against the read-only
+  database, diffed against the committed file. It was run at `320999b75`, and again independently by
+  gate review 5: byte-identical apart from `generated_at`. It is manual today; no `--live` mode
+  automates it. Until one exists, `--check PASS` means "consistent with the catalog", not "what the
+  database yields". The published figures rest on the re-derivation, not on `--check`. A file-only
+  re-parse could close at most 18 of the 46 in (1) and none of (2) or (3), so it was not done. A
+  `--live` re-derive-and-diff mode is registered as required before the `compiler.ts` wiring lane
+  consumes this artifact.
 - **F — classifier DONE; one residual stated.** The class token is exact-matched: the
   text after `NO_DETECTOR — ` and before the first `:` must be a closed-set member, and a
   class name elsewhere in the string counts for nothing. Every producer the snapshot
-  declares must be present. So a false reason can **no longer demote or erase** a declared
-  producer (v2.2's "only mislabels" was an understatement, N4; F2/F3 in §2d.2 now fail).
+  declares must be present. So a false reason **cannot hide a snapshot-declared (claim or probe) producer**; a
+  well-formed reason can still accompany the erasure of *derived* producers, which is
+  limit E(2) above (v2.2's "only mislabels" was an understatement, N4; F2/F3 in §2d.2 now fail).
   **Residual:** where the snapshot declares no claim or probe for an SCU, an exact-format,
   closed-set but **wrong** class still passes. Example: `no_contract` on an SCU that does
   have requirements. That mislabels an uncovered SCU; it does not create coverage.
@@ -709,12 +723,34 @@ was false for E. What is true now:
    report an aggregate "N producers found via helper vs. directly" count — a future pass
    could add this if the provenance is valuable at that granularity. All 294
    `derived_from_source_query` rows carry `via_helper: null` today (§7's C-3 note).
-8. `--check`'s remaining limits (§7, restated in v2.3). **E, table/asset half:** a
-   producer's table existence and asset ownership are DB facts `--check` cannot see. This
-   is still a coverage bypass: 46 SCUs, **153/182 PASS** when measured. **F residual:** a
-   wrong but exact-format class passes on an SCU where the snapshot declares no claim or
-   probe; it mislabels but cannot demote a declared producer. G, E's citation half (B2),
-   F's classifier and demotion (F), and route-evidence coverage (B1) are CLOSED.
+8. `--check`'s remaining limits (§7; v2.4 wording per gate review 5). **E, the
+   database-dependent limit (B_REVIEW5 §5.4, verbatim):**
+
+   **`--check` is an offline consistency check between the artifact and the catalog snapshot. It is
+   not a check of the artifact against the database.** It proves that every producer of every tier
+   cites what the snapshot declares for that same SCU, that every snapshot-declared claim and probe is
+   present, and that every NO_DETECTOR reason is an exact closed-set class. It cannot see database
+   facts. Measured on copies of the committed artifact, each of the following **passes** `--check`:
+   **(1)** a fabricated `derived_from_source_query` producer (`zz_fake`, `no_such_table_xyz`) that
+   reuses the SCU's real `source_ref`, on each of the 46 NO_DETECTOR SCUs that carry a `source_query`
+   requirement, would read **153/182** covered. **(2)** Erasing the producers of the 86 SCUs whose
+   producers are all derived (no snapshot claim or probe), each given a well-formed closed-set reason,
+   would read **21/182** covered. Dropping one derived producer from a still-covered SCU also passes.
+   **(3)** The artifact's `summary` counts and `snapshot_content_hash` are not checked against its
+   entries or the snapshot. The one detector for all three is a re-derivation against the read-only
+   database, diffed against the committed file. It was run at `320999b75`, and again independently by
+   gate review 5: byte-identical apart from `generated_at`. It is manual today; no `--live` mode
+   automates it. Until one exists, `--check PASS` means "consistent with the catalog", not "what the
+   database yields". The published figures rest on the re-derivation, not on `--check`. A file-only
+   re-parse could close at most 18 of the 46 in (1) and none of (2) or (3), so it was not done. A
+   `--live` re-derive-and-diff mode is registered as required before the `compiler.ts` wiring lane
+   consumes this artifact.
+
+   **F residual:** a wrong but exact-format class passes on an SCU where the snapshot
+   declares no claim or probe; it mislabels, and cannot hide a snapshot-declared (claim or
+   probe) producer, but a well-formed reason can accompany the erasure of *derived*
+   producers, which is (2) above. G, E's citation half (B2), F's classifier and
+   snapshot-declared presence check (F), and route-evidence coverage (B1) are CLOSED.
 9. `judgment_query`'s `no_relation_in_range` classification is a stated limit (R3, §3.3):
    its handler citations are all unresolvable-shape anchors, so the more honest class
    would be `source_ref_unresolvable_shape`. Not changed in code.
@@ -770,15 +806,29 @@ Restated for v2.3 (review 4 found v2.2's items 4 and 6 false). The exact list:
 2. **`editorial.ts` was read only, never edited.**
 3. **The 12 stale `source_ref` annotations (§3.4) are registered, not fixed.** They are not
    this lane's file.
-4. **`--check` limit E, table/asset half — open, and still a coverage bypass (§7).**
+4. **`--check` limit E — the database-dependent limit, stated and not closed (§7).**
    B2 bound every `derived_from_source_query` citation to a same-SCU `source_query`
-   requirement; 294/294 committed producers are bound. v2.2's "fixing E would need a DB
-   round-trip" was false for that half, and it is fixed. What only the database can
-   answer is whether the producer's `table` exists and whether its `asset_id` owns that
-   table. A fake producer that reuses an SCU's real `source_ref` still passes. Measured:
-   46 SCUs, PASS at 153/182. Not closed, because that needs a DB-backed `--check`, a
-   design change to C-1's file-only gate that no review asked for. A file-only re-parse
-   would close 18 of the 46 at most.
+   requirement (294/294 bound). The rest, in gate review 5 §5.4's exact wording:
+
+   **`--check` is an offline consistency check between the artifact and the catalog snapshot. It is
+   not a check of the artifact against the database.** It proves that every producer of every tier
+   cites what the snapshot declares for that same SCU, that every snapshot-declared claim and probe is
+   present, and that every NO_DETECTOR reason is an exact closed-set class. It cannot see database
+   facts. Measured on copies of the committed artifact, each of the following **passes** `--check`:
+   **(1)** a fabricated `derived_from_source_query` producer (`zz_fake`, `no_such_table_xyz`) that
+   reuses the SCU's real `source_ref`, on each of the 46 NO_DETECTOR SCUs that carry a `source_query`
+   requirement, would read **153/182** covered. **(2)** Erasing the producers of the 86 SCUs whose
+   producers are all derived (no snapshot claim or probe), each given a well-formed closed-set reason,
+   would read **21/182** covered. Dropping one derived producer from a still-covered SCU also passes.
+   **(3)** The artifact's `summary` counts and `snapshot_content_hash` are not checked against its
+   entries or the snapshot. The one detector for all three is a re-derivation against the read-only
+   database, diffed against the committed file. It was run at `320999b75`, and again independently by
+   gate review 5: byte-identical apart from `generated_at`. It is manual today; no `--live` mode
+   automates it. Until one exists, `--check PASS` means "consistent with the catalog", not "what the
+   database yields". The published figures rest on the re-derivation, not on `--check`. A file-only
+   re-parse could close at most 18 of the 46 in (1) and none of (2) or (3), so it was not done. A
+   `--live` re-derive-and-diff mode is registered as required before the `compiler.ts` wiring lane
+   consumes this artifact.
 5. **`--check` limit F, residual (§7).** An exact-format, closed-set but wrong class
    passes on an SCU where the snapshot declares no claim or probe. Checking the class
    against the SCU's own contract is feasible from the snapshot but was not asked for.
