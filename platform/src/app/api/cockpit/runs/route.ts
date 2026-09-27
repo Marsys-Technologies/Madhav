@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHash } from 'crypto'
 import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
-import { resolveBuildPlan, computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
-import { invokeRunJob } from '@/lib/build/jobInvoker'
+import { computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
-import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
-import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
+import {
+  BuildPreparationError,
+  computeNonCandidateAssetIds,
+  findActiveRun,
+  freezeRunManifest,
+  isActiveRunConflict,
+  loadPlanningInputs,
+  persistPreparedRun,
+  planRun,
+  type RegistryEntryWithScope,
+} from '@/lib/build/runPreparation'
+import { invalidateAssets, InvalidationError } from '@/lib/build/assetInvalidation'
+import { dispatchPreparedRun } from '@/lib/build/runDispatch'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -22,81 +31,8 @@ async function getUserRole(uid: string): Promise<string> {
   return rows[0]?.role ?? 'guest'
 }
 
-interface RegistryEntryWithScope extends RegistryEntry {
-  scope: string
-  has_writer: boolean
-  target_table: string | null
-  count_sql: string | null
-  natural_key_partition: string | null
-  asset_kind: 'data' | 'artifact' | 'service'
-  asset_type: 'data' | 'artifact' | 'service'
-  health_probe: Record<string, unknown> | null
-}
-
-interface FreshnessRow {
-  asset_id: string
-  state: 'fresh' | 'stale' | 'unknown'
-  reasons: string[]
-}
-
-const EXPECTED_WRITER_DIGESTS = writerDigestInventory.writers as Record<string, string>
-
-function expectedCodeDigest(entry: RegistryEntryWithScope | undefined): string | null {
-  if (!entry) return null
-  const writerDigest = EXPECTED_WRITER_DIGESTS[entry.asset_id]
-  if (writerDigest) return writerDigest
-  return entry.asset_kind === 'service' ? writerDigestInventory.probe_digest : null
-}
-
-function isActiveRunConflict(error: unknown): boolean {
-  const pg = error as { code?: string; constraint?: string }
-  return pg?.code === '23505' && pg?.constraint === 'build_runs_one_active_per_chart_idx'
-}
-
-const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
-
-type FrozenManifestAsset = {
-  asset_id: string
-  scope: string
-  depends_on: string[]
-  natural_key_partition: string | null
-  has_cowriters: boolean
-  expected_code_digest: string
-}
-
-type FrozenRunManifest = {
-  version: 'nirmana-run-manifest/v1'
-  chart_id: string
-  scope: BuildScope
-  scope_target: string | null
-  action: BuildAction
-  waves: string[][]
-  assets: FrozenManifestAsset[]
-}
-
-/**
- * Serializes values identically in the dispatcher and the Python runner: object
- * keys are lexical, while arrays retain the execution order they were given.
- * Manifest values are IDs/enums only, so the shared ASCII JSON representation is
- * deliberate and avoids a JSONB key-order dependency at read time.
- */
-function canonicalManifestJson(value: unknown): string {
-  const normalize = (input: unknown): unknown => {
-    if (Array.isArray(input)) return input.map(normalize)
-    if (input !== null && typeof input === 'object') {
-      const record = input as Record<string, unknown>
-      return Object.fromEntries(Object.keys(record).sort().map(key => [key, normalize(record[key])]))
-    }
-    return input
-  }
-  const serialized = JSON.stringify(normalize(value))
-  if (serialized === undefined) throw new TypeError('Frozen manifest must be JSON-serializable')
-  return serialized
-}
-
-function manifestDigest(manifest: FrozenRunManifest): string {
-  return createHash('sha256').update(canonicalManifestJson(manifest), 'utf8').digest('hex')
-}
+/** Pool-level reads for the planner, in the same order the route has always issued them. */
+const pooled = { query }
 
 export async function POST(req: NextRequest) {
   const user = await requireUser()
@@ -200,14 +136,11 @@ export async function POST(req: NextRequest) {
     const checkClient = await pool.connect()
     try {
       await checkClient.query('BEGIN ISOLATION LEVEL SERIALIZABLE')
-      const activeCheck = await checkClient.query<{ id: string }>(
-        `SELECT id FROM build_runs WHERE chart_id=$1 AND state IN ('planned','running','paused') LIMIT 1`,
-        [chart_id]
-      )
+      const activeRunId = await findActiveRun(checkClient, chart_id)
       await checkClient.query('COMMIT')
-      if (activeCheck.rows.length > 0) {
+      if (activeRunId) {
         return NextResponse.json(
-          { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE', existing_run_id: activeCheck.rows[0].id },
+          { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE', existing_run_id: activeRunId },
           { status: 409 }
         )
       }
@@ -229,48 +162,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Resolve the plan — filter registry by allowedScopes so non-super-admin plans
-  // silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic).
-  // Also fetch target_table + count_sql for clear-before execution.
-  const [registryResult, throughputResult, protectedResult, freshnessResult] = await Promise.all([
-    query<RegistryEntryWithScope>(
-      // domain (migration 590): O-wave WP-3's layer-sweep domain exclusion
-      // (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.3) reads this directly.
-      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-              scope, has_writer, target_table, count_sql, natural_key_partition,
-              asset_kind, asset_type, health_probe, domain
-       FROM asset_registry
-       WHERE is_active = true
-       ORDER BY layer, sort_order`,
-    ),
-    query<ThroughputEntry>(
-      // Include global (chart_id IS NULL) rows alongside chart-scoped so built L0/global
-      // assets report 'lit' — otherwise the resolver blocks every layer/asset-scoped build
-      // that depends on a built L0 asset. DISTINCT ON prefers the chart-scoped row.
-      `SELECT DISTINCT ON (asset_id) asset_id, state
-         FROM asset_throughput
-        WHERE chart_id=$1 OR chart_id IS NULL
-        ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
-      [chart_id]
-    ),
-    // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the REAL build-dispatch guard
-    // (not merely a preview: this route inserts build_runs and invokes the Cloud Run job).
-    // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
-    query<{ asset_id: string }>(
-      'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
-      [chart_id]
-    ),
-    query<FreshnessRow>(
-      `SELECT DISTINCT ON (asset_id)
-              af.asset_id, af.freshness_state AS state, af.reasons
-         FROM asset_freshness af
-        WHERE af.chart_id=$1 OR af.chart_id IS NULL
-        ORDER BY af.asset_id, (af.chart_id = $1) DESC NULLS LAST, af.observed_at DESC`,
-      [chart_id]
-    ),
-  ])
-
-  const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
+  // Resolve the plan — the registry is filtered by allowedScopes so non-super-admin
+  // plans silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic).
+  // Shared with the chart-correction transaction (lib/build/runPreparation).
+  const inputs = await loadPlanningInputs(pooled, chart_id)
+  const registryRows = inputs.registry
+  const protectedAssetIds = inputs.protectedAssetIds
 
   // A no-writer service has a health probe rather than a WriterBase implementation.
   // It is eligible only as one explicit, non-destructive global asset_set selected by
@@ -278,7 +175,7 @@ export async function POST(req: NextRequest) {
   // Ephemeris and Panchanga probes without making arbitrary service rows or an
   // entire L0 layer dispatchable by accident.
   const requestedServiceProbes = requestedAssetSet
-    .map(assetId => registryResult.rows.find(row => row.asset_id === assetId))
+    .map(assetId => registryRows.find(row => row.asset_id === assetId))
     .filter((row): row is RegistryEntryWithScope => Boolean(row && isCockpitDispatchableServiceProbe(row)))
   if (requestedServiceProbes.length > 0) {
     if (!isSuperAdmin) {
@@ -301,115 +198,60 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Supply the whole active registry to the planner. Candidate restrictions are
-  // deliberately represented as exclusions rather than by dropping dependency
-  // identities: an otherwise-authorized per-chart asset can still fail closed
-  // on its global L0/service prerequisite.
-  const requestedServiceProbeIds = new Set(requestedServiceProbes.map(row => row.asset_id))
-  const nonCandidateAssetIds = new Set(registryResult.rows
-    .filter(row =>
-      !allowedScopes.includes(row.scope)
-      || (scope === 'global' && row.layer === 'brahmagyan')
-      || (row.has_writer === false && !requestedServiceProbeIds.has(row.asset_id))
-    )
-    .map(row => row.asset_id))
-
-  const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  // O-wave WP-1 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1, "one authority"):
-  // trust the sidecar's own receipt classification (af.freshness_state) directly
-  // rather than re-deriving a second, disagreeing verdict from the generated
-  // writer-digest inventory. That inventory only ever covered L0's bg_* writers,
-  // so this override read `expected_code_digest_missing` -- an UNKNOWN state --
-  // for the large majority of assets regardless of their real receipt freshness.
-  // The inventory remains authoritative for campaign-evidence pinning (its own
-  // CI drift detector) and for the release-safety manifest freeze below
-  // (expectedCodeDigest / EXPECTED_WRITER_DIGESTS, unchanged) -- it is retired
-  // ONLY as a runtime freshness-classification input. A missing freshness row
-  // (no receipt ever reconciled) is handled by resolveBuildPlan's own default:
-  // `freshness.get(id)` returning undefined already reads as "needs build".
-  const freshness = new Map(freshnessResult.rows.map(r => [
-    r.asset_id,
-    { state: r.state, reasons: Array.isArray(r.reasons) ? r.reasons : [] },
-  ]))
-  const buildPlan = resolveBuildPlan({
-    scope, scope_target, action, registry: registryResult.rows, throughput, freshness, protectedAssetIds,
-    nonCandidateAssetIds,
-  })
-  const plan = buildPlan.plan_waves.flat()
-
-  // Gate 4: Pre-flight gate (built into resolveBuildPlan).
-  // Blocks builds where any out-of-plan dep has stale or error data.
-  if (buildPlan.status === 'blocked') {
-    return NextResponse.json({
-      error: 'Build blocked: upstream assets must be rebuilt first',
-      code: 'UPSTREAM_BLOCKED',
-      blockers: buildPlan.blockers,
-      ...(buildPlan.protected_assets.length > 0 ? { protected_assets: buildPlan.protected_assets } : {}),
-    }, { status: 422 })
-  }
-
-  if (plan.length === 0) {
-    // Distinguish an honest "everything withheld as protected" from the ordinary
-    // "already lit" no-op — the two have different remedies and must not read the same
-    // (a protected asset is never silently folded into "nothing to do").
-    if (buildPlan.protected_assets.length > 0) {
-      return NextResponse.json({
-        error: `Build blocked: every candidate in scope is protected (${PROTECTED_ASSET_MESSAGE})`,
-        code: 'PROTECTED',
-        protected_assets: buildPlan.protected_assets,
-      }, { status: 422 })
-    }
-    return NextResponse.json({
-      error: 'Nothing to build: all assets in scope are already built. Use action=rebuild to force a rebuild.',
-      code: 'ALL_LIT',
-      hint: 'All assets in scope are already built. Use Rebuild to force a full rebuild.',
-    }, { status: 422 })
-  }
-
-  // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
-  // operational metadata, so the runner must never re-plan a queued run from it.
-  const registryByAssetId = new Map(registryResult.rows.map(entry => [entry.asset_id, entry]))
-  const writerCountByTarget = new Map<string, number>()
-  for (const entry of registryResult.rows) {
-    if (entry.target_table) {
-      writerCountByTarget.set(entry.target_table, (writerCountByTarget.get(entry.target_table) ?? 0) + 1)
-    }
-  }
-  const manifestAssets: FrozenManifestAsset[] = []
-  for (const assetId of plan) {
-    const entry = registryByAssetId.get(assetId)
-    if (!entry) {
-      return NextResponse.json({
-        error: `Planner selected asset without an active writer: ${assetId}`,
-        code: 'INVALID_BUILD_PLAN',
-      }, { status: 422 })
-    }
-    const expectedDigest = expectedCodeDigest(entry)
-    if (!expectedDigest) {
-      return NextResponse.json({
-        error: `No sidecar-owned writer digest is available for planned asset: ${assetId}`,
-        code: 'CODE_DIGEST_UNAVAILABLE',
-      }, { status: 422 })
-    }
-    manifestAssets.push({
-      asset_id: entry.asset_id,
-      scope: entry.scope,
-      depends_on: [...(entry.depends_on ?? [])],
-      natural_key_partition: entry.natural_key_partition ?? null,
-      has_cowriters: Boolean(entry.target_table && (writerCountByTarget.get(entry.target_table) ?? 0) > 1),
-      expected_code_digest: expectedDigest,
-    })
-  }
-  const frozenManifest: FrozenRunManifest = {
-    version: 'nirmana-run-manifest/v1',
-    chart_id,
+  const nonCandidateAssetIds = computeNonCandidateAssetIds(registryRows, {
+    allowedScopes,
     scope,
-    scope_target,
-    action,
-    waves: buildPlan.plan_waves.map(wave => [...wave]),
-    assets: manifestAssets,
+    serviceProbeIds: new Set(requestedServiceProbes.map(row => row.asset_id)),
+  })
+
+  let buildPlan: ReturnType<typeof planRun>['buildPlan']
+  let plan: string[]
+  let frozen: ReturnType<typeof freezeRunManifest>
+  try {
+    ;({ buildPlan, plan } = planRun({ inputs, scope, scopeTarget: scope_target, action, nonCandidateAssetIds }))
+    // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
+    // operational metadata, so the runner must never re-plan a queued run from it.
+    frozen = freezeRunManifest({
+      chartId: chart_id, scope, scopeTarget: scope_target, action, planWaves: buildPlan.plan_waves, registry: registryRows,
+    })
+  } catch (error) {
+    if (!(error instanceof BuildPreparationError)) throw error
+    const protectedAssets = (error.details.protected_assets ?? []) as unknown[]
+    switch (error.code) {
+      // Gate 4: Pre-flight gate (built into resolveBuildPlan).
+      // Blocks builds where any out-of-plan dep has stale or error data.
+      case 'UPSTREAM_BLOCKED':
+        return NextResponse.json({
+          error: 'Build blocked: upstream assets must be rebuilt first',
+          code: 'UPSTREAM_BLOCKED',
+          blockers: error.details.blockers,
+          ...(protectedAssets.length > 0 ? { protected_assets: protectedAssets } : {}),
+        }, { status: 422 })
+      // Distinguish an honest "everything withheld as protected" from the ordinary
+      // "already lit" no-op — the two have different remedies and must not read the same.
+      case 'PROTECTED':
+        return NextResponse.json({
+          error: `Build blocked: every candidate in scope is protected (${PROTECTED_ASSET_MESSAGE})`,
+          code: 'PROTECTED',
+          protected_assets: protectedAssets,
+        }, { status: 422 })
+      case 'ALL_LIT':
+        return NextResponse.json({
+          error: 'Nothing to build: all assets in scope are already built. Use action=rebuild to force a rebuild.',
+          code: 'ALL_LIT',
+          hint: 'All assets in scope are already built. Use Rebuild to force a full rebuild.',
+        }, { status: 422 })
+      case 'INVALID_BUILD_PLAN':
+      case 'CODE_DIGEST_UNAVAILABLE':
+        return NextResponse.json({ error: error.message, code: error.code }, { status: 422 })
+      default:
+        throw error
+    }
   }
-  const frozenManifestDigest = manifestDigest(frozenManifest)
+  const prepared = {
+    chartId: chart_id, scope, scopeTarget: scope_target, action, plan,
+    manifest: frozen.manifest, manifestDigest: frozen.digest,
+  }
 
   // Gate 3: L1/L0 precondition gate — must run against current DB state BEFORE any clear.
   // If plan includes bo_* assets, verify upstream (L1 Gaṇita + L0 remedy corpus) is ready.
@@ -461,7 +303,7 @@ export async function POST(req: NextRequest) {
     // Exclude brahmagyan unless force_l0 is explicitly set, AND exclude any asset
     // protected for this chart_id — a protected asset is never cleared, whether or
     // not it happens to also be part of the build plan above.
-    const fullRegistry = registryResult.rows
+    const fullRegistry = registryRows
     let clearAssets = filterScopeAssets(fullRegistry, scope, scope_target, allowedScopes) as RegistryEntryWithScope[]
     if (!force_l0) {
       clearAssets = clearAssets.filter(a => a.layer !== 'brahmagyan')
@@ -481,58 +323,9 @@ export async function POST(req: NextRequest) {
     try {
       await client.query('BEGIN')
 
-      // Delete data — reverse order for FK safety (downstream first)
-      const reversedAssets = [...clearAssets].reverse()
-      let spIdx = 0
-      for (const asset of reversedAssets) {
-        let ops: Array<{ sql: string; params: unknown[] }> | null = null
-
-        if (asset.asset_id in EXPLICIT_CLEAR_OPS) {
-          const explicitOps = EXPLICIT_CLEAR_OPS[asset.asset_id]
-          if (explicitOps === null) continue  // zero-row service asset — skip cleanly
-          ops = explicitOps.map(op => ({
-            sql: op.sql,
-            params: op.sql.includes('$1') ? [chart_id] : [],
-          }))
-        } else if (asset.count_sql) {
-          const deleteSql = deriveDeleteSqlFromCountSql(asset.count_sql)
-          if (deleteSql) {
-            ops = [{ sql: deleteSql, params: deleteSql.includes('$1') ? [chart_id] : [] }]
-          }
-        }
-
-        if (!ops && asset.target_table) {
-          if (!TABLE_NAME_RE.test(asset.target_table)) {
-            await client.query('ROLLBACK')
-            client.release()
-            return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
-          }
-          const sql = asset.scope === 'global'
-            ? `DELETE FROM ${asset.target_table}`
-            : `DELETE FROM ${asset.target_table} WHERE chart_id = $1`
-          ops = [{ sql, params: asset.scope === 'global' ? [] : [chart_id] }]
-        }
-
-        if (!ops) continue  // no clear spec — skip (non-destructive; build will populate from scratch)
-
-        const sp = `cb_${spIdx++}`
-        await client.query(`SAVEPOINT ${sp}`)
-        let assetFailed = false
-        for (const op of ops) {
-          try {
-            await client.query(op.sql, op.params)
-          } catch (opErr) {
-            console.warn(`[runs/clear-before] DELETE failed for ${asset.asset_id}:`, (opErr as Error).message)
-            await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
-            await client.query(`RELEASE SAVEPOINT ${sp}`)
-            assetFailed = true
-            break
-          }
-        }
-        if (!assetFailed) {
-          await client.query(`RELEASE SAVEPOINT ${sp}`)
-        }
-      }
+      // Delete data — reverse order for FK safety (downstream first), each asset in
+      // its own savepoint: the operator clear stays best effort.
+      await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
 
       // Reset throughput to dormant for all cleared assets (chart-scoped)
       if (clearAssetIds.length > 0) {
@@ -567,29 +360,15 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Insert build_run within the same transaction
-      const runRes = await client.query<{ id: string }>(
-        `INSERT INTO build_runs
-           (chart_id, scope, scope_target, action, state, plan, plan_manifest, plan_manifest_digest, triggered_by)
-         VALUES ($1, $2, $3, $4, 'planned', $5, $6, $7, $8) RETURNING id`,
-        [chart_id, scope, scope_target, action, JSON.stringify(plan), JSON.stringify(frozenManifest), frozenManifestDigest, user.uid]
-      )
-      runId = runRes.rows[0].id
-
-      // Insert build_run_assets within the same transaction
-      const placeholders = plan.map((_, i) =>
-        `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`
-      ).join(', ')
-      const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
-      await client.query(
-        `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}
-         ON CONFLICT (run_id, asset_id) DO NOTHING`,
-        flatParams
-      )
+      // Insert build_run and its queued assets within the same transaction
+      runId = await persistPreparedRun(client, prepared, user.uid)
 
       await client.query('COMMIT')
     } catch (outerErr) {
       await client.query('ROLLBACK').catch(() => null)
+      if (outerErr instanceof InvalidationError && outerErr.code === 'INVALID_TABLE') {
+        return NextResponse.json({ error: outerErr.message, code: 'INVALID_TABLE' }, { status: 500 })
+      }
       if (isActiveRunConflict(outerErr)) {
         return NextResponse.json(
           { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE' },
@@ -606,21 +385,16 @@ export async function POST(req: NextRequest) {
       client.release()
     }
 
-    // Invoke the job OUTSIDE the transaction — Cloud Run invocations cannot be rolled back
+    // Invoke the job OUTSIDE the transaction — Cloud Run invocations cannot be rolled back.
+    // M-1: the run stays 'planned' until the orchestrator itself transitions it to
+    // 'running' after acquiring the chart advisory lock.
     const jobImageTag = await getJobImageTag().catch(() => null)
-    try {
-      await invokeRunJob(runId)
-      // M-1: Do NOT pre-mark as 'running' here. The run stays in 'planned' until the orchestrator
-      // itself transitions it to 'running' after acquiring the chart advisory lock. This prevents
-      // a phantom 'running' state when the spawned process never actually starts.
-    } catch (err) {
-      const errMsg = (err as Error).message
-      console.error('[api/cockpit/runs] invokeRunJob failed after clear — marking run failed:', errMsg)
-      await query(`UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`, [errMsg, runId])
-      await query(`UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`, [runId])
+    const dispatch = await dispatchPreparedRun(runId)
+    if (!dispatch.ok) {
+      console.error('[api/cockpit/runs] invokeRunJob failed after clear — run marked failed:', dispatch.message)
       // Note: data was already cleared; user will need to rebuild again after fixing the job issue
       return NextResponse.json(
-        { error: 'Data cleared but build job failed to start', detail: errMsg, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
+        { error: 'Data cleared but build job failed to start', detail: dispatch.message, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
         { status: 503 }
       )
     }
@@ -641,25 +415,9 @@ export async function POST(req: NextRequest) {
   let runId: string
   try {
     await client.query('BEGIN')
-    const runResult = await client.query<{ id: string }>(
-      `INSERT INTO build_runs
-         (chart_id, scope, scope_target, action, state, plan, plan_manifest, plan_manifest_digest, triggered_by)
-       VALUES ($1, $2, $3, $4, 'planned', $5, $6, $7, $8)
-       RETURNING id`,
-      [chart_id, scope, scope_target, action, JSON.stringify(plan), JSON.stringify(frozenManifest), frozenManifestDigest, user.uid]
-    )
-    runId = runResult.rows[0].id
-
     // Persist the run and its receipts atomically: a planned run never exists
     // without the exact per-asset rows the runner and tracker require.
-    const placeholders = plan.map((_, i) =>
-      `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`
-    ).join(', ')
-    const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
-    await client.query(
-      `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}`,
-      flatParams
-    )
+    runId = await persistPreparedRun(client, prepared, user.uid)
     await client.query('COMMIT')
   } catch (error) {
     await client.query('ROLLBACK').catch(() => null)
@@ -677,26 +435,14 @@ export async function POST(req: NextRequest) {
   // Fetch the currently deployed job image tag (best-effort; null if GCP unreachable)
   const jobImageTag = await getJobImageTag().catch(() => null)
 
-  // Invoke Cloud Run Job — failure is fatal: mark the run failed so it doesn't orphan as 'planned'
-  try {
-    await invokeRunJob(runId)
-    // M-1: Do NOT pre-mark as 'running' here. The run stays in 'planned' until the orchestrator
-    // itself transitions it to 'running' after acquiring the chart advisory lock. The watchdog's
-    // "planned > 10 min with no transition" reaper handles the case where the orchestrator never
-    // starts (undispatched run reaper already present in watchdog/route.ts).
-  } catch (err) {
-    const errMsg = (err as Error).message
-    console.error('[api/cockpit/runs] invokeRunJob failed — marking run failed:', errMsg)
-    await query(
-      `UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`,
-      [errMsg, runId]
-    )
-    await query(
-      `UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`,
-      [runId]
-    )
+  // Invoke the job — failure is fatal: the run is marked failed so it doesn't orphan as 'planned'.
+  // M-1: no pre-mark as 'running'; the watchdog's undispatched-run reaper covers a run the
+  // orchestrator never starts.
+  const dispatch = await dispatchPreparedRun(runId)
+  if (!dispatch.ok) {
+    console.error('[api/cockpit/runs] invokeRunJob failed — run marked failed:', dispatch.message)
     return NextResponse.json(
-      { error: 'Failed to dispatch build job', detail: errMsg, run_id: runId },
+      { error: 'Failed to dispatch build job', detail: dispatch.message, run_id: runId },
       { status: 503 }
     )
   }
