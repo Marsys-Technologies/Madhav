@@ -1410,7 +1410,17 @@ describe('first-slice availability coverage', () => {
         source_ref: expect.stringContaining(handlerRef),
       })],
     })])
-    expect(scu.availability_dispositions ?? []).toEqual([])
+    // get_av_transit_gating carries one deliberately_dark disposition for its OTHER
+    // (kakshya_windows) binding — R3 per-mode proof typing — which must not affect this
+    // contract's own (sav_bav_gating) binding_id above.
+    if (scuId === 'scu.catalog.get_av_transit_gating') {
+      expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+        binding_id: 'registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows',
+        status: 'deliberately_dark',
+      })])
+    } else {
+      expect(scu.availability_dispositions ?? []).toEqual([])
+    }
 
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     let initialQuery = true
@@ -1422,11 +1432,17 @@ describe('first-slice availability coverage', () => {
       }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
+    // get_av_transit_gating's kakshya_windows binding is deliberately dark (R3 per-mode
+    // proof typing) — its own diagnostic gap must be visible here, but must NOT have
+    // affected `state`/`available_binding_ids` above, which is the whole point of the test.
+    const kakshyaDiagnosticGap = scuId === 'scu.catalog.get_av_transit_gating'
+      ? [expect.stringMatching(/kakshya_windows.*deliberately dark/)]
+      : []
     expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'available',
       available_binding_ids: [bindingId],
       asset_receipts: [],
-      gaps: [],
+      gaps: kakshyaDiagnosticGap,
     })
 
     const sourceCall = calls.find((call) => call.sql.includes(sqlMarker))
@@ -1445,17 +1461,20 @@ describe('first-slice availability coverage', () => {
       if (sql.includes(sqlMarker)) throw new Error('permission denied')
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
+    // kakshyaDiagnosticGap (declared above) is always appended, regardless of whether
+    // sav_bav_gating itself passed or failed here — it is an independent binding's own
+    // disposition, not derived from sav_bav_gating's outcome.
     expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} could not execute its authenticated source query.`],
+      gaps: [`${contractId} could not execute its authenticated source query.`, ...kakshyaDiagnosticGap],
     })
 
     const noBuild = await loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [] }))
     expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} cannot bind the selected chart to a served chart generation.`],
+      gaps: [`${contractId} cannot bind the selected chart to a served chart generation.`, ...kakshyaDiagnosticGap],
     })
   })
 

@@ -3,6 +3,7 @@ import { assertOverlayCompatibility } from '../../retrieval/registry/knowledge/o
 import { isInquiryServerDispatchEligible, presentationTransportForInquiry, type InquiryPresentationTransport } from './execution_policy'
 import { searchSemanticCapabilities } from '../../retrieval/registry/knowledge/query'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
+import { bindingProofKind, selectBindingForMode } from '../../retrieval/registry/knowledge/proof_kind'
 import {
   INQUIRY_CONTRACT_VERSION,
   type AiInquiryProposal,
@@ -340,11 +341,16 @@ function planFor(
         isInquiryServerDispatchEligible(candidate, presentationTransport))
       const aggregateTransitBinding = channelBindings
         .find((candidate) => candidate.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID)
+      // R3 boundary ("genuine per-mode proof typing"): selectBindingForMode generalizes the
+      // old `primary ?? channelBindings[0]` fallback into a mode-aware selector — today no
+      // obligation carries mode-specific intended args, so this is byte-identical to the old
+      // heuristic for every current SCU (none declare mode_selector); it exists so a future
+      // obligation/AI-decomposition that DOES name a specific mode (e.g.
+      // get_av_transit_gating's kakshya_windows) is routed to the binding that actually
+      // proves it, instead of always falling through to the SCU's default binding.
       const binding = aggregateTransitBinding
-        ?? channelBindings.find((candidate) => candidate.relation === 'primary')
-        ?? channelBindings[0]
-        ?? null
-      const itemArgs: Record<string, unknown> = {}
+        ?? selectBindingForMode(channelBindings, undefined)
+      const itemArgs: Record<string, unknown> = { ...(binding?.fixed_args ?? {}) }
       if (binding?.input_contract['chart_id']) itemArgs['chart_id'] = chartId
       if (binding?.input_contract['question']) itemArgs['question'] = question
       if (binding?.input_contract['query']) itemArgs['query'] = question
@@ -373,9 +379,12 @@ function planFor(
           ? `Required binding arguments are unresolved: ${unresolvedRequired.join(', ')}.`
           : !overlayAllowsBinding
             ? availability?.state === 'resource_ok'
-              // RC-7: a plan/resource/discovery capability is available as a resource but carries
-              // no chart evidence, so it can never satisfy an answer obligation.
-              ? `${scuId} is a ${scu.proof_kind ?? 'non-answer'} capability: available as a resource, never admitted as answer evidence.`
+              // RC-7 / R3 per-mode: a plan/resource/discovery BINDING is available as a
+              // resource but carries no chart evidence, so it can never satisfy an answer
+              // obligation. Reads the selected binding's own effective proof kind, not the
+              // SCU's — a sibling answer binding on the same SCU never reaches this branch
+              // (overlayAllowsBinding only fails here because THIS binding is non-answer).
+              ? `${scuId} is a ${binding ? bindingProofKind(scu, binding) : 'non-answer'} capability: available as a resource, never admitted as answer evidence.`
               : availability?.gaps.join('; ') || 'The chart/build overlay does not prove this binding available.'
             : null
       if (executable && binding) {

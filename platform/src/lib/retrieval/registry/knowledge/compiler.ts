@@ -19,6 +19,7 @@ import {
   type SourceQueryAvailabilityRequirement,
 } from './types'
 import { canonicalize, deepFreeze, stableFingerprint } from './stable'
+import { bindingProofKind, isNonAnswerBinding } from './proof_kind'
 import { hasReviewedExhaustion, hasReviewedResultCollection } from './pagination_review'
 import {
   getDescriptorAvailabilityContractReview,
@@ -812,12 +813,28 @@ export function inspectCapabilityKnowledge(
       if (scu.editorial && descriptor?.density_contract?.paginated && !binding.pagination_verified) {
         findings.push({ code: 'BAD_PAGINATION_CONTRACT', severity: 'warning', subject: binding.binding_id, detail: 'Editorial SCU uses a bounded route whose response/exhaustion contract is not yet source-reviewed.' })
       }
+      if (binding.proof_kind !== undefined && !(['answer', 'plan', 'resource', 'discovery'] as readonly unknown[]).includes(binding.proof_kind)) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: binding.binding_id, detail: 'binding proof_kind must be answer, plan, resource or discovery.' })
+      }
+      // R3 boundary ("genuine per-mode proof typing"): at most one binding per SCU may omit
+      // mode_selector (that one is the SCU's default/fallback binding) — two selector-less
+      // bindings would make selectBindingForMode's fallback ambiguous.
+    }
+    const hasModalBindings = scu.bindings.some((binding) => (binding.mode_selector?.length ?? 0) > 0)
+    if (hasModalBindings) {
+      const selectorlessBindings = scu.bindings.filter((binding) => (binding.mode_selector?.length ?? 0) === 0)
+      if (selectorlessBindings.length > 1) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: `${selectorlessBindings.length} bindings omit mode_selector (${selectorlessBindings.map((b) => b.binding_id).join(', ')}); at most one may be the SCU's default.` })
+      }
     }
     if (scu.proof_kind !== undefined && !(['answer', 'plan', 'resource', 'discovery'] as readonly unknown[]).includes(scu.proof_kind)) {
       findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'proof_kind must be answer, plan, resource or discovery.' })
     }
-    if (scu.proof_kind !== undefined && scu.proof_kind !== 'answer' && (scu.availability_dispositions?.length ?? 0) > 0) {
-      findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'A non-answer capability is proven by snapshot registration and is never deliberately dark.' })
+    for (const disposition of scu.availability_dispositions ?? []) {
+      const dispositionBinding = scu.bindings.find((candidate) => candidate.binding_id === disposition.binding_id)
+      if (dispositionBinding && isNonAnswerBinding(scu, dispositionBinding)) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${disposition.binding_id}`, detail: 'A non-answer binding is proven by snapshot registration and is never deliberately dark.' })
+      }
     }
     const contracts = scu.availability_contracts
     const contractArray = Array.isArray(contracts) ? contracts : []
@@ -840,8 +857,9 @@ export function inspectCapabilityKnowledge(
           findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'An availability requirement must declare a supported kind.' })
           continue
         }
-        if (scu.proof_kind !== undefined && scu.proof_kind !== 'answer' && requirement.kind !== 'snapshot_resource') {
-          findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `A ${scu.proof_kind} capability is proven only by its snapshot registration, never by chart evidence.` })
+        const contractProofKind = binding ? bindingProofKind(scu, binding) : (scu.proof_kind ?? 'answer')
+        if (contractProofKind !== 'answer' && requirement.kind !== 'snapshot_resource') {
+          findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `A ${contractProofKind} binding is proven only by its snapshot registration, never by chart evidence.` })
           continue
         }
         if (requirement.kind === 'producer_output') {
@@ -901,8 +919,9 @@ export function inspectCapabilityKnowledge(
           for (const requiredBindingId of requiredBindingIds) {
             const target = executableBindingById.get(requiredBindingId)
             const targetContract = explicitContractForBinding(requiredBindingId)
-            if (target && target.scu.proof_kind !== undefined && target.scu.proof_kind !== 'answer') {
-              findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} is a ${target.scu.proof_kind} capability and cannot evidence a composite answer.` })
+            if (target && isNonAnswerBinding(target.scu, target.binding)) {
+              const targetProofKind = bindingProofKind(target.scu, target.binding)
+              findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} is a ${targetProofKind} binding and cannot evidence a composite answer.` })
               continue
             }
             if (!target || !targetContract || target.scu.scope !== scope || scu.scope !== scope) {
@@ -916,14 +935,20 @@ export function inspectCapabilityKnowledge(
           continue
         }
         if (requirement.kind === 'snapshot_resource') {
-          const nonAnswer = scu.proof_kind === 'plan' || scu.proof_kind === 'resource' || scu.proof_kind === 'discovery'
-          const proofMatches = scu.proof_kind === 'discovery'
+          const nonAnswer = contractProofKind === 'plan' || contractProofKind === 'resource' || contractProofKind === 'discovery'
+          const proofMatches = contractProofKind === 'discovery'
             ? requirement.proof === 'index_compiled_from_pinned_catalog'
             : requirement.proof === 'registered_in_pinned_snapshot'
-          if (!nonAnswer || !proofMatches || requirement.scope !== 'global' || scu.scope !== 'global'
+          // R3 boundary ("per-mode proof typing"): requirement.scope must always be 'global'
+          // (a snapshot registration is a fact about the pinned snapshot, never a specific
+          // chart) — but scu.scope no longer has to be, now that a non-answer binding can
+          // live alongside answer bindings on a genuinely chart-scoped SCU (e.g.
+          // synergy_pipeline's dry_run leg on an otherwise per-chart SCU). The binding's own
+          // effective proof kind, not the SCU's declared scope, is what governs here.
+          if (!nonAnswer || !proofMatches || requirement.scope !== 'global'
             || typeof requirement.source_ref !== 'string' || !requirement.source_ref
             || contract.requirements.length !== 1) {
-            findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A snapshot-resource requirement is the sole proof of a global plan, resource or discovery capability, with the proof its kind requires; an answer capability must earn evidence.' })
+            findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A snapshot-resource requirement is the sole proof of a plan, resource or discovery binding, with the proof its kind requires, declared global (a snapshot registration is never chart-specific); an answer binding must earn evidence.' })
           }
           continue
         }

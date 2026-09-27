@@ -102,6 +102,86 @@ const synergyPipelineTool: CapabilityDescriptor = {
     destructive: false,
   },
 
+  // R3 boundary ("genuine per-mode proof typing"): dry_run:true and the executed (default)
+  // mode are genuinely DIFFERENT proof kinds, not just different availability requirements —
+  // dry_run returns static, always-available route/plan metadata computed with zero I/O
+  // (proof_kind 'plan', proven by snapshot registration alone, exactly like intent_classify/
+  // route); the executed mode dispatches runWholeChartRead('holistic', ...) — genuinely
+  // chart-scoped answer evidence composed from the same six legs dry_run's own `stages` list
+  // above documents (query_ucd, query_domain_reading, query_signals, traverse_chart_graph,
+  // query_contradictions, query_temporal_activation — the last only because 'holistic' gates
+  // it, unlike synergy_cross_layer's 'cross_domain' mode, which this same file's derived
+  // contract for synergy_cross_layer correctly excludes it from). Authored directly (bypassing
+  // auto-derivation, which supports exactly one proof_kind per descriptor) so the two modes
+  // can carry independent proof — content below matches the fields deriveDeclaration() would
+  // have produced for the single-binding v1 shape (previously entirely uncontracted, always
+  // dark — see the R3 boundary review), plus the new per-mode structure.
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.synergy_pipeline',
+    version: 2,
+    label: 'Synergy Pipeline',
+    description: 'D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain into a single introspectable capability descriptor. dry_run=true (the plan mode) returns the planned route/grounding stages with zero I/O; the executed default mode dispatches the real router→grounding→graph+assets→MARO chain, grounding the result against L1 chart_facts and passing it through the MARO normalizer for the declared model family. Not LLM-facing for end-user queries — consumed by the D8 eval harness and integration smoke tests for pipeline-completeness verification. chart_id is required and must be a valid chart UUID — never defaulted. Evidence use: frame and reconcile domain evidence before downstream interpretation.',
+    kind: 'datum',
+    domains: ['cross_domain'],
+    concepts: ['domain_assessment', 'evidence_reconciliation', 'judgment_support', 'synergy_pipeline'],
+    intents: ['assess', 'reconcile'],
+    horizons: ['current', 'natal'],
+    scope: 'chart',
+    inputs: ['chart_id', 'dry_run', 'model_family', 'query'],
+    outputs: ['assessment_findings', 'evidence_references', 'reconciled_evidence'],
+    primary_binding_uri: 'marsys://tool/synergy/pipeline',
+    additional_bindings: [{
+      binding_id: 'registry:marsys://tool/synergy/pipeline#dry_run',
+      kind: 'registry_capability',
+      relation: 'provides',
+      capability_uri: 'marsys://tool/synergy/pipeline',
+      input_contract: { chart_id: 'string:required', query: 'string:required', dry_run: 'boolean:required' },
+      output_contract: { content: 'ToolResult.content' },
+      pagination: 'none',
+      pagination_verified: null,
+      executable: true,
+      execution_channels: ['platform_internal'],
+      mode_selector: [{ argument: 'dry_run', equals: true }],
+      fixed_args: { dry_run: true },
+      proof_kind: 'plan',
+      route_evidence: 'CapabilityDescriptor:marsys://tool/synergy/pipeline#dry_run',
+    }],
+    edges: [],
+    provenance_requirements: ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
+    freshness_policy: 'Must resolve against the active compatible chart build.',
+    entitlement: 'native',
+    safety_notes: ['Read-only evidence surface; planner must not interpret returned chart facts.'],
+    known_gaps: [],
+    availability_contracts: [
+      {
+        binding_id: 'registry:marsys://tool/synergy/pipeline',
+        requirements: [{
+          kind: 'derived',
+          scope: 'chart',
+          required_binding_ids: [
+            'registry:marsys://tool/L2/query_ucd',
+            'registry:marsys://tool/L2/query_domain_reading',
+            'registry:marsys://tool/L2/query_signals',
+            'registry:marsys://tool/L2/traverse_chart_graph',
+            'registry:marsys://tool/L2/query_contradictions',
+            'registry:marsys://tool/L3/query_temporal_activation',
+          ],
+          source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead (queryClass=holistic)',
+        }],
+      },
+      {
+        binding_id: 'registry:marsys://tool/synergy/pipeline#dry_run',
+        requirements: [{
+          kind: 'snapshot_resource',
+          proof: 'registered_in_pinned_snapshot',
+          scope: 'global',
+          source_ref: 'platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts#synergyPipelineTool.handler:dry_run',
+        }],
+      },
+    ],
+    editorial: true,
+  }],
+
   async handler(args: Record<string, unknown>) {
     const chart_id = args['chart_id']
     if (!chart_id || typeof chart_id !== 'string') {

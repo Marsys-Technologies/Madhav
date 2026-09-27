@@ -19,7 +19,12 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
-    expect(snapshot.census.executable_bindings).toBe(186)
+    // R3 boundary ("genuine per-mode proof typing"): get_av_transit_gating gained a second,
+    // distinct binding for its kakshya_windows mode (deliberately_dark, alongside its
+    // statically-proven sav_bav_gating default) — 186 -> 187 — and synergy_pipeline gained a
+    // second binding for its dry_run (plan) mode, alongside its now-contracted executed
+    // (answer) default — 187 -> 188.
+    expect(snapshot.census.executable_bindings).toBe(188)
     expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.schema_version).toBe('2.3.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
@@ -310,8 +315,12 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(173)
-    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(9)
+    // R3 boundary ("genuine per-mode proof typing"): get_av_transit_gating and synergy_pipeline
+    // both moved from descriptor_metadata_review (auto-derived, supports exactly one binding
+    // and one proof_kind) to authored_declaration (so each can carry its own second, distinct
+    // per-mode binding) — 173 -> 171 reviewed, 9 -> 11 authored.
+    expect(reviewed).toHaveLength(171)
+    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(11)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)

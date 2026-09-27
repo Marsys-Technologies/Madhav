@@ -279,6 +279,34 @@ export interface SemanticCapabilityBinding {
   readonly route_evidence?: string
   /** Honest reason when the binding is known but cannot currently execute. */
   readonly unavailable_reason?: string
+  /**
+   * R3 boundary ("genuine per-mode proof typing"): this binding's own proof kind, when it
+   * differs from the SCU's. Absent means "inherit `SemanticCapabilityDeclaration.proof_kind`
+   * (itself defaulting to 'answer')". Exists so ONE capability can expose independently
+   * provable modes without misrepresenting the whole capability — e.g. synergy_pipeline's
+   * `dry_run: true` binding is a `plan` (pure in-process metadata, proven by snapshot
+   * registration alone) while its executed binding is a real `answer` (proven by the legs it
+   * actually dispatches). Always resolve via `bindingProofKind(scu, binding)`
+   * (knowledge/proof_kind.ts) rather than reading either field directly, so every caller
+   * applies the same fallback chain.
+   */
+  readonly proof_kind?: CapabilityProofKind
+  /**
+   * Declares which request arguments select THIS binding among its SCU's siblings, so the
+   * planner (vidhi/inquiry/compiler.ts's planFor) can pick the binding matching the caller's
+   * actual intended args instead of a single primary/first-match heuristic. Every clause must
+   * match (AND) for this binding to be selected; a binding with no `mode_selector` is the
+   * SCU's default (matches when no sibling's selector matches, or when no mode-specific args
+   * were supplied at all). At most one binding per SCU may omit `mode_selector`.
+   */
+  readonly mode_selector?: readonly { readonly argument: string; readonly equals: string | number | boolean }[]
+  /**
+   * Literal argument values the planner injects into the dispatched call once THIS binding is
+   * selected (e.g. `{ dry_run: true }`, `{ mode: 'kakshya_windows' }`) — `input_contract` only
+   * ever names which argument KEYS a binding accepts, never a literal value to send, so a
+   * mode-defining literal has nowhere else to live.
+   */
+  readonly fixed_args?: Readonly<Record<string, string | number | boolean>>
 }
 
 export interface SemanticCapabilityEdgeDeclaration {

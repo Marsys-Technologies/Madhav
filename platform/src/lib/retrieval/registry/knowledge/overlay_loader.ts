@@ -1,6 +1,7 @@
 import { query as defaultQuery } from '@/lib/db/client'
 import { compileChartCapabilityOverlay, type ChartCapabilityEvidence } from './overlay'
 import { stableFingerprint } from './stable'
+import { bindingProofKind, isNonAnswerBinding } from './proof_kind'
 import type {
   AvailabilityRequirement,
   BindingAvailabilityContract,
@@ -182,10 +183,6 @@ function snapshotResourceRequirement(requirement: unknown): requirement is Snaps
     && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
 
-/** Non-answer capabilities (RC-7): proven by snapshot registration, never admitted as answer evidence. */
-function isNonAnswerScu(scu: SemanticCapabilityUnit): boolean {
-  return scu.proof_kind !== undefined && scu.proof_kind !== 'answer'
-}
 
 function derivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
   return isRecord(requirement) && requirement.kind === 'derived'
@@ -263,8 +260,8 @@ function bindingContractIntegrityGap(
       continue
     }
     if (snapshotResourceRequirement(requirement)) {
-      if (!isNonAnswerScu(scu) || scu.scope !== 'global' || contract.requirements.length !== 1) {
-        gap = 'A snapshot-resource proof is valid only as the sole proof of a global plan, resource or discovery capability.'
+      if (!isNonAnswerBinding(scu, binding) || contract.requirements.length !== 1) {
+        gap = 'A snapshot-resource proof is valid only as the sole proof of a plan, resource or discovery binding.'
         break
       }
       continue
@@ -276,8 +273,8 @@ function bindingContractIntegrityGap(
           gap = `Derived availability leg ${childBindingId} has no scope-compatible executable binding.`
           break
         }
-        if (isNonAnswerScu(childTarget.scu)) {
-          gap = `Derived availability leg ${childBindingId} is a ${childTarget.scu.proof_kind} capability and cannot evidence a composite answer.`
+        if (isNonAnswerBinding(childTarget.scu, childTarget.binding)) {
+          gap = `Derived availability leg ${childBindingId} is a ${bindingProofKind(childTarget.scu, childTarget.binding)} binding and cannot evidence a composite answer.`
           break
         }
         if (!contractForBinding(childTarget.scu, childTarget.binding)) {
@@ -629,6 +626,18 @@ function evidenceForBinding(
     receipts: [],
     gaps: ['Duplicate binding availability contracts prevent a safe evidence selection.'],
   }
+  // R3 boundary ("genuine per-mode proof typing"): a binding's own deliberately-dark
+  // disposition must be recognized BEFORE the "SCU has authored contracts elsewhere, so every
+  // binding must have one too" gate below — otherwise a sibling binding's contract (e.g.
+  // sav_bav_gating's) makes THIS binding's honest disposition (e.g. kakshya_windows') look
+  // like an unreviewed omission instead of the disclosed, reviewed gap it actually is.
+  const deliberatelyDarkEarly = !contract ? deliberateDarkDisposition(scu, binding) : null
+  if (deliberatelyDarkEarly) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: [`Binding is deliberately dark: ${deliberatelyDarkEarly.reason}`],
+  }
   if ((hasAuthoredContracts(scu) || requireExplicitContract) && !contract) return {
     binding_id: binding.binding_id,
     passed: false,
@@ -641,11 +650,13 @@ function evidenceForBinding(
     const sourceQueryRequirements = contract.requirements.filter(sourceQueryRequirement)
     const derivedRequirements = contract.requirements.filter(usableDerivedRequirement)
     const snapshotResourceRequirements = contract.requirements.filter(snapshotResourceRequirement)
-    // The snapshot proof is valid only as the sole proof of a global non-answer capability, and
-    // never as a derived leg of an answer composite (the snapshot compiler rejects both).
+    // The snapshot proof is valid only as the sole proof of a non-answer BINDING, and never as
+    // a derived leg of an answer composite (the snapshot compiler rejects both). Scoped to
+    // this binding, not the whole SCU, so a plan/resource/discovery mode can live on an
+    // otherwise chart-scoped SCU (e.g. synergy_pipeline's dry_run leg).
     const snapshotResourceGaps = snapshotResourceRequirements.length === 0 ? [] : [
-      ...(!isNonAnswerScu(scu) || scu.scope !== 'global' || contract.requirements.length !== 1 || requireExplicitContract
-        ? ['A snapshot-resource proof is valid only as the sole proof of a global plan, resource or discovery capability.'] : []),
+      ...(!isNonAnswerBinding(scu, binding) || contract.requirements.length !== 1 || requireExplicitContract
+        ? ['A snapshot-resource proof is valid only as the sole proof of a plan, resource or discovery binding.'] : []),
       ...(bindingIndex.get(binding.binding_id)?.binding !== binding
         ? ['Binding is not uniquely registered and executable in the pinned snapshot.'] : []),
     ]
@@ -742,32 +753,85 @@ function evidenceForSnapshot(
       asset_receipts: [],
     }
     const executableBindings = scu.bindings.filter((binding) => binding.executable)
-    const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(
-      scu, binding, rows, generation, probeRows, sourceQueryEvidence, now, bindingIndex,
-    ))
-    const availableBindingIds = bindingEvidence.filter((evidence) => evidence.passed).map((evidence) => evidence.binding_id)
-    const assetReceipts = bindingEvidence.flatMap((evidence) => evidence.receipts)
-    const allPassed = executableBindings.length > 0 && availableBindingIds.length === executableBindings.length
-    const gaps = bindingEvidence.flatMap((evidence) => evidence.gaps)
-    const hasSourceQueryRequirement = executableBindings.some((binding) =>
+    const bindingEvidence = executableBindings.map((binding) => ({
+      binding,
+      evidence: evidenceForBinding(scu, binding, rows, generation, probeRows, sourceQueryEvidence, now, bindingIndex),
+    }))
+    // R3 boundary ("genuine per-mode proof typing"): TWO independent partitions, not one.
+    //
+    // 1. Mandatory (no `mode_selector`) vs optional mode (`mode_selector` present) — an
+    //    optional mode is an ALTERNATE way to use this capability (e.g. get_av_transit_gating's
+    //    kakshya_windows, selected only by `mode: 'kakshya_windows'`); its own unavailability
+    //    must never affect whether the SCU's mandatory/default binding(s) read as 'available'.
+    //    A non-modal SCU (100% of the pre-existing estate) has zero optional-mode bindings, so
+    //    its state is computed exactly as before this type existed.
+    // 2. Answer vs non-answer (RC-7) — a plan/resource/discovery binding is never admitted as
+    //    answer evidence, whether it is mandatory or an optional mode.
+    const mandatory = bindingEvidence.filter(({ binding }) => (binding.mode_selector?.length ?? 0) === 0)
+    const optionalModes = bindingEvidence.filter(({ binding }) => (binding.mode_selector?.length ?? 0) > 0)
+    const mandatoryAnswer = mandatory.filter(({ binding }) => !isNonAnswerBinding(scu, binding))
+    const mandatoryNonAnswer = mandatory.filter(({ binding }) => isNonAnswerBinding(scu, binding))
+    const optionalAnswer = optionalModes.filter(({ binding }) => !isNonAnswerBinding(scu, binding))
+    const optionalNonAnswer = optionalModes.filter(({ binding }) => isNonAnswerBinding(scu, binding))
+
+    // available_binding_ids lists every PASSED answer binding — mandatory or optional mode —
+    // since a caller that specifically requested an available optional mode must still be able
+    // to find it here; a non-answer binding is never added, whether it passed or not.
+    const availableBindingIds = [...mandatoryAnswer, ...optionalAnswer]
+      .filter(({ evidence }) => evidence.passed)
+      .map(({ evidence }) => evidence.binding_id)
+    const assetReceipts = mandatoryAnswer.flatMap(({ evidence }) => evidence.receipts)
+    const mandatoryAnswerGaps = mandatoryAnswer.flatMap(({ evidence }) => evidence.gaps)
+    // Diagnostic-only: an optional mode's or a non-answer binding's own gaps are reported for
+    // visibility, but — critically — never folded into mandatoryAnswerGaps, so they can never
+    // move `state` away from 'available'.
+    const diagnosticGaps = [
+      ...mandatoryNonAnswer.filter(({ evidence }) => !evidence.passed)
+        .flatMap(({ evidence }) => evidence.gaps.map((gap) => `${evidence.binding_id} (non-answer): ${gap}`)),
+      ...optionalAnswer.filter(({ evidence }) => !evidence.passed)
+        .flatMap(({ evidence }) => evidence.gaps.map((gap) => `${evidence.binding_id} (optional mode): ${gap}`)),
+      ...optionalNonAnswer.filter(({ evidence }) => !evidence.passed)
+        .flatMap(({ evidence }) => evidence.gaps.map((gap) => `${evidence.binding_id} (optional, non-answer mode): ${gap}`)),
+    ]
+    const gaps = [...mandatoryAnswerGaps, ...diagnosticGaps]
+    const hasSourceQueryRequirement = mandatoryAnswer.some(({ binding }) =>
       requirementsForBindingTree(binding.binding_id, bindingIndex).some(sourceQueryRequirement),
     )
-    if (isNonAnswerScu(scu)) return {
-      scu_id: scu.scu_id,
-      build_status: build.status,
-      build_id: build.build_id,
-      freshness: null,
-      // Never listed as available: a plan/resource/discovery capability carries no chart
-      // evidence, so no door may admit it for an answer.
-      available_binding_ids: [],
-      state: allPassed && gaps.length === 0 ? 'resource_ok' as const : 'dark' as const,
-      gaps,
-      asset_receipts: [],
+
+    if (mandatoryAnswer.length === 0) {
+      // No mandatory answer binding at all — either every mandatory binding is non-answer (the
+      // whole-SCU RC-7 case), or this SCU has only optional-mode bindings (no plain default).
+      // Either way there is no chart-evidence-bearing default to report as 'available'/'partial'.
+      const allMandatoryNonAnswerPassed = mandatoryNonAnswer.length > 0
+        && mandatoryNonAnswer.every(({ evidence }) => evidence.passed)
+      return {
+        scu_id: scu.scu_id,
+        build_status: build.status,
+        build_id: build.build_id,
+        freshness: null,
+        // Never listed as available: a plan/resource/discovery capability carries no chart
+        // evidence, so no door may admit it for an answer. An optional mode that DID pass as
+        // answer evidence is still listed (availableBindingIds already includes it) even
+        // though the SCU as a whole has no mandatory answer default.
+        available_binding_ids: availableBindingIds,
+        state: allMandatoryNonAnswerPassed && mandatoryNonAnswer.every(({ evidence }) => evidence.gaps.length === 0)
+          ? 'resource_ok' as const
+          : availableBindingIds.length > 0 ? 'partial' as const : 'dark' as const,
+        gaps,
+        asset_receipts: [],
+      }
     }
+
+    const allMandatoryAnswerPassed = mandatoryAnswer.every(({ evidence }) => evidence.passed)
     const hasPartialReceipt = assetReceipts.some((receipt) => receipt.state === 'partial')
     const hasFailedReceipt = assetReceipts.some((receipt) => receipt.state === 'failed')
-    const state = availableBindingIds.length > 0
-      ? allPassed && gaps.length === 0 ? 'available' : 'partial'
+    // A missing/unavailable MANDATORY answer binding still prevents 'available' — the state
+    // computation below reads only mandatoryAnswerGaps/allMandatoryAnswerPassed, never
+    // diagnosticGaps, so an optional mode's own unavailability (whether non-answer or a failed
+    // answer probe) can only ever add a diagnostic gap line, never move state away from
+    // 'available'.
+    const state = allMandatoryAnswerPassed && mandatoryAnswerGaps.length === 0 ? 'available'
+      : mandatoryAnswer.some(({ evidence }) => evidence.passed) ? 'partial'
       : hasFailedReceipt ? 'incompatible' : 'dark'
     return {
       scu_id: scu.scu_id,
@@ -775,10 +839,10 @@ function evidenceForSnapshot(
       build_id: build.build_id,
       // A successful LIMIT 0 source query proves only schema/query
       // reachability. It carries no row timestamp or content-freshness proof.
-      freshness: allPassed ? hasSourceQueryRequirement ? 'unknown' : 'fresh' : hasPartialReceipt ? 'unknown' : null,
+      freshness: allMandatoryAnswerPassed ? hasSourceQueryRequirement ? 'unknown' : 'fresh' : hasPartialReceipt ? 'unknown' : null,
       available_binding_ids: availableBindingIds,
       state,
-      gaps: gaps.length ? gaps : allPassed ? [] : ['No reviewed producer-output receipt is joined to this semantic capability.'],
+      gaps: gaps.length ? gaps : allMandatoryAnswerPassed ? [] : ['No reviewed producer-output receipt is joined to this semantic capability.'],
       asset_receipts: assetReceipts,
     }
   })
