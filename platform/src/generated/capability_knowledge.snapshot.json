@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-24T08:29:13.000Z",
-  "content_hash": "sha256:0a2a675d0098390453d77ba0119b87fad865728e908290eaee6cc84fc465bc36",
-  "source_catalog_fingerprint": "sha256:166473fa82082610fea7427fdc61051fca303a9f44998a2b9ce3af2b9645ad9b",
-  "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
+  "generated_at": "2026-09-27T15:00:00.000Z",
+  "content_hash": "sha256:be8f246c32f9caddd19403e92d2d17a6f275c2b3a2abbb4e366276b95a5bb046",
+  "source_catalog_fingerprint": "sha256:a2dc562a9e342aed081076dcf098aa78b4372e0a834f172cc3c05c50010e5da6",
+  "semantic_review_fingerprint": "sha256:7423c3dbfeb58f380a1b4c88784698b0137413faca3615d4688360ddec3b9b96",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -4983,7 +4983,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-ayurdaya:v1",
               "capability_uri": "marsys://tool/L1/get_ayurdaya",
-              "contract_sha256": "sha256:9e1fd421c8ff3b4ddeba11b5804817c1daf713105a8bac52e782bd5bed9a65b6",
+              "contract_sha256": "sha256:7dec0d9b59196fe5c23ee728c6f48ae0a19846c768172fe8d9a294afcb252c38",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
             }
@@ -8853,7 +8853,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-sensitive-degrees:v1",
               "capability_uri": "marsys://tool/L1/get_sensitive_degrees",
-              "contract_sha256": "sha256:b45a95f75b69353cdbc3fe3c80090c4e078c20e736024ced20737f19be35effa",
+              "contract_sha256": "sha256:9c6ffbed11ae74dd5bc39e5b6dc6fb2b34f4ff07fb5b2fd56e0448476409c493",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
             }
@@ -11164,7 +11164,7 @@
               "kind": "source_query",
               "contract_id": "source-query:judgment-query-readiness:v1",
               "capability_uri": "marsys://tool/L-JUDGMENT/judgment_query",
-              "contract_sha256": "sha256:be129861e908a9499c6afca7da19a20ad8b6c284dd014589e0edc8872a4d1ac0",
+              "contract_sha256": "sha256:73e0d79b876ea797a9d6823bf3ab6788173ea44e84ee69c5b57e077ea1c075f1",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -15264,7 +15264,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-classical-texts:v1",
               "capability_uri": "marsys://tool/L0/query_classical_texts",
-              "contract_sha256": "sha256:50d2344ef3d3e12ef1f0e4c90b032c1a23dee0a15df6e22b3cf563fe917c2103",
+              "contract_sha256": "sha256:9b0a76e7645ebf91eff9bb56603fdc9aecde2f1560d501037359f3dec195a8ce",
               "scope": "global",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
             }
@@ -16034,7 +16034,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-contradictions:v1",
               "capability_uri": "marsys://tool/L2/query_contradictions",
-              "contract_sha256": "sha256:2046d3188e42746744b998ae69d1d9f077d76b6c620c37d58b1266bbc0e61f15",
+              "contract_sha256": "sha256:b17ecc2bed44efeed1b9ca7e03431e3eee10ceb5c00d4e8ca66c3498f299ce6e",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269 | platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-130"
             }
