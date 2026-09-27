@@ -36,7 +36,10 @@ beforeEach(() => {
       if (active && !deleted && exactModelAllowed && params[0] === 'alice' && params[1] === id && params[2] === provider && params[3] === version) rows = [{ id }]
     }
     else if (sql.includes('SELECT c.credential_ciphertext')) {
-      if (active && params[0] === 'alice' && params[1] === id && params[2] === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint }]
+      const runtime = sql.includes('ai_connection_models')
+      const exactAllowed = !runtime || (params[2] === provider && validity !== 'invalid' && availableModels.has(String(params[4])))
+      const requestedVersion = runtime ? params[3] : params[2]
+      if (active && !deleted && exactAllowed && params[0] === 'alice' && params[1] === id && requestedVersion === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint }]
     } else if (sql.includes('FROM ai_provider_connections') && sql.trim().startsWith('SELECT') && params[0] === 'alice') {
       rows = [{ id, provider_id: provider, credential_version: version, validation_state: state, credential_validity: validity, deleted_at: deleted ? '2026-09-27' : null }]
     } else if (sql.startsWith('UPDATE ai_provider_connections SET validation_state')) {
@@ -166,12 +169,23 @@ describe('owned validation state flow', () => {
     await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(http).not.toHaveBeenCalled()
   })
+  it('uses one atomic exact-model credential read when creating a runtime binding', async () => {
+    const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
+    const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
+    const binding = await createConnectionRuntimeBinding(connection, model)
+    const initialReads = execute.mock.calls.filter(([sql]) => String(sql).includes('ai_provider_connections'))
+    expect(initialReads).toHaveLength(1)
+    expect(String(initialReads[0][0])).toContain('SELECT c.credential_ciphertext')
+    expect(String(initialReads[0][0])).toContain('ai_connection_models')
+    expect(initialReads[0][1]).toEqual(['alice', id, 'openai', 1, 'gpt-4.1-mini'])
+    binding.dispose()
+  })
   it('rejects a removed exact runtime model before decrypting and on every outbound preflight', async () => {
     const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
     const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
     availableModels.clear()
     await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
-    expect(execute.mock.calls.some(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toBe(false)
+    expect(execute.mock.calls.filter(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toHaveLength(1)
     availableModels.add(model.modelId)
     const binding = await createConnectionRuntimeBinding(connection, model)
     availableModels.clear()
@@ -184,7 +198,7 @@ describe('owned validation state flow', () => {
     const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
     const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
     await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
-    expect(execute.mock.calls.some(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toBe(false)
+    expect(execute.mock.calls.filter(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toHaveLength(1)
     expect(http).not.toHaveBeenCalled()
   })
   it('preserves connection-only authorization for discovery before a model catalog exists', async () => {

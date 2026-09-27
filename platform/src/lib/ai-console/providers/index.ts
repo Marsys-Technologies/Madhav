@@ -2,6 +2,7 @@ import 'server-only'
 import { decryptCredential } from '../crypto'
 import {
   assertConnectionRequestAuthorized, assertRuntimeModelRequestAuthorized, loadConnectionCredential,
+  loadRuntimeModelCredential,
 } from '../repository'
 import type { DiscoveredModel } from './types'
 import { ProviderIdSchema, type ProviderId } from '../types'
@@ -28,10 +29,6 @@ async function ownedCredential(connection: OwnedProviderConnection) {
   await assertConnectionRequestAuthorized(connection)
   return loadConnectionCredential(connection.userId, connection.connectionId, connection.credentialVersion)
 }
-async function ownedRuntimeCredential(connection: OwnedProviderConnection, modelId: string) {
-  await assertRuntimeModelRequestAuthorized({ ...connection, modelId })
-  return loadConnectionCredential(connection.userId, connection.connectionId, connection.credentialVersion)
-}
 // Plaintext is decrypted only here, immediately before adapter invocation. No cache.
 export async function discoverConnectionModels(connection: OwnedProviderConnection, signal: AbortSignal) {
   connection = Object.freeze({ ...connection })
@@ -50,7 +47,7 @@ export async function probeConnectionModel(connection: OwnedProviderConnection, 
 /** Caller owns disposal in a finally block for the entire request, including streams. */
 export async function createConnectionRuntimeBinding(connection: OwnedProviderConnection, model: DiscoveredModel) {
   connection = Object.freeze({ ...connection })
-  const record = await ownedRuntimeCredential(connection, model.modelId)
+  const record = await loadRuntimeModelCredential({ ...connection, modelId: model.modelId })
   let key: string | undefined = decryptCredential(record)
   try { return getProviderAdapter(connection.providerId).createRuntimeBinding(key, model,
     () => assertRuntimeModelRequestAuthorized({ ...connection, modelId: model.modelId })) }

@@ -48,6 +48,36 @@ describe('bounded repository-owned revalidation leases', () => {
       providerId: 'openai', credentialVersion: 2, modelId: 'gpt-4.1-mini' })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(execute).not.toHaveBeenCalled()
   })
+  it('atomically loads only the redacted encrypted credential for one exact authorized runtime model', async () => {
+    const row = { credential_ciphertext: Buffer.from('cipher'), credential_nonce: Buffer.alloc(12),
+      credential_tag: Buffer.alloc(16), wrapped_dek: Buffer.alloc(32), wrap_nonce: Buffer.alloc(12),
+      wrap_tag: Buffer.alloc(16), kek_version: 'test', masked_suffix: '••••1234', keyed_fingerprint: 'f'.repeat(64),
+      provider_id: 'never-project', model_id: 'never-project', credential_version: 999 }
+    execute.mockResolvedValue({ rows: [row], rowCount: 1 })
+    const record = await repository.loadRuntimeModelCredential({ userId: 'alice', connectionId: id,
+      providerId: 'openai', credentialVersion: 2, modelId: 'gpt-4.1-mini' })
+    expect(calls()).toHaveLength(1)
+    expect(calls()[0].params).toEqual(['alice', id, 'openai', 2, 'gpt-4.1-mini'])
+    expect(calls()[0].sql).toContain('JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5')
+    expect(calls()[0].sql).toContain("c.credential_validity<>'invalid'")
+    expect(calls()[0].sql).toContain('m.available=true')
+    expect(Object.keys(record).sort()).toEqual([
+      'authTag', 'ciphertext', 'fingerprint', 'keyVersion', 'mask', 'nonce',
+      'wrapAuthTag', 'wrapNonce', 'wrappedDataKey',
+    ])
+    expect(JSON.stringify(record)).toBe('"[REDACTED]"')
+    expect(JSON.stringify(record)).not.toContain('never-project')
+  })
+  it('returns no credential when exact runtime authorization loses the model or confirmed validity', async () => {
+    for (const target of [
+      { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 2, modelId: 'removed' },
+      { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 3, modelId: 'gpt-4.1-mini' },
+    ]) {
+      await expect(repository.loadRuntimeModelCredential(target)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    }
+    expect(calls()).toHaveLength(2)
+    expect(calls().every(c => c.sql.includes('ai_connection_models'))).toBe(true)
+  })
   it('atomically claims active stale noninvalid connections with skip-locked recovery and safe projection', async () => {
     execute.mockImplementation(async (sql: string) => ({ rows: sql.includes('RETURNING') ? [{ user_id: 'alice', id, provider_id: 'openai', credential_version: '2', credential_ciphertext: 'never-return' }] : [] }))
     const staleBefore = new Date(Date.now() - 86_400_000)

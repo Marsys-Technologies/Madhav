@@ -478,6 +478,28 @@ describe('atomic routing resolution read', () => {
     expect(calls().some(c => c.sql.includes('FROM ai_connection_models'))).toBe(false)
   })
 
+  it('keeps a confirmed-valid connection resolvable while revalidation is in progress', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection,
+        validation_state: 'validating', credential_validity: 'valid', last_error_code: null }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
+        compatible_roles: AI_ROLES, available: true }]
+    })
+    const resolution = await repository.loadRoutingResolution('alice', { kind: 'explicit', choice })
+    expect(resolution.roles.worker).toMatchObject({ ...choice, providerId: 'openai', credentialVersion: 1 })
+  })
+
+  it.each(['untested', 'validating', 'validated'] as const)('treats %s with unknown validity as broken, not confirmed invalid', async state => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection,
+        validation_state: state, credential_validity: 'unknown', last_error_code: null }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(calls().some(c => c.sql.includes('FROM ai_connection_models'))).toBe(false)
+  })
+
   it.each([
     ['not_installed', 'AI_CLI_NOT_INSTALLED'],
     ['auth_unavailable', 'AI_CLI_AUTH_UNAVAILABLE'],

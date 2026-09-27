@@ -188,9 +188,9 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
       if (!error.success) throw notFound()
       throw new AiConsoleError(error.data)
     }
-    if (connection.validation_state !== 'validated' || connection.credential_validity !== 'valid') {
-      throw new AiConsoleError('AI_CONNECTION_INVALID')
-    }
+    const confirmedUsable = connection.credential_validity === 'valid'
+      && (connection.validation_state === 'validated' || connection.validation_state === 'validating')
+    if (!confirmedUsable) throw notFound()
     const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.available
       FROM ai_connection_models m WHERE m.connection_id=$1 AND m.model_id=$2 FOR SHARE`,
     [target.connectionId, target.modelId])).rows[0]
@@ -533,6 +533,31 @@ export async function assertRuntimeModelRequestAuthorized(input: { userId: strin
   [target.userId, target.connectionId, target.providerId, target.credentialVersion, target.modelId])).rows)
 }
 
+function encryptedCredential(row: Row): EncryptedCredential {
+  const record: EncryptedCredential = { ciphertext: row.credential_ciphertext as Buffer, nonce: row.credential_nonce as Buffer,
+    authTag: row.credential_tag as Buffer, wrappedDataKey: row.wrapped_dek as Buffer, wrapNonce: row.wrap_nonce as Buffer,
+    wrapAuthTag: row.wrap_tag as Buffer, keyVersion: String(row.kek_version), mask: String(row.masked_suffix),
+    fingerprint: String(row.keyed_fingerprint) }
+  Object.defineProperties(record, { toJSON: { value: () => '[REDACTED]' }, [inspect.custom]: { value: () => '[REDACTED]' } })
+  return record
+}
+
+/** One-statement runtime authorization and encrypted credential projection for the exact model. */
+export async function loadRuntimeModelCredential(input: { userId: string; connectionId: string;
+  providerId: z.infer<typeof ProviderIdSchema>; credentialVersion: number; modelId: string }): Promise<EncryptedCredential> {
+  const parsed = z.object({ userId: z.string().min(1), connectionId: uuidSchema, providerId: ProviderIdSchema,
+    credentialVersion: z.number().int().positive(), modelId: z.string().min(1).max(512) }).strict().safeParse(input)
+  if (!parsed.success) throw notFound()
+  const target = parsed.data
+  const row = required((await query(`SELECT c.credential_ciphertext,c.credential_nonce,c.credential_tag,c.wrapped_dek,
+    c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint FROM ai_provider_connections c
+    JOIN profiles p ON p.id=c.user_id JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5
+    WHERE c.user_id=$1 AND c.id=$2 AND c.provider_id=$3 AND c.credential_version=$4
+    AND c.deleted_at IS NULL AND c.credential_validity<>'invalid' AND p.status='active' AND m.available=true`,
+  [target.userId, target.connectionId, target.providerId, target.credentialVersion, target.modelId])).rows)
+  return encryptedCredential(row)
+}
+
 /** Adapter-only: a version mismatch fails rather than silently switching credentials. */
 export async function loadConnectionCredential(userId: string, connectionId: string, credentialVersion: number): Promise<EncryptedCredential> {
   if (!uuidSchema.safeParse(connectionId).success || !z.number().int().positive().safeParse(credentialVersion).success) throw notFound()
@@ -540,11 +565,7 @@ export async function loadConnectionCredential(userId: string, connectionId: str
     c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint FROM ai_provider_connections c
     JOIN profiles p ON p.id=c.user_id WHERE c.user_id=$1 AND c.id=$2 AND c.credential_version=$3
     AND c.deleted_at IS NULL AND p.status='active'`, [userId, connectionId, credentialVersion])).rows)
-  const record: EncryptedCredential = { ciphertext: row.credential_ciphertext, nonce: row.credential_nonce,
-    authTag: row.credential_tag, wrappedDataKey: row.wrapped_dek, wrapNonce: row.wrap_nonce,
-    wrapAuthTag: row.wrap_tag, keyVersion: row.kek_version, mask: row.masked_suffix, fingerprint: row.keyed_fingerprint }
-  Object.defineProperties(record, { toJSON: { value: () => '[REDACTED]' }, [inspect.custom]: { value: () => '[REDACTED]' } })
-  return record
+  return encryptedCredential(row)
 }
 
 export interface CliInvocationHandle {
