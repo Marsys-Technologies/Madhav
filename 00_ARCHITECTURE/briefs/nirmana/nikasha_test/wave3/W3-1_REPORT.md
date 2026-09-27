@@ -1,12 +1,21 @@
 ---
 artifact: W3-1_REPORT
 canonical_id: W3-1_REPORT
-version: "1.0"
-status: DRAFT_PENDING_REVIEW
+version: "1.1"
+status: CORRECTIONS_APPLIED_PENDING_FOLD
 produced_on: 2026-09-28
 authority: NIKASHA_WAVE3_EXECUTION_PROMPT_v1_0.md
 campaign_id: nikasha-wave3
 runs_in: /Users/Dev/madhav-nikasha (branch campaign/nikasha-test)
+reviewed_by: W3-1_REVIEW.md (d5fd6aed1, ACCEPT_WITH_CORRECTIONS)
+changelog: >
+  v1.1 (2026-09-28, gate-review corrections): C1-C5 + F6-F9 applied per W3-1_REVIEW.md §10 — see
+  §7 "Corrections after gate review". R99 and R81 register statuses corrected PARTIAL (were
+  implied CLOSED); R15/R29's hand/machine discriminator fixed (a real defect, C2); five report
+  factual errors corrected (R218 cause/count, ASSET_ELEVATION_TEMPLATE fingerprint framing,
+  bg_sarvatobhadra_grid finding status, criterion count, R81 fold-count); the _schema line-1
+  rewrite disclosed as a precedented exception, not doc-text-scoped; two non-blocking doc/test
+  fixes (F7, F8+F9) folded in as cheap. v1.0 (2026-09-28): original wave-3 packet report.
 ---
 
 # Nikaṣa wave 3 — W3-1 report
@@ -382,3 +391,64 @@ stubs".
   `Synergy.*`, `Architecture.*`) — the remaining ~19 hand rows (30 minus the 11 folded) and this
   42-string tail are named here as a future row's worklist, not silently treated as done.
 - Four out-of-scope findings named in §3 are real and worth a future row, not silently fixed.
+
+## §7 — Corrections after gate review (v1.1)
+
+Independent review: `W3-1_REVIEW.md` (commit `d5fd6aed1`, reviewer Claude Opus 5.5, fresh context,
+read-only). Verdict: **ACCEPT_WITH_CORRECTIONS**. Every correction below is named, committed and
+mutation-tested (where the correction is a behaviour, not a document statement) exactly as the
+review required. Nothing here required a second write to the real ledger.
+
+| # | correction | commit(s) | test | mutation evidence |
+|---|---|---|---|---|
+| **C2** | The hand/machine discriminator (`is_hand_written`) keyed on `owner`, which `emit_gaps()` deliberately carries forward onto its own machine-written CLOSED/RE-OPENED transition rows — a census-driven transition on one of R81's five newly hand-owned ids misread as a hand row from 2026-09-29 onward. Fixed to key on `detector` (every row `emit_gaps` writes sets a fixed `asset_census.py …` prefix, regardless of carried owner). **The substantive fix.** | `68044d4c8` | `test_r15_r29_hand_row_census_run_id.py` (+1 test, 9 total) | Reverted `is_hand_written` to the owner-only check → 1/9 red (isolates exactly the new reproducing test); byte-identical restore; 9/9 green |
+| **C1** | Report factual corrections: (a) R218 FAIL cause was "3 `editorial=false` stubs", corrected to 5 `editorial=true` reviewed capabilities with a named Lane-B-provenance cause (`no_contract` ×4, `no_relation_in_range` ×1); (b) the ASSET_ELEVATION_TEMPLATE fingerprint mismatch was called pre-existing/unrotated, corrected to NEW this wave (it matched at base `c8cdc0242`); (c) bg_sarvatobhadra_grid's missing `integrity_check_sql` was called a new finding, corrected to a pre-existing OPEN ledger row since 2026-09-26; (d) "20 criteria" corrected to 21; (e) R81's "each … folding" corrected to 10 of 11 (group 8 folds none, by D4 design) | `2f00a6b45` | — (report text) | — (no behaviour changed; each correction independently re-verified against the live snapshot/provenance/ledger/git history before being written, per §1 above) |
+| **C3** | R99's register status corrected from (implied) CLOSED to **PARTIAL**: `has_writer` separates no-writer from writer-backed, full stop — it does not distinguish a legitimately-empty writer-backed asset (ga_prashna) from a broken one (mi_abhilekha), both of which read the identical PARTIAL sentence today. The finer "empty by design, its own detector" half of R99's register text was not built; named as a carried finding for a future row, not implied as solved | `2f00a6b45` (same commit as C1, the R99 paragraph serves both) | — (report text; code unchanged — this is the reviewer's own sanctioned fallback: "if that's a larger change than fits here, leave the code as-is and just correct the report") | — |
+| **C4** | The `_schema` line-1 in-place rewrite was justified in the apply script's docstring as authorized "per the `_schema` doc's own text" — the doc contains no such carve-out. Corrected to the real justification: precedent (commit `a72cdf460` already rewrote the same line once, to add `kind`), disclosed plainly as the one exception to strict append-only (data rows are, and remain, append-only; only the one documentation line is ever rewritten in place) | `5fcc0989e` | `test_r81_apply_script.py` re-run (docstring-only change) | 5/5 green, unchanged (no behaviour change) |
+| **C5** | R81's register status corrected from (implied) CLOSED to **PARTIAL (11 of D4's 30 hand rows)** — confirmed against T5_LEDGER_DRIFT.md (which measured exactly these 11 pairs, its entire overlap set) and the register's D4 re-scope (which separately ambitions all 30). This wave's own execution prompt explicitly committed to only the 11 — so R81 is COMPLETE against this wave's commitment and PARTIAL against D4's fuller scope, both stated | `8c279e23e` | — (report text) | — |
+| **F6** (non-blocking) | Recorded: superseding a generic census criterion (e.g. `bg_rules-Complete.detector`→`Complete.depth`) permanently mutes future regressions on that criterion for that asset — the designed effect of the D4 crosswalk, raised as a follow-up, not fixed | `2f00a6b45` | — | — |
+| **F7** (non-blocking) | L0 v3.0 line 526's missed fifth "320 gates" occurrence (R69 fixed 4, missed this one) — fixed to 360 | `04a9e8c93` | `test_f7_l0v3_line526_320_gates.py` (new) | 2/2 red on revert; byte-identical restore; 2/2 green |
+| **F8+F9** (non-blocking) | R218's live test asserts `failed > 0`, a snapshot-in-time anti-invariant that will itself go red once the 5 provenance gaps are fixed — annotated in place so that is read as progress, not regression. P16's harness text was a paraphrase, not verbatim — corrected to T1's exact quoted text (re-verified: same 17/24 result, same P16 resolution) | `383053e9c` | `r218_p_need_check.test.ts` re-run | 5/5 green, unchanged (no behaviour change) |
+
+**Re-verification after all corrections (this section):**
+- Six-layer census, HEAD (post-corrections) vs wave-2 close (`31b3e1024`): re-run in full; still
+  exactly 15 verdict changes, still all attributable to R60/R99 alone — no correction commit
+  touches `asset_census.py`'s `measure()` logic (C2 touches `hand_row_provenance.py` only; F7 is a
+  doc-only fix; F8/F9 touch TS test/lib files only), so this result is structurally guaranteed
+  unchanged and was re-confirmed live. **Disclosed anomaly, diagnosed and resolved:** the first
+  re-run attempt (run concurrently with the `emit_gaps` re-run and `drift_detector.py` below)
+  returned 43 verdict changes, 28 of them spurious `ERRORED`/`None` readings on unrelated L2
+  `bo_*` assets. Root cause, read directly from the `measured:` text: `psql: FATAL: remaining
+  connection slots are reserved for non-replication superuser connections` — the read-only DB's
+  connection pool was exhausted by running this census alongside other concurrent DB-touching
+  processes in the same session, not any change in the codebase or production data. A clean,
+  isolated second re-run (nothing else touching the DB concurrently) reproduced the original,
+  correct 15-change result exactly. Named here rather than silently discarded, per §N.8: an
+  anomaly gets a real diagnosis, not a re-roll assumed clean.
+- `emit_gaps` dry run, re-run on a fresh copy of the (still 857-line, still
+  `f6b1d3c5eeff7ec5d56d45448df69d80`) real ledger: first run 0 appended / 184 present / 26 closed
+  (all `Idem.pattern`) / 0 re-opened; second run 0 / 183 / 0 / 0 — idempotent, identical to the
+  original proof. Real ledger md5 confirmed unchanged throughout.
+- Governance test suite: **424 collected = 398 passed + 24 skipped + 2 failed** (the same 2
+  pre-existing `test_drift_detector_h35_h38.py` failures; +3 tests over the original 421: +1 from
+  C2, +2 from F7).
+- `npx vitest run src/lib/retrieval`: 227 files, 2517 tests, unaffected by C2/F8/F9 (none of which
+  touch production TS source — C2 is Python-only; F8/F9 touch only the R218 test/lib pair already
+  counted in that 2517).
+- `manifest_fingerprint.py --check`: `entries: 141 (declared 141)`, MATCH — unchanged.
+- `drift_detector.py`: exit **2**, unchanged in kind — the same 2 HIGH `fingerprint_mismatch`
+  findings (ASSET_ELEVATION_TEMPLATE, MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY; the latter's
+  observed hash shifted again after F7's own edit to that file, still unrotated either way) plus
+  the same 1 LOW. **Expected and correct per the review (§8): fingerprint rotation is the
+  executor's job at fold-time — not performed here.**
+- Production ledger (`asset_gaps.jsonl`) md5: confirmed unchanged at
+  `f6b1d3c5eeff7ec5d56d45448df69d80` across every correction commit in this section — no
+  correction touched the real ledger; the one authorized write (R81, commit `67d5d1aa2`) remains
+  the only commit in this wave's entire history that ever did.
+
+**Not done, with the exact reason:** nothing from C1–C5 was left undone. The one item the review
+offered a choice on — C3's "add the one-query by-design distinction" vs. "leave the code as-is and
+correct the report" — took the report-only path, per the review's own explicit sanction, because
+building a genuinely correct per-asset by-design detector (distinct from the "by-design" gloss the
+review itself flagged as an invented judgement on `bg_sarvatobhadra_grid`, §3) is real design work
+warranting its own row and mutation-tested implementation, not a same-session bolt-on.
