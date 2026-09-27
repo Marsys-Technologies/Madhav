@@ -518,3 +518,41 @@ def test_r52_zero_rows_pass_only_under_the_registry_declaration(monkeypatch, tmp
     res = _m(_completion(monkeypatch, tmp_path, "SELECT COUNT(*) FROM t_main", 0, _rec(5), floor="0"),
              "mi_x", "Build.completion")
     assert res["v"] == ac.FAIL, "a declared-empty asset whose build wrote rows that are now gone still fails"
+
+
+# ─────────────────────────── R56: parameterised / multi-table count_sql always yields a verdict ───────────────────────────
+
+def test_r56_an_unmeasurable_parameterised_count_emits_errored_not_absent(monkeypatch, tmp_path):
+    """A chart-scoped count_sql that cannot be bound (a second parameter) with a declared floor.
+    Fails without the fix: Count.floor was silently absent whenever the count was None."""
+    sql = "SELECT count(*) FROM ga_t WHERE chart_id = $1 AND k = $2"
+    reg = {"ga_x": _reg_row("ga_x", "ga_t", count_sql=sql, target_floor="100")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({"ga_t": 1}))
+    c = ac.measure("L1")
+    cf = _m(c, "ga_x", "Count.floor")
+    assert cf is not None, "Count.floor must never be silently absent where a floor is declared"
+    assert cf["v"] == ac.ERRORED and "$2" in cf["measured"] and "floor=100" in cf["measured"], cf
+    assert _m(c, "ga_x", "Build.completion")["v"] == ac.ERRORED
+
+
+def test_r56_a_multi_table_chart_scoped_count_is_graded_against_the_floor(monkeypatch, tmp_path):
+    sql = ("SELECT (SELECT count(*) FROM bo_a WHERE chart_id = $1) + "
+           "(SELECT count(*) FROM bo_b WHERE chart_id = $1) AS count")
+    reg = {"bo_x": _reg_row("bo_x", "bo_a", count_sql=sql, target_floor="60000")}
+    _stub_layer(monkeypatch, tmp_path, reg)
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({"bo_a": 7409}))
+    cf = _m(ac.measure("L2"), "bo_x", "Count.floor")
+    assert cf == dict(v=ac.FAIL, measured="count_sql total=7409, floor=60000, delta=-52591"), cf
+
+
+@LIVE
+def test_live_r56_the_differentials_three_breaches_are_reported():
+    """Live, read-only, canonical chart: the three breaches the T1 differential found and the
+    inspector never reported now read Count.floor FAIL (figures are the canonical chart's, not the
+    sandbox's whole-table counts the differential used)."""
+    for layer, aid in (("L1", "ga_vargas"), ("L2", "bo_laksana"), ("L4", "ph_sankrama")):
+        reg, _ = ac.registry(layer)
+        counts, errored = ac.live_counts({aid: reg[aid]}, CANONICAL)
+        cf = ac._grade_count_floor(reg[aid], counts[aid], errored.get(aid), ac._count_tables(reg[aid]["count_sql"]))
+        assert cf is not None and cf["v"] == ac.FAIL, (aid, cf)

@@ -807,6 +807,31 @@ def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool)
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
+def _grade_count_floor(r: dict, live: int | None, error: str | None, ctables: list[str]) -> dict | None:
+    """Count.floor for one asset: the live count against the registry's declared `target_floor`.
+    Returns None only when the criterion does not apply (see the branches).
+
+    R56 (T1 differential): on the 57 L1/L2/L4/L5 assets whose count_sql is parameterised (`$1`) or
+    multi-table, Count.floor was SILENTLY ABSENT — `live is None` (an unbound `$1`) skipped the
+    criterion without a word, while the differential found real breaches it never reported
+    (ga_vargas 0 < 22 092; bo_laksana 7 409 < 60 000; ph_sankrama 630 < 2 510, sandbox). With R231
+    binding the chart the count is measured; and when a count_sql exists but could not be measured
+    the criterion now reads ERRORED with the reason — never absent. A multi-table total is compared
+    as a total (the engine compares its writer's multi-table rows_written with the same floor)."""
+    floor = r["target_floor"]
+    if floor is None or not r["count_sql"].strip() or not floor.isdigit():
+        return None
+    if error is not None or live is None:
+        return dict(v=ERRORED, measured=f"check errored: {error or 'count_sql produced no value'} — "
+                                        f"floor={floor} not measured")
+    if not ctables:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant {live}); "
+                                       f"floor={floor} cannot be measured against it")
+    d = live - int(floor)
+    what = "count_sql total" if (len(ctables) > 1 or r["target_table"] not in ctables) else "live"
+    return dict(v=(FAIL if d < 0 else PASS), measured=f"{what}={live}, floor={floor}, delta={d:+d}")
+
+
 # The closed verdict set a registered carriage detector may return (the ledgers' own vocabulary,
 # asset_elevation_tracker.VERDICTS). NOT_GENERIC / ERRORED are census-internal and never a detector's.
 DETECTOR_VERDICTS = (PASS, FAIL, PARTIAL, NO_DET, NA)
@@ -1006,10 +1031,9 @@ def measure(layer_key: str) -> dict:
             attempt=None, instrument_present=instrument_present, baseline=None,
             attempt_linkage_wired=False)
 
-        floor = r["target_floor"]
-        if live is not None and floor and floor.isdigit():
-            d = live - int(floor)
-            m["Count.floor"] = dict(v=(FAIL if d < 0 else PASS), measured=f"live={live}, floor={floor}, delta={d:+d}")
+        cf = _grade_count_floor(r, live, count_errors.get(aid), ctables)
+        if cf is not None:
+            m["Count.floor"] = cf
 
         tbl = r["target_table"]
         if tbl and tbl in cat["exists"]:
