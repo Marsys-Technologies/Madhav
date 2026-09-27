@@ -36,7 +36,7 @@ function compileInquiryContract(input: Parameters<typeof compileRawInquiryContra
   })
 }
 
-function completeFixture(): { contract: InquiryContract; evidencePayloads: readonly unknown[] } {
+function completeFixture(refFor: (itemId: string, payloadHash: string) => string = (itemId, payloadHash) => `retrieval:${itemId}:${payloadHash}`): { contract: InquiryContract; evidencePayloads: readonly unknown[] } {
   const initial = compileInquiryContract({
     snapshot,
     chart_id: 'chart-fixture',
@@ -54,7 +54,7 @@ function completeFixture(): { contract: InquiryContract; evidencePayloads: reado
   const contract = finalizeInquiryContract(applyInquiryObservations(initial, initial.plan_items.map((item) => ({
     item_id: item.item_id,
     disposition: 'served' as const,
-    evidence_refs: [`retrieval:${item.item_id}:${stableFingerprint(byItem.get(item.item_id))}`],
+    evidence_refs: [refFor(item.item_id, stableFingerprint(byItem.get(item.item_id)))],
   }))))
   return { contract, evidencePayloads }
 }
@@ -89,6 +89,18 @@ function completeAccountability(contract: InquiryContract, evidencePayloads: rea
 }
 
 describe('Wave 4 response accountability', () => {
+  it.each([
+    ['managed door', (_itemId: string, hash: string) => `managed:${hash}`],
+    ['raw MCP door', (_itemId: string, hash: string) => `raw:${hash}`],
+    ['managed pipeline', (itemId: string, hash: string) => `retrieval:${itemId}:${hash}`],
+  ])('delivers obligations evidenced by %s refs, so full coverage can close COMPLETE', (_door, refFor) => {
+    const { contract, evidencePayloads } = completeFixture(refFor)
+    const envelope = completeAccountability(contract, evidencePayloads)
+    expect(envelope.response_coverage_receipt.missing_required_fact_ids).toEqual([])
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+
   it('registers every obligation and required frontier identity exactly once', () => {
     const { contract, evidencePayloads } = completeFixture()
     const register = buildInquiryFactRegister(contract, evidencePayloads)

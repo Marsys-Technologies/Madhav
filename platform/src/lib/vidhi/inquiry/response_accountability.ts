@@ -291,11 +291,12 @@ export function inquiryResponsePartContentHash(
 }
 
 /**
- * Refs naming a payload the server itself committed: `retrieval:` from the managed/Portal
- * pipelines, `raw:` from the raw MCP door. Both end in the payload's stable fingerprint.
+ * Refs naming a payload the server itself committed, each ending in the payload's stable
+ * fingerprint: `retrieval:` from the Portal and in-memory managed pipelines, `managed:` from the
+ * durable managed-job session (execution_session.ts), `raw:` from the raw MCP door.
  */
 function isPayloadEvidenceRef(ref: string): boolean {
-  return ref.startsWith('retrieval:') || ref.startsWith('raw:')
+  return ref.startsWith('retrieval:') || ref.startsWith('managed:') || ref.startsWith('raw:')
 }
 
 function evidenceHashFromRef(ref: string): string | null {
