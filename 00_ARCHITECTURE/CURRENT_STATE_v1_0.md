@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.80
+version: 6.81
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.81 (2026-09-27, JATAKA-CHART-WORKSPACE-IMPL-20260927): Claude Code implemented and
+    mock-tested corrected-plan Tasks 1–8 of the Jātaka chart workspace on local branch
+    codex/jataka-chart-workspace (8 task commits + one review fix pass, e18a619f9) under lease
+    MADHAV-JATAKA-CHART-WORKSPACE-IMPL-20260927 (claimed a851e54fe, released 8161da879).
+    Migration 1120 authored after a fresh origin/main + open-PR sweep and NOT applied. Full unit
+    suite 12,699 tests PASS; tsc PASS; migration guard PASS. Task 9 / acceptance criterion 11
+    remain BLOCKED on the amendment's environment gate. Two out-of-allowlist write doors and the
+    correction preservation boundary are open native decisions. Not pushed; no PR, merge,
+    deploy, database access, rebuild, production access or L3 Kāla/Pūrṇa change.
   - v6.80 (2026-09-27, JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927): Native-authorized
     governance aside for the isolated Jātaka chart-workspace feature. CCD-013 and
     JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0 authorize Claude Code to implement,
@@ -5960,6 +5969,11 @@ block (post-rebuild era), and proceeds.
 > is a governance aside, not a third data-plane campaign: L3 Kāla and Pūrṇa state/authority remain
 > unchanged. No push, PR, merge, deployment, production/shared mutation or credential action is
 > authorized.
+> **Status (2026-09-27, JATAKA-CHART-WORKSPACE-IMPL-20260927):** Tasks 1–8 implemented and
+> mock-tested locally (head `e18a619f9` + close record); migration `1120` authored, not applied.
+> Task 9 and full browser/recompute acceptance remain **BLOCKED** on the approved local-environment
+> prerequisites. Native decisions pending: gating `/api/pariprashna/samiksha/confirm` and
+> `/api/conversations/[id]/branches` (outside the allowlist) and the correction preservation boundary.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
@@ -9416,10 +9430,10 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
-  predecessor_session: MADHAV-PURNA-ANVESANA-W7-20260915
+  last_session_id: JATAKA-CHART-WORKSPACE-IMPL-20260927
+  predecessor_session: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "The Jataka governance bridge is source-locally complete at a4df86458. CCD-013 and the parallel-execution amendment authorize corrected-plan Tasks 1-8 only; JATAKA-REQ-01 reserves migration 1120 at ed5f52294 and the temporary governance lease was released at f14741b3e. Schema 42 and drift 79 match baseline f95a8a4ca. No feature code or external action occurred. Task 9 remains blocked on the safe local-environment gate."
+  last_session_drift_verdict: "Jataka corrected-plan Tasks 1-8 are implemented and mock-tested on local branch codex/jataka-chart-workspace (head e18a619f9 before the close record). Migration 1120 is authored, not applied. Full unit suite 12,699 PASS, tsc PASS, migration guard PASS. Drift 79 is the identical finding set and schema 42 the same count as baseline. Lease MADHAV-JATAKA-CHART-WORKSPACE-IMPL-20260927 released at 8161da879. Task 9 remains blocked on the safe local-environment gate. Not pushed; no external action."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9427,7 +9441,7 @@ current_state:
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
   jataka_chart_workspace_amendment: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
   jataka_chart_workspace_plan: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
-  next_jataka_objective: "Claude Code implements and mock-tests corrected-plan Tasks 1-8 in the isolated worktree under a new code-only coordination lease. Task 9 and browser acceptance remain blocked until the amendment's safe local-environment gate is satisfied."
+  next_jataka_objective: "Native reviews the Tasks 1-8 evidence report and rules on (a) gating samiksha/confirm and conversation branches for correction-archived conversations, (b) the correction preservation boundary for event_chart_state_index and confirmed/denied predictions. Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0 seed/snapshot gate passes."
   next_product_strategy_objective: "Run exact-head CI and independent final review on the immutable Wave 7 metadata-only candidate without later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
 ```
 
@@ -9440,6 +9454,8 @@ verification through plan Task 8 only. Its migration number is reserved as cross
 The browser/full-recompute journey is not yet runnable because the approved test Firebase,
 disposable database and L0 seed/snapshot are absent; that missing evidence remains a hard block, not
 a waived acceptance criterion. The active L3 Kāla and Pūrṇa Anveṣaṇa campaigns are unchanged.
+As of JATAKA-CHART-WORKSPACE-IMPL-20260927, Tasks 1–8 are implemented and mock-tested on the local
+branch (not pushed), migration 1120 is authored but unapplied, and Task 9 remains blocked.
 
 At the final source-candidate checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route
