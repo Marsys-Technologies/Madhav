@@ -84,17 +84,30 @@ LAYERS = {
 }
 
 PASS, FAIL, PARTIAL, NO_DET, NA, NOT_GENERIC = "PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "N/A", "NOT_GENERIC"
+# R41: a per-check exception (timeout, missing relation, malformed key) degrades to ERRORED for
+# THAT check/asset — never in FAILING (never opens a gap the detector itself couldn't measure)
+# nor in CLOSABLE (never closes one either); an existing open gap is left exactly as it was,
+# because "the detector broke" and "the defect is fixed" are different facts.
+ERRORED = "ERRORED"
+
+# R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
+# duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
+# and `--layer all` census unrunnable on production. Configurable via env so an operator pointed
+# at a much larger table than the ones this script was calibrated against can raise it without a
+# code change.
+PSQL_TIMEOUT_SECONDS = int(os.environ.get("NIKASHA_CENSUS_TIMEOUT_SECONDS", "180"))
 
 
 class Unknown(Exception):
     """The instrument could not run. Never reported as clean."""
 
 
-def psql(sql: str, sep: str = "\x1f") -> list[list[str]]:
+def psql(sql: str, sep: str = "\x1f", timeout: int | None = None) -> list[list[str]]:
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
     p = subprocess.run(["psql", "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1", "-c", sql],
-                       capture_output=True, text=True, env=env, timeout=180)
+                       capture_output=True, text=True, env=env,
+                       timeout=(timeout if timeout is not None else PSQL_TIMEOUT_SECONDS))
     if p.returncode != 0:
         raise Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
     return [ln.split(sep) for ln in p.stdout.strip().split("\n") if ln.strip()]
@@ -260,14 +273,27 @@ def local_map_candidates(prefix: str) -> int:
 
 # ─────────────────────────── database reads ───────────────────────────
 
-def registry(layer_key: str) -> dict[str, dict]:
+def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
     """Read via json_agg, NOT line-oriented output.
 
     `count_sql` and `integrity_check_sql` contain newlines, so a row-per-line read splits one asset
     across several lines and invents assets whose ids are fragments of SQL. That bug produced 52 assets
     from 40 on this script's first run — the same defect class the layer template warns about, an
-    instrument whose population was never stated. One JSON document has no such ambiguity."""
+    instrument whose population was never stated. One JSON document has no such ambiguity.
+
+    R220: `asset_registry` for this prefix has more rows than the ACTIVE population the census
+    should measure — 129 total vs 127 active registry-wide (2 retired L3 rows, measured 2026-09-27).
+    `is_active AND NOT dead_flag` is the register's own phrasing, but `dead_flag` is NULL (not
+    false) on every row today, and `NOT NULL` is NULL in SQL — so that exact expression silently
+    matches ZERO rows, not 127. The honest form is `is_active AND NOT coalesce(dead_flag, false)`.
+    Excluded (inactive) rows are named here, not silently dropped — `measure()` states the
+    population figure in its own output rather than letting 129 and 127 quietly disagree."""
     cfg = LAYERS[layer_key]
+    total = int(scalar(f"SELECT count(*)::text FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%'") or 0)
+    excluded = [dict(asset_id=r[0], is_active=(r[1] == "t"), catalog_status=r[2])
+                for r in psql("SELECT asset_id, is_active::text, coalesce(catalog_status,'') "
+                              f"FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%' "
+                              "AND NOT (is_active AND NOT coalesce(dead_flag,false)) ORDER BY asset_id")]
     blob = scalar(
         "SELECT coalesce(json_agg(json_build_object("
         "'asset_id',asset_id,'has_writer',coalesce(has_writer,false),'target_table',target_table,"
@@ -275,7 +301,8 @@ def registry(layer_key: str) -> dict[str, dict]:
         "'depends_on',coalesce(to_json(depends_on),'[]'::json),'target_floor',target_floor,"
         "'catalog_status',coalesce(catalog_status,''),'asset_kind',coalesce(asset_kind,''))"
         " ORDER BY asset_id)::text,'[]') "
-        f"FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%'")
+        f"FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%' "
+        "AND is_active AND NOT coalesce(dead_flag,false)")
     rows = json.loads(blob or "[]")
     out = {}
     for r in rows:
@@ -285,9 +312,10 @@ def registry(layer_key: str) -> dict[str, dict]:
             has_integrity=bool(r["has_integrity"]), depends_on=list(r["depends_on"] or []),
             target_floor=(str(r["target_floor"]) if r["target_floor"] is not None else None),
             catalog_status=r["catalog_status"], asset_kind=r["asset_kind"])
-    if not out:
+    if not out and total == 0:
         raise Unknown(f"no {cfg['prefix']}* rows in asset_registry")
-    return out
+    population = dict(registry_total=total, active=len(out), excluded_inactive=excluded)
+    return out, population
 
 
 def live_counts(reg: dict) -> dict[str, int | None]:
@@ -441,6 +469,87 @@ def _grade_build_history(h: dict) -> dict:
     return dict(v=PASS, measured=f"{h['complete']} complete, no error or abort; {h['skipped']} skip_no_delta (healthy)")
 
 
+def duration_instrument_present() -> bool | None:
+    """D6 item 1 (feature detection): does `asset_throughput.duration_seconds` exist yet
+    (migration 1094)? Returns None (not False) when the check itself cannot run — that is
+    "instrument unreachable", a distinct NO_DETECTOR reason from "instrument absent"."""
+    try:
+        return (scalar("SELECT (EXISTS(SELECT 1 FROM information_schema.columns "
+                       "WHERE table_name='asset_throughput' AND column_name='duration_seconds'))::text")
+               or "f") in ("t", "true")
+    except Unknown:
+        return None
+
+
+def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, baseline: dict | None) -> tuple[dict, dict]:
+    """D6 (DECISIONS_RECOMMENDATIONS_v2_0.md D6, R55 re-specified): grade `Earn.build_record` and
+    `Cost.baseline` — two SEPARATE measurements, neither certifying the whole Earn gate, Cost not
+    one of the nine gates at all (tier 4 §1's build-cost baseline only).
+
+    Extracted as a pure function (same discipline as `_grade_build_history`, Packet B1) so every
+    branch is unit-testable against a hand-built `attempt`/`baseline`, without a live
+    `asset_throughput.duration_seconds` column to test against — which does not exist in this
+    environment (migration 1094 not applied, confirmed 2026-09-27 in both production and the
+    nikasha_sandbox proof DB) or in production, so this function is EXERCISED here only through
+    its own test suite; `measure()` calls it with `instrument_present=False` today and will grade
+    for real the moment migration 1094 lands, without any further code change.
+
+    `attempt` is the latest build_run_assets row for (asset, chart scope), or None if the asset
+    has never been attempted. Expected keys: `state` ("complete"/"error"/"aborted"/"queued"),
+    `disposition` ("skip_no_delta"/"probe_green"/"" ), `reached_completion_write` (bool — did
+    execution get far enough that a duration WOULD have been recorded if the instrument were
+    working), `duration_seconds` (float/None), `rows_written` (int/None), `is_legacy_telemetry`
+    (bool — this attempt's writer is on the pre-1094 `_telemetry` path R34 left as a residual; the
+    ONLY currently-known cause of a completion write with no duration. Unclassified so far:
+    engine-side, migration-1094-dependent; no such marker exists in this environment either).
+    `has_writer` — no registered writer at all (a legacy health-probe service) grades N/A the same
+    as a healthy skip.
+
+    `baseline`, when not None, is the most recent MEASURED completion on record for this asset at
+    this scope: `{"rate": float, "attempt_id": str, "age_days": int}` — provenance, not just a number.
+    """
+    if instrument_present is None:
+        reason = "instrument unreachable"
+    elif not instrument_present:
+        reason = "instrument absent (migration 1094)"
+    else:
+        reason = None
+
+    if reason is not None:
+        nd = dict(v=NO_DET, measured=f"NO_DETECTOR — {reason}, scoped to this run")
+        return dict(nd), dict(nd)
+
+    # From here, the instrument genuinely exists — grade Earn.build_record for the latest attempt.
+    if attempt is None:
+        earn = dict(v=NA, measured="never attempted — see Build.exercised")
+    elif attempt.get("disposition") in ("skip_no_delta", "probe_green") or not attempt.get("has_writer", True):
+        why = (attempt.get("disposition") or "no registered writer (legacy health-probe service)")
+        earn = dict(v=NA, measured=f"healthy non-execution ({why}) — no build was due")
+    elif not attempt.get("reached_completion_write", False):
+        earn = dict(v=NA, measured=f"attempt {attempt.get('state','?')} before completion; see Build.history")
+    elif attempt.get("duration_seconds") is not None:
+        dur = attempt["duration_seconds"]
+        rw = attempt.get("rows_written") or 0
+        rate = (rw / dur) if dur else 0.0
+        earn = dict(v=PASS, measured=f"completion write with duration={dur}s, rows_written={rw}, rate={rate} "
+                                     "(a measured rate of 0.0 is a real measurement, not suppressed)")
+    elif attempt.get("is_legacy_telemetry"):
+        earn = dict(v=FAIL, measured="completion write reached with no duration — the legacy _telemetry "
+                                     "path (R34's residual)")
+    else:
+        earn = dict(v=NO_DET, measured="NO_DETECTOR — unclassified NULL (completion write with no duration "
+                                       "and no identified cause)")
+
+    # Cost.baseline: independent of the latest attempt's own outcome — a healthy skip/failure
+    # neither erases a prior sanctioned baseline nor creates one.
+    if baseline is not None:
+        cost = dict(v=PASS, measured=f"sanctioned baseline: rate={baseline['rate']} "
+                                     f"(attempt {baseline['attempt_id']}, {baseline['age_days']}d old)")
+    else:
+        cost = dict(v=FAIL, measured="no sanctioned baseline build on record")
+    return earn, cost
+
+
 def declared_keys(table: str) -> list[list[str]]:
     rows = psql("SELECT pg_get_constraintdef(oid) FROM pg_constraint "
                 f"WHERE conrelid='{table}'::regclass AND contype IN ('u','p')")
@@ -484,13 +593,16 @@ def alias_census(table: str, cols: list[str]) -> dict | None:
 
 def measure(layer_key: str) -> dict:
     cfg = LAYERS[layer_key]
-    reg = registry(layer_key)
+    reg, population = registry(layer_key)
     cat = catalog([r["target_table"] for r in reg.values()])
     regd = registered_ids(cfg["prefix"])
     counts = live_counts(reg)
     thru = throughput(cfg["prefix"])
     hist = build_history(cfg["prefix"])
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
+    # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
+    # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
+    instrument_present = duration_instrument_present()
 
     known = set(reg)
     assets = []
@@ -510,10 +622,17 @@ def measure(layer_key: str) -> dict:
         else:
             m["Build.registered"] = dict(v=NA, measured="no writer, and the registry agrees (service or static)")
 
-        v, notes = contract_scan(aid, files)
-        m["Build.contract"] = dict(v=v, measured="; ".join(notes) or "conformant")
-        v, notes = idem_scan(aid, files, cfg["idem"])
-        m["Idem.pattern"] = dict(v=v, measured="; ".join(notes))
+        # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
+        try:
+            v, notes = contract_scan(aid, files)
+            m["Build.contract"] = dict(v=v, measured="; ".join(notes) or "conformant")
+        except Unknown as exc:
+            m["Build.contract"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+        try:
+            v, notes = idem_scan(aid, files, cfg["idem"])
+            m["Idem.pattern"] = dict(v=v, measured="; ".join(notes))
+        except Unknown as exc:
+            m["Idem.pattern"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
         # Build.target
         if r["target_table"]:
@@ -548,10 +667,14 @@ def measure(layer_key: str) -> dict:
         else:
             m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw}, live={live}")
 
-        m["Earn.build_record"] = dict(v=(PASS if t.get("rps") else FAIL),
-                                      measured=f"rows_per_second={t.get('rps') or 'NULL'}, last_built={t.get('last_built') or '-'}")
-        m["Cost.baseline"] = dict(v=(PASS if t.get("rps") else FAIL),
-                                  measured=f"state={t.get('state','-')}, rows_written={rw or '-'}, rps={t.get('rps') or '-'}")
+        # D6: `_grade_earn_cost` feature-detects `duration_seconds` (absent everywhere today,
+        # migration 1094 not applied) and grades NO_DETECTOR for both measurements when it is —
+        # never the naive "rows_per_second populated => PASS" this replaces, which could not tell
+        # a genuinely-measured build from a stale/never-cleared column (R44/R55). `attempt`/
+        # `baseline` are unused while the instrument is absent, so None is honest here; the
+        # per-attempt wiring lands with migration 1094 (see `_grade_earn_cost`'s own docstring).
+        m["Earn.build_record"], m["Cost.baseline"] = _grade_earn_cost(
+            attempt=None, instrument_present=instrument_present, baseline=None)
 
         floor = r["target_floor"]
         if live is not None and floor and floor.isdigit():
@@ -560,32 +683,59 @@ def measure(layer_key: str) -> dict:
 
         tbl = r["target_table"]
         if tbl and tbl in cat["exists"]:
-            dc = depth_census(tbl, cat["cols"].get(tbl, []))
-            m["Complete.depth"] = dict(v=(PASS if not dc.get("never") else PARTIAL),
-                                       measured=(f"{dc.get('rows',0)} rows, {dc['columns']} cols; "
-                                                 f"fully populated {len(dc.get('full',[]))}; NEVER populated "
-                                                 f"{dc.get('never',[])}" if not dc.get("note") else dc["note"]))
+            # R41: each of these four checks queries the target table independently (one of them,
+            # on the estate's largest tables, is exactly R40's kala_field timeout case) — a single
+            # slow/failing query must degrade only its OWN criterion, never blind the other three.
+            try:
+                dc = depth_census(tbl, cat["cols"].get(tbl, []))
+                m["Complete.depth"] = dict(v=(PASS if not dc.get("never") else PARTIAL),
+                                           measured=(f"{dc.get('rows',0)} rows, {dc['columns']} cols; "
+                                                     f"fully populated {len(dc.get('full',[]))}; NEVER populated "
+                                                     f"{dc.get('never',[])}" if not dc.get("note") else dc["note"]))
+            except Unknown as exc:
+                dc = {}
+                m["Complete.depth"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+
             keys = cat["keys"].get(tbl, [])
             if keys:
                 k = keys[0] if len(keys[0]) > 1 or keys[0][0] != "id" else (keys[1] if len(keys) > 1 else keys[0])
                 kd = ", ".join(k)
-                dup = scalar(f"SELECT (count(*) - count(DISTINCT ({kd})))::text FROM {tbl}")
-                m["Vocab.identity"] = dict(v=(PASS if dup == "0" else FAIL),
-                                           measured=f"declared key ({kd}): {dup} duplicate(s)")
-            ac = alias_census(tbl, cat["cols"].get(tbl, []))
-            if ac:
-                bad = {k: v for k, v in ac.items() if v["no_alias"]}
-                m["Vocab.alias"] = dict(v=(PASS if not bad else FAIL),
-                                        measured=(f"{len(ac)} class(es); empty alias sets: "
-                                                  + (", ".join(f"{k} {v['no_alias']}/{v['rows']}" for k, v in bad.items()) or "none")))
+                try:
+                    # R40: `count(*) - count(DISTINCT (cols))` requires a full sort/hash of every row
+                    # to materialise BOTH counts and does not scale to the estate's largest table
+                    # (kala_field, 10.3M rows; ground truth measured by hand: duplicates = 0 in 47s
+                    # against the naive form's >180s). An EXISTS/HAVING duplicate-group probe can
+                    # stop at the first violation instead of counting the whole table when one
+                    # exists, and never needs the second full DISTINCT pass either way.
+                    has_dup = (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl} GROUP BY {kd} "
+                                      "HAVING count(*) > 1)::text") or "f") in ("t", "true")
+                    m["Vocab.identity"] = dict(
+                        v=(FAIL if has_dup else PASS),
+                        measured=f"declared key ({kd}): {'duplicate group(s) exist' if has_dup else 'no duplicates'}")
+                except Unknown as exc:
+                    m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+
+            try:
+                ac = alias_census(tbl, cat["cols"].get(tbl, []))
+                if ac:
+                    bad = {k: v for k, v in ac.items() if v["no_alias"]}
+                    m["Vocab.alias"] = dict(v=(PASS if not bad else FAIL),
+                                            measured=(f"{len(ac)} class(es); empty alias sets: "
+                                                      + (", ".join(f"{k} {v['no_alias']}/{v['rows']}" for k, v in bad.items()) or "none")))
+            except Unknown as exc:
+                m["Vocab.alias"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+
             tcols = set(cat["cols"].get(tbl, []))
             cit = [c for c in ("source_citation", "source_text_id", "classical_citations", "citation_ref")
                    if c in tcols]
             if cit and dc.get("rows"):
                 col = cit[0]
-                n = scalar(f"SELECT count(*)::text FROM {tbl} WHERE {col} IS NOT NULL")
-                m["Ldgr.source_presence"] = dict(v=(PASS if int(n) == dc["rows"] else PARTIAL),
-                                                 measured=f"{col} populated on {n}/{dc['rows']} rows")
+                try:
+                    n = scalar(f"SELECT count(*)::text FROM {tbl} WHERE {col} IS NOT NULL")
+                    m["Ldgr.source_presence"] = dict(v=(PASS if int(n) == dc["rows"] else PARTIAL),
+                                                     measured=f"{col} populated on {n}/{dc['rows']} rows")
+                except Unknown as exc:
+                    m["Ldgr.source_presence"] = dict(v=ERRORED, measured=f"check errored: {exc}")
         elif tbl:
             m["Complete.depth"] = dict(v=FAIL, measured=f"target_table '{tbl}' does not exist in production")
 
@@ -645,6 +795,11 @@ def measure(layer_key: str) -> dict:
     never = [a["asset_id"] for a in assets if a["measurements"]["Build.exercised"]["v"] == FAIL]
     return dict(generated=dt.datetime.now().astimezone().isoformat(timespec="seconds"), layer=layer_key,
                 layer_name=cfg["name"], scoring=cfg["scoring"], n_assets=len(assets),
+                # R220: the population this census measured, stated explicitly — `n_assets` above IS
+                # the active population (`registry()` already excludes inactive/dead rows), but the
+                # gap between it and the layer's raw registry row count must never be silent.
+                population_active=population["active"], population_registry_total=population["registry_total"],
+                population_excluded_inactive=population["excluded_inactive"],
                 global_runs=hist["global_runs"], global_runs_touching_layer=hist["global_with_layer"],
                 never_exercised_with_writer=never,
                 registered_ids=len(regd), registry_has_writer=sum(1 for r in reg.values() if r["has_writer"]),
@@ -770,15 +925,23 @@ def main() -> int:
         out[k] = c
         fails = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] == FAIL)
         parts = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] in (PARTIAL, NO_DET))
+        errored = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] == ERRORED)
         print(f"{k} {c['layer_name']} ({c['scoring']}): {c['n_assets']} assets · "
               f"{c['registered_ids']} registered ids vs {c['registry_has_writer']} has_writer=true")
+        if c["population_registry_total"] != c["population_active"]:
+            print(f"  population: {c['population_active']} active of {c['population_registry_total']} registry "
+                  f"rows for this layer — excluded (inactive/dead): "
+                  f"{', '.join(x['asset_id'] for x in c['population_excluded_inactive'])}")
         print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
               f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
         if c["never_exercised_with_writer"]:
             print(f"  !! registered with a writer and NEVER run by the orchestrator: {c['never_exercised_with_writer']}")
         if c["phantom_registered"]:
             print(f"  !! registered but absent from the registry: {c['phantom_registered']}")
-        print(f"  FAIL {fails} · PARTIAL/NO_DETECTOR {parts} · assets measured {c['n_assets']}")
+        print(f"  FAIL {fails} · PARTIAL/NO_DETECTOR {parts} · ERRORED {errored} · assets measured {c['n_assets']}")
+        if errored:
+            print(f"  !! {errored} check(s) errored (R41: degraded, not layer-aborting) — "
+                  "never counted as PASS; see each asset's measurements for the exception")
         by = {}
         for x in c["assets"]:
             for crit, r in x["measurements"].items():
@@ -787,7 +950,7 @@ def main() -> int:
         for crit in sorted(by):
             n = by[crit]
             print(f"    FAIL {crit}: {len(n)} — {', '.join(n[:6])}{'…' if len(n) > 6 else ''}")
-        worst = max(worst, 2 if fails else (3 if parts else 0))
+        worst = max(worst, 2 if fails else (3 if (parts or errored) else 0))
         if a.emit_gaps:
             added, skipped, closed, reopened = emit_gaps(c)
             print(f"  ledger: {added} row(s) appended, {skipped} already present, "
