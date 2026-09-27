@@ -68,10 +68,15 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
-import { compileInquiryContract, finalizeInquiryContract, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
+import { compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes as realAuthorizationHashes, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import {
+  buildStructuredResponseAccountability,
+  inquiryCitationMarker,
+  inquiryFindingCitationHandles,
+} from '@/lib/vidhi/inquiry/response_accountability'
 import {
   W5_DOOR_PARITY_CHART_ID,
   W5_DOOR_PARITY_OVERLAY,
@@ -730,5 +735,127 @@ describe('raw MCP inquiry route', () => {
       },
     })
     expect(mocks.commitFinalization).toHaveBeenCalledWith(expect.objectContaining({ contract: blocked }))
+  })
+})
+
+describe('raw MCP inquiry certification (RC-6.4)', () => {
+  const payload = { rows: [{ fact_key: 'wealth_signal', value: 'served evidence' }] }
+  const evidenceRef = `raw:${stableFingerprint(payload)}`
+
+  function finalized(status: InquiryContract['status'] = 'COMPLETE'): InquiryContract {
+    const value = contract()
+    const observed: InquiryContract = {
+      ...value,
+      status,
+      status_reasons: status === 'COMPLETE' ? [] : ['required_obligation_failed'],
+      iteration: 1,
+      obligations: value.obligations.map((obligation) => ({ ...obligation, disposition: 'served' as const, evidence_refs: [evidenceRef] })),
+      plan_items: value.plan_items.map((item) => ({
+        ...item,
+        state: 'observed' as const,
+        observation: { item_id: item.item_id, disposition: 'served' as const, evidence_refs: [evidenceRef], gap_reason: null },
+      })) as InquiryContract['plan_items'],
+    }
+    // Real authorization hashes: the server-side envelope re-derives them from content.
+    return { ...observed, ...realAuthorizationHashes(observed) }
+  }
+
+  function primeTerminal(final: InquiryContract, overrides: Record<string, unknown> = {}, rowOverrides: Record<string, unknown> = {}) {
+    primeStoredLifecycle({
+      revision: 0, allowed_transition: 'finalize', next_action_ids: [],
+      contract_hash: final.semantic_contract_hash, execution_plan_hash: final.execution_plan_hash, ...overrides,
+    })
+    mocks.get.mockResolvedValue({
+      inquiry_id: 'inquiry-1', principal_uid: 'user-1', chart_id: chartId,
+      semantic_contract_hash: final.semantic_contract_hash, execution_plan_hash: final.execution_plan_hash,
+      capability_content_hash: 'sha256:catalog', capability_compatibility_version: 'planner-scu-v1',
+      chart_overlay_version: null, chart_build_id: null,
+      authorization_jsonb: final, contract_jsonb: final, status: final.status, revision: 1,
+      current_jti_hash: 'terminal', expires_at: '2099-01-01T00:00:00Z', ...rowOverrides,
+    })
+  }
+
+  function citingAnswer(final: InquiryContract): string {
+    const probe = buildStructuredResponseAccountability(final, { evidence_payloads: [payload], knowledge_snapshot: mocks.snapshot() })
+    const handles = [...inquiryFindingCitationHandles(probe.fact_register).values()]
+    expect(handles.length).toBeGreaterThan(0)
+    return `The served wealth evidence supports the reading ${handles.map(inquiryCitationMarker).join(' ')}.`
+  }
+
+  it('certifies a finalized answer server-side from committed evidence, read-only', async () => {
+    const final = finalized()
+    primeTerminal(final)
+    const text = citingAnswer(final)
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: text, evidence_payloads: [payload] }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json).toMatchObject({
+      ok: true, inquiry_id: 'inquiry-1', certified_complete: true,
+      certification: { contract_id: final.contract_id, response_text_hash: stableFingerprint(text), missing_committed_evidence: [] },
+    })
+    expect(json.certification.coverage_receipt_hash).toBe(json.response_accountability.response_coverage_receipt.receipt_hash)
+    expect(mocks.reserve).not.toHaveBeenCalled()
+    expect(mocks.commitObservation).not.toHaveBeenCalled()
+    expect(mocks.commitFinalization).not.toHaveBeenCalled()
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+  })
+
+  it('does not certify complete when committed evidence is withheld or the answer cites nothing', async () => {
+    const final = finalized()
+    primeTerminal(final)
+    const withheld = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: citingAnswer(final), evidence_payloads: [] }))
+    expect(withheld.status).toBe(200)
+    expect(await withheld.json()).toMatchObject({
+      certified_complete: false,
+      certification: { missing_committed_evidence: [stableFingerprint(payload)] },
+    })
+    const uncited = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'A confident answer with no citations.', evidence_payloads: [payload] }))
+    expect(await uncited.json()).toMatchObject({ certified_complete: false })
+  })
+
+  it('certifies a BLOCKED closure honestly, never as complete', async () => {
+    const final = finalized('BLOCKED')
+    primeTerminal(final, { allowed_transition: 'execute', next_action_ids: ['item-001'] })
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: citingAnswer(final), evidence_payloads: [payload] }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, certified_complete: false })
+  })
+
+  it('rejects evidence the server never committed', async () => {
+    primeTerminal(finalized())
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload, { forged: true }] }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_EVIDENCE_UNCOMMITTED' })
+  })
+
+  it.each([
+    ['a lifecycle that is not terminal', {}, { current_jti_hash: 'sha256:current-jti', revision: 0 }],
+    ['a token older than the closing token', { revision: 0 }, { revision: 2 }],
+    ['a token for a different contract', { contract_hash: 'sha256:other' }, {}],
+    ['a token for a different catalog', { catalog_hash: 'sha256:other-catalog' }, {}],
+    ['a stored contract that no longer matches its row', {}, { contract_jsonb: { ...finalized(), contract_id: 'sha256:tampered' } }],
+  ])('refuses certification with %s', async (_label, claimOverrides, rowOverrides) => {
+    primeTerminal(finalized(), claimOverrides, rowOverrides)
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload] }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_NOT_AUTHORIZED' })
+  })
+
+  it('refuses certification against a stale knowledge snapshot', async () => {
+    primeTerminal(finalized())
+    mocks.snapshot.mockReturnValue({ content_hash: 'sha256:newer-catalog', compatibility_version: 'planner-scu-v1', scus: [] })
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload] }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'CAPABILITY_KNOWLEDGE_STALE' })
+  })
+
+  it('rejects an oversized evidence payload and a malformed request', async () => {
+    primeTerminal(finalized())
+    const huge = { blob: 'x'.repeat(513 * 1024) }
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [huge] }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_PAYLOAD_TOO_LARGE' })
+    const malformed = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: '', evidence_payloads: [] }))
+    expect(malformed.status).toBe(400)
   })
 })

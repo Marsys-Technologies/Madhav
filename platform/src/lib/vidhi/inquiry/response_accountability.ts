@@ -285,6 +285,14 @@ export function inquiryResponsePartContentHash(
   })
 }
 
+/**
+ * Refs naming a payload the server itself committed: `retrieval:` from the managed/Portal
+ * pipelines, `raw:` from the raw MCP door. Both end in the payload's stable fingerprint.
+ */
+function isPayloadEvidenceRef(ref: string): boolean {
+  return ref.startsWith('retrieval:') || ref.startsWith('raw:')
+}
+
 function evidenceHashFromRef(ref: string): string | null {
   const match = ref.match(/sha256:[a-f0-9]{64}$/)
   return match?.[0] ?? null
@@ -579,14 +587,14 @@ export function buildStructuredResponseAccountability(
       if (fact.kind === 'finding') return true
       if (fact.meaning.disposition === 'not_applicable') return true
       if (fact.meaning.disposition !== 'served' && fact.meaning.disposition !== 'empty') return false
-      const hashes = fact.evidence_refs.filter((ref) => ref.startsWith('retrieval:')).map(evidenceHashFromRef)
+      const hashes = fact.evidence_refs.filter(isPayloadEvidenceRef).map(evidenceHashFromRef)
       return hashes.length === fact.evidence_refs.length
         && hashes.every((hash) => hash !== null && actualEvidenceHashes.includes(hash))
     })
     .map((fact) => fact.fact_id)
   const deliveredEvidenceHashes = uniqueSorted(factRegister.facts
     .filter((fact) => deliveredFactIds.includes(fact.fact_id))
-    .flatMap((fact) => fact.evidence_refs.filter((ref) => ref.startsWith('retrieval:')).map(evidenceHashFromRef))
+    .flatMap((fact) => fact.evidence_refs.filter(isPayloadEvidenceRef).map(evidenceHashFromRef))
     .filter((hash): hash is string => hash !== null))
   const deliveryPart: InquiryResponseDeliveryPart = {
     part_id: `structured-findings:${factRegister.register_hash}`,

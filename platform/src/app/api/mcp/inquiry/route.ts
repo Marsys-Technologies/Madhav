@@ -45,6 +45,7 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
+import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry/response_accountability'
 
 export const maxDuration = 60
 
@@ -75,6 +76,12 @@ const BodySchema = z.discriminatedUnion('action', [
   }).strict(),
   z.object({ action: z.literal('finalize'), lifecycle_token: z.string().min(1).max(16384) }).strict(),
   z.object({ action: z.literal('continue'), lifecycle_token: z.string().min(1).max(16384) }).strict(),
+  // Server-side certification of an externally synthesized answer (RC-6.4 raw). Read-only.
+  z.object({
+    action: z.literal('certify'), lifecycle_token: z.string().min(1).max(16384),
+    response_text: z.string().min(1).max(200_000),
+    evidence_payloads: z.array(z.unknown()).max(64),
+  }).strict(),
 ])
 type Body = z.infer<typeof BodySchema>
 
@@ -220,6 +227,7 @@ export async function POST(request: Request) {
     if (!row || !authorization || !authorizationHashes) {
       return response({ ok: false, error: 'INQUIRY_TOKEN_REPLAYED_OR_STALE' }, 409)
     }
+    if (body.action === 'certify') return certifyExternalAnswer(body, claims, row)
     if (row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash ||
       row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash ||
       row.capability_compatibility_version !== claims.compatibility_version || row.revision !== claims.revision ||
@@ -410,4 +418,68 @@ export async function POST(request: Request) {
     console.error('[mcp:inquiry] request failed', { traceId, error })
     return response({ ok: false, error: 'INQUIRY_REQUEST_FAILED', trace_id: traceId }, 500)
   }
+}
+
+/**
+ * Certify an externally synthesized answer against the server's own record (RC-6.4 raw).
+ *
+ * The raw door hands evidence to the client and lets the client write the answer, so a
+ * client-built accountability envelope is only self-attested. Certification rebuilds the fact
+ * register and coverage receipt server-side from the FINALIZED contract the server committed and
+ * from payloads the client proves it received (each must hash to a `raw:` evidence ref the
+ * server committed). It is read-only: nothing is reserved, consumed, or written.
+ */
+function certifyExternalAnswer(
+  body: Extract<Body, { action: 'certify' }>,
+  claims: ReturnType<typeof verifyInquiryLifecycleToken>,
+  row: NonNullable<Awaited<ReturnType<typeof getInquiryLifecycle>>>,
+) {
+  // Only the last token issued before the lifecycle went terminal may certify it, and only once
+  // terminal. That token is whichever one closed it — a finalize, or an execute that failed
+  // closed — so a BLOCKED closure is certifiable too (it simply cannot certify complete).
+  if (row.current_jti_hash !== 'terminal' || claims.revision !== row.revision - 1
+    || row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash
+    || row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash
+    || row.contract_jsonb.semantic_contract_hash !== row.semantic_contract_hash
+    || row.contract_jsonb.execution_plan_hash !== row.execution_plan_hash
+    || row.contract_jsonb.contract_id !== row.authorization_jsonb.contract_id) {
+    return response({ ok: false, error: 'INQUIRY_CERTIFICATION_NOT_AUTHORIZED' }, 409)
+  }
+  const final = row.contract_jsonb
+  const snapshot = assertPinnedCapabilityKnowledgeCurrent()
+  if (snapshot.content_hash !== final.capability_content_hash) {
+    return response({ ok: false, error: 'CAPABILITY_KNOWLEDGE_STALE' }, 409)
+  }
+  const committedHashes = new Set([
+    ...final.obligations.flatMap((obligation) => obligation.evidence_refs),
+    ...final.plan_items.flatMap((item) => item.observation?.evidence_refs ?? []),
+  ].filter((ref) => ref.startsWith('raw:')).map((ref) => ref.slice('raw:'.length)))
+  const supplied = new Map<string, unknown>()
+  for (const payload of body.evidence_payloads) {
+    if (Buffer.byteLength(JSON.stringify(payload) ?? '') > MAX_RESULT_BYTES) {
+      return response({ ok: false, error: 'INQUIRY_CERTIFICATION_PAYLOAD_TOO_LARGE' }, 400)
+    }
+    const hash = stableFingerprint(payload)
+    if (!committedHashes.has(hash)) return response({ ok: false, error: 'INQUIRY_CERTIFICATION_EVIDENCE_UNCOMMITTED' }, 409)
+    supplied.set(hash, payload)
+  }
+  const missingEvidence = [...committedHashes].filter((hash) => !supplied.has(hash)).sort()
+  const envelope = buildStructuredResponseAccountability(final, {
+    response_text: body.response_text,
+    evidence_payloads: [...supplied.values()],
+    knowledge_snapshot: snapshot,
+  })
+  const receipt = envelope.response_coverage_receipt
+  return response({
+    ok: true,
+    inquiry_id: row.inquiry_id,
+    certified_complete: receipt.status === 'COMPLETE' && missingEvidence.length === 0,
+    certification: {
+      contract_id: final.contract_id,
+      response_text_hash: stableFingerprint(body.response_text),
+      coverage_receipt_hash: receipt.receipt_hash,
+      missing_committed_evidence: missingEvidence,
+    },
+    response_accountability: envelope,
+  })
 }
