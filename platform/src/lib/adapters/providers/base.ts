@@ -1,4 +1,5 @@
 import type { ModelMeta } from '@/lib/models/registry'
+import type { LanguageModelV3 } from '@ai-sdk/provider'
 import type { QueryRequest, ModelInteractionEvent } from '../types'
 
 export interface StreamTextOptions {
@@ -8,6 +9,7 @@ export interface StreamTextOptions {
   tools?: unknown
   toolChoice?: unknown
   providerOptions?: Record<string, unknown>
+  output?: unknown
   maxOutputTokens?: number
   temperature?: number
   stopWhen?: unknown
@@ -22,7 +24,7 @@ export interface Adapter {
   readonly providerId: string
 
   /** Build the streamText options object for this provider + request. */
-  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions
+  prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel?: LanguageModelV3): StreamTextOptions
 
   /** Stream the model's response as ModelInteractionEvents (existing AD.3 behavior). */
   stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent>

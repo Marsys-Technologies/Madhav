@@ -21,7 +21,7 @@ describe('conservative capability evidence', () => {
   })
   it('retains documented GPT-4.1 mini capabilities but search-preview never becomes a Worker', () => {
     expect(filterCatalog('openai', [{ id: 'gpt-4.1-mini' }], key)[0].compatibleRoles).toEqual(['synthesizer', 'planner', 'deep_planner', 'worker'])
-    expect(filterCatalog('openai', [{ id: 'gpt-4o-search-preview', supported_parameters: ['tools', 'structured_outputs'] }], key)[0]).toMatchObject({ supportsTools: false, compatibleRoles: ['synthesizer', 'planner', 'deep_planner'] })
+    expect(filterCatalog('openai', [{ id: 'gpt-4o-search-preview', supported_parameters: ['tools', 'structured_outputs'] }], key)[0]).toMatchObject({ supportsTools: false, compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'] })
   })
   it.each([['anthropic', 'claude-haiku-4-5'], ['google', 'gemini-2.5-flash'], ['xai', 'grok-4']] as const)('keeps explicitly documented %s model rules', (provider, id) => {
     expect(filterCatalog(provider, [row(provider, id)], key)[0].compatibleRoles).toEqual(['synthesizer', 'planner', 'deep_planner', 'worker'])
@@ -30,9 +30,13 @@ describe('conservative capability evidence', () => {
     expect(filterCatalog(provider, [row(provider, id, { supported_parameters: ['tools', 'response_format', 'structured_outputs'], capabilities: { tools: true, structured_outputs: true } })], key)[0])
       .toMatchObject({ supportsTools: false, supportsStructuredOutput: false, compatibleRoles: ['synthesizer'] })
   })
-  it('requires OpenRouter structured_outputs rather than generic response_format and never enables Worker', () => {
+  it('requires OpenRouter structured_outputs rather than generic response_format and enables Worker only from schema support', () => {
     expect(filterCatalog('openrouter', [row('openrouter', 'vendor/json', { supported_parameters: ['tools', 'response_format'] })], key)[0].compatibleRoles).toEqual(['synthesizer'])
-    expect(filterCatalog('openrouter', [row('openrouter', 'vendor/schema', { supported_parameters: ['tools', 'structured_outputs'] })], key)[0].compatibleRoles).toEqual(['synthesizer', 'planner', 'deep_planner'])
+    expect(filterCatalog('openrouter', [row('openrouter', 'vendor/schema', { supported_parameters: ['structured_outputs'] })], key)[0].compatibleRoles).toEqual(['synthesizer', 'planner', 'deep_planner', 'worker'])
+  })
+  it('does not treat tool support as Worker compatibility without structured output', () => {
+    expect(filterCatalog('openai', [{ id: 'gpt-5', supported_parameters: ['tools'] }], key)[0])
+      .toMatchObject({ supportsTools: true, supportsStructuredOutput: false, compatibleRoles: ['synthesizer'] })
   })
   it('does not let generic parameter metadata override an explicit capability denial', () => {
     expect(filterCatalog('openrouter', [row('openrouter', 'vendor/schema', { supported_parameters: ['structured_outputs'], capabilities: { structured_outputs: false } })], key)[0].compatibleRoles).toEqual(['synthesizer'])

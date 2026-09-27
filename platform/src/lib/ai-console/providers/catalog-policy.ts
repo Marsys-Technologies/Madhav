@@ -61,7 +61,7 @@ export function compatibleModel(provider: ProviderId, input: unknown, secret: st
     && /^[\p{L}\p{N} ._:/()+\-]+$/u.test(label) ? label : id
   const context = tokenCount(row.context_length ?? row.context_window ?? row.inputTokenLimit ?? row.max_input_tokens)
   const outputLimit = tokenCount(row.max_output_tokens ?? row.outputTokenLimit ?? row.max_tokens ?? object(row.top_provider).max_completion_tokens)
-  return { modelId: id, displayName, compatibleRoles: ['synthesizer', ...(structured ? ['planner' as const, 'deep_planner' as const] : []), ...(tools ? ['worker' as const] : [])],
+  return { modelId: id, displayName, compatibleRoles: ['synthesizer', ...(structured ? ['planner' as const, 'deep_planner' as const, 'worker' as const] : [])],
     supportsTools: tools, supportsStructuredOutput: structured,
     ...(context && { contextWindow: context }), ...(outputLimit && { outputLimit }) }
 }
