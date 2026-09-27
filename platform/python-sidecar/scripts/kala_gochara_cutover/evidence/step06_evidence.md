@@ -228,3 +228,65 @@ rows chart 2) so the §12.9 overlay gate passes on the post-Link-1 fresh rows.
   Recorded, not "fixed" — disposition belongs to the native/PRAMĀṆIN.)
 
 **Verdict: ADK-0019 preconditions met — patch landed, regression tests green, battery 366/366, step06 disposable rehearsal GREEN for both charts under candidate-1 flags with refine on. Link 2 production re-run NOT attempted: it awaits PRAMĀṆIN's re-verification (drift check) per the ruling.**
+
+## 2026-09-28 — Link 2 production run — HALTED at step06_candidate_build (contact-id multiplicity collision)
+
+After PRAMĀṆIN verified the ADK-0019 amended package (`f1ee17c81`) and the
+native re-authorized tranche 2, Link 2 was attempted against production (own
+proxy 127.0.0.1:55440, fresh `amjis-pipeline-db-url` creds per connection,
+`PRODUCTION_TRANCHE_2_AUTHORIZED=true`).
+
+**Pre-run state (verified immediately before):** zero `'4.0'` rows in
+`kala_gochara_contacts` / `_coverage` / `_convention` / `_publication` /
+`_windows`; windows `v1`=38,287 / `3.0`=1,830; authority untouched.
+
+**Step 1 — enumeration, chart `482012f1-…871aa`: GREEN.** Command:
+`step06_enumerate_episodes.py --dsn <prod via 55440> --chart-id 482012f1-… --episodes-out .run/wp10_tranche2/prod_episodes_482012f1.json --coverage-out .run/wp10_tranche2/prod_coverage_482012f1.json`.
+Exit 0, 32.6 min. Report (`.run/wp10_tranche2/prod_enum_482012f1.log`):
+**reproduces the disposable-DB rehearsal exactly** — 765 resonance rows → 1140
+targets (493 resolved / 647 unavailable, matching the pre-existing production
+resolution state documented in the rehearsal section), 1,353,278 episodes
+emitted, 1,452 without-exact excluded, 48 coverage partitions, refine ON,
+swieph ×8, fingerprints b78cd26f…/6b4ee79a…/6d3c0d58…. The ADK-0019 patch
+performs exactly as rehearsed.
+
+**Step 2 — candidate build, chart `482012f1-…871aa`: FAILED, exit 1.** Command:
+`step06_candidate_build.py --dsn <prod via 55440> --chart-id 482012f1-… --episodes-json …/prod_episodes_482012f1.json --coverage-json …/prod_coverage_482012f1.json --delta-report .run/wp10_tranche2/prod_delta_report_482012f1.md --evidence`.
+Log: `.run/wp10_tranche2/prod_build_482012f1.log`. The §12.9 freshness gate
+PASSED (writes began); the failure is a `UniqueViolation` on
+`kala_gochara_contacts_pkey` — duplicate `contact_id`
+`sha256:ed53a48a…` inside the insert batch. The transaction rolled back in
+full (single-transaction writer).
+
+**Diagnosis (payload scan, no production state involved):** the enumeration
+payload contains 1,353,278 episodes but only **138,837 unique contact ids** —
+138,767 ids repeat (1,214,441 extra rows). Duplicates share one
+`independence_group` (H-6: one physical contact reached via several map rows);
+within a duplicate group the rows are byte-identical (46,422 groups) or differ
+only in `classical_citation` (46,353) or `target_ref` (45,992) — i.e. the
+enumerator emits per (map row × level), while the ledger's pinned WP1 §3.2
+contact id identities per physical contact. Duplicate concentration:
+kakshya_cell_crossing / nakshatra_ingress / sign_ingress on fast bodies
+(Mercury 173k, Venus 147k, Sun 140k, Mars 80k extra rows). The contract
+question — how multiplicity is represented (dedupe at enumeration vs ledger,
+which citation/weight survives) — is a ruling-level decision, not an executor
+one. This collision was invisible at test scale (synthetic fixtures, far fewer
+rows); the disposable rehearsal stopped at enumeration and never inserted.
+
+**Post-failure production state (verified):** `kala_gochara_contacts`=0,
+`_coverage`=0, `_convention`=0, `_publication`=0, windows `v1`=38,287 /
+`3.0`=1,830 — byte-identical to the pre-run state; rollback complete, no
+partial writes. Chart 2 (`1c826d5a-…`) was NOT started (same wall awaits its
+candidate build). Pre-run dump `.run/wp10_tranche2/pre_run_dump_20260927.dump`
+retained.
+
+**Escalation requested:** a native ruling on the multiplicity contract —
+e.g. (a) enumeration dedupes to one episode per physical contact (pinned id)
+with a disclosed citation/weight merge rule, or (b) the ledger stores
+multiplicity explicitly. Until ruled, Link 2 remains HALTED after a green
+step 1 for chart 1 only.
+
+**Verdict: Link 2 HALTED at step06_candidate_build — enumeration green and
+rehearsal-exact; candidate-ledger write impossible under the current pinned
+contact-id contract at production multiplicity; production left untouched and
+verified clean.**
