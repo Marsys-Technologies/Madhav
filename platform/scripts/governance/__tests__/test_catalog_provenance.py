@@ -648,3 +648,57 @@ def test_compute_segment_resolution_counts_distinguishes_full_partial_none(tmp_p
     assert "scu.test.partial" in stale[0]
     assert "1 lines" in stale[0]
     assert "50-60" in stale[0]
+
+
+# ── C-6: table_unregistered distinct from no_unit_names_it ──────────────────
+
+
+def test_still_outside_asset_with_a_same_domain_unowned_table_reads_table_unregistered():
+    """C-6: `bg_prashna_rules` and `ga_prashna` DO produce units — they only read
+    as outside because a catalog unit queries a table their writer likely owns
+    under a same-domain name (`bg_prashna_lagna_methods`, `ga_prashna_lagna`)
+    that `asset_registry.target_table` never records. That must classify as
+    `table_unregistered`, distinct from the generic `no_unit_names_it` — an
+    asset with no same-domain unowned table at all still gets the generic
+    reason. Mutation this catches: removing the table_unregistered branch makes
+    both assets misreport as the generic, more pessimistic `no_unit_names_it`."""
+
+    def _row(asset_id, layer, target_table, depends_on=()):
+        return cp.AssetRow(
+            asset_id=asset_id,
+            layer=layer,
+            is_active=True,
+            dead_flag=False,
+            target_table=target_table,
+            natural_key_partition=None,
+            depends_on=depends_on,
+            asset_kind="data",
+        )
+
+    assets = {
+        "bg_prashna_rules": _row("bg_prashna_rules", "brahmagyan", None),
+        "bg_cohort": _row("bg_cohort", "brahmagyan", None),  # no same-domain unowned table
+        "ga_real": _row("ga_real", "ganita", "real_table"),
+    }
+    provenance = {
+        "scu.catalog.query_prashna_lagna_methods": cp.ScuProvenance(
+            scu_id="scu.catalog.query_prashna_lagna_methods",
+            no_detector=(
+                "NO_DETECTOR — relation name(s) ['bg_prashna_lagna_methods'] matched no row in "
+                "asset_registry.target_table ('handler.ts:1-1')"
+            ),
+        ),
+        "scu.catalog.get_real": cp.ScuProvenance(
+            scu_id="scu.catalog.get_real",
+            producers=[cp.Producer("ga_real", "real_table", "handler.ts:1-1", "derived_from_source_query")],
+        ),
+    }
+    closure = cp.compute_closure_report(assets, provenance)
+    reasons = {
+        row["asset_id"]: row["reason"]
+        for rows in closure["still_outside_by_layer"].values()
+        for row in rows
+    }
+    assert reasons["bg_prashna_rules"].startswith("table_unregistered (bg_prashna_lagna_methods)")
+    assert reasons["bg_cohort"].startswith("no_unit_names_it")
+    assert closure["still_outside_reason_class_counts"] == {"table_unregistered": 1, "no_unit_names_it": 1}

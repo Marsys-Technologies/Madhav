@@ -41,6 +41,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -980,12 +981,53 @@ def transitive_upstream_closure(seeds: Set[str], depends_on: Dict[str, Sequence[
     return seen
 
 
+_LAYER_ABBREV_PREFIXES = ("bg_", "ga_", "bo_", "ka_", "ph_", "mi_")
+_LAYER_FULL_PREFIXES = ("brahma_", "ganita_", "bodha_", "kala_", "phala_", "mimamsa_")
+_UNOWNED_TABLE_LIST_RE = re.compile(r"relation name\(s\) (\[.*?\]) matched no row")
+
+
+def _domain_stem(name: str) -> str:
+    """C-6: strip a known layer prefix (asset-id abbreviated form OR table-name
+    full-word form) and return the FIRST remaining underscore-delimited token —
+    e.g. `bg_prashna_rules` -> `prashna`, `bg_prashna_lagna_methods` ->
+    `prashna`, `ga_prashna` -> `prashna`. A shared first-token is the signal
+    this lane uses to correlate a still-outside asset with an unowned queried
+    table that its writer likely produces under a different naming convention
+    than `asset_registry.target_table` records — never a guess at WHICH table,
+    only a same-domain correlation offered as a `table_unregistered` finding."""
+    for prefix in _LAYER_ABBREV_PREFIXES + _LAYER_FULL_PREFIXES:
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+            break
+    return name.split("_", 1)[0]
+
+
+def _unowned_tables_from_provenance(provenance: Dict[str, ScuProvenance]) -> Set[str]:
+    """C-6: the distinct set of real (info_schema) tables some catalog SCU's
+    source_query genuinely reads but no asset_registry row claims as
+    target_table — read directly off each SCU's own `relation_unowned_by_registry`
+    no_detector message, never re-queried or re-guessed."""
+    tables: Set[str] = set()
+    for sp in provenance.values():
+        if sp.no_detector and classify_no_detector_reason(sp.no_detector) == "relation_unowned_by_registry":
+            m = _UNOWNED_TABLE_LIST_RE.search(sp.no_detector)
+            if not m:
+                continue
+            try:
+                found = ast.literal_eval(m.group(1))
+            except (ValueError, SyntaxError):
+                continue
+            tables.update(t for t in found if isinstance(t, str))
+    return tables
+
+
 def compute_closure_report(
     assets: Dict[str, AssetRow],
     provenance: Dict[str, ScuProvenance],
 ) -> dict:
     active = active_population(assets)
     depends_on = {a.asset_id: a.depends_on for a in assets.values()}
+    unowned_tables = _unowned_tables_from_provenance(provenance)
 
     reviewed_seed = {
         p.asset_id
@@ -1010,15 +1052,42 @@ def compute_closure_report(
 
     still_outside = active - after_necessary
 
-    def reason_for(asset_id: str) -> str:
-        a = assets[asset_id]
+    def reason_class_and_text(asset_id: str) -> Tuple[str, str]:
         is_producer = asset_id in all_seed
         if is_producer:
-            return "produces a catalog unit but the unit's SCU has no other unresolved path (should not occur)"
+            return "producer_with_no_other_path", (
+                "produces a catalog unit but the unit's SCU has no other unresolved path (should not occur)"
+            )
+        # C-6: bg_prashna_rules and ga_prashna DO produce units — they only read as
+        # outside because the table their writer produces has no asset_registry row
+        # naming it as target_table, so it never entered known_tables/table_to_assets
+        # and the SCU that reads it fell into the 29-class (relation_unowned_by_registry)
+        # instead of resolving to this asset. Distinct from "no_unit_names_it": this
+        # asset likely DOES have a unit; the registry, not the catalog, has the gap
+        # (D5 part 3: a merge/retire candidate, never a true closure failure).
+        stem = _domain_stem(asset_id)
+        matching_tables = sorted(t for t in unowned_tables if _domain_stem(t) == stem)
+        if matching_tables:
+            return "table_unregistered", (
+                f"table_unregistered ({', '.join(matching_tables)}): a catalog unit queries a table "
+                "this asset's writer likely owns under a same-domain name, but no asset_registry row "
+                "claims it as target_table — a registry-coverage gap, not a true absence of a producing unit"
+            )
         has_dependents_in_closure = any(asset_id in assets[o].depends_on for o in after_necessary)
         if has_dependents_in_closure:
-            return "unreachable: appears in some necessary asset's depends_on only outside the active set, or via a superseded edge"
-        return "no catalog unit names this asset as a producer, and no unit-producing asset depends on it (transitively)"
+            return "unreachable_via_superseded_edge", (
+                "unreachable: appears in some necessary asset's depends_on only outside the active set, "
+                "or via a superseded edge"
+            )
+        return "no_unit_names_it", (
+            "no_unit_names_it: no catalog unit names this asset as a producer, and no unit-producing "
+            "asset depends on it (transitively)"
+        )
+
+    still_outside_reasons = {aid: reason_class_and_text(aid) for aid in still_outside}
+    reason_class_counts: Dict[str, int] = {}
+    for _cls, _text in still_outside_reasons.values():
+        reason_class_counts[_cls] = reason_class_counts.get(_cls, 0) + 1
 
     return {
         "population_active": sorted(active),
@@ -1036,9 +1105,10 @@ def compute_closure_report(
             "necessary_assets": sorted(after_necessary),
         },
         "still_outside_by_layer": {
-            layer: [{"asset_id": aid, "reason": reason_for(aid)} for aid in aids]
+            layer: [{"asset_id": aid, "reason": still_outside_reasons[aid][1]} for aid in aids]
             for layer, aids in by_layer(still_outside).items()
         },
+        "still_outside_reason_class_counts": reason_class_counts,
     }
 
 
@@ -1168,6 +1238,18 @@ def write_closure_report_md(closure: dict, out_path: Path = CLOSURE_REPORT_PATH)
         for row in rows:
             lines.append(f"- `{row['asset_id']}` — {row['reason']}")
         lines.append("")
+    lines.append("## Still-outside reason class counts (C-6)")
+    lines.append("")
+    lines.append(
+        "`table_unregistered` is distinct from `no_unit_names_it`: the former means a catalog unit "
+        "DOES read a same-domain table this asset's writer likely produces, just under a name "
+        "`asset_registry.target_table` doesn't record (a registry-coverage gap — D5 part 3 merge/"
+        "retire candidate); the latter means no catalog unit resolves to this asset at all."
+    )
+    lines.append("")
+    for cls, count in sorted(closure["still_outside_reason_class_counts"].items()):
+        lines.append(f"- `{cls}`: **{count}**")
+    lines.append("")
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
 
