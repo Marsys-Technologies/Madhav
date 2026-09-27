@@ -809,9 +809,13 @@ def _refusal_guard(units: list[dict], tset=frozenset()) -> tuple[str, int, str, 
         before = len(deleters)
         deleters |= {f.name for _, f in funcs if any(_call_name(c) in deleters for c in ast.walk(f))}
         grew = len(deleters) > before
-    for u, f in funcs:
-        inline = own_probe[id(f)]
-        probed: dict[str, str] = {}
+    def deletes(nodes) -> bool:
+        return any(_call_name(c) in deleters for c in nodes) or \
+            any(isinstance(c, ast.Constant) and isinstance(c.value, str)
+                and (_SQL_DELETE.search(c.value) or _SQL_TRUNCATE.search(c.value)) for c in nodes)
+
+    def probed_names(f) -> dict[str, str]:
+        inline, probed = own_probe[id(f)], {}
         for a in ast.walk(f):
             if isinstance(a, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
                 val = a.value
@@ -822,32 +826,64 @@ def _refusal_guard(units: list[dict], tset=frozenset()) -> tuple[str, int, str, 
                 if _call_name(val) in probes or (inline and _call_name(val) in _FETCH_CALLS):
                     src = _call_name(val) if _call_name(val) in probes else f"{f.name} (inline)"
                     probed.update({t.id: src for t in tgts if isinstance(t, ast.Name)})
+        return probed
+
+    def populated_ifs(f):
+        probed = probed_names(f)
         for node in ast.walk(f):
-            if not isinstance(node, ast.If):
+            if isinstance(node, ast.If):
+                pol = _probe_polarity(node.test, probes, probed)
+                if pol is not None:
+                    held, path = (node.body, node.orelse) if pol[0] == "populated" else (node.orelse, node.body)
+                    yield node, pol, held, path
+
+    def raise_name(stop) -> str:
+        exc = stop.exc
+        return "raise " + (_call_name(exc) or (exc.id if isinstance(exc, ast.Name) else "an exception"))
+
+    # R241 (follow-up): a GUARD HELPER — a function that raises on the populated reading and deletes nothing
+    # itself (`_assert_empty`) — holds the rebuild for any caller that deletes after calling it (a call
+    # inside a `try` is not counted: the caller may catch it). Resolved to a fixpoint over the scope.
+    raisers: dict[str, tuple[str, str]] = {}
+    for _u, f in funcs:
+        for _node, pol, held, _path in populated_ifs(f):
+            stop = next((x for x in held if isinstance(x, ast.Raise)), None)
+            if stop is not None and f.name not in raisers:
+                raisers[f.name] = (raise_name(stop), pol[1])
+
+    def untried_calls(f):
+        tried = {id(c) for t in ast.walk(f) if isinstance(t, ast.Try) and t.handlers
+                 for s in t.body for c in ast.walk(s)}
+        return [c for c in ast.walk(f) if isinstance(c, ast.Call) and id(c) not in tried]
+    grew = True
+    while grew:
+        grew = False
+        for _u, f in funcs:
+            if f.name in raisers:
                 continue
-            pol = _probe_polarity(node.test, probes, probed)
-            if pol is None:
-                continue
-            held, path = (node.body, node.orelse) if pol[0] == "populated" else (node.orelse, node.body)
+            hit = next((c for c in untried_calls(f) if _call_name(c) in raisers), None)
+            if hit is not None:
+                raisers[f.name] = raisers[_call_name(hit)]
+                grew = True
+
+    for u, f in funcs:
+        for node, pol, held, path in populated_ifs(f):
             stop = next((s for s in held if isinstance(s, (ast.Raise, ast.Return, ast.Continue, ast.Break))), None)
             after = [c for c in ast.walk(f) if getattr(c, "lineno", 0) > node.end_lineno]
-
-            def deletes(nodes) -> bool:
-                return any(_call_name(c) in deleters for c in nodes) or \
-                    any(isinstance(c, ast.Constant) and isinstance(c.value, str)
-                        and (_SQL_DELETE.search(c.value) or _SQL_TRUNCATE.search(c.value)) for c in nodes)
             on_path = [c for s in path for c in ast.walk(s)]
             if stop is not None and deletes(on_path + after):
-                if isinstance(stop, ast.Raise):
-                    exc = stop.exc
-                    what = "raise " + (_call_name(exc) or (exc.id if isinstance(exc, ast.Name) else "an exception"))
-                else:
-                    what = type(stop).__name__.lower()          # return / continue / break
-                return u["rel"], stop.lineno, what, pol[1]
+                what = raise_name(stop) if isinstance(stop, ast.Raise) else type(stop).__name__.lower()
+                return u["rel"], stop.lineno, what, pol[1]          # return / continue / break / raise X
             # R241: a hold that neither raises nor returns — the delete sits ONLY in the empty branch, and
             # nothing in the populated branch or after the `if` deletes: a populated chart is skipped.
             if stop is None and deletes(on_path) and not deletes([c for s in held for c in ast.walk(s)] + after):
                 return u["rel"], node.lineno, "the delete runs only in the output-empty branch", pol[1]
+        for c in untried_calls(f):
+            name = _call_name(c)
+            if name in raisers and name != f.name and \
+                    deletes([x for x in ast.walk(f) if getattr(x, "lineno", 0) > getattr(c, "end_lineno", c.lineno)]):
+                what, probe = raisers[name]
+                return u["rel"], c.lineno, f"{what} in the guard helper {name}", probe
     return None
 
 

@@ -756,3 +756,29 @@ def test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_i
         "        conn.execute('INSERT INTO t_b (chart_id) VALUES (1)')\n")})
     v, notes = ac.idem_scan("bo_m", ["bo_m.py"], "delete_then_insert", ["t_a", "t_b"])
     assert v == verdict and text in notes[0], (v, notes)
+
+
+# ─────────── R241 (follow-up): a guard HELPER that raises on populated output, with the delete in its caller ───────────
+
+@pytest.mark.parametrize("helper_test, call, verdict", [
+    ("self._populated(conn)", "        self._assert_empty(conn)\n", ac.FAIL),                             # the hold
+    ("self._populated(conn)", "        try:\n            self._assert_empty(conn)\n"
+                              "        except RuntimeError:\n            pass\n", ac.PASS),                # caught: no hold
+    ("not self._populated(conn)", "        self._assert_empty(conn)\n", ac.PASS),                         # empty polarity
+])
+def test_r241_a_guard_helper_raising_on_populated_output_holds_its_callers_delete(monkeypatch, tmp_path,
+                                                                                    helper_test, call, verdict):
+    """`_assert_empty` raises when the output probe reads populated and deletes nothing itself; run() calls it,
+    then deletes. The rebuild never reaches the delete on a populated chart: FAIL at the call, naming the
+    helper. Controls: the call inside try/except (the caller may catch it) and a helper raising on the EMPTY
+    reading both PASS. Fails without the fix: the guard looked for a delete after the raise in the SAME
+    function only, so the hold PASSed."""
+    body = call + _THEN_REPLACE
+    files = _hold_writer(body)
+    files["pipeline/orchestrator/writers/ka_h.py"] += (
+        f"\n    def _assert_empty(self, conn):\n        if {helper_test}:\n            raise RuntimeError('held')\n")
+    _sidecar(monkeypatch, tmp_path, files)
+    v, notes = ac.idem_scan("ka_h", ["ka_h.py"], "delete_then_insert", ["t_h"])
+    assert v == verdict, notes
+    if verdict == ac.FAIL:
+        assert "raise RuntimeError in the guard helper _assert_empty" in notes[0], notes
