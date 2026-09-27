@@ -34,7 +34,8 @@ const safeConnection = { id, providerId: 'openai', name: 'Personal', maskedSuffi
 const row = { id, provider_id: 'openai', name: 'Personal', masked_suffix: '••••abcd', validation_state: 'validated',
   credential_version: 2, deleted_at: null, last_validated_at: null, last_checked_at: null, last_error_code: null }
 const makeState = () => ({ connections: [{ ...row }],
-  models: [{ connection_id: id, model_id: 'test-model', display_name: 'Test model', compatible_roles: [...AI_ROLES], available: true }],
+  models: [{ connection_id: id, model_id: 'test-model', display_name: 'Test model', compatible_roles: [...AI_ROLES],
+    supports_tools: false, supports_structured_output: true, available: true }],
   configurations: [{ id: configId, name: 'Four roles', version: 3, deleted_at: null }],
   roles: AI_ROLES.map(role => ({ configuration_id: configId, role, kind: target.kind, connection_id: id, model_id: target.modelId, cli_id: null })),
   defaultChoice: { kind: 'custom_configuration', configurationId: configId }, clis: [], cliModels: [],
@@ -354,7 +355,8 @@ describe('AI Console safe API contracts', () => {
     mocks.listAiConsoleState.mockResolvedValue({ ...state,
       clis: [{ cli_id: 'codex', granted_at: null, revoked_at: null, detected_product: sentinel,
         detected_version: sentinel, validation_state: sentinel, last_checked_at: null }],
-      cliModels: [{ cli_id: 'codex', model_id: sentinel, display_name: sentinel, compatible_roles: [...AI_ROLES], available: true, is_builtin_default: true }],
+      cliModels: [{ cli_id: 'codex', model_id: sentinel, display_name: sentinel, compatible_roles: [...AI_ROLES],
+        supports_tools: false, supports_structured_output: true, available: true, is_builtin_default: true }],
     })
     const response = await root.GET()
     const body = await response.json()

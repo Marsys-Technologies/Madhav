@@ -7,7 +7,7 @@ import type { EncryptedCredential } from './crypto'
 import { writeAiAudit } from './audit'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError } from './errors'
 import {
-  AI_ROLES, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
+  AI_ROLES, CLI_IDS, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
   ProviderIdSchema, RoleAssignmentsSchema, RoutingSnapshotSchema, SafeProviderConnectionSchema,
   type AiChoiceRef, type AiRole, type RoleAssignments, type RoleTarget, type SafeProviderConnection,
 } from './types'
@@ -127,12 +127,14 @@ export async function listAiConsoleState(userId: string) {
   const configurations = await query(`SELECT id,name,version,deleted_at FROM ai_custom_configurations WHERE user_id=$1 ORDER BY created_at,id`, [userId])
   const roles = await query(`SELECT configuration_id,role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 ORDER BY configuration_id,role`, [userId])
   const defaults = await query('SELECT kind,connection_id,model_id,configuration_id,cli_id FROM ai_user_defaults WHERE user_id=$1', [userId])
-  const clis = await query(`SELECT i.cli_id,
+  const clis = await query(`SELECT cli.cli_id,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.detected_product END AS detected_product,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.detected_version END AS detected_version,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.validation_state END AS validation_state,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.last_checked_at END AS last_checked_at,
-    g.granted_at,g.revoked_at FROM ai_cli_installations i LEFT JOIN ai_cli_grants g ON g.cli_id=i.cli_id AND g.user_id=$1 ORDER BY i.cli_id`, [userId])
+    g.granted_at,g.revoked_at FROM unnest($2::text[]) WITH ORDINALITY AS cli(cli_id,ord)
+    LEFT JOIN ai_cli_installations i ON i.cli_id=cli.cli_id
+    LEFT JOIN ai_cli_grants g ON g.cli_id=cli.cli_id AND g.user_id=$1 ORDER BY cli.ord`, [userId, CLI_IDS])
   const cliModels = await query(`SELECT m.cli_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default
     FROM ai_cli_models m JOIN ai_cli_grants g ON g.cli_id=m.cli_id WHERE g.user_id=$1 AND g.revoked_at IS NULL ORDER BY m.cli_id,m.model_id`, [userId])
   return { connections: connections.rows, models: models.rows, configurations: configurations.rows,
@@ -585,20 +587,104 @@ export interface CliInvocationHandle {
   cancel(): void | Promise<void>
 }
 
+export interface CliValidationWrite {
+  state: 'reachable' | 'not_installed' | 'auth_unavailable' | 'unreachable' | 'needs_attention'
+  detectedProduct?: string
+  detectedVersion?: string
+  errorCode?: 'AI_CLI_NOT_INSTALLED' | 'AI_CLI_AUTH_UNAVAILABLE' | 'AI_CLI_UNREACHABLE'
+    | 'AI_CLI_TIMEOUT' | 'AI_CLI_OUTPUT_LIMIT' | 'AI_EXECUTION_FAILED'
+  models?: readonly {
+    modelId: string
+    displayName: string
+    compatibleRoles: readonly AiRole[]
+    supportsTools: boolean
+    supportsStructuredOutput: boolean
+    isBuiltinDefault: boolean
+  }[]
+}
+
+export async function markCliValidationStarted(cliId: string): Promise<void> {
+  const cli = CliIdSchema.parse(cliId)
+  await query(`INSERT INTO ai_cli_installations(cli_id,validation_state,updated_at)
+    VALUES($1,'validating',clock_timestamp())
+    ON CONFLICT(cli_id) DO UPDATE SET validation_state='validating',updated_at=excluded.updated_at`, [cli])
+}
+
+/** Grant-gated preflight. It reveals no installation/auth state on denial. */
+export async function assertCliValidationAuthorized(userId: string, cliId: string): Promise<void> {
+  const cli = CliIdSchema.parse(cliId)
+  const rows = await query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
+    WHERE g.user_id=$1 AND g.cli_id=$2 AND g.revoked_at IS NULL AND p.status='active'`, [userId, cli])
+  if (!rows.rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+}
+
+/** Global host state contains no user or authentication material. */
+export async function storeCliValidation(cliId: string, input: CliValidationWrite): Promise<void> {
+  const cli = CliIdSchema.parse(cliId)
+  const data = z.object({
+    state: z.enum(['reachable', 'not_installed', 'auth_unavailable', 'unreachable', 'needs_attention']),
+    detectedProduct: z.string().min(1).max(120).optional(),
+    detectedVersion: z.string().min(1).max(80).optional(),
+    errorCode: z.enum(['AI_CLI_NOT_INSTALLED', 'AI_CLI_AUTH_UNAVAILABLE', 'AI_CLI_UNREACHABLE',
+      'AI_CLI_TIMEOUT', 'AI_CLI_OUTPUT_LIMIT', 'AI_EXECUTION_FAILED']).optional(),
+    models: z.array(z.object({ modelId: z.string().min(1).max(512), displayName: z.string().min(1).max(120),
+      compatibleRoles: z.array(AiRoleSchema).min(1), supportsTools: z.boolean(), supportsStructuredOutput: z.boolean(),
+      isBuiltinDefault: z.boolean() }).strict()).optional(),
+  }).strict().parse(input)
+  await withTransaction(async client => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
+    await client.query(`INSERT INTO ai_cli_installations
+      (cli_id,detected_product,detected_version,validation_state,last_checked_at,last_error_code,updated_at)
+      VALUES($1,$2,$3,$4,clock_timestamp(),$5,clock_timestamp())
+      ON CONFLICT(cli_id) DO UPDATE SET detected_product=excluded.detected_product,
+      detected_version=excluded.detected_version,validation_state=excluded.validation_state,
+      last_checked_at=excluded.last_checked_at,last_error_code=excluded.last_error_code,updated_at=excluded.updated_at`,
+    [cli, data.detectedProduct ?? null, data.detectedVersion ?? null, data.state, data.errorCode ?? null])
+    await client.query('UPDATE ai_cli_models SET available=false WHERE cli_id=$1', [cli])
+    for (const model of data.models ?? []) {
+      await client.query(`INSERT INTO ai_cli_models
+        (cli_id,model_id,display_name,is_builtin_default,available,compatible_roles,supports_tools,supports_structured_output)
+        VALUES($1,$2,$3,$4,true,$5,$6,$7)
+        ON CONFLICT(cli_id,model_id) DO UPDATE SET display_name=excluded.display_name,
+        is_builtin_default=excluded.is_builtin_default,available=true,compatible_roles=excluded.compatible_roles,
+        supports_tools=excluded.supports_tools,supports_structured_output=excluded.supports_structured_output,last_seen_at=now()`,
+      [cli, model.modelId, model.displayName, model.isBuiltinDefault, model.compatibleRoles,
+        model.supportsTools, model.supportsStructuredOutput])
+    }
+  })
+}
+
+export async function listAdminCliGrants(actorId: string, userId: string) {
+  const rows = await query(`SELECT cli.cli_id,g.granted_at,g.revoked_at,
+    CASE WHEN i.validation_state='reachable' THEN 'reachable'
+      WHEN i.validation_state IS NULL THEN 'unavailable' ELSE 'unavailable' END AS host_state
+    FROM profiles actor CROSS JOIN profiles target
+    CROSS JOIN unnest($3::text[]) WITH ORDINALITY AS cli(cli_id,ord)
+    LEFT JOIN ai_cli_grants g ON g.user_id=target.id AND g.cli_id=cli.cli_id
+    LEFT JOIN ai_cli_installations i ON i.cli_id=cli.cli_id
+    WHERE actor.id=$1 AND actor.status='active' AND actor.role='super_admin' AND target.id=$2
+    ORDER BY cli.ord`, [actorId, userId, CLI_IDS])
+  if (rows.rows.length !== CLI_IDS.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
+  return rows.rows
+}
+
 /**
  * Synchronous process creation/handle acquisition only; never await model completion.
  * The handle stays outside the transaction so failure after spawn (including COMMIT)
  * cancels the started process exactly once. No callback or transaction retry occurs.
  */
-export async function withCliInvocationAuthorization<T extends CliInvocationHandle>(userId: string, cliId: string, start: () => T): Promise<T> {
+export async function withCliInvocationAuthorization<T extends CliInvocationHandle>(userId: string, cliId: string, start: () => T,
+  purpose: 'execution' | 'validation' = 'execution'): Promise<T> {
   const cli = CliIdSchema.parse(cliId)
+  const safePurpose = z.enum(['execution', 'validation']).parse(purpose)
   if (typeof start !== 'function' || utilTypes.isAsyncFunction(start)) throw new AiConsoleError('AI_EXECUTION_FAILED')
   let started: T | undefined
   try {
     return await withUserTransaction(userId, async client => {
       const rows = (await client.query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
         JOIN ai_cli_installations i ON i.cli_id=g.cli_id WHERE g.user_id=$1 AND g.cli_id=$2
-        AND g.revoked_at IS NULL AND p.status='active' AND i.validation_state='reachable' FOR SHARE OF g,p,i`, [userId, cli])).rows
+        AND g.revoked_at IS NULL AND p.status='active'
+        ${safePurpose === 'execution' ? "AND i.validation_state='reachable'" : ''} FOR SHARE OF g,p,i`, [userId, cli])).rows
       if (!rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
       const handle = start()
       // Retain any cancellable result before checking the rest of its contract.
@@ -623,6 +709,7 @@ export async function setCliGrant(actorId: string, userId: string, cliId: string
     if (!actor.rows.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
     const target = await client.query('SELECT id FROM profiles WHERE id=$1 FOR SHARE', [userId])
     if (!target.rows.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    await client.query(`INSERT INTO ai_cli_installations(cli_id) VALUES($1) ON CONFLICT(cli_id) DO NOTHING`, [cli])
     if (granted) {
       const written = await client.query(`INSERT INTO ai_cli_grants(user_id,cli_id,granted_by)
         SELECT id,$2,$3 FROM profiles WHERE id=$1 AND status='active'

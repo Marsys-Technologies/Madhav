@@ -107,6 +107,8 @@ describe('central AI routing resolver', () => {
       expect(plan.roles[role].target).toEqual(target)
       expect(plan.roles[role].adapterType).toBe('cli')
       expect(plan.roles[role].createRuntimeBinding).toBeUndefined()
+      expect(plan.roles[role].cliUserId).toBe('alice')
+      expect(Object.keys(plan.roles[role])).not.toContain('cliUserId')
     }
     expect(mocks.createConnectionRuntimeBinding).not.toHaveBeenCalled()
   })

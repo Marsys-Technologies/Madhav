@@ -53,6 +53,10 @@ function executionTarget(userId: string, role: AiRole, target: RoutingTarget): R
       value: (error: ProviderRuntimeFailure) =>
         markConnectionForRevalidation(userId, target.connectionId, target.credentialVersion, error),
     })
+  } else {
+    Object.defineProperty(execution, 'cliUserId', {
+      enumerable: false, configurable: false, writable: false, value: userId,
+    })
   }
   return Object.freeze(execution)
 }

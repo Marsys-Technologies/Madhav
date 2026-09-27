@@ -12,6 +12,7 @@ import {
   RoleTargetSchema, SafeProviderConnectionSchema, type SafeProviderConnection,
 } from '@/lib/ai-console/types'
 import type { ValidationResult } from '@/lib/ai-console/validation'
+import { CLI_REGISTRY } from '@/lib/ai-console/cli/registry'
 
 export const VALIDATION_DISCLOSURE = 'Testing this connection makes a tiny generation request and may incur a tiny provider charge.'
 export const NameSchema = z.string().trim().min(1).max(120)
@@ -28,6 +29,7 @@ export const CredentialSchema = z.string().min(1).max(4096).regex(/^[\x21-\x7e]+
 export const ChargeSchema = z.object({ acknowledgeCharge: z.literal(true) }).strict()
 export const DeleteSchema = z.object({ confirm: z.boolean().optional() }).strict()
 export type IdContext = { params: Promise<{ id: string }> }
+export type CliContext = { params: Promise<{ cliId: string }> }
 type Row = Record<string, unknown>
 type ConsoleState = Awaited<ReturnType<typeof listAiConsoleState>>
 
@@ -45,6 +47,10 @@ const validationFlights = new Set<string>()
 function checkRate(key: string, limit: number) {
   const result = checkRpm(key, limit)
   if (!result.allowed) throw new RequestError(429, 'rate_limited', result.retry_after_seconds ?? 60)
+}
+
+export function checkAiConsoleMutationRate(userId: string, scope = 'mutation') {
+  checkRate(`ai-console:${scope}:${userId}`, MUTATION_RPM_LIMIT)
 }
 
 /** Synchronous alias reservation; does not consume an additional validation RPM token. */
@@ -89,7 +95,7 @@ export async function withAiConsole(work: (userId: string) => Promise<NextRespon
     const auth = await getServerUserWithProfile()
     if (!auth) return json({ error: 'unauthorized' }, 401)
     if (auth.profile.status !== 'active') return json({ error: 'account_inactive' }, 403)
-    if (mutation) checkRate(`ai-console:mutation:${auth.user.uid}`, MUTATION_RPM_LIMIT)
+    if (mutation) checkAiConsoleMutationRate(auth.user.uid)
     return await work(auth.user.uid)
   } catch (error) {
     if (error instanceof RequestError) {
@@ -107,6 +113,13 @@ export async function withAiConsole(work: (userId: string) => Promise<NextRespon
     }
     return json({ error: normalizeAiError(new AiConsoleError('AI_EXECUTION_FAILED'), { source: 'provider' }) }, 500)
   }
+}
+
+export function requestErrorResponse(error: unknown): NextResponse | null {
+  if (!(error instanceof RequestError)) return null
+  const response = json({ error: error.publicCode }, error.status)
+  if (error.retryAfter !== undefined) response.headers.set('Retry-After', String(Math.max(1, Math.ceil(error.retryAfter))))
+  return response
 }
 
 export function withAiConsoleMutation(work: (userId: string) => Promise<NextResponse>) {
@@ -170,6 +183,11 @@ export async function readId(context: IdContext) {
   if (!parsed.success) throw new RequestError(400, 'invalid_request')
   return parsed.data
 }
+export async function readCliId(context: CliContext) {
+  const parsed = CliIdSchema.safeParse((await context.params).cliId)
+  if (!parsed.success) throw new RequestError(400, 'invalid_request')
+  return parsed.data
+}
 
 const date = (value: unknown) => value == null ? null : z.string().datetime({ offset: true }).parse(value instanceof Date ? value.toISOString() : value)
 const text = (value: unknown) => z.string().min(1).parse(value)
@@ -217,13 +235,33 @@ export function projectState(state: ConsoleState) {
         lastCheckedAt: granted ? date(row.last_checked_at) : null }
     }),
     cliModels: state.cliModels.filter(model => state.clis.some(cli => cli.cli_id === model.cli_id && cli.granted_at != null && cli.revoked_at == null))
-      .map(row => ({ cliId: CliIdSchema.parse(row.cli_id), modelId: text(row.model_id), displayName: text(row.display_name),
+      .map(row => ({ cliId: CliIdSchema.parse(row.cli_id), modelId: row.is_builtin_default ? null : text(row.model_id), displayName: text(row.display_name),
         compatibleRoles: z.array(AiRoleSchema).min(1).parse(row.compatible_roles), available: z.boolean().parse(row.available),
         supportsTools: z.boolean().parse(row.supports_tools),
         supportsStructuredOutput: z.boolean().parse(row.supports_structured_output),
         isBuiltinDefault: z.boolean().parse(row.is_builtin_default) })),
     validationDisclosure: VALIDATION_DISCLOSURE,
   }
+}
+
+export function projectCliCards(state: ConsoleState) {
+  return state.clis.map(row => {
+    const cliId = CliIdSchema.parse(row.cli_id)
+    const productName = CLI_REGISTRY[cliId].productName
+    const granted = row.granted_at != null && row.revoked_at == null
+    if (!granted) return { cliId, productName, state: 'not_granted' as const }
+    const validationState = z.enum(['untested', 'validating', 'reachable', 'not_installed', 'auth_unavailable',
+      'unreachable', 'needs_attention']).parse(row.validation_state ?? 'untested')
+    const models = state.cliModels.filter(model => model.cli_id === cliId && model.available === true).map(model => ({
+      modelId: model.is_builtin_default ? null : text(model.model_id), displayName: text(model.display_name),
+      compatibleRoles: z.array(AiRoleSchema).min(1).parse(model.compatible_roles),
+      supportsTools: z.boolean().parse(model.supports_tools),
+      supportsStructuredOutput: z.boolean().parse(model.supports_structured_output),
+      isBuiltinDefault: z.boolean().parse(model.is_builtin_default),
+    }))
+    return { cliId, productName, state: validationState, detectedProduct: nullableText(row.detected_product),
+      detectedVersion: nullableText(row.detected_version), lastCheckedAt: date(row.last_checked_at), models }
+  })
 }
 
 export async function ownedConnection(userId: string, id: string) {

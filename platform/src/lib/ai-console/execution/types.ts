@@ -29,6 +29,8 @@ export interface ResolvedRoleExecution {
   readonly createRuntimeBinding?: () => Promise<OwnedConnectionRuntimeBinding>
   /** Exact-version runtime health update; deliberately non-enumerable. */
   readonly markRuntimeFailure?: (error: ProviderRuntimeFailure) => Promise<void>
+  /** Present only for CLI-backed roles; deliberately non-enumerable. */
+  readonly cliUserId?: string
 }
 
 export interface ResolvedExecutionPlan {

@@ -13,6 +13,12 @@ import type { ProviderRuntimeFailure, ResolvedRoleExecution } from './types'
 export interface SafeProviderExecutorDescriptor extends SafeRuntimeModelDescriptor {
   readonly role: AiRole
 }
+export interface SafeCliExecutorDescriptor {
+  readonly role: AiRole
+  readonly cliId: string
+  readonly modelId: string | null
+}
+export type SafeRoleExecutorDescriptor = SafeProviderExecutorDescriptor | SafeCliExecutorDescriptor
 
 export interface RoleExecutionRequest {
   systemPrompt: string
@@ -51,7 +57,7 @@ export interface RoleExecutionResult {
 }
 
 export interface RoleExecutor {
-  readonly descriptor: SafeProviderExecutorDescriptor
+  readonly descriptor: SafeRoleExecutorDescriptor
   generate(request: RoleExecutionRequest): Promise<RoleExecutionResult>
   stream(request: RoleExecutionRequest): ReadableStream<RoleExecutionEvent>
 }
