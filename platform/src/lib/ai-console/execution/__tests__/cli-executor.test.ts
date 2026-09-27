@@ -4,6 +4,7 @@ import { createRoleExecutor } from '../index'
 import type { ResolvedRoleExecution } from '../types'
 import type { CliRunner } from '../../cli/runner'
 import { StructuredOutputValidationError } from '../structured-output-error'
+import { encode } from 'gpt-tokenizer'
 
 function execution(overrides: Partial<ResolvedRoleExecution> = {}): ResolvedRoleExecution {
   return {
@@ -35,6 +36,54 @@ describe('CLI role executor', () => {
     expect(runExecution.mock.calls[0][1]).toBe('claude_code')
     expect(runExecution.mock.calls[0][2]).toMatchObject({ modelId: null, maxOutputTokens: 256 })
     expect(runExecution.mock.calls[0][2].stdin).toContain('system')
+  })
+
+  it('accepts a short reported answer inside a large machine envelope', async () => {
+    const stdout = JSON.stringify({ type: 'result', subtype: 'success', is_error: false,
+      result: 'ok', usage: { output_tokens: 1 }, padding: 'x'.repeat(20_000) })
+    const runExecution = vi.fn().mockResolvedValue({ stdout, exitCode: 0, signal: null })
+    const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
+
+    await expect(executor.generate({ ...request, maxOutputTokens: 2 }))
+      .resolves.toMatchObject({ text: 'ok', usage: { outputTokens: 1 } })
+  })
+
+  it('rejects authoritative over-token output before generate or stream exposes any result', async () => {
+    const runExecution = vi.fn().mockResolvedValue({ stdout:
+      '{"type":"result","subtype":"success","is_error":false,"result":"short","usage":{"output_tokens":3}}',
+    exitCode: 0, signal: null })
+    const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
+
+    await expect(executor.generate({ ...request, maxOutputTokens: 2 }))
+      .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+    const reader = executor.stream({ ...request, maxOutputTokens: 2 }).getReader()
+    await expect(reader.read()).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+  })
+
+  it('uses the installed tokenizer for unreported multibyte model output', async () => {
+    const answer = 'नमस्ते 🌕 — ज्योतिषीय उत्तर'
+    const estimatedTokens = encode(answer).length
+    const runExecution = vi.fn().mockResolvedValue({ stdout: JSON.stringify({
+      type: 'result', subtype: 'success', is_error: false, result: answer, usage: {},
+    }), exitCode: 0, signal: null })
+    const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
+
+    await expect(executor.generate({ ...request, maxOutputTokens: estimatedTokens - 1 }))
+      .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+    await expect(executor.generate({ ...request, maxOutputTokens: estimatedTokens }))
+      .resolves.toMatchObject({ text: answer })
+  })
+
+  it('counts an unreported structured candidate before schema validation can return it', async () => {
+    const structured = { answer: 'private '.repeat(200) }
+    const runExecution = vi.fn().mockResolvedValue({ stdout: JSON.stringify({
+      type: 'result', subtype: 'success', is_error: false, result: 'ok', structured_output: structured, usage: {},
+    }), exitCode: 0, signal: null })
+    const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
+    const schema = { type: 'object' as const, properties: { answer: { type: 'string' as const } }, required: ['answer'] }
+
+    await expect(executor.generate({ ...request, responseSchema: schema, maxOutputTokens: 2 }))
+      .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
   })
 
   it('fails tool-bearing work locally before spawning', async () => {

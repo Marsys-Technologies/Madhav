@@ -118,18 +118,16 @@ describe('governed CLI runner', () => {
     expect(JSON.stringify(error)).not.toContain('raw-secret')
   })
 
-  it('enforces the per-invocation output ceiling before returning any partial stdout', async () => {
-    const { definition } = await fixture('process.stdout.write("123456789")')
+  it('keeps the model token limit separate from the raw machine envelope limit', async () => {
+    const envelope = JSON.stringify({ type: 'result', result: 'ok', padding: 'x'.repeat(20_000) })
+    const { definition } = await fixture(`process.stdout.write(${JSON.stringify(envelope)})`)
     const runner = createCliRunner({ registry: { codex: definition } })
     const identity = await runner.inspectInstallation('codex')
     await runner.confirmValidation('codex', identity, '1.0.0')
 
     await expect(runner.runExecution('alice', 'codex', {
-      modelId: null, stdin: '', maxOutputTokens: 8,
-    })).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
-    await expect(runner.runExecution('alice', 'codex', {
-      modelId: null, stdin: '', maxOutputTokens: 9,
-    })).resolves.toEqual({ stdout: '123456789', exitCode: 0, signal: null })
+      modelId: null, stdin: '', maxOutputTokens: 1,
+    })).resolves.toEqual({ stdout: envelope, exitCode: 0, signal: null })
   })
 
   it('rejects non-executable files and invalid UTF-8 machine output', async () => {

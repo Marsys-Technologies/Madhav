@@ -287,6 +287,7 @@ import { POST } from '../route'
 import { HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT } from '@/lib/pariprashna/safety/fixed_responses'
 import { trackRoleExecutor } from '@/lib/ai-console/execution/tracked-executor'
 import { AiConsoleError } from '@/lib/ai-console/errors'
+import { admitByokTurn } from '@/lib/limits/byok_admission'
 
 function makeReq(question: string, conversationId?: string): Request {
   return new Request('http://localhost/api/pariprashna', {
@@ -516,6 +517,74 @@ describe('AI Console BYOK request boundary', () => {
       role: 'synthesizer', phase: 'terminal', status: 'cancelled',
       invocationId: mockInsertRoleReceipt.mock.calls[0][0].invocationId,
     })
+  })
+
+  it('holds admission until delegate cancellation and the cancelled terminal receipt both finish', async () => {
+    byokFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+    let resolveDelegateCleanup!: () => void
+    let resolveTerminalReceipt!: () => void
+    const delegateCleanup = new Promise<void>(resolve => { resolveDelegateCleanup = resolve })
+    const terminalReceipt = new Promise<void>(resolve => { resolveTerminalReceipt = resolve })
+    const delegateCancel = vi.fn(() => delegateCleanup)
+    mockByokSynthStream.mockReturnValue(new ReadableStream({ cancel: delegateCancel }))
+    mockInsertRoleReceipt.mockImplementation((receipt: { phase: string }) =>
+      receipt.phase === 'terminal' ? terminalReceipt : Promise.resolve())
+
+    const routeAdmission = admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 })
+    const siblingAdmission = admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 })
+    expect(routeAdmission.allowed).toBe(true)
+    expect(siblingAdmission.allowed).toBe(true)
+    if (!routeAdmission.allowed || !siblingAdmission.allowed) throw new Error('admission fixture failed')
+    const releaseAdmission = vi.fn(routeAdmission.release)
+    const delegate = {
+      descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,
+        connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' },
+      generate: vi.fn(), stream: mockByokSynthStream,
+    }
+    const trackedSynth = trackRoleExecutor(delegate, {
+      userId: 'route-test-uid', snapshotId: '30000000-0000-4000-8000-000000000003',
+    })
+    const baseRuntime = await mockPrepareByokTurn.getMockImplementation()!({})
+    mockPrepareByokTurn.mockResolvedValueOnce({ ...baseRuntime, releaseAdmission,
+      executors: { ...baseRuntime.executors, synthesizer: trackedSynth } })
+
+    try {
+      const response = await POST(new Request('http://localhost/api/pariprashna', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+          messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+      }))
+      const reader = response.body!.getReader()
+      await reader.read()
+      await vi.waitFor(() => expect(mockByokSynthStream).toHaveBeenCalledOnce())
+      let cancelSettled = false
+      const cancelling = reader.cancel().then(() => { cancelSettled = true })
+
+      await vi.waitFor(() => expect(delegateCancel).toHaveBeenCalledOnce())
+      expect(cancelSettled).toBe(false)
+      expect(releaseAdmission).not.toHaveBeenCalled()
+      expect(admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 }))
+        .toMatchObject({ allowed: false })
+
+      resolveDelegateCleanup()
+      await vi.waitFor(() => expect(mockInsertRoleReceipt).toHaveBeenCalledTimes(2))
+      expect(cancelSettled).toBe(false)
+      expect(releaseAdmission).not.toHaveBeenCalled()
+
+      resolveTerminalReceipt()
+      await cancelling
+      expect(releaseAdmission).toHaveBeenCalledOnce()
+      expect(mockByokWorkerGenerate).not.toHaveBeenCalled()
+      const replacement = admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 })
+      expect(replacement.allowed).toBe(true)
+      if (replacement.allowed) replacement.release()
+    } finally {
+      resolveDelegateCleanup()
+      resolveTerminalReceipt()
+      routeAdmission.release()
+      siblingAdmission.release()
+    }
   })
 })
 

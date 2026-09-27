@@ -38,8 +38,15 @@ tracked executors.
 
 - Native response streaming now owns a turn-local abort controller combined
   with the request signal. Cancelling the response reader aborts the exact
-  tracked role stream, cancels an in-flight pull, prevents later Worker/title
-  work, and releases admission idempotently without writing after close.
+  tracked role stream, then waits for delegate shutdown and the cancelled
+  terminal receipt before its sole finalizer releases admission. A replacement
+  admission cannot enter during cleanup, no later Worker/title work starts, and
+  no write occurs after close.
+- Authenticated Consult and continuation wrap their actual returned response
+  bodies with the same turn-owned cancellation discipline. Direct/custom
+  success, setup failure, mid-stream writer failure, on-finish failure, and
+  deferred reader cancellation all retain admission through cleanup. The
+  flag-off Consult adapter request and AI-SDK event vocabulary remain unchanged.
 - The combined `AbortSignal` reaches planner-history compression, Planner/Deep
   Planner primary and repair, durable summary, interpretation primary and
   repair, title, and Synthesizer/Consult/continuation. Every optional model call
@@ -50,9 +57,11 @@ tracked executors.
   cap. Hydrated evidence plus attachments are measured again in UTF-8 bytes
   before consuming stages.
 - Every flag-on role request carries an explicit governed `maxOutputTokens`.
-  The CLI runner additionally enforces a conservative per-invocation stdout
-  ceiling of one UTF-8 byte per requested token, bounded by the existing 1 MiB
-  outer limit, and returns no partial output on overflow.
+  The CLI runner retains its independent 1 MiB raw transport envelope. Only
+  after strict JSON/JSONL parsing does the executor enforce model output: it
+  uses authoritative reported output usage when present, otherwise the
+  installed `gpt-tokenizer` over parsed text/structured candidate. An overflow
+  rejects the whole result before any event or partial output is returned.
 - The admission release is idempotent and attached to all pre-stream setup,
   writer/on-finish, persistence, stream error, cancellation, and normal terminal
   paths. It remains held while streaming.
@@ -76,11 +85,9 @@ routing metadata.
 
 ## Verification
 
-- Refreshed round-two focused native/Consult/continuation, full-history cap,
-  preflight, tracked/provider/CLI execution and planner/synthesis aggregate:
-  95 pass. POST-level route and cap matrix: 35 pass; provider/CLI/tracked
-  executor aggregate: 57 pass.
-- Full Vitest aggregate: 13,183 pass, 732 skipped, 2 todo.
+- Refreshed round-three native/Consult/continuation cleanup, CLI transport,
+  parsed-token limits, preflight and tracked execution aggregate: 100 pass.
+- Full Vitest aggregate: 13,196 pass, 732 skipped, 2 todo.
 - TypeScript: `npx tsc --noEmit --skipLibCheck` passes.
 - Full ESLint: zero errors and 587 repository-baseline warnings. Scoped
   changed-file ESLint excluding the pre-existing warning-heavy Consult monolith

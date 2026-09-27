@@ -1,6 +1,7 @@
 import 'server-only'
 import { inspect } from 'node:util'
 import Ajv from 'ajv'
+import { encode } from 'gpt-tokenizer'
 import { AiConsoleError, normalizeAiError } from '../errors'
 import { CLI_REGISTRY, type CliDefinition } from '../cli/registry'
 import { cliRunner, type CliRunner } from '../cli/runner'
@@ -62,6 +63,7 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
         signal: request.abortSignal,
       })
       const parsed = validateMachineOutput(definition.execution!.outputFormat, result.stdout)
+      enforceModelOutputLimit(parsed, request.maxOutputTokens)
       let structured = parsed.structured
       if (request.responseSchema) {
         if (structured === undefined) {
@@ -82,6 +84,18 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
       throw new AiConsoleError(safe.code, execution.role)
     }
   }
+}
+
+function enforceModelOutputLimit(parsed: ReturnType<typeof validateMachineOutput>, maxOutputTokens?: number): void {
+  if (maxOutputTokens === undefined) return
+  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0) {
+    throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
+  }
+  const measured = parsed.reportedOutputTokens ?? Math.max(
+    encode(parsed.text).length,
+    parsed.structured === undefined ? 0 : encode(JSON.stringify(parsed.structured)).length,
+  )
+  if (measured > maxOutputTokens) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
 }
 
 function stream(execution: ResolvedRoleExecution, definition: CliDefinition, runner: CliRunner,

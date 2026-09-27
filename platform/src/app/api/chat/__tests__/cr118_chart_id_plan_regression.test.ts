@@ -37,6 +37,13 @@ const { byokFlag, prepareByokTurn, getConversationSelection } = vi.hoisted(() =>
   byokFlag: { on: false }, prepareByokTurn: vi.fn(), getConversationSelection: vi.fn(),
 }))
 const { chartPermission } = vi.hoisted(() => ({ chartPermission: { value: 'view' as 'view' | 'deny' } }))
+const integration = vi.hoisted(() => ({
+  actualDispatch: false,
+  conversation: null as null | { chart_id: string },
+  pendingOnEvent: vi.fn(), pendingOnTextDelta: vi.fn(), pendingClear: vi.fn(async () => undefined),
+  writeMessages: vi.fn(async () => ({ verified: true, messageIds: [crypto.randomUUID()] })),
+  legacyChat: vi.fn(),
+}))
 
 vi.mock('@/lib/firebase/server', () => ({
   getServerUser: vi.fn(async () => ({ uid: 'tester-uid' })),
@@ -60,13 +67,26 @@ vi.mock('@/lib/auth/authorizeChartAccess', () => ({
 }))
 
 vi.mock('@/lib/conversations', () => ({
-  getConversation: vi.fn(async () => null),
+  getConversation: vi.fn(async () => integration.conversation),
   insertConversationWithId: vi.fn(async () => undefined),
   updateConversationTitle: vi.fn(async () => undefined),
 }))
 
 vi.mock('@/lib/persistence/pending_streams_writer', () => ({
-  createPendingStreamWriter: vi.fn(() => ({})),
+  createPendingStreamWriter: vi.fn(() => ({ onEvent: integration.pendingOnEvent,
+    onTextDelta: integration.pendingOnTextDelta, clear: integration.pendingClear })),
+}))
+vi.mock('@/lib/persistence/conversation_writer', () => ({ writeConversationMessages: integration.writeMessages }))
+vi.mock('@/lib/synthesis/streaming_citation_validator', () => ({
+  validateCitationsForStream: vi.fn(() => ({ gateResult: 'PASS', gateReason: 'test',
+    layer1Count: 0, layer2Verified: 0, layer2Leaked: 0 })),
+}))
+vi.mock('@/lib/providers/dispatcher', () => ({
+  getAdapter: vi.fn(() => ({
+    getManifest: () => ({ adaptiveToolLoop: false }),
+    tools: () => ({ tools: [] }),
+    chat: integration.legacyChat,
+  })),
 }))
 
 vi.mock('@/lib/bundle/manifest_reader', () => ({
@@ -184,9 +204,11 @@ const { dispatchSpy } = vi.hoisted(() => ({
     })
   }),
 }))
-vi.mock('@/lib/pipelines/shared', () => ({
-  runAdapterDispatch: dispatchSpy,
-}))
+vi.mock('@/lib/pipelines/shared', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/pipelines/shared')>()
+  return { ...actual, runAdapterDispatch: (context: Parameters<typeof actual.runAdapterDispatch>[0]) =>
+    integration.actualDispatch ? actual.runAdapterDispatch(context) : dispatchSpy(context) }
+})
 
 import { POST } from '../consult/route'
 import { AiConsoleError } from '@/lib/ai-console/errors'
@@ -205,6 +227,15 @@ function makePost(chartId: string, text: string): Request {
 beforeEach(() => {
   byokFlag.on = false
   chartPermission.value = 'view'
+  integration.actualDispatch = false
+  integration.conversation = null
+  integration.pendingOnEvent.mockReset()
+  integration.pendingOnTextDelta.mockReset()
+  integration.pendingClear.mockReset().mockResolvedValue(undefined)
+  integration.writeMessages.mockReset().mockResolvedValue({ verified: true, messageIds: [crypto.randomUUID()] })
+  integration.legacyChat.mockReset().mockImplementation(async function* () {
+    yield { type: 'text_delta', text: 'legacy answer' }
+  })
   prepareByokTurn.mockReset()
   getConversationSelection.mockReset().mockResolvedValue({ kind: 'default' })
   dispatchSpy.mockClear()
@@ -309,6 +340,220 @@ describe('AI Console BYOK Consult POST boundary', () => {
       maxOutputTokens: 16_384 })
     expect(dispatchSpy).toHaveBeenCalledOnce()
     expect(dispatchSpy.mock.calls[0][0]).toMatchObject({ byokRuntime: { executors } })
+  })
+
+  it.each(['direct', 'custom'] as const)(
+    'streams an actual successful %s runtime response and releases after on-finish',
+    async (configurationKind) => {
+      byokFlag.on = true
+      integration.actualDispatch = true
+      const conversationId = crypto.randomUUID()
+      integration.conversation = { chart_id: NATIVE }
+      const synthStream = vi.fn(() => new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'text_delta', text: 'routed consult answer' })
+          controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+            usage: { inputTokens: 1, outputTokens: 3, totalTokens: 4 } })
+          controller.close()
+        },
+      }))
+      const target = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+        descriptor: { role, providerId: 'openai',
+          connectionId: configurationKind === 'direct' ? 'connection-direct' : `connection-${role}`,
+          modelId: configurationKind === 'direct' ? 'model-direct' : `model-${role}` },
+        generate: vi.fn(), stream: role === 'synthesizer' ? synthStream : vi.fn(),
+      })
+      const executors = { synthesizer: target('synthesizer'), planner: target('planner'),
+        deep_planner: target('deep_planner'), worker: target('worker') }
+      const releaseAdmission = vi.fn()
+      prepareByokTurn.mockResolvedValueOnce({
+        kind: 'byok', selection: { kind: 'default' }, plan: {}, snapshotId: crypto.randomUUID(),
+        safeSnapshot: { roles: { synthesizer: { kind: 'provider_model', providerId: 'openai',
+          connectionId: executors.synthesizer.descriptor.connectionId,
+          modelId: executors.synthesizer.descriptor.modelId } } },
+        executors, displayModelId: executors.synthesizer.descriptor.modelId, releaseAdmission,
+      })
+
+      const response = await POST(new Request('http://localhost/api/chat/consult', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chartId: NATIVE, conversationId,
+          messages: [{ id: 'm1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+      }))
+      expect(response.status).toBe(200)
+      const wire = await response.text()
+      expect(wire).toContain('routed consult answer')
+      expect(wire).toContain('data-persistence')
+      expect(wire).toContain('[DONE]')
+      expect(synthStream).toHaveBeenCalledWith(expect.objectContaining({
+        abortSignal: expect.any(AbortSignal), maxOutputTokens: 16_384,
+      }))
+      expect(releaseAdmission).toHaveBeenCalledOnce()
+      expect(integration.writeMessages).toHaveBeenCalledOnce()
+      expect(dispatchSpy).not.toHaveBeenCalled()
+    },
+  )
+
+  it('waits for actual Consult reader-cancel cleanup before releasing admission', async () => {
+    byokFlag.on = true
+    integration.actualDispatch = true
+    integration.conversation = { chart_id: NATIVE }
+    let resolveCleanup!: () => void
+    const cleanup = new Promise<void>(resolve => { resolveCleanup = resolve })
+    const delegateCancel = vi.fn(() => cleanup)
+    let synthSignal: AbortSignal | undefined
+    const synthStream = vi.fn((input: { abortSignal?: AbortSignal }) => {
+      synthSignal = input.abortSignal
+      return new ReadableStream({ cancel: delegateCancel })
+    })
+    const executor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+      descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+      generate: vi.fn(), stream: role === 'synthesizer' ? synthStream : vi.fn(),
+    })
+    const executors = { synthesizer: executor('synthesizer'), planner: executor('planner'),
+      deep_planner: executor('deep_planner'), worker: executor('worker') }
+    const releaseAdmission = vi.fn()
+    prepareByokTurn.mockResolvedValueOnce({ kind: 'byok', selection: { kind: 'default' }, plan: {},
+      snapshotId: crypto.randomUUID(), safeSnapshot: { roles: { synthesizer: { kind: 'provider_model',
+        providerId: 'openai', connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' } } },
+      executors, displayModelId: 'model-synthesizer', releaseAdmission })
+
+    const response = await POST(new Request('http://localhost/api/chat/consult', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: NATIVE, conversationId: crypto.randomUUID(),
+        messages: [{ id: 'm1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+    }))
+    const reader = response.body!.getReader()
+    await reader.read()
+    await vi.waitFor(() => expect(synthStream).toHaveBeenCalledOnce())
+    let settled = false
+    const cancelling = reader.cancel().then(() => { settled = true })
+    await vi.waitFor(() => expect(delegateCancel).toHaveBeenCalledOnce())
+    expect(synthSignal?.aborted).toBe(true)
+    expect(settled).toBe(false)
+    expect(releaseAdmission).not.toHaveBeenCalled()
+    resolveCleanup()
+    await cancelling
+    expect(releaseAdmission).toHaveBeenCalledOnce()
+  })
+
+  it('releases admission for an actual stream setup failure without exposing internals', async () => {
+    byokFlag.on = true
+    integration.actualDispatch = true
+    integration.pendingOnEvent.mockImplementationOnce(() => { throw new Error('private setup failure') })
+    const synthStream = vi.fn()
+    const releaseAdmission = vi.fn()
+    const executor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+      descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+      generate: vi.fn(), stream: role === 'synthesizer' ? synthStream : vi.fn(),
+    })
+    const executors = { synthesizer: executor('synthesizer'), planner: executor('planner'),
+      deep_planner: executor('deep_planner'), worker: executor('worker') }
+    prepareByokTurn.mockResolvedValueOnce({ kind: 'byok', selection: { kind: 'default' }, plan: {},
+      snapshotId: crypto.randomUUID(), safeSnapshot: { roles: { synthesizer: { kind: 'provider_model',
+        providerId: 'openai', connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' } } },
+      executors, displayModelId: 'model-synthesizer', releaseAdmission })
+
+    const response = await POST(makePost(NATIVE, 'Question'))
+    const wire = await response.text()
+    expect(wire).not.toContain('private setup failure')
+    expect(synthStream).not.toHaveBeenCalled()
+    expect(releaseAdmission).toHaveBeenCalledOnce()
+  })
+
+  it('releases admission after an actual mid-stream writer failure and emits only a safe error', async () => {
+    byokFlag.on = true
+    integration.actualDispatch = true
+    integration.pendingOnTextDelta.mockImplementationOnce(() => { throw new Error('private writer failure') })
+    const synthStream = vi.fn(() => new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: 'text_delta', text: 'uncommitted answer' })
+        controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+          usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
+        controller.close()
+      },
+    }))
+    const executor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+      descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+      generate: vi.fn(), stream: role === 'synthesizer' ? synthStream : vi.fn(),
+    })
+    const executors = { synthesizer: executor('synthesizer'), planner: executor('planner'),
+      deep_planner: executor('deep_planner'), worker: executor('worker') }
+    const releaseAdmission = vi.fn()
+    prepareByokTurn.mockResolvedValueOnce({ kind: 'byok', selection: { kind: 'default' }, plan: {},
+      snapshotId: crypto.randomUUID(), safeSnapshot: { roles: { synthesizer: { kind: 'provider_model',
+        providerId: 'openai', connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' } } },
+      executors, displayModelId: 'model-synthesizer', releaseAdmission })
+
+    const response = await POST(makePost(NATIVE, 'Question'))
+    const wire = await response.text()
+    expect(wire).not.toContain('private writer failure')
+    expect(wire).toContain('The selected AI could not complete the request')
+    expect(releaseAdmission).toHaveBeenCalledOnce()
+  })
+
+  it('completes the actual Consult wire and releases admission when on-finish persistence fails', async () => {
+    byokFlag.on = true
+    integration.actualDispatch = true
+    integration.writeMessages.mockRejectedValueOnce(new Error('private persistence failure'))
+    const synthStream = vi.fn(() => new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: 'text_delta', text: 'answer despite persistence failure' })
+        controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+          usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
+        controller.close()
+      },
+    }))
+    const executor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+      descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+      generate: vi.fn(), stream: role === 'synthesizer' ? synthStream : vi.fn(),
+    })
+    const executors = { synthesizer: executor('synthesizer'), planner: executor('planner'),
+      deep_planner: executor('deep_planner'), worker: executor('worker') }
+    const releaseAdmission = vi.fn()
+    prepareByokTurn.mockResolvedValueOnce({ kind: 'byok', selection: { kind: 'default' }, plan: {},
+      snapshotId: crypto.randomUUID(), safeSnapshot: { roles: { synthesizer: { kind: 'provider_model',
+        providerId: 'openai', connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' } } },
+      executors, displayModelId: 'model-synthesizer', releaseAdmission })
+
+    const response = await POST(makePost(NATIVE, 'Question'))
+    const wire = await response.text()
+    expect(wire).toContain('answer despite persistence failure')
+    expect(wire).not.toContain('private persistence failure')
+    expect(wire).toContain('[DONE]')
+    expect(releaseAdmission).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Consult flag-off request and wire golden parity', () => {
+  it('preserves the legacy adapter request and AI-SDK event vocabulary', async () => {
+    integration.actualDispatch = true
+    const conversationId = crypto.randomUUID()
+    integration.conversation = { chart_id: NATIVE }
+
+    const response = await POST(new Request('http://localhost/api/chat/consult', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: NATIVE, conversationId,
+        messages: [{ id: 'm1', role: 'user', parts: [{ type: 'text', text: 'Legacy golden question' }] }] }),
+    }))
+    const wire = await response.text()
+    const eventTypes = wire.split('\n')
+      .filter(line => line.startsWith('data: {'))
+      .map(line => JSON.parse(line.slice(6)) as { type: string })
+      .map(event => event.type)
+
+    expect(response.headers.get('x-vercel-ai-ui-message-stream')).toBe('v1')
+    expect(integration.legacyChat).toHaveBeenCalledOnce()
+    expect(integration.legacyChat.mock.calls[0][0]).toMatchObject({
+      messages: expect.arrayContaining([{ role: 'user', content: 'Legacy golden question' }]),
+    })
+    expect(eventTypes).toEqual([
+      'start', 'data-orientation', 'data-stage', 'data-stage', 'data-stage',
+      'data-tool', 'data-tool', 'data-tool', 'data-tool', 'data-stage', 'data-stage',
+      'text-start', 'text-delta', 'text-end', 'data-persistence', 'data-judgment-flags',
+      'finish', 'data-stage', 'data-observability',
+    ])
+    expect(wire).toContain('[DONE]')
+    expect(prepareByokTurn).not.toHaveBeenCalled()
   })
 })
 

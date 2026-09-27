@@ -4,14 +4,19 @@ vi.mock('server-only', () => ({}))
 const mocks = vi.hoisted(() => ({
   prepare: vi.fn(), release: vi.fn(), stream: vi.fn(), cancelled: vi.fn(),
   byok: { on: true }, loadMessages: vi.fn(), streamText: vi.fn(), getEffectiveModel: vi.fn(),
-  resolveModel: vi.fn(),
+  resolveModel: vi.fn(), realWire: { on: false },
 }))
-vi.mock('ai', async importOriginal => ({
-  ...await importOriginal<typeof import('ai')>(),
-  createUIMessageStream: ({ execute }: { execute: unknown }) => ({ execute }),
-  createUIMessageStreamResponse: ({ stream }: { stream: unknown }) => ({ stream }),
-  streamText: mocks.streamText,
-}))
+vi.mock('ai', async importOriginal => {
+  const actual = await importOriginal<typeof import('ai')>()
+  return {
+    ...actual,
+    createUIMessageStream: (args: Parameters<typeof actual.createUIMessageStream>[0]) => mocks.realWire.on
+      ? actual.createUIMessageStream(args) : { execute: args.execute },
+    createUIMessageStreamResponse: (args: Parameters<typeof actual.createUIMessageStreamResponse>[0]) =>
+      mocks.realWire.on ? actual.createUIMessageStreamResponse(args) : { stream: args.stream },
+    streamText: mocks.streamText,
+  }
+})
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: vi.fn(async () => ({ uid: 'alice' })) }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn(async () => ({ rows: [{ role: 'guest', status: 'active' }] })) }))
 vi.mock('@/lib/conversations', () => ({ getConversation: vi.fn(async () => ({ chart_id: crypto.randomUUID() })) }))
@@ -32,6 +37,7 @@ describe('consult continuation BYOK lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.byok.on = true
+    mocks.realWire.on = false
     mocks.loadMessages.mockResolvedValue([
       { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Continue this reading' }] },
     ])
@@ -66,15 +72,48 @@ describe('consult continuation BYOK lifecycle', () => {
   })
 
   it('cancels an unfinished reader and releases once when the writer fails mid-stream', async () => {
+    let resolveCleanup!: () => void
+    const cleanup = new Promise<void>(resolve => { resolveCleanup = resolve })
+    mocks.cancelled.mockReturnValueOnce(cleanup)
     const response = await POST(new Request('http://local/api/chat/consult/continue', {
       method: 'POST', body: JSON.stringify({ conversation_id: crypto.randomUUID(), last_message_id: crypto.randomUUID() }),
     })) as unknown as { stream: { execute(args: { writer: { write(event: unknown): void } }): Promise<void> } }
     let writes = 0
-    await response.stream.execute({ writer: { write: () => {
+    const executing = response.stream.execute({ writer: { write: () => {
       writes++
       if (writes === 3) throw new Error('writer failed')
     } } })
+    await vi.waitFor(() => expect(mocks.cancelled).toHaveBeenCalledOnce())
+    expect(mocks.release).not.toHaveBeenCalled()
+    resolveCleanup()
+    await executing
     expect(mocks.cancelled).toHaveBeenCalledOnce()
+    expect(mocks.release).toHaveBeenCalledOnce()
+  })
+
+  it('makes actual response-reader cancellation wait for deferred executor cleanup before release', async () => {
+    mocks.realWire.on = true
+    let resolveCleanup!: () => void
+    const cleanup = new Promise<void>(resolve => { resolveCleanup = resolve })
+    let invocationSignal: AbortSignal | undefined
+    mocks.stream.mockImplementationOnce((input: { abortSignal?: AbortSignal }) => {
+      invocationSignal = input.abortSignal
+      return new ReadableStream({ cancel: () => cleanup })
+    })
+
+    const response = await POST(new Request('http://local/api/chat/consult/continue', {
+      method: 'POST', body: JSON.stringify({ conversation_id: crypto.randomUUID(), last_message_id: crypto.randomUUID() }),
+    }))
+    const reader = response.body!.getReader()
+    await reader.read()
+    await vi.waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
+    let settled = false
+    const cancelling = reader.cancel().then(() => { settled = true })
+    await vi.waitFor(() => expect(invocationSignal?.aborted).toBe(true))
+    expect(settled).toBe(false)
+    expect(mocks.release).not.toHaveBeenCalled()
+    resolveCleanup()
+    await cancelling
     expect(mocks.release).toHaveBeenCalledOnce()
   })
 

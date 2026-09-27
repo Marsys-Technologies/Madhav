@@ -160,6 +160,13 @@ export async function POST(request: Request): Promise<Response> {
     ? AbortSignal.any([request.signal, turnAbort.signal])
     : request.signal
   let sourceCancelled = false
+  let execution: Promise<void> | undefined
+  let runtimeFinalized = false
+  const finalizeRuntime = (): void => {
+    if (runtimeFinalized || runtime.kind !== 'byok') return
+    runtimeFinalized = true
+    runtime.releaseAdmission()
+  }
   let captureEnded = false
   const endCapture = () => {
     if (captureEnded) return
@@ -170,9 +177,8 @@ export async function POST(request: Request): Promise<Response> {
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const execution = (async () => {
+      execution = (async () => {
       if (runtime.kind === 'byok' && turnSignal.aborted) {
-        runtime.releaseAdmission()
         return
       }
       // PB-2/M-5: seed this turn's ring buffer BEFORE the first event is
@@ -183,11 +189,9 @@ export async function POST(request: Request): Promise<Response> {
       try {
         await openTurnBuffer({ turnId, chartId, conversationId })
         if (runtime.kind === 'byok' && turnSignal.aborted) {
-          runtime.releaseAdmission()
           return
         }
       } catch (error) {
-        if (runtime.kind === 'byok') runtime.releaseAdmission()
         controller.error(error)
         return
       }
@@ -215,7 +219,6 @@ export async function POST(request: Request): Promise<Response> {
         })
         em.phase({ phase: 'plan', status: 'start' })
       } catch (error) {
-        if (runtime.kind === 'byok') runtime.releaseAdmission()
         endCapture()
         controller.error(error)
         return
@@ -225,7 +228,6 @@ export async function POST(request: Request): Promise<Response> {
       const finish = (status: 'ok' | 'error' | 'aborted'): void => {
         if (finished) return
         finished = true
-        if (runtime.kind === 'byok') runtime.releaseAdmission()
         if (!sourceCancelled) {
           em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
           em.close()
@@ -458,19 +460,18 @@ export async function POST(request: Request): Promise<Response> {
         }
         return finish('error')
       }
-      })()
+      })().finally(finalizeRuntime)
       if (runtime.kind === 'byok') {
-        void execution.catch(() => runtime.releaseAdmission())
+        void execution.catch(() => undefined)
         return
       }
       return execution
     },
-    cancel() {
+    async cancel() {
       if (runtime.kind !== 'byok') return
       sourceCancelled = true
       turnAbort!.abort()
-      runtime.releaseAdmission()
-      endCapture()
+      await execution?.catch(() => undefined)
     },
   })
 

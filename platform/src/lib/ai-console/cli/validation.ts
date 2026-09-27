@@ -153,12 +153,14 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
     const inputTokens = parsed.data.usage?.input_tokens ?? 0
     const outputTokens = parsed.data.usage?.output_tokens ?? 0
     return { text: parsed.data.result, structured: parsed.data.structured_output,
-      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
+      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+      reportedOutputTokens: parsed.data.usage?.output_tokens }
   }
 
   let text = ''
   let inputTokens = 0
   let outputTokens = 0
+  let reportedOutputTokens: number | undefined
   let completed = false
   const lines = stdout.split(/\r?\n/).filter(Boolean)
   if (!lines.length) throw new AiConsoleError('AI_EXECUTION_FAILED')
@@ -182,11 +184,13 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
       if (!terminal.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
       inputTokens = terminal.data.usage?.input_tokens ?? 0
       outputTokens = terminal.data.usage?.output_tokens ?? 0
+      reportedOutputTokens = terminal.data.usage?.output_tokens
       completed = true
     } else if (!['thread.started', 'turn.started', 'item.started'].includes(event.data.type)) {
       throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
   }
   if (!text || !completed) throw new AiConsoleError('AI_EXECUTION_FAILED')
-  return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens } }
+  return { text, usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+    reportedOutputTokens }
 }

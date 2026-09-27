@@ -75,7 +75,6 @@ interface PreparedCliProcess {
   readonly processArgs: readonly string[]
   readonly stdinBytes: Buffer
   readonly cwd: string
-  readonly stdoutByteLimit: number
 }
 
 export interface CliRunner {
@@ -161,12 +160,12 @@ class GovernedCliRunner implements CliRunner {
         : definition.id === 'claude_code' ? { schemaPath: schemaJson } : {}
     const args = buildExecutionArgs(definition, input.modelId, schemaOption)
     return await this.runFixedAuthorized(userId, cliId, args, input.stdin, input.signal,
-      definition.id === 'codex' ? schemaJson : undefined, 'execution', input.maxOutputTokens)
+      definition.id === 'codex' ? schemaJson : undefined, 'execution')
   }
 
   private async runFixedAuthorized(userId: string, cliId: CliId, args: readonly string[], stdin: string,
     signal: AbortSignal | undefined, schemaJson: string | undefined,
-    purpose: 'execution' | 'validation', maxOutputTokens?: number): Promise<CliProcessResult> {
+    purpose: 'execution' | 'validation'): Promise<CliProcessResult> {
     const release = await this.acquire(cliId, signal)
     let prepared: PreparedCliProcess | undefined
     let transferred = false
@@ -184,7 +183,7 @@ class GovernedCliRunner implements CliRunner {
         }, purpose, async () => {
           if (!identity && purpose === 'validation') identity = await this.inspectInstallation(cliId)
           if (!identity) throw new AiConsoleError('AI_CLI_UNREACHABLE')
-          prepared = await this.prepare(identity, args, stdin, schemaJson, maxOutputTokens)
+          prepared = await this.prepare(identity, args, stdin, schemaJson)
           try { await assertCurrentInstallationIdentity(definition, identity) }
           catch {
             this.invalidateIdentity(cliId, identity)
@@ -265,18 +264,13 @@ class GovernedCliRunner implements CliRunner {
   }
 
   private async prepare(identity: CliInstallationIdentity, args: readonly string[], input: string,
-    schemaJson?: string, maxOutputTokens?: number): Promise<PreparedCliProcess> {
+    schemaJson?: string): Promise<PreparedCliProcess> {
     if (process.platform === 'win32') throw new AiConsoleError('AI_CLI_UNREACHABLE')
     if (!Array.isArray(args) || args.some(arg => typeof arg !== 'string' || arg.includes('\0'))) {
       throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
     const stdinBytes = Buffer.from(input, 'utf8')
     if (stdinBytes.byteLength > this.limits.stdinBytes) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
-    if (maxOutputTokens !== undefined
-      && (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0)) {
-      throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
-    }
-    const stdoutByteLimit = Math.min(this.limits.stdoutBytes, maxOutputTokens ?? this.limits.stdoutBytes)
     const cwd = await mkdtemp(resolve(tmpdir(), 'madhav-ai-cli-'))
     try {
       let schemaPath: string | undefined
@@ -289,7 +283,7 @@ class GovernedCliRunner implements CliRunner {
         : arg === '__SCHEMA__' && schemaPath ? schemaPath : arg)
       const executable = identity.interpreter?.realpath ?? identity.entrypoint.realpath
       const processArgs = identity.interpreter ? [identity.entrypoint.realpath, ...fixedArgs] : fixedArgs
-      return Object.freeze({ executable, processArgs, stdinBytes, cwd, stdoutByteLimit })
+      return Object.freeze({ executable, processArgs, stdinBytes, cwd })
     } catch (error) {
       await rm(cwd, { recursive: true, force: true })
       throw error
@@ -371,7 +365,7 @@ class GovernedCliRunner implements CliRunner {
     void completion.catch(() => undefined)
     child.stdout.on('data', (chunk: Buffer) => {
       stdoutBytes += chunk.byteLength
-      if (stdoutBytes > prepared.stdoutByteLimit) { fail(new AiConsoleError('AI_CLI_OUTPUT_LIMIT')); return }
+      if (stdoutBytes > this.limits.stdoutBytes) { fail(new AiConsoleError('AI_CLI_OUTPUT_LIMIT')); return }
       stdout.push(Buffer.from(chunk))
     })
     child.stderr.on('data', (chunk: Buffer) => {

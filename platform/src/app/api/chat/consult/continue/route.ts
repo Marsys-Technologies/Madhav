@@ -101,10 +101,17 @@ export async function POST(request: Request) {
           .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
           .map(part => part.text).join(''),
       }))
+      const turnAbort = new AbortController()
+      const turnSignal = AbortSignal.any([request.signal, turnAbort.signal])
+      let execution: Promise<void> | undefined
       const uiStream = createUIMessageStream({
-        execute: async ({ writer }) => {
+        onError: () => new AiConsoleError('AI_EXECUTION_FAILED').message,
+        execute: ({ writer }) => {
+          execution = (async () => {
           let reader: ReadableStreamDefaultReader<RoleExecutionEvent> | undefined
           let completed = false
+          let abortCleanup: Promise<void> | undefined
+          let cancelOnAbort: (() => void) | undefined
           try {
             const id = crypto.randomUUID()
             writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
@@ -112,9 +119,13 @@ export async function POST(request: Request) {
             reader = runtime.executors.synthesizer.stream({
               systemPrompt: CONTINUATION_INSTRUCTION,
               messages: history,
-              abortSignal: request.signal,
+              abortSignal: turnSignal,
               maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
             }).getReader()
+            cancelOnAbort = () => {
+              abortCleanup ??= reader!.cancel().catch(() => undefined)
+            }
+            turnSignal.addEventListener('abort', cancelOnAbort, { once: true })
             while (true) {
               const next = await reader.read()
               if (next.done) { completed = true; break }
@@ -129,13 +140,35 @@ export async function POST(request: Request) {
               ? error : new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
             writer.write({ type: 'error', errorText: safe.message } as never)
           } finally {
-            if (reader && !completed) await reader.cancel().catch(() => undefined)
+            if (cancelOnAbort) turnSignal.removeEventListener('abort', cancelOnAbort)
+            if (reader && !completed) abortCleanup ??= reader.cancel().catch(() => undefined)
+            await abortCleanup
             runtime.releaseAdmission()
             reader?.releaseLock()
           }
+          })()
+          return execution
         },
       })
-      return createUIMessageStreamResponse({ stream: uiStream })
+      const response = createUIMessageStreamResponse({ stream: uiStream })
+      if (!response.body) return response
+      const wireReader = response.body.getReader()
+      const guardedBody = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          try {
+            const next = await wireReader.read()
+            if (next.done) controller.close()
+            else controller.enqueue(next.value)
+          } catch (error) { controller.error(error) }
+        },
+        async cancel(reason) {
+          turnAbort.abort()
+          await wireReader.cancel(reason).catch(() => undefined)
+          await execution?.catch(() => undefined)
+        },
+      })
+      return new Response(guardedBody, { status: response.status, statusText: response.statusText,
+        headers: response.headers })
       } catch (error) { runtime.releaseAdmission(); throw error }
     } catch (error) {
       const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')

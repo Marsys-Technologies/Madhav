@@ -557,8 +557,16 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   }
   const adapterMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
   const adapterStartMs = Date.now()
-  const adapterStream = createUIMessageStream({
-    execute: async ({ writer }) => {
+  const turnAbort = byokRuntime ? new AbortController() : undefined
+  const turnSignal = turnAbort
+    ? (abortSignal ? AbortSignal.any([abortSignal, turnAbort.signal]) : turnAbort.signal)
+    : abortSignal
+  let execution: Promise<void> | undefined
+  const baseAdapterStream = createUIMessageStream({
+    ...(byokRuntime ? { onError: (error: unknown) => error instanceof AiConsoleError
+      ? error.message : new AiConsoleError('AI_EXECUTION_FAILED').message } : {}),
+    execute: ({ writer }) => {
+      execution = (async () => {
       try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'start', messageId: adapterMsgId } as any)
@@ -599,10 +607,15 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             message.role !== 'system' && typeof message.content === 'string'
               ? [{ role: message.role, content: message.content }]
               : []),
-          abortSignal,
+          abortSignal: turnSignal,
           maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
         }).getReader()
         let completed = false
+        let abortCleanup: Promise<void> | undefined
+        const cancelOnAbort = () => {
+          abortCleanup ??= reader.cancel().catch(() => undefined)
+        }
+        turnSignal?.addEventListener('abort', cancelOnAbort, { once: true })
         try {
           while (true) {
             const next = await reader.read()
@@ -615,7 +628,9 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             }
           }
         } finally {
-          if (!completed) await reader.cancel().catch(() => undefined)
+          turnSignal?.removeEventListener('abort', cancelOnAbort)
+          if (!completed) abortCleanup ??= reader.cancel().catch(() => undefined)
+          await abortCleanup
           reader.releaseLock()
         }
       }
@@ -830,8 +845,8 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             ...(byokRuntime ? { ai_routing_snapshot_id: byokRuntime.snapshotId } : {}),
           },
         }
-        const byokTitle = isFirstTurn && byokRuntime && !abortSignal?.aborted
-          ? await generateConversationTitle(persistMsgs, undefined, byokRuntime.executors.worker, abortSignal)
+        const byokTitle = isFirstTurn && byokRuntime && !turnSignal?.aborted
+          ? await generateConversationTitle(persistMsgs, undefined, byokRuntime.executors.worker, turnSignal)
           : undefined
         await runOnFinishWriteThrough(
           {
@@ -961,7 +976,33 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
       } finally {
         byokRuntime?.releaseAdmission()
       }
+      })()
+      return execution
     },
   })
-  return createUIMessageStreamResponse({ stream: adapterStream })
+  const response = createUIMessageStreamResponse({ stream: baseAdapterStream })
+  if (!byokRuntime || !response.body) return response
+
+  const wireReader = response.body.getReader()
+  const guardedBody = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const next = await wireReader.read()
+        if (next.done) controller.close()
+        else controller.enqueue(next.value)
+      } catch (error) {
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      turnAbort!.abort()
+      await wireReader.cancel(reason).catch(() => undefined)
+      await execution?.catch(() => undefined)
+    },
+  })
+  return new Response(guardedBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  })
 }
