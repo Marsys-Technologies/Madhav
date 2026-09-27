@@ -669,9 +669,23 @@ def derive_all(
                 if reason:
                     per_requirement_reasons.append(reason)
             elif kind == "producer_output":
-                # Already covered by the reviewed-claims pass above (the requirement's
-                # asset_id/spec_sha256 mirrors the claim it accompanies); nothing to add.
-                pass
+                # Normally already covered by the reviewed-claims pass above (the
+                # requirement's asset_id/spec_sha256 mirrors the claim it accompanies).
+                # But a producer_output requirement can exist with NO matching
+                # producer_output_claims entry at all (of any disposition) — that is a
+                # genuinely unclassified state, not silently "nothing to add" (C-1: the
+                # gate's constructed orphan case). Name it explicitly so it either
+                # becomes a real reason or, once C-5 carries non-reviewed dispositions
+                # through, is superseded by an actual producer.
+                req_asset_id = req.get("asset_id")
+                has_any_claim = any(
+                    c.get("asset_id") == req_asset_id for c in (scu.get("producer_output_claims") or [])
+                )
+                if not has_any_claim:
+                    per_requirement_reasons.append(
+                        f"NO_DETECTOR — producer_output requirement ({req_asset_id!r}) has no "
+                        "producer_output_claims recorded"
+                    )
             elif kind == "derived":
                 per_requirement_reasons.append(
                     f"NO_DETECTOR — no source_query requirement (kind: derived; {req.get('source_ref', '')})"
@@ -690,7 +704,14 @@ def derive_all(
         sp.producers = dedup
 
         if not sp.producers:
-            sp.no_detector = "; ".join(per_requirement_reasons) or "NO_DETECTOR — no source_query requirement"
+            # C-1: NO catch-all here. If no requirement branch produced a specific
+            # reason, this SCU is left genuinely unclassified (no_detector stays None)
+            # rather than being handed a fabricated generic reason — `check_completeness`
+            # / `validate_derived_artifact` then correctly reads this as a --check
+            # FAILURE, not a passing reason. A `--check` that can never see this state
+            # is not a detector (CLAUDE.md §N.8).
+            if per_requirement_reasons:
+                sp.no_detector = "; ".join(per_requirement_reasons)
         else:
             sp.notes.extend(per_requirement_reasons)
 
@@ -861,13 +882,12 @@ def write_derived_json(
     total = len(provenance)
     named = sum(1 for sp in provenance.values() if sp.producers)
     no_detector = sum(1 for sp in provenance.values() if sp.no_detector)
+    # Bucketed by the CLOSED reason class (C-1's `classify_no_detector_reason`), not a
+    # free-text prefix — a stable, enumerable key, never "whatever text came first".
     reason_counts: Dict[str, int] = {}
     for sp in provenance.values():
         if sp.no_detector:
-            key = sp.no_detector.split(" — ", 1)[0].split(";")[0].split(" (")[0]
-            # Coarser bucket: the leading "NO_DETECTOR — <class>" phrase up to the first parenthetical.
-            m = re.match(r"NO_DETECTOR — ([^\(]+)", sp.no_detector)
-            key = (m.group(1).strip() if m else sp.no_detector)
+            key = classify_no_detector_reason(sp.no_detector)
             reason_counts[key] = reason_counts.get(key, 0) + 1
 
     payload = {
@@ -969,15 +989,113 @@ def write_reader_scan_md(hits: List[Tuple[str, int, str]], out_path: Path = READ
 # §12 — B-4 --check
 # ─────────────────────────────────────────────────────────────────────────────
 
+# The CLOSED set of no_detector reason classes (C-1). `classify_no_detector_reason`
+# maps a human-readable reason string to one of these — anything it cannot match
+# comes back "unclassified", which is deliberately NOT a member of this set, so an
+# unrecognized reason string fails validation rather than silently passing. Every
+# member here corresponds to a specific, named code path in `derive_all` /
+# `derive_from_source_query` / `derive_from_service_probe` — there is no catch-all.
+NO_DETECTOR_REASON_CLASSES: Set[str] = {
+    "no_contract",
+    "source_ref_unresolvable_shape",
+    "source_ref_out_of_range",
+    "no_relation_in_range",
+    "relation_unowned_by_registry",
+    "derived_kind_no_source_query",
+    "unrecognized_requirement_kind",
+    "service_probe_missing_asset_id",
+    "producer_output_unclaimed",
+}
+
+# Dispositions that are a "declared exemption" (per C-1's correction text) from the
+# strict table+range requirement `derived_from_source_query` producers must meet.
+# Each of these already carries its own evidence citation (a migration line, a
+# service asset_id, or a hand-authored gap_reason) by construction, not by a regex
+# parse of application SQL, so a range-shaped source_ref / non-null table is not
+# expected of them.
+_DECLARED_EXEMPTION_DISPOSITIONS = {"reviewed_output", "derived_from_service_probe", "route_evidence_only"}
+
+
+def classify_no_detector_reason(reason: Optional[str]) -> str:
+    """Map a no_detector message to its closed reason class. Order matters: more
+    specific substrings are checked before more general ones so a combined message
+    (e.g. an out-of-range segment alongside a 'no relation' finding) classifies by
+    its most specific, most actionable cause."""
+    if not reason:
+        return "unclassified"
+    r = reason
+    if "no availability_contracts requirement" in r:
+        return "no_contract"
+    if "source_ref_out_of_range" in r:
+        return "source_ref_out_of_range"
+    if "did not resolve to any" in r and "segment" in r:
+        return "source_ref_unresolvable_shape"
+    if "matched no row in asset_registry.target_table" in r:
+        return "relation_unowned_by_registry"
+    if "contain no relation name" in r:
+        return "no_relation_in_range"
+    if "kind: derived" in r:
+        return "derived_kind_no_source_query"
+    if "unrecognized requirement kind" in r:
+        return "unrecognized_requirement_kind"
+    if "service_probe requirement carries no asset_id" in r:
+        return "service_probe_missing_asset_id"
+    if "producer_output requirement" in r and "no producer_output_claims recorded" in r:
+        return "producer_output_unclaimed"
+    return "unclassified"
+
 
 def check_completeness(provenance: Dict[str, ScuProvenance]) -> List[str]:
     """Returns the list of SCU ids that fail the invariant: every SCU must have
-    either a non-empty producers[] or a non-empty no_detector reason. This is the
-    detector that can read false — see __tests__/test_catalog_provenance.py."""
+    either a non-empty producers[] or a non-empty no_detector reason. This is an
+    in-memory sanity check run right after a fresh `--derive` (belt-and-braces);
+    the authoritative B-4 gate is `validate_derived_artifact`, which reads the
+    committed JSON file rather than re-deriving (C-1) — see
+    __tests__/test_catalog_provenance.py."""
     failures = []
     for scu_id, sp in provenance.items():
         if not sp.producers and not sp.no_detector:
             failures.append(scu_id)
+    return failures
+
+
+def validate_derived_artifact(payload: dict) -> List[str]:
+    """The real B-4 gate (C-1). Validates the COMMITTED `producer_provenance.derived
+    .json` payload itself — never re-derives — against the invariant: every SCU has
+    (a) >=1 producer that is either a declared-exemption disposition
+    (`_DECLARED_EXEMPTION_DISPOSITIONS`) carrying a non-empty source_ref, or a
+    `derived_from_source_query` producer with a non-null `table` AND a range-shaped
+    `source_ref` (validated via `parse_source_ref_segments`, never trusted as a
+    bare string) — or (b) a `no_detector` reason whose class is a member of the
+    CLOSED `NO_DETECTOR_REASON_CLASSES` set. An SCU with neither, or whose
+    no_detector reason classifies as "unclassified", or that is simply absent from
+    the artifact's `scus` map, is a failure. This is the function that makes
+    `--check` able to read false on a real, stale, or hand-edited artifact."""
+    failures: List[str] = []
+    scus = payload.get("scus") or {}
+    for scu_id, entry in scus.items():
+        producers = entry.get("producers") or []
+        no_detector = entry.get("no_detector")
+
+        producer_ok = False
+        for p in producers:
+            disposition = p.get("disposition")
+            source_ref = p.get("source_ref") or ""
+            if disposition == "derived_from_source_query":
+                if p.get("table") and parse_source_ref_segments(source_ref):
+                    producer_ok = True
+                    break
+            elif disposition in _DECLARED_EXEMPTION_DISPOSITIONS:
+                if source_ref:
+                    producer_ok = True
+                    break
+        if producer_ok:
+            continue
+
+        if no_detector and classify_no_detector_reason(no_detector) in NO_DETECTOR_REASON_CLASSES:
+            continue
+
+        failures.append(scu_id)
     return failures
 
 
@@ -1019,7 +1137,7 @@ def main(argv: List[str]) -> int:
         write_reader_scan_md(hits)
         print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")
 
-    if args.derive or args.closure or args.check:
+    if args.derive or args.closure:
         snapshot, assets, provenance = _run_derivation(db_url)
 
         if args.derive:
@@ -1027,6 +1145,17 @@ def main(argv: List[str]) -> int:
             write_derived_json(snapshot, provenance, calibration)
             named = sum(1 for sp in provenance.values() if sp.producers)
             print(f"[B-1] {named}/{len(provenance)} SCUs have a named producer -> {DERIVED_OUTPUT_PATH}")
+            # Belt-and-braces in-memory sanity check right after a fresh derivation
+            # (see check_completeness's docstring) — NOT the authoritative B-4 gate.
+            in_memory_failures = check_completeness(provenance)
+            if in_memory_failures:
+                print(
+                    f"[B-1] WARNING: {len(in_memory_failures)} freshly-derived SCU(s) have neither a "
+                    "producer nor a no_detector reason (this should not happen — investigate before "
+                    "relying on --check):"
+                )
+                for f in in_memory_failures:
+                    print(f"  - {f}")
 
         if args.closure:
             closure = compute_closure_report(assets, provenance)
@@ -1037,15 +1166,32 @@ def main(argv: List[str]) -> int:
                 f"-> {CLOSURE_REPORT_PATH}"
             )
 
-        if args.check:
-            failures = check_completeness(provenance)
+    if args.check:
+        # C-1: --check validates the COMMITTED artifact itself — it never re-derives
+        # silently. A stale artifact (e.g. hand-edited, or left over from before a
+        # snapshot/registry change) must be able to fail this even though nothing in
+        # today's DB/snapshot would reproduce the problem.
+        if not DERIVED_OUTPUT_PATH.is_file():
+            print(f"[B-4] --check FAIL: no derived artifact at {DERIVED_OUTPUT_PATH} — run --derive first.")
+            exit_code = 1
+        else:
+            with open(DERIVED_OUTPUT_PATH, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+            failures = validate_derived_artifact(payload)
+            total = len(payload.get("scus") or {})
             if failures:
-                print(f"[B-4] --check FAIL: {len(failures)} SCU(s) with neither a producer nor a no_detector reason:")
+                print(
+                    f"[B-4] --check FAIL: {len(failures)} SCU(s) with neither a valid producer nor a "
+                    f"no_detector reason from the closed reason set (artifact: {DERIVED_OUTPUT_PATH}):"
+                )
                 for f in failures:
                     print(f"  - {f}")
                 exit_code = 1
             else:
-                print(f"[B-4] --check PASS: all {len(provenance)} SCUs have a producer or a no_detector reason.")
+                print(
+                    f"[B-4] --check PASS: all {total} SCUs in {DERIVED_OUTPUT_PATH} have a valid producer "
+                    "or a no_detector reason from the closed reason set."
+                )
 
     return exit_code
 

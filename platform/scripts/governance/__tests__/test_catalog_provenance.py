@@ -290,3 +290,126 @@ def test_check_completeness_passes_when_every_scu_is_accounted_for():
         "scu.b": cp.ScuProvenance(scu_id="scu.b", no_detector="NO_DETECTOR — no source_query requirement"),
     }
     assert cp.check_completeness(provenance) == []
+
+
+# ── C-1: the catch-all NO_DETECTOR fallback must not exist ──────────────────
+#
+# NIKASHA_WAVE1_LANE_B_REVIEW.md finding 1: `derive_all` used to always assign a
+# no_detector reason via a catch-all (`"; ".join(...) or "NO_DETECTOR — no
+# source_query requirement"`), so the checklist's own constructed case — an SCU
+# with no reviewed and no derived producer — always read as a classified reason,
+# never as a --check FAILURE. These tests drive `derive_all` (not a hand-built
+# ScuProvenance) so the mutation is the actual removed line, not a fixture.
+
+
+def test_producer_output_requirement_with_no_claims_gets_an_exact_reason_not_a_catchall():
+    """Mutation this catches: restoring the catch-all
+    (`... or "NO_DETECTOR — no source_query requirement"`) makes this SCU's reason
+    revert to that generic string, which does not classify as
+    'producer_output_unclaimed' — this assertion would then fail."""
+    snapshot = {
+        "scus": [
+            {
+                "scu_id": "scu.test.orphan_producer_output",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "producer_output", "asset_id": "ga_nonexistent_claim"}]}
+                ],
+                "producer_output_claims": [],
+            }
+        ]
+    }
+    result = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
+    sp = result["scu.test.orphan_producer_output"]
+    assert sp.producers == []
+    assert sp.no_detector is not None and sp.no_detector.startswith("NO_DETECTOR")
+    assert cp.classify_no_detector_reason(sp.no_detector) == "producer_output_unclaimed"
+
+
+def test_derive_all_leaves_a_genuinely_unclassified_scu_without_a_fabricated_reason():
+    """The gate review's own constructed case (§2 item 4, first orphan): an SCU whose
+    only requirement is `producer_output` and whose only matching claim carries a
+    disposition OTHER than `reviewed_output` (e.g. `route_evidence_only`) is neither
+    picked up by the reviewed-claims pass NOR given a reason by the producer_output
+    branch (a claim DOES exist, so 'unclaimed' does not fire either) — as of this
+    commit (before C-5 carries non-reviewed dispositions through), this SCU must
+    come out of `derive_all` with `no_detector=None`, not a fabricated catch-all
+    string. That is precisely what makes `check_completeness` /
+    `validate_derived_artifact` able to read this as a real FAILURE instead of a
+    silently-passing green reason (CLAUDE.md §N.8). Mutation this catches: restoring
+    the catch-all gives this SCU a generic reason and this assertion fails."""
+    snapshot = {
+        "scus": [
+            {
+                "scu_id": "scu.test.orphan_route_evidence_only",
+                "availability_contracts": [
+                    {"requirements": [{"kind": "producer_output", "asset_id": "ka_kalasutra"}]}
+                ],
+                "producer_output_claims": [
+                    {"asset_id": "ka_kalasutra", "disposition": "route_evidence_only", "evidence": "handler reads kala_activation"}
+                ],
+            }
+        ]
+    }
+    result = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
+    sp = result["scu.test.orphan_route_evidence_only"]
+    assert sp.producers == []
+    assert sp.no_detector is None
+    failures = cp.check_completeness(result)
+    assert failures == ["scu.test.orphan_route_evidence_only"]
+
+
+def test_classify_no_detector_reason_is_a_closed_set():
+    """Any message this script doesn't specifically produce classifies as
+    'unclassified', which is deliberately NOT a member of
+    `NO_DETECTOR_REASON_CLASSES` — proving the set is actually closed, not
+    open-ended by accident."""
+    assert cp.classify_no_detector_reason("something a future bug might invent") == "unclassified"
+    assert "unclassified" not in cp.NO_DETECTOR_REASON_CLASSES
+    assert cp.classify_no_detector_reason(None) == "unclassified"
+
+
+def test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry():
+    """C-1: `--check` validates the COMMITTED artifact itself, not a fresh
+    re-derivation. A hand-edited/stale entry — a `derived_from_source_query`
+    producer whose `source_ref` was edited into an unresolvable shape, or a
+    `no_detector` string that classifies as 'unclassified' — must fail even though
+    nothing about today's DB or snapshot would ever produce it via a fresh
+    `--derive`. Mutation this catches: `validate_derived_artifact` accepting any
+    non-empty `producers` list, or any non-empty `no_detector` string, without
+    checking shape/closed-set membership."""
+    payload = {
+        "scus": {
+            "scu.ok": {
+                "producers": [
+                    {
+                        "asset_id": "ga_x",
+                        "table": "x",
+                        "source_ref": "handler.ts:1-1",
+                        "disposition": "derived_from_source_query",
+                        "shared": False,
+                    }
+                ],
+            },
+            "scu.stale_bad_source_ref": {
+                "producers": [
+                    {
+                        "asset_id": "ga_y",
+                        "table": "y",
+                        "source_ref": "handler.ts#hand-edited-anchor",
+                        "disposition": "derived_from_source_query",
+                        "shared": False,
+                    }
+                ],
+            },
+            "scu.stale_unclassified_reason": {
+                "producers": [],
+                "no_detector": "NO_DETECTOR — a reason nobody's classifier has ever produced",
+            },
+            "scu.ok_no_detector": {
+                "producers": [],
+                "no_detector": "NO_DETECTOR — no availability_contracts requirement and no reviewed_output claim",
+            },
+        }
+    }
+    failures = cp.validate_derived_artifact(payload)
+    assert set(failures) == {"scu.stale_bad_source_ref", "scu.stale_unclassified_reason"}

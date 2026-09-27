@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-26T22:58:53.854893+00:00",
+  "generated_at": "2026-09-27T05:36:14.584427+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
   "snapshot_content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
   "snapshot_scu_count": 182,
@@ -8,10 +8,10 @@
     "scus_with_producers": 108,
     "scus_no_detector": 74,
     "no_detector_reason_counts": {
-      "no availability_contracts requirement and no reviewed_output claim": 28,
-      "relation name": 29,
-      "resolved source range": 16,
-      "no source_query requirement": 1
+      "no_contract": 28,
+      "relation_unowned_by_registry": 29,
+      "no_relation_in_range": 16,
+      "derived_kind_no_source_query": 1
     }
   },
   "scus": {
