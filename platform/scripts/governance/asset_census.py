@@ -480,15 +480,48 @@ def throughput(prefix: str, ids=None) -> dict[str, dict[str, dict]]:
     R231: `asset_throughput` holds one row per (chart_id, asset_id). The pre-R231 read keyed a dict
     by asset_id alone, so whichever chart's row came last silently became "the" build record — a
     count bound to one chart compared against another chart's rows_written. Rows are now kept per
-    chart and `_build_record()` picks the one matching the count's own scope."""
+    chart and `_build_record()` picks the one matching the count's own scope.
+
+    R44 (handverify L1/L2/L4/L5): the record must be the LATEST row for its (asset, chart), chosen on
+    a stated key — never "whichever row the unordered read returned last". The read had no ORDER BY
+    and a second row for the same key silently overwrote the first. Uniqueness per (chart, asset) is
+    today enforced only by two partial unique indexes (`asset_throughput_per_chart_idx`,
+    `asset_throughput_global_idx`) that this script never checks, so the selection is made here,
+    independent of row order: the greatest (last_built_at, last_measured_at), NULLs lowest. Two rows
+    that tie on that key are not silently resolved — the record is marked `ambiguous` and
+    Build.completion reads ERRORED (the latest cannot be determined; nothing opens or closes)."""
     rows = psql("SELECT asset_id, coalesce(state,''), coalesce(rows_written::text,''), "
                 "coalesce(round(rows_per_second)::text,''), coalesce(last_built_at::date::text,''), "
-                "coalesce(chart_id::text,'') "
-                f"FROM asset_throughput WHERE {_asset_scope(prefix, ids)}")
+                "coalesce(chart_id::text,''), "
+                "coalesce(extract(epoch FROM last_built_at)::text,''), "
+                "coalesce(extract(epoch FROM last_measured_at)::text,'') "
+                f"FROM asset_throughput WHERE {_asset_scope(prefix, ids)} "
+                "ORDER BY asset_id, chart_id, last_built_at DESC NULLS LAST, last_measured_at DESC NULLS LAST")
     out: dict[str, dict[str, dict]] = {}
-    for r in ((x + [""] * 6)[:6] for x in rows):
-        out.setdefault(r[0], {})[r[5]] = dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4])
+    for r in ((x + [""] * 8)[:8] for x in rows):
+        rec = dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4], n_rows=1, ambiguous=False,
+                   _key=(_epoch(r[6]), _epoch(r[7])))
+        cur = out.setdefault(r[0], {}).get(r[5])
+        if cur is None:
+            out[r[0]][r[5]] = rec
+            continue
+        n = cur["n_rows"] + 1
+        if rec["_key"] > cur["_key"]:
+            rec.update(n_rows=n, ambiguous=False)
+            out[r[0]][r[5]] = rec
+        else:
+            cur["n_rows"] = n
+            if rec["_key"] == cur["_key"]:
+                cur["ambiguous"] = True
     return out
+
+
+def _epoch(v: str) -> float:
+    """An `extract(epoch …)` text as a sort key; NULL (empty) sorts lowest."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return float("-inf")
 
 
 def _build_record(rows_by_chart: dict, chart_scoped: bool, chart_id: str) -> tuple[dict, str]:
@@ -1015,6 +1048,8 @@ def measure(layer_key: str) -> dict:
         basis = (f"count_sql total over {len(ctables)} table(s): {', '.join(ctables)}" if multi
                  else "count_sql over the target table")
         t, rec_scope = _build_record(thru.get(aid, {}), _chart_scoped(r["count_sql"]), CHART_ID)
+        if t.get("n_rows", 1) > 1 and not t.get("ambiguous"):
+            rec_scope += f"; latest of {t['n_rows']} rows, last_built {t.get('last_built') or 'NULL'}"   # R44
         rw = t.get("rows_written", "")
         if aid in count_errors:
             # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
@@ -1050,6 +1085,14 @@ def measure(layer_key: str) -> dict:
                                                          f"does not declare zero rows complete (target_floor="
                                                          f"{r['target_floor'] if r['target_floor'] is not None else 'none'}); "
                                                          f"build record rows_written={rw or 'none'}")
+        elif t.get("ambiguous"):
+            # R44: several build rows for this (asset, chart) tie on (last_built_at, last_measured_at),
+            # so which one is the latest is undetermined. Comparing against an arbitrary one would be
+            # a verdict on a row nobody chose — ERRORED (neither opens nor closes a gap).
+            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: {t.get('n_rows')} asset_throughput "
+                                                             f"rows for this asset ({rec_scope}) tie on "
+                                                             "(last_built_at, last_measured_at) — the latest "
+                                                             "build record cannot be determined")
         elif rw == "":
             m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all ({rec_scope})")
         elif t.get("state") not in COMPLETED_STATES:
