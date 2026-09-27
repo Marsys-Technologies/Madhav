@@ -90,6 +90,7 @@ import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
 import { synthesizeReading } from '@/lib/pipeline/prashna_ask_synthesis'
 import { ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
+import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { getManagedPrashnaJob } from '@/lib/vidhi/inquiry/managed_job_store'
 import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 
@@ -903,18 +904,24 @@ export async function POST(request: Request) {
           if (managedInquirySession && managedItem && managedBinding) {
             // The lifecycle CAS/receipt is committed before the progress event
             // below acknowledges this dispatch to the managed worker.
-            await managedInquirySession.persistAcceptedObservation({
-              plan_item_id: managedItem.item_id,
-              obligation_ids: managedItem.obligation_ids,
-              scu_id: managedItem.scu_id,
-              binding_id: managedItem.binding_id!,
-              tool_name: toolName,
-              bundle,
-              disposition: classifyInquiryResult(managedBinding, bundle),
-              pagination: deriveInquiryPaginationReceipt(managedBinding, bundle, managedItem.args),
-              invocation_args: managedItem.args,
-              request_position_path: managedBinding.pagination_contract?.request_position_path,
-            })
+            {
+              const managedDisposition = classifyInquiryResult(managedBinding, bundle)
+              await managedInquirySession.persistAcceptedObservation({
+                plan_item_id: managedItem.item_id,
+                obligation_ids: managedItem.obligation_ids,
+                scu_id: managedItem.scu_id,
+                binding_id: managedItem.binding_id!,
+                tool_name: toolName,
+                bundle,
+                disposition: managedDisposition,
+                pagination: deriveInquiryPaginationReceipt(managedBinding, bundle, managedItem.args),
+                invocation_args: managedItem.args,
+                request_position_path: managedBinding.pagination_contract?.request_position_path,
+                evidence_frontier: managedDisposition === 'served' && inquirySnapshot
+                  ? deriveEvidenceFrontier({ contract: managedInquirySession.currentContract, item_id: managedItem.item_id, evidence_payload: bundle, snapshot: inquirySnapshot })
+                  : [],
+              })
+            }
           }
           toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - toolStart })
           if (!retainToolResult(toolName, bundle)) {
@@ -950,12 +957,20 @@ export async function POST(request: Request) {
       // same item. It must therefore use the same reservation → dispatch →
       // evidence-CAS path as page one; stopping here would let the outer job
       // claim completion while the persisted Inquiry remains incomplete.
-      if (managedInquirySession && inquirySnapshot) {
+      /**
+       * Drain ready registry items — continuations of items already dispatched, and, with
+       * `firstTime`, a successor's own items which have never been dispatched at all
+       * (mirrors the Portal door's evidence-driven successor, evidence_stage.ts). Once a
+       * successor item receives its first observation, its own continuation pages satisfy
+       * `observation !== null` on their own, so `firstTime` need not stay true across pages.
+       */
+      const drainManagedReadyActions = async (firstTime = false): Promise<void> => {
+        if (!managedInquirySession || !inquirySnapshot) return
         while (managedInquirySession.readyActionIds.length > 0
           && managedInquirySession.currentContract.iteration < managedInquirySession.currentContract.max_iterations
           && costCapTripped === null) {
           const item = managedInquirySession.currentContract.plan_items.find((candidate) => candidate.state === 'ready'
-            && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
+            && (firstTime || candidate.observation !== null) && candidate.binding_id?.startsWith('registry:'))
           if (!item?.binding_id) break
           const capabilityUri = item.binding_id.slice('registry:'.length)
           const toolName = dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
@@ -984,18 +999,24 @@ export async function POST(request: Request) {
           const started = Date.now()
           try {
             const bundle = await tool.retrieve(queryPlanLike, item.args)
-            await managedInquirySession.persistAcceptedObservation({
-              plan_item_id: item.item_id,
-              obligation_ids: item.obligation_ids,
-              scu_id: item.scu_id,
-              binding_id: item.binding_id,
-              tool_name: toolName,
-              bundle,
-              disposition: classifyInquiryResult(binding, bundle),
-              pagination: deriveInquiryPaginationReceipt(binding, bundle, item.args),
-              invocation_args: item.args,
-              request_position_path: binding.pagination_contract?.request_position_path,
-            })
+            {
+              const continuationDisposition = classifyInquiryResult(binding, bundle)
+              await managedInquirySession.persistAcceptedObservation({
+                plan_item_id: item.item_id,
+                obligation_ids: item.obligation_ids,
+                scu_id: item.scu_id,
+                binding_id: item.binding_id,
+                tool_name: toolName,
+                bundle,
+                disposition: continuationDisposition,
+                pagination: deriveInquiryPaginationReceipt(binding, bundle, item.args),
+                invocation_args: item.args,
+                request_position_path: binding.pagination_contract?.request_position_path,
+                evidence_frontier: continuationDisposition === 'served' && inquirySnapshot
+                  ? deriveEvidenceFrontier({ contract: managedInquirySession.currentContract, item_id: item.item_id, evidence_payload: bundle, snapshot: inquirySnapshot })
+                  : [],
+              })
+            }
             toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
             if (!retainToolResult(toolName, bundle)) {
               if (!unservedTools.includes(toolName)) unservedTools.push(toolName)
@@ -1018,6 +1039,26 @@ export async function POST(request: Request) {
             toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
           }
           emitProgress(toolName)
+        }
+      }
+
+      if (managedInquirySession && inquirySnapshot) {
+        await drainManagedReadyActions()
+        // R2B.4b: served evidence may call for a capability the plan never authorized. Continue
+        // through ONE durable successor generation, using only tools this request authorized —
+        // an admitted capability outside that set fails closed, named, on the successor's own
+        // plan item, exactly as the Portal door's in-process successor does.
+        if (managedInquirySession.currentContract.status === 'INCOMPLETE'
+          && managedInquirySession.readyActionIds.length === 0
+          && costCapTripped === null) {
+          const currentOverlayForSuccessor = await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id)
+          const becameSuccessor = currentOverlayForSuccessor.overlay_version === managedInquirySession.currentContract.chart_availability_version
+            && currentOverlayForSuccessor.build_id === managedInquirySession.currentContract.chart_build_id
+            && await managedInquirySession.continueWithEvidenceSuccessor({ snapshot: inquirySnapshot, overlay: currentOverlayForSuccessor })
+          if (becameSuccessor) {
+            judgmentFlags.push('managed_inquiry_evidence_successor')
+            await drainManagedReadyActions(true)
+          }
         }
         if (await terminalizeManagedIterationCap()) {
           // The lifecycle is now durably BLOCKED; it is safe for the outer job

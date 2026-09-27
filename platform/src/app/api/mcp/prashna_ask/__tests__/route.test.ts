@@ -366,6 +366,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       failClosedAmbiguity: vi.fn(),
       failClosed: vi.fn(async (contract: InquiryContract) => contract),
       finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'COMPLETE' as const })),
+      continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
       current = { ...contract, max_iterations: 3 }
@@ -384,6 +385,129 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
     // With an inquiry contract, synthesis is shown register-annotated display copies (R2C.1).
     expect(mockSynthesizeReading.mock.calls.at(-1)?.[0]?.citeRegisterFindings).toBe(true)
+  })
+
+  it('continues into an evidence-admitted successor using only request-authorized tools, and carries the chain', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000012'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000012'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'evidence successor test', response_format: 'standard' },
+    })
+    // The successor's admitted item reuses the fixture's one real binding — this test proves
+    // the ROUTE'S continuation/successor wiring, not the compiler's evidence-frontier semantics
+    // (proven separately in evidence_frontier.test.ts and execution_session.test.ts).
+    const successorItem = {
+      item_id: 'item-901', obligation_ids: ['obligation-901'], scu_id: 'scu.test.wealth',
+      binding_id: 'registry:marsys://tool/L1/test', args: {}, depends_on: [], blocked_reason: null,
+      state: 'ready' as const, observation: null,
+    }
+    let current: InquiryContract | undefined
+    let successorAdopted = false
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const contract = requireInquiryContract(current)
+        current = {
+          ...contract,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
+            ? { ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'COMPLETE' as const })),
+      continueWithEvidenceSuccessor: vi.fn().mockImplementation(async () => {
+        if (successorAdopted) return false
+        successorAdopted = true
+        current = { ...requireInquiryContract(current), status: 'INCOMPLETE', plan_items: [successorItem] }
+        return true
+      }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 5 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'evidence successor test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    expect(lines.at(-1)?.event).toBe('final')
+    expect(session.continueWithEvidenceSuccessor).toHaveBeenCalledTimes(1)
+    // Two persisted observations: the original item, then the successor's admitted item.
+    expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
+    expect(session.persistAcceptedObservation).toHaveBeenNthCalledWith(2, expect.objectContaining({ plan_item_id: 'item-901' }))
+    expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
+  })
+
+  it('never dispatches an evidence-admitted successor item outside the request-authorized tool set', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000013'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000013'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    // Only 'authorized_test' is authorized — the successor names an item this request never authorized.
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'evidence successor gap test', response_format: 'standard' },
+    })
+    const successorItem = {
+      item_id: 'item-901', obligation_ids: ['obligation-901'], scu_id: 'scu.discovered',
+      binding_id: 'registry:marsys://tool/L1/unauthorized', args: {}, depends_on: [], blocked_reason: null,
+      state: 'ready' as const, observation: null,
+    }
+    let current: InquiryContract | undefined
+    let successorAdopted = false
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const contract = requireInquiryContract(current)
+        current = {
+          ...contract,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
+            ? { ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'BLOCKED' as const })),
+      continueWithEvidenceSuccessor: vi.fn().mockImplementation(async () => {
+        if (successorAdopted) return false
+        successorAdopted = true
+        current = { ...requireInquiryContract(current), status: 'INCOMPLETE', plan_items: [successorItem] }
+        return true
+      }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 5 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'evidence successor gap test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    expect(lines.at(-1)?.event).toBe('final')
+    expect(mockGetToolByName).not.toHaveBeenCalledWith('marsys://tool/L1/unauthorized')
+    expect(session.continueWithEvidenceSuccessor).toHaveBeenCalledTimes(1)
   })
 
   it('records the planner slot, requested reasoning, and fallback model on the managed contract (RC-5.6)', async () => {
@@ -454,6 +578,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       failClosedAmbiguity: vi.fn(),
       failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
       finalizeWhenNoReady: vi.fn(async () => requireInquiryContract(current)),
+      continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
       current = { ...contract, max_iterations: 1 }
@@ -494,7 +619,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     const session = {
       recoveredEvidence: vi.fn().mockResolvedValue([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }]),
       beginAction: vi.fn(), persistAcceptedObservation: vi.fn(), failClosedAmbiguity: vi.fn(), failClosed: vi.fn(),
-      finalizeWhenNoReady: vi.fn(), readyActionIds: [],
+      finalizeWhenNoReady: vi.fn(), continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false), readyActionIds: [],
       currentContract: null as InquiryContract | null,
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
@@ -543,7 +668,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       get currentContract() { return requireInquiryContract(current) },
       get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
-      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(), continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
       failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
@@ -587,7 +712,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       get currentContract() { return requireInquiryContract(current) },
       get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
-      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(), continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
       failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
