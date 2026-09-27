@@ -11,6 +11,7 @@ import type {
   SemanticCapabilityKind,
 } from './types'
 import { JUDGMENT_READING_CHECKLIST_V2_CONTRACT } from '../layers/reading_checklist'
+import { sourceQueryAvailabilityRequirement } from './source_query_availability'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -52,6 +53,29 @@ const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
   'registry:marsys://tool/L2/query_contradictions',
 ] as const
 
+// assess_* is available only when every leg its served evidence rests on can earn its own
+// exact availability: the three mandatory legs above, plus the two served-generation-fenced
+// evidence legs the verdict is assembled from — the firings-authoritative bearing yogas
+// (§N.6) and the composite-ranked signal surface. Those two degrade non-fatally inside the
+// handler, so without them here a composite could be promoted while serving an empty
+// confirmed-finding layer. Direct chart_facts/bodha reads in the handler are fenced to the
+// served generation (register_d8_assess_domain.ts runAssessDomain).
+const ASSESS_DOMAIN_AVAILABILITY_LEGS = [
+  ...ASSESS_DOMAIN_MANDATORY_BINDINGS,
+  'registry:marsys://tool/L1/get_yoga_firings',
+  'registry:marsys://tool/L2/query_signals',
+] as const
+
+const ASSESS_DOMAIN_AVAILABILITY_CONTRACT: DescriptorAvailabilityContractReview = {
+  producer_output_claims: [],
+  requirements: [{
+    kind: 'derived',
+    scope: 'chart',
+    required_binding_ids: ASSESS_DOMAIN_AVAILABILITY_LEGS,
+    source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+  }],
+}
+
 // query_spine_bundle delegates its full result to these exact four handlers.
 // The materialized row is only a cache of that composition: the serving path
 // lazily recomputes and persists it when absent or stale, so a probe of the
@@ -66,26 +90,6 @@ const SPINE_BUNDLE_MANDATORY_BINDINGS = [
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
-  assess_career: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
-    ],
-  },
-  assess_marriage: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
-    ],
-  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [
@@ -136,6 +140,19 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  // The MCP alias already consumes this exact handler query through editorial.ts. Bind that
+  // same reviewed probe to the raw registry descriptor explicitly rather than renaming the
+  // alias-oriented contract into an ambiguous source-query owner.
+  yoga_activation_by_dasha: {
+    producer_output_claims: [],
+    requirements: [sourceQueryAvailabilityRequirement('source-query:yoga-activation-by-dasha:v1')!],
+  },
+  // assess_* composes exact handler results; it is never promoted from an adjacent producer
+  // receipt. The derived requirement evaluates each leg's own reviewed contract in the same
+  // chart scope.
+  assess_career: ASSESS_DOMAIN_AVAILABILITY_CONTRACT,
+  assess_health: ASSESS_DOMAIN_AVAILABILITY_CONTRACT,
+  assess_marriage: ASSESS_DOMAIN_AVAILABILITY_CONTRACT,
   query_spine_bundle: {
     producer_output_claims: [],
     requirements: [{
