@@ -523,7 +523,7 @@ Identity first, because every other seam resolves through it:
 3. **The carriage detectors** — source correspondence first (it protects every later layer), then
    independent re-derivation on the computed five.
 4. **The served surface** — density declarations and the first parity run.
-5. **Briefs and gates** — 40 briefs, 320 gates, in dependency order within each depth level.
+5. **Briefs and gates** — 40 briefs, 360 gates, in dependency order within each depth level.
 
 **Three-way baseline:** `deployed` = the production figures in 1.1, read 2026-09-26. `current code` =
 identical for L0 — no unmerged branch carries an L0 writer change (the L0 writers are untouched on every
