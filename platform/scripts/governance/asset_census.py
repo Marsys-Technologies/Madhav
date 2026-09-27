@@ -202,11 +202,20 @@ def _writer_files() -> list[Path]:
     return [f for f in sorted(WRITERS.glob("*.py")) if f.name != "__init__.py"]
 
 
+_PARSED: dict[tuple[str, str], ast.AST] = {}
+
+
 def _parse(f: Path):
-    try:
-        return ast.parse(f.read_text(encoding="utf-8", errors="replace"), filename=str(f))
-    except SyntaxError as exc:
-        raise Unknown(f"{f.name}: unparseable ({exc})") from exc
+    """R20: cached per (path, content) — delegation-following reads the same seeder/helper modules for
+    many assets; a changed file re-parses (the key is its text, not its mtime)."""
+    text = f.read_text(encoding="utf-8", errors="replace")
+    key = (str(f), text)
+    if key not in _PARSED:
+        try:
+            _PARSED[key] = ast.parse(text, filename=str(f))
+        except SyntaxError as exc:
+            raise Unknown(f"{f.name}: unparseable ({exc})") from exc
+    return _PARSED[key]
 
 
 def _register_id(dec: ast.expr, consts: dict[str, str] | None = None) -> str | None:
@@ -516,48 +525,360 @@ def _populated_refusal_guard(tree: ast.AST) -> tuple[int, str, str] | None:
     return None
 
 
-def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> tuple[str, list[str]]:
-    """§N.3, over real SQL strings (docstrings excluded). A writer that delegates to a seeder shows no
-    pattern here; that is PARTIAL — look in the seeder — never FAIL.
+# ─────────── R20 (W2-3): follow writer delegation into the seeder ───────────
 
-    C-KSHETRA (W2-2 gate review §4.1): the delete-then-insert PASS is a claim that a REBUILD REPLACES the
-    asset's own rows. It used to be read off any `DELETE FROM` text in the writer — ka_kshetra PASSed on
-    `DELETE FROM build_substep_progress` and a bare f-string fragment, while its writer refuses
-    (KshetraReplacementHeld) to rebuild any populated chart. Now (a) a counted DELETE must NAME one of the
-    asset's own tables (`targets`: target_table ∪ the count_sql tables), and (b) a rebuild refused when the
-    output is populated (`_populated_refusal_guard`) reads FAIL with the refusal's location, never PASS."""
+# R20: how many cross-module hops `idem_scan` follows from the registered writer class. Hop 1 is the
+# module the writer calls into (a seeder `brahmagyan/l0_*.seed_*`, a shared helper
+# `bodha_writers/_idempotency.replace_prior_*`, or the adapter target `ga_writers/ga_*_writer.build_*`);
+# hop 2 is what THAT calls (the L1 adapters' own `ga_writers/_idempotency.replace_prior_*`). Beyond the
+# limit nothing is guessed: a replacement found only deeper reads PARTIAL naming the chain.
+IDEM_DELEGATION_HOPS = 2
+# The orchestrator framework (@register, WriterBase, WriterResult, SubStep) is never a delegation target.
+_FRAMEWORK_MODULES = ("pipeline/orchestrator/__init__.py", "pipeline/orchestrator/writers/__init__.py")
+_WRITE_TEXT = re.compile(r"DELETE\s+FROM|TRUNCATE|INSERT\s+INTO|ON\s+CONFLICT|CREATE\s+OR\s+REPLACE", re.I)
+_Q = r"(?:ONLY\s+)?(?:public\.)?\"?"
+_SQL_DELETE = re.compile(r"DELETE\s+FROM\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*|\{\?\})?", re.I)
+_SQL_TRUNCATE = re.compile(r"\bTRUNCATE\s+(?:TABLE\s+)?" + _Q + r"([A-Za-z_][A-Za-z_0-9]*|\{\?\})?", re.I)
+_SQL_INSERT = re.compile(r"INSERT\s+INTO\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*|\{\?\})?", re.I)
+_SQL_UPDATE = re.compile(r"\bUPDATE\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*)\s+SET\b", re.I)
+_SQL_VIEW = re.compile(r"CREATE\s+OR\s+REPLACE\s+(?:MATERIALIZED\s+)?VIEW\s+" + _Q + r"([A-Za-z_][A-Za-z_0-9]*)", re.I)
+_ON_CONFLICT = re.compile(r"ON\s+CONFLICT", re.I)
+
+
+
+def _rel(p: Path) -> str:
+    try:
+        return str(p.relative_to(WRITERS))
+    except ValueError:
+        try:
+            return str(p.relative_to(SIDECAR))
+        except ValueError:
+            return p.name
+
+
+def _import_map(tree: ast.AST, here: Path) -> dict[str, tuple[Path, str | None]]:
+    """R20: every first-party name a module imports — module-level or inside a function (the L1 adapters
+    import their builder inside run()) — as local name -> (module file, imported attribute), or
+    (module file, None) when the name IS a module (`from services.mi_bhara import db`). Only files that
+    exist under the python sidecar; third-party imports resolve to nothing."""
+    out: dict[str, tuple[Path, str | None]] = {}
+
+    def mod_file(base: Path, parts: list[str]) -> Path | None:
+        for cand in (base.joinpath(*parts).with_suffix(".py") if parts else None,
+                     base.joinpath(*parts, "__init__.py")):
+            if cand is not None and cand.is_file():
+                return cand
+        return None
+
+    for n in ast.walk(tree):
+        if isinstance(n, ast.ImportFrom):
+            base = SIDECAR if not n.level else here.parents[n.level - 1]
+            parts = [x for x in (n.module or "").split(".") if x]
+            for a in n.names:
+                sub = mod_file(base, parts + [a.name])
+                if sub is not None:
+                    out.setdefault(a.asname or a.name, (sub, None))
+                    continue
+                f = mod_file(base, parts)
+                if f is not None:
+                    out.setdefault(a.asname or a.name, (f, a.name))
+        elif isinstance(n, ast.Import):
+            for a in n.names:
+                if a.asname:
+                    f = mod_file(SIDECAR, a.name.split("."))
+                    if f is not None:
+                        out.setdefault(a.asname, (f, None))
+    return {k: v for k, v in out.items() if not _is_framework(v[0])}
+
+
+def _is_framework(p: Path) -> bool:
+    """The orchestrator itself (asset_runner, runner, …) and the writer framework are never a writer's
+    delegate: a `@l2_producer` wrapper importing the runner must not pull the engine into the scope."""
+    r = _rel(p)
+    return any(r.endswith(m) for m in _FRAMEWORK_MODULES) or r == "__init__.py" or \
+        (r.startswith("pipeline/orchestrator/") and not r.startswith("pipeline/orchestrator/writers/"))
+
+
+def _top_defs(tree: ast.AST) -> dict[str, ast.AST]:
+    """A module's top-level functions, classes and assigned names (the SQL constants live there:
+    `_INSERT_SQL = \"\"\"INSERT INTO …\"\"\"`), by name — looking through top-level if/try blocks."""
+    out: dict[str, ast.AST] = {}
+
+    def walk(body):
+        for s in body:
+            if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                out.setdefault(s.name, s)
+            elif isinstance(s, ast.Assign):
+                for t in s.targets:
+                    if isinstance(t, ast.Name):
+                        out.setdefault(t.id, s)
+            elif isinstance(s, ast.AnnAssign) and isinstance(s.target, ast.Name) and s.value is not None:
+                out.setdefault(s.target.id, s)
+            elif isinstance(s, (ast.If, ast.Try)):
+                walk(s.body)
+                walk(getattr(s, "orelse", []))
+                for h in getattr(s, "handlers", []):
+                    walk(h.body)
+    walk(getattr(tree, "body", []))
+    return out
+
+
+def _closure(roots: list[ast.AST], defs: dict[str, ast.AST]) -> list[ast.AST]:
+    """R20: the roots plus every top-level definition of the SAME module they reference by name,
+    transitively — a module-level helper or SQL constant the writer class uses is part of the writer."""
+    out, seen, todo = [], set(), list(roots)
+    while todo:
+        n = todo.pop()
+        if id(n) in seen:
+            continue
+        seen.add(id(n))
+        out.append(n)
+        for x in ast.walk(n):
+            if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Load) and x.id in defs:
+                todo.append(defs[x.id])
+    return out
+
+
+def _external_refs(nodes: list[ast.AST], imports: dict) -> list[tuple[Path, str]]:
+    """The first-party definitions these nodes reference in OTHER modules: an imported name used
+    (`seed_rules(...)`, a decorator `@l2_producer(...)`) or a module attribute (`db.insert_skill_row`)."""
+    out: list[tuple[Path, str]] = []
+    for n in nodes:
+        for x in ast.walk(n):
+            ref = None
+            if isinstance(x, ast.Attribute) and isinstance(x.value, ast.Name) and x.value.id in imports \
+                    and imports[x.value.id][1] is None:
+                ref = (imports[x.value.id][0], x.attr)
+            elif isinstance(x, ast.Name) and isinstance(x.ctx, ast.Load) and x.id in imports \
+                    and imports[x.id][1] is not None:
+                ref = imports[x.id]
+            if ref and ref not in out:
+                out.append(ref)
+    return out
+
+
+def _resolve_def(path: Path, name: str) -> tuple[Path, ast.AST, ast.AST] | None:
+    """`name` defined in `path`, following package re-exports (`from .x import name`, at most 3)."""
+    for _ in range(4):
+        tree = _parse(path)
+        d = _top_defs(tree).get(name)
+        if d is not None and not isinstance(d, (ast.Assign, ast.AnnAssign)):
+            return path, tree, d
+        nxt = _import_map(tree, path.parent).get(name)
+        if not nxt or nxt[1] is None:
+            return None
+        path, name = nxt
+    return None
+
+
+def _delegation_scope(asset_id: str, files: list[str], hops: int | None = None) -> tuple[list[dict], list[str]]:
+    """R20: the code a rebuild of `asset_id` runs, as far as it can be read statically — the registered
+    writer CLASS (not its whole module: bo_laksana.py registers two assets, and bo_laksana_rerank must
+    not inherit bo_laksana's replacement) plus the same-module definitions it references, then each
+    first-party definition that code references in another module, up to `hops` modules away.
+    Returns (units, beyond): a unit is dict(rel, tree, nodes, hop, via); `beyond` names each chain the
+    hop limit cut whose target module holds write SQL (a module with no DELETE/INSERT/ON CONFLICT text
+    cannot hold the replacement, so cutting it loses nothing and is not reported)."""
+    hops = IDEM_DELEGATION_HOPS if hops is None else hops
+    units: list[dict] = []
+    beyond: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    queue: list[tuple[Path, ast.AST, list[ast.AST], int, str]] = []
+    for name in files:
+        p = _writer_path(name)
+        tree = _parse(p)
+        cls = _writer_class(p, asset_id)
+        queue.append((p, tree, [cls] if cls is not None else [tree], 0, _rel(p)))
+    while queue:
+        p, tree, roots, hop, via = queue.pop(0)
+        nodes = _closure(roots, _top_defs(tree))
+        units.append(dict(rel=_rel(p), path=p, tree=tree, nodes=nodes, hop=hop, via=via))
+        for tp, attr in _external_refs(nodes, _import_map(tree, p.parent)):
+            r = _resolve_def(tp, attr)
+            if r is None:
+                continue
+            dp, dtree, dnode = r
+            key = (str(dp.resolve()), attr)
+            if key in seen:
+                continue
+            seen.add(key)
+            chain = f"{via} → {_rel(dp)}:{attr}"
+            if hop + 1 > hops:
+                if _WRITE_TEXT.search(dp.read_text(encoding="utf-8", errors="replace")):
+                    beyond.append(chain)
+                continue
+            queue.append((dp, dtree, [dnode], hop + 1, chain))
+    return units, beyond
+
+
+_TREE_INFO: dict[int, tuple] = {}
+
+
+def _sql_texts(unit: dict):
+    """(text, line, is_dynamic) for every SQL-bearing string in a unit's nodes — docstrings excluded;
+    an f-string's `{X}` resolved to a module constant or the enclosing `for` sequence (one text per
+    resolved name), else kept as the marker `{?}`; string concatenation (`a + b`) read as one text."""
+    tree = unit["tree"]
+    if id(tree) not in _TREE_INFO:                     # once per parsed module, not once per node
+        _TREE_INFO[id(tree)] = (tree, _docstring_ids(tree), _module_constants(tree), _module_sequences(tree))
+    _, docs, consts, seqs = _TREE_INFO[id(tree)]
+    out: list[tuple[str, int]] = []
+    done: set[int] = set()
+
+    def parts_of(n, loops) -> list[str] | None:
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            return [n.value]
+        if isinstance(n, ast.JoinedStr):
+            texts = [""]
+            for v in n.values:
+                if isinstance(v, ast.Constant) and isinstance(v.value, str):
+                    texts = [t + v.value for t in texts]
+                elif isinstance(v, ast.FormattedValue):
+                    e = v.value
+                    names = (loops.get(e.id) or ([consts[e.id]] if e.id in consts else None)) \
+                        if isinstance(e, ast.Name) else None
+                    texts = [t + x for t in texts for x in (names or ["{?}"])]
+            return texts
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+            a, b = parts_of(n.left, loops), parts_of(n.right, loops)
+            if a is not None and b is not None:
+                return [x + y for x in a for y in b]
+        return None
+
+    def visit(n, loops):
+        if isinstance(n, (ast.For, ast.AsyncFor)):
+            it = n.iter
+            names = _literal_names(it) or (seqs.get(it.id, []) if isinstance(it, ast.Name) else [])
+            tg = n.target.elts[0] if isinstance(n.target, ast.Tuple) and n.target.elts else n.target
+            if names and isinstance(tg, ast.Name):
+                loops = dict(loops, **{tg.id: names})
+        if id(n) not in done and id(n) not in docs and isinstance(n, (ast.Constant, ast.JoinedStr, ast.BinOp)):
+            texts = parts_of(n, loops)
+            if texts is not None:
+                for x in ast.walk(n):
+                    done.add(id(x))
+                out.extend((t, getattr(n, "lineno", 0)) for t in texts)
+                return
+        for c in ast.iter_child_nodes(n):
+            visit(c, loops)
+    for node in unit["nodes"]:
+        visit(node, {})
+    return out
+
+
+def _write_facts(units: list[dict]) -> dict[str, list[tuple[str, str, int, str]]]:
+    """R20: what the resolved scope WRITES, by statement kind: `replace` (DELETE / TRUNCATE / CREATE OR
+    REPLACE VIEW), `upsert` (INSERT … ON CONFLICT), `insert` (plain INSERT), `update`, each as
+    (table, file, line, delegation chain — '' in the writer itself); and `dynamic` — a DELETE/TRUNCATE/INSERT whose table the scan cannot name. An
+    INSERT and an ON CONFLICT split across two strings of ONE function count as an upsert, never as a
+    plain insert (the split must not manufacture an "accretes" FAIL)."""
+    facts = {k: [] for k in ("replace", "upsert", "insert", "update", "dynamic")}
+    for u in units:
+        for node in u["nodes"]:
+            texts = _sql_texts(dict(u, nodes=[node]))
+            fns = sorted(((f.lineno, f.end_lineno) for f in ast.walk(node)
+                          if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))), key=lambda r: r[1] - r[0])
+
+            def owner(ln):
+                return next((r for r in fns if r[0] <= ln <= r[1]), None)
+            orphan = {owner(ln) for t, ln in texts if _ON_CONFLICT.search(t) and not _SQL_INSERT.search(t)}
+            for t, ln in texts:
+                where = (u["rel"], ln, u["via"] if u["hop"] else "")
+                for rx in (_SQL_DELETE, _SQL_TRUNCATE, _SQL_VIEW):
+                    for m in rx.finditer(t):
+                        tb = m.group(1)
+                        facts["dynamic" if not tb or tb == "{?}" else "replace"].append(
+                            ("?" if not tb or tb == "{?}" else tb.lower(), *where))
+                for m in _SQL_INSERT.finditer(t):
+                    tb = m.group(1)
+                    if not tb or tb == "{?}":
+                        facts["dynamic"].append(("?", *where))
+                    else:
+                        k = "upsert" if (_ON_CONFLICT.search(t) or owner(ln) in orphan) else "insert"
+                        facts[k].append((tb.lower(), *where))
+                for m in _SQL_UPDATE.finditer(t):
+                    facts["update"].append((m.group(1).lower(), *where))
+    return {k: sorted(set(v), key=lambda x: (x[1], x[2], x[0])) for k, v in facts.items()}
+
+
+def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> tuple[str, list[str]]:
+    """§N.3, over real SQL strings (docstrings excluded), measured on the code a rebuild RUNS.
+
+    C-KSHETRA (W2-2 gate review §4.1): the PASS is a claim that a REBUILD REPLACES the asset's own rows —
+    (a) a counted DELETE must NAME one of the asset's own tables (`targets`: target_table ∪ count_sql
+    tables), and (b) a rebuild held when the output is populated reads FAIL with the hold's location.
+
+    R20 (W2-3): the scan now follows the writer's DELEGATION (`_delegation_scope`): from the registered
+    class — not its whole module — through the same-module helpers and SQL constants it uses, into the
+    seeder / shared helper / adapter target it calls, up to IDEM_DELEGATION_HOPS modules away. The same
+    two rules apply to everything reached. Upsert layers (L0) PASS on an `INSERT … ON CONFLICT` into the
+    asset's OWN table (no longer on `ON CONFLICT` text anywhere), or on a delete-then-insert of it — a
+    full replacement, no accretion. A FAIL needs a measured defect on a fully-read scope: a hold, an
+    own-table INSERT with no replacement (accretes), or an own-table upsert where §N.3 requires
+    delete-then-insert. Everything else is PARTIAL with the reason named — a chain the hop limit cut, a
+    table the scan cannot name, a registry/writer table mismatch (R240), in-place UPDATEs only, or no
+    own-table write at all — never "likely delegates"."""
     if not files:
         return NO_DET, ["no writer file recognised — nothing scanned"]   # R222 / N2, as contract_scan
-    sqls, deleted, guard = [], [], None
-    for name in files:
-        tree = _parse(_writer_path(name))
-        sqls += _code_strings(tree)
-        deleted += [(t.lower(), name, ln) for t, ln in _deleted_tables(tree)]
-        g = _populated_refusal_guard(tree)
-        if g and guard is None:
-            guard = (name, *g)
-    blob = "\n".join(sqls)
-    upsert = bool(re.search(r"ON CONFLICT", blob, re.I))
-    if guard:
-        name, ln, exc, probe = guard
-        return FAIL, [f"rebuild refused when target is populated: {name}:{ln} (raise {exc} after the output-existence "
-                      f"probe {probe}) — the delete-then-insert path runs only on an output-empty chart, so a rebuild "
-                      "of a populated chart does not replace (§N.3 'rebuild replaces' not met)"]
-    if convention == "upsert":
-        if upsert:
-            return PASS, ["ON CONFLICT present in the writer"]
-        return PARTIAL, ["no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there"]
+    units, beyond = _delegation_scope(asset_id, files)
+    facts = _write_facts(units)
     tset = {t.lower() for t in targets if t}
-    on_target = sorted({f"{t} ({n}:{ln})" for t, n, ln in deleted if t in tset})
-    if on_target:
-        return PASS, [f"DELETE FROM the asset's own table(s) (delete-then-insert): {', '.join(on_target)}"]
-    if deleted:
-        return PARTIAL, [f"DELETE FROM present but none names the asset's own table(s) {sorted(tset) or '(none declared)'} "
-                         f"— it deletes {sorted({t for t, _, _ in deleted})}; the replacement of its own rows is not "
-                         "measured here (it may delegate; verify there)"]
-    if upsert:
-        return PARTIAL, ["ON CONFLICT where the layer convention is delete-then-insert"]
-    return PARTIAL, ["no idempotency pattern in the writer's own SQL — it likely delegates; verify there"]
+
+    def cite(rows) -> str:
+        return ", ".join(dict.fromkeys(f"{t} ({rel}:{ln}{f' via {via}' if via else ''})" for t, rel, ln, via in rows))
+
+    guard = next(((u["rel"], *g) for u in units if u["hop"] == 0
+                  for g in [_populated_refusal_guard(u["tree"])] if g), None)
+    if guard:
+        rel, ln, exc, probe = guard
+        what, hop = f"raise {exc}", ""
+        return FAIL, [f"rebuild refused when target is populated: {rel}:{ln} ({what} after the output-existence "
+                      f"probe {probe}{hop}) — the delete-then-insert path runs only on an output-empty chart, so a "
+                      "rebuild of a populated chart does not replace (§N.3 'rebuild replaces' not met)"]
+    own = {k: [x for x in facts[k] if x[0] in tset] for k in ("replace", "upsert", "insert", "update")}
+    if convention == "upsert":
+        if own["upsert"]:
+            return PASS, [f"INSERT … ON CONFLICT into the asset's own table(s) (upsert): {cite(own['upsert'])}"]
+        if own["replace"]:
+            return PASS, [f"the asset's own table(s) replaced by delete-then-insert: {cite(own['replace'])} — a full "
+                          "replacement, not the L0 upsert convention, and no accretion"]
+    elif own["replace"]:
+        return PASS, [f"DELETE FROM the asset's own table(s) (delete-then-insert): {cite(own['replace'])}"]
+    unresolved = bool(beyond or facts["dynamic"])
+    if not unresolved:
+        if convention != "upsert" and own["upsert"]:
+            return FAIL, [f"upsert into the asset's own table(s) with no delete of them anywhere in the resolved scope: "
+                          f"{cite(own['upsert'])} — §N.3 requires delete-then-insert for this layer; rows a rebuild no "
+                          "longer produces survive it"]
+        if own["insert"] and not own["upsert"]:
+            return FAIL, [f"plain INSERT into the asset's own table(s) with no delete or upsert of them anywhere in the "
+                          f"resolved scope: {cite(own['insert'])} — a rebuild accretes (or collides) rather than replaces"]
+    reasons = []
+    other = sorted({x[0] for x in facts["replace"] + facts["upsert"]} - tset)
+    mismatch = sorted({(o, t) for t in other for o in tset if t.startswith(o + "_") or o.startswith(t + "_")})
+    if mismatch:
+        reasons.append("registry/writer table mismatch (R240, a registry-data finding — not closable by the "
+                       "detector): " + "; ".join(f"the registry declares {o}, the writer replaces {t}" for o, t in mismatch))
+    if beyond:
+        reasons.append(f"delegation deeper than {IDEM_DELEGATION_HOPS} hop(s), not followed: {'; '.join(beyond)}")
+    if facts["dynamic"]:
+        reasons.append("a DELETE/INSERT whose table the scan cannot name: "
+                       + ", ".join(f"{x[1]}:{x[2]}" for x in facts["dynamic"]))
+    if own["upsert"]:
+        reasons.append(f"upsert into the asset's own table(s) and no delete of them found: {cite(own['upsert'])}")
+    if own["insert"]:
+        reasons.append(f"plain INSERT into the asset's own table(s) and no replacement found: {cite(own['insert'])}")
+    if own["update"] and not (own["upsert"] or own["insert"]):
+        reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — no row is added, "
+                       "but whether a rebuild re-derives every row is not measured")
+    if other and not mismatch:
+        reasons.append(f"it replaces only other tables: {', '.join(other)}")
+    if not any(own.values()):
+        reasons.append(f"no write to the asset's own table(s) {sorted(tset) or '(none declared)'} anywhere in the "
+                       "resolved scope — nothing to replace; not graded N/A, since a static scan cannot prove a "
+                       "write's absence")
+    scope = ", ".join(dict.fromkeys(u["rel"] for u in units))
+    return PARTIAL, ["; ".join(reasons) + f" [resolved scope: {scope}]"]
 
 
 def _ts_code(src: str, blank_strings: bool = False) -> str:
