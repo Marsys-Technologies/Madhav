@@ -177,6 +177,28 @@ def registered_criterion(crit: str) -> dict | None:
     return CRITERION_REGISTRY.get(crit)
 
 
+def gap_id_for(asset_id: str, crit: str, scope: str | None = None) -> str:
+    """R79 (re-scoped per D4): the deterministic id derivation — `<asset>-<Gate>.<check>`, the
+    census's pre-existing form (criterion strings are already "Gate.check"), with a scope suffix
+    appended where the gap is chart-scoped. Deliberately does NOT resolve family aliases (R79 is
+    re-scoped, not withdrawn: aliasing happens once, by hand, in the R81 migration script — never
+    here, and never at runtime)."""
+    base = f"{asset_id}-{crit}"
+    return f"{base}@{scope}" if scope else base
+
+
+def lookup_criterion(asset: str, scope: str | None, crit: str) -> tuple[str, dict] | None:
+    """R79 (re-scoped per D4): deterministic lookup on (asset, scope, registered criterion) — no
+    substance-key aliasing, no family merge. Returns (gap_id, registry_entry) or None when `crit`
+    is not registered. Two criteria that happen to describe related substance (e.g. `Carr.D1` and
+    `Carr.detector`) are two distinct lookups here, by design (D4 review finding #2: "a specific
+    proof is a distinct criterion from its generic placeholder ... and is never merged by family
+    alias")."""
+    entry = registered_criterion(crit)
+    if entry is None:
+        return None
+    return gap_id_for(asset, crit, scope), entry
+
 
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
