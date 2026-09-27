@@ -55,6 +55,17 @@ function mockBuildPages(state: {
         rows: buildId ? (state.rowsByBuild[buildId] ?? []).slice(offset, offset + fetchLimit) : [],
       }] })
     }
+    if (sql.includes('FROM asset_provenance_receipts receipt') && sql.includes('AS rows_build_id')) {
+      // Served-generation resolver: the natal strength facts are written by ga_vargas under
+      // its own run, which is not the ga_dashas run.
+      return Promise.resolve({ rows: [{
+        asset_id: 'ga_vargas', partition_key: '__whole_asset__', receipt_version: 'v1',
+        receipt_build_id: 'build-vargas', rows_build_id: 'build-vargas', receipt_state: 'proven',
+        freshness_state: 'fresh', output_digest_spec_sha256: 'a'.repeat(64), spec_active: true,
+        receipt_run_state: 'completed', receipt_asset_present: true, receipt_disposition: 'build',
+        observed_at: '2026-09-07T00:00:00Z',
+      }] })
+    }
     if (sql.includes('FROM chart_facts')) {
       natalCalls.push({ sql, params })
       return Promise.resolve({ rows: [{
@@ -174,7 +185,7 @@ describe('get_dashas build-pinned cursor pagination', () => {
     expect(queryMock).toHaveBeenCalledTimes(1) // no natal enrichment or secondary count after mismatch
   })
 
-  it('fences serve-time natal dignity and shadbala enrichment to the selected dasha build', async () => {
+  it('fences serve-time natal dignity and shadbala enrichment to the served build set, not the dasha run', async () => {
     const row = { ...dasha('a'), lord_graha: 'Venus' }
     const database = mockBuildPages({
       eligibleBuild: 'build-a',
@@ -185,9 +196,9 @@ describe('get_dashas build-pinned cursor pagination', () => {
 
     expect(result.is_error).toBe(false)
     expect(database.natalCalls).toHaveLength(1)
-    expect(database.natalCalls[0]?.sql).toContain('build_id = $5::uuid')
-    expect(database.natalCalls[0]?.sql).not.toContain('build_id = $5::text')
-    expect(database.natalCalls[0]?.params.at(-1)).toBe('build-a')
+    expect(database.natalCalls[0]?.sql).toContain('build_id = ANY($5::uuid[])')
+    expect(database.natalCalls[0]?.sql).not.toContain('build_id = $5::uuid')
+    expect(database.natalCalls[0]?.params.at(-1)).toEqual(['build-vargas'])
   })
 
   it('rejects fractional and huge finite pagination before issuing SQL, while safely flooring usable values', async () => {

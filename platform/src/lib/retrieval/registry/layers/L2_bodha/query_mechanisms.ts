@@ -47,6 +47,7 @@ import { query } from '@/lib/db/client'
 import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading_checklist'
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
+import { servedRowsBuildIdSql } from '../../generation/served_generation'
 
 const MAX_LIMIT = 50
 const MAX_OFFSET = 1_000_000
@@ -377,7 +378,9 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
         total_matching: string
       }>(
         `WITH eligible_receipt AS (
-           SELECT receipt.build_id::text AS build_id,
+           -- build_id is the run that WROTE the served rows (shared served-generation rule):
+           -- a skip_no_delta run re-attributes the receipt but never rewrites the rows.
+           SELECT ${servedRowsBuildIdSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}::text AS build_id,
                   receipt.observed_at AS observed_at
              FROM asset_provenance_receipts receipt
              JOIN asset_freshness freshness
@@ -386,6 +389,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
               AND freshness.partition_key = receipt.partition_key
               AND freshness.receipt_version = receipt.receipt_version
              JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+             LEFT JOIN build_run_assets receipt_asset
+               ON receipt_asset.run_id = receipt.build_id AND receipt_asset.asset_id = receipt.asset_id
             WHERE receipt.asset_id = $${assetIdParam}::text
               AND receipt.chart_id = $1::uuid
               AND receipt.receipt_state = 'proven'

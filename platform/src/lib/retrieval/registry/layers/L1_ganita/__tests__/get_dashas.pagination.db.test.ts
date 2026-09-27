@@ -85,6 +85,8 @@ run('get_dashas disposable PostgreSQL overlapping terminal replacement fence', (
     await scoped.query(migration('supabase/migrations/596_nirmana_provenance_receipts.sql'))
     await scoped.query(migration('supabase/migrations/598_nirmana_output_digest_specs.sql'))
     await scoped.query(migration('migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql'))
+    await scoped.query(migration('migrations/640_nirmana_owave_wp1_output_changed.sql'))
+    await scoped.query(migration('migrations/641_nirmana_owave_wp2_disposition.sql'))
 
     await scoped.query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chartId, 'Disposable Dasha'])
     await scoped.query(`
@@ -227,6 +229,34 @@ run('get_dashas disposable PostgreSQL overlapping terminal replacement fence', (
       { state: 'building', started_at: '2026-09-18T09:00:00Z', ended_at: null },
       async () => expect(await readDashas()).toMatchObject(fenced),
     )
+  })
+
+  it('serves the rows B wrote after a skip_no_delta run re-attributes the receipt (RC-1 twin)', async () => {
+    const runSkip = '55555555-5555-4555-8555-555555555555'
+    await scoped.query(`
+      INSERT INTO build_runs(id, chart_id, scope, action, state, plan, triggered_by, started_at, ended_at)
+      VALUES ($1, $2, 'asset', 'build', 'completed', '{}'::jsonb, 'test', '2026-09-18T08:00:00Z', '2026-09-18T08:05:00Z')
+    `, [runSkip, chartId])
+    await scoped.query(`
+      INSERT INTO build_run_assets(run_id, asset_id, position, state, disposition, started_at, ended_at)
+      VALUES ($1, 'ga_dashas', 0, 'complete', 'skip_no_delta', '2026-09-18T08:00:00Z', '2026-09-18T08:01:00Z')
+    `, [runSkip])
+    await scoped.query("UPDATE asset_provenance_receipts SET build_id = $1, observed_at = '2026-09-18T08:01:00Z' WHERE asset_id = 'ga_dashas'", [runSkip])
+    try {
+      expect(await readDashas()).toMatchObject(served)
+    } finally {
+      await scoped.query('UPDATE asset_provenance_receipts SET build_id = $1, observed_at = $2 WHERE asset_id = \'ga_dashas\'', [runB, receiptObservedAt])
+      await scoped.query('DELETE FROM build_runs WHERE id = $1', [runSkip])
+    }
+  })
+
+  it('refuses rows when a skip_no_delta receipt has no provable writing run', async () => {
+    await scoped.query("UPDATE build_run_assets SET disposition = 'skip_no_delta' WHERE run_id = $1", [runB])
+    try {
+      expect(await readDashas()).toMatchObject({ is_error: true, content: { code: 'ga_dashas_receipt_unavailable' } })
+    } finally {
+      await scoped.query('UPDATE build_run_assets SET disposition = NULL WHERE run_id = $1', [runB])
+    }
   })
 
   it('serves B when a building orphan belongs to a terminal run that ended before the receipt', async () => {

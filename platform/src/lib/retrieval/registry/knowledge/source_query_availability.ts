@@ -1,5 +1,6 @@
 import type { SourceQueryAvailabilityRequirement } from './types'
 import { stableFingerprint } from './stable'
+import { servedRowsBuildIdSql } from '../generation/served_generation'
 
 export type SourceQueryParameterBinding =
   | 'global'
@@ -2196,7 +2197,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `WITH eligible_receipt AS (
-            SELECT receipt.build_id::text AS build_id
+            SELECT ${servedRowsBuildIdSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}::text AS build_id
               FROM asset_provenance_receipts receipt
               JOIN asset_freshness freshness
                 ON freshness.asset_id = receipt.asset_id
@@ -2204,6 +2205,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND freshness.partition_key = receipt.partition_key
                AND freshness.receipt_version = receipt.receipt_version
               JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+              LEFT JOIN build_run_assets receipt_asset
+                ON receipt_asset.run_id = receipt.build_id AND receipt_asset.asset_id = receipt.asset_id
              WHERE receipt.asset_id = 'ga_dashas'
                AND receipt.chart_id = $1::uuid
                AND receipt.receipt_state = 'proven'

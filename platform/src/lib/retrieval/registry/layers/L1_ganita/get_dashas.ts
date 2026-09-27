@@ -29,6 +29,7 @@ import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { DASHA_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
+import { resolveChartServedGeneration, servedRowsBuildIdSql } from '../../generation/served_generation'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -657,7 +658,9 @@ export const getDashasCapability: CapabilityDescriptor = {
           rows: Record<string, unknown>[]
         }>(
           `WITH eligible_receipt AS (
-           SELECT receipt.build_id::text AS build_id,
+           -- build_id is the run that WROTE the served rows (shared served-generation rule):
+           -- a skip_no_delta run re-attributes the receipt but never rewrites the rows.
+           SELECT ${servedRowsBuildIdSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}::text AS build_id,
                   receipt.observed_at AS observed_at
              FROM asset_provenance_receipts receipt
              JOIN asset_freshness freshness
@@ -666,6 +669,8 @@ export const getDashasCapability: CapabilityDescriptor = {
               AND freshness.partition_key = receipt.partition_key
               AND freshness.receipt_version = receipt.receipt_version
              JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+             LEFT JOIN build_run_assets receipt_asset
+               ON receipt_asset.run_id = receipt.build_id AND receipt_asset.asset_id = receipt.asset_id
             WHERE receipt.asset_id = $${assetIdParam}::text
               AND receipt.chart_id = $1::uuid
               AND receipt.receipt_state = 'proven'
@@ -796,19 +801,22 @@ export const getDashasCapability: CapabilityDescriptor = {
         if (pairs.size > 0) {
           const ayas = [...new Set([...pairs.values()].map(p => p.aya))]
           const subs = [...new Set([...pairs.values()].map(p => p.subj))]
+          // Dignity and shadbala facts are written by ga_vargas/ga_strength, not ga_dashas, so
+          // they are fenced by the chart's served build set — never by the dasha rows' run.
+          const servedBuildIds = (await resolveChartServedGeneration(chartId, null)).served_build_ids
           const condRes = await query<{ ayanamsha_id: string; fact_subject: string; dignity_state: string | null; shadbala_rupa: number | null }>(
             `SELECT ayanamsha_id, fact_subject,
                     MAX(fact_value_text) FILTER (WHERE fact_category = 'graha_dignity_per_varga') AS dignity_state,
                     MAX(fact_value_num)  FILTER (WHERE fact_category = 'graha_shadbala_total')     AS shadbala_rupa
              FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])
-               AND build_id = $5::uuid
+               AND build_id = ANY($5::uuid[])
                AND (
                  (fact_category = 'graha_dignity_per_varga' AND fact_key = 'dignity_state' AND fact_subject = ANY($4::text[]))
                  OR (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa' AND fact_subject = ANY($3::text[]))
                )
              GROUP BY ayanamsha_id, fact_subject`,
-            [chartId, ayas, subs, subs.map(s => `D1_${s}`), activeBuildId],
+            [chartId, ayas, subs, subs.map(s => `D1_${s}`), [...servedBuildIds]],
           )
           // The dignity subject is `D1_<code>`; shadbala subject is `<code>`. Split by the two shapes.
           for (const cr of condRes.rows) {
