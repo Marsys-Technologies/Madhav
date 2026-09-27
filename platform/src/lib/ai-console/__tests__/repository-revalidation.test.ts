@@ -28,13 +28,14 @@ describe('bounded repository-owned revalidation leases', () => {
     await expect(repository.assertConnectionRequestAuthorized({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 0 })).rejects.toBeDefined()
     expect(execute).not.toHaveBeenCalled()
   })
-  it('authorizes only the exact available runtime model on a not-invalid credential', async () => {
+  it('authorizes only the exact available runtime model on a confirmed-valid credential', async () => {
     execute.mockResolvedValue({ rows: [{ id }], rowCount: 1 })
     expect(await repository.assertRuntimeModelRequestAuthorized({ userId: 'alice', connectionId: id,
       providerId: 'openai', credentialVersion: 2, modelId: 'gpt-4.1-mini' })).toBeUndefined()
     expect(calls()).toHaveLength(1)
     expect(calls()[0].params).toEqual(['alice', id, 'openai', 2, 'gpt-4.1-mini'])
-    expect(calls()[0].sql).toContain("c.credential_validity<>'invalid'")
+    expect(calls()[0].sql).toContain("c.credential_validity='valid'")
+    expect(calls()[0].sql).not.toContain('validation_state')
     expect(calls()[0].sql).toContain('m.connection_id=c.id')
     expect(calls()[0].sql).toContain('m.model_id=$5')
     expect(calls()[0].sql).toContain('m.available=true')
@@ -59,7 +60,8 @@ describe('bounded repository-owned revalidation leases', () => {
     expect(calls()).toHaveLength(1)
     expect(calls()[0].params).toEqual(['alice', id, 'openai', 2, 'gpt-4.1-mini'])
     expect(calls()[0].sql).toContain('JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5')
-    expect(calls()[0].sql).toContain("c.credential_validity<>'invalid'")
+    expect(calls()[0].sql).toContain("c.credential_validity='valid'")
+    expect(calls()[0].sql).not.toContain('validation_state')
     expect(calls()[0].sql).toContain('m.available=true')
     expect(Object.keys(record).sort()).toEqual([
       'authTag', 'ciphertext', 'fingerprint', 'keyVersion', 'mask', 'nonce',

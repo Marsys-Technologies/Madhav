@@ -32,12 +32,16 @@ beforeEach(() => {
     let rows: Record<string, unknown>[] = []
     if (sql.includes('SKIP LOCKED')) { rows = claimed; claimed = [] }
     else if (sql.includes('SELECT c.id FROM ai_provider_connections c')) {
-      const exactModelAllowed = !sql.includes('ai_connection_models') || (validity !== 'invalid' && availableModels.has(String(params[4])))
+      const requiresConfirmedValidity = sql.includes("credential_validity='valid'")
+      const credentialAllowed = requiresConfirmedValidity ? validity === 'valid' : validity !== 'invalid'
+      const exactModelAllowed = !sql.includes('ai_connection_models') || (credentialAllowed && availableModels.has(String(params[4])))
       if (active && !deleted && exactModelAllowed && params[0] === 'alice' && params[1] === id && params[2] === provider && params[3] === version) rows = [{ id }]
     }
     else if (sql.includes('SELECT c.credential_ciphertext')) {
       const runtime = sql.includes('ai_connection_models')
-      const exactAllowed = !runtime || (params[2] === provider && validity !== 'invalid' && availableModels.has(String(params[4])))
+      const requiresConfirmedValidity = sql.includes("credential_validity='valid'")
+      const credentialAllowed = requiresConfirmedValidity ? validity === 'valid' : validity !== 'invalid'
+      const exactAllowed = !runtime || (params[2] === provider && credentialAllowed && availableModels.has(String(params[4])))
       const requestedVersion = runtime ? params[3] : params[2]
       if (active && !deleted && exactAllowed && params[0] === 'alice' && params[1] === id && requestedVersion === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint }]
     } else if (sql.includes('FROM ai_provider_connections') && sql.trim().startsWith('SELECT') && params[0] === 'alice') {
@@ -74,6 +78,7 @@ describe('owned validation state flow', () => {
     }
   })
   it.each(['disabled', 'deleted', 'replaced'] as const)('blocks extracted runtime models after the connection is %s', async change => {
+    validity = 'valid'
     const binding = await createConnectionRuntimeBinding({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 1 }, { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer'], supportsTools: true, supportsStructuredOutput: true })
     const model = binding.model
     if (change === 'disabled') active = false
@@ -161,6 +166,7 @@ describe('owned validation state flow', () => {
     expect(http).not.toHaveBeenCalled()
   })
   it('creates an owned request-only runtime binding and rejects stale versions before exposing a model', async () => {
+    validity = 'valid'
     const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
     const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
     const binding = await createConnectionRuntimeBinding(connection, model)
@@ -170,6 +176,7 @@ describe('owned validation state flow', () => {
     expect(http).not.toHaveBeenCalled()
   })
   it('uses one atomic exact-model credential read when creating a runtime binding', async () => {
+    state = 'validating'; validity = 'valid'
     const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
     const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
     const binding = await createConnectionRuntimeBinding(connection, model)
@@ -177,10 +184,12 @@ describe('owned validation state flow', () => {
     expect(initialReads).toHaveLength(1)
     expect(String(initialReads[0][0])).toContain('SELECT c.credential_ciphertext')
     expect(String(initialReads[0][0])).toContain('ai_connection_models')
+    expect(String(initialReads[0][0])).not.toContain('validation_state')
     expect(initialReads[0][1]).toEqual(['alice', id, 'openai', 1, 'gpt-4.1-mini'])
     binding.dispose()
   })
   it('rejects a removed exact runtime model before decrypting and on every outbound preflight', async () => {
+    validity = 'valid'
     const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
     const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
     availableModels.clear()
@@ -200,6 +209,24 @@ describe('owned validation state flow', () => {
     await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(execute.mock.calls.filter(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toHaveLength(1)
     expect(http).not.toHaveBeenCalled()
+  })
+  it('rejects unknown runtime validity before decrypting even when the exact model remains available', async () => {
+    validity = 'unknown'
+    const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
+    const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
+    await expect(createConnectionRuntimeBinding(connection, model)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(execute.mock.calls.filter(([sql]) => String(sql).includes('SELECT c.credential_ciphertext'))).toHaveLength(1)
+    expect(http).not.toHaveBeenCalled()
+  })
+  it('blocks an existing binding before its next outbound call when validity becomes unknown', async () => {
+    validity = 'valid'
+    const connection = { userId: 'alice', connectionId: id, providerId: 'openai' as const, credentialVersion: 1 }
+    const model = { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer' as const], supportsTools: true, supportsStructuredOutput: true }
+    const binding = await createConnectionRuntimeBinding(connection, model)
+    validity = 'unknown'
+    await expect(binding.model.doGenerate({ prompt: [] })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    expect(http).not.toHaveBeenCalled()
+    binding.dispose()
   })
   it('preserves connection-only authorization for discovery before a model catalog exists', async () => {
     availableModels.clear()

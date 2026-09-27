@@ -529,7 +529,7 @@ export async function assertRuntimeModelRequestAuthorized(input: { userId: strin
   required((await query(`SELECT c.id FROM ai_provider_connections c JOIN profiles p ON p.id=c.user_id
     JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5
     WHERE c.user_id=$1 AND c.id=$2 AND c.provider_id=$3 AND c.credential_version=$4
-    AND c.deleted_at IS NULL AND c.credential_validity<>'invalid' AND p.status='active' AND m.available=true`,
+    AND c.deleted_at IS NULL AND c.credential_validity='valid' AND p.status='active' AND m.available=true`,
   [target.userId, target.connectionId, target.providerId, target.credentialVersion, target.modelId])).rows)
 }
 
@@ -553,7 +553,7 @@ export async function loadRuntimeModelCredential(input: { userId: string; connec
     c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint FROM ai_provider_connections c
     JOIN profiles p ON p.id=c.user_id JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5
     WHERE c.user_id=$1 AND c.id=$2 AND c.provider_id=$3 AND c.credential_version=$4
-    AND c.deleted_at IS NULL AND c.credential_validity<>'invalid' AND p.status='active' AND m.available=true`,
+    AND c.deleted_at IS NULL AND c.credential_validity='valid' AND p.status='active' AND m.available=true`,
   [target.userId, target.connectionId, target.providerId, target.credentialVersion, target.modelId])).rows)
   return encryptedCredential(row)
 }
