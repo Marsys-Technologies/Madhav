@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-24T08:29:13.000Z",
-  "content_hash": "sha256:0a2a675d0098390453d77ba0119b87fad865728e908290eaee6cc84fc465bc36",
-  "source_catalog_fingerprint": "sha256:166473fa82082610fea7427fdc61051fca303a9f44998a2b9ce3af2b9645ad9b",
-  "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
+  "generated_at": "2026-09-27T12:37:17.000Z",
+  "content_hash": "sha256:19b276473119bd5727ea9e26089a88e6014489ad2581ed94ac0b314c14b3a687",
+  "source_catalog_fingerprint": "sha256:81cf4e6013f3fcaa38ff3e66803fb8fa47fcfc2b39c8f54345aaae3fe81c0445",
+  "semantic_review_fingerprint": "sha256:574d9d095f6a21adff675a0f3aad52bd5c95ba084f165b53e501adb5a06f4ff6",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
@@ -14145,7 +14145,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-calibration:v1",
               "capability_uri": "marsys://tool/L5/query_calibration",
-              "contract_sha256": "sha256:fe0afbd1f892596bde67cfb1e3edf56c68c71beb57df0ed8e0ca1675bc3b25ae",
+              "contract_sha256": "sha256:46eb4e09dea47dc56465d09e1c9cfa9b54d77fe5a3db498ad03fce7377767732",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197"
             }
