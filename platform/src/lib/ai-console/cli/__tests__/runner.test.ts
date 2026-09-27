@@ -4,6 +4,15 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CliDefinition } from '../registry'
 const authorization = vi.hoisted(() => ({ invoke: vi.fn() }))
+const synchronousFileReads = vi.hoisted(() => ({ reject: false, calls: 0 }))
+vi.mock('node:fs', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return { ...actual, readFileSync: (...args: Parameters<typeof actual.readFileSync>) => {
+    synchronousFileReads.calls++
+    if (synchronousFileReads.reject) throw new Error('synchronous full-file read is forbidden')
+    return actual.readFileSync(...args)
+  } }
+})
 vi.mock('../../repository', () => ({
   withCliInvocationAuthorization: authorization.invoke,
 }))
@@ -12,8 +21,12 @@ import { createCliRunner } from '../runner'
 const roots: string[] = []
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 beforeEach(() => {
+  synchronousFileReads.reject = false; synchronousFileReads.calls = 0
   authorization.invoke.mockImplementation(async (_userId: string, _cliId: string,
-    start: () => unknown) => start())
+    start: () => unknown, _purpose: string, beforeStart?: () => Promise<void>) => {
+    await beforeStart?.()
+    return start()
+  })
 })
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
@@ -170,11 +183,24 @@ describe('governed CLI runner', () => {
   it('requires the exact validated executable identity before execution and rejects a swapped entrypoint', async () => {
     const { executable, definition } = await fixture('process.stdout.write("original")')
     const runner = createCliRunner({ registry: { codex: definition } })
-    const identity = runner.inspectInstallation('codex')
-    runner.confirmValidation('codex', identity, '1.0.0')
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0')
     await writeFile(executable, '#!/usr/bin/env node\nprocess.stdout.write("swapped")')
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+  })
+
+  it('preserves confirmed execution during revalidation without synchronous file reads', async () => {
+    const { definition } = await fixture('process.stdout.write("ok")')
+    const runner = createCliRunner({ registry: { codex: definition } })
+    synchronousFileReads.reject = true
+    const identity = await runner.inspectInstallation('codex')
+    expect(identity.entrypoint.sha256).toMatch(/^[a-f0-9]{64}$/)
+    await runner.confirmValidation('codex', identity, '1.0.0')
+    await runner.inspectInstallation('codex')
+    await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
+      .resolves.toMatchObject({ stdout: 'ok' })
+    expect(synchronousFileReads.calls).toBe(0)
   })
 
   it('binds and rechecks the fixed interpreter chain before execution', async () => {
@@ -185,8 +211,8 @@ describe('governed CLI runner', () => {
     const interpreted = { ...definition, interpreter: { candidate: interpreter,
       allowedRealpathPrefixes: [`${await realpath(root)}/`] } }
     const runner = createCliRunner({ registry: { codex: interpreted } })
-    const identity = runner.inspectInstallation('codex')
-    runner.confirmValidation('codex', identity, '1.0.0')
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0')
     await writeFile(interpreter, '#!/usr/bin/env node\nprocess.stdout.write("swapped-launcher")')
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
@@ -197,9 +223,9 @@ describe('governed CLI runner', () => {
     const runner = createCliRunner({ registry: { codex: definition } })
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
-    const identity = runner.inspectInstallation('codex')
-    expect(() => runner.confirmValidation('codex', identity, '2.0.0'))
-      .toThrowError(expect.objectContaining({ code: 'AI_CLI_UNREACHABLE' }))
+    const identity = await runner.inspectInstallation('codex')
+    await expect(runner.confirmValidation('codex', identity, '2.0.0'))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
   })
 
   it('honors abort before admission and while queued behind the per-CLI cap', async () => {
@@ -226,7 +252,7 @@ describe('governed CLI runner', () => {
     const descendantDefinition = { ...definition, execution: { ...definition.execution!, args: [pidFile] } }
     const controller = new AbortController()
     const runner = createCliRunner({ registry: { codex: descendantDefinition }, limits: { killGraceMs: 20 } })
-    const identity = runner.inspectInstallation('codex'); runner.confirmValidation('codex', identity, '1.0.0')
+    const identity = await runner.inspectInstallation('codex'); await runner.confirmValidation('codex', identity, '1.0.0')
     const running = runner.runExecution('alice', 'codex', { modelId: null, stdin: '', signal: controller.signal })
     let childPid = 0
     // Parallel Vitest workers can delay process startup on a busy host; give
@@ -265,7 +291,8 @@ describe('governed CLI runner', () => {
     const { definition } = await fixture('process.exit(7)')
     const commitError = new Error('authorization commit failed')
     authorization.invoke.mockImplementation(async (_userId: string, _cliId: string,
-      start: () => { completion: Promise<unknown> }) => {
+      start: () => { completion: Promise<unknown> }, _purpose: string, beforeStart?: () => Promise<void>) => {
+      await beforeStart?.()
       start()
       await delay(50)
       throw commitError

@@ -208,6 +208,20 @@ describe('owned AI configuration repository', () => {
     expect(handle.cancel).not.toHaveBeenCalled()
     expect(calls().at(-1)?.sql).toBe('COMMIT')
   })
+  it('runs the asynchronous identity check under the grant lock immediately before start', async () => {
+    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'claude_code' }] : undefined)
+    const order: string[] = []
+    const checkIdentity = vi.fn(async () => {
+      expect(calls().at(-1)?.sql).toContain('FOR SHARE')
+      order.push('identity')
+    })
+    const start = vi.fn(() => {
+      order.push('start')
+      return { pid: 42, cancel: vi.fn() }
+    })
+    await repository.withCliInvocationAuthorization('alice', 'claude_code', start, 'execution', checkIdentity)
+    expect(order).toEqual(['identity', 'start'])
+  })
   it('cancels a started process exactly once when COMMIT fails and preserves that error', async () => {
     const commitError = new Error('commit failed')
     execute.mockImplementation(async (sql: string) => {

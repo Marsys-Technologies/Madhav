@@ -634,7 +634,12 @@ export async function markCliValidationStarted(cliId: string): Promise<CliValida
     await client.query(`INSERT INTO ai_cli_installations(cli_id) VALUES($1) ON CONFLICT(cli_id) DO NOTHING`, [cli])
     const previous = required((await client.query(`SELECT validation_state,detected_product,detected_version,
       last_checked_at,last_error_code FROM ai_cli_installations WHERE cli_id=$1 FOR UPDATE`, [cli])).rows)
-    const started = required((await client.query(`UPDATE ai_cli_installations SET validation_state='validating',
+    const started = required((await client.query(`UPDATE ai_cli_installations SET
+      validation_state=CASE WHEN validation_state='validating' THEN 'untested' ELSE validation_state END,
+      detected_product=CASE WHEN validation_state='validating' THEN NULL ELSE detected_product END,
+      detected_version=CASE WHEN validation_state='validating' THEN NULL ELSE detected_version END,
+      last_checked_at=CASE WHEN validation_state='validating' THEN NULL ELSE last_checked_at END,
+      last_error_code=CASE WHEN validation_state='validating' THEN NULL ELSE last_error_code END,
       updated_at=clock_timestamp() WHERE cli_id=$1 RETURNING xmin::text AS validation_epoch`, [cli])).rows)
     const previousState = cliStoredStateSchema.parse(previous.validation_state)
     // A cross-process predecessor can disappear while marked validating. Never
@@ -738,12 +743,14 @@ export async function listAdminCliGrants(actorId: string, userId: string) {
 }
 
 /**
- * Synchronous process creation/handle acquisition only; never await model completion.
+ * Process creation/handle acquisition stays synchronous; never await model completion.
+ * An optional asynchronous local-filesystem identity check may run after the
+ * grant lock and immediately before process creation.
  * The handle stays outside the transaction so failure after spawn (including COMMIT)
  * cancels the started process exactly once. No callback or transaction retry occurs.
  */
 export async function withCliInvocationAuthorization<T extends CliInvocationHandle>(userId: string, cliId: string, start: () => T,
-  purpose: 'execution' | 'validation' = 'execution'): Promise<T> {
+  purpose: 'execution' | 'validation' = 'execution', beforeStart?: () => Promise<void>): Promise<T> {
   const cli = CliIdSchema.parse(cliId)
   if (!CLI_REGISTRY[cli].execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
   const safePurpose = z.enum(['execution', 'validation']).parse(purpose)
@@ -756,6 +763,7 @@ export async function withCliInvocationAuthorization<T extends CliInvocationHand
         AND g.revoked_at IS NULL AND p.status='active'
         ${safePurpose === 'execution' ? "AND i.validation_state='reachable'" : ''} FOR SHARE OF g,p,i`, [userId, cli])).rows
       if (!rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      if (beforeStart) await beforeStart()
       const handle = start()
       // Retain any cancellable result before checking the rest of its contract.
       if (handle && typeof handle === 'object' && typeof handle.cancel === 'function') started = handle

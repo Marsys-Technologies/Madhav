@@ -47,7 +47,7 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
         errorCode: write.errorCode }
     }
     if (!definition.execution || !definition.authStatusArgs) {
-      try { runner.inspectInstallation(id) }
+      try { await runner.inspectInstallation(id) }
       catch (error) {
         const safe = normalizeAiError(error, { source: 'cli' })
         const state = safe.code === 'AI_CLI_NOT_INSTALLED' ? 'not_installed' as const : 'unreachable' as const
@@ -61,9 +61,9 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
     }
 
     let version: string | null = null
-    let installationIdentity: ReturnType<CliRunner['inspectInstallation']>
+    let installationIdentity: Awaited<ReturnType<CliRunner['inspectInstallation']>>
     try {
-      installationIdentity = runner.inspectInstallation(id)
+      installationIdentity = await runner.inspectInstallation(id)
       const versionResult = await runner.runVersionValidation(userId, id, signal)
       version = parseSupportedVersion(definition, versionResult.stdout)
       if (!version) {
@@ -105,7 +105,7 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
         supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: true }
       const completedEpoch = await publish({ state: 'reachable', detectedProduct: definition.productName,
         detectedVersion: version, models: [model] })
-      try { runner.confirmValidation(id, installationIdentity, version) }
+      try { await runner.confirmValidation(id, installationIdentity, version) }
       catch {
         await publish({ state: 'needs_attention', detectedProduct: definition.productName,
           detectedVersion: version, errorCode: 'AI_CLI_UNREACHABLE' }, completedEpoch)

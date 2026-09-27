@@ -50,15 +50,15 @@ describe('CLI repository boundary', () => {
     expect(calls.at(-1)?.sql).toContain('COMMIT')
   })
 
-  it('publishes validating without clearing the last known safe catalog', async () => {
+  it('claims revalidation without replacing the last confirmed terminal state or catalog', async () => {
     execute.mockImplementation(async (sql: string) => ({ rows: sql.includes('RETURNING xmin::text')
       ? [{ validation_epoch: '42' }] : sql.includes('SELECT validation_state')
         ? [{ validation_state: 'reachable', detected_product: 'Claude Code', detected_version: '2.1.56',
           last_checked_at: new Date('2026-09-27T00:00:00Z'), last_error_code: null }] : [], rowCount: 1 }))
     const attempt = await repository.markCliValidationStarted('claude_code')
     const sql = execute.mock.calls.map(([value]) => String(value)).join('\n')
-    expect(sql).toContain("validation_state='validating'")
     expect(sql).toContain('RETURNING xmin::text AS validation_epoch')
+    expect(sql).not.toMatch(/SET\s+validation_state='validating'/)
     expect(sql).not.toMatch(/DELETE|available=false/)
     expect(attempt).toMatchObject({ cliId: 'claude_code', epoch: '42',
       previous: { state: 'reachable', detectedVersion: '2.1.56' } })

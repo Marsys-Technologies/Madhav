@@ -1,7 +1,8 @@
 import 'server-only'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { lstatSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream } from 'node:fs'
+import { lstat, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { isDeepStrictEqual } from 'node:util'
@@ -17,11 +18,15 @@ export interface CliProcessResult {
 }
 
 export interface CliFileIdentity {
+  readonly candidate: string
   readonly realpath: string
   readonly device: string
   readonly inode: string
   readonly size: number
   readonly modifiedMs: number
+  readonly changedMs: number
+  readonly mode: number
+  readonly uid: number
   readonly sha256: string
 }
 
@@ -65,9 +70,16 @@ export interface StartedCliProcess extends CliInvocationHandle {
   cancel(): void
 }
 
+interface PreparedCliProcess {
+  readonly executable: string
+  readonly processArgs: readonly string[]
+  readonly stdinBytes: Buffer
+  readonly cwd: string
+}
+
 export interface CliRunner {
-  inspectInstallation(cliId: CliId): CliInstallationIdentity
-  confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string): void
+  inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity>
+  confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string): Promise<void>
   runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliProcessResult>
   runAuthValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliProcessResult>
   runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal): Promise<CliProcessResult>
@@ -83,6 +95,7 @@ class GovernedCliRunner implements CliRunner {
   private active = 0
   private readonly activeByCli = new Map<CliId, number>()
   private readonly queue: QueueItem[] = []
+  private readonly validationIdentities = new Map<CliId, CliInstallationIdentity>()
   private readonly confirmedIdentities = new Map<CliId, { identity: CliInstallationIdentity; version: string }>()
 
   constructor(options: { registry?: Registry; limits?: Partial<CliRunLimits>; environment?: NodeJS.ProcessEnv } = {}) {
@@ -94,19 +107,24 @@ class GovernedCliRunner implements CliRunner {
     }
   }
 
-  inspectInstallation(cliId: CliId): CliInstallationIdentity {
+  async inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity> {
     const definition = this.definition(cliId)
-    return captureInstallationIdentity(definition)
+    const identity = await captureInstallationIdentity(definition)
+    this.validationIdentities.set(cliId, identity)
+    return identity
   }
 
-  confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string): void {
+  async confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string): Promise<void> {
     const definition = this.definition(cliId)
     if (!definition.execution || version !== definition.supportedVersion || identity.cliId !== definition.id) {
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
     }
-    const current = captureInstallationIdentity(definition)
-    if (!isDeepStrictEqual(current, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
-    this.confirmedIdentities.set(cliId, Object.freeze({ identity: current, version }))
+    try { await assertCurrentInstallationIdentity(definition, identity) }
+    catch {
+      this.invalidateIdentity(cliId, identity)
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
+    this.confirmedIdentities.set(cliId, Object.freeze({ identity, version }))
   }
 
   async runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
@@ -149,11 +167,39 @@ class GovernedCliRunner implements CliRunner {
     signal: AbortSignal | undefined, schemaJson: string | undefined,
     purpose: 'execution' | 'validation'): Promise<CliProcessResult> {
     const release = await this.acquire(cliId, signal)
+    let prepared: PreparedCliProcess | undefined
+    let transferred = false
     try {
+      const definition = this.definition(cliId)
+      let identity = purpose === 'execution'
+        ? this.confirmedIdentities.get(cliId)?.identity
+        : this.validationIdentities.get(cliId)
       const handle = await withCliInvocationAuthorization(userId, cliId,
-        () => this.start(cliId, args, stdin, signal, schemaJson, purpose === 'execution'), purpose)
+        () => {
+          if (!prepared) throw new AiConsoleError('AI_EXECUTION_FAILED')
+          const started = this.start(prepared!, signal)
+          transferred = true
+          return started
+        }, purpose, async () => {
+          if (!identity && purpose === 'validation') identity = await this.inspectInstallation(cliId)
+          if (!identity) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+          prepared = await this.prepare(identity, args, stdin, schemaJson)
+          try { await assertCurrentInstallationIdentity(definition, identity) }
+          catch {
+            this.invalidateIdentity(cliId, identity)
+            throw new AiConsoleError('AI_CLI_UNREACHABLE')
+          }
+        })
       return await handle.completion
-    } finally { release() }
+    } finally {
+      if (prepared && !transferred) await rm(prepared.cwd, { recursive: true, force: true })
+      release()
+    }
+  }
+
+  private invalidateIdentity(cliId: CliId, identity: CliInstallationIdentity) {
+    if (this.validationIdentities.get(cliId) === identity) this.validationIdentities.delete(cliId)
+    if (this.confirmedIdentities.get(cliId)?.identity === identity) this.confirmedIdentities.delete(cliId)
   }
 
   inspectForTests() { return { active: this.active, queued: this.queue.length } }
@@ -217,56 +263,47 @@ class GovernedCliRunner implements CliRunner {
     }
   }
 
-  private start(cliId: CliId, args: readonly string[], input: string, signal?: AbortSignal,
-    schemaJson?: string, requireConfirmedIdentity = false): StartedCliProcess {
-    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  private async prepare(identity: CliInstallationIdentity, args: readonly string[], input: string,
+    schemaJson?: string): Promise<PreparedCliProcess> {
     if (process.platform === 'win32') throw new AiConsoleError('AI_CLI_UNREACHABLE')
-    const definition = this.definition(cliId)
     if (!Array.isArray(args) || args.some(arg => typeof arg !== 'string' || arg.includes('\0'))) {
       throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
     const stdinBytes = Buffer.from(input, 'utf8')
     if (stdinBytes.byteLength > this.limits.stdinBytes) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
-    const cwd = mkdtempSync(resolve(tmpdir(), 'madhav-ai-cli-'))
-    let schemaPath: string | undefined
-    if (schemaJson !== undefined) {
-      if (Buffer.byteLength(schemaJson, 'utf8') > 64 * 1024) {
-        rmSync(cwd, { recursive: true, force: true })
-        throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
-      }
-      schemaPath = join(cwd, 'output-schema.json')
-      writeFileSync(schemaPath, schemaJson, { encoding: 'utf8', mode: 0o600, flag: 'wx' })
-    }
-    const fixedArgs = args.map(arg => arg === '__CWD__' ? cwd : arg === '__SCHEMA__' && schemaPath ? schemaPath : arg)
-    let identity: CliInstallationIdentity
+    const cwd = await mkdtemp(resolve(tmpdir(), 'madhav-ai-cli-'))
     try {
-      // This is the last filesystem work before spawn. Execution is bound to
-      // the exact entrypoint/interpreter bytes validated for this process.
-      identity = captureInstallationIdentity(definition)
-      if (requireConfirmedIdentity) {
-        const confirmed = this.confirmedIdentities.get(cliId)
-        if (!confirmed || confirmed.version !== definition.supportedVersion
-          || !isDeepStrictEqual(confirmed.identity, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+      let schemaPath: string | undefined
+      if (schemaJson !== undefined) {
+        if (Buffer.byteLength(schemaJson, 'utf8') > 64 * 1024) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
+        schemaPath = join(cwd, 'output-schema.json')
+        await writeFile(schemaPath, schemaJson, { encoding: 'utf8', mode: 0o600, flag: 'wx' })
       }
+      const fixedArgs = args.map(arg => arg === '__CWD__' ? cwd
+        : arg === '__SCHEMA__' && schemaPath ? schemaPath : arg)
+      const executable = identity.interpreter?.realpath ?? identity.entrypoint.realpath
+      const processArgs = identity.interpreter ? [identity.entrypoint.realpath, ...fixedArgs] : fixedArgs
+      return Object.freeze({ executable, processArgs, stdinBytes, cwd })
     } catch (error) {
-      rmSync(cwd, { recursive: true, force: true })
+      await rm(cwd, { recursive: true, force: true })
       throw error
     }
-    const executable = identity.interpreter?.realpath ?? identity.entrypoint.realpath
-    const processArgs = identity.interpreter ? [identity.entrypoint.realpath, ...fixedArgs] : fixedArgs
+  }
+
+  private start(prepared: PreparedCliProcess, signal?: AbortSignal): StartedCliProcess {
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
     let child: ChildProcessWithoutNullStreams
     try {
-      child = spawn(executable, processArgs, {
-        shell: false, detached: true, cwd, env: safeEnvironment(this.environment), stdio: ['pipe', 'pipe', 'pipe'],
+      child = spawn(prepared.executable, prepared.processArgs, {
+        shell: false, detached: true, cwd: prepared.cwd, env: safeEnvironment(this.environment),
+        stdio: ['pipe', 'pipe', 'pipe'],
       })
     } catch {
-      rmSync(cwd, { recursive: true, force: true })
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
     }
     if (!child.pid) {
       // Failed async spawn (for example EACCES) still emits `error` next tick.
       child.on('error', () => undefined)
-      rmSync(cwd, { recursive: true, force: true })
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
     }
 
@@ -279,13 +316,14 @@ class GovernedCliRunner implements CliRunner {
     let stderrBytes = 0
     let resolveCompletion!: (value: CliProcessResult) => void
     let rejectCompletion!: (error: AiConsoleError) => void
-    const cleanup = () => {
+    const cleanup = async () => {
       if (lifecycle.timeout) clearTimeout(lifecycle.timeout)
       signal?.removeEventListener('abort', onAbort)
       child.stdout.removeAllListeners(); child.stderr.removeAllListeners()
       child.removeAllListeners('close'); child.removeAllListeners('exit')
       child.removeAllListeners('error'); child.on('error', () => undefined)
-      rmSync(cwd, { recursive: true, force: true })
+      try { await rm(prepared.cwd, { recursive: true, force: true }) }
+      catch { terminalError ??= new AiConsoleError('AI_EXECUTION_FAILED') }
     }
     const groupExists = () => {
       try { process.kill(-child.pid!, 0); return true }
@@ -342,8 +380,8 @@ class GovernedCliRunner implements CliRunner {
         try { await terminateGroup() }
         catch { terminalError ??= new AiConsoleError('AI_EXECUTION_FAILED') }
         settled = true
+        await cleanup()
         const failure = terminalError
-        cleanup()
         if (failure) { rejectCompletion(failure); return }
         if (code !== 0) { rejectCompletion(new AiConsoleError('AI_CLI_UNREACHABLE')); return }
         let decoded: string
@@ -356,7 +394,7 @@ class GovernedCliRunner implements CliRunner {
     lifecycle.timeout.unref?.()
     signal?.addEventListener('abort', onAbort, { once: true })
     child.stdin.on('error', () => undefined)
-    child.stdin.end(stdinBytes)
+    child.stdin.end(prepared.stdinBytes)
 
     let cancelled = false
     return Object.freeze({
@@ -371,40 +409,94 @@ class GovernedCliRunner implements CliRunner {
   }
 }
 
-function captureInstallationIdentity(definition: CliDefinition): CliInstallationIdentity {
-  const entrypoint = captureTrustedFile(definition.candidates, definition.allowedRealpathPrefixes)
+async function captureInstallationIdentity(definition: CliDefinition): Promise<CliInstallationIdentity> {
+  const entrypoint = await captureTrustedFile(definition.candidates, definition.allowedRealpathPrefixes)
   const interpreter = definition.interpreter
-    ? captureTrustedFile([definition.interpreter.candidate], definition.interpreter.allowedRealpathPrefixes) : undefined
+    ? await captureTrustedFile([definition.interpreter.candidate], definition.interpreter.allowedRealpathPrefixes) : undefined
   return Object.freeze({ cliId: definition.id, entrypoint, ...(interpreter ? { interpreter } : {}) })
 }
 
-function captureTrustedFile(candidates: readonly string[], allowedRealpathPrefixes: readonly string[]): CliFileIdentity {
-  let sawCandidate = false
-  for (const candidate of candidates) {
-    if (!isAbsolute(candidate)) continue
-    try {
-      lstatSync(candidate)
-      sawCandidate = true
-      const real = realpathSync(candidate)
-      const prefix = allowedRealpathPrefixes.find(allowed => real.startsWith(allowed))
-      if (!prefix) continue
-      const stat = statSync(real)
-      const uid = typeof process.getuid === 'function' ? process.getuid() : stat.uid
-      if (!stat.isFile() || (stat.mode & 0o111) === 0 || (stat.mode & 0o022) !== 0
-        || (stat.uid !== 0 && stat.uid !== uid) || !hasTrustedParents(real, prefix, uid)) continue
-      return Object.freeze({ realpath: real, device: String(stat.dev), inode: String(stat.ino), size: stat.size,
-        modifiedMs: stat.mtimeMs, sha256: createHash('sha256').update(readFileSync(real)).digest('hex') })
-    } catch { /* try only the next fixed candidate */ }
-  }
-  throw new AiConsoleError(sawCandidate ? 'AI_CLI_UNREACHABLE' : 'AI_CLI_NOT_INSTALLED')
+type CliFileMetadata = Omit<CliFileIdentity, 'sha256'>
+
+async function captureTrustedFile(candidates: readonly string[], allowedRealpathPrefixes: readonly string[]): Promise<CliFileIdentity> {
+  if (candidates.length === 0) throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
+  if (candidates.length !== 1) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  const before = await captureTrustedFileMetadata(candidates[0], allowedRealpathPrefixes)
+  let sha256: string
+  try {
+    const hash = createHash('sha256')
+    for await (const chunk of createReadStream(before.realpath)) hash.update(chunk as Buffer)
+    sha256 = hash.digest('hex')
+  } catch { throw new AiConsoleError('AI_CLI_UNREACHABLE') }
+  const after = await captureTrustedFileMetadata(candidates[0], allowedRealpathPrefixes)
+  if (!isDeepStrictEqual(before, after)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  return Object.freeze({ ...after, sha256 })
 }
 
-function hasTrustedParents(real: string, allowedPrefix: string, uid: number): boolean {
+async function captureTrustedFileMetadata(candidate: string,
+  allowedRealpathPrefixes: readonly string[]): Promise<CliFileMetadata> {
+  if (!isAbsolute(candidate)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  try {
+    await lstat(candidate)
+  } catch (error) {
+    throw new AiConsoleError((error as NodeJS.ErrnoException).code === 'ENOENT'
+      ? 'AI_CLI_NOT_INSTALLED' : 'AI_CLI_UNREACHABLE')
+  }
+  try {
+    const real = await realpath(candidate)
+    const prefix = allowedRealpathPrefixes.find(allowed => {
+      const boundary = resolve(allowed)
+      return real === boundary || real.startsWith(`${boundary}/`)
+    })
+    if (!prefix) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    const current = await stat(real)
+    const processUid = typeof process.getuid === 'function' ? process.getuid() : current.uid
+    if (!current.isFile() || (current.mode & 0o111) === 0 || (current.mode & 0o022) !== 0
+      || (current.uid !== 0 && current.uid !== processUid)
+      || !await hasTrustedParents(real, prefix, processUid)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    return Object.freeze({ candidate, realpath: real, device: String(current.dev), inode: String(current.ino),
+      size: current.size, modifiedMs: current.mtimeMs, changedMs: current.ctimeMs, mode: current.mode,
+      uid: current.uid })
+  } catch (error) {
+    if (error instanceof AiConsoleError) throw error
+    throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  }
+}
+
+async function assertCurrentInstallationIdentity(definition: CliDefinition,
+  identity: CliInstallationIdentity): Promise<void> {
+  if (identity.cliId !== definition.id || definition.candidates.length !== 1
+    || identity.entrypoint.candidate !== definition.candidates[0]) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  const entrypoint = await captureTrustedFileMetadata(identity.entrypoint.candidate,
+    definition.allowedRealpathPrefixes)
+  if (!isDeepStrictEqual(entrypoint, fileMetadata(identity.entrypoint))) {
+    throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  }
+  if (definition.interpreter) {
+    if (!identity.interpreter || identity.interpreter.candidate !== definition.interpreter.candidate) {
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
+    const interpreter = await captureTrustedFileMetadata(identity.interpreter.candidate,
+      definition.interpreter.allowedRealpathPrefixes)
+    if (!isDeepStrictEqual(interpreter, fileMetadata(identity.interpreter))) {
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
+  } else if (identity.interpreter) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+}
+
+function fileMetadata(identity: CliFileIdentity): CliFileMetadata {
+  return { candidate: identity.candidate, realpath: identity.realpath, device: identity.device,
+    inode: identity.inode, size: identity.size, modifiedMs: identity.modifiedMs, changedMs: identity.changedMs,
+    mode: identity.mode, uid: identity.uid }
+}
+
+async function hasTrustedParents(real: string, allowedPrefix: string, uid: number): Promise<boolean> {
   const boundary = resolve(allowedPrefix)
   let current = dirname(real)
   while (true) {
-    const stat = statSync(current)
-    if (!stat.isDirectory() || (stat.mode & 0o022) !== 0 || (stat.uid !== 0 && stat.uid !== uid)) return false
+    const currentStat = await stat(current)
+    if (!currentStat.isDirectory() || (currentStat.mode & 0o022) !== 0
+      || (currentStat.uid !== 0 && currentStat.uid !== uid)) return false
     if (current === boundary) return true
     const parent = dirname(current)
     if (parent === current) return false
