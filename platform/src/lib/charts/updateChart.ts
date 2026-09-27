@@ -141,7 +141,8 @@ export function resolveTimezoneOffsetMinutes(birthDate: string, birthTime: strin
   return before // a gap: fold=0 keeps the pre-transition offset
 }
 
-function isKnownTimeZone(timeZone: string): boolean {
+/** True for a timezone the runtime recognises as an IANA zone. Shared with the edit form. */
+export function isKnownTimeZone(timeZone: string): boolean {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone }).format(0)
     return true

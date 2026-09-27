@@ -19,12 +19,20 @@ vi.mock('../NewClientForm', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../NewClientForm')>()),
   // Stand-in for the shared Google Places element: one button resolves a place.
   PlacesAutocompleteNew: ({ onPlaceResolved }: { onPlaceResolved: (r: unknown) => void }) => (
-    <button
-      type="button"
-      onClick={() => onPlaceResolved({ description: 'Cuttack, Odisha, India', lat: 20.4625, lng: 85.883, utcOffsetMinutes: 330, timezone_id: 'Asia/Kolkata', tz_offset: '5.5' })}
-    >
-      Pick Cuttack
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => onPlaceResolved({ description: 'Cuttack, Odisha, India', lat: 20.4625, lng: 85.883, utcOffsetMinutes: 330, timezone_id: 'Asia/Kolkata', tz_offset: '5.5' })}
+      >
+        Pick Cuttack
+      </button>
+      <button
+        type="button"
+        onClick={() => onPlaceResolved({ description: 'Somewhere', lat: 20.4625, lng: 85.883, utcOffsetMinutes: 330, timezone_id: 'Mars/Olympus_Mons', tz_offset: '5.5' })}
+      >
+        Pick unknown zone
+      </button>
+    </>
   ),
 }))
 
@@ -225,6 +233,14 @@ describe('EditClientForm — computation-safe birthplace', () => {
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save and recompute' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(sentBody()).toMatchObject({ birth_place: 'Cuttack, Odisha, India', lat: 20.4625, lon: 85.883, timezone_id: 'Asia/Kolkata', tz_offset: 5.5 })
+    vi.unstubAllEnvs()
+  })
+
+  it('a selected place whose timezone is not a known IANA zone leaves the timezone to be chosen', async () => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', 'test-key')
+    render(<EditClientForm chart={CHART} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Pick unknown zone' }))
+    expect(screen.getByLabelText(/^timezone/i)).toHaveValue('')
     vi.unstubAllEnvs()
   })
 

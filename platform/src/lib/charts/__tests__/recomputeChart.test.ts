@@ -143,8 +143,19 @@ describe('updateChartAndMaybeRecompute — birthplace safety', () => {
 
   it('recomputes when the place, coordinates and timezone change together', async () => {
     setup()
-    const result = await run({ ...INPUT, birth_place: 'Cuttack', lat: 20.4625, lon: 85.883 })
+    const result = await run({
+      ...INPUT,
+      birth_place: 'Kathmandu, Nepal',
+      lat: 27.7172,
+      lon: 85.324,
+      timezone_id: 'Asia/Kathmandu',
+      tz_offset: 5.5, // Nepal was UTC+05:30 in 1984 (UTC+05:45 from 1986)
+    })
     expect(result.mode).toBe('recompute-started')
+    // The new place's own timezone reaches the stored inputs (it genuinely changed).
+    expect(INPUT.timezone_id).not.toBe('Asia/Kathmandu')
+    const update = statements.find((s) => /^\s*UPDATE charts\b/.test(s.sql) && /timezone/i.test(s.sql))
+    expect(update?.params).toContain('Asia/Kathmandu')
   })
 })
 

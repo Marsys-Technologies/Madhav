@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { EditRebuildConfirmDialog, type ChangedField } from '@/components/dialogs/EditRebuildConfirmDialog'
-import { resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
+import { isKnownTimeZone, resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/date'
 import { AYANAMSHA_OPTIONS, PlacesAutocompleteNew, TIMEZONES, type AyanamshaId } from './NewClientForm'
@@ -108,15 +108,6 @@ function formatOffset(minutes: number): string {
   return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`
 }
 
-function isKnownZone(zone: string): boolean {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: zone }).format(0)
-    return true
-  } catch {
-    return false
-  }
-}
-
 function effectiveOffsetMinutes(form: FormState): number | null {
   if (!form.timezone_id || !form.birth_date || !form.birth_time) return null
   try {
@@ -213,7 +204,7 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
 
   function handlePlaceResolved(result: PlacesResult) {
     // Place, coordinates and timezone come from the one selected location, together.
-    const zone = result.timezone_id && isKnownZone(result.timezone_id) ? result.timezone_id : ''
+    const zone = result.timezone_id && isKnownTimeZone(result.timezone_id) ? result.timezone_id : ''
     setForm((prev) => ({
       ...prev,
       birth_place: result.description,
