@@ -32,6 +32,11 @@ vi.mock('@/lib/conversations', () => ({
   insertConversationWithId: mockInsert,
   updateConversationTitle: vi.fn(),
 }))
+// These cases exercise the archive lock on a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({
   PlannerFault: class PlannerFault extends Error {},
   callPipelinePlanner: mockPlanner,

@@ -1,9 +1,9 @@
 /**
- * Legacy consult door — no new reading while a chart is being recomputed or
- * needs rebuilding (Jātaka chart workspace, review fix). With the Paripraśna
- * flag off, /clients/[id]/pariprashna redirects here, so this door must not
- * start readings on a chart whose corrected details are mid-recompute.
- * Other states keep the legacy behaviour.
+ * Legacy consult door — a new reading starts only on a Ready chart (Jātaka
+ * Phase-A hardening, item 3: same shared gate as Paripraśna). With the
+ * Paripraśna flag off, /clients/[id]/pariprashna redirects here, so no state
+ * short of Ready — including a failed correction or full rebuild — may start a
+ * reading from old or incomplete results.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -37,6 +37,7 @@ vi.mock('@/lib/charts/readiness', () => ({
     if (readiness.fail) throw new Error('db down')
     return new Map(ids.map((id) => [id, { state: readiness.state }]))
   }),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
 }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({
   PlannerFault: class PlannerFault extends Error {},
@@ -61,15 +62,18 @@ beforeEach(() => {
 })
 
 describe('POST /api/chat/consult — readiness gate', () => {
-  it.each(['building', 'needs-rebuild'])('refuses a new reading while the chart is %s', async (state) => {
-    readiness.state = state
-    const res = await POST(req())
-    expect(res.status).toBe(409)
-    const body = await res.json()
-    expect(body.error.code).toBe('CHART_RECOMPUTE_REQUIRED')
-    expect(mockInsert).not.toHaveBeenCalled()
-    expect(mockPlanner).not.toHaveBeenCalled()
-  })
+  it.each(['building', 'needs-rebuild', 'failed', 'partially-built', 'not-built'])(
+    'refuses a new reading while the chart is %s, before any insert',
+    async (state) => {
+      readiness.state = state
+      const res = await POST(req())
+      expect(res.status).toBe(409)
+      const body = await res.json()
+      expect(body.error.code).toBe('CHART_RECOMPUTE_REQUIRED')
+      expect(mockInsert).not.toHaveBeenCalled()
+      expect(mockPlanner).not.toHaveBeenCalled()
+    },
+  )
 
   it('fails closed when readiness cannot be read', async () => {
     readiness.fail = true
@@ -78,8 +82,8 @@ describe('POST /api/chat/consult — readiness gate', () => {
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it.each(['ready', 'partially-built', 'not-built', 'failed'])('keeps the legacy behaviour for a %s chart', async (state) => {
-    readiness.state = state
+  it('admits a Ready chart', async () => {
+    readiness.state = 'ready'
     const res = await POST(req()).catch(() => null)
     expect(res?.status).not.toBe(409)
     expect(mockInsert).toHaveBeenCalled()

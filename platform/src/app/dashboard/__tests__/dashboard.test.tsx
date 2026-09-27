@@ -102,6 +102,9 @@ function setBuilds(rows: unknown[] = []) {
 
 beforeEach(() => {
   mockQuery.mockReset()
+  // Queries not queued by a test (e.g. the readiness resolver's latest-full-rebuild
+  // read) resolve empty.
+  mockQuery.mockResolvedValue({ rows: [] })
   mockGetServerUser.mockReset()
   mockRedirect.mockClear()
 })
@@ -259,7 +262,7 @@ describe('Dashboard — shared readiness authority (Jātaka Task 1)', () => {
     }
     const runSql = mockQuery.mock.calls.map(([s]) => s).find((s) => typeof s === 'string' && s.includes('build_runs')) as string
     // Latest run regardless of state — a failed dispatch must be visible, not filtered out.
-    expect(runSql).not.toMatch(/state IN/)
+    expect(runSql).not.toMatch(/r\.state IN/)
   })
 
   it('counts charts whose shared readiness is building as in active build', async () => {

@@ -49,8 +49,7 @@ import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import { getConversation, insertConversationWithId } from '@/lib/conversations'
 import { isCorrectionArchived } from '@/lib/conversations/readOnly'
-import { getChartReadinessMap, isDerivedChartReady } from '@/lib/charts/readiness'
-import { readinessRefusalMessage } from '@/lib/charts/readinessCopy'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { configService } from '@/lib/config/index'
 import { enforceTurnLimits } from '@/lib/limits'
 import {
@@ -281,22 +280,9 @@ export async function authorizeTurn(args: {
   // Readings run only on a fully computed chart, so results computed for earlier
   // birth details are never presented as this chart's. Same authority the
   // workspace and directory use. Fails closed if readiness cannot be read.
-  let chartReady = false
-  let readinessState: string | undefined
-  try {
-    const readiness = (await getChartReadinessMap([chartId])).get(chartId)
-    readinessState = readiness?.state
-    chartReady = Boolean(readiness && isDerivedChartReady(readiness))
-  } catch (err) {
-    console.error('[pariprashna/safety_gate] readiness lookup failed:', (err as Error)?.message)
-  }
-  if (!chartReady) {
-    em.error({
-      code: 'CHART_RECOMPUTE_REQUIRED',
-      message: readinessRefusalMessage(readinessState),
-      retryable: true,
-      phase: 'plan',
-    })
+  const readingGate = await checkReadingReadiness(chartId)
+  if (!readingGate.ok) {
+    em.error({ code: readingGate.code, message: readingGate.message, retryable: true, phase: 'plan' })
     return halt('error')
   }
 

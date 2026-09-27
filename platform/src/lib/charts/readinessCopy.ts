@@ -11,6 +11,8 @@ export function readinessRefusalMessage(state: string | undefined): string {
       return 'This chart’s details changed and it needs to be rebuilt in Nirmāṇa before new readings can start.'
     case 'failed':
       return 'The latest build of this chart failed. New readings will be available once it is rebuilt.'
+    case 'unavailable':
+      return 'This chart’s readiness could not be confirmed. Please try again shortly.'
     default:
       return 'New readings open once this chart has been fully computed.'
   }

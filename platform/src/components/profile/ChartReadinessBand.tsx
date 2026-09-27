@@ -107,6 +107,11 @@ export function ChartReadinessBand({
           </>
         )}
         {readiness.state === 'failed' && <span>The latest build failed. Open Nirmāṇa for details.</span>}
+        {readiness.refreshWarning && (
+          <span role="status" className="text-amber-200/80">
+            {readiness.refreshWarning}
+          </span>
+        )}
       </div>
     </section>
   )

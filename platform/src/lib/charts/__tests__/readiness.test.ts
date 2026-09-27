@@ -50,7 +50,8 @@ describe('deriveChartReadiness', () => {
     ['every public layer lit', ALL_LAYERS, run('completed'), 'ready', 100],
     ['dispatch failure after correction', [], run('failed', 'JOB_DISPATCH_FAILED: local spawn failed'), 'needs-rebuild', 0],
     ['ordinary failed run on a partial chart', [row('ga_positions')], run('failed', 'writer crashed'), 'failed', pct(2)],
-    ['stopped run falls through to data state', [row('ga_positions')], run('stopped'), 'partially-built', pct(2)],
+    ['stopped run whose assets still hold data falls through to data state', [row('ga_positions')], { ...run('stopped'), outstanding: 0 }, 'partially-built', pct(2)],
+    ['stopped run with an unknown outstanding count fails closed', [row('ga_positions')], run('stopped'), 'failed', pct(2)],
   ] as const)('%s', (_label, throughput, latestRun, expectedState, expectedPercent) => {
     const actual = deriveChartReadiness({ throughput: [...throughput], latestRun })
     expect(actual.state).toBe(expectedState)
@@ -85,19 +86,59 @@ describe('deriveChartReadiness', () => {
     expect(r.percent).toBe(0)
   })
 
-  it('a failed scoped run on a fully lit chart stays ready but keeps the error visible', () => {
-    const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: run('failed', 'writer crashed') })
+  it('a failed small refresh that left its data intact stays Ready with a non-blocking warning', () => {
+    const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: { ...run('failed', 'writer crashed'), outstanding: 0 } })
     expect(r.state).toBe('ready')
+    expect(isDerivedChartReady(r)).toBe(true)
     expect(r.latestError).toBe('writer crashed')
+    expect(r.refreshWarning).toMatch(/latest refresh did not finish/i)
+  })
+
+  it.each(['failed', 'stopped'])('a %s small refresh that cleared or broke any of its assets is not Ready', (state) => {
+    const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: { ...run(state, 'x'), outstanding: 2 } })
+    expect(r.state).toBe('failed')
+    expect(isDerivedChartReady(r)).toBe(false)
+  })
+
+  it('a completed small refresh carries no warning', () => {
+    const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: { ...run('completed'), outstanding: 0 } })
+    expect(r.state).toBe('ready')
+    expect(r.refreshWarning ?? null).toBeNull()
+  })
+
+  it('a failed chart correction is never masked by a later successful small run', () => {
+    const r = deriveChartReadiness({
+      throughput: ALL_LAYERS,
+      latestRun: { ...run('completed', null, { id: 'run-small' }), outstanding: 0 },
+      latestFullRebuild: { ...run('failed', 'writer crashed', { id: 'run-correction', scope: 'global' }), outstanding: 3 },
+    })
+    expect(r.state).toBe('failed')
+    expect(isDerivedChartReady(r)).toBe(false)
+  })
+
+  it('a correction whose dispatch failed stays Needs rebuild until its whole plan is rebuilt', () => {
+    const r = deriveChartReadiness({
+      throughput: ALL_LAYERS,
+      latestRun: { ...run('completed', null, { id: 'run-small' }), outstanding: 0 },
+      latestFullRebuild: { ...run('failed', 'JOB_DISPATCH_FAILED: spawn', { id: 'run-correction', scope: 'global' }), outstanding: 5 },
+    })
+    expect(r.state).toBe('needs-rebuild')
+  })
+
+  it('a failed full rebuild whose every planned asset was rebuilt afterwards no longer blocks', () => {
+    const r = deriveChartReadiness({
+      throughput: ALL_LAYERS,
+      latestRun: { ...run('completed', null, { id: 'run-small' }), outstanding: 0 },
+      latestFullRebuild: { ...run('failed', 'x', { id: 'run-full', scope: 'global' }), outstanding: 0 },
+    })
+    expect(r.state).toBe('ready')
   })
 
   it.each(['failed', 'stopped'])(
     'a %s global rebuild is never Ready, even when every layer shows some data (partial correction rebuild)',
     (state) => {
-      const r = deriveChartReadiness({
-        throughput: ALL_LAYERS,
-        latestRun: run(state, state === 'failed' ? 'writer crashed' : null, { scope: 'global', action: 'rebuild' }),
-      })
+      const full = { ...run(state, state === 'failed' ? 'writer crashed' : null, { scope: 'global', action: 'rebuild' }), outstanding: 4 }
+      const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: full, latestFullRebuild: full })
       expect(r.state).toBe('failed')
       expect(isDerivedChartReady(r)).toBe(false)
     },
@@ -161,25 +202,35 @@ describe('getChartReadinessMap', () => {
     expect(mockQuery).not.toHaveBeenCalled()
   })
 
-  it('issues exactly two batched queries and never touches pyramid_layers', async () => {
+  it('issues exactly three batched queries and never touches pyramid_layers', async () => {
     const other = 'c0000000-0000-4000-8000-000000000002'
     mockQuery.mockImplementation(async (sql?: string) => {
-      if (sql?.includes('asset_throughput')) return { rows: [row('ga_positions')] }
+      if (sql?.includes("r.action = 'rebuild'")) return { rows: [] }
       if (sql?.includes('build_runs')) return { rows: [{ ...run('running'), chart_id: other }] }
+      if (sql?.includes('asset_throughput')) return { rows: [row('ga_positions')] }
       return { rows: [] }
     })
     const map = await getChartReadinessMap([CHART, other])
     const calls = mockQuery.mock.calls.filter(([sql]) => typeof sql === 'string')
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(3)
     for (const [sql, params] of calls) {
       expect(sql).not.toMatch(/pyramid_layers/)
       expect(params).toEqual([[CHART, other]])
     }
-    const runSql = calls.map(([s]) => s as string).find((s) => s.includes('build_runs'))!
-    expect(runSql).toMatch(/DISTINCT ON \(chart_id\)/)
+    const runSql = calls.map(([s]) => s as string).find((s) => s.includes('build_runs') && !s.includes("r.action = 'rebuild'"))!
+    // The latest run carries how many of its own planned assets no longer hold valid data.
+    expect(runSql).toMatch(/AS outstanding/)
+    const fullSql = calls.map(([s]) => s as string).find((s) => s.includes("r.action = 'rebuild'"))!
+    // The latest full rebuild counts per-chart planned assets not rebuilt since it started.
+    expect(fullSql).toMatch(/r\.scope = 'global'/)
+    expect(fullSql).toMatch(/ar\.scope = 'per_chart'/)
+    expect(fullSql).toMatch(/last_built_at >= r\.created_at/)
+    expect(fullSql).toMatch(/DISTINCT ON \(r\.chart_id\)/)
+    expect(runSql).toMatch(/DISTINCT ON \(r\.chart_id\)/)
     expect(runSql).toMatch(/last_error/)
     expect(runSql).toMatch(/\bscope\b/)
-    expect(runSql).not.toMatch(/state IN/)
+    // Latest run regardless of its state — a failed dispatch must be visible, not filtered out.
+    expect(runSql).not.toMatch(/r\.state IN/)
     const throughputSql = calls.map(([s]) => s as string).find((s) => s.includes('asset_throughput'))!
     expect(throughputSql).toMatch(/is_active\s*=\s*true/)
     expect(map.get(CHART)?.state).toBe('partially-built')

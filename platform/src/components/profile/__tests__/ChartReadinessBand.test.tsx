@@ -89,4 +89,19 @@ describe('ChartReadinessBand', () => {
     render(<ChartReadinessBand readiness={fixture({ state: 'failed', latestError: 'psycopg.errors.X at line 9' })} />)
     expect(screen.queryByText(/psycopg/)).not.toBeInTheDocument()
   })
+
+  it('shows a non-blocking refresh warning on a Ready chart without changing its state', () => {
+    render(
+      <ChartReadinessBand
+        readiness={fixture({ state: 'ready', percent: 100, refreshWarning: 'The latest refresh did not finish; the previously computed chart remains in use.' })}
+      />,
+    )
+    expect(screen.getByText('Ready')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/latest refresh did not finish/i)
+  })
+
+  it('shows no refresh warning when there is none', () => {
+    render(<ChartReadinessBand readiness={fixture({ state: 'ready', percent: 100 })} />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
 })

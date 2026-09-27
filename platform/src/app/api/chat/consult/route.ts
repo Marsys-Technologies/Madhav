@@ -42,8 +42,7 @@ import {
   updateConversationTitle,
 } from '@/lib/conversations'
 import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
-import { getChartReadinessMap } from '@/lib/charts/readiness'
-import { readinessRefusalMessage } from '@/lib/charts/readinessCopy'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
@@ -376,25 +375,6 @@ export async function POST(request: Request) {
     return res.forbidden()
   }
 
-  // Jātaka chart workspace: no reading while the chart's corrected details are
-  // being recomputed or still need rebuilding — results from the old details are
-  // gone and the new ones are incomplete. Other states keep the legacy behaviour.
-  // Fails closed if readiness cannot be read.
-  let readinessState: string | undefined = 'unavailable'
-  try {
-    readinessState = (await getChartReadinessMap([chartId])).get(chartId)?.state
-  } catch (err) {
-    console.error('[api/chat/consult] readiness lookup failed:', (err as Error)?.message)
-  }
-  if (readinessState === 'building' || readinessState === 'needs-rebuild' || readinessState === 'unavailable') {
-    return errorResponse(
-      'CHART_RECOMPUTE_REQUIRED',
-      readinessRefusalMessage(readinessState === 'unavailable' ? 'building' : readinessState),
-      409,
-      { retry: true },
-    )
-  }
-
   let isFirstTurn = false
 
   if (conversationId) {
@@ -404,7 +384,18 @@ export async function POST(request: Request) {
     }
     // Jātaka chart workspace: history archived by a chart-details correction is read-only.
     if (isCorrectionArchived(existing)) return archivedReadOnlyResponse()
-  } else {
+  }
+
+  // Jātaka chart workspace: the same shared readiness gate as Paripraśna — only a
+  // Ready chart produces a new reading (fails closed if readiness is unreadable).
+  // Checked after the archive lock (which names the more specific reason) and
+  // before any conversation insert.
+  const readingGate = await checkReadingReadiness(chartId)
+  if (!readingGate.ok) {
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: true })
+  }
+
+  if (!conversationId) {
     conversationId = crypto.randomUUID()
     isFirstTurn = true
     // BUG-1: eager insert before streaming so turn-2 can always find the row.
