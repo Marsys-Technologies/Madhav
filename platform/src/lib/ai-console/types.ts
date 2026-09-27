@@ -72,6 +72,8 @@ export const ProviderModelSchema = z.object({
   modelId: IdentifierSchema,
   displayName: IdentifierSchema,
   compatibleRoles: z.array(AiRoleSchema).min(1),
+  supportsTools: z.boolean(),
+  supportsStructuredOutput: z.boolean(),
   available: z.boolean(),
 }).strict()
 export type ProviderModel = z.infer<typeof ProviderModelSchema>

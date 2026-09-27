@@ -63,6 +63,15 @@ describe('AI Console governed persistence contract', () => {
     expect(text).not.toMatch(/\b(?:api_key|plaintext|access_token|secret_key)\s+(?:text|varchar|bytea)/i)
     expect(text).toContain('ai_configuration_version_guard')
   })
+  it('persists explicit per-model tool and structured-output capability evidence', () => {
+    const text = sql()
+    const providerModel = text.slice(text.indexOf('CREATE TABLE IF NOT EXISTS ai_connection_models'), text.indexOf('CREATE TABLE IF NOT EXISTS ai_cli_installations'))
+    const cliModel = text.slice(text.indexOf('CREATE TABLE IF NOT EXISTS ai_cli_models'), text.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS ai_cli_builtin_default_idx'))
+    for (const table of [providerModel, cliModel]) {
+      expect(table).toMatch(/supports_tools boolean NOT NULL DEFAULT false/)
+      expect(table).toMatch(/supports_structured_output boolean NOT NULL DEFAULT false/)
+    }
+  })
   it('retains immutable snapshots and append-only correlated start/terminal receipts', () => {
     const text = sql()
     expect(text).toContain('UNIQUE (user_id, correlation_id)')

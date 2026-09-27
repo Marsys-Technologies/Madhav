@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS ai_connection_models (
   model_id text NOT NULL CHECK (btrim(model_id) <> ''),
   display_name text NOT NULL,
   compatible_roles text[] NOT NULL CHECK (cardinality(compatible_roles) > 0 AND compatible_roles <@ ARRAY['synthesizer','planner','deep_planner','worker']::text[] AND array_position(compatible_roles, NULL) IS NULL),
+  supports_tools boolean NOT NULL DEFAULT false,
+  supports_structured_output boolean NOT NULL DEFAULT false,
   available boolean NOT NULL DEFAULT true,
   first_seen_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
@@ -72,6 +74,8 @@ CREATE TABLE IF NOT EXISTS ai_cli_models (
   is_builtin_default boolean NOT NULL DEFAULT false,
   available boolean NOT NULL DEFAULT true,
   compatible_roles text[] NOT NULL CHECK (cardinality(compatible_roles) > 0 AND compatible_roles <@ ARRAY['synthesizer','planner','deep_planner','worker']::text[] AND array_position(compatible_roles, NULL) IS NULL),
+  supports_tools boolean NOT NULL DEFAULT false,
+  supports_structured_output boolean NOT NULL DEFAULT false,
   first_seen_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (cli_id, model_id)

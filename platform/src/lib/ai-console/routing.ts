@@ -31,12 +31,15 @@ function executionTarget(userId: string, role: AiRole, target: RoutingTarget): R
     role,
     adapterType: target.kind === 'provider_model' ? 'provider' as const : 'cli' as const,
     target: safeTarget(target),
+    capabilities: Object.freeze({ supportsTools: target.supportsTools,
+      supportsStructuredOutput: target.supportsStructuredOutput }),
   } as ResolvedRoleExecution
   if (target.kind === 'provider_model') {
     const connection = Object.freeze({ userId, connectionId: target.connectionId,
       providerId: target.providerId, credentialVersion: target.credentialVersion })
     const model = Object.freeze({ modelId: target.modelId, displayName: target.displayName,
-      compatibleRoles: [...target.compatibleRoles], supportsTools: false, supportsStructuredOutput: false })
+      compatibleRoles: [...target.compatibleRoles], supportsTools: target.supportsTools,
+      supportsStructuredOutput: target.supportsStructuredOutput })
     Object.defineProperty(execution, 'createRuntimeBinding', {
       enumerable: false,
       configurable: false,

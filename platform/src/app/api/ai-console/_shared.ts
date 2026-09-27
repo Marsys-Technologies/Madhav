@@ -201,7 +201,9 @@ export function projectState(state: ConsoleState) {
   return {
     connections: state.connections.map(projectConnectionRow),
     models: state.models.map(row => ProviderModelSchema.parse({ connectionId: row.connection_id,
-      modelId: row.model_id, displayName: row.display_name, compatibleRoles: row.compatible_roles, available: row.available })),
+      modelId: row.model_id, displayName: row.display_name, compatibleRoles: row.compatible_roles,
+      supportsTools: row.supports_tools, supportsStructuredOutput: row.supports_structured_output,
+      available: row.available })),
     configurations: state.configurations.map(row => ({ ...projectConfiguration({ id: row.id, name: row.name, version: row.version,
       roles: Object.fromEntries(state.roles.filter(role => role.configuration_id === row.id).map(role => [AiRoleSchema.parse(role.role), projectRole(role)])) }),
     deletedAt: date(row.deleted_at) })),
@@ -217,6 +219,8 @@ export function projectState(state: ConsoleState) {
     cliModels: state.cliModels.filter(model => state.clis.some(cli => cli.cli_id === model.cli_id && cli.granted_at != null && cli.revoked_at == null))
       .map(row => ({ cliId: CliIdSchema.parse(row.cli_id), modelId: text(row.model_id), displayName: text(row.display_name),
         compatibleRoles: z.array(AiRoleSchema).min(1).parse(row.compatible_roles), available: z.boolean().parse(row.available),
+        supportsTools: z.boolean().parse(row.supports_tools),
+        supportsStructuredOutput: z.boolean().parse(row.supports_structured_output),
         isBuiltinDefault: z.boolean().parse(row.is_builtin_default) })),
     validationDisclosure: VALIDATION_DISCLOSURE,
   }

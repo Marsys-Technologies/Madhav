@@ -84,16 +84,19 @@ describe('owned AI configuration repository', () => {
   it('rejects stale validation before replacing the catalog after a credential race', async () => {
     expect(repository).toHaveProperty('storeConnectionValidation')
     respond(sql => sql.includes('FROM ai_provider_connections') ? [{ ...safeConnection, credential_version: '2' }] : undefined)
-    await expect(repository.storeConnectionValidation('alice', connectionId, { credentialVersion: 1, state: 'validated', models: [{ modelId: 'model-a', displayName: 'A', compatibleRoles: [...AI_ROLES] }] })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
+    await expect(repository.storeConnectionValidation('alice', connectionId, { credentialVersion: 1, state: 'validated', models: [{ modelId: 'model-a', displayName: 'A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     expect(calls().some(c => c.sql.startsWith('UPDATE'))).toBe(false)
     expect(calls().at(-1)?.sql).toBe('ROLLBACK')
   })
   it('refreshes live catalogs without deleting unavailable model identities', async () => {
     expect(repository).toHaveProperty('storeConnectionValidation')
     validTransport()
-    await repository.storeConnectionValidation('alice', connectionId, { credentialVersion: 1, state: 'validated', models: [{ modelId: 'model-b', displayName: 'B', compatibleRoles: ['worker'] }] })
+    await repository.storeConnectionValidation('alice', connectionId, { credentialVersion: 1, state: 'validated', models: [{ modelId: 'model-b', displayName: 'B', compatibleRoles: ['worker'], supportsTools: false, supportsStructuredOutput: true }] })
     expect(calls().some(c => c.sql.includes('available=false'))).toBe(true)
     expect(calls().some(c => c.sql.includes('ON CONFLICT(connection_id,model_id) DO UPDATE'))).toBe(true)
+    const modelWrite = calls().find(c => c.sql.startsWith('INSERT INTO ai_connection_models'))!
+    expect(modelWrite.sql).toContain('supports_tools,supports_structured_output')
+    expect(modelWrite.params.slice(-2)).toEqual([false, true])
     expect(calls().some(c => c.sql.startsWith('DELETE'))).toBe(false)
   })
   it('preserves confirmed validity on transient validation failure', async () => {
@@ -362,7 +365,7 @@ describe('atomic routing resolution read', () => {
       if (sql.includes('FROM conversations')) return [{ id: conversationId }]
       if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model', connection_id: connectionId, model_id: 'model-a', configuration_id: null, cli_id: null }]
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
-      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES, available: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true }]
       expect(params).not.toContain('alternative-model')
     })
     const resolution = await repository.loadRoutingResolution('alice', { kind: 'default' }, conversationId)
@@ -410,16 +413,19 @@ describe('atomic routing resolution read', () => {
         { role: 'worker', kind: 'local_cli', connection_id: null, model_id: null, cli_id: 'codex' },
       ]
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
-      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES, available: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A', compatible_roles: AI_ROLES,
+        available: true, supports_tools: true, supports_structured_output: true }]
       if (sql.includes('FROM ai_cli_grants')) return [{ cli_id: 'codex', revoked_at: null }]
       if (sql.includes('FROM ai_cli_installations')) return [{ cli_id: 'codex', validation_state: 'reachable' }]
-      if (sql.includes('FROM ai_cli_models')) return [{ model_id: 'builtin', display_name: 'Built in', compatible_roles: AI_ROLES, available: true, is_builtin_default: true }]
+      if (sql.includes('FROM ai_cli_models')) return [{ model_id: 'builtin', display_name: 'Built in', compatible_roles: AI_ROLES, available: true, is_builtin_default: true, supports_tools: false, supports_structured_output: true }]
     })
     const selected = { kind: 'explicit' as const, choice: { kind: 'custom_configuration' as const, configurationId } }
     const resolution = await repository.loadRoutingResolution('alice', selected)
     expect(resolution.resolvedChoice).toEqual(selected.choice)
     expect(resolution.configurationVersion).toBe(8)
     expect(resolution.roles.planner).toMatchObject(cliTarget)
+    expect(resolution.roles.synthesizer).toMatchObject({ supportsTools: true, supportsStructuredOutput: true })
+    expect(resolution.roles.planner).toMatchObject({ supportsTools: false, supportsStructuredOutput: true })
     expect(calls().filter(c => c.sql.includes('FROM ai_provider_connections'))).toHaveLength(1)
     expect(calls().filter(c => c.sql.includes('FROM ai_cli_grants'))).toHaveLength(1)
   })
@@ -484,7 +490,7 @@ describe('atomic routing resolution read', () => {
       if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection,
         validation_state: 'validating', credential_validity: 'valid', last_error_code: null }]
       if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
-        compatible_roles: AI_ROLES, available: true }]
+        compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true }]
     })
     const resolution = await repository.loadRoutingResolution('alice', { kind: 'explicit', choice })
     expect(resolution.roles.worker).toMatchObject({ ...choice, providerId: 'openai', credentialVersion: 1 })

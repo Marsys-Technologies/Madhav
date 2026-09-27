@@ -20,6 +20,10 @@ export interface RuntimeModelBinding {
   readonly model: LanguageModelV3
   dispose(): void
 }
+/** Request-owned wrapper added only after exact connection authorization succeeds. */
+export interface OwnedConnectionRuntimeBinding extends RuntimeModelBinding {
+  readonly connectionId: string
+}
 export type RequestPreflight = () => Promise<void>
 export interface ProviderValidationAdapter {
   readonly providerId: ProviderId

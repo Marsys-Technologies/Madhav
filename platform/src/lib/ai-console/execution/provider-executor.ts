@@ -1,5 +1,6 @@
 import 'server-only'
 import { inspect } from 'node:util'
+import Ajv from 'ajv'
 import type { LanguageModelV3 } from '@ai-sdk/provider'
 import { streamAdapterRaw } from '@/lib/adapters/raw'
 import type {
@@ -60,6 +61,7 @@ const MARKABLE = new Set<ProviderRuntimeFailure['code']>([
   'AI_PROVIDER_UNREACHABLE', 'AI_PERMISSION_DENIED', 'AI_BILLING_UNAVAILABLE', 'AI_RATE_LIMITED',
 ])
 const TRANSIENT = new Set<PublicAiError['code']>(['AI_PROVIDER_UNREACHABLE', 'AI_RATE_LIMITED'])
+const structuredOutputValidator = new Ajv({ strict: false, allErrors: false })
 
 export function createProviderRoleExecutor(execution: ResolvedRoleExecution): RoleExecutor {
   if (execution.adapterType !== 'provider' || execution.target.kind !== 'provider_model'
@@ -105,7 +107,12 @@ async function generate(execution: ResolvedRoleExecution, descriptor: SafeProvid
   }
   let structured: unknown
   if (request.responseSchema) {
-    try { structured = JSON.parse(text) as unknown }
+    try {
+      structured = JSON.parse(text) as unknown
+      if (!structuredOutputValidator.compile(request.responseSchema)(structured)) {
+        throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+      }
+    }
     catch { throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role) }
   }
   return { text, ...(request.responseSchema ? { structured } : {}), toolCalls, finishReason, usage, retryCount }
@@ -117,69 +124,84 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
   let cancelled = false
   let iterator: AsyncIterator<unknown> | undefined
   let disposeCurrent: (() => void) | undefined
+  let retryCount = 0
+  let emitted = false
+  let pulling: Promise<void> | undefined
   const dispose = () => { const current = disposeCurrent; disposeCurrent = undefined; current?.() }
 
-  return new ReadableStream<RoleExecutionEvent>({
-    start(controller) {
-      void pump().catch(error => { if (!cancelled) controller.error(error) })
+  async function openAttempt(): Promise<boolean> {
+    if (cancelled) return false
+    if (request.abortSignal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+    const binding = await execution.createRuntimeBinding!()
+    let disposed = false
+    disposeCurrent = () => { if (!disposed) { disposed = true; binding.dispose() } }
+    if (cancelled) { dispose(); return false }
+    if (request.abortSignal?.aborted) {
+      dispose()
+      throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+    }
+    assertExactBinding(binding.providerId, binding.connectionId, binding.modelId, descriptor)
+    const runtimeDescriptor = adapterDescriptor(descriptor)
+    const runtimeBinding = adapterBinding(binding.model, runtimeDescriptor)
+    const abortSignal = request.abortSignal
+      ? AbortSignal.any([request.abortSignal, localAbort.signal]) : localAbort.signal
+    const raw = streamAdapterRaw({
+      callType: callType(execution.role), systemPrompt: request.systemPrompt,
+      messages: request.messages, tools: request.tools, toolChoice: request.toolChoice,
+      responseSchema: request.responseSchema, maxOutputTokens: request.maxOutputTokens,
+      temperature: request.temperature, reasoning: request.reasoning, multiStep: request.multiStep,
+      disableSdkRetry: true, abortSignal, runtimeBinding, runtimeDescriptor,
+    })
+    iterator = raw.result.fullStream[Symbol.asyncIterator]()
+    return true
+  }
 
-      async function pump(): Promise<void> {
-        let retryCount = 0
-        let visible = false
-        while (!cancelled) {
-          if (request.abortSignal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
-          try {
-            const binding = await execution.createRuntimeBinding!()
-            let disposed = false
-            disposeCurrent = () => { if (!disposed) { disposed = true; binding.dispose() } }
-            if (cancelled) { dispose(); return }
-            if (request.abortSignal?.aborted) {
-              dispose()
-              throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
-            }
-            assertExactBinding(binding.providerId, binding.modelId, descriptor)
-            const runtimeDescriptor = adapterDescriptor(descriptor)
-            const runtimeBinding = adapterBinding(binding.model, runtimeDescriptor)
-            const abortSignal = request.abortSignal
-              ? AbortSignal.any([request.abortSignal, localAbort.signal]) : localAbort.signal
-            const raw = streamAdapterRaw({
-              callType: callType(execution.role), systemPrompt: request.systemPrompt,
-              messages: request.messages, tools: request.tools, toolChoice: request.toolChoice,
-              responseSchema: request.responseSchema, maxOutputTokens: request.maxOutputTokens,
-              temperature: request.temperature, reasoning: request.reasoning, multiStep: request.multiStep,
-              disableSdkRetry: true, abortSignal, runtimeBinding,
-              runtimeDescriptor,
-            })
-            iterator = raw.result.fullStream[Symbol.asyncIterator]()
-            while (!cancelled) {
-              const next = await iterator.next()
-              if (next.done) break
-              const event = translate(next.value, retryCount)
-              if (!event) continue
-              visible = true
-              controller.enqueue(event)
-            }
-            dispose()
-            if (!cancelled) controller.close()
-            return
-          } catch (cause) {
-            dispose()
-            if (cancelled || request.abortSignal?.aborted) {
-              throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
-            }
-            const normalized = normalizeAiError(cause, { source: 'provider', role: execution.role })
-            if (!visible && retryCount === 0 && TRANSIENT.has(normalized.code)) {
-              retryCount = 1
-              continue
-            }
-            if (execution.markRuntimeFailure && MARKABLE.has(normalized.code as ProviderRuntimeFailure['code'])) {
-              try { await execution.markRuntimeFailure(normalized as ProviderRuntimeFailure) }
-              catch { /* Health telemetry must not replace the safe terminal provider error. */ }
-            }
-            throw new AiConsoleError(normalized.code, execution.role)
-          }
+  async function terminalError(cause: unknown): Promise<never | 'retry'> {
+    dispose(); iterator = undefined
+    if (cancelled || request.abortSignal?.aborted) {
+      throw new AiConsoleError('AI_EXECUTION_FAILED', execution.role)
+    }
+    const normalized = normalizeAiError(cause, { source: 'provider', role: execution.role })
+    if (!emitted && retryCount === 0 && TRANSIENT.has(normalized.code)) {
+      retryCount = 1
+      return 'retry'
+    }
+    if (execution.markRuntimeFailure && MARKABLE.has(normalized.code as ProviderRuntimeFailure['code'])) {
+      try { await execution.markRuntimeFailure(normalized as ProviderRuntimeFailure) }
+      catch { /* Health telemetry must not replace the safe terminal provider error. */ }
+    }
+    throw new AiConsoleError(normalized.code, execution.role)
+  }
+
+  async function pullOne(controller: ReadableStreamDefaultController<RoleExecutionEvent>): Promise<void> {
+    if (((request.tools?.length ?? 0) > 0 && !execution.capabilities.supportsTools)
+      || (request.responseSchema !== undefined && !execution.capabilities.supportsStructuredOutput)) {
+      throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', execution.role)
+    }
+    while (!cancelled) {
+      try {
+        if (!iterator && !await openAttempt()) return
+        const next = await iterator!.next()
+        if (next.done) {
+          dispose(); iterator = undefined
+          controller.close()
+          return
         }
+        const event = translate(next.value, retryCount)
+        if (!event) continue
+        emitted = true
+        controller.enqueue(event)
+        return
+      } catch (cause) {
+        if (await terminalError(cause) === 'retry') continue
       }
+    }
+  }
+
+  return new ReadableStream<RoleExecutionEvent>({
+    pull(controller) {
+      pulling ??= pullOne(controller).finally(() => { pulling = undefined })
+      return pulling
     },
     async cancel() {
       cancelled = true
@@ -208,8 +230,10 @@ function adapterBinding(model: LanguageModelV3, descriptor: SafeRuntimeModelDesc
   return Object.freeze(binding) as RuntimeAdapterBinding
 }
 
-function assertExactBinding(providerId: ProviderId, modelId: string, descriptor: SafeRuntimeModelDescriptor): void {
-  if (providerId !== descriptor.providerId || modelId !== descriptor.modelId) {
+function assertExactBinding(providerId: ProviderId, connectionId: string, modelId: string,
+  descriptor: SafeRuntimeModelDescriptor): void {
+  if (providerId !== descriptor.providerId || connectionId !== descriptor.connectionId
+    || modelId !== descriptor.modelId) {
     throw new AiConsoleError('AI_EXECUTION_FAILED')
   }
 }

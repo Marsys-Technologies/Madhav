@@ -1,11 +1,15 @@
 import 'server-only'
-import type { RuntimeModelBinding } from '../providers/types'
 import type { PublicAiError } from '../errors'
+import type { OwnedConnectionRuntimeBinding } from '../providers/types'
 import type {
   AiChoiceRef, AiRole, AiSource, ConversationAiSelection, ResolvedRoleTarget, RoutingSnapshot,
 } from '../types'
 
 export type SafeRoutingSnapshot = RoutingSnapshot
+export interface RuntimeModelCapabilities {
+  readonly supportsTools: boolean
+  readonly supportsStructuredOutput: boolean
+}
 export type ProviderRuntimeFailure = Omit<PublicAiError, 'code'> & { code:
   | 'AI_CONNECTION_INVALID'
   | 'AI_MODEL_UNAVAILABLE'
@@ -20,8 +24,9 @@ export interface ResolvedRoleExecution {
   readonly role: AiRole
   readonly adapterType: 'provider' | 'cli'
   readonly target: ResolvedRoleTarget
+  readonly capabilities: RuntimeModelCapabilities
   /** Present only for provider-backed roles; deliberately non-enumerable. */
-  readonly createRuntimeBinding?: () => Promise<RuntimeModelBinding>
+  readonly createRuntimeBinding?: () => Promise<OwnedConnectionRuntimeBinding>
   /** Exact-version runtime health update; deliberately non-enumerable. */
   readonly markRuntimeFailure?: (error: ProviderRuntimeFailure) => Promise<void>
 }

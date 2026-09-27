@@ -80,6 +80,7 @@ describe('owned validation state flow', () => {
   it.each(['disabled', 'deleted', 'replaced'] as const)('blocks extracted runtime models after the connection is %s', async change => {
     validity = 'valid'
     const binding = await createConnectionRuntimeBinding({ userId: 'alice', connectionId: id, providerId: 'openai', credentialVersion: 1 }, { modelId: 'gpt-4.1-mini', displayName: 'Mini', compatibleRoles: ['synthesizer'], supportsTools: true, supportsStructuredOutput: true })
+    expect(binding.connectionId).toBe(id)
     const model = binding.model
     if (change === 'disabled') active = false
     if (change === 'deleted') deleted = true
@@ -132,6 +133,9 @@ describe('owned validation state flow', () => {
     expect(JSON.parse(http.mock.calls[1][1].body).model).toBe('gpt-4.1-mini')
     expect(JSON.stringify([result, execute.mock.calls.filter(([sql]) => !String(sql).includes('SELECT c.credential'))])).not.toContain(key)
     expect(JSON.stringify(execute.mock.calls)).not.toContain('never persist this')
+    const catalogWrites = execute.mock.calls.filter(([sql]) => String(sql).startsWith('INSERT INTO ai_connection_models'))
+    expect(catalogWrites.length).toBeGreaterThan(0)
+    expect(catalogWrites.every(([, params]) => typeof params.at(-2) === 'boolean' && typeof params.at(-1) === 'boolean')).toBe(true)
   })
   it('does not probe an empty compatible catalog or mark it validated', async () => {
     http.mockResolvedValue(Response.json({ data: [{ id: 'text-embedding-3-small' }] }))

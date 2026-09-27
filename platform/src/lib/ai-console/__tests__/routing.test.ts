@@ -28,6 +28,8 @@ function provider(modelId = 'gpt-4.1-mini', id = connectionId) {
     modelId,
     displayName: modelId,
     compatibleRoles: [...AI_ROLES],
+    supportsTools: true,
+    supportsStructuredOutput: true,
   }
 }
 
@@ -51,7 +53,9 @@ const baseInput = {
 describe('central AI routing resolver', () => {
   beforeEach(() => {
     mocks.loadRoutingResolution.mockReset()
-    mocks.createConnectionRuntimeBinding.mockReset().mockResolvedValue({ dispose: vi.fn() })
+    mocks.createConnectionRuntimeBinding.mockReset().mockResolvedValue({
+      providerId: 'openai', connectionId, modelId: 'gpt-4.1-mini', model: {}, dispose: vi.fn(),
+    })
     mocks.markConnectionForRevalidation.mockReset().mockResolvedValue(undefined)
   })
 
@@ -68,7 +72,9 @@ describe('central AI routing resolver', () => {
       expect(Object.keys(plan.roles[role])).not.toContain('markRuntimeFailure')
     }
     expect(mocks.createConnectionRuntimeBinding).not.toHaveBeenCalled()
-    await plan.roles.worker.createRuntimeBinding!()
+    const ownedBinding = await plan.roles.worker.createRuntimeBinding!()
+    expect(ownedBinding).toMatchObject({ providerId: 'openai', connectionId, modelId: 'gpt-4.1-mini' })
+    expect(plan.roles.worker.capabilities).toEqual({ supportsTools: true, supportsStructuredOutput: true })
     expect(mocks.createConnectionRuntimeBinding).toHaveBeenCalledOnce()
     expect(mocks.createConnectionRuntimeBinding).toHaveBeenCalledWith(
       { userId: 'alice', connectionId, providerId: 'openai', credentialVersion: 3 },
@@ -89,7 +95,7 @@ describe('central AI routing resolver', () => {
 
   it('resolves an exact local CLI model for every role without starting it', async () => {
     const target = { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: 'gpt-5.1-codex' }
-    const resolvedTarget = { ...target, displayName: 'Codex', compatibleRoles: [...AI_ROLES] }
+    const resolvedTarget = { ...target, displayName: 'Codex', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }
     mocks.loadRoutingResolution.mockResolvedValue({
       resolvedChoice: target,
       configurationVersion: null,
@@ -108,7 +114,7 @@ describe('central AI routing resolver', () => {
   it('resolves four independent current assignments for a named configuration', async () => {
     const p2 = provider('claude-opus-4-1', '00000000-0000-4000-8000-000000000003')
     const cli = { kind: 'local_cli' as const, cliId: 'kimi_code' as const, modelId: null }
-    const resolvedCli = { ...cli, displayName: 'Kimi', compatibleRoles: [...AI_ROLES] }
+    const resolvedCli = { ...cli, displayName: 'Kimi', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }
     mocks.loadRoutingResolution.mockResolvedValue({
       resolvedChoice: { kind: 'custom_configuration', configurationId },
       configurationVersion: 7,

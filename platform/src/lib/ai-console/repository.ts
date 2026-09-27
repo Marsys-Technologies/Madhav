@@ -122,7 +122,7 @@ async function assertChoice(client: Client, userId: string, choice: AiChoiceRef)
 export async function listAiConsoleState(userId: string) {
   const connections = await query(`SELECT ${safeColumns},credential_version,last_validated_at,last_checked_at,last_error_code,deleted_at
     FROM ai_provider_connections WHERE user_id=$1 ORDER BY created_at,id`, [userId])
-  const models = await query(`SELECT m.connection_id,m.model_id,m.display_name,m.compatible_roles,m.available FROM ai_connection_models m
+  const models = await query(`SELECT m.connection_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available FROM ai_connection_models m
     JOIN ai_provider_connections c ON c.id=m.connection_id WHERE c.user_id=$1 ORDER BY m.connection_id,m.model_id`, [userId])
   const configurations = await query(`SELECT id,name,version,deleted_at FROM ai_custom_configurations WHERE user_id=$1 ORDER BY created_at,id`, [userId])
   const roles = await query(`SELECT configuration_id,role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 ORDER BY configuration_id,role`, [userId])
@@ -133,7 +133,7 @@ export async function listAiConsoleState(userId: string) {
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.validation_state END AS validation_state,
     CASE WHEN g.revoked_at IS NULL AND g.user_id IS NOT NULL THEN i.last_checked_at END AS last_checked_at,
     g.granted_at,g.revoked_at FROM ai_cli_installations i LEFT JOIN ai_cli_grants g ON g.cli_id=i.cli_id AND g.user_id=$1 ORDER BY i.cli_id`, [userId])
-  const cliModels = await query(`SELECT m.cli_id,m.model_id,m.display_name,m.compatible_roles,m.available,m.is_builtin_default
+  const cliModels = await query(`SELECT m.cli_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default
     FROM ai_cli_models m JOIN ai_cli_grants g ON g.cli_id=m.cli_id WHERE g.user_id=$1 AND g.revoked_at IS NULL ORDER BY m.cli_id,m.model_id`, [userId])
   return { connections: connections.rows, models: models.rows, configurations: configurations.rows,
     roles: roles.rows, defaultChoice: defaults.rows[0] ? rowChoice(defaults.rows[0]) : null,
@@ -148,6 +148,8 @@ export interface RoutingProviderTarget {
   modelId: string
   displayName: string
   compatibleRoles: AiRole[]
+  supportsTools: boolean
+  supportsStructuredOutput: boolean
 }
 export interface RoutingCliTarget {
   kind: 'local_cli'
@@ -155,6 +157,8 @@ export interface RoutingCliTarget {
   modelId: string | null
   displayName: string
   compatibleRoles: AiRole[]
+  supportsTools: boolean
+  supportsStructuredOutput: boolean
 }
 export type RoutingTarget = RoutingProviderTarget | RoutingCliTarget
 export interface RoutingResolution {
@@ -191,7 +195,7 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
     const confirmedUsable = connection.credential_validity === 'valid'
       && (connection.validation_state === 'validated' || connection.validation_state === 'validating')
     if (!confirmedUsable) throw notFound()
-    const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.available
+    const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available
       FROM ai_connection_models m WHERE m.connection_id=$1 AND m.model_id=$2 FOR SHARE`,
     [target.connectionId, target.modelId])).rows[0]
     if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
@@ -203,6 +207,8 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
       providerId: ProviderIdSchema.parse(connection.provider_id),
       credentialVersion: z.coerce.number().int().positive().parse(connection.credential_version),
       modelId: target.modelId, displayName: z.string().min(1).parse(model.display_name), compatibleRoles,
+      supportsTools: z.boolean().parse(model.supports_tools),
+      supportsStructuredOutput: z.boolean().parse(model.supports_structured_output),
     }
   }
 
@@ -214,7 +220,7 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
   if (!installation || installation.validation_state === 'not_installed') throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
   if (installation.validation_state === 'auth_unavailable') throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
   if (installation.validation_state !== 'reachable') throw new AiConsoleError('AI_CLI_UNREACHABLE')
-  const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.available,m.is_builtin_default
+  const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default
     FROM ai_cli_models m WHERE m.cli_id=$1
       AND (($2::text IS NULL AND m.is_builtin_default=true) OR m.model_id=$2) FOR SHARE`,
   [target.cliId, target.modelId])).rows[0]
@@ -223,7 +229,9 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
   const incompatible = firstIncompatibleRole(compatibleRoles, roles)
   if (incompatible) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', incompatible)
   return { kind: 'local_cli', cliId: target.cliId, modelId: target.modelId,
-    displayName: z.string().min(1).parse(model.display_name), compatibleRoles }
+    displayName: z.string().min(1).parse(model.display_name), compatibleRoles,
+    supportsTools: z.boolean().parse(model.supports_tools),
+    supportsStructuredOutput: z.boolean().parse(model.supports_structured_output) }
 }
 
 /**
@@ -337,7 +345,9 @@ const ValidationSchema = z.object({
   state: z.enum(['validated', 'needs_attention', 'invalid', 'unreachable', 'validating']),
   errorCode: z.enum(['AI_CONNECTION_INVALID', 'AI_MODEL_UNAVAILABLE', 'AI_ROLE_INCOMPATIBLE', 'AI_PROVIDER_UNREACHABLE',
     'AI_PERMISSION_DENIED', 'AI_BILLING_UNAVAILABLE', 'AI_RATE_LIMITED', 'AI_EXECUTION_FAILED']).optional(),
-  models: z.array(z.object({ modelId: z.string().min(1), displayName: z.string().min(1), compatibleRoles: z.array(AiRoleSchema).min(1) }).strict()).optional(),
+  models: z.array(z.object({ modelId: z.string().min(1), displayName: z.string().min(1),
+    compatibleRoles: z.array(AiRoleSchema).min(1), supportsTools: z.boolean(),
+    supportsStructuredOutput: z.boolean() }).strict()).optional(),
 }).strict().refine(v => v.state !== 'validated' || !!v.models?.length)
 export async function storeConnectionValidation(userId: string, connectionId: string, input: unknown) {
   const result = ValidationSchema.parse(input)
@@ -351,11 +361,13 @@ export async function storeConnectionValidation(userId: string, connectionId: st
     if (result.models !== undefined || result.state === 'invalid') {
       await invalidateCatalog(client, userId, connectionId)
       if (result.state !== 'invalid') for (const model of result.models ?? []) {
-        await client.query(`INSERT INTO ai_connection_models(connection_id,model_id,display_name,compatible_roles,available)
-          SELECT id,$3,$4,$5,true FROM ai_provider_connections WHERE user_id=$1 AND id=$2
+        await client.query(`INSERT INTO ai_connection_models(connection_id,model_id,display_name,compatible_roles,supports_tools,supports_structured_output,available)
+          SELECT id,$3,$4,$5,$6,$7,true FROM ai_provider_connections WHERE user_id=$1 AND id=$2
           ON CONFLICT(connection_id,model_id) DO UPDATE SET display_name=excluded.display_name,
-          compatible_roles=excluded.compatible_roles,available=true,last_seen_at=now()`,
-        [userId, connectionId, model.modelId, model.displayName, model.compatibleRoles])
+          compatible_roles=excluded.compatible_roles,supports_tools=excluded.supports_tools,
+          supports_structured_output=excluded.supports_structured_output,available=true,last_seen_at=now()`,
+        [userId, connectionId, model.modelId, model.displayName, model.compatibleRoles,
+          model.supportsTools, model.supportsStructuredOutput])
       }
     }
     await writeAiAudit(client, userId, { event: 'connection_validated', connectionId })

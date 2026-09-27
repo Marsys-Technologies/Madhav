@@ -1,7 +1,7 @@
 import { inspect } from 'node:util'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LanguageModelV3 } from '@ai-sdk/provider'
-import type { RuntimeModelBinding } from '../../providers/types'
+import type { OwnedConnectionRuntimeBinding } from '../../providers/types'
 
 vi.mock('server-only', () => ({}))
 
@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ streamAdapterRaw: vi.fn() }))
 vi.mock('@/lib/adapters/raw', () => ({ streamAdapterRaw: mocks.streamAdapterRaw }))
 
 import { AiConsoleError } from '../../errors'
-import { createProviderRoleExecutor } from '../provider-executor'
+import { createProviderRoleExecutor, type RoleExecutionRequest } from '../provider-executor'
 import type { ResolvedRoleExecution } from '../types'
 
 const connectionId = '00000000-0000-4000-8000-000000000008'
@@ -31,12 +31,13 @@ function execution(overrides: Partial<ResolvedRoleExecution> = {}) {
   const createRuntimeBinding = vi.fn(async () => {
     const dispose = vi.fn()
     disposals.push(dispose)
-    return { providerId: 'openai' as const, modelId: 'dynamic-model', model, dispose }
+    return { providerId: 'openai' as const, connectionId, modelId: 'dynamic-model', model, dispose }
   })
   const markRuntimeFailure = vi.fn(async () => undefined)
   const value: ResolvedRoleExecution = {
     role: 'worker', adapterType: 'provider',
     target: { kind: 'provider_model', providerId: 'openai', connectionId, modelId: 'dynamic-model' },
+    capabilities: { supportsTools: true, supportsStructuredOutput: true },
     createRuntimeBinding, markRuntimeFailure, ...overrides,
   }
   return { value, createRuntimeBinding, markRuntimeFailure, disposals }
@@ -73,6 +74,25 @@ describe('provider-backed RoleExecutor', () => {
       tools: [{ name: 'lookup', description: 'Lookup', parameters: { type: 'object' } }],
     })
     expect(owned.disposals[0]).toHaveBeenCalledOnce()
+  })
+
+  it('rejects valid JSON that violates the requested schema', async () => {
+    mocks.streamAdapterRaw.mockReturnValue(raw([
+      { type: 'text-delta', text: '{"ok":"not-a-boolean"}' },
+      { type: 'finish', finishReason: 'stop', totalUsage: { inputTokens: 1, outputTokens: 1 } },
+    ]))
+    const owned = execution()
+    await expect(createProviderRoleExecutor(owned.value).generate(request)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+  })
+
+  it.each<[string, Partial<ResolvedRoleExecution>, RoleExecutionRequest]>([
+    ['tools', { capabilities: { supportsTools: false, supportsStructuredOutput: true } }, { ...request, tools: [{ name: 'lookup', description: 'Lookup', parameters: { type: 'object' as const } }] }],
+    ['structured output', { capabilities: { supportsTools: true, supportsStructuredOutput: false } }, request],
+  ])('fails closed locally when exact target lacks %s capability', async (_name, override, input) => {
+    const owned = execution(override)
+    await expect(createProviderRoleExecutor(owned.value).generate(input)).rejects.toMatchObject({ code: 'AI_ROLE_INCOMPATIBLE' })
+    expect(owned.createRuntimeBinding).not.toHaveBeenCalled()
+    expect(mocks.streamAdapterRaw).not.toHaveBeenCalled()
   })
 
   it('retries one transient pre-output failure on the same exact target with fresh reauthorization', async () => {
@@ -190,15 +210,18 @@ describe('provider-backed RoleExecutor', () => {
   })
 
   it('does not dispatch after cancellation while exact-version reauthorization is pending', async () => {
-    let release!: (value: RuntimeModelBinding) => void
-    const pending = new Promise<RuntimeModelBinding>(resolve => { release = resolve })
+    let release!: (value: OwnedConnectionRuntimeBinding) => void
+    const pending = new Promise<OwnedConnectionRuntimeBinding>(resolve => { release = resolve })
     const dispose = vi.fn()
     const owned = execution()
     owned.createRuntimeBinding.mockReturnValueOnce(pending as never)
     const reader = createProviderRoleExecutor(owned.value).stream(request).getReader()
+    const read = reader.read()
+    await vi.waitFor(() => expect(owned.createRuntimeBinding).toHaveBeenCalledOnce())
     const cancellation = reader.cancel()
-    release({ providerId: 'openai', modelId: 'dynamic-model', model, dispose })
+    release({ providerId: 'openai', connectionId, modelId: 'dynamic-model', model, dispose })
     await cancellation
+    await read
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(mocks.streamAdapterRaw).not.toHaveBeenCalled()
     expect(dispose).toHaveBeenCalledOnce()
@@ -212,6 +235,31 @@ describe('provider-backed RoleExecutor', () => {
     const executor = createProviderRoleExecutor(owned.value)
     await expect(executor.generate(request)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
     expect(mocks.streamAdapterRaw).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when the owned binding came from a different connection with the same provider and model', async () => {
+    const owned = execution()
+    owned.createRuntimeBinding.mockResolvedValueOnce({
+      providerId: 'openai', connectionId: '00000000-0000-4000-8000-000000000009',
+      modelId: 'dynamic-model', model, dispose: vi.fn(),
+    } as never)
+    await expect(createProviderRoleExecutor(owned.value).generate(request)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(mocks.streamAdapterRaw).not.toHaveBeenCalled()
+  })
+
+  it('keeps at most one unread event buffered and disposes on stalled-reader cancellation', async () => {
+    let upstreamReads = 0
+    mocks.streamAdapterRaw.mockReturnValue({ result: { fullStream: {
+      [Symbol.asyncIterator]() { return this },
+      async next() { upstreamReads++; return { done: false, value: { type: 'text-delta', text: String(upstreamReads) } } },
+      async return() { return { done: true, value: undefined } },
+    } } })
+    const owned = execution()
+    const output = createProviderRoleExecutor(owned.value).stream({ ...request, responseSchema: undefined })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(upstreamReads).toBeLessThanOrEqual(1)
+    await output.cancel()
+    expect(owned.disposals[0]).toHaveBeenCalledOnce()
   })
 
   it('does not serialize or inspect the model, binding, credential, or credential version', () => {

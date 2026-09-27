@@ -110,7 +110,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     poolGlobal.__pgPool = pool
     connectionId = (await repo.createConnection(user, { providerId: 'openai', name: 'Personal' }, encrypted())).id
     await repo.storeConnectionValidation(user, connectionId, { credentialVersion: 1, state: 'validated',
-      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES] }] })
+      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
     configurationId = (await repo.saveConfiguration(user, { name: 'Complete', roles: roles() })).id
   })
   afterAll(async () => {
@@ -176,7 +176,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
   it('serializes swapped A/B role assignments independently of role order', async () => {
     const secondId = (await repo.createConnection(user, { providerId: 'openai', name: 'Second for locks' }, encrypted())).id
     await repo.storeConnectionValidation(user, secondId, { credentialVersion: 1, state: 'validated',
-      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES] }] })
+      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
     const second = { ...choice(), connectionId: secondId }
     const ab = { synthesizer: choice(), planner: second, deep_planner: choice(), worker: second }
     const ba = { synthesizer: second, planner: choice(), deep_planner: second, worker: choice() }
@@ -195,7 +195,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await pool.query('INSERT INTO conversations(id,user_id) VALUES($1,$4),($2,$4),($3,$5)', [absent, explicit, foreign, user, other])
     const otherConnection = (await repo.createConnection(user, { providerId: 'openai', name: 'Independent override' }, encrypted())).id
     await repo.storeConnectionValidation(user, otherConnection, { credentialVersion: 1, state: 'validated',
-      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES] }] })
+      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
     const override = { ...choice(), connectionId: otherConnection }
     await repo.setConversationSelection(user, explicit, { kind: 'explicit', choice: override })
     await repo.setUserDefault(user, choice())
@@ -227,10 +227,10 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     expect(pinned.ciphertext).toEqual(pinnedBytes)
     await expect(repo.loadConnectionCredential(user, connectionId, 1)).rejects.toMatchObject({ code: 'AI_CHOICE_BROKEN' })
     await expect(repo.storeConnectionValidation(user, connectionId, { credentialVersion: 1, state: 'validated',
-      models: [{ modelId: 'stale-model', displayName: 'Stale', compatibleRoles: ['worker'] }] })).rejects.toBeDefined()
+      models: [{ modelId: 'stale-model', displayName: 'Stale', compatibleRoles: ['worker'], supportsTools: false, supportsStructuredOutput: true }] })).rejects.toBeDefined()
     expect((await pool.query('SELECT available FROM ai_connection_models WHERE connection_id=$1', [connectionId])).rows).toEqual([{ available: false }])
     await repo.storeConnectionValidation(user, connectionId, { credentialVersion: 2, state: 'validated',
-      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES] }] })
+      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
     await pool.query("UPDATE profiles SET status='disabled' WHERE id=$1", [user])
     await expect(repo.loadConnectionCredential(user, connectionId, 2)).rejects.toBeDefined()
     await pool.query("UPDATE profiles SET status='active' WHERE id=$1", [user])

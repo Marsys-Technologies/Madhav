@@ -1,10 +1,12 @@
 import 'server-only'
+import { inspect } from 'node:util'
+import { AiConsoleError } from '../errors'
 import { decryptCredential } from '../crypto'
 import {
   assertConnectionRequestAuthorized, assertRuntimeModelRequestAuthorized, loadConnectionCredential,
   loadRuntimeModelCredential,
 } from '../repository'
-import type { DiscoveredModel } from './types'
+import type { DiscoveredModel, OwnedConnectionRuntimeBinding, RuntimeModelBinding } from './types'
 import { ProviderIdSchema, type ProviderId } from '../types'
 import { anthropicAdapter } from './anthropic'
 import { googleAdapter } from './google'
@@ -49,7 +51,24 @@ export async function createConnectionRuntimeBinding(connection: OwnedProviderCo
   connection = Object.freeze({ ...connection })
   const record = await loadRuntimeModelCredential({ ...connection, modelId: model.modelId })
   let key: string | undefined = decryptCredential(record)
-  try { return getProviderAdapter(connection.providerId).createRuntimeBinding(key, model,
-    () => assertRuntimeModelRequestAuthorized({ ...connection, modelId: model.modelId })) }
+  try {
+    const binding = getProviderAdapter(connection.providerId).createRuntimeBinding(key, model,
+      () => assertRuntimeModelRequestAuthorized({ ...connection, modelId: model.modelId }))
+    return ownedConnectionBinding(connection.connectionId, binding)
+  }
   finally { key = undefined }
+}
+
+function ownedConnectionBinding(connectionId: string, binding: RuntimeModelBinding): OwnedConnectionRuntimeBinding {
+  const owned = Object.create(null)
+  Object.defineProperties(owned, {
+    providerId: { value: binding.providerId, enumerable: true },
+    connectionId: { value: connectionId, enumerable: true },
+    modelId: { value: binding.modelId, enumerable: true },
+    model: { get: () => binding.model, enumerable: false },
+    dispose: { value: () => binding.dispose(), enumerable: false },
+    toJSON: { value: () => { throw new AiConsoleError('AI_EXECUTION_FAILED') } },
+    [inspect.custom]: { value: () => '[OwnedConnectionRuntimeBinding REDACTED]' },
+  })
+  return Object.freeze(owned) as OwnedConnectionRuntimeBinding
 }
