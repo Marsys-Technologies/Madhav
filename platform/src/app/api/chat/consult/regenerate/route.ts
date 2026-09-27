@@ -3,7 +3,8 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { getConversation } from '@/lib/conversations'
 import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
-import { res } from '@/lib/errors'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
+import { errorResponse, res } from '@/lib/errors'
 
 /**
  * POST /api/chat/consult/regenerate
@@ -57,6 +58,14 @@ export async function POST(request: Request) {
   if (!conv) return res.notFound('conversation')
   // Jātaka chart workspace: history archived by a chart-details correction is read-only.
   if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
+
+  // Same shared readiness gate as the consult and Paripraśna doors, checked
+  // before the truncation so a refused re-post never strands a shortened
+  // conversation.
+  const readingGate = await checkReadingReadiness(conv.chart_id)
+  if (!readingGate.ok) {
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: true })
+  }
 
   // Get the created_at timestamp of the parent message so we can delete everything after it.
   let parentCreatedAt: string | null = null

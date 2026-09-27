@@ -6,6 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
+const { mockReadiness } = vi.hoisted(() => ({ mockReadiness: vi.fn() }))
+vi.mock('@/lib/charts/readingGate', () => ({ checkReadingReadiness: mockReadiness }))
+const NOT_READY = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state: 'building', message: 'This chart is still being computed.' }
+
 const { mockGetConversation, mockLoad, mockStreamText } = vi.hoisted(() => ({
   mockGetConversation: vi.fn(),
   mockLoad: vi.fn(),
@@ -28,7 +32,10 @@ function req() {
   })
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockReadiness.mockResolvedValue({ ok: true })
+})
 
 describe('POST /api/chat/consult/continue — correction-archived conversation', () => {
   it('refuses with 409 CONVERSATION_ARCHIVED_READ_ONLY before loading messages or calling the model', async () => {
@@ -48,3 +55,19 @@ describe('POST /api/chat/consult/continue — correction-archived conversation',
     expect(mockLoad).toHaveBeenCalled()
   })
 })
+
+describe('POST /api/chat/consult/continue — shared readiness gate', () => {
+  it('refuses a chart that is not Ready before loading messages or calling the model', async () => {
+    mockGetConversation.mockResolvedValue({ id: 'conv-1', chart_id: 'c', archived_at: null, archive_reason: null })
+    mockReadiness.mockResolvedValue(NOT_READY)
+    const res = await POST(req())
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error.code).toBe('CHART_RECOMPUTE_REQUIRED')
+    expect(body.error.message).toBe('This chart is still being computed.')
+    expect(mockReadiness).toHaveBeenCalledWith('c')
+    expect(mockLoad).not.toHaveBeenCalled()
+    expect(mockStreamText).not.toHaveBeenCalled()
+  })
+})
+

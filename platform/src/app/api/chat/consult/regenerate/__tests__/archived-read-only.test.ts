@@ -7,6 +7,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
+const { mockReadiness } = vi.hoisted(() => ({ mockReadiness: vi.fn() }))
+vi.mock('@/lib/charts/readingGate', () => ({ checkReadingReadiness: mockReadiness }))
+const NOT_READY = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state: 'building', message: 'This chart is still being computed.' }
+
 const { mockGetConversation, mockQuery } = vi.hoisted(() => ({ mockGetConversation: vi.fn(), mockQuery: vi.fn() }))
 
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: vi.fn(async () => ({ uid: 'owner-uid' })) }))
@@ -25,6 +29,7 @@ function req() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockReadiness.mockResolvedValue({ ok: true })
   mockQuery.mockImplementation(async (sql: string) => (/FROM profiles/.test(sql) ? { rows: [{ role: 'guest' }] } : { rows: [{ created_at: '2026-09-01' }] }))
 })
 
@@ -44,3 +49,16 @@ describe('POST /api/chat/consult/regenerate — correction-archived conversation
     expect(mockQuery.mock.calls.some(([sql]) => /DELETE FROM conversation_messages/.test(sql))).toBe(true)
   })
 })
+
+describe('POST /api/chat/consult/regenerate — shared readiness gate', () => {
+  it('refuses a chart that is not Ready before deleting anything, so the re-post cannot strand a truncated conversation', async () => {
+    mockGetConversation.mockResolvedValue({ id: 'conv-1', chart_id: 'c', archived_at: null, archive_reason: null })
+    mockReadiness.mockResolvedValue(NOT_READY)
+    const res = await POST(req())
+    expect(res.status).toBe(409)
+    expect((await res.json()).error.code).toBe('CHART_RECOMPUTE_REQUIRED')
+    expect(mockReadiness).toHaveBeenCalledWith('c')
+    expect(mockQuery.mock.calls.some(([sql]) => /DELETE/i.test(sql))).toBe(false)
+  })
+})
+
