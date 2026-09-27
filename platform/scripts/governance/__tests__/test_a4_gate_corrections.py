@@ -156,3 +156,72 @@ def test_f7_main_exits_4_with_a_message_on_zero_active_rows(monkeypatch, tmp_pat
     out = capsys.readouterr().out
     assert rc == 4, out
     assert "UNKNOWN" in out and "zero active bg_" in out and "5 registry row(s)" in out
+
+
+# ─────────────────────────── offline measure() harness ───────────────────────────
+
+def _reg_row(aid, target_table=None, has_writer=False):
+    return dict(asset_id=aid, has_writer=has_writer, target_table=target_table, count_sql="",
+                has_integrity=False, depends_on=[], target_floor=None, catalog_status="", asset_kind="")
+
+
+def _stub_layer(monkeypatch, ctrl, reg, tables=None):
+    """Replace every layer-wide DB read measure() makes with fixed values, so the REAL measure()
+    runs offline. `tables` maps table -> (columns, declared keys). Per-asset queries that are not
+    stubbed here reach `ac.psql`, which each test stubs for the query under test."""
+    tables = tables or {}
+    monkeypatch.setattr(ac, "CTRL", ctrl)
+    monkeypatch.setattr(ac, "registry", lambda k: (dict(reg), dict(registry_total=len(reg), active=len(reg),
+                                                                    excluded_inactive=[])))
+    monkeypatch.setattr(ac, "catalog", lambda ts: dict(exists=set(tables),
+                                                       cols={t: c for t, (c, _k) in tables.items()},
+                                                       keys={t: k for t, (_c, k) in tables.items()}))
+    monkeypatch.setattr(ac, "registered_ids", lambda prefix: {})
+    monkeypatch.setattr(ac, "live_counts", lambda r: ({a: None for a in r}, {}))
+    monkeypatch.setattr(ac, "throughput", lambda prefix: {})
+    monkeypatch.setattr(ac, "build_history", lambda prefix: dict(per={}, global_runs=0, global_with_layer=0, lit=set()))
+    monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
+    monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))
+    monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=3, full=list(c), never=[], note=""))
+    monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
+
+
+def _measured(census, aid, crit):
+    return next(a for a in census["assets"] if a["asset_id"] == aid)["measurements"][crit]
+
+
+# ─────────────────────────── F8: a registered detector's exit code and vocabulary ───────────────────────────
+
+def _detector(ctrl, aid, body):
+    d = ctrl / "detectors"
+    d.mkdir(exist_ok=True)
+    (d / f"{aid}_D1.py").write_text(body, encoding="utf-8")
+
+
+def test_f8_a_detector_that_crashes_after_printing_pass_is_not_a_pass(monkeypatch, tmp_path):
+    """Fails without the fix: the census adopted the last stdout line (`PASS`) and ignored exit 1."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
+    _detector(tmp_path, "bg_x", 'import json, sys\n'
+                                'print(json.dumps({"verdict": "PASS", "measured": "looked fine"}))\n'
+                                'sys.exit("crashed after printing")\n')
+    res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
+    assert res["v"] == ac.NO_DET, res
+    assert "exited 1" in res["measured"] and "crashed after printing" in res["measured"]
+
+
+def test_f8_a_verdict_outside_the_closed_set_is_not_adopted(monkeypatch, tmp_path):
+    """Fails without the fix: `GREEN` (or any string) was adopted as the verdict verbatim."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
+    _detector(tmp_path, "bg_x", 'import json\nprint(json.dumps({"verdict": "GREEN", "measured": "ok"}))\n')
+    res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
+    assert res["v"] == ac.NO_DET, res
+    assert "'GREEN'" in res["measured"] and "outside the closed set" in res["measured"]
+
+
+def test_f8_a_clean_detector_verdict_is_still_adopted(monkeypatch, tmp_path):
+    """Positive control: the fix must not blind a detector that ran cleanly."""
+    _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
+    _detector(tmp_path, "bg_x", 'import json\nprint(json.dumps({"verdict": "FAIL", "measured": "3 mismatches"}))\n')
+    res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
+    assert res == dict(v=ac.FAIL, measured="bg_x_D1.py: 3 mismatches")

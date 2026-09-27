@@ -646,6 +646,51 @@ def _measure_idem(aid: str, files: list[str], convention: str) -> dict:
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
+# The closed verdict set a registered carriage detector may return (the ledgers' own vocabulary,
+# asset_elevation_tracker.VERDICTS). NOT_GENERIC / ERRORED are census-internal and never a detector's.
+DETECTOR_VERDICTS = (PASS, FAIL, PARTIAL, NO_DET, NA)
+
+
+def _run_carriage_detector(aid: str) -> dict:
+    """P3/R57 item (d): a per-asset carriage detector registered at <CTRL>/detectors/<asset>_D<1|2|3>.py
+    IS the detector — run it and adopt its verdict instead of the blanket NO_DETECTOR.
+
+    F8 (A_REVIEW.md): the port adopted the last stdout line's `verdict` without checking the
+    process's return code or the verdict's vocabulary, so a detector that crashed AFTER printing
+    `{"verdict": "PASS", …}` — or printed a verdict outside the closed set — was adopted as its
+    verdict, and a PASS closes a gap. A non-zero exit, an unparseable last line, or a verdict outside
+    DETECTOR_VERDICTS now reads NO_DETECTOR with the exact reason: a detector that did not complete
+    cleanly has measured nothing."""
+    det_dir = CTRL / "detectors"
+    det = None
+    if det_dir.is_dir():
+        for n in (1, 2, 3):
+            p = det_dir / f"{aid}_D{n}.py"
+            if p.exists():
+                det = p
+                break
+    if det is None:
+        return dict(v=NO_DET, measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
+    try:
+        pr = subprocess.run([sys.executable, str(det)], capture_output=True, text=True,
+                            env=os.environ, timeout=120)
+    except Exception as exc:  # a registered detector that cannot run is not a pass
+        return dict(v=NO_DET, measured=f"{det.name} failed to run: {exc}")
+    if pr.returncode != 0:
+        tail = (pr.stderr.strip().splitlines() or ["no stderr"])[-1]
+        return dict(v=NO_DET, measured=f"{det.name} exited {pr.returncode} ({tail}) — output of a failed "
+                                       "detector is not a verdict")
+    try:
+        out = json.loads(pr.stdout.strip().splitlines()[-1])
+        verdict, measured = out["verdict"], out["measured"]
+    except Exception as exc:
+        return dict(v=NO_DET, measured=f"{det.name} produced no parseable verdict line: {type(exc).__name__}: {exc}")
+    if verdict not in DETECTOR_VERDICTS:
+        return dict(v=NO_DET, measured=f"{det.name} returned verdict {verdict!r}, outside the closed set "
+                                       f"{list(DETECTOR_VERDICTS)}")
+    return dict(v=verdict, measured=f"{det.name}: {measured}")
+
+
 # ─────────────────────────── the census ───────────────────────────
 
 def measure(layer_key: str) -> dict:
@@ -824,28 +869,7 @@ def measure(layer_key: str) -> dict:
             if r["depends_on"] else dict(v=NA, measured="no declared dependencies")
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
-        # P3/R57 item (d): a per-asset carriage detector registered at <CTRL>/detectors/<asset>_D<1|2|3>.py
-        # IS the detector — run it and adopt its verdict instead of the blanket NO_DETECTOR. Ported
-        # from harness/asset_census_closing.py unchanged.
-        det_dir = CTRL / "detectors"
-        det = None
-        if det_dir.is_dir():
-            for n in (1, 2, 3):
-                p = det_dir / f"{aid}_D{n}.py"
-                if p.exists():
-                    det = p
-                    break
-        if det is not None:
-            try:
-                pr = subprocess.run([sys.executable, str(det)], capture_output=True, text=True,
-                                    env=os.environ, timeout=120)
-                out = json.loads(pr.stdout.strip().splitlines()[-1])
-                m["Carr.detector"] = dict(v=out["verdict"],
-                                          measured=f"{det.name}: {out['measured']}")
-            except Exception as exc:  # a registered detector that cannot run is not a pass
-                m["Carr.detector"] = dict(v=NO_DET, measured=f"{det.name} failed to run: {exc}")
-        else:
-            m["Carr.detector"] = dict(v=NO_DET, measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
+        m["Carr.detector"] = _run_carriage_detector(aid)
         m["Reach.fields"] = dict(v=NOT_GENERIC, measured="field-level exposure census is per-capability; not generic")
 
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
