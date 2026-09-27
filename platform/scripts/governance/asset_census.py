@@ -638,8 +638,9 @@ def build_history(prefix: str, ids=None) -> dict:
     glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
     glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
                          f"WHERE r.scope='global' AND {_asset_scope(prefix, ids, 'a.asset_id')}") or 0)
-    lit = {r[0] for r in psql("SELECT asset_id FROM asset_throughput WHERE state='lit'")}
-    return dict(per=per, global_runs=glob, global_with_layer=glob_l0, lit=lit)
+    # R45: the chart-agnostic `lit` set (asset_ids lit on ANY chart) that Build.dep_liveness read is
+    # gone — liveness is now read per dependency at the census's chart scope (`_grade_dep_liveness`).
+    return dict(per=per, global_runs=glob, global_with_layer=glob_l0)
 
 
 def _grade_build_history(h: dict) -> dict:
@@ -892,6 +893,47 @@ def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool)
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
+def _grade_dep_liveness(deps: list[str], deprec: dict, chart_id: str) -> dict:
+    """R45 (L2 handverify; W2-1_REVIEW C2): Build.dep_liveness at the census's CHART SCOPE.
+
+    The claim is "every declared dependency is live for the chart this census measures". It used to
+    read a chart-agnostic set — an asset_id `lit` on ANY chart counted — so 10 assets read PASS while a
+    dependency was `stale` on the canonical chart and lit only on 1c826d5a. A dependency's record is
+    its row for `chart_id`, else its global (chart_id NULL) row — no asset carries both (live,
+    2026-09-27). Per dependency: `lit` → live; `stale` (a completed build whose upstream has since
+    moved) → stale; no record at this scope, or any other state (error, dormant, incomplete,
+    building) → not live; an R44-ambiguous record → undetermined. Verdict: any not live → FAIL;
+    else any undetermined → ERRORED (never closable); else any stale → PARTIAL; else PASS, naming
+    the scope measured."""
+    short = chart_id[:8]
+    live, stale, dead, undet = [], [], [], []
+    for d in deps:
+        by = deprec.get(d, {})
+        rec, where = ((by[chart_id], f"chart {short}") if chart_id in by
+                      else (by[""], "global") if "" in by else (None, ""))
+        if rec is None:
+            others = sorted({x.get("state", "?") for c, x in by.items() if c})
+            dead.append(f"{d} (no build record on chart {short} or global"
+                        + (f"; exists only on {len(by)} other chart(s), state(s) {others})" if by else ")"))
+        elif rec.get("ambiguous"):
+            undet.append(f"{d} ({where}: {rec.get('n_rows')} tied rows)")
+        elif rec.get("state") == "lit":
+            live.append(d)
+        elif rec.get("state") == "stale":
+            stale.append(f"{d} (stale, {where})")
+        else:
+            dead.append(f"{d} ({rec.get('state') or 'no state'}, {where})")
+    head = f"{len(live)}/{len(deps)} declared dependencies lit at chart {short} (or global)"
+    if dead:
+        return dict(v=FAIL, measured=f"{head}; not live: {dead}" + (f"; stale: {stale}" if stale else "")
+                                     + " — a DEP-ASSERT trap if no writer can light them")
+    if undet:
+        return dict(v=ERRORED, measured=f"check errored: {head}; undetermined (R44 tie): {undet}")
+    if stale:
+        return dict(v=PARTIAL, measured=f"{head}; stale: {stale} — built, but an upstream has moved since")
+    return dict(v=PASS, measured=head)
+
+
 def _grade_count_floor(r: dict, live: int | None, error: str | None, ctables: list[str]) -> dict | None:
     """Count.floor for one asset: the live count against the registry's declared `target_floor`.
     Returns None only when the criterion does not apply (see the branches).
@@ -1004,6 +1046,10 @@ def measure(layer_key: str) -> dict:
     ids = sorted(reg)                                      # R224: the layer's measured population
     thru = _layer_read("throughput", throughput, cfg["prefix"], ids)
     hist = _layer_read("build_history", build_history, cfg["prefix"], ids)
+    # R45: every declared dependency's build record (cross-layer ones included), latest per
+    # (asset, chart) by R44's rule — read only when some asset declares a dependency.
+    dep_ids = sorted({d for r in reg.values() for d in r["depends_on"]})
+    deprec = _layer_read("dependency_records", throughput, "", dep_ids) if dep_ids else {}
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
     # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
     # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
@@ -1278,12 +1324,8 @@ def measure(layer_key: str) -> dict:
                                  f"{h['last_executed_when']}")
             m["Build.history"] = _grade_build_history(h)
 
-        dead = [d for d in r["depends_on"] if d not in hist["lit"]]
-        m["Build.dep_liveness"] = dict(
-            v=(PASS if not dead else FAIL),
-            measured=("all declared dependencies are lit" if not dead
-                      else f"declared dependencies not lit: {dead} — a DEP-ASSERT trap if no writer can light them")) \
-            if r["depends_on"] else dict(v=NA, measured="no declared dependencies")
+        m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
+                                   else dict(v=NA, measured="no declared dependencies"))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         m["Carr.detector"] = _run_carriage_detector(aid)

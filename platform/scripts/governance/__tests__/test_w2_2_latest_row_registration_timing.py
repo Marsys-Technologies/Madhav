@@ -197,3 +197,105 @@ def test_live_r49_every_quoted_error_is_the_latest_by_a_direct_query():
     assert "ka_avadhi" in direct and "ka_kshetra" in direct
     for aid, (when, err) in direct.items():
         assert (per[aid]["sample_error"], per[aid]["sample_error_when"]) == (err, when), aid
+
+
+# ─────────────────────────── R45: Build.dep_liveness at the census's chart scope ───────────────────────────
+
+class _ThroughputDB:
+    """One asset_throughput row set (asset_id, chart_id or '' for global, state, last_built epoch),
+    answering EVERY asset_throughput read the census makes by evaluating it against those rows: the
+    per-asset build-record read (`asset_id IN (…)`) and the chart-agnostic `state='lit'` read the
+    pre-R45 census used. build_history()'s other reads see an empty build_run_assets."""
+
+    def __init__(self, rows):
+        self.rows = rows
+
+    def psql(self, sql, sep="\x1f", timeout=None):
+        if "FROM asset_throughput WHERE state='lit'" in sql:
+            return [[r[0]] for r in self.rows if r[2] == "lit"]
+        if "FROM asset_throughput WHERE asset_id IN" in sql:
+            ids = {x.strip().strip("'") for x in sql.split("asset_id IN (", 1)[1].split(")", 1)[0].split(",")}
+            return [[a, st, "7", "", "2026-09-27", ch, str(ep), ""] for a, ch, st, ep in self.rows if a in ids]
+        if "FROM build_run_assets a JOIN build_runs r" in sql:
+            return []
+        if sql.startswith("SELECT count(*)::text FROM build_runs"):
+            return [["0"]]
+        raise AssertionError(f"unexpected query: {sql[:100]}")
+
+
+def _dep_measure(monkeypatch, ctrl, deps, rows, layer="L2"):
+    aid = "bo_x"
+    r = w1._reg_row(aid, None, has_writer=False, asset_kind="service")
+    r["depends_on"] = list(deps)
+    w1._stub_layer(monkeypatch, ctrl, {aid: r})
+    db = _ThroughputDB(rows)
+    monkeypatch.setattr(ac, "psql", db.psql)
+    monkeypatch.setattr(ac, "scalar", _scalar_via(db.psql))
+    monkeypatch.setattr(ac, "throughput", _REAL["throughput"])
+    monkeypatch.setattr(ac, "build_history", _REAL["build_history"])
+    return w1._m(ac.measure(layer), aid, "Build.dep_liveness")
+
+
+@pytest.mark.parametrize("case, rows, verdict", [
+    ("lit only on another chart", [("ga_d", OTHER, "lit", 1)], ac.FAIL),
+    ("stale here, lit on another chart (the live 10-asset shape)",
+     [("ga_d", CANONICAL, "stale", 1), ("ga_d", OTHER, "lit", 2)], ac.PARTIAL),
+    ("error here, lit on another chart", [("ga_d", CANONICAL, "error", 1), ("ga_d", OTHER, "lit", 2)], ac.FAIL),
+])
+def test_r45_a_dependency_not_lit_on_this_chart_never_reads_pass(monkeypatch, tmp_path, case, rows, verdict):
+    """Fails without the fix: the census counted a dependency live if it was `lit` on ANY chart, so
+    every case here read PASS "all declared dependencies are lit"."""
+    v = _dep_measure(monkeypatch, tmp_path, ["ga_d"], rows)
+    assert v["v"] == verdict, (case, v)
+    assert "482012f1" in v["measured"], v
+
+
+@pytest.mark.parametrize("rows", [[("ga_d", CANONICAL, "lit", 1), ("ga_d", OTHER, "stale", 2)],
+                                  [("bg_d", "", "lit", 1)]])
+def test_r45_positive_controls_lit_here_or_lit_globally_pass(monkeypatch, tmp_path, rows):
+    """The detector can read true: lit on the canonical chart (whatever other charts say), or lit as a
+    global (chart_id NULL) asset."""
+    v = _dep_measure(monkeypatch, tmp_path, [rows[0][0]], rows)
+    assert v["v"] == ac.PASS, v
+
+
+def test_r45_an_open_dep_liveness_gap_does_not_close_on_another_charts_lit(monkeypatch, tmp_path):
+    """W2-1_REVIEW C2's emit risk: an OPEN Build.dep_liveness row on a ledger copy, the dependency
+    stale on the canonical chart and lit on another. Fails without the fix: PASS, and the gap CLOSED."""
+    w1._open_gap(tmp_path, "bo_x", "Build.dep_liveness")
+    v = _dep_measure(monkeypatch, tmp_path, ["ga_d"], [("ga_d", CANONICAL, "stale", 1), ("ga_d", OTHER, "lit", 2)])
+    assert v["v"] not in ac.CLOSABLE
+    census = dict(layer="L2", assets=[dict(asset_id="bo_x", measurements={"Build.dep_liveness": v})])
+    assert ac.emit_gaps(census)[2] == 0
+
+
+# The 10 assets W2-1_REVIEW §2.3 / C2 found reading PASS while a dependency was stale on the
+# canonical chart and lit only on 1c826d5a.
+_C2_ASSETS = ["bo_anveshana", "bo_chart_gestalt", "bo_pramana_mapa", "bo_samvada", "bo_upaya",
+              "bo_yantra_mechanism", "ka_avadhi", "ka_kshetra", "ka_sangam", "ka_yojaka"]
+
+
+@LIVE
+def test_live_r45_dep_liveness_matches_a_direct_chart_scoped_query():
+    """Live, read-only, L2 + L3: the grade from the census's own dependency read equals one computed
+    by a direct SQL query of each dependency's record at the canonical chart (else global), and none
+    of the ten C2 assets reads PASS."""
+    for layer in ("L2", "L3"):
+        reg, _ = ac.registry(layer)
+        deps = sorted({d for r in reg.values() for d in r["depends_on"]})
+        deprec = ac.throughput("", deps)
+        lit = ", ".join(f"'{d}'" for d in deps)
+        state = {r[0]: r[1] for r in ac.psql(
+            "SELECT DISTINCT ON (asset_id) asset_id, state FROM asset_throughput "
+            f"WHERE asset_id IN ({lit}) AND (chart_id = '{CANONICAL}' OR chart_id IS NULL) "
+            "ORDER BY asset_id, chart_id NULLS LAST")}
+        for aid, r in reg.items():
+            if not r["depends_on"]:
+                continue
+            got = ac._grade_dep_liveness(r["depends_on"], deprec, CANONICAL)["v"]
+            st = [state.get(d) for d in r["depends_on"]]
+            want = (ac.FAIL if any(s not in ("lit", "stale") for s in st)
+                    else ac.PARTIAL if "stale" in st else ac.PASS)
+            assert got == want, (aid, got, want, dict(zip(r["depends_on"], st)))
+            if aid in _C2_ASSETS:
+                assert got != ac.PASS, aid
