@@ -30,27 +30,38 @@ import asset_census as ac  # noqa: E402
 # ── R41: per-check fault isolation ──
 
 def test_contract_scan_exception_degrades_to_errored_not_layer_abort(monkeypatch):
-    """A syntax error in exactly one writer file must not prevent every OTHER asset's
-    Build.contract/Idem.pattern from being measured — this reproduces the shape of the
-    pre-R41 defect via `_writer_class`/`_parse` raising `Unknown`."""
+    """F3 (A_REVIEW.md): the previous version of this test asserted that the monkeypatch itself
+    raises, then grepped measure()'s SOURCE TEXT for the guard — a mutation that makes the guard
+    RE-RAISE instead of catching (M8 in the gate review's mutation table) survives that check,
+    because the source text is unchanged; only the behaviour breaks. `_measure_contract` was
+    extracted from measure()'s inline try/except specifically so this test can call it directly
+    and assert on the RETURN VALUE, which a re-raising guard cannot produce (it raises instead of
+    returning at all — caught below as a test failure, not silently passed)."""
     def _boom(asset_id, files):
         raise ac.Unknown("bg_broken.py: unparseable (SyntaxError)")
     monkeypatch.setattr(ac, "contract_scan", _boom)
-    # Directly exercise the guarded call site's contract, not measure() end-to-end (that needs a
-    # live DB) — the guard is a try/except around exactly this call in measure()'s per-asset loop.
-    try:
-        ac.contract_scan("bg_broken", ["bg_broken.py"])
-        raised = False
-    except ac.Unknown:
-        raised = True
-    assert raised, "the monkeypatch itself must actually raise, or this test proves nothing"
-    # The guard in measure() catches this and assigns ERRORED — verified by source inspection
-    # here (measure() is not independently callable without a DB): the guard exists as a
-    # try/except Unknown around contract_scan/idem_scan in asset_census.py.
+    result = ac._measure_contract("bg_broken", ["bg_broken.py"])
+    assert result["v"] == ac.ERRORED, f"expected ERRORED, got {result}"
+    assert "unparseable" in result["measured"]
+
+
+def test_idem_scan_exception_degrades_to_errored_not_layer_abort(monkeypatch):
+    """Same proof as above, for `_measure_idem` / Idem.pattern."""
+    def _boom(asset_id, files, convention):
+        raise ac.Unknown("bg_broken.py: unparseable (SyntaxError)")
+    monkeypatch.setattr(ac, "idem_scan", _boom)
+    result = ac._measure_idem("bg_broken", ["bg_broken.py"], "upsert")
+    assert result["v"] == ac.ERRORED, f"expected ERRORED, got {result}"
+
+
+def test_measure_calls_the_extracted_guarded_helpers(monkeypatch):
+    """Locks in that measure() actually calls `_measure_contract`/`_measure_idem` (rather than a
+    re-inlined, ungrappable try/except) so a future edit that reverts the extraction is caught
+    here rather than silently reintroducing the untestable shape F3 fixes."""
     import inspect
     src = inspect.getsource(ac.measure)
-    assert "except Unknown as exc:" in src and 'm["Build.contract"] = dict(v=ERRORED' in src
-    assert 'm["Idem.pattern"] = dict(v=ERRORED' in src
+    assert 'm["Build.contract"] = _measure_contract(aid, files)' in src
+    assert 'm["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"])' in src
 
 
 def test_errored_never_closes_a_gap_and_never_opens_one(tmp_path, monkeypatch):
@@ -127,16 +138,50 @@ def test_live_e2e_one_simulated_query_timeout_degrades_not_aborts(monkeypatch):
 
 
 def test_depth_census_timeout_does_not_block_vocab_or_ldgr_checks_from_running():
-    """The four per-table checks in measure()'s `tbl in cat['exists']` block are each wrapped
-    independently (depth, identity, alias, ldgr) — a source-level guard against exactly the R41
-    failure mode where one slow/failing query on a huge table (R40's kala_field case) blinded the
-    other three. Verified by source inspection: four independent try/except Unknown blocks."""
+    """Weaker structural backstop only (kept as a fast, DB-free smoke check) — the actual
+    behavioural proof is `test_live_e2e_depth_census_failure_does_not_blind_identity_for_the_same_
+    asset` below, run against a real database."""
     import inspect
     src = inspect.getsource(ac.measure)
-    # Each of the four checks has its own try/except around its own query — not one guard around
-    # all four (which would still let e.g. a depth_census timeout swallow the identity/alias/ldgr
-    # results for the SAME asset).
-    assert src.count("except Unknown as exc:") >= 6  # contract, idem, depth, identity, alias, ldgr
+    assert src.count("except Unknown as exc:") >= 4  # depth, identity, alias, ldgr (contract/idem now extracted)
+
+
+@pytest.mark.skipif(not _db_reachable(), reason="no live DB in this environment (PGHOST/PGPORT/etc.)")
+def test_live_e2e_depth_census_failure_does_not_blind_identity_for_the_same_asset(monkeypatch):
+    """F3 (A_REVIEW.md): the previous version of this test only counted `except Unknown as exc:`
+    occurrences in measure()'s source text — a mutation that merges the four independent
+    try/except blocks into one (so a depth_census failure swallows identity/alias/ldgr for the
+    SAME asset too) does not change that count and survives. This runs measure('L0') for REAL
+    twice: once clean (baseline), once with `depth_census` monkeypatched to raise for exactly one
+    asset's target table. That asset's Complete.depth must degrade to ERRORED while its
+    Vocab.identity verdict is UNCHANGED from the baseline — proving the failure did not blind the
+    sibling check for the same asset, which a merged-guard mutation would."""
+    baseline = ac.measure("L0")
+    candidate = next(
+        (a for a in baseline["assets"]
+         if a["measurements"].get("Vocab.identity", {}).get("v") in (ac.PASS, ac.FAIL)
+         and a["target_table"]),
+        None,
+    )
+    assert candidate is not None, "need at least one L0 asset with a measured Vocab.identity to run this proof"
+    target_table = candidate["target_table"]
+    baseline_identity = candidate["measurements"]["Vocab.identity"]
+
+    real_depth_census = ac.depth_census
+
+    def flaky_depth_census(table, cols):
+        if table == target_table:
+            raise ac.Unknown("SIMULATED: depth_census timeout")
+        return real_depth_census(table, cols)
+
+    monkeypatch.setattr(ac, "depth_census", flaky_depth_census)
+    c = ac.measure("L0")
+    patched = next(a for a in c["assets"] if a["asset_id"] == candidate["asset_id"])
+    assert patched["measurements"]["Complete.depth"]["v"] == ac.ERRORED
+    assert patched["measurements"]["Vocab.identity"] == baseline_identity, (
+        "the simulated depth_census failure must not change (let alone blind) the SAME asset's "
+        "Vocab.identity result"
+    )
 
 
 # ── F2 (A_REVIEW.md): an errored count_sql must never be read as "no count_sql" ──
@@ -208,13 +253,15 @@ def test_live_e2e_a_broken_count_sql_grades_errored_not_na(monkeypatch):
 
 # ── R220: active population scoping ──
 
-def test_population_filter_excludes_null_dead_flag_correctly():
-    """The register's literal phrasing `is_active AND NOT dead_flag` is a NULL trap: with
-    `dead_flag` NULL (not false) on every row (confirmed in both production and the sandbox,
-    2026-09-27), `NOT NULL` is NULL and `is_active AND NULL` is NULL — so a naive implementation
-    of that exact expression matches ZERO rows account-wide, not 127. This test proves the
-    `registry()` docstring's claimed fix (`is_active AND NOT coalesce(dead_flag, false)`) against
-    a hand-built row set with the exact same NULL shape."""
+def test_population_filter_null_trap_illustration():
+    """Illustrative only (kept for the reasoning, not as the proof): the register's literal
+    phrasing `is_active AND NOT dead_flag` is a NULL trap — with `dead_flag` NULL (not false) on
+    every row, SQL's `NOT NULL` is NULL and `is_active AND NULL` is NULL, so a naive
+    implementation of that exact expression matches ZERO rows, not the true active population.
+    This does NOT call `asset_census.registry()` — see `test_live_registry_l3_excludes_the_two_
+    retired_rows` below for the actual behavioural proof against real production data (F3,
+    A_REVIEW.md: this hand-built-helper form is exactly what the gate review flagged as unable to
+    fail — reverting registry()'s real filter does not touch these local functions at all)."""
     rows = [
         dict(asset_id="x1", is_active=True, dead_flag=None),
         dict(asset_id="x2", is_active=True, dead_flag=None),
@@ -223,8 +270,6 @@ def test_population_filter_excludes_null_dead_flag_correctly():
     ]
 
     def naive_filter(r):
-        # Transliteration of the register's literal wording, in Python's None-is-not-False terms:
-        # SQL `NOT dead_flag` is NULL when dead_flag IS NULL, and `True AND NULL` is NULL (falsy).
         if r["dead_flag"] is None:
             return None  # NULL propagates — this row matches neither True nor False in SQL
         return r["is_active"] and not r["dead_flag"]
@@ -235,10 +280,28 @@ def test_population_filter_excludes_null_dead_flag_correctly():
     naive_matches = [r for r in rows if naive_filter(r) is True]
     fixed_matches = [r for r in rows if fixed_filter(r)]
     assert len(naive_matches) == 0, "the naive NULL-unsafe phrasing matches nothing — the bug R220 names"
-    assert [r["asset_id"] for r in fixed_matches] == ["x1", "x2"], (
-        "the coalesce-corrected filter must keep the two truly-active rows and drop the retired "
-        "and explicitly-dead ones"
+    assert [r["asset_id"] for r in fixed_matches] == ["x1", "x2"]
+
+
+@pytest.mark.skipif(not _db_reachable_f2(), reason="no live DB in this environment (PGHOST/PGPORT/etc.)")
+def test_live_registry_l3_excludes_the_two_retired_rows():
+    """F3/M9 (A_REVIEW.md): the actual behavioural proof, against the REAL `registry()` and REAL
+    production data — 23 L3 registry rows total, 21 active (2 retired; `dead_flag` is NULL, not
+    false, on every one of the 129 account-wide rows, confirmed 2026-09-27). Reverting
+    `registry()`'s SQL from `is_active AND NOT coalesce(dead_flag,false)` back to the register's
+    literal `is_active AND NOT dead_flag` wording (mutation M9) makes real PostgreSQL apply NULL
+    propagation and return ZERO active rows for every layer, not 21 — this test would then fail
+    on `population["active"] == 21`, unlike the illustrative helper-function test above, which
+    would keep passing unchanged because it never calls `registry()` at all."""
+    reg, population = ac.registry("L3")
+    assert population["registry_total"] == 23, population
+    assert population["active"] == 21, (
+        f"expected 21 active of 23 registry rows; got {population['active']} — if this reads 0, "
+        "the NULL-trap filter has regressed to the register's literal (unsafe) wording"
     )
+    assert len(reg) == 21
+    excluded_ids = {x["asset_id"] for x in population["excluded_inactive"]}
+    assert excluded_ids == {"ka_gochara_sweep", "ka_gochara_v3_century_materialize"}, excluded_ids
 
 
 def test_registry_returns_population_tuple_shape():

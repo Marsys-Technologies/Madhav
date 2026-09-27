@@ -618,6 +618,29 @@ def alias_census(table: str, cols: list[str]) -> dict | None:
     return {r[0]: dict(rows=int(r[1]), no_alias=int(r[2])) for r in rows}
 
 
+def _measure_contract(aid: str, files: list[str]) -> dict:
+    """R41 fault isolation for Build.contract, extracted as its own pure-ish function (F3,
+    A_REVIEW.md: the inline try/except could only be proven by grepping measure()'s source text,
+    which survives a mutation that makes the guard re-raise instead of catching. Extracting it
+    lets a test call it directly with `contract_scan` monkeypatched to raise, and assert the
+    RETURN VALUE is ERRORED — a mutation that removes or breaks the try/except now fails that
+    assertion instead of surviving on source text alone)."""
+    try:
+        v, notes = contract_scan(aid, files)
+        return dict(v=v, measured="; ".join(notes) or "conformant")
+    except Unknown as exc:
+        return dict(v=ERRORED, measured=f"check errored: {exc}")
+
+
+def _measure_idem(aid: str, files: list[str], convention: str) -> dict:
+    """R41 fault isolation for Idem.pattern — same discipline as `_measure_contract`."""
+    try:
+        v, notes = idem_scan(aid, files, convention)
+        return dict(v=v, measured="; ".join(notes))
+    except Unknown as exc:
+        return dict(v=ERRORED, measured=f"check errored: {exc}")
+
+
 # ─────────────────────────── the census ───────────────────────────
 
 def measure(layer_key: str) -> dict:
@@ -652,16 +675,8 @@ def measure(layer_key: str) -> dict:
             m["Build.registered"] = dict(v=NA, measured="no writer, and the registry agrees (service or static)")
 
         # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
-        try:
-            v, notes = contract_scan(aid, files)
-            m["Build.contract"] = dict(v=v, measured="; ".join(notes) or "conformant")
-        except Unknown as exc:
-            m["Build.contract"] = dict(v=ERRORED, measured=f"check errored: {exc}")
-        try:
-            v, notes = idem_scan(aid, files, cfg["idem"])
-            m["Idem.pattern"] = dict(v=v, measured="; ".join(notes))
-        except Unknown as exc:
-            m["Idem.pattern"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+        m["Build.contract"] = _measure_contract(aid, files)
+        m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"])
 
         # Build.target
         if r["target_table"]:
