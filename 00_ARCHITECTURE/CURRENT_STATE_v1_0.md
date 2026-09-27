@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.82
+version: 6.83
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,34 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.83 (2026-09-27, JATAKA-PHASE-A2-INTEGRITY-20260927): Native-authorized narrow
+    Phase-A2 integrity session under CCD-015 and its own additive addendum, lease
+    MADHAV-JATAKA-PHASE-A2-INTEGRITY-20260927 (claimed 585b7d4c2, released 8bcdc100f).
+    Chart-context staleness marked inside the correction transaction (migration 1122,
+    authored not applied) for event_chart_state_index and mimamsa_predictions — the
+    two preserved kinds of rows no rebuild regenerates on schedule — and enforced at
+    every identified current-query consumer (mi_pramana/mi_gunanaka/mi_pariksha,
+    lel_query, query_predictions.ts's new include_stale-disclosed default exclusion,
+    prediction_lifecycle_sweep.ts, query_calibration.ts). Found and fixed a real
+    preservation bug along the way: a correction's strict clear fell through to an
+    unconditional wipe of mi_sankalpa's attested intervention filings; now scoped to
+    the writer's own unresolved-elected rows. MCP prashna_ask and super-admin
+    chat/build are now gated on the shared readiness/correction-lock doors (a static
+    parity guard covers all four doors). Paripraśna and legacy consult never close a
+    refused/failed turn as ok; legacy consult propagates a refused persistence to the
+    client; retry is true only for a transient (building/unavailable) refusal; a
+    stale asset no longer counts as Ready; active runs are classified by serving
+    impact (only LEL recalibration is non-blocking). Migration 1121's invoker-rights
+    security disposition is determined and documented (role_web_serve already holds
+    the needed SELECT; no SECURITY DEFINER added). Full unit 1,184 files / 12,872
+    tests PASS (4 pre-existing-cause failures: two governance-artifact regenerations
+    — a NIRMANA L5 layer pin and the Pūrṇa Beyond-Acarya v6 acceptance report — are
+    stale from a legitimate capability-catalog fingerprint shift and were reported,
+    not regenerated, since doing so asserts convergence/acceptance claims outside
+    this authority); full Python CI 7,029 PASS; tsc PASS (platform + platform-mcp);
+    scoped lint 0 errors over 122 files; drift 79 / schema 42 identical to the
+    Phase-A hardening close. Not pushed; no PR, merge, deploy, database access,
+    migration application, Task 9, production access or L3 Kāla/Pūrṇa mutation.
   - v6.82 (2026-09-27, JATAKA-PHASE-A-HARDENING-20260927): Native-authorized narrow Phase-A
     integrity hardening under CCD-014 and the hardening addendum, lease
     MADHAV-JATAKA-PHASE-A-HARDENING-20260927 (claimed 3bd118621/078a9ba41). Implemented and
@@ -5993,6 +6021,14 @@ block (post-rebuild era), and proceeds.
 > (context staleness for `event_chart_state_index` and predictions) **STOPPED**: its current-query
 > consumers are in excluded python-sidecar, platform-mcp and `lib/retrieval` surfaces. Task 9 remains
 > **BLOCKED**.
+> **Status (2026-09-27, JATAKA-PHASE-A2-INTEGRITY-20260927):** Chart-context
+> staleness marked and enforced at every identified current-query consumer for
+> `event_chart_state_index`/`mimamsa_predictions` (migration `1122`, authored, not
+> applied); MCP `prashna_ask` and `chat/build` gated on shared readiness; migration
+> `1121`'s security disposition documented (invoker rights, determined safe). Two
+> downstream governance artifacts (a NIRMANA L5 layer pin, the Pūrṇa Beyond-Acarya
+> v6 report) need separately-authorized regeneration — reported, not fixed. Task 9
+> remains **BLOCKED**.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
@@ -9449,10 +9485,10 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: JATAKA-PHASE-A-HARDENING-20260927
-  predecessor_session: JATAKA-CHART-WORKSPACE-IMPL-20260927
+  last_session_id: JATAKA-PHASE-A2-INTEGRITY-20260927
+  predecessor_session: JATAKA-PHASE-A-HARDENING-20260927
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Jataka Phase-A hardening items 1, 3, 4 and 5 are implemented and mock-tested on local branch codex/jataka-chart-workspace; item 2 stopped on excluded consumers. Migration 1121 is authored, not applied. Full unit 12,782 PASS, tsc PASS, scoped lint no regression, migration guard PASS. Drift 79 and schema 42 are the identical finding sets of baseline. Not pushed; no external action."
+  last_session_drift_verdict: "Jataka Phase-A2 integrity: chart-context staleness marked and enforced at the addendum's named minimum (event_chart_state_index, mimamsa_predictions) and every identified current-query consumer; prashna_ask and chat/build gated; migration 1121 security disposition documented. Migration 1122 authored, not applied. Full unit 1,184/12,872 PASS (4 pre-existing-cause failures reported as residuals, not fixed — two governance-artifact regenerations outside this authority). Full Python CI 7,029 PASS, tsc PASS, scoped lint no regression, migration guard PASS. Drift 79 and schema 42 are the identical finding sets of baseline. Not pushed; no external action."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9460,7 +9496,7 @@ current_state:
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
   jataka_chart_workspace_amendment: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
   jataka_chart_workspace_plan: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
-  next_jataka_objective: "Native reviews the Phase-A hardening report and rules on item 2 (context staleness needs the excluded python-sidecar, platform-mcp and lib/retrieval consumers), the excluded reading doors (mcp prashna_ask, chat/build) and the deferred minors. Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0 seed/snapshot gate passes; migrations 1120 and 1121 stay unapplied until separately authorized."
+  next_jataka_objective: "Native reviews the Phase-A2 integrity report and authorizes (a) a NIRMANA convergence session to re-pin platform/src/generated/nirmana-analysis-layer-pins.json's L5 record, (b) a Pūrṇa Anveṣaṇa session to re-accept BEYOND_ACARYA_ACCEPTANCE_v6.json, both stale from a legitimate capability-catalog fingerprint shift this session caused but had no authority to re-stamp; and rules on item 2's named scope boundary (Samīkṣā's ledger, the prospective ledger and the calibration snapshot were inventoried but not marked stale in this pass). Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0 seed/snapshot gate passes; migrations 1120, 1121 and 1122 stay unapplied until separately authorized."
   next_product_strategy_objective: "Run exact-head CI and independent final review on the immutable Wave 7 metadata-only candidate without later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
 ```
 
@@ -9478,6 +9514,10 @@ branch (not pushed), migration 1120 is authored but unapplied, and Task 9 remain
 As of JATAKA-PHASE-A-HARDENING-20260927, Phase-A hardening items 1, 3, 4 and 5 are implemented and
 mock-tested locally, migration 1121 is authored but unapplied, and item 2 is stopped pending a native
 ruling on its excluded consumers.
+As of JATAKA-PHASE-A2-INTEGRITY-20260927, chart-context staleness (migration 1122, authored, not
+applied) is marked and enforced at the addendum's named minimum and every identified current-query
+consumer; prashna_ask and chat/build are gated; migration 1121's security disposition is documented.
+Two downstream governance artifacts need separately-authorized regeneration, reported not fixed.
 
 At the final source-candidate checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route
