@@ -53,11 +53,29 @@ describe('served generation classification', () => {
       .rejects.toThrow('db down')
   })
 
-  it('exposes one reviewed rows-build rule that only trusts completed build dispositions', () => {
+  it('exposes one reviewed rows-build rule: completed build writes only, voided by a later attempt', () => {
+    // Behaviour is proven against PostgreSQL in served_generation.db.test.ts; this guards the
+    // rule's load-bearing clauses when that suite cannot run.
     const sql = servedRowsBuildIdSql({ receipt: 'r', receiptRun: 'rr', receiptAsset: 'ra' })
     expect(sql).toContain("WHEN ra.disposition = 'skip_no_delta'")
-    expect(sql).toContain("writer_run.state = 'completed'")
+    expect(sql).toContain("writer_asset.state = 'complete'")
+    expect(sql).not.toContain("writer_run.state = 'completed'")
     expect(sql).toContain("(writer_asset.disposition IS NULL OR writer_asset.disposition = 'build')")
     expect(sql).toContain("AND ra.state = 'complete' THEN r.build_id")
+    expect(sql).toContain("attempt.disposition IS DISTINCT FROM 'skip_no_delta'")
+  })
+
+  it('withholds a shared run from the multi-writer fence and names both sides', () => {
+    const generation = chartServedGenerationFromRows(chartId, null, [
+      row({ asset_id: 'ga_structural', rows_build_id: 'run-shared', receipt_build_id: 'run-shared' }),
+      row({ asset_id: 'ga_vichara', rows_build_id: 'run-shared', receipt_build_id: 'run-shared', freshness_state: 'stale' }),
+      row({ asset_id: 'ga_dashas', rows_build_id: 'run-own', receipt_build_id: 'run-own' }),
+      row({ asset_id: 'ga_strength', rows_build_id: null, writer_run_id: 'run-other', receipt_build_id: 'run-other' }),
+    ])
+    expect(generation.assets['ga_strength']).toMatchObject({ reason: 'intervening_attempt_unreceipted' })
+    expect(generation.served_build_ids).toEqual(['run-own'])
+    expect(generation.withheld_builds).toEqual([
+      { build_id: 'run-shared', unresolved_asset_ids: ['ga_vichara'], resolved_asset_ids: ['ga_structural'] },
+    ])
   })
 })

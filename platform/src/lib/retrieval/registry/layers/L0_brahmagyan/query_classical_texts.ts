@@ -161,14 +161,14 @@ function receiptBoundarySql(): string {
         AND (
           run.state IN ('planned', 'running', 'paused')
           -- A dispatched row left queued/building by a terminal run blocks only when it
-          -- may have mutated rows after the newest proven receipt. A queued row that the
+          -- may have mutated rows after the oldest eligible receipt. A queued row that the
           -- terminal run never dispatched cannot mutate and is orphan hygiene only.
           OR (
             asset.state IN ('queued', 'building')
             AND NOT (asset.state = 'queued' AND asset.started_at IS NULL)
             AND (
               COALESCE(asset.ended_at, run.ended_at) IS NULL
-              OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MAX(observed_at) FROM eligible_receipts)
+              OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MIN(observed_at) FROM eligible_receipts)
               OR NOT EXISTS (SELECT 1 FROM eligible_receipts)
             )
           )

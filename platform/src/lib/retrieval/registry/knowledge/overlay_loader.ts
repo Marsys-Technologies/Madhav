@@ -783,9 +783,8 @@ export async function loadChartCapabilityOverlay(
         [assetIds, chartId, serviceProbeAssetIds],
       )
     const rows = queryRows.filter((row): row is OverlayQueryRow & { asset_id: string } => typeof row.asset_id === 'string')
-    const generation = chartServedGenerationFromRows(
-      chartId, null, rows.filter((row) => row.chart_id === chartId) as unknown as Record<string, unknown>[],
-    )
+    // The resolver keeps only this chart's receipts (case-insensitively); global rows drop out.
+    const generation = chartServedGenerationFromRows(chartId, null, rows as unknown as Record<string, unknown>[])
     const identity = servedGenerationIdentity(generation)
     build = { build_id: identity, status: identity ? 'served_generation' : null }
     const sourceQueryEvidence = await sourceQueryEvidenceForSnapshot(snapshot, chartId, generation.served_build_ids, query)

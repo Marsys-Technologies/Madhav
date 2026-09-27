@@ -210,7 +210,9 @@ run('chart capability overlay disposable schema replay', () => {
     try {
       const availability = (await loadChartCapabilityOverlay(snapshot(), chartId, query)).availability[0]
       expect(availability).toMatchObject({ available_binding_ids: [] })
-      expect(availability?.gaps).toContain('bg_sign_medical served generation is unresolved: partition_generation_split.')
+      // The later run's complete build of the same asset may have replaced the older
+      // partition's rows, so the older partition is refused before any split is considered.
+      expect(availability?.gaps).toContain('bg_sign_medical served generation is unresolved: intervening_attempt_unreceipted.')
     } finally {
       await scoped.query("DELETE FROM asset_provenance_receipts WHERE partition_key='second-partition'")
       await scoped.query("DELETE FROM build_run_assets WHERE run_id=$1 AND asset_id='bg_sign_medical'", [currentBuildId])

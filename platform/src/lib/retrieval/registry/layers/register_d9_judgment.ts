@@ -667,6 +667,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       selection: 'per_asset_served_generation',
       generation_hash: generation.generation_hash,
       served_build_ids: build_ids,
+      withheld_builds: generation.withheld_builds,
       assets: Object.values(generation.assets).map((asset) => asset.state === 'resolved'
         ? { asset_id: asset.asset_id, rows_build_id: asset.rows_build_id, receipt_build_id: asset.receipt_build_id, rows_binding: asset.rows_binding }
         : { asset_id: asset.asset_id, unresolved: asset.reason }),
@@ -674,14 +675,17 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     const dashaRowsBuildId = resolvedRowsBuildId(generation, 'ga_dashas')
 
     const judgment_flags: JudgmentFlagEntry[] = []
-    if (unresolvedAssets.length) {
-      // Honest disclosure (§N.8): rows of an unresolved asset are excluded from every read
-      // below, so a leg that depends on one may be empty for that reason, not because the
-      // chart lacks the configuration.
+    if (unresolvedAssets.length || generation.withheld_builds.length) {
+      // Honest disclosure (§N.8): rows of an unresolved asset are excluded from every fenced
+      // read below, and so are rows of any resolved asset that shares a build run with one
+      // (a multi-writer row carries only its build id). A leg that depends on either may be
+      // empty for that reason, not because the chart lacks the configuration.
+      const withheld = generation.withheld_builds.flatMap((entry) => entry.resolved_asset_ids)
       judgment_flags.push(judgmentFlag(
         'served_generation_unresolved_assets',
-        `served generation excludes ${unresolvedAssets.length} asset(s): ` +
-        unresolvedAssets.map((asset) => `${asset.asset_id} (${asset.reason})`).join(', '),
+        `served generation excludes ${unresolvedAssets.length} unresolved asset(s): ` +
+        unresolvedAssets.map((asset) => `${asset.asset_id} (${asset.reason})`).join(', ') +
+        (withheld.length ? `; withholds ${withheld.length} resolved asset(s) sharing their runs: ${withheld.join(', ')}` : ''),
         'warning',
       ))
     }

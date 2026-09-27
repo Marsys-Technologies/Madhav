@@ -46,10 +46,10 @@ run('served generation resolver against disposable PostgreSQL', () => {
   let scoped: Pool
   const query = async (sql: string, params: unknown[] = []) => scoped.query(sql, params)
 
-  async function buildRun(id: string, state: string, startedAt: string, endedAt: string | null) {
+  async function buildRun(id: string, state: string, startedAt: string, endedAt: string | null, chart = chartId) {
     await query(`
       INSERT INTO build_runs(id, chart_id, scope, action, state, plan, triggered_by, started_at, ended_at)
-      VALUES ($1, $2, 'asset', 'build', $3, '{}'::jsonb, 'test', $4, $5)`, [id, chartId, state, startedAt, endedAt])
+      VALUES ($1, $2, 'asset', 'build', $3, '{}'::jsonb, 'test', $4, $5)`, [id, chart, state, startedAt, endedAt])
   }
   async function runAsset(runId: string, assetId: string, state: string, disposition: string | null, startedAt: string, endedAt: string | null) {
     await query(`
@@ -57,8 +57,9 @@ run('served generation resolver against disposable PostgreSQL', () => {
       VALUES ($1, $2, 0, $3, $4, $5, $6)`, [runId, assetId, state, disposition, startedAt, endedAt])
   }
   async function receipt(assetId: string, buildId: string, observedAt: string, options: {
-    freshness?: string; state?: string; spec?: string; partition?: string
+    freshness?: string; state?: string; spec?: string; partition?: string; chart?: string
   } = {}) {
+    const chart = options.chart ?? chartId
     const partition = options.partition ?? '__whole_asset__'
     await query(`
       INSERT INTO asset_provenance_receipts
@@ -67,13 +68,13 @@ run('served generation resolver against disposable PostgreSQL', () => {
       ON CONFLICT (asset_id, scope_key, partition_key) DO UPDATE
         SET build_id = EXCLUDED.build_id, observed_at = EXCLUDED.observed_at,
             receipt_state = EXCLUDED.receipt_state, output_digest_spec_sha256 = EXCLUDED.output_digest_spec_sha256`,
-    [assetId, chartId, partition, options.state ?? 'proven', buildId, options.spec ?? specs[assetId], observedAt])
+    [assetId, chart, partition, options.state ?? 'proven', buildId, options.spec ?? specs[assetId], observedAt])
     await query(`
       INSERT INTO asset_freshness(asset_id, chart_id, partition_key, freshness_state, reasons, receipt_version, observed_at)
       VALUES ($1, $2, $3, $4, '[]', 'v1', $5)
       ON CONFLICT (asset_id, scope_key, partition_key) DO UPDATE
         SET freshness_state = EXCLUDED.freshness_state, observed_at = EXCLUDED.observed_at`,
-    [assetId, chartId, partition, options.freshness ?? 'fresh', observedAt])
+    [assetId, chart, partition, options.freshness ?? 'fresh', observedAt])
   }
 
   beforeAll(async () => {
@@ -173,7 +174,80 @@ run('served generation resolver against disposable PostgreSQL', () => {
     expect(Object.keys(generation.assets)).toEqual([
       'bo_grounding', 'ga_dashas', 'ga_positions', 'ga_sensitive', 'ga_strength', 'ga_structural', 'ga_vichara',
     ])
-    expect(generation.served_build_ids).toEqual([runPositions, runDashas, runLatest].sort())
+    // ga_structural (stale) and ga_strength (retired spec) still hold rows under runDashas, so
+    // that run is withheld from the multi-writer fence even though ga_dashas itself resolves.
+    expect(generation.assets['ga_dashas']).toMatchObject({ state: 'resolved', rows_build_id: runDashas })
+    expect(generation.served_build_ids).toEqual([runPositions, runLatest].sort())
+    expect(generation.withheld_builds).toEqual([
+      { build_id: runDashas, unresolved_asset_ids: ['ga_strength', 'ga_structural'], resolved_asset_ids: ['ga_dashas'] },
+    ])
+  })
+
+  // Review findings on the R1 boundary, each on its own disposable chart.
+  const run = (n: number) => `20000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+
+  it('binds a no-delta receipt to the latest completed write even when that write\'s run failed (B1)', async () => {
+    const chart = '30000000-0000-4000-8000-000000000001'
+    await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, 'B1'])
+    await buildRun(run(1), 'completed', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z', chart)
+    await runAsset(run(1), 'ga_positions', 'complete', 'build', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z')
+    // W1 rewrote ga_positions completely; another asset failed, so the run ended `failed`.
+    await buildRun(run(2), 'failed', '2026-09-02T01:00:00Z', '2026-09-02T03:00:00Z', chart)
+    await runAsset(run(2), 'ga_positions', 'complete', 'build', '2026-09-02T01:00:00Z', '2026-09-02T02:00:00Z')
+    await buildRun(run(3), 'completed', '2026-09-03T01:00:00Z', '2026-09-03T02:00:00Z', chart)
+    await runAsset(run(3), 'ga_positions', 'complete', 'skip_no_delta', '2026-09-03T01:00:00Z', '2026-09-03T01:05:00Z')
+    await receipt('ga_positions', run(3), '2026-09-03T01:05:00Z', { chart })
+
+    const generation = await resolveChartServedGeneration(chart, ['ga_positions'], query)
+    expect(generation.assets['ga_positions']).toMatchObject({ state: 'resolved', rows_build_id: run(2), rows_binding: 'skip_no_delta_writer' })
+  })
+
+  it('refuses rows a later failed attempt may have partially rewritten, even after a no-delta re-receipt (M2)', async () => {
+    const chart = '30000000-0000-4000-8000-000000000002'
+    await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, 'M2'])
+    await buildRun(run(11), 'completed', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z', chart)
+    await runAsset(run(11), 'ga_positions', 'complete', 'build', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z')
+    await buildRun(run(12), 'failed', '2026-09-02T01:00:00Z', '2026-09-02T02:00:00Z', chart)
+    await runAsset(run(12), 'ga_positions', 'error', 'build', '2026-09-02T01:00:00Z', '2026-09-02T01:30:00Z')
+    await buildRun(run(13), 'completed', '2026-09-03T01:00:00Z', '2026-09-03T02:00:00Z', chart)
+    await runAsset(run(13), 'ga_positions', 'complete', 'skip_no_delta', '2026-09-03T01:00:00Z', '2026-09-03T01:05:00Z')
+    await receipt('ga_positions', run(13), '2026-09-03T01:05:00Z', { chart })
+    // A later completed build that never issued its own receipt replaced the receipted rows.
+    await buildRun(run(14), 'completed', '2026-09-01T03:00:00Z', '2026-09-01T04:00:00Z', chart)
+    await runAsset(run(14), 'ga_dashas', 'complete', 'build', '2026-09-01T03:00:00Z', '2026-09-01T03:30:00Z')
+    await receipt('ga_dashas', run(14), '2026-09-01T03:30:00Z', { chart })
+    await buildRun(run(15), 'completed', '2026-09-04T01:00:00Z', '2026-09-04T02:00:00Z', chart)
+    await runAsset(run(15), 'ga_dashas', 'complete', 'build', '2026-09-04T01:00:00Z', '2026-09-04T01:30:00Z')
+
+    const generation = await resolveChartServedGeneration(chart, ['ga_positions', 'ga_dashas'], query)
+    expect(generation.assets['ga_positions']).toMatchObject({ state: 'unresolved', reason: 'intervening_attempt_unreceipted' })
+    expect(generation.assets['ga_dashas']).toMatchObject({ state: 'unresolved', reason: 'intervening_attempt_unreceipted' })
+  })
+
+  it('withholds a run shared with an unresolved asset from the multi-writer fence (M1)', async () => {
+    const chart = '30000000-0000-4000-8000-000000000003'
+    await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, 'M1'])
+    await buildRun(run(21), 'completed', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z', chart)
+    await runAsset(run(21), 'ga_structural', 'complete', 'build', '2026-09-01T01:00:00Z', '2026-09-01T01:30:00Z')
+    await runAsset(run(21), 'ga_vichara', 'complete', 'build', '2026-09-01T01:30:00Z', '2026-09-01T02:00:00Z')
+    await receipt('ga_structural', run(21), '2026-09-01T01:30:00Z', { chart })
+    await receipt('ga_vichara', run(21), '2026-09-01T02:00:00Z', { chart, freshness: 'stale' })
+    await buildRun(run(22), 'completed', '2026-09-02T01:00:00Z', '2026-09-02T02:00:00Z', chart)
+    await runAsset(run(22), 'ga_dashas', 'complete', 'build', '2026-09-02T01:00:00Z', '2026-09-02T02:00:00Z')
+    await receipt('ga_dashas', run(22), '2026-09-02T02:00:00Z', { chart })
+
+    const generation = await resolveChartServedGeneration(chart, null, query)
+    expect(generation.assets['ga_structural']).toMatchObject({ state: 'resolved', rows_build_id: run(21) })
+    expect(generation.assets['ga_vichara']).toMatchObject({ state: 'unresolved', reason: 'receipt_not_fresh' })
+    expect(generation.served_build_ids).toEqual([run(22)])
+    expect(generation.withheld_builds).toEqual([
+      { build_id: run(21), unresolved_asset_ids: ['ga_vichara'], resolved_asset_ids: ['ga_structural'] },
+    ])
+  })
+
+  it('matches the chart id case-insensitively', async () => {
+    const generation = await resolveChartServedGeneration(chartId.toUpperCase(), ['ga_dashas'], query)
+    expect(generation.assets['ga_dashas']).toMatchObject({ state: 'resolved' })
   })
 
   it('changes generation identity when a rebuild supersedes the served rows', async () => {

@@ -40,12 +40,15 @@ export type UnresolvedGenerationReason =
   | 'receipt_run_asset_missing'
   | 'receipt_disposition_unservable'
   | 'skip_chain_writer_missing'
+  | 'intervening_attempt_unreceipted'
   | 'partition_generation_split'
 
 export interface ServedPartitionReceipt {
   readonly partition_key: string
   readonly receipt_version: string
   readonly receipt_build_id: string | null
+  /** The run that last wrote the asset's rows (before the intervening-attempt check). */
+  readonly writer_run_id: string | null
   readonly rows_build_id: string | null
   readonly receipt_state: string
   readonly freshness_state: string | null
@@ -84,8 +87,19 @@ export interface ChartServedGeneration {
   /** Stable identity of what is served: changes when any asset's served binding changes. */
   readonly generation_hash: string
   readonly assets: Readonly<Record<string, AssetGeneration>>
-  /** Sorted, de-duplicated rows builds of every resolved asset. */
+  /**
+   * Sorted, de-duplicated rows builds that fence multi-writer tables: every resolved asset's
+   * rows build, EXCEPT a build that is also the (last known) rows build of an unresolved asset.
+   * Rows in a multi-writer table carry only a build id, so a run shared with an unresolved asset
+   * cannot admit the resolved asset's rows without also admitting the unresolved asset's.
+   */
   readonly served_build_ids: readonly string[]
+  /** Builds withheld from `served_build_ids`, with the unresolved and resolved assets sharing them. */
+  readonly withheld_builds: readonly {
+    readonly build_id: string
+    readonly unresolved_asset_ids: readonly string[]
+    readonly resolved_asset_ids: readonly string[]
+  }[]
 }
 
 interface ServedReceiptAliases {
@@ -95,14 +109,15 @@ interface ServedReceiptAliases {
 }
 
 /**
- * SQL expression for the run whose rows a chart-scoped receipt currently serves.
+ * SQL expression for the run that last WROTE the asset's rows, as proven from a chart-scoped
+ * receipt: the receipting run when it built the asset; after a `skip_no_delta` re-attribution,
+ * the most recent attempt that completed a build of the asset before the skip.
  *
- * `receipt`, `receiptRun`, and `receiptAsset` are the aliases of the joined
- * asset_provenance_receipts, build_runs (receipt.build_id), and build_run_assets
- * (receipt run × receipt asset) rows. Evaluates to NULL when no writing run can be proven.
- * This is the single reviewed rule; every consumer that joins rows to a receipt uses it.
+ * The writer's own RUN may have ended `failed` (another asset in the same run failed): the
+ * asset's rows were still fully written and they, not an earlier run's deleted rows, are what
+ * a no-delta receipt certifies. Evaluates to NULL when no writer can be proven.
  */
-export function servedRowsBuildIdSql(aliases: ServedReceiptAliases): string {
+export function servedWriterRunIdSql(aliases: ServedReceiptAliases): string {
   const { receipt, receiptRun, receiptAsset } = aliases
   return `(CASE
       WHEN ${receiptAsset}.run_id IS NULL THEN NULL
@@ -112,7 +127,6 @@ export function servedRowsBuildIdSql(aliases: ServedReceiptAliases): string {
           JOIN build_runs writer_run ON writer_run.id = writer_asset.run_id
          WHERE writer_run.chart_id = ${receipt}.chart_id
            AND writer_asset.asset_id = ${receipt}.asset_id
-           AND writer_run.state = 'completed'
            AND writer_asset.state = 'complete'
            AND (writer_asset.disposition IS NULL OR writer_asset.disposition = 'build')
            AND COALESCE(writer_asset.ended_at, writer_run.ended_at)
@@ -123,6 +137,46 @@ export function servedRowsBuildIdSql(aliases: ServedReceiptAliases): string {
        AND ${receiptAsset}.state = 'complete' THEN ${receipt}.build_id
       ELSE NULL
     END)`
+}
+
+/**
+ * SQL predicate: some other dispatched attempt at this asset was still able to mutate its rows
+ * after `writer` finished writing them (a failed/aborted/in-flight attempt, or a completed
+ * build that never issued its own receipt). Heavy writers commit per sub-step, so such an
+ * attempt may have deleted or replaced part of the writer's rows. A `skip_no_delta` attempt
+ * writes nothing and never counts; a never-dispatched queued row never counts.
+ */
+function interveningAttemptSql(aliases: ServedReceiptAliases, writer: string): string {
+  const { receipt } = aliases
+  return `EXISTS (
+        SELECT 1
+          FROM build_run_assets attempt
+          JOIN build_runs attempt_run ON attempt_run.id = attempt.run_id
+         WHERE attempt_run.chart_id = ${receipt}.chart_id
+           AND attempt.asset_id = ${receipt}.asset_id
+           AND attempt.run_id <> ${writer}
+           AND attempt.started_at IS NOT NULL
+           AND attempt.state IN ('building', 'error', 'aborted', 'complete')
+           AND attempt.disposition IS DISTINCT FROM 'skip_no_delta'
+           AND COALESCE(attempt.ended_at, attempt_run.ended_at, 'infinity'::timestamptz) > (
+             SELECT COALESCE(writer_done.ended_at, writer_done_run.ended_at)
+               FROM build_run_assets writer_done
+               JOIN build_runs writer_done_run ON writer_done_run.id = writer_done.run_id
+              WHERE writer_done.run_id = ${writer} AND writer_done.asset_id = ${receipt}.asset_id))`
+}
+
+/**
+ * SQL expression for the run whose rows a chart-scoped receipt currently serves: the proven
+ * writer, unless a later attempt could have mutated those rows (then NULL — fail closed).
+ *
+ * `receipt`, `receiptRun`, and `receiptAsset` are the aliases of the joined
+ * asset_provenance_receipts, build_runs (receipt.build_id), and build_run_assets
+ * (receipt run × receipt asset) rows. This is the single reviewed rule; every consumer that
+ * joins rows to a receipt uses it.
+ */
+export function servedRowsBuildIdSql(aliases: ServedReceiptAliases): string {
+  const writer = servedWriterRunIdSql(aliases)
+  return `(CASE WHEN ${interveningAttemptSql(aliases, writer)} THEN NULL ELSE ${writer} END)`
 }
 
 /**
@@ -142,6 +196,7 @@ export function servedReceiptColumnsSql(aliases: ServedReceiptAliases): string {
   const { receipt, receiptRun, receiptAsset } = aliases
   return `${receipt}.partition_key,
          ${receipt}.build_id::text AS receipt_build_id,
+         ${servedWriterRunIdSql(aliases)}::text AS writer_run_id,
          ${servedRowsBuildIdSql(aliases)}::text AS rows_build_id,
          EXISTS (
            SELECT 1 FROM asset_output_digest_specs served_spec
@@ -191,6 +246,7 @@ function toRow(raw: Record<string, unknown>): ResolverRow {
     partition_key: String(raw['partition_key']),
     receipt_version: String(raw['receipt_version']),
     receipt_build_id: text(raw['receipt_build_id']),
+    writer_run_id: text(raw['writer_run_id']),
     rows_build_id: text(raw['rows_build_id']),
     receipt_state: String(raw['receipt_state']),
     freshness_state: text(raw['freshness_state']),
@@ -210,6 +266,7 @@ function partitionDefect(row: ResolverRow): UnresolvedGenerationReason | null {
   if (row.receipt_run_state !== 'completed' || row.receipt_build_id === null) return 'receipt_run_not_completed'
   if (!row.receipt_asset_present) return 'receipt_run_asset_missing'
   if (row.rows_build_id === null) {
+    if (row.writer_run_id !== null) return 'intervening_attempt_unreceipted'
     return row.receipt_disposition === 'skip_no_delta' ? 'skip_chain_writer_missing' : 'receipt_disposition_unservable'
   }
   return null
@@ -220,6 +277,7 @@ function publicPartition(row: ResolverRow): ServedPartitionReceipt {
     partition_key: row.partition_key,
     receipt_version: row.receipt_version,
     receipt_build_id: row.receipt_build_id,
+    writer_run_id: row.writer_run_id,
     rows_build_id: row.rows_build_id,
     receipt_state: row.receipt_state,
     freshness_state: row.freshness_state,
@@ -267,8 +325,10 @@ export function chartServedGenerationFromRows(
 ): ChartServedGeneration {
   // Only this chart's receipts can bind a chart generation (defensive against callers that
   // share one row set between chart-scoped and global receipts).
+  const chartKey = chartId.toLowerCase()
   const rows = rawRows
-    .filter((raw) => raw['chart_id'] === undefined || raw['chart_id'] === chartId)
+    .filter((raw) => raw['chart_id'] === undefined
+      || (typeof raw['chart_id'] === 'string' && raw['chart_id'].toLowerCase() === chartKey))
     .filter((raw) => typeof raw['asset_id'] === 'string' && raw['asset_id'].length > 0)
     .map(toRow)
   const byAsset = new Map<string, ResolverRow[]>()
@@ -277,7 +337,26 @@ export function chartServedGenerationFromRows(
   const assets: Record<string, AssetGeneration> = {}
   for (const assetId of [...byAsset.keys()].sort()) assets[assetId] = classifyAssetGeneration(assetId, byAsset.get(assetId)!)
   const resolved = Object.values(assets).filter((asset): asset is ResolvedAssetGeneration => asset.state === 'resolved')
-  const served_build_ids = [...new Set(resolved.map((asset) => asset.rows_build_id))].sort()
+  // A run whose rows an unresolved asset may still hold (its last known rows build, or its
+  // writer when a later attempt invalidated those rows) taints that run for shared tables.
+  const taint = new Map<string, Set<string>>()
+  for (const asset of Object.values(assets)) {
+    if (asset.state !== 'unresolved') continue
+    for (const partition of asset.partitions) {
+      const build = partition.rows_build_id ?? partition.writer_run_id
+      if (build) taint.set(build, new Set([...(taint.get(build) ?? []), asset.asset_id]))
+    }
+  }
+  const served_build_ids = [...new Set(resolved.map((asset) => asset.rows_build_id))]
+    .filter((build) => !taint.has(build))
+    .sort()
+  const withheld_builds = [...taint.keys()].sort()
+    .map((build_id) => ({
+      build_id,
+      unresolved_asset_ids: [...taint.get(build_id)!].sort(),
+      resolved_asset_ids: resolved.filter((asset) => asset.rows_build_id === build_id).map((asset) => asset.asset_id).sort(),
+    }))
+    .filter((entry) => entry.resolved_asset_ids.length > 0)
   const generation_hash = stableFingerprint({
     chart_id: chartId,
     source: 'per_asset_receipts',
@@ -291,7 +370,7 @@ export function chartServedGenerationFromRows(
         }
       : { asset_id: asset.asset_id, unresolved: asset.reason }),
   })
-  return { chart_id: chartId, source: 'per_asset_receipts', generation_hash, assets, served_build_ids }
+  return { chart_id: chartId, source: 'per_asset_receipts', generation_hash, assets, served_build_ids, withheld_builds }
 }
 
 /**
@@ -326,7 +405,9 @@ export type BuildFence = string | readonly string[]
 
 /** Normalize a build fence argument to a uuid[] query parameter; null means "no fence". */
 export function buildFenceIds(value: unknown): string[] | null {
-  if (typeof value === 'string') return value.length ? [value] : null
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
-  return null
+  if (value === null || value === undefined || value === '') return null
+  // Canonical (sorted, de-duplicated) so equal fences produce equal cache keys; any scalar a
+  // caller supplies is fenced as text rather than silently dropped.
+  const items = Array.isArray(value) ? value : [value]
+  return [...new Set(items.filter((item) => item !== null && item !== undefined && item !== '').map(String))].sort()
 }

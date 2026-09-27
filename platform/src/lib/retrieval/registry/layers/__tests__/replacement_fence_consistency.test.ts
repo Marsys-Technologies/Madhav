@@ -33,7 +33,7 @@ describe('replacement fence consistency', () => {
       expect(sql).not.toMatch(/OR asset\.state IN \('queued', 'building'\)\)/)
       expect(sql).toContain("run.state IN ('planned', 'running', 'paused')")
       expect(sql).toContain("NOT (asset.state = 'queued' AND asset.started_at IS NULL)")
-      expect(sql).toContain('>= (SELECT MAX(observed_at) FROM eligible_receipts)')
+      expect(sql).toContain('>= (SELECT MIN(observed_at) FROM eligible_receipts)')
     }
   })
 })

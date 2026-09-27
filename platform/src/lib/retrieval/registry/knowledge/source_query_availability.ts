@@ -437,7 +437,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                     AND NOT (asset.state = 'queued' AND asset.started_at IS NULL)
                     AND (
                       COALESCE(asset.ended_at, run.ended_at) IS NULL
-                      OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MAX(observed_at) FROM eligible_receipts)
+                      OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MIN(observed_at) FROM eligible_receipts)
                       OR NOT EXISTS (SELECT 1 FROM eligible_receipts)
                     )
                   )
@@ -4035,7 +4035,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                   AND f.fact_value_text IS NOT NULL
              )
            LIMIT 1`,
-source_refs: [
+    source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
       'platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants',
       'platform/migrations/435_ga_vichara.sql:83-115',

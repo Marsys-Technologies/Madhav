@@ -201,7 +201,10 @@ async function fetchSourceReceiptFence(
             AND receipt.chart_id = $2::uuid
             AND receipt.receipt_state = 'proven'
             AND freshness.freshness_state = 'fresh'
-          ORDER BY receipt.asset_id, receipt.observed_at DESC
+          -- The fence compares against the OLDEST eligible partition receipt: an attempt that
+          -- ended after it may have rewritten that partition's rows even if a newer partition
+          -- receipt exists.
+          ORDER BY receipt.asset_id, receipt.observed_at ASC
        )
        SELECT required_asset.asset_id,
               selected.asset_id IS NOT NULL AS receipt_matches_selected_build,
