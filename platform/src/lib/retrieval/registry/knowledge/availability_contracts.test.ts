@@ -136,6 +136,8 @@ describe('binding availability contracts', () => {
     ['scu.catalog.query_domain_reading', 'source-query:query-domain-reading:v1', 'chart', 'query_domain_reading.ts:174-533'],
     ['scu.catalog.query_classical_texts', 'source-query:query-classical-texts:v1', 'global', 'query_classical_texts.ts#receiptBoundarySql'],
     ['scu.catalog.query_contradictions', 'source-query:query-contradictions:v1', 'chart', 'query_contradictions.ts:156-269'],
+    ['scu.catalog.query_sutravali_rules', 'source-query:query-sutravali-rules:v1', 'global', 'python-sidecar/routers/sutravali.py:87-124'],
+    ['scu.catalog.list_sutravali_rules_by_text', 'source-query:list-sutravali-rules-by-text:v1', 'global', 'python-sidecar/routers/sutravali.py:181-203'],
   ])('binds %s to its exact source-query contract', (scuId, contractId, scope, schemaRef) => {
     const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
     const requirement = scu.availability_contracts![0]!.requirements.find((candidate) => candidate.kind === 'source_query')!
@@ -158,6 +160,8 @@ describe('binding availability contracts', () => {
     ['source-query:resolve-entity:v1', 'FROM brahma_ontology', "ORDER BY (entity_class = 'varga') DESC, entity_class, canonical_id"],
     ['source-query:read-chapter:v1', 'FROM classical_text_chunks', 'ORDER BY verse_start, chunk_id'],
     ['source-query:read-sutravali-rule:v1', 'FROM sutravali_rules r', 'WHERE r.rule_id::text = NULL::text'],
+    ['source-query:query-sutravali-rules:v1', 'FROM sutravali_rules r', "r.antecedent_jsonb->>'sign_canon' ILIKE NULL::text"],
+    ['source-query:list-sutravali-rules-by-text:v1', 'FROM sutravali_rules r', 'WHERE r.text_id = NULL::text'],
   ])('keeps %s as an exact, zero-row-safe handler source probe', (contractId, relationMarker, orderMarker) => {
     const contract = getSourceQueryAvailabilityContract(contractId)!
 
@@ -166,6 +170,25 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain(relationMarker)
     expect(contract.sql).toContain(orderMarker)
     expect(contract.sql).toContain('LIMIT 0')
+  })
+
+  it('does not contract query_sutravali_rules_for_planet while its sidecar route mis-binds parameters', () => {
+    expect(getSourceQueryAvailabilityContract('source-query:query-sutravali-rules-for-planet:v1')).toBeUndefined()
+  })
+
+  it('probes both lel_intake_checklist relations in the chart scope with zero rows', () => {
+    const contract = getSourceQueryAvailabilityContract('source-query:lel-intake-checklist:v1')!
+    expect(contract).toMatchObject({
+      capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+      scope: 'chart',
+      parameter_binding: 'chart_with_active_build_context',
+      empty_semantics: 'query_success_is_available',
+    })
+    expect(contract.sql).toContain('FROM brahma_event_ontology')
+    expect(contract.sql).toContain('FROM life_events')
+    expect(contract.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(contract.sql).not.toContain('$2')
+    expect(contract.sql.match(/LIMIT 0/g)).toHaveLength(2)
   })
 
   it('pins the complete direct domain-reading source surface without promoting a failed query', async () => {
