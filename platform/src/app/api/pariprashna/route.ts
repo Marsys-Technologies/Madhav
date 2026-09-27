@@ -239,6 +239,15 @@ export async function POST(request: Request): Promise<Response> {
           conversationId,
           safetyDecision: postPlanSafety,
           lengthTier: params.lengthTier,
+          // Synthesis is shown the inquiry's admitted evidence, register-annotated, so the fact
+          // register describes what the model actually saw (RC-6.2 Portal).
+          ...(evidence.inquiryContract
+            ? { admittedEvidence: {
+                contract: evidence.inquiryContract,
+                payloads: evidence.validToolResults,
+                snapshot: getPinnedCapabilityKnowledgeSnapshot(),
+              } }
+            : {}),
         })
         const synthesized = await runSynthesisStage({
           em,
@@ -299,6 +308,9 @@ export async function POST(request: Request): Promise<Response> {
               response_text: accumulatedText,
               evidence_payloads: evidence.validToolResults,
               knowledge_snapshot: getPinnedCapabilityKnowledgeSnapshot(),
+              ...(synthesisContext.visibleCitationHandles
+                ? { synthesis_visible_handles: synthesisContext.visibleCitationHandles }
+                : {}),
             })
           : null
 

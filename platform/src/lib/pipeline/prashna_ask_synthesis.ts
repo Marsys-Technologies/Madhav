@@ -112,7 +112,7 @@ export interface SynthesizeReadingResult {
 
 /** Asks the model to cite the register findings it interprets, so delivery is provable by
  *  handle rather than by restating canonical row JSON (RC-6.3). */
-const REGISTER_CITATION_INSTRUCTION = `
+export const REGISTER_CITATION_INSTRUCTION = `
 
 ---
 EVIDENCE CITATIONS: evidence rows carry a "_cite" handle such as "F7". Whenever a paragraph of

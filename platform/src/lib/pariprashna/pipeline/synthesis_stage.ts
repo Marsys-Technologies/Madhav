@@ -89,6 +89,10 @@ import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams 
 import { PASS_ONE } from './evidence_stage'
 import { ReadingPartsAssembler, type OpenBlock } from './reading_parts'
 import type { LegacyQueryPlan } from './plan_stage'
+import { formatEvidenceBlock, REGISTER_CITATION_INSTRUCTION } from '@/lib/pipeline/prashna_ask_synthesis'
+import { annotateInquiryEvidenceForSynthesis, visibleInquiryCitationHandles } from '@/lib/vidhi/inquiry/response_accountability'
+import type { InquiryContract } from '@/lib/vidhi/inquiry/types'
+import type { CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge/types'
 
 /**
  * deep_dive raises the agentic-loop iteration cap so the model can retrieve
@@ -122,6 +126,11 @@ function extractStreamErrorCode(err: unknown): string {
 export interface SynthesisContext {
   /** The full system prefix (bundle + guidance + durable-summary splice). */
   systemContentWithSummary: string
+  /**
+   * Register citation handles present in the admitted inquiry evidence actually placed in the
+   * prompt (post-budget); null when no admitted evidence was supplied (R2C.1 Portal).
+   */
+  visibleCitationHandles: string[] | null
   /**
    * The trimmed history the adapter messages are built from. Computed HERE and
    * carried forward rather than recomputed in `runSynthesisStage`: the
@@ -204,6 +213,17 @@ export async function assembleSynthesisContext(args: {
   safetyDecision?: SafetyDecision
   /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
   lengthTier?: LengthTier
+  /**
+   * The inquiry's admitted evidence (the evidence-stage payloads the fact register is built
+   * from). When supplied, synthesis is shown register-annotated display copies of exactly that
+   * evidence and asked to cite what it interprets, so delivery is provable against what the
+   * model saw (RC-6.2 Portal). Omitted → prompt unchanged.
+   */
+  admittedEvidence?: {
+    readonly contract: InquiryContract
+    readonly payloads: readonly ToolBundle[]
+    readonly snapshot?: CapabilityKnowledgeSnapshot
+  }
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
@@ -329,6 +349,27 @@ export async function assembleSynthesisContext(args: {
       .join('\n\n---\n\n')
   }
 
+  // ── ADMITTED INQUIRY EVIDENCE (R2C.1 Portal) — untrusted content, so it is placed before
+  // the injection clause and the safety policy below, inside its own container. ─────────
+  let visibleCitationHandles: string[] | null = null
+  if (args.admittedEvidence) {
+    const annotated = annotateInquiryEvidenceForSynthesis(
+      args.admittedEvidence.contract, args.admittedEvidence.payloads, args.admittedEvidence.snapshot,
+    )
+    const { block } = formatEvidenceBlock(args.admittedEvidence.payloads.map((payload, index) => ({
+      tool_name: payload.tool_name,
+      bundle: annotated.payloads[index] as ToolBundle,
+    })))
+    visibleCitationHandles = visibleInquiryCitationHandles(block)
+    const evidenceSection = `ADMITTED INQUIRY EVIDENCE (the evidence this reading is accountable for):
+${block}`
+    systemContentWithSummary = [
+      systemContentWithSummary,
+      injectionContained ? containRetrievedEvidence(evidenceSection) : evidenceSection,
+      REGISTER_CITATION_INSTRUCTION.trim(),
+    ].filter(Boolean).join('\n\n---\n\n')
+  }
+
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety
   // policy, so the ordering downstream-of-untrusted-content reads:
@@ -359,7 +400,7 @@ export async function assembleSynthesisContext(args: {
     )
   }
 
-  return { systemContentWithSummary, trimmedConversationHistory }
+  return { systemContentWithSummary, trimmedConversationHistory, visibleCitationHandles }
 }
 
 export interface SynthesisStageOutput {
