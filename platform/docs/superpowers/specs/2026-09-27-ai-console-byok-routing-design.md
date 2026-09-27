@@ -1,0 +1,715 @@
+# AI Console, BYOK, and User-Directed Model Routing — Design Spec
+
+**Date:** 2026-09-27
+
+**Status:** REVIEW_PENDING — conversational design approved; written-spec review required
+
+**Scope:** Local-first implementation of user-owned AI credentials, named model configurations, local subscription-backed CLI connections, mandatory per-user defaults, Paripraśna routing, and MCP synthesis handoff.
+
+---
+
+## 1. Purpose
+
+Paripraśna currently resolves its AI work through application-wide model stacks and server environment credentials. A user cannot add their own provider credentials, choose the model used for a question, assign different models to pipeline roles, or use an administrator-authorized local CLI subscription.
+
+This feature replaces that shared user-facing routing model with **bring your own key (BYOK)** and user-controlled model routing. It is built and accepted on the local server first, but its credential, authorization, and isolation boundaries must be suitable for later public use.
+
+Success means:
+
+1. An active user can add and validate multiple named API connections.
+2. Only models actually available to a validated connection appear for that connection.
+3. A user can select one exact provider model, one named custom configuration, or one authorized local CLI model as their mandatory default.
+4. Paripraśna always carries an explicit AI choice, including a symbolic `Default` choice.
+5. Native Paripraśna can route its four AI roles through the selected choice.
+6. MCP uses the user's default for Madhav's internal work but leaves final synthesis to the external chat model.
+7. Logged-in backend work without a picker uses that user's default.
+8. No user-facing path silently falls back to the current shared server key, a different provider, a different credential, or a different model.
+
+---
+
+## 2. Approved Product Vocabulary
+
+| Term | Meaning |
+|---|---|
+| **Provider connection** | One user-owned, named API credential for a supported provider, such as “Personal OpenAI”. A user may save multiple connections for the same provider. |
+| **Direct model choice** | One validated provider connection plus one specific compatible model returned for that connection. |
+| **Custom configuration** | A user-named mapping of the four Paripraśna roles to validated direct or authorized CLI model choices. |
+| **Local CLI choice** | One administrator-authorized, currently validated CLI plus a specific reachable model, or the CLI's explicit built-in default when the CLI cannot enumerate models. |
+| **AI choice** | A direct model choice, a custom configuration, or a local CLI choice. |
+| **User default** | The single AI choice explicitly selected by that user as their default. |
+| **Conversation selection** | `Default` or one explicit AI choice selected in Paripraśna for that conversation. |
+| **Resolved routing snapshot** | The exact connections, providers, models, roles, and configuration version used for one submitted question. It never contains secret material. |
+
+“Custom provider” is not used for this release. The approved feature is a **custom configuration** assembled from supported, validated connections. Arbitrary user-supplied base URLs and unknown OpenAI-compatible providers are out of scope.
+
+---
+
+## 3. Scope and Non-Goals
+
+### 3.1 In scope
+
+- Seven API integrations: OpenAI, Anthropic, Google Gemini, xAI, DeepSeek, Kimi/Moonshot, and OpenRouter.
+- Multiple named credentials per provider per user.
+- Provider-native validation and model discovery.
+- One small real-generation validation probe after authentication succeeds.
+- Four named custom-configuration roles.
+- Local detection and non-interactive validation for Codex CLI, Claude Code, Gemini/Antigravity, and Kimi Code.
+- Separate super-admin grants for each user and each CLI.
+- A mandatory single default at the exact usable-choice level.
+- Conversation-persistent Paripraśna selection.
+- A live `Default` pointer with per-question resolved snapshots.
+- User-default routing for authenticated backend and MCP work.
+- Removal of internal synthesis from high-level MCP `prashna_ask`.
+- Credential encryption, redaction, audit metadata, and user isolation.
+- Local-first migration away from shared user-facing environment keys.
+
+### 3.2 Explicitly out of scope
+
+- An **Inspector** role. It does not exist in the current runtime pipeline and is not being added.
+- An LLM-based API-key, CLI, answer, or evidence validator.
+- Automatic fallback to another model, provider, credential, custom configuration, or CLI.
+- User-configured fallback chains.
+- Automatic import of existing server environment keys into a user account.
+- A shared administrator-provided key available to all users.
+- Arbitrary custom provider URLs.
+- Production deployment as part of the first local implementation.
+- Sharing subscription-backed CLIs publicly before the applicable provider terms and account permissions have been reviewed.
+- Inspection of final prose generated by an external MCP host.
+- Duplicating Observatory analytics inside AI Console.
+
+---
+
+## 4. The Four AI Roles
+
+The feature exposes exactly four configurable roles:
+
+| Role | Responsibility |
+|---|---|
+| **Synthesizer** | Produces the final native Paripraśna answer from gathered evidence. |
+| **Planner** | Classifies the question and decides what information and work are required. |
+| **Deep Planner** | Performs the more intensive planning path when the question's complexity requires it. It is configured for every custom configuration but invoked only when the pipeline needs it. |
+| **Worker** | Performs delegated analysis, context preparation, and evidence-gathering work. |
+
+There is no Inspector dropdown, call type, validation stage, or repair loop.
+
+### 4.1 Routing meaning by choice type
+
+- A **direct model choice** uses the selected connection and model for all four roles whenever those roles are invoked.
+- A **local CLI choice** uses the selected CLI and model for all four roles whenever the CLI adapter declares those roles compatible.
+- A **custom configuration** resolves each role independently from its four saved assignments.
+
+A custom configuration is valid only when all four roles have compatible, currently authorized selections.
+
+---
+
+## 5. Supported API Providers
+
+Version one supports:
+
+1. OpenAI
+2. Anthropic
+3. Google Gemini
+4. xAI
+5. DeepSeek
+6. Kimi/Moonshot
+7. OpenRouter
+
+Mistral and other providers are not direct integrations in version one; they may be used through OpenRouter when the authenticated OpenRouter model catalog exposes compatible models.
+
+### 5.1 Multiple connections
+
+- A user may add multiple connections for the same provider.
+- Every connection requires a user-supplied name unique within that user's provider connections, compared case-insensitively.
+- Examples: `Personal OpenAI`, `Work OpenAI`, `Research OpenRouter`.
+- Model choices always reference the exact connection and model, never only the provider family.
+
+### 5.2 Validation sequence
+
+Saving or replacing a credential runs this sequence:
+
+1. **Local sanity check:** reject empty or structurally impossible input without sending it anywhere.
+2. **Authenticated discovery:** call the provider's authenticated key/model endpoint and obtain the models available to that credential.
+3. **Compatibility filtering:** retain text-generation models the Madhav adapter can invoke for at least one approved role; exclude embedding-only, image-only, audio-only, retired, or unsupported protocol variants.
+4. **Working probe:** invoke one inexpensive compatible text model with a tiny fixed prompt and tightly capped output. The UI discloses that this can create a negligible provider charge.
+5. **Persist result:** store the connection status and the discovered compatible catalog, not the probe text.
+
+Validation states are:
+
+- `untested`
+- `validating`
+- `validated`
+- `needs_attention`
+- `invalid`
+- `unreachable`
+
+Only `validated` connections and their compatible models are selectable. A successful authentication response with no compatible model is `needs_attention`, not `validated`.
+
+### 5.3 Revalidation
+
+Revalidation occurs:
+
+- after a credential is added or replaced;
+- when the user presses **Test connection**;
+- periodically in the background with conservative caching;
+- when a real invocation returns an authentication, entitlement, or model-removal error.
+
+A transient network failure marks the last check unreachable without rewriting credential validity as permanently invalid. A confirmed authentication rejection marks the connection invalid. The system never discovers validity from key syntax alone.
+
+### 5.4 Model catalog rules
+
+- Provider catalogs are refreshed; models are not permanently frozen into the UI.
+- The application retains a compatibility policy and adapter metadata, but availability comes from the authenticated connection.
+- A model removed from the provider catalog remains visible only where needed to explain a broken default, custom configuration, or conversation selection.
+- Provider selection filters the model selector to that provider connection's models only.
+- Model labels must include the provider connection when two connections expose the same model ID.
+
+---
+
+## 6. Credential Security and Ownership
+
+### 6.1 Storage
+
+- Plaintext provider credentials are accepted only by authenticated server endpoints over the existing secure transport boundary.
+- The server encrypts credentials before database persistence using envelope encryption: a random per-credential data-encryption key encrypts the secret with AES-256-GCM, and the configured key-encryption key wraps that data key.
+- Stored records include ciphertext, wrapped data key, nonce/initialization data, authentication tag, encryption-key version, a masked suffix, and a keyed fingerprint for duplicate detection.
+- The encryption master key never lives in the application database.
+- Local development receives the master key through an injected local secret.
+- Public deployment must use the production secret/key-management system through the same encryption service interface.
+- Key rotation must support decrypting older key versions while new writes use the active version.
+
+### 6.2 Runtime use
+
+- Only the server-side provider adapter may request decryption.
+- Decryption happens immediately before the provider call and the plaintext is not cached beyond the request lifetime.
+- Client responses never contain ciphertext, nonce data, authentication tags, or plaintext.
+- Full keys cannot be revealed after save. A user replaces a key instead.
+- Super-admin application screens may see connection metadata and status but cannot reveal or invoke another user's credential.
+
+### 6.3 Redaction
+
+Plaintext credentials, ciphertext, authorization headers, CLI tokens, prompts used for credential probes, and raw provider error bodies must not appear in:
+
+- application logs;
+- browser logs;
+- API error responses;
+- administrator audit details;
+- Observatory events;
+- analytics;
+- exception-reporting metadata;
+- test snapshots or fixtures.
+
+Provider errors pass through a normalizer that emits a safe class and remediation message.
+
+### 6.4 Ownership and lifecycle
+
+- Every provider connection is owned by one user.
+- An active user may create, rename, validate, replace, and delete only their own provider connections.
+- BYOK does not require administrator approval.
+- Before deletion, the UI lists dependent defaults, custom configurations, and conversation selections.
+- Confirmed deletion is allowed but dependents become explicitly unavailable; they are never rewritten to another option.
+- Disabling a user prevents new decryptions and provider calls for that user.
+
+---
+
+## 7. Local CLI Connections
+
+Version one supports four product adapters:
+
+1. Codex CLI
+2. Claude Code
+3. Gemini / Antigravity
+4. Kimi Code
+
+The Gemini/Antigravity adapter probes an explicit allowlist of supported installed executables and reports the detected product and version. It does not assume the product name from a user-entered path.
+
+### 7.1 Validation contract
+
+A CLI is usable only when all checks pass:
+
+1. an allowlisted executable is present;
+2. the executable reports a supported version;
+3. an authenticated subscription session is available to the server process;
+4. a fixed non-interactive prompt completes within the timeout;
+5. reachable models can be enumerated, or the adapter can identify one explicit built-in default model;
+6. the adapter can return machine-readable output without interactive confirmation.
+
+Madhav never extracts, copies, displays, or stores the CLI's authentication material.
+
+### 7.2 Execution boundary
+
+- Users submit questions, not shell commands.
+- Each adapter constructs a fixed executable and fixed allowlisted arguments without invoking a shell.
+- User-controlled flags, paths, environment variables, plugins, hooks, tools, and working directories are prohibited.
+- Prompts are passed through the adapter's safe input channel.
+- Each run uses an isolated temporary working directory with the narrowest supported filesystem/tool permissions.
+- Environment variables are allowlisted.
+- Runtime, output size, parallelism, and cancellation are capped.
+- Raw CLI stderr is normalized and redacted before persistence or display.
+
+### 7.3 Administrator grants
+
+- CLI access is denied by default.
+- A super-admin grants access separately for each `(user, CLI)` pair.
+- A grant does not expose the server owner's subscription credential.
+- Revocation blocks the next invocation immediately, including in an existing conversation.
+- The Admin Center receives an **AI Access** surface for these per-user, per-CLI grants.
+- Grant and revoke operations extend the existing admin audit mechanism and store actor, target user, CLI, action, and time—never prompt or response content.
+
+A CLI is shown as selectable only when the user has a current grant and the host validation state is reachable. Public exposure of subscription-backed CLI capacity remains separately gated on provider terms and account authorization.
+
+---
+
+## 8. Mandatory User Default
+
+### 8.1 Selection rules
+
+- Every user who wants to use an AI-backed surface must explicitly select exactly one default AI choice.
+- Madhav does not automatically select the first validated option.
+- The selectable units are:
+  - one exact provider connection plus exact model;
+  - one complete named custom configuration;
+  - one authorized CLI plus exact model or its explicit built-in default.
+- Selecting a new default atomically replaces the prior default.
+- A default radio/control belongs to the exact model row or complete configuration card, not merely a provider or CLI family card.
+
+### 8.2 Broken defaults
+
+If the selected default becomes invalid, deleted, unauthorized, or unreachable:
+
+- its identity remains visible as the broken default;
+- new work requiring it is blocked with a repair/change action;
+- the system does not silently clear it or choose another option;
+- backend and MCP callers receive a typed configuration error.
+
+### 8.3 Sources without a picker
+
+- Authenticated backend work performed for a logged-in user resolves that user's current default.
+- MCP work resolves the authenticated mapped user's current default.
+- A job with no accountable user identity cannot borrow an arbitrary user's BYOK credential. It must use a separately governed service identity outside this feature or fail explicitly.
+
+---
+
+## 9. AI Console Experience
+
+AI Console is a top-level active-user destination. For super-admins its navigation position is:
+
+`Cockpit → AI Console → AIOps / Observatory`
+
+Guests cannot see Cockpit; for them AI Console appears after Panchang. AI Console is not itself a super-admin-only surface.
+
+AI Console contains exactly three sections:
+
+1. **Provider connections**
+2. **Custom configurations**
+3. **Local CLIs**
+
+There is no separate Default AI section. Default selection is an action/radio attached to each usable option across these three sections.
+
+### 9.1 Provider connections
+
+Each provider card shows:
+
+- provider name and connection name;
+- masked credential suffix;
+- validation status and last validation time;
+- discovered compatible models;
+- **Test connection**, rename, replace key, and delete actions;
+- one default radio/control per model row.
+
+Adding another connection creates a separate named card even when the provider is the same.
+
+### 9.2 Custom configurations
+
+A user may create multiple named configurations. Each configuration requires:
+
+- a case-insensitively unique name for that user;
+- Synthesizer assignment;
+- Planner assignment;
+- Deep Planner assignment;
+- Worker assignment.
+
+Each role selector chooses a validated connection/CLI first and then a compatible model from that source. Only options owned by or authorized for the user appear.
+
+The editor provides **Use this model for every role** as a convenience. There are no incomplete saved drafts: Save is enabled only when all four assignments are valid. A configuration may be edited, duplicated, renamed, set as default, or deleted.
+
+An edit updates the named configuration for subsequent questions. Every completed question retains its resolved routing snapshot, so historical execution remains truthful.
+
+### 9.3 Local CLIs
+
+Each CLI card distinguishes:
+
+- not installed;
+- installed but not authenticated;
+- authenticated but not granted to this user;
+- granted but unreachable;
+- validated and selectable.
+
+Validated model rows receive the same exact-choice default control used by provider models.
+
+---
+
+## 10. Paripraśna Experience
+
+The existing picker keeps its persona and answer-style controls. Its hard-coded model-stack section is replaced by **AI choice**.
+
+The AI choice list contains:
+
+- `Default — <currently resolved choice>`;
+- validated direct provider models;
+- valid named custom configurations;
+- authorized and reachable local CLI models.
+
+### 10.1 Conversation persistence
+
+- Every conversation stores `Default` or one explicit AI choice on the server.
+- A new conversation starts at `Default`.
+- The user may change the selection at any time.
+- A change applies to the next submitted question and remains active for later questions until changed again.
+- It does not rewrite prior answers.
+- The selection is available across browsers and devices; it is not only chart-scoped browser local storage.
+
+### 10.2 Live pointers and snapshots
+
+- `Default` is a live pointer. If the user's global default changes, a conversation whose picker still says `Default` uses the new default on its next question.
+- An explicitly selected named custom configuration is also a live reference to that configuration. Editing it affects the next question.
+- An explicitly selected direct model or CLI model remains pinned to that exact choice while it is available.
+- Every submitted question records a resolved routing snapshot before execution.
+- The snapshot identifies the source, connection/configuration identifier, configuration version, role, provider, model, and CLI adapter where applicable. It contains no credential material.
+
+### 10.3 Native execution
+
+For a native Paripraśna question:
+
+```text
+conversation selection
+  → resolve exact four-role routing
+  → Planner
+  → Deep Planner when required
+  → Worker calls and evidence gathering
+  → Synthesizer
+  → final native answer
+```
+
+There is no Inspector stage.
+
+---
+
+## 11. MCP Contract
+
+### 11.1 High-level `prashna_ask`
+
+The current high-level MCP route performs its own synthesis. This feature intentionally changes that contract:
+
+```text
+external chat question
+  → authenticated Madhav user mapping
+  → resolve that user's current default
+  → Planner
+  → Deep Planner when required
+  → Worker calls and evidence gathering
+  → structured evidence envelope
+  → external chat model performs final synthesis
+```
+
+The Synthesizer assignment in the user's default/custom configuration is not invoked for this high-level MCP call because the external host is the synthesizer.
+
+The response envelope includes:
+
+- normalized question and query classification;
+- plan summary and tools/capabilities used;
+- structured evidence grouped by density/verification status;
+- citations and drill pointers;
+- caveats, unavailable evidence, and truncation metadata;
+- planner/deep-planner/worker routing metadata safe for display;
+- response-budget metadata.
+
+It does not include an internally generated reading or draft answer.
+
+### 11.2 MCP limits and raw primitives
+
+- Pre-dispatch limits currently derived from the internal synthesis model must move to an MCP evidence-envelope budget independent of a Madhav synthesis model.
+- Server hard caps remain authoritative. A supported caller hint may request a smaller envelope but cannot exceed those caps.
+- Raw MCP primitives already return structured retrieval output and remain non-synthesizing.
+
+### 11.3 MCP errors
+
+If the mapped user has no valid default or an internal role cannot run, MCP returns a typed configuration/execution error with remediation. It never invokes the external host's consumer subscription as Madhav's planner, deep planner, or worker, and it never substitutes a server-wide shared key.
+
+---
+
+## 12. Central Routing Architecture
+
+All AI-backed entry points use one server-side resolver instead of reading `DEFAULT_STACK_ID` or environment credentials independently.
+
+Conceptual boundary:
+
+```text
+AI-backed route
+  → authenticated user context
+  → conversation/default choice resolver
+  → role resolver
+  → provider or CLI adapter
+  → normalized result/error
+  → Observatory metadata
+```
+
+The resolver accepts at least:
+
+- accountable user ID;
+- source (`pariprashna`, `mcp`, or authenticated backend);
+- optional conversation ID;
+- requested role;
+- request correlation ID.
+
+It returns an immutable execution target containing adapter type, provider/CLI, model, safe connection reference, configuration version, and observation metadata. It never returns a credential to browser code.
+
+### 12.1 Required service boundaries
+
+| Unit | Responsibility |
+|---|---|
+| **Credential vault** | Encrypt, decrypt, fingerprint, rotate, redact, and authorize user credential access. |
+| **Provider catalog service** | Validate connections, discover models, filter compatibility, and maintain status. |
+| **AI choice resolver** | Resolve conversation selection/default/custom roles to one immutable execution target. |
+| **Provider adapters** | Translate the common role request into provider-native requests and normalize usage/errors. |
+| **CLI registry and adapters** | Detect, validate, authorize, constrain, invoke, and normalize local CLI execution. |
+| **Conversation routing store** | Persist symbolic selection and per-question resolved snapshots. |
+| **Admin AI access service** | Enforce and audit per-user, per-CLI grants. |
+
+No route may bypass these boundaries to read a provider environment variable directly after cutover.
+
+---
+
+## 13. Persistence Model
+
+The implementation plan may refine names, but the persisted relationships must express these concepts without secrets in selection records:
+
+| Record | Required semantics |
+|---|---|
+| **Provider connection** | ID, owner, provider, unique name, encrypted credential fields, masked suffix, keyed fingerprint, validation state/times/error class, created/updated times. |
+| **Connection model catalog** | Connection, provider model ID, display metadata, compatibility flags, lifecycle state, first/last seen times. |
+| **Custom configuration** | ID, owner, unique name, monotonically increasing version, created/updated times. |
+| **Custom role assignment** | Configuration, one of four roles, target kind, connection/CLI reference, exact model ID. Exactly one assignment per role. |
+| **User default** | One row per user containing exactly one valid choice variant. |
+| **CLI validation state** | Host adapter, detected product/version, authentication/reachability state, safe model catalog, last check. No CLI credential. |
+| **CLI grant** | User, CLI adapter, granting administrator, granted/revoked timestamps and current state. Unique current grant per pair. |
+| **Conversation selection** | Conversation, owner, `default` or explicit choice reference, changed time. |
+| **Question routing snapshot** | Question/message, source, resolved configuration version, resolved four-role map, and the subset of roles actually invoked, with no secrets. |
+
+Database constraints and transactions enforce one default per user, four unique roles per complete configuration, ownership consistency, and unique per-user names. Server authorization remains mandatory even when a database constraint also exists.
+
+---
+
+## 14. Failures, Retries, and No-Silent-Fallback Rule
+
+Normalized error classes include:
+
+- credential invalid;
+- permission or entitlement denied;
+- billing/credit unavailable;
+- rate limited;
+- model unavailable or removed;
+- provider unreachable;
+- CLI not installed;
+- CLI authentication unavailable;
+- CLI grant revoked;
+- CLI timeout or output limit;
+- incompatible role/model;
+- missing or broken default;
+- broken custom configuration.
+
+Policy:
+
+- A transient failure may retry the **same connection and exact model** within a small capped retry policy.
+- A retry must not change provider, credential, model, custom configuration, or CLI.
+- Non-transient failures do not retry.
+- The affected role and safe remediation are returned to the user.
+- Partial work is not presented as a completed synthesized answer.
+- Background and MCP callers receive stable machine-readable codes.
+
+The current automatic primary/fallback routing is not applied to user-controlled choices. Explicit fallback configuration is deferred to a later feature.
+
+---
+
+## 15. Observatory and Audit
+
+Observatory continues to own usage and cost telemetry. It records:
+
+- accountable user and conversation/query correlation;
+- source surface;
+- provider or CLI adapter;
+- model and role;
+- configuration/version and whether selection was `Default` or explicit;
+- status, latency, token/usage data when available, and normalized cost estimate;
+- retry count and safe error class.
+
+It never records key material or CLI tokens. MCP events must show that synthesis occurred externally and must not fabricate a Madhav synthesis event.
+
+Security and administrator audit records cover:
+
+- provider connection created, renamed, replaced, validated, or deleted;
+- default changed;
+- custom configuration created, edited, duplicated, or deleted;
+- CLI grant/revoke;
+- validation state changes caused by confirmed authentication failure.
+
+Audit details store identifiers and safe metadata only, never prompts, completions, full provider error bodies, or credentials.
+
+---
+
+## 16. Local-First Migration and Cutover
+
+### 16.1 Additive development phase
+
+1. Create additive persistence and encryption infrastructure.
+2. Build validation adapters and AI Console behind a local feature switch.
+3. Build the central resolver and route it through tests without changing the active legacy path.
+4. Build provider and CLI execution adapters.
+5. Update Paripraśna, authenticated backend entry points, and MCP behind the same local switch.
+
+### 16.2 Owner onboarding
+
+1. The owner signs in locally.
+2. The owner manually enters the desired provider credential or validates an authorized CLI.
+3. The owner selects one exact default.
+4. No existing environment key is copied into the account automatically.
+
+### 16.3 Cutover verification
+
+1. Enable user-specific routing locally.
+2. Verify native Paripraśna direct, custom, and CLI choices.
+3. Verify `Default` and explicit conversation behaviour.
+4. Verify authenticated backend work uses the logged-in user's default.
+5. Verify MCP returns an evidence envelope and performs no internal synthesis.
+6. Verify broken defaults and revoked CLI grants fail clearly.
+7. Prove through code search, runtime instrumentation, and tests that no user-facing route falls back to shared environment credentials.
+
+### 16.4 Legacy retirement
+
+After local acceptance:
+
+- remove shared environment credentials from user-facing runtime resolution;
+- remove or retire the legacy model-stack picker and route parsing;
+- retain only separately governed service credentials for explicitly non-user system jobs, if any are later authorized;
+- do not delete or rotate existing external credentials automatically.
+
+The local feature switch is a development cutover aid, not a permanent production bypass. A rollback may disable new routing locally while preserving all newly stored configuration; it must not restore silent shared-key use in public operation.
+
+---
+
+## 17. Verification Strategy
+
+### 17.1 Unit tests
+
+- credential encryption/decryption, key versioning, fingerprinting, and redaction;
+- exact-one default constraint and atomic replacement;
+- direct choice resolves one model for all four roles;
+- custom configuration resolves four independent roles;
+- deep planner is configured but invoked only on the qualifying path;
+- live `Default` and named-configuration references resolve current values;
+- prior question snapshots remain immutable;
+- no-silent-fallback error mapping;
+- provider catalog compatibility filtering;
+- CLI command construction cannot accept shell/user arguments;
+- MCP response envelope contains no synthesized reading.
+
+### 17.2 Authorization and isolation tests
+
+- a user cannot list, decrypt, validate, invoke, replace, or delete another user's connection;
+- a super-admin cannot reveal or invoke another user's BYOK credential through application APIs;
+- a disabled user cannot initiate new calls;
+- CLI access is denied without the exact per-user, per-CLI grant;
+- revocation applies before the next invocation;
+- conversation and default ownership cannot cross users;
+- API responses and logs contain no ciphertext or secret fragments beyond the approved mask.
+
+### 17.3 Provider contract tests
+
+Each provider adapter has deterministic mocked contract tests for:
+
+- valid key and catalog;
+- invalid key;
+- valid key with no compatible model;
+- entitlement/billing failure;
+- rate limit;
+- removed model;
+- timeout/network failure;
+- real-generation validation probe;
+- normalized token/usage metadata.
+
+Before public release, every direct provider and OpenRouter must also pass a real smoke test using an authorized test credential. Missing credentials produce an honest unqualified state, not a passing result.
+
+### 17.4 CLI tests
+
+- fake executable fixtures cover installed, missing, unauthenticated, timeout, oversized output, malformed output, and model discovery;
+- argument injection and environment leakage tests;
+- cancellation and concurrency limits;
+- real local smoke qualification for all four installed CLIs;
+- product-terms review before any public multi-user subscription sharing.
+
+### 17.5 End-to-end tests
+
+- add two connections for one provider and distinguish their model rows;
+- validate a key and select an exact model as default;
+- create, edit, duplicate, select, and delete a four-role custom configuration;
+- select a CLI default, revoke access, and observe a clear blocked state;
+- start a conversation at `Default`, change the global default, and verify the next question uses the new resolved choice;
+- pin an explicit model and verify global default changes do not move it;
+- change the conversation picker and verify only subsequent questions change;
+- use the same conversation from another browser/session;
+- verify MCP uses planner/deep-planner/worker from the user's default and emits no internal synthesis call;
+- verify a logged-in backend test resolves that user's default;
+- scan logs, responses, Observatory data, audit data, and test artifacts for secret leakage;
+- prove the legacy shared key is not read by user-facing paths after cutover.
+
+---
+
+## 18. Acceptance Criteria
+
+The local feature is accepted only when all of the following are demonstrated:
+
+1. AI Console has exactly Provider connections, Custom configurations, and Local CLIs—no Default section.
+2. OpenAI, Anthropic, Gemini, xAI, DeepSeek, Kimi/Moonshot, and OpenRouter adapters satisfy their contract tests.
+3. A user can save multiple named credentials for the same provider.
+4. A connection is selectable only after authenticated discovery and a successful tiny generation probe.
+5. Only compatible models returned for that connection appear under it.
+6. A custom configuration has exactly Synthesizer, Planner, Deep Planner, and Worker assignments.
+7. No Inspector role or call exists.
+8. Exactly one user default is explicitly selected at the exact model/configuration level.
+9. Direct and CLI selections use the chosen model for all four roles; custom configurations route roles independently.
+10. Paripraśna always shows an AI choice, begins at `Default`, and persists selection per conversation on the server.
+11. `Default` follows the user's current global default while explicit direct selections remain pinned.
+12. Every question stores the safe resolved routing snapshot actually used.
+13. Authenticated backend work without a picker uses the logged-in user's default.
+14. MCP performs no internal synthesis and returns a structured evidence envelope for the external host.
+15. Codex, Claude Code, Gemini/Antigravity, and Kimi Code are independently detectable and grantable per user.
+16. No API or UI can reveal another user's credential or the server owner's CLI authentication.
+17. A broken default, deleted model, invalid key, or revoked CLI grant causes a clear stop, never a silent fallback.
+18. User-facing runtime routing no longer reads the shared server key after cutover.
+19. Logs, audit records, Observatory, errors, fixtures, and snapshots contain no credential material.
+20. Existing environment credentials are neither imported, deleted, nor rotated automatically.
+
+---
+
+## 19. Approved Decision Record
+
+| Decision | Approved choice |
+|---|---|
+| Product name | AI Console |
+| Console placement | Top-level, after Cockpit and before AIOps/Observatory for super-admins; visible to active guests |
+| Console sections | Provider connections; Custom configurations; Local CLIs |
+| Default placement | Radio/action attached to each exact usable model/configuration; no separate section |
+| Default cardinality | Exactly one per user, explicitly selected |
+| Direct providers | OpenAI, Anthropic, Gemini, xAI, DeepSeek, Kimi/Moonshot |
+| Gateway provider | OpenRouter |
+| Multiple keys | Supported as multiple named provider connections |
+| Pipeline roles | Synthesizer, Planner, Deep Planner, Worker |
+| Inspector | Dropped; not part of this feature |
+| Custom configurations | Multiple, user-named, all four roles required |
+| Local CLIs | Codex, Claude Code, Gemini/Antigravity, Kimi Code |
+| CLI authorization | Separate super-admin grant for every user and every CLI |
+| Key validation | Authenticated discovery plus one tiny real-generation probe |
+| Conversation choice | Persists until changed; `Default` is a live pointer |
+| Backend without picker | Logged-in user's default |
+| MCP synthesis | External host synthesizes; Madhav returns structured evidence |
+| Fallback | No silent fallback or automatic alternate model in version one |
+| Shared key migration | Manual user onboarding; no automatic import; retire shared user-facing routing after local acceptance |
