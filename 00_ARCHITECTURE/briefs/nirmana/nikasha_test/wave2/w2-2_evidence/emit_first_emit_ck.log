@@ -1,0 +1,14 @@
+ck L0 appended/present/closed/reopened = (6, 209, 0, 0)
+ck L1 appended/present/closed/reopened = (114, 0, 0, 0)
+ck L2 appended/present/closed/reopened = (143, 0, 0, 0)
+ck L3 appended/present/closed/reopened = (145, 0, 0, 0)
+ck L4 appended/present/closed/reopened = (70, 0, 0, 0)
+ck L5 appended/present/closed/reopened = (99, 0, 0, 0)
+ck L0 appended/present/closed/reopened = (0, 215, 0, 0)
+ck L1 appended/present/closed/reopened = (0, 114, 0, 0)
+ck L2 appended/present/closed/reopened = (0, 143, 0, 0)
+ck L3 appended/present/closed/reopened = (0, 145, 0, 0)
+ck L4 appended/present/closed/reopened = (0, 70, 0, 0)
+ck L5 appended/present/closed/reopened = (0, 99, 0, 0)
+re-emit byte-identical
+577 appended; 0 CLOSED
