@@ -92,6 +92,18 @@ def _load_ledger():
     return module
 
 
+def _coerce_episode_times(episodes: list[dict]) -> list[dict]:
+    """JSON carries instants as ISO strings; the ledger's contact-id path and
+    the B1 naive-instant rejection both expect tz-aware datetimes. Parse
+    t_in/t_exact/t_out when they arrive as strings (ISO with offset)."""
+    for ep in episodes:
+        for key in ("t_in", "t_exact", "t_out"):
+            v = ep.get(key)
+            if isinstance(v, str):
+                ep[key] = datetime.fromisoformat(v)
+    return episodes
+
+
 def _synthetic_episodes() -> list[dict]:
     t = datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC)
     from datetime import timedelta
@@ -165,7 +177,7 @@ def main() -> int:
         horizon_text = f"[{args.horizon_start},{args.horizon_end})"
         coverage = _synthetic_coverage(horizon_text)
     else:
-        episodes = json.loads(Path(args.episodes_json).read_text())
+        episodes = _coerce_episode_times(json.loads(Path(args.episodes_json).read_text()))
         coverage = json.loads(Path(args.coverage_json).read_text())
         horizon_text = f"[{args.horizon_start},{args.horizon_end})"
 
