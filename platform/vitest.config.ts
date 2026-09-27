@@ -59,6 +59,9 @@ const SHARED_EXCLUDE = [
       'tests/e2e/gate_ii_trace_smoke.spec.ts',
       'tests/e2e/gate_iii_intelligent_chat_smoke.spec.ts',
       'tests/e2e/portal/**',
+      // AI Console owner-operated Playwright acceptance — requires real local
+      // auth/provider/CLI prerequisites and must never be collected by Vitest.
+      'tests/e2e/ai-console/**',
       // D-S5 Playwright e2e spec — runs via playwright test, not vitest.
       'tests/e2e/new-client-flow.spec.ts',
       // P2-close item 5 — Playwright e2e spec (real app, SMOKE_SESSION_COOKIE-
