@@ -44,6 +44,7 @@ import {
   reserveInquiryAction,
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
+import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 
 export const maxDuration = 60
 
@@ -327,6 +328,11 @@ export async function POST(request: Request) {
       const observed = recordInquiryExecution(contract, {
         item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
         pagination, request_position_path: binding.pagination_contract?.request_position_path,
+        // A served result may warrant a different capability (RC-5.4); it is pursued only
+        // through the governed `continue` successor, never dispatched ad hoc.
+        evidence_frontier: disposition === 'served'
+          ? deriveEvidenceFrontier({ contract, item_id: item.item_id, evidence_payload: raw, snapshot })
+          : [],
       })
       const remaining = observed.iteration >= observed.max_iterations ? [] : nextReady(observed)
       const issued = issueInquiryLifecycleToken({

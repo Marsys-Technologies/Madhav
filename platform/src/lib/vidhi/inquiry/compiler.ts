@@ -789,7 +789,11 @@ export function applyInquiryObservations(contract: InquiryContract, observations
   const existingFrontier = new Map(contract.material_frontier.map((item) => [item.scu_id, item]))
   for (const observation of observations) {
     const observedItem = contract.plan_items.find((item) => item.item_id === observation.item_id)
-    if ((observation.discovered_frontier?.length ?? 0) === 0 && observedItem) {
+    // Only a frontier for the observed item's OWN capability (its next page) keeps that SCU's
+    // pagination frontier open; evidence-discovered frontier for other SCUs does not.
+    const continuesOwnScu = observedItem !== undefined
+      && (observation.discovered_frontier ?? []).some((discovered) => discovered.scu_id === observedItem.scu_id)
+    if (!continuesOwnScu && observedItem) {
       const existing = existingFrontier.get(observedItem.scu_id)
       if (existing?.discovered_from === observation.item_id && existing.disposition === 'open') {
         existingFrontier.set(observedItem.scu_id, { ...existing, disposition: 'absorbed' })
@@ -819,20 +823,25 @@ export function recordInquiryExecution(
     gap_reason?: string
     pagination: InquiryPaginationReceipt
     request_position_path?: string
+    /** Cross-capability frontier derived from this observation's evidence
+     *  (evidence_frontier.ts). Admitted only for a served observation. */
+    evidence_frontier?: readonly { scu_id: string; materiality: 'required' | 'supporting'; reason: string }[]
   },
 ): InquiryContract {
   const item = contract.plan_items.find((candidate) => candidate.item_id === args.item_id)
   if (!item) throw new Error('INQUIRY_UNKNOWN_PLAN_ITEM')
   const materiality = contract.obligations.some((obligation) => item.obligation_ids.includes(obligation.obligation_id)
     && obligation.materiality === 'required') ? 'required' as const : 'supporting' as const
+  const discoveredFrontier = [
+    ...(args.pagination.exhausted ? [] : [{ scu_id: item.scu_id, materiality, reason: `Pagination frontier remains open (${String(args.pagination.next)}).` }]),
+    ...(args.disposition === 'served' ? (args.evidence_frontier ?? []).filter((entry) => entry.scu_id !== item.scu_id) : []),
+  ]
   let observed = applyInquiryObservations(contract, [{
     item_id: item.item_id,
     disposition: args.disposition,
     evidence_refs: args.evidence_refs,
     gap_reason: args.gap_reason,
-    ...(args.pagination.exhausted ? {} : {
-      discovered_frontier: [{ scu_id: item.scu_id, materiality, reason: `Pagination frontier remains open (${String(args.pagination.next)}).` }],
-    }),
+    ...(discoveredFrontier.length ? { discovered_frontier: discoveredFrontier } : {}),
   }])
   if (!args.pagination.exhausted && args.pagination.next !== 'unproven' && args.pagination.next !== null) {
     if (!args.request_position_path) return observed
@@ -982,9 +991,15 @@ export function finalizeInquiryContract(contract: InquiryContract): InquiryContr
   if (materialGaps.length) reasons.push(`${materialGaps.length} required obligations failed or are dark`)
   if (openFrontier.length) reasons.push(`${openFrontier.length} material frontier items open`)
   if (cappedFrontier.length) reasons.push(`${cappedFrontier.length} material frontier items capped before exhaustion proof`)
-  const exhausted = cappedFrontier.length > 0
+  // An evidence-discovered frontier (evidence_frontier.ts) names a capability this contract has
+  // no plan item for, so it can only be pursued by an evidence-admitted successor contract.
+  const successorOnlyFrontier = openFrontier.filter((item) => item.reason.startsWith('evidence_')
+    && !contract.plan_items.some((planItem) => planItem.scu_id === item.scu_id))
+  if (successorOnlyFrontier.length) reasons.push(`${successorOnlyFrontier.length} evidence-discovered frontier items require a successor contract`)
+  const iterationExhausted = cappedFrontier.length > 0
     || (contract.iteration >= contract.max_iterations && (pending.length > 0 || materialGaps.length > 0 || openFrontier.length > 0))
-  if (exhausted) reasons.push('iteration cap reached before material frontier closure')
+  if (iterationExhausted) reasons.push('iteration cap reached before material frontier closure')
+  const exhausted = iterationExhausted || successorOnlyFrontier.length > 0
   return {
     ...contract,
     status: reasons.length === 0 ? 'COMPLETE' : exhausted ? 'BLOCKED' : 'INCOMPLETE',
