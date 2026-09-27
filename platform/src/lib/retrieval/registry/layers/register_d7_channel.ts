@@ -762,7 +762,19 @@ const classicalAttributionLookupCapability: CapabilityDescriptor = {
         is_error: false,
       }
     } catch (err) {
-      return { content: { error: String(err), chart_id }, is_error: true }
+      if (typeof err === 'object' && err !== null
+        && 'code' in err && err.code === 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE') {
+        return {
+          content: {
+            code: 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE',
+            error: err instanceof Error ? err.message : 'Classical attribution source unavailable.',
+            chart_id,
+            signal_ids,
+          },
+          is_error: true,
+        }
+      }
+      return { content: { code: 'CLASSICAL_ATTRIBUTION_LOOKUP_FAILED', error: String(err), chart_id }, is_error: true }
     }
   },
 }

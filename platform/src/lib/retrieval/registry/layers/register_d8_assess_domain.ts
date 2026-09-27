@@ -1379,8 +1379,9 @@ async function runAssessDomain(
         // ga_yoga_firings.constituent_fact_ids (→ chart_facts.fact_id, §N.5) — never a shared stub.
         yoga_fact_ids: Array.from(yogaFactIds),
         citations: {
-          note: 'Classical citations available via classical_attribution_lookup for signal_id_refs above.',
-          drill_uri: 'marsys://tool/L2/classical_attribution_lookup',
+          note: 'Classical attribution retrieval is currently unavailable because its retired source store has no queryable replacement; signal_id_refs remain available for a future grounded lookup.',
+          classical_attribution_status: 'unavailable',
+          classical_attribution_reason: 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE',
           signal_id_refs: signalRefs,
         },
         judgment_flags: [
@@ -1537,7 +1538,6 @@ const assessMarriageCapability: CapabilityDescriptor = {
   drill_children: [
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
-    'marsys://tool/L2/classical_attribution_lookup',
     'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
@@ -1611,7 +1611,6 @@ const assessCareerCapability: CapabilityDescriptor = {
   drill_children: [
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
-    'marsys://tool/L2/classical_attribution_lookup',
     'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
@@ -1685,7 +1684,6 @@ const assessHealthCapability: CapabilityDescriptor = {
   drill_children: [
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
-    'marsys://tool/L2/classical_attribution_lookup',
     'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
@@ -1759,7 +1757,6 @@ const assessWealthCapability: CapabilityDescriptor = {
   drill_children: [
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
-    'marsys://tool/L2/classical_attribution_lookup',
     'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
@@ -1853,7 +1850,6 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
   drill_children: [
     'marsys://tool/L2/query_signals',
     'marsys://tool/L3/query_temporal_activation',
-    'marsys://tool/L2/classical_attribution_lookup',
   ],
 
   llm_hints: {
@@ -2034,7 +2030,6 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
           drill_next: [
             'marsys://tool/L2/query_signals',
             'marsys://tool/L3/query_temporal_activation',
-            'marsys://tool/L2/classical_attribution_lookup',
           ],
           provenance: {
             tables: ['bodha_msr_signals', 'kala_activation'],

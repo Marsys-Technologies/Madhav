@@ -6,6 +6,12 @@
  *
  * M8/Brahmagyan delta build 2026-06-03.
  * D7 Step 4 (2026-06-28): moved from lib/retrieve/ to lib/retrieval/tools/ on lib/retrieve retirement.
+ *
+ * FAILS CLOSED: the underlying lookup throws ClassicalAttributionSourceUnavailableError
+ * (code CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE) because its retired source store has no
+ * queryable replacement. This wrapper deliberately does not catch it — an empty ToolBundle
+ * would falsely present every requested signal as classically silent. It has no production
+ * importer; it is kept only for the (vitest-excluded) legacy classical pipeline test.
  */
 
 import { createHash } from 'crypto'

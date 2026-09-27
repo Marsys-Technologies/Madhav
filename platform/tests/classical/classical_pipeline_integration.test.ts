@@ -41,25 +41,6 @@ function makeChunkRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeAttrRow(overrides: Record<string, unknown> = {}) {
-  return {
-    attribution_id: 'attr-uuid-1',
-    msr_signal_id: 'SIG.MSR.001',
-    text_key: 'bphs',
-    title: 'Brihat Parashara Hora Shastra',
-    author: 'Parashara',
-    chapter: '26',
-    verse_range: '26.19',
-    content: 'Saturn exalted in Libra in a Kendra forms Sasha Mahapurusha Yoga.',
-    attribution_type: 'confirms',
-    confidence: 0.90,
-    confidence_tier: 'HIGH',
-    derivation_notes: 'Direct verse reference',
-    translation_cross_checked: true,
-    ...overrides,
-  }
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.GCP_PROJECT = 'test-project'
@@ -94,24 +75,20 @@ describe('classical_text_search_tool.retrieve', () => {
   })
 })
 
-// ── 2. classical_attribution_lookup_tool returns valid ToolBundle ──
+// ── 2. classical_attribution_lookup_tool fails closed (retired source store) ──
 describe('classical_attribution_lookup_tool.retrieve', () => {
-  it('produces a ToolBundle with tool_name classical_attribution_lookup', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [makeAttrRow()], rowCount: 1 })
+  it('rejects with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE instead of an empty/silent ToolBundle', async () => {
     const { tool } = await import('@/lib/retrieval/tools/classical_attribution_lookup_tool')
     const plan = makePlan('classical_grounding', ['classical_attribution_lookup'])
-    const bundle = await tool.retrieve(plan, { signal_ids: ['SIG.MSR.001'] })
-    expect(bundle.tool_name).toBe('classical_attribution_lookup')
-    expect(bundle.results.length).toBe(1)
-    expect(bundle.results[0].signal_id).toBe('SIG.MSR.001')
+    await expect(tool.retrieve(plan, { signal_ids: ['SIG.MSR.001'] }))
+      .rejects.toMatchObject({ code: 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE' })
   })
 
-  it('returns empty results for empty signal_ids', async () => {
+  it('rejects for empty signal_ids too (no ordinary empty result exists)', async () => {
     const { tool } = await import('@/lib/retrieval/tools/classical_attribution_lookup_tool')
     const plan = makePlan('classical_grounding', ['classical_attribution_lookup'])
-    const bundle = await tool.retrieve(plan, { signal_ids: [] })
-    expect(bundle.results).toHaveLength(0)
-    expect(bundle.result_hash).toMatch(/^sha256:/)
+    await expect(tool.retrieve(plan, { signal_ids: [] }))
+      .rejects.toMatchObject({ code: 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE' })
   })
 })
 
