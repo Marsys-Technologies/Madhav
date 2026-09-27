@@ -1,9 +1,13 @@
 ---
 artifact: NIKASHA_WAVE2_W2-1_REPORT
 packet: W2-1 — no unearned closure; no silent absence (freeze blockers)
-version: "1.1"
-status: CORRECTIONS C1 + C3 APPLIED after gate review (W2-1_REVIEW.md, 8af39a194); C1 awaits re-gate
+version: "1.2"
+status: CORRECTIONS C1/C3 (W2-1_REVIEW, 8af39a194) and C4/C5 (W2-1_C1_REVIEW, 763529d07) APPLIED; R222 precondition MET per the C1 re-gate
 changelog:
+  - "1.2 (2026-09-27): C1 re-gate corrections — C4 tests pin the execution marker (b98fc92c7); C5 wording: both
+    started_at sites named (asset_runner.py:1403, run_heavy_writer_standalone.py:137) in report and docstring,
+    executed = started stated, new #36 (C1 writerless unstarted N/A) → 36 branches, R42 heading, earn_cost_signal
+    obsolete not a miss, C1-M4 log re-run with both guards reverted; F-C4 (newline-split rows) listed."
   - "1.1 (2026-09-27): corrections after gate review — C1 code fix (1ae91dae4: a queued/never-started
     build_run_assets row is not an execution; Build.history never PASSes at 0 completions), re-census and
     re-emit; C3 wording: R42 basis mismatches (bo_upaya, ga_condition), R52 A5 flip under target_floor=0,
@@ -13,7 +17,7 @@ changelog:
 produced_on: 2026-09-27
 builder: Opus (wave-2 builder, packet W2-1 only)
 base: 9baaa307b
-head_code: 1ae91dae4 (v1.0: d465d5a2c)
+head_code: 1ae91dae4 + C5 docstring (v1.0: d465d5a2c); tests b98fc92c7
 rows: [R224, R231, R223, R222, R225, R42, R52, R56, R48]
 files_touched:
   - platform/scripts/governance/asset_census.py
@@ -51,8 +55,8 @@ has a test that fails without its change, with the mutation run recorded (§2, f
 
 **Packet proofs.**
 
-1. **Branch enumeration (§3).** 35 PASS/N/A-yielding branches at HEAD:
-   - **18 genuine measurement** (v1.1; v1.0 said 23). Of these, 5 are Earn/Cost branches that `measure()` cannot
+1. **Branch enumeration (§3).** 36 PASS/N/A-yielding branches (v1.2; 35 before C1 added #36):
+   - **19 genuine measurement** of **36** branches (v1.2: C1 added #36; v1.1 said 18 of 35; v1.0 said 23). Of these, 5 are Earn/Cost branches that `measure()` cannot
      reach today.
    - **10 fixed** in a W2-1 commit (v1.1: + #5 and #32 by C1, `1ae91dae4`).
    - **3 proxies** (#1, #2, #3) relabelled after the review's attacks.
@@ -64,8 +68,9 @@ has a test that fails without its change, with the mutation run recorded (§2, f
    - ERRORED falls 78 → 0.
    - `lel_events` is newly measured.
 3. **T1 planted suite (§5).** It ran in full on the sandbox, at both commits. `build_completion_truncate` now
-   reads **FAIL**; it was FAIL→PASS at `9baaa307b`. 16/16 applicable plants are detected at HEAD (15/16 at base), plus 1 plant awaiting re-specification (v1.1). The
-   miss (`earn_cost_signal`) is a miss at both commits, by the D6 design.
+   reads **FAIL**; it was FAIL→PASS at `9baaa307b`. 16/16 applicable plants are detected at HEAD (15/16 at base).
+   The 17th plant, `earn_cost_signal`, is **obsolete** at both commits (D6 retired `rows_per_second` as the
+   Earn/Cost basis) and awaits re-specification under R55 — it is not a miss (v1.2 wording).
 4. **`--emit-gaps` dry run (§6).** Six layers, on a ledger copy:
    - 596 OPEN rows appended, **0 CLOSED, 0 RE-OPENED**, 209 already present.
    - A re-emit is byte-identical (idempotent).
@@ -255,7 +260,7 @@ R225-M3 F1b shape under the NEW default                                      sur
 after revert: 170 passed, 7 skipped
 ```
 
-### R42 — `Build.completion` compares, like for like · `cfa9f42c0`
+### R42 — `Build.completion` compares `rows_written` with live, on a stated basis · `cfa9f42c0`
 
 **Diff (`:990–:1030`).**
 - **The defect.** The pre-fix final branch read PASS for **any** `rows_written > 0` without comparing.
@@ -396,13 +401,15 @@ Scope: `asset_census.py` at `d465d5a2c`. `CLOSABLE = (PASS, NA)` at `:1211`. Lab
   removed in commit X.
 - **not fixed** — the branch can close on something contested; it is named here, not dressed up.
 
-| # | file:line (HEAD) | criterion — condition | label |
+Line numbers are at `d465d5a2c` (v1.0) except rows #5, #30–32 and #36, which give lines at the C1/C5 head.
+
+| # | file:line | criterion — condition | label |
 |---|---|---|---|
 | 1 | `:288` | `Build.contract` PASS — the registered class subclasses WriterBase, has an entry point, no `ctx.db_conn.commit/close`, no `asset_throughput` write (AST) | **proxy (v1.1)** — genuine for literal class-body syntax only; an aliased `conn = ctx.db_conn; conn.commit()` or a module-level helper writing `asset_throughput` evades it (review A1; 0 live instances) |
 | 2 | `:304` | `Idem.pattern` PASS — `ON CONFLICT` in the writer's own SQL strings (upsert layer) | **proxy (v1.1)** — text presence anywhere in the writer, not on the target table (review A2); deeper resolution is R20, W2-3 |
 | 3 | `:307` | `Idem.pattern` PASS — `DELETE FROM` (delete-then-insert layers) | **proxy (v1.1)** — a DELETE on a sibling table passes (review A2; live shape bo_upaya, correct today by coincidence) |
 | 4 | `:618` | `Build.history` PASS — cascade-blocked rows only, ≥1 completion (B1 C-4) | genuine |
-| 5 | `:619`→ | `Build.history` PASS — no error/abort in the history, **≥1 completion** | **fixed in `1ae91dae4` (C1, v1.1)** — v1.0 labelled this genuine with a latent edge; the review showed 0 completions + 0 errors (only `queued` rows, 1 465 persist in finished runs) read PASS "0 complete". Now NO_DETECTOR with the reason. |
+| 5 | `:651` | `Build.history` PASS — no error/abort in the history, **≥1 completion** | **fixed in `1ae91dae4` (C1, v1.1)** — v1.0 labelled this genuine with a latent edge; the review showed 0 completions + 0 errors (only `queued` rows, 1 465 persist in finished runs) read PASS "0 complete". Now NO_DETECTOR with the reason. |
 | 6 | `:703` | `Earn.build_record` N/A — never attempted | genuine per D6 **but unreachable from `measure()`** (`attempt_linkage_wired=False` at `:1045`; proven behaviourally by R225, `14f3f5d1c`) |
 | 7 | `:706` | Earn N/A — healthy non-execution | as #6 |
 | 8 | `:708` | Earn N/A — failed before completion | as #6 |
@@ -427,15 +434,16 @@ Scope: `asset_census.py` at `d465d5a2c`. `CLOSABLE = (PASS, NA)` at `:1211`. Lab
 | 27 | `:1142` | `Ldgr.source_presence` PASS — citation column populated on all rows (rows > 0) | genuine |
 | 28 | `:1157` | `Dens.served` N/A — a real scan found no referencing module | **fixed in `61c6e637a`** (9baaa `:887` read N/A for an unscanned, missing directory) |
 | 29 | `:1157` | `Dens.served` PASS — ≥1 referencing module declares `density_contract` | **not fixed — grading contested and a proxy (OS-3):** PASS when **any** of N modules declares (**29** of 42 live PASS verdicts are partial — v1.0 said 31, wrong), and the declaration test is a substring match, so a comment mentioning `density_contract` counts (review A4; 0 live instances). No row. |
-| 30 | `:1164` | `Build.exercised` N/A — never run and no writer | genuine |
-| 31 | `:1167` | `Build.history` N/A — never run (`Build.exercised` owns it; it FAILs when there is a writer) | genuine delegation (A_REVIEW2 #12) |
-| 32 | `:1169`→ | `Build.exercised` PASS — ≥1 **executed** (`started_at IS NOT NULL`) `build_run_assets` row | **fixed in `1ae91dae4` (C1, v1.1)** — v1.0 labelled this genuine; it counted never-started `queued` rows (review A8: it would close the OPEN production gap `bg_sign_medical-Build.exercised`) |
+| 30 | `:1198` | `Build.exercised` N/A — never run (no `build_run_assets` row) and no writer | genuine |
+| 31 | `:1199` | `Build.history` N/A — never run (`Build.exercised` owns it; it FAILs when there is a writer) | genuine delegation (A_REVIEW2 #12) |
+| 32 | `:1213` | `Build.exercised` PASS — ≥1 **started** (`started_at IS NOT NULL`; "executed" means started — dispatched past the building flip, incl. skip_no_delta, probe-green and pre-writer-error attempts) `build_run_assets` row | **fixed in `1ae91dae4` (C1, v1.1)** — v1.0 labelled this genuine; it counted never-started `queued` rows (review A8: it would close the OPEN production gap `bg_sign_medical-Build.exercised`) |
 | 33 | `:1174` | `Build.dep_liveness` PASS — every dependency has a `lit` build record | **not fixed — scope caveat:** `lit` on **any** chart (`hist["lit"]` is chart-agnostic) — registered R45 (W2-2) |
 | 34 | `:1177` | `Build.dep_liveness` N/A — no declared dependencies | genuine |
 | 35 | `:1211` | `CLOSABLE = (PASS, NA)` — the only closing allowlist; ERRORED/NOT_GENERIC/UNKNOWN/absent never close | genuine (wave-1, tested) |
+| 36 | `:1208` | `Build.exercised` N/A — rows exist but none was ever started, and no writer (added by C1, `1ae91dae4`) | genuine, like #30 (v1.2; the writer-backed twin of this case reads FAIL) |
 
-**Tally: 35 branches (v1.1, after the gate review).**
-- **18 genuine measurement:** #4, 6–10, 14–17, 20–21, 26–27, 30–31, 34–35. Of these, #6–10 are unreachable from
+**Tally: 36 branches (v1.2; C1 added #36).**
+- **19 genuine measurement:** #4, 6–10, 14–17, 20–21, 26–27, 30–31, 34–36. Of these, #6–10 are unreachable from
   `measure()` today.
 - **10 fixed in a W2-1 commit:** #11, 12, 13, 22, 23, 24, 25 (with the F7 proxy caveat), 28, and — after the
   review — **#5 and #32 in `1ae91dae4` (C1)**.
@@ -561,7 +569,7 @@ the harness's own DB; `default_transaction_read_only=off` there by design).
 | count_floor | DET PASS→FAIL | DET PASS→FAIL (+ same-asset `Build.completion` PASS→FAIL: 5 written vs 4 live, R42) |
 | build_completion_rw0 | DET PASS→FAIL | DET PASS→FAIL |
 | **build_completion_truncate** | **miss FAIL→PASS** "live=0 and rows_written=0 — consistent (empty by design or service)" | **DET FAIL→FAIL** "empty: live=0 (count_sql over the target table; global) and the registry does not declare zero rows complete (target_floor=164575); build record rows_written=0" |
-| earn_cost_signal | miss NO_DETECTOR→NO_DETECTOR | miss NO_DETECTOR→NO_DETECTOR |
+| earn_cost_signal | obsolete (D6) — NO_DETECTOR→NO_DETECTOR | obsolete (D6) — NO_DETECTOR→NO_DETECTOR |
 | build_dag | DET PASS→FAIL | DET PASS→FAIL |
 | build_target_null | DET PASS→N/A (degraded by design, R53) | DET PASS→N/A |
 | count_integrity | DET PASS→PARTIAL | DET PASS→PARTIAL |
@@ -757,14 +765,20 @@ Both fail offline in the `9baaa307b` worktree, before any W2-1 change. They are 
 |---|---|---|---|---|
 | **C1** | A never-started `build_run_assets` row (e.g. `queued`) no longer counts as a run; `Build.history` never PASSes at 0 completions | `1ae91dae4` | `test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass` (a); `test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open` (b); `test_c1_history_never_passes_with_zero_completions`; `test_c1_an_executed_row_still_exercises` (positive control) | M1 exercised counts rows → 2 fail (a, b); M2 zero-completion PASS restored → 3 fail; M3 `started_at` ignored → 3 fail; M4 both guards reverted → 3 fail (a, b, history); reverted, suite green (`mutation_runs_C1.log`) |
 | **C3** | Report wording (this v1.1): (i) R42 basis mismatches; (ii) R52 A5 flip under floor 0; (iii) Dens.served 29 not 31; (iv) proxy labels #1/#2/#3/#25/#29, #5/#32 relabelled fixed, #23 residuals A5/A7, T1 as 16/16 + 1; (v) this section | this report commit | — (text) | — |
+| **C4** | Tests pin C1's execution marker (W2-1_C1_REVIEW §7: mutations M2 state-list and M5 `ended_at` survived) | `b98fc92c7` (tests only) | `test_c4_a_unstarted_aborted_and_blocked_error_rows_do_not_exercise_or_close` (ledger COPY, gap stays OPEN); `test_c4_b_an_ended_but_never_started_row_is_not_executed`; `test_live_c4_executed_equals_the_started_at_count` (+ xfail(strict) twin documenting F-C4) | C4-M2 executed = state in {complete, error, aborted} → 3 fail (a, b, live); C4-M5 `(a.ended_at IS NOT NULL)` → 3 fail (a, b, live); reverted, suite green (`mutation_runs_C4.log`) |
+| **C5** | Wording (this v1.2): both `started_at` sites named (report §11 and the `build_history()` docstring — a text-only change in `asset_census.py`); executed = started stated; #36 added (36 branches, 19 genuine); R42 heading; `earn_cost_signal` obsolete, not a miss; C1-M4 re-run with **both** guards reverted (appended to `mutation_runs_C1.log`: 4 failed — c1_a, c1_history, c1_b, c4_a — then restored byte-identical; the original M4 entry is annotated as not evidencing it) | this report commit | — (text) | — |
 
 ### C1 — the executed-state set, and why
 
 **Chosen: an attempt is executed iff `build_run_assets.started_at IS NOT NULL`, not a list of states.**
 
-- **Engine.** `started_at` is set at exactly one site, the `'building'` transition in `asset_runner.py`
-  (`INSERT INTO build_run_assets … VALUES (…, 'building', NOW()) ON CONFLICT … SET state='building',
-  started_at=NOW()`). Rows that never reach it keep `started_at` NULL whatever their terminal state:
+- **Engine.** `started_at` is set at **two** sites, both meaning "this attempt was started in state
+  `'building'`" (v1.2; v1.1 wrongly said "exactly one site"): `asset_runner.py:1403` (the orchestrator's
+  `'building'` transition, `INSERT INTO build_run_assets … VALUES (…, 'building', NOW()) ON CONFLICT … SET
+  state='building', started_at=NOW()`) and `run_heavy_writer_standalone.py:137` (the standalone heavy-writer
+  runner, `INSERT … VALUES (…, 'building', NOW())`). **"Executed" throughout C1 means *started*** — dispatched
+  past the building flip — so it includes `skip_no_delta`, probe-green and pre-writer-error attempts, not only
+  writer runs. Rows that never reach either site keep `started_at` NULL whatever their terminal state:
   - `queued` leftovers in finished runs;
   - `aborted` rows terminalised straight from `queued` (`runner.py` `_terminalize_preflight_failure`,
     guardian cleanup, manual reaps);
@@ -837,3 +851,26 @@ the same pre-existing `test_drift_detector_h35_h38.py` pair. Live: `test_w2_1_ea
 
 **R222 precondition.** C1 is the only correction the review bound to the first production `--emit-gaps`. With
 `1ae91dae4` it is proposed as met, **subject to the C1 re-gate**. The builder does not declare it met.
+
+
+### v1.2 — found while pinning C1 (C4), listed, not fixed
+
+- **F-C4 — `build_history()` splits rows on newlines in `error`.** The read selects `left(a.error,200)` raw. An
+  error text containing a newline (Python tracebacks) splits one psql row into several lines:
+  - that row's `started_at` flag is lost, so `executed` is undercounted (fail-safe for `Build.exercised`);
+  - traceback fragments appear as phantom per-asset keys in `hist["per"]` (ignored by `measure()`, which only
+    reads registry ids);
+  - the split row's `sample_error` is truncated.
+  Live 2026-09-27: 57 rows across 29 assets; ph_sodhana reads executed 39 against 41 started. Pinned by
+  `test_live_c4_executed_equals_the_started_at_count_over_all_rows` (`xfail(strict=True)`, so it fails the day
+  the read becomes newline-safe). C4 was scoped tests-only, so the code is **not** changed. The fix is one
+  `replace(…, E'\n', ' ')` in the SELECT; it is for the executor to register (same defect class as `registry()`'s
+  json_agg note).
+- The C1 re-gate's other carried items (C2 dep_liveness any-chart, F-S1 Dens.served comment match, F-L1
+  complete-but-unstarted, F-P1 B1 "latest run complete" text) are listed in `W2-1_C1_REVIEW.md` §7 for the fold.
+  They are not registered or fixed here.
+
+**Suite at v1.2:**
+- Offline governance suite: **214 passed, 11 skipped, 2 failed** (227). The 2 failures are the pre-existing
+  `test_drift_detector_h35_h38.py` pair.
+- Live `test_w2_1_earned_verdicts.py`: 48 passed + 1 xfailed.

@@ -537,8 +537,11 @@ def build_history(prefix: str, ids=None) -> dict:
     only ever exercised by a layer- or asset-scope run — measured here rather than assumed.
 
     C1 (W2-1_REVIEW §2 A8): a `build_run_assets` ROW is not an EXECUTION. The engine inserts every
-    planned asset as `queued` and sets `started_at` at exactly one site — the 'building' transition in
-    `asset_runner.py` (INSERT … state 'building', started_at NOW()). Rows that never reach it keep
+    planned asset as `queued` and sets `started_at` only where an attempt is started in state
+    'building': `asset_runner.py:1403` (the orchestrator's 'building' transition) and
+    `run_heavy_writer_standalone.py:137` (the standalone heavy-writer runner, same meaning). "Executed"
+    below therefore means STARTED — dispatched past the building flip — which includes skip_no_delta,
+    probe-green and pre-writer-error attempts, not only writer runs. Rows that never reach it keep
     `started_at` NULL whatever their final state: `queued` leftovers in finished runs, `aborted` rows
     the runner's preflight/guardian terminalised straight from `queued` (runner.py
     `_terminalize_preflight_failure`), and `error` rows written by `_mark_asset_blocked` ("BLOCKED: …

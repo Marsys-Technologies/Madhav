@@ -24,6 +24,9 @@ FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_
 --- reverted (byte-identical)
 --- after revert:
 193 passed, 9 skipped, 21 deselected in 3.03s
+# v1.2 NOTE (W2-1_C1_REVIEW C5(f)): this original M4 entry does NOT evidence 'both reverted' — mut.sh backed up a
+# file that already had the M1 mutation applied, so its after-revert line (2 failed) restored the M1 mutant, not the
+# clean file (the clean file was then restored by hand). The corrected re-run is appended at the end of this log.
 === mutation C1-M4-full-revert-both on platform/scripts/governance/asset_census.py (offline)
 ok: asset_census.py (80 -> 67 chars)
 FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass
@@ -33,3 +36,32 @@ FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_
 --- reverted (byte-identical)
 --- after revert:
 2 failed, 191 passed, 9 skipped, 21 deselected in 3.04s
+
+
+# ---- v1.2 corrected re-run of C1-M4 (both C1 guards reverted at once, then restored byte-identical) ----
+# The diff shown includes the (then uncommitted) C5 docstring wording change at the top; the two C1 guards are the
+# '-    if h["complete"] == 0:' and '-        elif not h.get("executed", 0):' lines. The after-revert '2 failed' are the
+# pre-existing test_drift_detector_h35_h38.py pair (full suite, drift tests included this time).
+=== mutation C1-M4-both-fixes-reverted (re-run for v1.2, W2-1_C1_REVIEW C5(f)) — offline
+ok: asset_census.py (38 -> 19 chars)
+ok: asset_census.py (80 -> 67 chars)
+--- both C1 guards reverted at once; the mutated diff:
+-    planned asset as `queued` and sets `started_at` at exactly one site — the 'building' transition in
+-    `asset_runner.py` (INSERT … state 'building', started_at NOW()). Rows that never reach it keep
++    planned asset as `queued` and sets `started_at` only where an attempt is started in state
++    'building': `asset_runner.py:1403` (the orchestrator's 'building' transition) and
++    `run_heavy_writer_standalone.py:137` (the standalone heavy-writer runner, same meaning). "Executed"
++    below therefore means STARTED — dispatched past the building flip — which includes skip_no_delta,
++    probe-green and pre-writer-error attempts, not only writer runs. Rows that never reach it keep
+-    if h["complete"] == 0:
++    if False:
+-        elif not h.get("executed", 0):
++        elif False:
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_history_never_passes_with_zero_completions
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c1_b_reviewer_reproduction_the_open_bg_sign_medical_gap_stays_open
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c4_a_unstarted_aborted_and_blocked_error_rows_do_not_exercise_or_close
+4 failed, 39 passed, 6 skipped in 2.19s
+--- reverted (byte-identical to the pre-mutation file)
+--- after revert (full governance suite, offline):
+2 failed, 214 passed, 11 skipped in 3.18s
