@@ -56,6 +56,14 @@ PROVENANCE_DIR = REPO_ROOT / "00_ARCHITECTURE/briefs/nirmana/nikasha_test/proven
 DERIVED_OUTPUT_PATH = PROVENANCE_DIR / "producer_provenance.derived.json"
 CLOSURE_REPORT_PATH = PROVENANCE_DIR / "CLOSURE_REPORT.md"
 READER_SCAN_PATH = PROVENANCE_DIR / "BUILD_DEPENDENCIES_READER_SCAN.md"
+# C-5(iv): this lane's own wave1 report/review directory. Its prose (B_REPORT.md,
+# and the gate's own B_REVIEW.md) mentions "build_dependencies" many times while
+# discussing the scan itself — a moving, self-referential source of hits, just
+# like the un-excluded PROVENANCE_DIR was before the fix documented below. Not
+# excluding it is exactly why the committed 80 went stale the moment B_REPORT.md
+# grew one more line quoting the term (observed: 80 -> 81, "the difference is
+# B_REPORT lines" — B_REVIEW.md §"Also noted, blocking nothing").
+WAVE1_DIR = REPO_ROOT / "00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # §0 — Data types
@@ -141,13 +149,37 @@ def get_reviewed_claims(snapshot: dict) -> Dict[str, List[dict]]:
     """SCU -> list of producer_output_claims with disposition == 'reviewed_output',
     verbatim (never mutated). This is the calibration + authority set (12 SCUs / 14
     assets, measured 2026-09-27 — see B_REPORT.md for the exact recount against the
-    D5 ruling's stated '15 assets')."""
+    D5 ruling's stated '15 assets', and C-5's correction: 15 is not an off-by-one —
+    it counts every producer_output_claim, including the one carried by
+    `get_non_reviewed_producer_output_claims` below, not just the reviewed ones)."""
     out: Dict[str, List[dict]] = {}
     for scu in snapshot.get("scus", []):
         claims = [
             c
             for c in (scu.get("producer_output_claims") or [])
             if c.get("disposition") == "reviewed_output"
+        ]
+        if claims:
+            out[scu["scu_id"]] = claims
+    return out
+
+
+def get_non_reviewed_producer_output_claims(snapshot: dict) -> Dict[str, List[dict]]:
+    """C-5(iii): SCU -> list of producer_output_claims whose disposition is
+    anything OTHER than 'reviewed_output' (today, exactly one:
+    `scu.kala.temporal_activation`'s `route_evidence_only` claim naming
+    `ka_kalasutra` — the D5 ruling's 15th named asset, dropped silently by the
+    pre-correction derivation). Carried through `derive_all` with their OWN
+    disposition, verbatim — never relabeled as `reviewed_output` (that would be
+    the exact §N.7 'never emit a tier nothing double-checked' violation this
+    lane must not commit), and never silently dropped (§N.8: an honest,
+    not-yet-reviewed claim is still real evidence, not nothing)."""
+    out: Dict[str, List[dict]] = {}
+    for scu in snapshot.get("scus", []):
+        claims = [
+            c
+            for c in (scu.get("producer_output_claims") or [])
+            if c.get("disposition") and c.get("disposition") != "reviewed_output"
         ]
         if claims:
             out[scu["scu_id"]] = claims
@@ -741,6 +773,7 @@ def derive_all(
     repo_root: Path = REPO_ROOT,
 ) -> Dict[str, ScuProvenance]:
     reviewed = get_reviewed_claims(snapshot)
+    non_reviewed_claims = get_non_reviewed_producer_output_claims(snapshot)
     result: Dict[str, ScuProvenance] = {}
 
     for scu in snapshot.get("scus", []):
@@ -757,6 +790,21 @@ def derive_all(
                     table=claim_asset.target_table if claim_asset else None,
                     source_ref=claim.get("evidence", ""),
                     disposition="reviewed_output",
+                    shared=False,
+                )
+            )
+
+        # C-5(iii): a claim with a non-reviewed disposition (e.g.
+        # `route_evidence_only`) is carried through too, honestly, under ITS OWN
+        # disposition — never silently dropped, never relabeled as reviewed_output.
+        for claim in non_reviewed_claims.get(scu_id, []):
+            claim_asset = assets.get(claim["asset_id"])
+            sp.producers.append(
+                Producer(
+                    asset_id=claim["asset_id"],
+                    table=claim_asset.target_table if claim_asset else None,
+                    source_ref=claim.get("evidence", ""),
+                    disposition=claim["disposition"],
                     shared=False,
                 )
             )
@@ -1004,19 +1052,26 @@ _SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".sql", ".md", ".sh", ".json", ".yaml
 
 def scan_build_dependencies_readers(repo_root: Path = REPO_ROOT) -> List[Tuple[str, int, str]]:
     """Read-only grep. Deliberately excludes this lane's own generated output
-    (`PROVENANCE_DIR`, which includes this scan's own prior report): without this
-    exclusion, re-running the scan finds its own previous output file listing
-    'build_dependencies' on every line, and hit counts runaway-inflate on every
-    invocation (observed: 67 -> 144 hits on a second consecutive run before this
-    exclusion was added). Generated drift/build reports are gitignored and outside
-    the repo's source tree in intent even though they live under 00_ARCHITECTURE/."""
+    (`PROVENANCE_DIR`, which includes this scan's own prior report) AND this
+    lane's own report/review prose (`WAVE1_DIR` — B_REPORT.md and B_REVIEW.md,
+    which both discuss 'build_dependencies' at length while describing this very
+    scan): without excluding PROVENANCE_DIR, re-running the scan finds its own
+    previous output file listing 'build_dependencies' on every line, and hit
+    counts runaway-inflate on every invocation (observed: 67 -> 144 hits on a
+    second consecutive run before that exclusion was added). Without ALSO
+    excluding WAVE1_DIR, the count is not runaway but is still unstable — it
+    silently drifts every time B_REPORT.md or B_REVIEW.md gains or loses a line
+    mentioning the term (observed: 80 -> 81 the moment B_REPORT.md was extended;
+    C-5(iv)). Generated drift/build reports and this lane's own narrative are
+    both outside the repo's SOURCE tree in intent even though they live under
+    00_ARCHITECTURE/."""
     hits: List[Tuple[str, int, str]] = []
     pattern = re.compile(r"\bbuild_dependencies\b")
-    excluded_abs = PROVENANCE_DIR.resolve()
+    excluded_dirs_abs = [PROVENANCE_DIR.resolve(), WAVE1_DIR.resolve()]
     for dirpath, dirnames, filenames in os.walk(repo_root):
         dirnames[:] = [d for d in dirnames if d not in _SCAN_EXCLUDE_DIRS and not d.startswith(".")]
         dp_resolved = Path(dirpath).resolve()
-        if dp_resolved == excluded_abs or excluded_abs in dp_resolved.parents:
+        if any(dp_resolved == excl or excl in dp_resolved.parents for excl in excluded_dirs_abs):
             continue
         for fname in filenames:
             if Path(fname).suffix not in _SCAN_EXTS:

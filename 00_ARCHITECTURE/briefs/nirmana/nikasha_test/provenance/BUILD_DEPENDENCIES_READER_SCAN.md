@@ -1,7 +1,7 @@
 ---
 artifact: NIKASHA_WAVE1_B3_BUILD_DEPENDENCIES_READER_SCAN
 version: "1.0"
-generated_at: 2026-09-26T22:58:52.622672+00:00
+generated_at: 2026-09-27T05:52:15.412738+00:00
 generator: platform/scripts/governance/catalog_provenance.py --reader-scan
 ---
 
@@ -9,7 +9,7 @@ generator: platform/scripts/governance/catalog_provenance.py --reader-scan
 
 Read-only grep for `\bbuild_dependencies\b` across the repo (excluding `.git`, `node_modules`, `__pycache__`, `.next`, `dist`, `build`). **No change made to the table or any file** — this is evidence for a native decision (R219), not an action.
 
-Total hits: **80**
+Total hits: **76**
 
 ## `00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`
 
@@ -105,18 +105,6 @@ Total hits: **80**
 
 - L165: `\| **D5 revised 2.1 by the native** \| The frozen D5 was wrong in kind: Pariprāśna's planner LLM chooses catalog units per question, so no static question→layer table is used. Necessity = catalog provenance + upstream DAG closure, computed (63/127 active today; 64 outside, all 23 ph/mi); P-needs become the planner test; T3 §0.1 re-scoped; no §3.6. Native's two corrections adopted: producer-or-part-producer (no "sole producer"), and closure propagates upstream. Side findings R219 (dead `build_dependencies`), R220 (127 active, not 129). \| v2.1, register §2.10, commits `5d7d2baef` + this one \|`
 
-## `00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REPORT.md`
-
-- L307: `## 4 — B-3: `build_dependencies` reader scan`
-- L311: `[B-3] build_dependencies reader scan: 67 hits -> .../provenance/BUILD_DEPENDENCIES_READER_SCAN.md`
-- L319: ``SELECT asset_id, depends_on FROM build_dependencies`) and `rebuild_asset()` (line 213:`
-- L320: ``SELECT asset_id, category_prefix FROM build_dependencies WHERE asset_id = ANY(%s)`).`
-- L327: `"caller" is its own test file. So `build_dependencies`'s one live reader is itself an`
-- L332: ``asset_registry.depends_on` and only mention `build_dependencies` in a comment`
-- L335: `read `build_dependencies`; historical migrations (`154`, archived `158`, `343` — 343`
-- L447: `6. `pipeline/dispatcher.py` (the one live reader of `build_dependencies`) is not`
-- L449: ``build_dependencies` retirement question. (§4)`
-
 ## `99_ARCHIVE/BRIEFS_RETIRED/CLAUDECODE_BRIEF_WS0B_CODE_CLUSTER_PURGE_v1_0.md`
 
 - L97: `export LEGACY_TABLES='audit_job_runs\|ayanamsha_registry\|build_checkpoints\|build_dependencies\|build_engine_versions\|build_events\|build_manifests\|build_notifications\|build_steps\|builds\|builds_staging\|chart_ayanamsha_reports\|chart_dashas\|chart_documents\|chart_facts\|chart_facts_history\|chart_facts_staging\|chart_facts_supersedence\|chat_attachments\|classical_attributions\|classical_chunks\|classical_texts\|cluster_register\|cluster_register_staging\|context_assembly_log\|contradiction_register\|contradiction_register_staging\|convergence_scores\|data_source_expected\|dasha_periods\|divisional_charts\|documents\|eclipses\|eclipses_retrogrades\|eclipses_staging\|engine_versions\|ephemeris_daily\|ephemeris_daily_staging\|g29_timing_rules\|gate_change_log\|kp_sublords\|l1_bhrigu_bindu_transits\|l1_ckn_chakra\|l1_graha_aspects_lifetime\|l1_kalanala_chakra\|l1_kota_chakra\|l1_phase_locked_anchors\|l1_sapta_shalaka\|l1_sarvatobhadra_positions\|l1_sarvatobhadra_vedha\|l1_tajik_varsha_year_lords\|l1_time_synchronicity\|l1_varsha_digest\|l1_vedha_extended\|l25_cdlm_cells\|l25_cdlm_cells_staging\|l25_cdlm_links\|l25_cdlm_links_staging\|l25_cgm_edges\|l25_cgm_edges_staging\|l25_cgm_nodes\|l25_cgm_nodes_staging\|l25_chart_lattice_snapshots\|l25_derivation_graph_edges\|l25_derivation_graph_nodes\|l25_divergence_ledger\|l25_msr_signals\|l25_msr_signals_staging\|l25_negative_space_map\|l25_pattern_catalog\|l25_rm_resonances\|l25_rm_resonances_staging\|l25_ucn_digests\|l25_ucn_digests_staging\|l25_ucn_sections\|l25_ucn_sections_staging\|l25_vedha_anchor_interactions\|llm_catalog_snapshot\|llm_config_audit\|llm_model_health\|llm_param_override\|llm_stack_routing_override\|mcp_audit_findings\|mcp_bundle_cache\|message_feedback\|messages\|msr_signals\|multi_school_stances\|notification_views\|panchanga_daily\|panchanga_daily_staging\|pattern_register\|pattern_register_staging\|prediction_ledger\|predictions\|pyramid_layers\|query_plans\|rag_chunks\|rag_chunks_staging\|rag_embeddings\|rag_embeddings_staging\|rag_feedback\|rag_graph_edges\|rag_graph_nodes\|rag_queries\|rag_reproducibility_failures\|rag_retrievals\|reports\|resonance_register\|resonance_register_staging\|retrogrades\|retrogrades_staging\|sade_sati_cycles\|sade_sati_phases\|sade_sati_phases_staging\|sankranti_table\|saturn_sign_changes\|school_analysis_runs\|school_convergence_index\|school_disagreements\|school_signal_coverage\|shadbala\|signal_states\|tajaka_annual\|tool_caveats\|varshaphala'`
@@ -186,17 +174,22 @@ Total hits: **80**
 
 ## `platform/scripts/governance/__tests__/test_catalog_provenance.py`
 
-- L259: `scan finds its own prior report (which lists 'build_dependencies' on every hit`
-- L268: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
-- L274: `stale_report.write_text("\n".join(f"- L{i}: `build_dependencies`" for i in range(50)))`
+- L294: `scan finds its own prior report (which lists 'build_dependencies' on every hit`
+- L303: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
+- L309: `stale_report.write_text("\n".join(f"- L{i}: `build_dependencies`" for i in range(50)))`
+- L322: `line mentioning 'build_dependencies' while describing the scan itself`
+- L332: `"cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"`
+- L337: `"\n".join(f"mentions build_dependencies on line {i}" for i in range(20))`
 
 ## `platform/scripts/governance/catalog_provenance.py`
 
 - L14: `read-only grep, never drops or alters `build_dependencies`)`
-- L811: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
-- L822: `'build_dependencies' on every line, and hit counts runaway-inflate on every`
-- L944: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
-- L1020: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
+- L60: `# and the gate's own B_REVIEW.md) mentions "build_dependencies" many times while`
+- L1046: `# §10 — B-3 build_dependencies reader scan (read-only grep; never touches the table)`
+- L1057: `which both discuss 'build_dependencies' at length while describing this very`
+- L1059: `previous output file listing 'build_dependencies' on every line, and hit`
+- L1185: `lines.append("# Nikaṣa wave 1 — B-3 `build_dependencies` reader scan")`
+- L1359: `print(f"[B-3] build_dependencies reader scan: {len(hits)} hits -> {READER_SCAN_PATH}")`
 
 ## `platform/src/generated/harvest/e2_db_truth.json`
 

@@ -316,6 +316,35 @@ def test_reader_scan_excludes_its_own_provenance_output_dir(tmp_path, monkeypatc
     assert len(hits) == 1
 
 
+def test_reader_scan_excludes_its_own_wave1_report_and_review(tmp_path, monkeypatch):
+    """C-5(iv): without excluding WAVE1_DIR, the reader-scan count silently
+    drifts every time this lane's own B_REPORT.md / B_REVIEW.md gains or loses a
+    line mentioning 'build_dependencies' while describing the scan itself
+    (observed: 80 -> 81 the moment B_REPORT.md was extended — B_REVIEW.md 'Also
+    noted, blocking nothing'). A genuine source hit outside wave1/ must still be
+    found; the wave1/ narrative must contribute none. Mutation this catches:
+    removing the WAVE1_DIR exclusion makes the 20 prose lines below reappear as
+    hits."""
+    repo = tmp_path
+    src_dir = repo / "platform" / "python-sidecar" / "pipeline"
+    src_dir.mkdir(parents=True)
+    (src_dir / "dispatcher.py").write_text(
+        "cur.execute('SELECT asset_id, depends_on FROM build_dependencies')\n"
+    )
+    wave1_dir = repo / "00_ARCHITECTURE" / "briefs" / "nirmana" / "nikasha_test" / "wave1"
+    wave1_dir.mkdir(parents=True)
+    (wave1_dir / "B_REPORT.md").write_text(
+        "\n".join(f"mentions build_dependencies on line {i}" for i in range(20))
+    )
+
+    monkeypatch.setattr(cp, "WAVE1_DIR", wave1_dir)
+    hits = cp.scan_build_dependencies_readers(repo_root=repo)
+
+    files_hit = {rel for rel, _lineno, _text in hits}
+    assert files_hit == {"platform/python-sidecar/pipeline/dispatcher.py"}
+    assert len(hits) == 1
+
+
 def test_check_completeness_passes_when_every_scu_is_accounted_for():
     provenance = {
         "scu.a": cp.ScuProvenance(
@@ -360,18 +389,18 @@ def test_producer_output_requirement_with_no_claims_gets_an_exact_reason_not_a_c
     assert cp.classify_no_detector_reason(sp.no_detector) == "producer_output_unclaimed"
 
 
-def test_derive_all_leaves_a_genuinely_unclassified_scu_without_a_fabricated_reason():
-    """The gate review's own constructed case (§2 item 4, first orphan): an SCU whose
-    only requirement is `producer_output` and whose only matching claim carries a
-    disposition OTHER than `reviewed_output` (e.g. `route_evidence_only`) is neither
-    picked up by the reviewed-claims pass NOR given a reason by the producer_output
-    branch (a claim DOES exist, so 'unclaimed' does not fire either) — as of this
-    commit (before C-5 carries non-reviewed dispositions through), this SCU must
-    come out of `derive_all` with `no_detector=None`, not a fabricated catch-all
-    string. That is precisely what makes `check_completeness` /
-    `validate_derived_artifact` able to read this as a real FAILURE instead of a
-    silently-passing green reason (CLAUDE.md §N.8). Mutation this catches: restoring
-    the catch-all gives this SCU a generic reason and this assertion fails."""
+def test_producer_output_claim_with_non_reviewed_disposition_is_carried_through():
+    """C-5(iii): the gate review's own constructed case (§2 item 4, first orphan) —
+    an SCU whose only requirement is `producer_output` and whose only matching
+    claim carries a disposition OTHER than `reviewed_output` (here,
+    `route_evidence_only` for `ka_kalasutra`/`scu.kala.temporal_activation`, the
+    D5 ruling's 15th named asset). This claim must be carried through as a real
+    producer under ITS OWN disposition — never silently dropped (that was the
+    genuinely-unclassified gap the C-1 commit could only prove via
+    `check_completeness`, not close), and never relabeled as `reviewed_output`
+    (CLAUDE.md §N.7 honest tiers — nothing has independently reviewed this claim).
+    Mutation this catches: reverting to carrying only `reviewed_output` claims
+    through regresses this SCU back to producers=[] and a failing --check."""
     snapshot = {
         "scus": [
             {
@@ -380,17 +409,23 @@ def test_derive_all_leaves_a_genuinely_unclassified_scu_without_a_fabricated_rea
                     {"requirements": [{"kind": "producer_output", "asset_id": "ka_kalasutra"}]}
                 ],
                 "producer_output_claims": [
-                    {"asset_id": "ka_kalasutra", "disposition": "route_evidence_only", "evidence": "handler reads kala_activation"}
+                    {
+                        "asset_id": "ka_kalasutra",
+                        "disposition": "route_evidence_only",
+                        "evidence": "handler reads kala_activation",
+                    }
                 ],
             }
         ]
     }
     result = cp.derive_all(snapshot, assets={}, known_tables=set(), table_to_assets={})
     sp = result["scu.test.orphan_route_evidence_only"]
-    assert sp.producers == []
-    assert sp.no_detector is None
-    failures = cp.check_completeness(result)
-    assert failures == ["scu.test.orphan_route_evidence_only"]
+    assert len(sp.producers) == 1
+    p = sp.producers[0]
+    assert p.asset_id == "ka_kalasutra"
+    assert p.disposition == "route_evidence_only"
+    assert p.source_ref == "handler reads kala_activation"
+    assert cp.check_completeness(result) == []
 
 
 def test_classify_no_detector_reason_is_a_closed_set():
