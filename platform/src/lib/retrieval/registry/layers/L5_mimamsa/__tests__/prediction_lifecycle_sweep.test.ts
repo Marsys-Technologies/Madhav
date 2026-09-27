@@ -190,4 +190,11 @@ describe('prediction_lifecycle_sweep — brahma_prospective_ledger half', () => 
     await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'brahma_prospective_ledger' }, {})
     expect(mockMatchFn).not.toHaveBeenCalled()
   })
+
+  it('the open-row read excludes chart-context-stale rows (Jātaka Phase-A3, independent-review finding)', async () => {
+    mockDb([{ match: /FROM brahma_prospective_ledger/, rows: [] }])
+    await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'brahma_prospective_ledger' }, {})
+    const call = vi.mocked(mockQuery).mock.calls.find(c => /FROM brahma_prospective_ledger/.test(String(c[0])))!
+    expect(String(call[0])).toMatch(/chart_context_stale_at\s+IS\s+NULL/)
+  })
 })

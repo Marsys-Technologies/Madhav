@@ -371,10 +371,18 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
           observation_window: string | null
           milestone_set: Array<{ milestone_id: string; expected_date: string; name_en?: string }> | null
         }>(
+          // Jātaka Phase-A3 (migration 1123, independent-review finding): a
+          // row a correction has marked chart_context_stale_at reflects
+          // former birth details — the sweep must not report it as a
+          // lapsed candidate or route it to matchOpenPredictionsForLelEvent
+          // (which already excludes stale rows on its own side of this same
+          // hook, so an unfiltered read here would otherwise silently claim
+          // a match that hook never made).
           `SELECT prediction_id, event_class, claim, claim_shape,
                   observation_window::text, milestone_set
            FROM brahma_prospective_ledger
            WHERE chart_id = $1 AND lifecycle_status = 'open'
+             AND chart_context_stale_at IS NULL
            LIMIT $2`,
           [chart_id, MAX_LAPSED_ROWS],
         )
