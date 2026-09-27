@@ -178,8 +178,8 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None):
                                                        keys={t: k for t, (_c, k) in tables.items()}))
     monkeypatch.setattr(ac, "registered_ids", lambda prefix: {})
     monkeypatch.setattr(ac, "live_counts", lambda r: ({a: None for a in r}, {}))
-    monkeypatch.setattr(ac, "throughput", lambda prefix: {})
-    monkeypatch.setattr(ac, "build_history", lambda prefix: dict(per={}, global_runs=0, global_with_layer=0, lit=set()))
+    monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: {})
+    monkeypatch.setattr(ac, "build_history", lambda prefix, *a, **k: dict(per={}, global_runs=0, global_with_layer=0, lit=set()))
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
     monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))
@@ -279,7 +279,7 @@ def test_f12_a_failed_layer_wide_read_names_itself_and_the_r41_limit(monkeypatch
     without the fix: the output carries neither the read's name nor the scope line."""
     _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
 
-    def boom(prefix):
+    def boom(prefix, *a, **k):
         raise ac.Unknown("SIMULATED: canceling statement due to statement timeout")
 
     monkeypatch.setattr(ac, "build_history", boom)

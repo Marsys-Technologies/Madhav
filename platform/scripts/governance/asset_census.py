@@ -287,12 +287,19 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
     false) on every row today, and `NOT NULL` is NULL in SQL — so that exact expression silently
     matches ZERO rows, not 127. The honest form is `is_active AND NOT coalesce(dead_flag, false)`.
     Excluded (inactive) rows are named here, not silently dropped — `measure()` states the
-    population figure in its own output rather than letting 129 and 127 quietly disagree."""
+    population figure in its own output rather than letting 129 and 127 quietly disagree.
+
+    R224 (A_REVIEW2 G5): the population is scoped by `asset_registry.layer`, NOT by the asset-id
+    prefix. The prefix is a naming convention, not the registry's own statement of which layer an
+    asset belongs to: `lel_events` (layer='mimamsa', no `mi_` prefix) was silently outside every
+    layer's census — 126 measured where the tracker counts 127. `layer` is what the registry
+    declares; the prefix still names the layer's writers and capability modules, nothing more."""
     cfg = LAYERS[layer_key]
-    total = int(scalar(f"SELECT count(*)::text FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%'") or 0)
+    scope = f"layer = '{cfg['registry_layer']}'"
+    total = int(scalar(f"SELECT count(*)::text FROM asset_registry WHERE {scope}") or 0)
     excluded = [dict(asset_id=r[0], is_active=(r[1] == "t"), catalog_status=r[2])
                 for r in psql("SELECT asset_id, is_active::text, coalesce(catalog_status,'') "
-                              f"FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%' "
+                              f"FROM asset_registry WHERE {scope} "
                               "AND NOT (is_active AND NOT coalesce(dead_flag,false)) ORDER BY asset_id")]
     blob = scalar(
         "SELECT coalesce(json_agg(json_build_object("
@@ -301,7 +308,7 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
         "'depends_on',coalesce(to_json(depends_on),'[]'::json),'target_floor',target_floor,"
         "'catalog_status',coalesce(catalog_status,''),'asset_kind',coalesce(asset_kind,''))"
         " ORDER BY asset_id)::text,'[]') "
-        f"FROM asset_registry WHERE asset_id LIKE '{cfg['prefix']}%' "
+        f"FROM asset_registry WHERE {scope} "
         "AND is_active AND NOT coalesce(dead_flag,false)")
     rows = json.loads(blob or "[]")
     out = {}
@@ -317,8 +324,9 @@ def registry(layer_key: str) -> tuple[dict[str, dict], dict]:
         # rows, so a population filter that matched nothing (the `NOT dead_flag` NULL trap, M9)
         # measured zero assets and exited 0 — a clean-looking census of nothing. An empty active
         # population is never a clean result: it is UNKNOWN (exit 4), with both figures stated.
-        raise Unknown(f"zero active {cfg['prefix']}* rows in asset_registry ({total} registry row(s) for this "
-                      "prefix) — an empty population is not a clean census; check the population filter")
+        raise Unknown(f"zero active {cfg['prefix']}* rows (layer='{cfg['registry_layer']}') in asset_registry "
+                      f"({total} registry row(s) for this layer) — an empty population is not a clean census; "
+                      "check the population filter")
     population = dict(registry_total=total, active=len(out), excluded_inactive=excluded)
     return out, population
 
@@ -360,10 +368,21 @@ def live_counts(reg: dict) -> tuple[dict[str, int | None], dict[str, str]]:
     return out, errored
 
 
-def throughput(prefix: str) -> dict[str, dict]:
+def _asset_scope(prefix: str, ids=None, col: str = "asset_id") -> str:
+    """R224: the per-layer reads select the MEASURED population (`ids`, from `registry()`, scoped by
+    `asset_registry.layer`), not the id prefix — so an active asset outside the prefix convention
+    (`lel_events`) gets its build record and history read like any other. `ids=None` keeps the
+    prefix form for callers that have no population in hand."""
+    if ids is None:
+        return f"{col} LIKE '{prefix}%'"
+    lit = ", ".join("'" + str(i).replace("'", "''") + "'" for i in ids)
+    return f"{col} IN ({lit})" if lit else "FALSE"
+
+
+def throughput(prefix: str, ids=None) -> dict[str, dict]:
     rows = psql("SELECT asset_id, coalesce(state,''), coalesce(rows_written::text,''), "
                 "coalesce(round(rows_per_second)::text,''), coalesce(last_built_at::date::text,'') "
-                f"FROM asset_throughput WHERE asset_id LIKE '{prefix}%'")
+                f"FROM asset_throughput WHERE {_asset_scope(prefix, ids)}")
     return {r[0]: dict(state=r[1], rows_written=r[2], rps=r[3], last_built=r[4])
             for r in ((x + [""] * 5)[:5] for x in rows)}
 
@@ -394,7 +413,7 @@ def catalog(tables: list[str]) -> dict:
     return dict(exists=exists, cols=cols, keys=keys)
 
 
-def build_history(prefix: str) -> dict:
+def build_history(prefix: str, ids=None) -> dict:
     """What the orchestrator ACTUALLY did, from build_runs / build_run_assets.
 
     The static checks say an asset *should* be dispatchable. Only this says whether it ever was, and what
@@ -404,7 +423,7 @@ def build_history(prefix: str) -> dict:
     rows = psql("SELECT a.asset_id, r.scope, a.state, coalesce(a.disposition,''), "
                 "coalesce(r.created_at::date::text,''), coalesce(left(a.error,200),'') "
                 "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
-                f"WHERE a.asset_id LIKE '{prefix}%' ORDER BY a.asset_id, r.created_at")
+                f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} ORDER BY a.asset_id, r.created_at")
     for aid, scope, state, disp, when, err in ((x + [""] * 6)[:6] for x in rows):
         d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
                                      blocked=0, scopes=set(), last_state="", last_when="",
@@ -430,7 +449,7 @@ def build_history(prefix: str) -> dict:
             d["sample_error"] = err
     glob = int(scalar("SELECT count(*)::text FROM build_runs WHERE scope='global'") or 0)
     glob_l0 = int(scalar("SELECT count(*)::text FROM build_runs r JOIN build_run_assets a ON a.run_id=r.id "
-                         f"WHERE r.scope='global' AND a.asset_id LIKE '{prefix}%'") or 0)
+                         f"WHERE r.scope='global' AND {_asset_scope(prefix, ids, 'a.asset_id')}") or 0)
     lit = {r[0] for r in psql("SELECT asset_id FROM asset_throughput WHERE state='lit'")}
     return dict(per=per, global_runs=glob, global_with_layer=glob_l0, lit=lit)
 
@@ -722,8 +741,9 @@ def measure(layer_key: str) -> dict:
     cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()])
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
     counts, count_errors = _layer_read("live_counts", live_counts, reg)
-    thru = _layer_read("throughput", throughput, cfg["prefix"])
-    hist = _layer_read("build_history", build_history, cfg["prefix"])
+    ids = sorted(reg)                                      # R224: the layer's measured population
+    thru = _layer_read("throughput", throughput, cfg["prefix"], ids)
+    hist = _layer_read("build_history", build_history, cfg["prefix"], ids)
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
     # D6 item 1: feature-detected ONCE per layer run, not per asset — the instrument either
     # exists or it doesn't; a per-asset re-check would just be the same answer 40 times over.
