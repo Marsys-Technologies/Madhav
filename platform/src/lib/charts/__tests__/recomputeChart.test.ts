@@ -298,6 +298,32 @@ describe('updateChartAndMaybeRecompute — successful correction', () => {
     expect(has(/SET archived_by_run_id/)).toBe(false)
   })
 
+  it('marks event_chart_state_index and mimamsa_predictions stale for this chart, stamped with the new run id, before COMMIT', async () => {
+    setup()
+    await run({ ...INPUT, birth_time: '10:44' })
+    const eciStmt = statements.find((s) => /UPDATE event_chart_state_index/.test(s.sql))
+    const predStmt = statements.find((s) => /UPDATE mimamsa_predictions/.test(s.sql))
+    expect(eciStmt).toBeDefined()
+    expect(predStmt).toBeDefined()
+    expect(eciStmt!.params).toEqual([CHART, 'run-new'])
+    expect(predStmt!.params).toEqual([CHART, 'run-new'])
+    // Runs after the run id is known, before COMMIT (inside the same transaction).
+    const commitIdx = idx(/^COMMIT/)
+    expect(idx(/INSERT INTO build_runs/)).toBeLessThan(idx(/UPDATE event_chart_state_index/))
+    expect(idx(/UPDATE event_chart_state_index/)).toBeLessThan(commitIdx)
+    expect(idx(/UPDATE mimamsa_predictions/)).toBeLessThan(commitIdx)
+  })
+
+  it('rolls back the staleness marking along with everything else on a later failure', async () => {
+    setup({ failOn: /SET archived_by_run_id/ })
+    const err = await run({ ...INPUT, birth_time: '10:44' }).catch((e) => e)
+    expect(err).toBeInstanceOf(ChartUpdateError)
+    expect(events).toEqual(['BEGIN', 'ROLLBACK'])
+    // The staleness UPDATEs were issued (and will be rolled back with everything else) —
+    // proving they run inside the same transaction, not after it.
+    expect(has(/UPDATE event_chart_state_index/)).toBe(true)
+  })
+
   it('updates the chart-defining inputs in place and never its identity, owner or grants', async () => {
     setup()
     await run({ ...INPUT, birth_time: '10:44', ayanamshas: ['true_chitra', 'lahiri'] })
@@ -309,10 +335,16 @@ describe('updateChartAndMaybeRecompute — successful correction', () => {
     expect(has(/chart_grants|consent|DELETE FROM charts/)).toBe(false)
   })
 
-  it('preserves life events and answered journal rows', async () => {
+  it('preserves life events and answered journal rows; event_chart_state_index is marked stale, never deleted', async () => {
     setup()
     await run({ ...INPUT, birth_time: '10:44' })
-    expect(has(/life_events|event_chart_state_index/)).toBe(false)
+    // life_events is never referenced at all — not even to mark it stale (it
+    // carries no derived chart-context data of its own).
+    expect(has(/life_events/)).toBe(false)
+    // event_chart_state_index is preserved by an additive UPDATE (staleness
+    // marker), never a DELETE — the row itself is never destroyed.
+    expect(has(/DELETE FROM event_chart_state_index/)).toBe(false)
+    expect(has(/UPDATE event_chart_state_index/)).toBe(true)
     const journal = statements.find((s) => /mimamsa_journal/.test(s.sql))!
     expect(journal.sql).toMatch(/answered_at IS NULL/)
   })

@@ -9,6 +9,7 @@ import {
   type Queryable,
 } from '@/lib/build/runPreparation'
 import { invalidateAssets, InvalidationError } from '@/lib/build/assetInvalidation'
+import { markChartContextStale } from '@/lib/charts/chartContextStaleness'
 import { dispatchPreparedRun } from '@/lib/build/runDispatch'
 import { JOB_DISPATCH_FAILED_PREFIX } from '@/lib/charts/readiness'
 import type { ChartInputSnapshot } from '@/lib/charts/types'
@@ -250,6 +251,13 @@ export async function updateChartAndMaybeRecompute(args: {
     )
 
     const runId = await persistPreparedRun(client, prepared, principalId)
+
+    // Chart-context staleness (Jātaka Phase-A2): mark the rows this correction
+    // preserves — event_chart_state_index and mimamsa_predictions — as
+    // superseded by the new run, so a current-chart reader never treats data
+    // computed under the former birth details as current. Never deletes,
+    // rewrites or reclassifies the row itself.
+    await markChartContextStale({ db: client, chartId, runId })
 
     // Attach the run only to the rows this correction archived — never sweep
     // older historical rows into a later correction.
