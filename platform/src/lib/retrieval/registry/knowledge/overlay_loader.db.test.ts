@@ -141,6 +141,8 @@ run('chart capability overlay disposable schema replay', () => {
     await scoped.query(migration('supabase/migrations/596_nirmana_provenance_receipts.sql'))
     await scoped.query(migration('supabase/migrations/598_nirmana_output_digest_specs.sql'))
     await scoped.query(migration('migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql'))
+    await scoped.query(migration('migrations/640_nirmana_owave_wp1_output_changed.sql'))
+    await scoped.query(migration('migrations/641_nirmana_owave_wp2_disposition.sql'))
 
     await scoped.query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chartId, 'Disposable Overlay'])
     await scoped.query(`
@@ -149,19 +151,25 @@ run('chart capability overlay disposable schema replay', () => {
         ($1, $3, 'asset', 'build', 'completed', '{}'::jsonb, 'test', '2026-09-14T00:00:00Z'),
         ($2, $3, 'asset', 'build', 'completed', '{}'::jsonb, 'test', '2026-09-15T00:00:00Z')
     `, [oldBuildId, currentBuildId, chartId])
+    // Production shape (review RC-1): the asset was built by an older single-asset run; a later
+    // single-asset run for an unrelated asset is the chart's latest completed run.
+    await scoped.query(`
+      INSERT INTO build_run_assets(run_id, asset_id, position, state, disposition, started_at, ended_at)
+      VALUES
+        ($1, 'bg_sign_medical', 0, 'complete', 'build', '2026-09-13T23:00:00Z', '2026-09-14T00:00:00Z'),
+        ($2, 'bo_grounding', 0, 'complete', 'build', '2026-09-14T23:00:00Z', '2026-09-15T00:00:00Z')
+    `, [oldBuildId, currentBuildId])
     await scoped.query(`
       INSERT INTO asset_provenance_receipts
         (asset_id, chart_id, partition_key, receipt_version, receipt_state, build_id, output_digest_spec_sha256, unknown_reasons, observed_at)
       VALUES
-        ('bg_sign_medical', $1, 'old-partition', 'old', 'proven', $2, $4, '[]', '2026-09-14T00:00:00Z'),
-        ('bg_sign_medical', $1, 'current-partition', 'current', 'proven', $3, $4, '[]', '2026-09-15T00:00:00Z'),
-        ('bg_sign_medical', NULL, 'global', 'global', 'unknown', NULL, $4, '["global-not-selected"]', '2026-09-15T00:00:00Z')
-    `, [chartId, oldBuildId, currentBuildId, claimHash])
+        ('bg_sign_medical', $1, 'chart-partition', 'current', 'proven', $2, $3, '[]', '2026-09-14T00:00:00Z'),
+        ('bg_sign_medical', NULL, 'global', 'global', 'unknown', NULL, $3, '["global-not-selected"]', '2026-09-15T00:00:00Z')
+    `, [chartId, oldBuildId, claimHash])
     await scoped.query(`
       INSERT INTO asset_freshness(asset_id, chart_id, partition_key, freshness_state, reasons, receipt_version, observed_at)
       VALUES
-        ('bg_sign_medical', $1, 'old-partition', 'fresh', '[]', 'old', '2026-09-14T00:00:00Z'),
-        ('bg_sign_medical', $1, 'current-partition', 'fresh', '[]', 'current', '2026-09-15T00:00:00Z'),
+        ('bg_sign_medical', $1, 'chart-partition', 'fresh', '[]', 'current', '2026-09-14T00:00:00Z'),
         ('bg_sign_medical', NULL, 'global', 'unknown', '["global-not-selected"]', 'global', '2026-09-15T00:00:00Z')
     `, [chartId])
   }, 30_000)
@@ -176,13 +184,37 @@ run('chart capability overlay disposable schema replay', () => {
     }
   })
 
-  it('selects only the latest completed chart build despite stale/global rows', async () => {
+  it('serves the asset from the run that wrote it, not the chart\'s latest completed run', async () => {
     const overlay = await loadChartCapabilityOverlay(snapshot(), chartId, query)
-    expect(overlay.build_id).toBe(currentBuildId)
+    expect(overlay.build_id).toMatch(/^generation:sha256:[a-f0-9]{64}$/)
     expect(overlay.availability[0]).toMatchObject({
       state: 'available',
-      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: currentBuildId })],
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: oldBuildId })],
     })
+  })
+
+  it('refuses one asset whose partitions are served by different runs', async () => {
+    await scoped.query(`
+      INSERT INTO build_run_assets(run_id, asset_id, position, state, disposition, started_at, ended_at)
+      VALUES ($1, 'bg_sign_medical', 1, 'complete', 'build', '2026-09-14T23:00:00Z', '2026-09-15T00:00:00Z')
+    `, [currentBuildId])
+    await scoped.query(`
+      INSERT INTO asset_provenance_receipts
+        (asset_id, chart_id, partition_key, receipt_version, receipt_state, build_id, output_digest_spec_sha256, unknown_reasons, observed_at)
+      VALUES ('bg_sign_medical', $1, 'second-partition', 'second', 'proven', $2, $3, '[]', '2026-09-15T00:00:00Z')
+    `, [chartId, currentBuildId, claimHash])
+    await scoped.query(`
+      INSERT INTO asset_freshness(asset_id, chart_id, partition_key, freshness_state, reasons, receipt_version, observed_at)
+      VALUES ('bg_sign_medical', $1, 'second-partition', 'fresh', '[]', 'second', '2026-09-15T00:00:00Z')
+    `, [chartId])
+    try {
+      const availability = (await loadChartCapabilityOverlay(snapshot(), chartId, query)).availability[0]
+      expect(availability).toMatchObject({ available_binding_ids: [] })
+      expect(availability?.gaps).toContain('bg_sign_medical served generation is unresolved: partition_generation_split.')
+    } finally {
+      await scoped.query("DELETE FROM asset_provenance_receipts WHERE partition_key='second-partition'")
+      await scoped.query("DELETE FROM build_run_assets WHERE run_id=$1 AND asset_id='bg_sign_medical'", [currentBuildId])
+    }
   })
 
   it('uses an authenticated, exact, fresh service-probe event for a service-bound binding', async () => {
@@ -211,8 +243,8 @@ run('chart capability overlay disposable schema replay', () => {
     })
   })
 
-  it('falls back to global evidence only when the active chart receipt is absent', async () => {
-    await scoped.query("DELETE FROM asset_provenance_receipts WHERE partition_key='current-partition'")
+  it('falls back to global evidence only when the asset has no chart receipt', async () => {
+    await scoped.query("DELETE FROM asset_provenance_receipts WHERE partition_key='chart-partition'")
     await scoped.query("UPDATE asset_provenance_receipts SET receipt_state='proven' WHERE partition_key='global'")
     await scoped.query("UPDATE asset_freshness SET freshness_state='fresh', reasons='[]' WHERE partition_key='global'")
     const overlay = await loadChartCapabilityOverlay(snapshot(), chartId, query)
@@ -230,7 +262,7 @@ run('chart capability overlay disposable schema replay', () => {
       INSERT INTO asset_provenance_receipts
         (asset_id, chart_id, partition_key, receipt_version, receipt_state, build_id, output_digest_spec_sha256, unknown_reasons)
       VALUES ('bg_sign_medical', $1, 'current-reseed', 'current-2', 'proven', $2, $3, '[]')
-    `, [chartId, currentBuildId, claimHash])
+    `, [chartId, oldBuildId, claimHash])
     await scoped.query(`
       INSERT INTO asset_freshness(asset_id, chart_id, partition_key, freshness_state, reasons, receipt_version)
       VALUES ('bg_sign_medical', $1, 'current-reseed', 'fresh', '[]', 'current-2')

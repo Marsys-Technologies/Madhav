@@ -88,6 +88,12 @@ export interface ChartServedGeneration {
   readonly served_build_ids: readonly string[]
 }
 
+interface ServedReceiptAliases {
+  readonly receipt: string
+  readonly receiptRun: string
+  readonly receiptAsset: string
+}
+
 /**
  * SQL expression for the run whose rows a chart-scoped receipt currently serves.
  *
@@ -96,11 +102,7 @@ export interface ChartServedGeneration {
  * (receipt run × receipt asset) rows. Evaluates to NULL when no writing run can be proven.
  * This is the single reviewed rule; every consumer that joins rows to a receipt uses it.
  */
-export function servedRowsBuildIdSql(aliases: {
-  readonly receipt: string
-  readonly receiptRun: string
-  readonly receiptAsset: string
-}): string {
+export function servedRowsBuildIdSql(aliases: ServedReceiptAliases): string {
   const { receipt, receiptRun, receiptAsset } = aliases
   return `(CASE
       WHEN ${receiptAsset}.run_id IS NULL THEN NULL
@@ -123,36 +125,53 @@ export function servedRowsBuildIdSql(aliases: {
     END)`
 }
 
+/**
+ * LEFT JOINs that attach the receipting run and its asset row to a chart receipt alias.
+ * Pair with {@link servedReceiptColumnsSql}; every consumer that classifies receipts uses both.
+ */
+export function servedReceiptJoinsSql(aliases: ServedReceiptAliases): string {
+  const { receipt, receiptRun, receiptAsset } = aliases
+  return `LEFT JOIN build_runs ${receiptRun}
+      ON ${receiptRun}.id = ${receipt}.build_id AND ${receiptRun}.chart_id = ${receipt}.chart_id
+    LEFT JOIN build_run_assets ${receiptAsset}
+      ON ${receiptAsset}.run_id = ${receipt}.build_id AND ${receiptAsset}.asset_id = ${receipt}.asset_id`
+}
+
+/** Classification columns (beyond the receipt's own identity and state) for one receipt row. */
+export function servedReceiptColumnsSql(aliases: ServedReceiptAliases): string {
+  const { receipt, receiptRun, receiptAsset } = aliases
+  return `${receipt}.partition_key,
+         ${receipt}.build_id::text AS receipt_build_id,
+         ${servedRowsBuildIdSql(aliases)}::text AS rows_build_id,
+         EXISTS (
+           SELECT 1 FROM asset_output_digest_specs served_spec
+            WHERE served_spec.asset_id = ${receipt}.asset_id
+              AND served_spec.spec_sha256 = ${receipt}.output_digest_spec_sha256
+              AND served_spec.retired_at IS NULL
+         ) AS spec_active,
+         ${receiptRun}.state AS receipt_run_state,
+         ${receiptAsset}.run_id IS NOT NULL AS receipt_asset_present,
+         ${receiptAsset}.disposition AS receipt_disposition`
+}
+
+const ALIASES: ServedReceiptAliases = { receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' }
+
 const RESOLVER_SQL = `
   SELECT receipt.asset_id,
-         receipt.partition_key,
+         receipt.chart_id::text AS chart_id,
          receipt.receipt_version,
-         receipt.build_id::text AS receipt_build_id,
-         ${servedRowsBuildIdSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}::text
-           AS rows_build_id,
          receipt.receipt_state,
          freshness.freshness_state,
          receipt.output_digest_spec_sha256,
-         EXISTS (
-           SELECT 1 FROM asset_output_digest_specs spec
-            WHERE spec.asset_id = receipt.asset_id
-              AND spec.spec_sha256 = receipt.output_digest_spec_sha256
-              AND spec.retired_at IS NULL
-         ) AS spec_active,
-         receipt_run.state AS receipt_run_state,
-         receipt_asset.run_id IS NOT NULL AS receipt_asset_present,
-         receipt_asset.disposition AS receipt_disposition,
-         receipt.observed_at::text AS observed_at
+         receipt.observed_at::text AS observed_at,
+         ${servedReceiptColumnsSql(ALIASES)}
     FROM asset_provenance_receipts receipt
     LEFT JOIN asset_freshness freshness
       ON freshness.asset_id = receipt.asset_id
      AND freshness.scope_key = receipt.scope_key
      AND freshness.partition_key = receipt.partition_key
      AND freshness.receipt_version = receipt.receipt_version
-    LEFT JOIN build_runs receipt_run
-      ON receipt_run.id = receipt.build_id AND receipt_run.chart_id = receipt.chart_id
-    LEFT JOIN build_run_assets receipt_asset
-      ON receipt_asset.run_id = receipt.build_id AND receipt_asset.asset_id = receipt.asset_id
+    ${servedReceiptJoinsSql(ALIASES)}
    WHERE receipt.chart_id = $1::uuid
      AND ($2::text[] IS NULL OR receipt.asset_id = ANY($2::text[]))
    ORDER BY receipt.asset_id, receipt.partition_key`
@@ -246,7 +265,12 @@ export function chartServedGenerationFromRows(
   requestedAssetIds: readonly string[] | null,
   rawRows: readonly Record<string, unknown>[],
 ): ChartServedGeneration {
-  const rows = rawRows.map(toRow)
+  // Only this chart's receipts can bind a chart generation (defensive against callers that
+  // share one row set between chart-scoped and global receipts).
+  const rows = rawRows
+    .filter((raw) => raw['chart_id'] === undefined || raw['chart_id'] === chartId)
+    .filter((raw) => typeof raw['asset_id'] === 'string' && raw['asset_id'].length > 0)
+    .map(toRow)
   const byAsset = new Map<string, ResolverRow[]>()
   for (const assetId of requestedAssetIds ?? []) byAsset.set(assetId, [])
   for (const row of rows) byAsset.set(row.asset_id, [...(byAsset.get(row.asset_id) ?? []), row])

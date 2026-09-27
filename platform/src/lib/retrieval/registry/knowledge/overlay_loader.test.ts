@@ -390,11 +390,17 @@ const compositeWithInvalidChildSiblingSnapshot = () => {
 }
 
 function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
-  return {
-    active_build_id: 'build-1', active_build_status: 'completed',
+  const row: Record<string, unknown> = {
     asset_id, chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
     output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
     ...overrides,
+  }
+  // Served-generation classification columns default to "the receipting completed run wrote
+  // these rows"; a test overrides them to model skip_no_delta chains or unservable receipts.
+  return {
+    partition_key: '__whole_asset__', receipt_build_id: row['build_id'], rows_build_id: row['build_id'],
+    spec_active: true, receipt_run_state: 'completed', receipt_asset_present: true, receipt_disposition: 'build',
+    ...row,
   }
 }
 
@@ -427,7 +433,6 @@ function serviceProbeEvidence(overrides: Partial<Record<string, unknown>> = {}) 
 
 function serviceProbeAnchor(service_probe_evidence: unknown) {
   return {
-    active_build_id: 'build-1', active_build_status: 'completed',
     asset_id: null, chart_id: null, build_id: null, receipt_version: null, receipt_state: null,
     output_digest_spec_sha256: null, observed_at: null, freshness_state: null, unknown_reasons: [], freshness_reasons: [],
     service_probe_evidence,
@@ -478,13 +483,13 @@ describe('source-query parameter binding', () => {
     source_refs: ['fixture:chart-context'],
   }
 
-  it('keeps a chart-context source query dark when no active completed build exists', async () => {
+  it('keeps a chart-context source query dark when the chart has no served generation', async () => {
     const query = vi.fn()
 
     const gaps = await probeSourceQueryAvailabilityContract(contextContract, 'chart-1', null, query)
 
     expect(gaps).toEqual([
-      'source-query:test-chart-context:v1 requires an active completed build context for the selected chart.',
+      'source-query:test-chart-context:v1 requires a served chart generation for the selected chart.',
     ])
     expect(query).not.toHaveBeenCalled()
   })
@@ -492,7 +497,7 @@ describe('source-query parameter binding', () => {
   it('executes a chart-context source query with chart_id only', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
 
-    const gaps = await probeSourceQueryAvailabilityContract(contextContract, 'chart-1', 'build-1', query)
+    const gaps = await probeSourceQueryAvailabilityContract(contextContract, 'chart-1', ['build-1'], query)
 
     expect(gaps).toEqual([])
     expect(query).toHaveBeenCalledExactlyOnceWith(contextContract.sql, ['chart-1'])
@@ -503,29 +508,32 @@ describe('source-query parameter binding', () => {
     const query = vi.fn()
 
     await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', null, query)).resolves.toEqual([
-      'source-query:query-temporal-activation:v1 requires an active completed build context for the selected chart.',
+      'source-query:query-temporal-activation:v1 requires a served chart generation for the selected chart.',
     ])
     expect(query).not.toHaveBeenCalled()
 
     query.mockRejectedValueOnce(new Error('permission denied'))
-    await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', 'build-1', query)).resolves.toEqual([
+    await expect(probeSourceQueryAvailabilityContract(temporalContract, 'chart-1', ['build-1'], query)).resolves.toEqual([
       'source-query:query-temporal-activation:v1 could not execute its authenticated source query.',
     ])
   })
 
-  it('preserves row-bound chart-and-active-build query parameters', async () => {
+  it('binds row-bound chart source queries to the served build set, never one chart-wide run', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const rowBoundContract = {
       ...contextContract,
       contract_id: 'source-query:test-chart-build:v1',
-      parameter_binding: 'chart_and_active_build' as const,
-      sql: 'SELECT source_id FROM source_table WHERE chart_id = $1::uuid AND build_id = $2::uuid LIMIT 0',
+      parameter_binding: 'chart_and_served_builds' as const,
+      sql: 'SELECT source_id FROM source_table WHERE chart_id = $1::uuid AND build_id = ANY($2::uuid[]) LIMIT 0',
     }
 
-    const gaps = await probeSourceQueryAvailabilityContract(rowBoundContract, 'chart-1', 'build-1', query)
+    const gaps = await probeSourceQueryAvailabilityContract(rowBoundContract, 'chart-1', ['build-1', 'build-2'], query)
 
     expect(gaps).toEqual([])
-    expect(query).toHaveBeenCalledExactlyOnceWith(rowBoundContract.sql, ['chart-1', 'build-1'])
+    expect(query).toHaveBeenCalledExactlyOnceWith(rowBoundContract.sql, ['chart-1', ['build-1', 'build-2']])
+    await expect(probeSourceQueryAvailabilityContract(rowBoundContract, 'chart-1', [], query)).resolves.toEqual([
+      'source-query:test-chart-build:v1 cannot bind the selected chart to a served chart generation.',
+    ])
   })
 })
 
@@ -538,8 +546,10 @@ describe('chart capability overlay loader', () => {
   ])('treats a successful reviewed source query with zero rows as available for %s', async (scuId, bindingId, relation, expectedParams) => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const sourceScu = sourceSnapshot.scus.find((scu) => scu.scu_id === scuId)!
-    mocks.query.mockImplementation(async (sql) => sql.includes('WITH latest_build AS')
-      ? { rows: [serviceProbeAnchor([])] }
+    // A resolved chart receipt gives the chart a served generation; chart-context source
+    // queries (temporal activation) require one before they may execute.
+    mocks.query.mockImplementation(async (sql) => sql.includes('WITH service_probe_evidence AS')
+      ? { rows: [serviceProbeAnchor([]), receipt('ga_served_anchor')] }
       : { rows: [] })
 
     const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
@@ -566,7 +576,7 @@ describe('chart capability overlay loader', () => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const sourceScu = sourceSnapshot.scus.find((scu) => scu.scu_id === scuId)!
     mocks.query.mockImplementation(async (sql) => {
-      if (sql.includes('WITH latest_build AS')) return { rows: [serviceProbeAnchor([])] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [serviceProbeAnchor([]), receipt('ga_served_anchor')] }
       if (sql.includes(`FROM ${relation}`)) throw new Error('permission denied')
       return { rows: [] }
     })
@@ -889,81 +899,71 @@ describe('chart capability overlay loader', () => {
       .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/test'] })
   })
 
-  it('exposes a binding only when every selected partition is proven, fresh, and spec-matched', async () => {
-    mocks.query.mockResolvedValue({ rows: [{
-      active_build_id: 'build-1', active_build_status: 'completed',
-      asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
-      output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-    }] })
+  it('exposes a binding from its own served generation and binds the overlay to that generation', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test')] })
     const overlay = await loadChartCapabilityOverlay(snapshot, 'chart-1')
     expect(overlay.availability[0]).toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L1/test'] })
-    expect(overlay.build_id).toBe('build-1')
-    expect(mocks.query.mock.calls[0]?.[0]).toContain('ORDER BY ended_at DESC NULLS LAST, id DESC')
-    expect(mocks.query.mock.calls[0]?.[0]).toContain('p.build_id=latest_build.build_id')
+    expect(overlay.build_id).toMatch(/^generation:sha256:[a-f0-9]{64}$/)
+    const sql = mocks.query.mock.calls[0]?.[0] as string
+    expect(sql).not.toContain('latest_build')
+    expect(sql).not.toContain("state='completed'")
+    expect(sql).toContain("WHEN receipt_asset.disposition = 'skip_no_delta'")
+    expect(sql).toContain('ON p.chart_id=$2::uuid')
   })
 
   it('fails closed on a mismatched output specification or unavailable provenance', async () => {
-    mocks.query.mockResolvedValueOnce({ rows: [{
-      active_build_id: 'build-1', active_build_status: 'completed',
-      asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
-      output_digest_spec_sha256: 'b'.repeat(64), observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-    }] })
+    mocks.query.mockResolvedValueOnce({ rows: [receipt('ga_test', { output_digest_spec_sha256: 'b'.repeat(64) })] })
     expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]?.state).toBe('incompatible')
 
     mocks.query.mockRejectedValueOnce(new Error('offline'))
     expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({ state: 'dark', available_binding_ids: [] })
   })
 
-  it('ignores a proven receipt from a superseded chart build', async () => {
-    mocks.query.mockResolvedValue({ rows: [{
-      active_build_id: 'build-2', active_build_status: 'completed',
-      asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
-      output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-    }] })
+  it('serves a single-asset build even when another run is the chart\'s latest completed run (RC-1)', async () => {
+    // The receipt's run built only this asset; the loader never consults which run finished
+    // last for the chart, so an unrelated later single-asset run cannot darken it.
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test', { build_id: 'build-single-asset' })] })
     expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
-      state: 'dark',
-      available_binding_ids: [],
-      asset_receipts: [expect.objectContaining({ state: 'missing', build_id: null })],
-    })
-  })
-
-  it('uses active chart evidence instead of stale chart or global rows', async () => {
-    mocks.query.mockResolvedValue({ rows: [
-      {
-        active_build_id: 'build-2', active_build_status: 'completed',
-        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'old', receipt_state: 'proven',
-        output_digest_spec_sha256: 'b'.repeat(64), observed_at: '2026-09-12T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-      },
-      {
-        active_build_id: 'build-2', active_build_status: 'completed',
-        asset_id: 'ga_test', chart_id: null, build_id: null, receipt_version: 'global', receipt_state: 'unknown',
-        output_digest_spec_sha256: claimHash, observed_at: '2026-09-12T00:00:00Z', freshness_state: 'unknown', unknown_reasons: ['global-not-selected'], freshness_reasons: [],
-      },
-      {
-        active_build_id: 'build-2', active_build_status: 'completed',
-        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-2', receipt_version: 'current', receipt_state: 'proven',
-        output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-      },
-    ] })
-    const availability = (await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]
-    expect(availability).toMatchObject({
       state: 'available',
-      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: 'build-2' })],
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: 'build-single-asset' })],
     })
   })
 
-  it('uses global evidence when no active-build chart receipt exists', async () => {
+  it('binds a skip_no_delta re-receipt to the run that wrote the served rows', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test', {
+      build_id: 'build-skip', receipt_build_id: 'build-skip', rows_build_id: 'build-writer', receipt_disposition: 'skip_no_delta',
+    })] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      state: 'available',
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: 'build-writer' })],
+    })
+  })
+
+  it.each([
+    ['a receipt issued by a run that did not complete', { receipt_run_state: 'failed' }, 'receipt_run_not_completed'],
+    ['a skip_no_delta receipt with no provable writer', { receipt_disposition: 'skip_no_delta', rows_build_id: null }, 'skip_chain_writer_missing'],
+    ['a stale receipt', { freshness_state: 'stale' }, 'receipt_not_fresh'],
+  ])('refuses %s and names the unresolved generation', async (_case, overrides, reason) => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test', overrides)] })
+    const availability = (await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]
+    expect(availability).toMatchObject({ available_binding_ids: [], asset_receipts: [expect.objectContaining({ state: 'partial' })] })
+    expect(availability?.gaps).toContain(`ga_test served generation is unresolved: ${reason}.`)
+  })
+
+  it('does not let a global receipt mask an unservable chart receipt', async () => {
     mocks.query.mockResolvedValue({ rows: [
-      {
-        active_build_id: 'build-2', active_build_status: 'completed',
-        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'old', receipt_state: 'proven',
-        output_digest_spec_sha256: claimHash, observed_at: '2026-09-12T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-      },
-      {
-        active_build_id: 'build-2', active_build_status: 'completed',
-        asset_id: 'ga_test', chart_id: null, build_id: null, receipt_version: 'global', receipt_state: 'proven',
-        output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
-      },
+      receipt('ga_test', { freshness_state: 'stale' }),
+      receipt('ga_test', { chart_id: null, build_id: null, receipt_version: 'global' }),
+    ] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      available_binding_ids: [],
+      asset_receipts: [expect.objectContaining({ state: 'partial' })],
+    })
+  })
+
+  it('uses global evidence when the asset has no chart receipt at all', async () => {
+    mocks.query.mockResolvedValue({ rows: [
+      receipt('ga_test', { chart_id: null, build_id: null, receipt_version: 'global', observed_at: '2026-09-13T00:00:00Z' }),
     ] })
     expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
       state: 'available',

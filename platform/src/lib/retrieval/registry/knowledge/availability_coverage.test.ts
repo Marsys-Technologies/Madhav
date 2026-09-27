@@ -48,8 +48,13 @@ function producerRequirements(scuId: string): ProducerOutputAvailabilityRequirem
 
 function receipt(requirement: ProducerOutputAvailabilityRequirement): OverlayQueryRow {
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
     asset_id: requirement.asset_id,
     chart_id: CHART_ID,
     build_id: BUILD_ID,
@@ -65,8 +70,13 @@ function receipt(requirement: ProducerOutputAvailabilityRequirement): OverlayQue
 
 function adjacentProducerReceipt(assetId: string, specSha256: string): OverlayQueryRow {
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
     asset_id: assetId,
     chart_id: CHART_ID,
     build_id: BUILD_ID,
@@ -86,8 +96,13 @@ function globalProducerReceipt(
   overrides: Partial<OverlayQueryRow> = {},
 ): OverlayQueryRow {
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
     asset_id: assetId,
     chart_id: null,
     build_id: null,
@@ -103,17 +118,25 @@ function globalProducerReceipt(
 }
 
 function transitProbeAnchor(): OverlayQueryRow {
+  // The anchor row carries the service-probe evidence and one resolved chart receipt for an
+  // asset no SCU requires, so the chart has a served generation (chart-context source
+  // queries require one) without supplying producer evidence to any binding under test.
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
-    asset_id: '',
-    chart_id: null,
-    build_id: null,
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
+    asset_id: 'ga_served_generation_anchor',
+    chart_id: CHART_ID,
+    build_id: BUILD_ID,
     receipt_version: 'first-slice-probe-fixture',
-    receipt_state: 'unknown',
-    output_digest_spec_sha256: null,
+    receipt_state: 'proven',
+    output_digest_spec_sha256: 'f'.repeat(64),
     observed_at: '2026-09-17T00:00:00.000Z',
-    freshness_state: null,
+    freshness_state: 'fresh',
     unknown_reasons: [],
     freshness_reasons: [],
     service_probe_evidence: [{
@@ -227,7 +250,7 @@ describe('first-slice availability coverage', () => {
     expect(noActiveBuild.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [expect.stringContaining('requires an active completed build context')],
+      gaps: [expect.stringContaining('requires a served chart generation')],
     })
 
     const sourceFailed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
@@ -857,7 +880,7 @@ describe('first-slice availability coverage', () => {
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
       calls.push({ sql, params })
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
     expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
@@ -876,7 +899,7 @@ describe('first-slice availability coverage', () => {
     expect(sourceCall?.params).toEqual([])
 
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       if (sql.includes(`FROM ${relation}`) && sqlMarkers.every((marker) => sql.includes(marker))) {
         throw new Error('permission denied')
       }
@@ -911,7 +934,7 @@ describe('first-slice availability coverage', () => {
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
       calls.push({ sql, params })
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
     expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
@@ -935,7 +958,7 @@ describe('first-slice availability coverage', () => {
     expect(sourceCall?.params).toEqual([CHART_ID])
 
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       if (sql.includes('FROM phala_pramana')) throw new Error('permission denied')
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
@@ -949,7 +972,7 @@ describe('first-slice availability coverage', () => {
     expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} requires an active completed build context for the selected chart.`],
+      gaps: [`${contractId} requires a served chart generation for the selected chart.`],
     })
   })
 
@@ -1107,7 +1130,7 @@ describe('first-slice availability coverage', () => {
       sqlMarker: "fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])",
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120',
     },
-  ])('probes $scuId against the selected chart and active build, with honest zero-row availability', async ({
+  ])('probes $scuId against the selected chart and its served build set, with honest zero-row availability', async ({
     scuId, bindingId, contractId, sqlMarker, handlerRef,
   }) => {
     const scu = findScu(scuId)
@@ -1144,8 +1167,8 @@ describe('first-slice availability coverage', () => {
     expect(sourceCall).toBeDefined()
     expect(sourceCall?.sql).toContain('FROM chart_facts')
     expect(sourceCall?.sql).toContain('chart_id = $1::uuid')
-    expect(sourceCall?.sql).toContain('build_id = $2::uuid')
-    expect(sourceCall?.params).toEqual([CHART_ID, BUILD_ID])
+    expect(sourceCall?.sql).toContain('build_id = ANY($2::uuid[])')
+    expect(sourceCall?.params).toEqual([CHART_ID, [BUILD_ID]])
 
     initialQuery = true
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
@@ -1166,7 +1189,7 @@ describe('first-slice availability coverage', () => {
     expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} cannot bind the selected chart to an active completed build.`],
+      gaps: [`${contractId} cannot bind the selected chart to a served chart generation.`],
     })
   })
 

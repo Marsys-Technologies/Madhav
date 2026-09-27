@@ -74,7 +74,7 @@ describe('binding availability contracts', () => {
   })
   it('admits chart-only SQL only through the explicit active-build-context binding mode', () => {
     expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_with_active_build_context')).toBe(true)
-    expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_and_active_build')).toBe(true)
+    expect(sourceQueryParameterBindingMatchesScope('chart', 'chart_and_served_builds')).toBe(true)
     expect(sourceQueryParameterBindingMatchesScope('global', 'chart_with_active_build_context')).toBe(false)
     expect(sourceQueryParameterBindingMatchesScope('global', 'global_with_chart_fallback')).toBe(true)
   })
@@ -94,7 +94,7 @@ describe('binding availability contracts', () => {
     expect(sourceQueryAvailabilityContractFingerprint(contract)).not.toBe(
       sourceQueryAvailabilityContractFingerprint({
         ...contract,
-        parameter_binding: 'chart_and_active_build',
+        parameter_binding: 'chart_and_served_builds',
       }),
     )
   })
@@ -178,7 +178,7 @@ describe('binding availability contracts', () => {
     expect(contract.sql).toContain('FROM bodha_question_lenses')
     expect(contract.sql).toContain('FROM bodha_cdlm_cells')
     expect(contract.sql).toContain('FROM bodha_msr_signals')
-    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-a', async () => {
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', ['build-a'], async () => {
       throw new Error('source unavailable')
     })).resolves.toEqual(['source-query:query-domain-reading:v1 could not execute its authenticated source query.'])
   })
@@ -219,8 +219,8 @@ describe('binding availability contracts', () => {
       expect(classicalSql).toContain(marker)
     }
 
-    expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available' })
-    for (const marker of ['SELECT $2::uuid AS build_id', 'JOIN active_build', 'FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
+    expect(contradictions).toMatchObject({ scope: 'chart', parameter_binding: 'chart_and_served_builds', empty_semantics: 'query_success_is_available' })
+    for (const marker of ['SELECT unnest($2::uuid[]) AS build_id', 'JOIN active_build', 'FROM bodha_contradictions', 'FROM bodha_discoveries', 'FROM bodha_anomalies', 'ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC', 'LIMIT 0']) {
       expect(contradictions.sql).toContain(marker)
     }
 
@@ -253,16 +253,16 @@ describe('binding availability contracts', () => {
     ])
     await expect(probeSourceQueryAvailabilityContract(yoga, 'chart-a', null, successfulZeroRows)).resolves.toEqual([])
     await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', null, successfulZeroRows)).resolves.toEqual([
-      'source-query:query-contradictions:v1 cannot bind the selected chart to an active completed build.',
+      'source-query:query-contradictions:v1 cannot bind the selected chart to a served chart generation.',
     ])
     const observedParams: unknown[][] = []
-    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', 'build-a', async (_sql, params) => {
+    await expect(probeSourceQueryAvailabilityContract(contradictions, 'chart-a', ['build-a'], async (_sql, params) => {
       observedParams.push(params ?? [])
       throw new Error('selected relation unavailable')
     })).resolves.toEqual([
       'source-query:query-contradictions:v1 could not execute its authenticated source query.',
     ])
-    expect(observedParams).toEqual([['chart-a', 'build-a']])
+    expect(observedParams).toEqual([['chart-a', ['build-a']]])
   })
 
   it('admits judgment only through its exact required-row readiness contract', () => {
@@ -273,21 +273,12 @@ describe('binding availability contracts', () => {
       descriptor_name: 'judgment_query',
       capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
       scope: 'chart',
-      parameter_binding: 'chart_and_active_build',
+      parameter_binding: 'chart_and_served_builds',
       empty_semantics: 'required_rows_must_exist',
     })
     expect(normalizedSql(contract.sql)).toBe(normalizedSql(`
-      WITH active_build AS (
-        SELECT id
-          FROM build_runs
-         WHERE chart_id = $1::uuid AND state = 'completed'
-         ORDER BY ended_at DESC NULLS LAST, id DESC
-         LIMIT 1
-      )
       SELECT 1 AS source_query_available
-        FROM active_build b
-       WHERE b.id = $2::uuid
-         AND EXISTS (
+       WHERE EXISTS (
            SELECT 1
              FROM brahma_vichara_constants c
             WHERE c.constant_key = 'operative_vargas'
@@ -297,8 +288,7 @@ describe('binding availability contracts', () => {
            SELECT 1
              FROM chart_facts f
             WHERE f.chart_id = $1::uuid
-              AND f.build_id = b.id
-              AND f.build_id = $2::uuid
+              AND f.build_id = ANY($2::uuid[])
               AND f.ayanamsha_id = 'lahiri_chitrapaksha'
               AND f.fact_subject = 'LAGNA'
               AND f.fact_category = 'graha_position'
@@ -307,6 +297,9 @@ describe('binding availability contracts', () => {
          )
        LIMIT 1
     `))
+    // The readiness probe never selects a chart-wide "latest completed" run (RC-1): the
+    // LAGNA fact may be served by any resolved asset's run.
+    expect(contract.sql).not.toContain('build_runs')
     expect(judgment.availability_contracts).toEqual([expect.objectContaining({
       binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
       requirements: [expect.objectContaining({
@@ -334,7 +327,7 @@ describe('binding availability contracts', () => {
     await expect(probeSourceQueryAvailabilityContract(
       contract,
       'chart-a',
-      'build-a',
+      ['build-a'],
       async () => ({
         rows: prerequisites.operativeVargas && prerequisites.wealthD2 && prerequisites.lagnaSign
           ? [{ source_query_available: 1 } as unknown as OverlayQueryRow]
@@ -350,7 +343,7 @@ describe('binding availability contracts', () => {
     await expect(probeSourceQueryAvailabilityContract(
       contract,
       'chart-a',
-      'build-a',
+      ['build-a'],
       async () => ({ rows: [] }),
     )).resolves.toEqual([
       'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
@@ -363,33 +356,33 @@ describe('binding availability contracts', () => {
     await expect(probeSourceQueryAvailabilityContract(
       contract,
       'chart-a',
-      'build-a',
+      ['build-a'],
       async (sql, params = []) => {
         observed.push({ sql, params })
         return { rows: [{ source_query_available: 1 } as unknown as OverlayQueryRow] }
       },
     )).resolves.toEqual([])
-    expect(observed).toEqual([{ sql: contract.sql, params: ['chart-a', 'build-a'] }])
+    expect(observed).toEqual([{ sql: contract.sql, params: ['chart-a', ['build-a']] }])
   })
 
-  it('fails judgment readiness closed without an active build, for the wrong chart/build pair, and on SQL failure', async () => {
+  it('fails judgment readiness closed without a served generation, for the wrong chart/build set, and on SQL failure', async () => {
     const contract = getSourceQueryAvailabilityContract('source-query:judgment-query-readiness:v1')!
     const query = async (_sql: string, params: unknown[] = []) => ({
-      rows: params[0] === 'chart-a' && params[1] === 'build-a'
+      rows: params[0] === 'chart-a' && Array.isArray(params[1]) && params[1].includes('build-a')
         ? [{ source_query_available: 1 } as unknown as OverlayQueryRow]
         : [],
     })
 
     await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', null, query)).resolves.toEqual([
-      'source-query:judgment-query-readiness:v1 cannot bind the selected chart to an active completed build.',
+      'source-query:judgment-query-readiness:v1 cannot bind the selected chart to a served chart generation.',
     ])
-    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-b', 'build-a', query)).resolves.toEqual([
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-b', ['build-a'], query)).resolves.toEqual([
       'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
     ])
-    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-b', query)).resolves.toEqual([
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', ['build-b'], query)).resolves.toEqual([
       'source-query:judgment-query-readiness:v1 returned no required readiness rows.',
     ])
-    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', 'build-a', async () => {
+    await expect(probeSourceQueryAvailabilityContract(contract, 'chart-a', ['build-a'], async () => {
       throw new Error('permission denied')
     })).resolves.toEqual([
       'source-query:judgment-query-readiness:v1 could not execute its authenticated source query.',

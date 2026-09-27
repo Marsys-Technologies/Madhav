@@ -4,7 +4,10 @@ import { stableFingerprint } from './stable'
 export type SourceQueryParameterBinding =
   | 'global'
   | 'global_with_chart_fallback'
-  | 'chart_and_active_build'
+  // $2 is the chart's served build set (uuid[]): the rows builds of every asset whose chart
+  // receipt resolves (generation/served_generation.ts). Never a chart-wide "latest" run.
+  | 'chart_and_served_builds'
+  // Binds only $1; requires a non-empty served chart generation as its precondition.
   | 'chart_with_active_build_context'
 export type SourceQueryEmptySemantics = 'query_success_is_available' | 'required_rows_must_exist'
 
@@ -45,7 +48,7 @@ export function sourceQueryParameterBindingMatchesScope(
     || parameterBinding === 'global_with_chart_fallback'
   ))
     || (scope === 'chart' && (
-      parameterBinding === 'chart_and_active_build'
+      parameterBinding === 'chart_and_served_builds'
       || parameterBinding === 'chart_with_active_build_context'
     ))
 }
@@ -495,9 +498,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     contract_id: 'source-query:query-contradictions:v1',
     descriptor_name: 'query_contradictions',
     capability_uri: 'marsys://tool/L2/query_contradictions',
-    scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available',
+    scope: 'chart', parameter_binding: 'chart_and_served_builds', empty_semantics: 'query_success_is_available',
     sql: `WITH active_build AS (
-            SELECT $2::uuid AS build_id
+            SELECT unnest($2::uuid[]) AS build_id
           ), contradictions AS (
             SELECT contradiction_id, signal_a_id, signal_b_id, tension_class,
                    domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id, c.build_id
@@ -1355,14 +1358,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
     scope: 'chart',
-    parameter_binding: 'chart_and_active_build',
+    parameter_binding: 'chart_and_served_builds',
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
                    fact_value_jsonb, unit, ayanamsha_id, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = 'ayurdaya'
              ORDER BY ayanamsha_id, fact_subject, fact_key
              LIMIT 0
@@ -1370,7 +1373,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = 'ayurdaya'
           )
           SELECT handler_page.*, handler_count.total
@@ -1388,14 +1391,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'get_sensitive_degrees',
     capability_uri: 'marsys://tool/L1/get_sensitive_degrees',
     scope: 'chart',
-    parameter_binding: 'chart_and_active_build',
+    parameter_binding: 'chart_and_served_builds',
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
                    fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
              ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
              LIMIT 0
@@ -1403,7 +1406,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
           )
           SELECT handler_page.*, handler_count.total
@@ -4008,19 +4011,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'judgment_query',
     capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
     scope: 'chart',
-    parameter_binding: 'chart_and_active_build',
+    parameter_binding: 'chart_and_served_builds',
     empty_semantics: 'required_rows_must_exist',
-    sql: `WITH active_build AS (
-            SELECT id
-              FROM build_runs
-             WHERE chart_id = $1::uuid AND state = 'completed'
-             ORDER BY ended_at DESC NULLS LAST, id DESC
-             LIMIT 1
-          )
-          SELECT 1 AS source_query_available
-            FROM active_build b
-           WHERE b.id = $2::uuid
-             AND EXISTS (
+    sql: `SELECT 1 AS source_query_available
+           WHERE EXISTS (
                SELECT 1
                  FROM brahma_vichara_constants c
                 WHERE c.constant_key = 'operative_vargas'
@@ -4030,8 +4024,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                SELECT 1
                  FROM chart_facts f
                 WHERE f.chart_id = $1::uuid
-                  AND f.build_id = b.id
-                  AND f.build_id = $2::uuid
+                  AND f.build_id = ANY($2::uuid[])
                   AND f.ayanamsha_id = 'lahiri_chitrapaksha'
                   AND f.fact_subject = 'LAGNA'
                   AND f.fact_category = 'graha_position'
@@ -4039,7 +4032,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                   AND f.fact_value_text IS NOT NULL
              )
            LIMIT 1`,
-    source_refs: [
+source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
       'platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants',
       'platform/migrations/435_ga_vichara.sql:83-115',
