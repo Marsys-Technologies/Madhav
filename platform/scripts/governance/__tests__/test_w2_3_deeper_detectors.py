@@ -518,3 +518,97 @@ def test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified():
     assert v == ac.PASS, n
     v, n = ac.idem_scan("ga_vargas", ids["ga_vargas"], "delete_then_insert", ["chart_divisionals"] * 2)
     assert v == ac.PASS and "chart_divisionals" in n[0], n
+
+
+# ─────────── R21: blocking radius per asset from the DAG, attached to every Build gap as its severity ───────────
+
+_DAG = {"bg_root": [], "bg_mid": ["bg_root"], "bg_leaf": ["bg_mid"], "ga_x": ["bg_root", "bg_gone"],
+        "bo_c1": ["bo_c2"], "bo_c2": ["bo_c1", "bg_leaf"]}
+
+
+def test_r21_the_radius_is_the_count_of_active_assets_that_transitively_depend_on_it():
+    """bg_root is depended on by bg_mid (direct), bg_leaf (through bg_mid), ga_x (another layer, direct),
+    and the bo_c1<->bo_c2 cycle (through bg_leaf): 5 transitive, 2 direct. A cycle counts each member once
+    and never the asset itself; `bg_gone` (not active) is no edge. severity_weight = 1 + transitive."""
+    r = ac.blocking_radius(_DAG)
+    assert r["bg_root"] == dict(transitive=5, direct=2, severity_weight=6), r["bg_root"]
+    assert r["bg_leaf"] == dict(transitive=2, direct=1, severity_weight=3), r["bg_leaf"]
+    assert r["bo_c1"] == dict(transitive=1, direct=1, severity_weight=2) and r["bo_c2"]["transitive"] == 1, r
+    assert r["ga_x"] == dict(transitive=0, direct=0, severity_weight=1), r["ga_x"]
+    assert "bg_gone" not in r
+
+
+# bg_root <- bg_mid <- bg_leaf, and ga_x (another layer) <- bg_root: root 3 transitive, leaf 0.
+_DAG_E2E = {"bg_root": [], "bg_mid": ["bg_root"], "bg_leaf": ["bg_mid"], "ga_x": ["bg_root"]}
+
+
+def _radius_layer(monkeypatch, ctrl, graph):
+    reg = {a: w1._reg_row(a, "t_main", count_sql="SELECT count(*) FROM t_main") for a in ("bg_root", "bg_mid", "bg_leaf")}
+    w1._stub_layer(monkeypatch, ctrl, reg)
+    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t_main": 0}))      # live=0: Build.completion FAILs for all three
+    monkeypatch.setattr(ac, "dependency_graph", graph, raising=False)
+    return ac.measure("L0")
+
+
+def test_r21_a_root_and_a_leaf_with_the_same_verdict_open_differently_weighted_build_gaps(monkeypatch, tmp_path):
+    """measure() + emit_gaps() on a ledger copy: bg_root and bg_leaf both FAIL Build.completion (same verdict,
+    same measured shape). Their OPEN rows carry blocking_radius 3 / severity_weight 4 and 0 / 1. A non-Build
+    gap carries no radius. Fails without the fix: no row carried a blocking radius."""
+    c = _radius_layer(monkeypatch, tmp_path, lambda: dict(_DAG_E2E))
+    assert {w1._m(c, a, "Build.completion")["v"] for a in ("bg_root", "bg_leaf")} == {ac.FAIL}
+    ac.emit_gaps(c)
+    rows = {r["gap_id"]: r for r in (json.loads(x) for x in (tmp_path / "asset_gaps.jsonl").read_text().splitlines() if x.strip())}
+    root, leaf = rows["bg_root-Build.completion"], rows["bg_leaf-Build.completion"]
+    assert (root["blocking_radius"], root["severity_weight"]) == (3, 4), root
+    assert (leaf["blocking_radius"], leaf["severity_weight"]) == (0, 1), leaf
+    assert "blocking_radius" not in rows["bg_root-Carr.detector"]
+
+
+def test_r21_an_unreadable_dag_is_unmeasured_never_zero(monkeypatch, tmp_path):
+    """The dependency read fails: the census still completes, every Build gap carries blocking_radius null
+    with the reason — never 0 (which would read as 'an isolated leaf, lowest priority')."""
+    def boom():
+        raise ac.Unknown("relation asset_registry gone")
+    c = _radius_layer(monkeypatch, tmp_path, boom)
+    ac.emit_gaps(c)
+    row = next(json.loads(x) for x in (tmp_path / "asset_gaps.jsonl").read_text().splitlines()
+               if '"bg_root-Build.completion"' in x)
+    assert row["blocking_radius"] is None and row["severity_weight"] is None, row
+    assert "unmeasured: the dependency read failed" in row["blocking_radius_note"], row
+
+
+def test_r21_a_closing_or_reopening_build_row_carries_the_radius_measured_now(monkeypatch, tmp_path):
+    """Transition rows carry the radius THIS run measured (the DAG moves; a prior row's figure is not carried):
+    a CLOSED Build.count_integrity row and a RE-OPENED Build.completion row both read bg_root's 3."""
+    c = _radius_layer(monkeypatch, tmp_path, lambda: dict(_DAG_E2E))
+    w1._open_gap(tmp_path, "bg_root", "Build.count_integrity")
+    (tmp_path / "asset_gaps.jsonl").open("a").write(json.dumps(dict(
+        asset="bg_root", gap_id="bg_root-Build.completion", kind="gap", criterion="Build.completion", what="w",
+        change="", detector="d", owner="o", gate="g", state="CLOSED", ts="t0", blocking_radius=99)) + "\n")
+    assert w1._m(c, "bg_root", "Build.count_integrity")["v"] == ac.PASS
+    added, _, closed, reopened = ac.emit_gaps(c)
+    assert closed >= 1 and reopened == 1
+    rows = [json.loads(x) for x in (tmp_path / "asset_gaps.jsonl").read_text().splitlines() if x.strip()]
+    last = {r["gap_id"]: r for r in rows}
+    assert last["bg_root-Build.count_integrity"]["state"] == "CLOSED" and last["bg_root-Build.count_integrity"]["blocking_radius"] == 3
+    assert last["bg_root-Build.completion"]["state"] == "OPEN" and last["bg_root-Build.completion"]["blocking_radius"] == 3
+
+
+@LIVE
+def test_live_r21_the_radius_agrees_with_an_independent_recursive_query():
+    """Live, read-only: the census's radius for every active asset equals a recursive CTE over
+    asset_registry.depends_on computed in SQL (a second, independent derivation of the same metric)."""
+    r = ac.blocking_radius(ac.dependency_graph())
+    rows = ac.psql(
+        "WITH RECURSIVE act AS (SELECT asset_id, coalesce(depends_on, '{}') d FROM asset_registry "
+        " WHERE is_active AND NOT coalesce(dead_flag,false)), "
+        "e AS (SELECT DISTINCT unnest(d) AS dep, asset_id AS child FROM act), "
+        "edge AS (SELECT e.dep, e.child FROM e JOIN act a ON a.asset_id = e.dep WHERE e.dep <> e.child), "
+        "reach(root, x) AS (SELECT dep, child FROM edge UNION SELECT r.root, edge.child FROM reach r "
+        " JOIN edge ON edge.dep = r.x) "
+        "SELECT a.asset_id, (SELECT count(DISTINCT x) FROM reach WHERE root = a.asset_id AND x <> a.asset_id)::text "
+        "FROM act a")
+    sql = {a: int(n) for a, n in rows}
+    assert len(sql) == len(r) and all(r[a]["transitive"] == sql[a] for a in sql), \
+        [(a, r[a]["transitive"], sql[a]) for a in sql if r[a]["transitive"] != sql[a]][:5]
+    assert max(v["transitive"] for v in r.values()) > 0

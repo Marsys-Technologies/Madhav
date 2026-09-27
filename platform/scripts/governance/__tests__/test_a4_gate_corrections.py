@@ -181,6 +181,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None):
     monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: {})
     monkeypatch.setattr(ac, "build_history", lambda prefix, *a, **k: dict(per={}, global_runs=0, global_with_layer=0, lit=set()))
     monkeypatch.setattr(ac, "latest_attempts", lambda ids: ({}, None))   # W2-2 D6 item 2: the attempt read
+    monkeypatch.setattr(ac, "dependency_graph", lambda: {a: [] for a in reg}, raising=False)  # W2-3 R21: the DAG read
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
     monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))

@@ -1715,6 +1715,46 @@ def target_owners() -> dict[str, list[str]]:
     return out
 
 
+def dependency_graph() -> dict[str, list[str]]:
+    """R21: every ACTIVE asset's declared `depends_on`, registry-wide (all six layers), in one read —
+    the blocking radius crosses layers (an L0 table blocks L1–L5 builders)."""
+    blob = scalar("SELECT coalesce(json_object_agg(asset_id, coalesce(to_json(depends_on), '[]'::json))::text, '{}') "
+                  "FROM asset_registry WHERE is_active AND NOT coalesce(dead_flag,false)")
+    return {k: [str(d) for d in (v or [])] for k, v in json.loads(blob or "{}").items()}
+
+
+def blocking_radius(graph: dict[str, list[str]]) -> dict[str, dict]:
+    """R21 (triage BT05; register row R21). THE METRIC, per active asset A:
+
+      transitive      the number of DISTINCT active assets (every layer) that depend on A through
+                      `asset_registry.depends_on`, directly or through any chain — what a failing A can
+                      block. Edges come only from active assets and point only at active assets (a
+                      dependency on an inactive/unknown id is no edge); a cycle counts each member once
+                      and never A itself.
+      direct          those that declare A in their own `depends_on`.
+      severity_weight 1 + transitive — the multiplier a Build gap carries: an isolated leaf weighs 1.
+
+    A leaf and a root with the same Build verdict are the same defect with different costs; this is the
+    figure that orders their repair."""
+    rev: dict[str, set[str]] = {a: set() for a in graph}
+    for a, deps in graph.items():
+        for d in deps:
+            if d in rev and d != a:
+                rev[d].add(a)
+    out = {}
+    for a in graph:
+        seen: set[str] = set()
+        todo = list(rev[a])
+        while todo:
+            x = todo.pop()
+            if x == a or x in seen:
+                continue
+            seen.add(x)
+            todo.extend(rev[x])
+        out[a] = dict(transitive=len(seen), direct=len(rev[a]), severity_weight=1 + len(seen))
+    return out
+
+
 def _grade_target_less(r: dict, owners) -> dict:
     """R53 (T1 plant build_target_null; W2-1 OS-1/#18): Build.target for a writer-backed data/artifact
     asset with NO target_table. The FAIL branch used to be dead — `asset_kind` is NOT NULL
@@ -1918,6 +1958,12 @@ def measure(layer_key: str) -> dict:
     dep_ids = sorted({d for r in reg.values() for d in r["depends_on"]})
     deprec = _layer_read("dependency_records", throughput, "", dep_ids) if dep_ids else {}
     lmaps = local_map_candidates(cfg["prefix"]) if layer_key == "L0" else -1
+    # R21: the blocking radius, registry-wide. Fault-isolated: an unreadable graph leaves every asset's
+    # radius UNMEASURED (None, with the reason) — never 0, which would read as "an isolated leaf".
+    try:
+        radius, radius_note = blocking_radius(dependency_graph()), None
+    except Unknown as exc:
+        radius, radius_note = {}, f"unmeasured: the dependency read failed ({exc})"
 
     known = set(reg)
     owners: dict = {}                                     # R53: read lazily, at most once per layer
@@ -2233,7 +2279,12 @@ def measure(layer_key: str) -> dict:
         m["Carr.detector"] = _run_carriage_detector(aid)
         m["Reach.fields"] = dict(v=NOT_GENERIC, measured="field-level exposure census is per-capability; not generic")
 
+        br = radius.get(aid)
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
+                           blocking_radius=(dict(br, basis="active assets depending on it, transitively, every layer")
+                                            if br else dict(transitive=None, direct=None, severity_weight=None,
+                                                            basis=radius_note or "unmeasured: not in the active "
+                                                                                 "dependency graph")),
                            live_rows_basis=(basis if live is not None else None), count_sql_tables=ctables,
                            target_table=tbl, has_writer=r["has_writer"], writer_files=files,
                            catalog_status=r["catalog_status"], measurements=m))
@@ -2347,13 +2398,22 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                 change = prior.get("change", "") if prior else ""
                 owner = prior.get("owner", "asset_census") if prior else "asset_census"
                 gate = prior.get("gate", "this asset's certification") if prior else "this asset's certification"
+                # R21: a Build gap carries its asset's blocking radius as its severity — measured by this
+                # census run, never carried from a prior row (the DAG moves) and never invented (an
+                # unmeasured radius is null with its reason, not 0).
+                sev = {}
+                if crit.startswith("Build.") and isinstance(a.get("blocking_radius"), dict):
+                    br = a["blocking_radius"]
+                    sev = dict(blocking_radius=br.get("transitive"), severity_weight=br.get("severity_weight"))
+                    if br.get("transitive") is None:
+                        sev["blocking_radius_note"] = br.get("basis", "unmeasured")
                 if v in FAILING:
                     if prior is None:
                         f.write(json.dumps(dict(
                             asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
                             what=f"measured: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
                             change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
-                            owner=owner, gate=gate, state="OPEN", ts=ts), ensure_ascii=False) + "\n")
+                            owner=owner, gate=gate, state="OPEN", ts=ts, **sev), ensure_ascii=False) + "\n")
                         added += 1
                     elif prior_state in LIVE_GAP_STATES:
                         skipped += 1
@@ -2362,7 +2422,7 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                             asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
                             what=f"RE-OPENED by measurement: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
                             change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
-                            owner=owner, gate=gate, state="OPEN", ts=ts), ensure_ascii=False) + "\n")
+                            owner=owner, gate=gate, state="OPEN", ts=ts, **sev), ensure_ascii=False) + "\n")
                         reopened += 1
                     else:
                         # F4 (A_REVIEW.md): WITHDRAWN (or any other terminal state this script
@@ -2375,7 +2435,7 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                             asset=a["asset_id"], gap_id=gid, kind="gap", criterion=crit,
                             what=f"CLOSED by measurement: {res['measured']} / required: the {crit.split('.')[0]} gate's claim",
                             change=change, detector=f"asset_census.py --layer {census['layer']} ({crit})",
-                            owner=owner, gate=gate, state="CLOSED", ts=ts), ensure_ascii=False) + "\n")
+                            owner=owner, gate=gate, state="CLOSED", ts=ts, **sev), ensure_ascii=False) + "\n")
                         closed += 1
                     # else: no prior, or prior already CLOSED/terminal — nothing to do (idempotent)
     return added, skipped, closed, reopened
