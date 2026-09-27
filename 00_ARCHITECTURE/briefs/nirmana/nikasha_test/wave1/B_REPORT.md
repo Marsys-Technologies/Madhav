@@ -1,30 +1,35 @@
 ---
 artifact: NIKASHA_WAVE1_LANE_B_REPORT
 canonical_id: NIKASHA_WAVE1_LANE_B_REPORT
-version: "2.1"
-status: SUBMITTED — corrections after gate re-review REJECT (narrow basis), packet v2.0 commit 6a7c38e29, reviewed 2026-09-27
-produced_on: 2026-09-26/27 (v1.0) / 2026-09-27 (v2.0 corrections) / 2026-09-27 (v2.1 re-review corrections)
+version: "2.2"
+status: SUBMITTED — corrections after gate review 3 REJECT (narrow basis), packet v2.1 commit c5731c54c, reviewed 2026-09-27
+produced_on: 2026-09-26/27 (v1.0) / 2026-09-27 (v2.0 corrections) / 2026-09-27 (v2.1 re-review corrections) / 2026-09-27 (v2.2 review-3 corrections)
 lane: B (the catalog names its producers) — R85, D5 rev. 2.1
 authority: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §4
 builder: Claude (Sonnet), Lane B sub-agent
 gate_review: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW.md (verdict REJECT; corrections C-1..C-6)
 gate_re_review: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW2.md (verdict REJECT, narrow; corrections R1-R6 in its §4)
+gate_review_3: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REVIEW3.md (verdict REJECT, narrow; correction R7 + wording R8 + non-blocking N1/N2 in its §4)
 ---
 
 # Nikaṣa wave 1 — Lane B report (the catalog names its producers)
 
-**This version (2.1) states only what reproduces as of the R1–R6 corrections below,
-layered on top of v2.0's C-1..C-6.** The original submission (packet_commit `4e586118d`)
-was REJECTED at the gate (`B_REVIEW.md`). The v2.0 resubmission (commit `6a7c38e29`) was
-REJECTED AGAIN, on a narrow basis (`B_REVIEW2.md`): the re-reviewer confirmed every
-headline figure and C-3/C-5/C-6 by independent re-derivation and SQL, but found C-1 and
-C-2/C-4 each had one code path that was never exercised by a test — `--check`'s SCU
-coverage, and the out-of-range priority branch that produces all 7 production
-`source_ref_out_of_range` outcomes. R1 and R2 close those two gaps with real code fixes
-and tests; R3–R6 are report-accuracy corrections the re-review's §4 also named. Every
-figure in this document was re-verified against the pipeline as it stands after R1–R6,
-not carried over from the v2.0 text — where a v2.0 figure changed or was corrected, that
-is stated explicitly.
+**This version (2.2) states only what reproduces as of the R7/R8/N1/N2 corrections below,
+layered on top of v2.1's C-1..C-6 and R1–R6.** The original submission (packet_commit
+`4e586118d`) was REJECTED at the gate (`B_REVIEW.md`). The v2.0 resubmission (commit
+`6a7c38e29`) was REJECTED AGAIN, narrowly (`B_REVIEW2.md`: R1–R6). The v2.1 resubmission
+(commit `c5731c54c`) was REJECTED a THIRD time, narrowly (`B_REVIEW3.md`): the reviewer
+confirmed R1–R6 all closed by proofs that could have failed, confirmed no regression
+(byte-identical re-derivation, identical closure, 25/25 tests), and confirmed no
+untouchable file was touched — but found one new coverage bypass (R7): `--check` accepted
+any producer whose disposition was `reviewed_output`, `route_evidence_only` or
+`derived_from_service_probe` as long as `source_ref` was any non-empty string, so a
+fabricated producer on every uncovered SCU made the artifact read 182/182 and PASS. R7
+closes that gap by cross-checking every such producer against the snapshot the script
+already loads (since R1). R8 restates four places in this report (and one code comment)
+that overclaimed what `--check` detects before R7 landed. Every figure in this document
+was re-verified against the pipeline as it stands after R7/R8/N1/N2, not carried over from
+the v2.1 text — where a v2.1 figure or claim changed, that is stated explicitly.
 
 ## 0 — Scope discipline note (read before anything else)
 
@@ -46,12 +51,12 @@ is live in this worktree is outside my lane.
 
 | File | Status | Reason |
 |---|---|---|
-| `platform/scripts/governance/catalog_provenance.py` | modified (9 commits total: 6 for C-1..C-6, 3 for R1/R2/R6) | C-1..C-6 and R1/R2/R6 corrections, each below. |
-| `platform/scripts/governance/__tests__/test_catalog_provenance.py` | modified (9 commits) | New/rewritten tests per correction, each with recorded mutation evidence. |
+| `platform/scripts/governance/catalog_provenance.py` | modified (across the C-1..C-6, R1/R2/R6 and R7 commits) | All corrections through R7, each below. |
+| `platform/scripts/governance/__tests__/test_catalog_provenance.py` | modified (same commits, plus the R2/test-only commit) | New/rewritten tests per correction, each with recorded mutation evidence. |
 | `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/producer_provenance.derived.json` | regenerated | B-1 output, re-derived after every correction. |
-| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/CLOSURE_REPORT.md` | regenerated | B-2 output, re-derived after every correction; now states the closure computation itself (R6). |
+| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/CLOSURE_REPORT.md` | regenerated | B-2 output, re-derived after every correction; states the closure computation itself (R6), now interpolated not hardcoded (N2). |
 | `00_ARCHITECTURE/briefs/nirmana/nikasha_test/provenance/BUILD_DEPENDENCIES_READER_SCAN.md` | regenerated | B-3 output; now excludes this lane's own wave1/ prose (C-5); 36 files, not 37 (R4). |
-| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REPORT.md` | rewritten (this file) | v2.1, re-review corrections pass. |
+| `00_ARCHITECTURE/briefs/nirmana/nikasha_test/wave1/B_REPORT.md` | rewritten (this file) | v2.2, review-3 corrections pass. |
 
 Not touched: any writer, the orchestrator, `editorial.ts`, `compiler.ts`, the
 register/plan/decisions/STATE files, `asset_census.py`, `asset_elevation_tracker.py`,
@@ -68,7 +73,7 @@ different gate-blocking findings; every other correction is its own commit.
 
 | # | commit | what it fixes | test(s) | mutation run |
 |---|---|---|---|---|
-| C-1 | `a4fef0f7c` | Removed the catch-all NO_DETECTOR fallback in `derive_all`; `--check` now reads the committed `producer_provenance.derived.json` via new `validate_derived_artifact()` against a closed `NO_DETECTOR_REASON_CLASSES` set, instead of re-deriving in memory. **Correction (R5): this closes only ENTRY validity, not SCU coverage — see R1 in §2b.** | `test_producer_output_requirement_with_no_claims_gets_an_exact_reason_not_a_catchall` (its docstring was wrong until R5 fixed it — see §2b), `test_producer_output_claim_with_non_reviewed_disposition_is_carried_through` (renamed in C-5 from the interim test named here in v2.0), `test_classify_no_detector_reason_is_a_closed_set`, `test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry` | **Restoring the catch-all at HEAD leaves 19/19 (now 25/25) green — this is NOT a live guard at HEAD** (the re-review's own finding; v2.0's "1 failed, 12 passed" record was true only at commit `a4fef0f7c` itself, on the interim test that C-5 later rewrote). What DOES guard a restored catch-all at HEAD: its text classifies as `"unclassified"` via `classify_no_detector_reason`, which `test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry` / `test_classify_no_detector_reason_is_a_closed_set` cover. |
+| C-1 | `a4fef0f7c` | Removed the catch-all NO_DETECTOR fallback in `derive_all`; `--check` now reads the committed `producer_provenance.derived.json` via new `validate_derived_artifact()` against a closed `NO_DETECTOR_REASON_CLASSES` set, instead of re-deriving in memory. **Correction (R5): this closes only ENTRY validity, not SCU coverage — see R1 in §2b.** | `test_producer_output_requirement_with_no_claims_gets_an_exact_reason_not_a_catchall` (its docstring was wrong until R5 fixed it — see §2b), `test_producer_output_claim_with_non_reviewed_disposition_is_carried_through` (renamed in C-5 from the interim test named here in v2.0), `test_classify_no_detector_reason_is_a_closed_set`, `test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry` | **Restoring the catch-all at HEAD leaves 19/19 (now 30/30) green — this is NOT a live guard at HEAD** (the re-review's own finding; v2.0's "1 failed, 12 passed" record was true only at commit `a4fef0f7c` itself, on the interim test that C-5 later rewrote). What DOES guard a restored catch-all at HEAD: its text classifies as `"unclassified"` via `classify_no_detector_reason`, which `test_validate_derived_artifact_fails_on_a_stale_hand_edited_entry` / `test_classify_no_detector_reason_is_a_closed_set` cover. |
 | C-2 + C-4 | `6fa514fc5` | `resolve_segment_text` now returns `(text, out_of_range_reason)` distinguishing missing-file / out-of-bounds / genuinely-resolved. New `source_ref_out_of_range` reason class. **Correction (R2): the priority branch that fires when another segment in the same `source_ref` still resolved (the shape behind ALL 7 production outcomes) had no test until R2 — see §2b.** New `compute_segment_resolution_counts()` recounts every source_query SCU's declared pieces bounds-checked. | `test_unresolvable_range_yields_no_detector_with_reason` (rewritten to assert 3 distinct exact classes; covers only the "nothing resolved" branch), `test_compute_segment_resolution_counts_distinguishes_full_partial_none` | Removed the bounds-check guard (`if a < 1 or b > n or a > b: return None, ...`) → 2 failed (both tests above), 12 passed. Reverted; 14 passed. This mutation does NOT exercise the production-load-bearing branch — R2 adds the test that does. |
 | C-3 | `91658a6a9` | (a) `one_hop_helper_texts` skips any call match immediately preceded by `def`/`function` — a definition header is not a call. (b)/(c) new `classify_segment_kind()` excludes migration- and writer-path segments from producing relation candidates (they still count toward "resolved" for out-of-range purposes, never toward producers). Producer gained `via_helper` for auditability. **Fact (R5): in production, `ga_dashas`'s removal is done entirely by the writer-kind exclusion — `_idempotency.py` lives under `ga_writers/` — not by the def guard. The def guard is correct but not load-bearing today: all 294 `derived_from_source_query` rows carry `via_helper: null`, so the one-hop follower contributes no production producer at all.** | `test_one_hop_follower_skips_a_definition_header_not_a_call`, `test_migration_segment_is_never_a_producer_source`, `test_writer_segment_input_read_is_never_a_producer_source` | Removed the def-prefix guard → 1 failed, 16 passed (`ga_decoy` reappeared via `via_helper='unrelated_function'`). Removed the segment-kind exclusion → 2 failed, 15 passed (`bg_decoy`/`bg_texts`/`bg_text_index` reappeared). Reverted each; 17 passed. |
 | C-5 | `f1e244c09` | New `get_non_reviewed_producer_output_claims()` carries a claim whose disposition is anything other than `reviewed_output` (today: `route_evidence_only` for `ka_kalasutra`) through `derive_all` under its OWN disposition — never dropped, never relabeled. New `WAVE1_DIR` exclusion in the reader scan, alongside the existing `PROVENANCE_DIR` one. | `test_producer_output_claim_with_non_reviewed_disposition_is_carried_through` (renamed/rewritten from C-1's interim test), `test_reader_scan_excludes_its_own_wave1_report_and_review` | Removed the non-reviewed carry-through loop → 1 failed, 16 passed (regressed to `producers=[]`). Removed the `WAVE1_DIR` exclusion → 1 failed, 17 passed (20 synthetic prose lines reappeared as hits). Reverted each; 18 passed. |
@@ -112,6 +117,60 @@ R3, R4, R5 (report-accuracy; folded into §3–§7, no separate commit):
   `wave1/B_REPORT.md` itself, which C-5's `WAVE1_DIR` exclusion now correctly removes.
 - **R5** — folded into the C-1 and C-3 rows above (the C-1 mutation record now states it
   held only at `a4fef0f7c`; the C-3 row states the `via_helper`/def-guard facts).
+
+## 2c — Corrections after review 3 (R7, R8, N1, N2)
+
+`B_REVIEW3.md` confirmed R1–R6 all closed (each by a proof that could have failed, re-run
+by the reviewer independently), confirmed byte-identical re-derivation and identical
+closure (no regression), and confirmed no untouchable file was touched. It REJECTED again
+on one new, narrow finding: **R7**, a coverage bypass in `--check` itself.
+
+| # | commit | what it fixes | test(s) | mutation run |
+|---|---|---|---|---|
+| R7 | `a171addc7` | `--check` accepted any `reviewed_output` / `route_evidence_only` / `derived_from_service_probe` producer whose `source_ref` was any non-empty string — the reviewer replaced all 75 NO_DETECTOR SCUs with a fabricated `{asset_id: "zz_fake", disposition: "route_evidence_only", source_ref: "x"}` and the artifact read 182/182, PASS, exit 0; a fake `reviewed_output` on `get_dignity` (which has no reviewed claim at all) also passed. New `snapshot_producer_output_claim_keys(snapshot)` and `snapshot_service_probe_asset_ids(snapshot)` give `validate_derived_artifact(payload, snapshot)` — now snapshot-aware — the ground truth to check against: a `reviewed_output`/`route_evidence_only` producer must match a snapshot `producer_output_claims` entry `(asset_id, disposition)` for that SCU; a `derived_from_service_probe` producer must match a `kind: service_probe` requirement's `asset_id` on that SCU. `main()` passes the already-loaded snapshot through. `derived_from_source_query` and the coverage check (R1) are unaffected. | `test_check_fails_when_all_no_detector_scus_get_a_fake_route_evidence_only_producer` (probe G2, real `main(["--check"])`, all 75 fakes named), `test_check_fails_when_get_dignity_is_given_a_fake_reviewed_output_producer` (probe G1), `test_check_fails_on_a_service_probe_producer_for_an_unprobed_asset` (probe c), `test_check_passes_on_the_real_committed_artifact_unmodified` (probe d), `test_all_committed_exemption_producers_are_snapshot_backed` (direct count) | Reverting the three snapshot-backing branches to the old "any non-empty `source_ref`" logic → exactly the three fabrication tests fail (3 failed, 27 passed) — the unmodified-artifact test and the count test stay green, because the mutation only matters when a producer ISN'T actually snapshot-backed. Reverted; full suite green again (30 passed). |
+
+**The exemption-producer count, confirmed (R7's own requirement):** the real committed
+artifact carries **24** exemption-tier producers — **14** `reviewed_output` + **1**
+`route_evidence_only` + **9** `derived_from_service_probe` — and **all 24 are
+snapshot-backed, 0 unbacked**, confirmed by `test_all_committed_exemption_producers_are_
+snapshot_backed` reading the real artifact and the real snapshot directly (no fixture).
+This is exactly the count the gate review's own probe found, and it is why the unmodified
+artifact still PASSes under the new, stricter check.
+
+**R8 (wording; no code beyond what R7 already changed):**
+
+- **(a)** §12 item 4 (v2.1) said fixing G would need "per-SCU contract-awareness this
+  lane's … script does not currently have" — false, since the script already had
+  `get_reviewed_claims()`/`get_non_reviewed_producer_output_claims()` and `--check` already
+  loaded the snapshot (since R1). §7 and §12 below now describe R7 as done, not as a
+  stated-but-unfixable limit; G is removed from the "not fixed" itemization.
+- **(b)** §7 (v2.1) called `--check` a validator "that reads one committed JSON file with
+  no DB access" — stale since R1, which added the snapshot file read. §7 below says two
+  files: the artifact and the snapshot.
+- **(c)** §6 (v2.1) said "a stale/hand-edited entry — all now correctly fail" — true only
+  for shape-defective entries before R7; now genuinely true for BOTH shape defects and
+  fabricated exemption producers (R7 closes exactly that second class), so §6 below states
+  it as accomplished rather than partial.
+- **(d)** The `main()` `--check` comment (the block just above the artifact-open branch)
+  said a hand-edited artifact "must be able to fail this" without qualifying which kind of
+  hand-edit — corrected in the R7 commit itself to scope the claim to malformed/
+  shape-defective entries and to name R7's snapshot cross-check as the mechanism that
+  closes the fabricated-exemption class specifically.
+
+**N1 (non-blocking, fixed):** commit `14d9b0125` had silently deleted
+`assert "50-60" in stale[0]` from `test_compute_segment_resolution_counts_distinguishes_
+full_partial_none` without mentioning it. Restored in the R7 commit; it passes
+unmodified (the underlying function still yields the exact stale-piece string), and the
+`M1` bounds-guard mutation still reddens this test via its `(1, 1, 1)` tuple assertion
+regardless, so no guard was ever actually lost — this was purely an unexplained,
+consequence-free deletion, now undone.
+
+**N2 (non-blocking, fixed):** `CLOSURE_REPORT.md`'s "How this closure is computed"
+prose hardcoded `14` / `94` / `127` as string literals instead of reading
+`closure['before']['named_producers']` / `closure['after']['named_producers']` /
+`closure['population_active_count']`. Fixed in the R7 commit — the prose now interpolates
+the same values the closure computation itself produced, so it cannot drift from them if
+the catalog changes.
 
 ## 3 — B-1: the derivation (post-corrections)
 
@@ -345,31 +404,35 @@ migrations, governance docs, and one unapplied teardown script.
 
 ```
 $ python3 platform/scripts/governance/catalog_provenance.py --check
-[B-4] --check PASS: all 182 SCUs in .../provenance/producer_provenance.derived.json have a valid producer or a no_detector reason from the closed reason set, and the artifact's SCU coverage matches the catalog exactly.
+[B-4] --check PASS: all 182 SCUs in .../provenance/producer_provenance.derived.json have either a snapshot-backed producer (a shape-valid derived_from_source_query, or an exemption-tier producer matching a producer_output_claim / service_probe requirement the catalog itself declares) or a no_detector reason from the closed reason set, and the artifact's SCU coverage matches the catalog exactly.
 ```
 
-**A real gate, now for both entries AND coverage (C-1 + R1):** `--check` reads the
-committed JSON artifact directly — it never re-derives. First (R1),
-`validate_scu_coverage()` compares the artifact's `scus` map against the catalog's own SCU
-id set (a snapshot file read, no DB) and names any SCU missing from the artifact or any
+**A real gate, now for entries, coverage AND exemption-tier backing (C-1 + R1 + R7).**
+`--check` reads TWO files — the committed artifact and the catalog snapshot (R8b: v2.1
+wrongly said "one committed JSON file"; that was already stale the moment R1 landed) — it
+never re-derives. First (R1), `validate_scu_coverage()` compares the artifact's `scus` map
+against the catalog's own SCU id set and names any SCU missing from the artifact or any
 extra SCU no longer in the catalog. Then, for every SCU actually present,
-`validate_derived_artifact()` checks entry validity: a `derived_from_source_query`
-producer must carry a non-null `table` AND a range-shaped `source_ref`; a
-`reviewed_output`/`derived_from_service_probe`/`route_evidence_only` producer is a
-declared exemption from that (each already carries its own evidence citation) but must
-still carry a non-empty `source_ref`; a `no_detector` reason must classify into the closed
-`NO_DETECTOR_REASON_CLASSES` set via `classify_no_detector_reason()` — anything that
-doesn't match a named pattern comes back `"unclassified"`, which is deliberately NOT a
-member of that set. The gate re-review's own constructed cases — an empty artifact
-(`"scus": {}`), an artifact missing one real SCU, an artifact carrying an SCU not in the
-catalog, and a stale/hand-edited entry — all now correctly fail.
+`validate_derived_artifact(payload, snapshot)` checks entry validity: a
+`derived_from_source_query` producer must carry a non-null `table` AND a range-shaped
+`source_ref`; a `reviewed_output` / `route_evidence_only` producer must ALSO match a
+`producer_output_claims` entry the snapshot itself declares for that SCU (R7 — a non-empty
+`source_ref` string is no longer sufficient on its own); a `derived_from_service_probe`
+producer must ALSO match a `kind: service_probe` requirement's `asset_id` on that SCU
+(R7); a `no_detector` reason must classify into the closed `NO_DETECTOR_REASON_CLASSES`
+set via `classify_no_detector_reason()` — anything that doesn't match a named pattern
+comes back `"unclassified"`, which is deliberately NOT a member of that set. The gate's own
+constructed cases — an empty artifact (`"scus": {}`), an artifact missing one real SCU, an
+artifact carrying an SCU not in the catalog, a stale/hand-edited entry, AND (R8c: this is
+now genuinely true, not partly true) a fabricated exemption-tier producer with a
+plausible-looking but uncatalogued `asset_id`/`source_ref` — all now correctly fail.
 
 ```
 $ python -m pytest platform/scripts/governance/__tests__/test_catalog_provenance.py -v
-======================== 25 passed in 0.08s ========================
+======================== 30 passed in 0.14s ========================
 ```
 
-Full test list and per-correction mutation evidence: §2 and §2b above.
+Full test list and per-correction mutation evidence: §2, §2b and §2c above.
 
 ## 7 — Honest limits (every reason class, with counts) — post-corrections
 
@@ -399,7 +462,9 @@ an anchor (`service_probe:...` or the requirement's own `source_ref`) instead of
 range. These are read directly off a `kind: service_probe` requirement's own `asset_id` —
 no SQL parsing attempted or needed. `validate_derived_artifact` treats this disposition as
 a declared exemption from the table+range requirement, same as `reviewed_output` and
-`route_evidence_only`.
+`route_evidence_only` — and, since R7, all three are exempted from the table+range shape
+check ONLY, not from verification altogether: each must still match something the
+snapshot itself declares (§6).
 
 **The `route_evidence_only` claim is carried, not dropped (C-5(iii)):**
 `scu.kala.temporal_activation` now carries `ka_kalasutra` twice in its `producers[]` — once
@@ -413,36 +478,44 @@ correctly-flagged shared table), 2 "disagree" (one genuinely unresolvable, one c
 different producing route than the reviewed claim — both correct, nothing lost in the
 merged output).
 
-**`--check`'s remaining limits, stated (R6, from the gate re-review's own constructed
-probes E/F/G):**
+**`--check`'s remaining limits (from the gate's own constructed probes E/F/G) — G is now
+DONE (R7/R8a), E and F remain stated limits:**
 
-- **E — no cross-check against the real database.** `validate_derived_artifact` never
-  confirms a `derived_from_source_query` producer's `table`/`asset_id` against
-  `information_schema.tables` / `asset_registry` — an artifact hand-edited to point a
-  producer at a nonexistent table and a fake asset id still passes. `--check` is a
-  structural/shape validator over the committed JSON, not a live-DB cross-check; B-4's own
-  scope (per the wave1 prompt) never asked for the latter.
-- **F — the reason-class check is a substring classifier, not a contract check.**
-  `classify_no_detector_reason` matches a message's text against known patterns; it never
-  confirms the CLASSIFIED reason is actually true of the SCU's own contract. An artifact
-  where `get_dignity`'s real reason was replaced with a different, equally-closed-set
-  reason (e.g. `"no availability_contracts requirement..."`, wrong for an SCU that
-  genuinely has one) still passes.
-- **G — an exemption disposition only requires a non-empty `source_ref` string.**
-  `reviewed_output`/`derived_from_service_probe`/`route_evidence_only` producers are
-  exempt from the table+range check (§6) because each is expected to carry its own
-  citation format; `validate_derived_artifact` does not further verify that citation
-  points anywhere real. A fabricated `route_evidence_only` producer with `source_ref: "x"`
-  passes.
+- **E — no cross-check against the real database, still a stated limit.**
+  `validate_derived_artifact` never confirms a `derived_from_source_query` producer's
+  `table`/`asset_id` against `information_schema.tables` / `asset_registry` — an artifact
+  hand-edited to point a producer at a nonexistent table and a fake asset id still passes.
+  `--check` reads the committed JSON artifact and the catalog snapshot — both file reads,
+  no DB access — so confirming a table/asset actually EXISTS in the live database is
+  outside what either input can tell it; B-4's own scope (per the wave1 prompt) never
+  asked for a live-DB cross-check.
+- **F — the reason-class check is a substring classifier, not a contract check, still a
+  stated limit.** `classify_no_detector_reason` matches a message's text against known
+  patterns; it never confirms the CLASSIFIED reason is actually true of the SCU's own
+  contract. An artifact where `get_dignity`'s real reason was replaced with a different,
+  equally-closed-set reason (e.g. `"no availability_contracts requirement..."`, wrong for
+  an SCU that genuinely has one) still passes — this only mislabels an SCU that is
+  otherwise honestly accounted for; it is not a coverage bypass.
+- **G — DONE, not a limit (R7/R8a).** v2.1 said an exemption disposition needed only a
+  non-empty `source_ref` string, and justified not fixing it as needing "per-SCU
+  contract-awareness this lane's script does not currently have" — false the moment R1
+  landed, since `--check` already loaded the snapshot and the script already had
+  `get_reviewed_claims()`/`get_non_reviewed_producer_output_claims()`. R7 uses exactly
+  that evidence: a `reviewed_output`/`route_evidence_only` producer must now match a
+  snapshot `producer_output_claims` entry; a `derived_from_service_probe` producer must
+  match a snapshot `service_probe` requirement. A fabricated `route_evidence_only`
+  producer with `source_ref: "x"` (or any other made-up string) on an asset/SCU pair the
+  catalog never declared now fails `--check`, naming the SCU.
 
-None of E/F/G are silently hidden: they are real, stated limits of a structural validator
-that reads one committed JSON file with no DB access, not defects introduced by R1's
-coverage fix — R1 only closes the coverage gap (missing/extra SCUs), which is orthogonal
-to E/F/G. Also worth noting: an SCU whose ONLY producer is `route_evidence_only` passes
-`--check` even though the wave1 prompt's own B-4 wording says "neither a reviewed NOR a
-derived producer" should fail — no production SCU is in that state today (only
-`ka_kalasutra`'s carried claim exists, and it also has a real `derived_from_source_query`
-producer for the same SCU), so this is a latent, not live, gap.
+Neither remaining limit (E, F) is silently hidden, and neither is a coverage bypass the way
+G was: E is bounded by "no DB access" (a real, load-bearing scope boundary R7 does not
+touch), F only mislabels an already-accounted-for SCU. Also worth noting, unchanged by R7:
+an SCU whose ONLY producer is `route_evidence_only` still passes `--check` even though the
+wave1 prompt's own B-4 wording says "neither a reviewed NOR a derived producer" should
+fail — no production SCU is in that state today (only `ka_kalasutra`'s carried claim
+exists, and it also has a real `derived_from_source_query` producer for the same SCU), so
+this remains a latent, not live, gap, left as-is per the gate's own framing (an explicit
+native ruling was offered as the alternative to fixing it; none has been sought).
 
 ## 8 — Findings outside scope (registered, not fixed)
 
@@ -468,10 +541,11 @@ producer for the same SCU), so this is a latent, not live, gap.
    report an aggregate "N producers found via helper vs. directly" count — a future pass
    could add this if the provenance is valuable at that granularity. All 294
    `derived_from_source_query` rows carry `via_helper: null` today (§7's C-3 note).
-8. `--check`'s three remaining structural limits (E/F/G, §7) — no live-DB cross-check of a
-   producer's table/asset, a substring (not contract-aware) reason classifier, and an
-   exemption disposition that only requires a non-empty `source_ref` string. Named by the
-   gate re-review's own constructed probes; not fixed, per R6.
+8. `--check`'s two remaining structural limits (E/F, §7) — no live-DB cross-check of a
+   producer's table/asset (bounded by "no DB access"), and a substring (not
+   contract-aware) reason classifier that only mislabels, never bypasses coverage. G (the
+   third, an exemption disposition needing only a non-empty `source_ref`) is CLOSED by R7
+   — removed from this list.
 9. `judgment_query`'s `no_relation_in_range` classification is a stated limit (R3, §3.3):
    its handler citations are all unresolvable-shape anchors, so the more honest class
    would be `source_ref_unresolvable_shape`. Not changed in code.
@@ -518,8 +592,9 @@ soft check; writers are expected to be added incrementally). Nothing this lane t
 
 ## 12 — What is NOT done
 
-Corrected per R6 (v2.0's "nothing left undone" was false in two places — the gate
-re-review found both). The true, exact list of what remains out of scope or unfixed:
+Corrected per R6 (v2.0's "nothing left undone" was false in two places) and again per
+R7/R8a (v2.1's item 4 wrongly justified G as unfixable — R7 fixed it). The true, exact
+list of what remains out of scope or unfixed, as of v2.2:
 
 1. **`compiler.ts` wiring is out of scope, by the wave1 prompt's own design** ("Not in
    this lane": wiring the derived file into `compiler.ts` is explicitly deferred to a
@@ -529,20 +604,26 @@ re-review found both). The true, exact list of what remains out of scope or unfi
 3. **The 12 stale `source_ref` annotations (§3.4) are registered, not fixed.** They are a
    finding for whoever owns `source_query_availability.ts`'s citations, not this lane's
    file to edit.
-4. **`--check`'s E/F/G structural limits (§7, §8 item 8) are stated, not fixed** — no
-   live-DB cross-check of a producer's table/asset; a substring, not contract-aware,
-   reason classifier; an exemption disposition that only requires a non-empty
-   `source_ref`. Fixing E would need a DB round-trip inside `--check` (a design change
-   the wave1 prompt never asked for); F and G would need per-SCU contract-awareness this
-   lane's read-only, deterministic-first script does not currently have.
+4. **`--check`'s E/F structural limits (§7, §8 item 8) are stated, not fixed** — no
+   live-DB cross-check of a producer's table/asset (E); a substring, not contract-aware,
+   reason classifier that mislabels but never bypasses coverage (F). Fixing E would need
+   a DB round-trip inside `--check` (a design change the wave1 prompt never asked for); F
+   would need per-SCU contract-awareness beyond matching a message's text to a known
+   pattern. **G (an exemption disposition needing only a non-empty `source_ref`) is no
+   longer in this list — R7 fixed it** by cross-checking every exemption-tier producer
+   against the snapshot's own `producer_output_claims`/`service_probe` requirements.
 5. **`judgment_query`'s classification limit (§3.3, §8 item 9) is stated, not fixed** — a
    more granular "all-anchor handler citations" reason class was not added; the report
    states why.
-6. **An SCU whose ONLY producer is `route_evidence_only` would pass `--check`** even
-   though B-4's own wording implies it shouldn't (§7) — latent, not live: no production
-   SCU is in that state today.
+6. **An SCU whose ONLY producer is `route_evidence_only` would still pass `--check`**
+   even though B-4's own wording implies it shouldn't (§7) — latent, not live: no
+   production SCU is in that state today. R7's own finding named this as the same
+   missing-detector class as the coverage bypass it fixed, but left it as a stated,
+   non-live gap rather than a third code change, per the gate's own framing (which
+   offered "or get an explicit native ruling that it should [count as covered]" as the
+   alternative to fixing it in code — no such ruling has been sought).
 
-Everything else — all of C-1 through C-6, and R1/R2/R6 — is committed (commit hashes in
-§2/§2b), each with its own passing test and recorded mutation evidence, and the full
-pipeline (`--derive --closure --reader-scan --check`, then the test suite) has been
+Everything else — all of C-1 through C-6, R1/R2/R6, and R7 — is committed (commit hashes
+in §2/§2b/§2c), each with its own passing test and recorded mutation evidence, and the
+full pipeline (`--derive --closure --reader-scan --check`, then the test suite) has been
 re-run against production after the LAST correction, not just after each individual one.
