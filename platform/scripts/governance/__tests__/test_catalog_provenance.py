@@ -899,6 +899,33 @@ def test_write_closure_report_md_states_the_closure_computation(tmp_path):
     assert "RECURSIVE" in text
 
 
+def test_closure_traversal_prose_reads_computed_numbers_not_a_literal(tmp_path):
+    """N (B_REVIEW4 N3): the traversal paragraph used to hardcode "the same
+    111/127 and the same 16 still-outside assets". With a closure whose numbers
+    are NOT 111/127/16 the paragraph must state the computed ones. Mutation
+    this catches: restoring the literal."""
+    closure = {
+        "population_active_count": 9,
+        "before": {"named_producers": 2, "necessary_count": 3},
+        "after": {"named_producers": 4, "necessary_count": 5},
+        "still_outside_by_layer": {
+            "ganita": [{"asset_id": "ga_x", "reason_class": "no_unit_names_it", "reason": "r"}],
+            "kala": [
+                {"asset_id": "ka_y", "reason_class": "no_unit_names_it", "reason": "r"},
+                {"asset_id": "ka_z", "reason_class": "table_unregistered", "reason": "r"},
+            ],
+        },
+        "still_outside_reason_class_counts": {"no_unit_names_it": 2, "table_unregistered": 1},
+    }
+    out_path = tmp_path / "CLOSURE_REPORT.md"
+    cp.write_closure_report_md(closure, out_path=out_path)
+    traversal = [ln for ln in out_path.read_text().splitlines() if ln.startswith("**Traversal**")]
+    assert len(traversal) == 1
+    assert "**5/9**" in traversal[0]
+    assert "**3**" in traversal[0]
+    assert "111" not in traversal[0] and "127" not in traversal[0]
+
+
 # ── R7 (B_REVIEW3): --check must not accept a fabricated exemption-tier ──────
 # producer that never traces to anything the catalog itself declares. Before
 # this correction, ANY non-empty source_ref string was enough for
