@@ -194,13 +194,17 @@ export async function updateChartAndMaybeRecompute(args: {
       requireCompletePlan: true,
     })
 
+    // Lock every conversation not already locked by an earlier correction —
+    // active ones and manual archives alike, so a manual archive cannot later be
+    // un-archived and continued against the corrected chart. A manual archive
+    // keeps its original archive time.
     const archived = await client.query<{ id: string }>(
       `UPDATE conversations
-          SET archived_at=NOW(),
+          SET archived_at=COALESCE(archived_at, NOW()),
               updated_at=NOW(),
               archive_reason='chart_details_changed',
               archived_chart_snapshot=$2::jsonb
-        WHERE chart_id=$1 AND archived_at IS NULL
+        WHERE chart_id=$1 AND archive_reason IS NULL
         RETURNING id`,
       [chartId, JSON.stringify(snapshotOf(stored, new Date().toISOString()))],
     )

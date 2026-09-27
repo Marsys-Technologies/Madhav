@@ -41,6 +41,7 @@ export type ReadinessThroughputRow = {
 export type ReadinessRunRow = {
   id: string
   state: string
+  scope?: string
   action?: string
   last_error: string | null
   created_at?: string
@@ -124,10 +125,19 @@ export function deriveChartReadiness(input: {
   const runActive = latestRun !== null && ACTIVE_RUN_STATES.has(latestRun.state)
   const runFailed = latestRun?.state === 'failed'
   const dispatchFailed = runFailed && (latestRun?.last_error ?? '').startsWith(JOB_DISPATCH_FAILED_PREFIX)
+  // A global rebuild (a chart correction's recompute, or an operator full rebuild)
+  // that failed or was stopped leaves a mix of new and missing results that can
+  // still light every layer; it is never Ready. A failed scoped refresh on a fully
+  // lit chart is (the failure stays visible in latestError).
+  const globalRebuildIncomplete =
+    latestRun?.scope === 'global' &&
+    latestRun?.action === 'rebuild' &&
+    (latestRun.state === 'failed' || latestRun.state === 'stopped')
 
   let state: ChartReadinessState
   if (runActive || anyBuilding) state = 'building'
   else if (dispatchFailed) state = 'needs-rebuild'
+  else if (globalRebuildIncomplete) state = 'failed'
   else if (allLit) state = 'ready'
   else if (runFailed) state = 'failed'
   else if (perChartLit > 0) state = 'partially-built'
@@ -173,7 +183,7 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
     ),
     query<LatestRunRow>(
       `SELECT DISTINCT ON (chart_id)
-              id, chart_id, state, action, last_error, created_at, started_at, ended_at
+              id, chart_id, state, scope, action, last_error, created_at, started_at, ended_at
          FROM build_runs
         WHERE chart_id = ANY($1::uuid[])
         ORDER BY chart_id, created_at DESC`,

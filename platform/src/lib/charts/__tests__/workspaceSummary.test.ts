@@ -36,7 +36,7 @@ describe('getChartWorkspaceSummary', () => {
         pos('LAGNA', 'longitude_sidereal', null, '130.5'),
         pos('SUN', 'sign', 'Leo'),
         pos('MOON', 'sign', 'Aries'),
-        pos('SATURN', 'sign', 'Libra'),
+        pos('SAT', 'sign', 'Libra'),
       ],
     })
     const s = await getChartWorkspaceSummary(CHART)
@@ -49,6 +49,28 @@ describe('getChartWorkspaceSummary', () => {
     expect(s.d1.houses[2]).toEqual({ house: 3, sign: 'Libra', planets: ['Saturn'] })
     expect(s.d1.topYogas).toEqual([])
     expect(s.flags).toEqual([])
+  })
+
+  it('places all nine grahas using the canonical L1 subject codes (graha_vocabulary.norm_graha)', async () => {
+    route({
+      positions: [
+        pos('LAGNA', 'sign', 'Aries'),
+        pos('SUN', 'sign', 'Capricorn'),
+        pos('MOON', 'sign', 'Aquarius'),
+        pos('MAR', 'sign', 'Libra'),
+        pos('MER', 'sign', 'Capricorn'),
+        pos('JUP', 'sign', 'Sagittarius'),
+        pos('VEN', 'sign', 'Sagittarius'),
+        pos('SAT', 'sign', 'Libra'),
+        pos('RAH_MEAN', 'sign', 'Taurus'),
+        pos('KET_MEAN', 'sign', 'Scorpio'),
+      ],
+    })
+    const s = await getChartWorkspaceSummary(CHART)
+    const placed = s.d1.houses.flatMap((h) => h.planets).sort()
+    expect(placed).toEqual(['Jupiter', 'Ketu', 'Mars', 'Mercury', 'Moon', 'Rahu', 'Saturn', 'Sun', 'Venus'])
+    expect(s.d1.houses[6].planets.sort()).toEqual(['Mars', 'Saturn'])
+    expect(s.d1.houses[1].planets).toEqual(['Rahu'])
   })
 
   it('pins fact_key and uses a total, latest-build ordering for positions', async () => {

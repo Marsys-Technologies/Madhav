@@ -118,6 +118,23 @@ describe('resolveTimezoneOffsetMinutes', () => {
     expect(resolveTimezoneOffsetMinutes('1990-06-15', '08:00:00', 'Asia/Kathmandu')).toBe(345)
   })
 
+  it('matches the orchestrator (zoneinfo, fold=0) inside a DST overlap: the earlier, pre-transition offset', () => {
+    // 01:30 occurs twice in London on 2023-10-29; fold=0 is the first (BST).
+    expect(resolveTimezoneOffsetMinutes('2023-10-29', '01:30:00', 'Europe/London')).toBe(60)
+    expect(resolveTimezoneOffsetMinutes('2023-11-05', '01:30:00', 'America/New_York')).toBe(-240)
+  })
+
+  it('matches the orchestrator (zoneinfo, fold=0) inside a DST gap: the pre-transition offset', () => {
+    // 02:30 does not exist in New York on 2023-03-12; fold=0 uses standard time.
+    expect(resolveTimezoneOffsetMinutes('2023-03-12', '02:30:00', 'America/New_York')).toBe(-300)
+    expect(resolveTimezoneOffsetMinutes('2023-03-26', '01:30:00', 'Europe/London')).toBe(0)
+  })
+
+  it('is unaffected next to, but outside, a transition', () => {
+    expect(resolveTimezoneOffsetMinutes('2023-03-12', '03:30:00', 'America/New_York')).toBe(-240)
+    expect(resolveTimezoneOffsetMinutes('2023-10-29', '02:30:00', 'Europe/London')).toBe(0)
+  })
+
   it('throws for an unknown timezone', () => {
     expect(() => resolveTimezoneOffsetMinutes('1984-02-05', '10:43:00', 'Nowhere/Invalid')).toThrow()
   })

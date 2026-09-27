@@ -35,7 +35,20 @@ const SIGNS = [
   'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
 ] as const
 
-const GRAHAS = ['SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN', 'RAHU', 'KETU'] as const
+// Canonical L1 `chart_facts.fact_subject` codes (python-sidecar
+// brahmagyan/graha_vocabulary.norm_graha) → display names. The D1 nodes are the
+// mean nodes, matching the released graha vocabulary.
+const GRAHA_DISPLAY: ReadonlyArray<[string, string]> = [
+  ['SUN', 'Sun'],
+  ['MOON', 'Moon'],
+  ['MAR', 'Mars'],
+  ['MER', 'Mercury'],
+  ['JUP', 'Jupiter'],
+  ['VEN', 'Venus'],
+  ['SAT', 'Saturn'],
+  ['RAH_MEAN', 'Rahu'],
+  ['KET_MEAN', 'Ketu'],
+]
 
 const CONFIRMED_YOGA_LIMIT = 6
 
@@ -143,11 +156,11 @@ export async function getChartWorkspaceSummary(
     sign: SIGNS[(lagnaIdx + i) % 12],
     planets: [] as string[],
   }))
-  for (const graha of GRAHAS) {
-    const sign = signOf(graha)
+  for (const [code, name] of GRAHA_DISPLAY) {
+    const sign = signOf(code)
     const signIdx = sign ? SIGNS.indexOf(sign as (typeof SIGNS)[number]) : -1
     if (signIdx < 0) continue
-    houses[(signIdx - lagnaIdx + 12) % 12].planets.push(titleCase(graha))
+    houses[(signIdx - lagnaIdx + 12) % 12].planets.push(name)
   }
 
   const lagnaLongitude = bySubject.get('LAGNA')?.find((r) => r.fact_key === 'longitude_sidereal')?.fact_value_num

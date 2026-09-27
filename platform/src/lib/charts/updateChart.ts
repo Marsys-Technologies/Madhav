@@ -112,9 +112,16 @@ function zoneOffsetMinutesAt(instantMs: number, timeZone: string): number {
   return Math.round((wallAsUtc - instantMs) / 60000)
 }
 
+const DAY_MS = 86_400_000
+
 /**
  * Effective UTC offset (minutes) of an IANA zone at a local wall-clock birth
  * time, honouring historical rules and DST. Throws for an unknown zone.
+ *
+ * Matches the orchestrator (`birth_params.py`: `ZoneInfo(...).utcoffset()` on a
+ * naive datetime, i.e. fold=0): inside a DST overlap the earlier occurrence and
+ * inside a DST gap the pre-transition offset — in both cases the offset in force
+ * before the transition, when that offset reads the wall time, or when neither does.
  */
 export function resolveTimezoneOffsetMinutes(birthDate: string, birthTime: string, timeZone: string): number {
   // Throws RangeError for an unknown zone.
@@ -122,8 +129,16 @@ export function resolveTimezoneOffsetMinutes(birthDate: string, birthTime: strin
   const [y, mo, d] = birthDate.split('-').map(Number)
   const [h, mi, s] = normalizeTime(birthTime).split(':').map(Number)
   const wallAsUtc = Date.UTC(y, mo - 1, d, h, mi, s)
-  const firstGuess = zoneOffsetMinutesAt(wallAsUtc, timeZone)
-  return zoneOffsetMinutesAt(wallAsUtc - firstGuess * 60000, timeZone)
+  const before = zoneOffsetMinutesAt(wallAsUtc - DAY_MS, timeZone)
+  const after = zoneOffsetMinutesAt(wallAsUtc + DAY_MS, timeZone)
+  const readsWall = (offset: number) => zoneOffsetMinutesAt(wallAsUtc - offset * 60000, timeZone) === offset
+  if (before === after) {
+    const firstGuess = zoneOffsetMinutesAt(wallAsUtc, timeZone)
+    return zoneOffsetMinutesAt(wallAsUtc - firstGuess * 60000, timeZone)
+  }
+  if (readsWall(before)) return before // unique before-transition time, or an overlap (fold=0)
+  if (readsWall(after)) return after // unique after-transition time
+  return before // a gap: fold=0 keeps the pre-transition offset
 }
 
 function isKnownTimeZone(timeZone: string): boolean {

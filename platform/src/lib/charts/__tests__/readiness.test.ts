@@ -19,11 +19,12 @@ function row(asset_id: string, state = 'lit', rows_written: number | null = 5, l
   return { chart_id: CHART, asset_id, state, rows_written, last_built_at }
 }
 
-function run(state: string, last_error: string | null = null, extra: Partial<{ id: string; action: string }> = {}) {
+function run(state: string, last_error: string | null = null, extra: Partial<{ id: string; action: string; scope: string }> = {}) {
   return {
     id: extra.id ?? 'run-1',
     chart_id: CHART,
     state,
+    scope: extra.scope ?? 'asset',
     action: extra.action ?? 'rebuild',
     last_error,
     created_at: '2026-09-02T00:00:00Z',
@@ -88,6 +89,22 @@ describe('deriveChartReadiness', () => {
     const r = deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: run('failed', 'writer crashed') })
     expect(r.state).toBe('ready')
     expect(r.latestError).toBe('writer crashed')
+  })
+
+  it.each(['failed', 'stopped'])(
+    'a %s global rebuild is never Ready, even when every layer shows some data (partial correction rebuild)',
+    (state) => {
+      const r = deriveChartReadiness({
+        throughput: ALL_LAYERS,
+        latestRun: run(state, state === 'failed' ? 'writer crashed' : null, { scope: 'global', action: 'rebuild' }),
+      })
+      expect(r.state).toBe('failed')
+      expect(isDerivedChartReady(r)).toBe(false)
+    },
+  )
+
+  it('a completed global rebuild with every layer lit is Ready', () => {
+    expect(deriveChartReadiness({ throughput: ALL_LAYERS, latestRun: run('completed', null, { scope: 'global' }) }).state).toBe('ready')
   })
 
   it('a dispatch failure is never masked by leftover data', () => {
@@ -161,6 +178,7 @@ describe('getChartReadinessMap', () => {
     const runSql = calls.map(([s]) => s as string).find((s) => s.includes('build_runs'))!
     expect(runSql).toMatch(/DISTINCT ON \(chart_id\)/)
     expect(runSql).toMatch(/last_error/)
+    expect(runSql).toMatch(/\bscope\b/)
     expect(runSql).not.toMatch(/state IN/)
     const throughputSql = calls.map(([s]) => s as string).find((s) => s.includes('asset_throughput'))!
     expect(throughputSql).toMatch(/is_active\s*=\s*true/)

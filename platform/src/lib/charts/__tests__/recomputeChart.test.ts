@@ -226,11 +226,15 @@ describe('updateChartAndMaybeRecompute — successful correction', () => {
     expect(mockDispatch).toHaveBeenCalledWith('run-new', { failurePrefix: 'JOB_DISPATCH_FAILED' })
   })
 
-  it('archives only active conversations with the exact pre-correction snapshot', async () => {
+  it('locks every not-yet-locked conversation — active or manually archived — with the exact pre-correction snapshot', async () => {
     setup()
     await run({ ...INPUT, birth_time: '10:44' })
     const archive = statements.find((s) => /UPDATE conversations[\s\S]*RETURNING id/.test(s.sql))!
-    expect(archive.sql).toMatch(/WHERE chart_id=\$1 AND archived_at IS NULL/)
+    // A manual archive must not escape the lock and be un-archived and continued later.
+    expect(archive.sql).toMatch(/WHERE chart_id=\$1 AND archive_reason IS NULL/)
+    expect(archive.sql).not.toMatch(/archived_at IS NULL/)
+    // Keep a manual archive's original archive time; stamp active ones now.
+    expect(archive.sql).toMatch(/archived_at=COALESCE\(archived_at, NOW\(\)\)/)
     const snapshot = JSON.parse(archive.params[1] as string)
     expect(snapshot).toEqual({
       name: 'Test Native',

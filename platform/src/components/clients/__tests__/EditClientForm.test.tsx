@@ -177,4 +177,3 @@ describe('EditClientForm — server refusals keep the form', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
-
