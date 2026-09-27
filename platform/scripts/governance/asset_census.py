@@ -1581,7 +1581,10 @@ def measure(layer_key: str) -> dict:
             m["Build.target"] = dict(v=NA, measured=f"no target_table; asset_kind='{r['asset_kind']}', has_writer={r['has_writer']}")
         else:
             try:
-                m["Build.target"] = _grade_target_less(r, lambda: owners.setdefault("map", target_owners()))
+                # R242 (W2-2 OS-B): `owners.setdefault("map", target_owners())` evaluated its argument —
+                # the registry-wide read — on EVERY call, whatever the cache held. Read it only when absent.
+                m["Build.target"] = _grade_target_less(
+                    r, lambda: owners["map"] if "map" in owners else owners.setdefault("map", target_owners()))
             except Unknown as exc:
                 m["Build.target"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
