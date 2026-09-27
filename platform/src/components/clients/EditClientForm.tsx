@@ -1,430 +1,438 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import Link from 'next/link'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { EditRebuildConfirmDialog } from '@/components/dialogs/EditRebuildConfirmDialog'
+import { EditRebuildConfirmDialog, type ChangedField } from '@/components/dialogs/EditRebuildConfirmDialog'
+import { resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
 import { cn } from '@/lib/utils'
-import { AYANAMSHA_OPTIONS } from './NewClientForm'
-import type { AyanamshaId } from './NewClientForm'
+import { formatDate } from '@/lib/utils/date'
+import { AYANAMSHA_OPTIONS, TIMEZONES, type AyanamshaId } from './NewClientForm'
 
-interface ChartData {
+/**
+ * Chart-details correction form (Jātaka chart workspace, Task 7).
+ *
+ * Four groups — Identity, Birth coordinates, Time standard, Computation frame.
+ * The computation hint here only chooses the button copy and whether to
+ * confirm; `PATCH /api/charts/[id]` classifies authoritatively. The effective
+ * offset shown is computed with the same resolver the server verifies against.
+ */
+
+export interface EditableChart {
   id: string
   name: string
+  preferred_name: string | null
+  subject_name: string | null
   birth_date: string
+  /** HH:MM:SS as stored. */
   birth_time: string
   birth_place: string
   birth_lat: number | null
   birth_lng: number | null
-  ayanamsa: string
-}
-
-interface Props {
-  chart: ChartData
+  timezone_id: string | null
+  /** Effective offset at the stored birth instant; null when the timezone is missing or invalid. */
+  tz_offset_hours: number | null
+  ayanamshas: string[]
 }
 
 interface FormState {
   full_name: string
+  preferred_name: string
+  subject_name: string
   birth_date: string
   birth_time: string
   birth_place: string
   latitude: string
   longitude: string
   timezone_id: string
-  tz_offset: string
   ayanamshas: AyanamshaId[]
 }
 
-interface FormErrors {
-  full_name?: string
-  birth_date?: string
-  birth_time?: string
-  birth_place?: string
-  latitude?: string
-  longitude?: string
-  tz_offset?: string
-  ayanamshas?: string
-  api?: string
+type FieldKey = keyof FormState
+type FormErrors = Partial<Record<FieldKey, string>> & { api?: string }
+
+const SERVER_FIELD_TO_FORM: Record<string, FieldKey> = {
+  name: 'full_name',
+  preferred_name: 'preferred_name',
+  subject_name: 'subject_name',
+  birth_date: 'birth_date',
+  birth_time: 'birth_time',
+  birth_place: 'birth_place',
+  lat: 'latitude',
+  lon: 'longitude',
+  timezone_id: 'timezone_id',
+  tz_offset: 'timezone_id',
+  ayanamshas: 'ayanamshas',
 }
 
-function isBirthAffecting(original: FormState, current: FormState): boolean {
-  return (
-    original.birth_date !== current.birth_date ||
-    original.birth_time !== current.birth_time ||
-    original.birth_place !== current.birth_place ||
-    original.latitude !== current.latitude ||
-    original.longitude !== current.longitude ||
-    original.tz_offset !== current.tz_offset ||
-    JSON.stringify(original.ayanamshas.sort()) !== JSON.stringify(current.ayanamshas.sort())
-  )
+const FIELD_LABELS: Record<FieldKey, string> = {
+  full_name: 'Full name',
+  preferred_name: 'Preferred name',
+  subject_name: 'Subject label',
+  birth_date: 'Date of birth',
+  birth_time: 'Time of birth',
+  birth_place: 'Birth place',
+  latitude: 'Latitude',
+  longitude: 'Longitude',
+  timezone_id: 'Timezone',
+  ayanamshas: 'Ayanāṃśas',
 }
 
-function todayIso() {
-  return new Date().toISOString().split('T')[0]
+const DISPLAY_KEYS: FieldKey[] = ['full_name', 'preferred_name', 'subject_name']
+const COMPUTATION_KEYS: FieldKey[] = ['birth_date', 'birth_time', 'birth_place', 'latitude', 'longitude', 'timezone_id', 'ayanamshas']
+
+function initialTime(stored: string): string {
+  const hhmmss = stored.slice(0, 8)
+  return hhmmss.endsWith(':00') ? hhmmss.slice(0, 5) : hhmmss
 }
 
-function inputCls(hasError?: boolean): string {
-  return cn(
-    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
-    hasError ? 'border-red-500' : 'border-[#1f1c17]',
-  )
+function comparable(key: FieldKey, value: FormState[FieldKey]): string {
+  if (Array.isArray(value)) return [...value].sort().join(',')
+  const text = String(value).trim().replace(/\s+/g, ' ')
+  if (key === 'birth_time') return text.length === 5 ? `${text}:00` : text
+  if (key === 'latitude' || key === 'longitude') return text === '' ? '' : Number(text).toFixed(6)
+  return text
 }
 
-function FieldError({ msg }: { msg?: string }) {
-  if (!msg) return null
-  return <p role="alert" style={{ fontSize: 12, color: '#c0392b', marginTop: 2 }}>{msg}</p>
-}
-
-export function EditClientForm({ chart }: Props) {
-  const router = useRouter()
-
-  const initialAyanamshas: AyanamshaId[] = chart.ayanamsa
-    ? (chart.ayanamsa.split(',').filter((a) =>
-        AYANAMSHA_OPTIONS.some((o) => o.id === a)
-      ) as AyanamshaId[])
-    : AYANAMSHA_OPTIONS.map((o) => o.id)
-
-  const initial: FormState = {
-    full_name: chart.name,
-    birth_date: chart.birth_date,
-    birth_time: chart.birth_time,
-    birth_place: chart.birth_place,
-    latitude: chart.birth_lat != null ? String(chart.birth_lat) : '',
-    longitude: chart.birth_lng != null ? String(chart.birth_lng) : '',
-    timezone_id: 'Asia/Kolkata',
-    tz_offset: '5.5',
-    ayanamshas: initialAyanamshas.length > 0 ? initialAyanamshas : AYANAMSHA_OPTIONS.map((o) => o.id),
+function describe(key: FieldKey, value: FormState[FieldKey]): string {
+  if (Array.isArray(value)) {
+    return value.map((id) => AYANAMSHA_OPTIONS.find((o) => o.id === id)?.label ?? id).join(', ')
   }
+  return String(value).trim()
+}
+
+function formatOffset(minutes: number): string {
+  const sign = minutes < 0 ? '−' : '+'
+  const abs = Math.abs(minutes)
+  return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`
+}
+
+function effectiveOffsetMinutes(form: FormState): number | null {
+  if (!form.timezone_id || !form.birth_date || !form.birth_time) return null
+  try {
+    return resolveTimezoneOffsetMinutes(form.birth_date, form.birth_time, form.timezone_id)
+  } catch {
+    return null
+  }
+}
+
+const INPUT =
+  'jw-control w-full min-h-11 border bg-[#050505] px-3 text-sm text-[var(--jw-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]'
+
+function inputClass(error?: string) {
+  return cn(INPUT, error ? 'border-[var(--jw-danger)]' : 'border-[var(--jw-rule)]')
+}
+
+function FieldError({ id, msg }: { id: string; msg?: string }) {
+  if (!msg) return null
+  return (
+    <p id={id} className="text-xs text-[var(--jw-danger)]">
+      {msg}
+    </p>
+  )
+}
+
+function Group({ legend, children }: { legend: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="jw-panel grid gap-4 px-5 pb-5 pt-3">
+      <legend className="jw-eyebrow px-1">{legend}</legend>
+      {children}
+    </fieldset>
+  )
+}
+
+export function EditClientForm({ chart }: { chart: EditableChart }) {
+  const router = useRouter()
+  const submitRef = useRef<HTMLButtonElement>(null)
+
+  const initial = useMemo<FormState>(
+    () => ({
+      full_name: chart.name,
+      preferred_name: chart.preferred_name ?? '',
+      subject_name: chart.subject_name ?? '',
+      birth_date: chart.birth_date,
+      birth_time: initialTime(chart.birth_time),
+      birth_place: chart.birth_place,
+      latitude: chart.birth_lat != null ? String(chart.birth_lat) : '',
+      longitude: chart.birth_lng != null ? String(chart.birth_lng) : '',
+      timezone_id: chart.timezone_id ?? '',
+      ayanamshas: chart.ayanamshas.filter((a): a is AyanamshaId => AYANAMSHA_OPTIONS.some((o) => o.id === a)),
+    }),
+    [chart],
+  )
 
   const [form, setForm] = useState<FormState>(initial)
-  const [errors, setErrors] = useState<FormErrors>({})
+  const [errors, setErrors] = useState<FormErrors>(
+    chart.timezone_id && chart.tz_offset_hours !== null
+      ? {}
+      : { timezone_id: 'Choose the birth timezone before saving — it is missing or unrecognised.' },
+  )
   const [loading, setLoading] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const pendingSubmitRef = useRef(false)
 
-  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
+  const changed = (key: FieldKey) => comparable(key, initial[key]) !== comparable(key, form[key])
+  const requiresRecompute = COMPUTATION_KEYS.some(changed)
+  const changes: ChangedField[] = [...DISPLAY_KEYS, ...COMPUTATION_KEYS].filter(changed).map((key) => ({
+    key: key === 'full_name' ? 'name' : key,
+    label: FIELD_LABELS[key],
+    before: describe(key, initial[key]),
+    after: describe(key, form[key]),
+  }))
+  const offsetMinutes = effectiveOffsetMinutes(form)
+  const timezoneOptions = TIMEZONES.some((t) => t.value === form.timezone_id) || !form.timezone_id
+    ? TIMEZONES.map((t) => t.value)
+    : [form.timezone_id, ...TIMEZONES.map((t) => t.value)]
+
+  function setField<K extends FieldKey>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-    setErrors((prev) => ({ ...prev, [key]: undefined }))
+    setErrors((prev) => ({ ...prev, [key]: undefined, api: undefined }))
   }
 
   function toggleAyanamsha(id: AyanamshaId) {
-    setForm((prev) => {
-      const next = prev.ayanamshas.includes(id)
-        ? prev.ayanamshas.filter((a) => a !== id)
-        : [...prev.ayanamshas, id]
-      return { ...prev, ayanamshas: next }
-    })
+    setField(
+      'ayanamshas',
+      form.ayanamshas.includes(id) ? form.ayanamshas.filter((a) => a !== id) : [...form.ayanamshas, id],
+    )
   }
 
   function validate(): FormErrors {
     const errs: FormErrors = {}
     if (!form.full_name.trim()) errs.full_name = 'Full name is required.'
-    if (!form.birth_date) errs.birth_date = 'Birth date is required.'
-    else if (form.birth_date < '1900-01-01') errs.birth_date = 'Birth date must be on or after 1900-01-01.'
-    else if (form.birth_date > todayIso()) errs.birth_date = 'Birth date cannot be in the future.'
-    if (!form.birth_time) errs.birth_time = 'Birth time is required.'
+    if (!form.birth_date) errs.birth_date = 'Date of birth is required.'
+    if (!form.birth_time) errs.birth_time = 'Time of birth is required.'
     if (!form.birth_place.trim()) errs.birth_place = 'Birth place is required.'
-    if (form.latitude === '') errs.latitude = 'Latitude is required.'
-    if (form.longitude === '') errs.longitude = 'Longitude is required.'
-    if (form.ayanamshas.length === 0) errs.ayanamshas = 'At least one ayanamsha must be selected.'
+    if (form.latitude === '' || Number.isNaN(Number(form.latitude))) errs.latitude = 'Latitude is required.'
+    if (form.longitude === '' || Number.isNaN(Number(form.longitude))) errs.longitude = 'Longitude is required.'
+    if (!form.timezone_id || offsetMinutes === null) {
+      errs.timezone_id = 'Choose the birth timezone before saving — it is missing or unrecognised.'
+    }
+    if (form.ayanamshas.length === 0) errs.ayanamshas = 'Select at least one ayanāṃśa.'
     return errs
   }
 
-  async function doSubmit() {
+  async function submit() {
     setLoading(true)
-    setErrors({})
     try {
-      const res = await fetch(`/api/clients/${chart.id}`, {
+      const response = await fetch(`/api/charts/${chart.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.full_name.trim(),
+          preferred_name: form.preferred_name.trim() || null,
+          subject_name: form.subject_name.trim() || null,
           birth_date: form.birth_date,
           birth_time: form.birth_time,
           birth_place: form.birth_place.trim(),
-          lat: parseFloat(form.latitude),
-          lon: parseFloat(form.longitude),
-          tz_offset: parseFloat(form.tz_offset),
+          lat: Number(form.latitude),
+          lon: Number(form.longitude),
           timezone_id: form.timezone_id,
-          ayanamshas: form.ayanamshas,
+          tz_offset: (offsetMinutes ?? 0) / 60,
+          ayanamshas: [...form.ayanamshas].sort(),
         }),
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        setErrors({ api: data?.error ?? 'Update failed.' })
+      const body = await response.json().catch(() => ({}))
+
+      // A committed degraded result: inputs corrected, old results cleared, the
+      // rebuild did not start. The workspace explains it and offers the retry.
+      if (response.status === 503 && body?.code === 'JOB_DISPATCH_FAILED' && body?.data?.runId) {
+        router.push(`/clients/${chart.id}?status=needs-rebuild&run=${encodeURIComponent(body.data.runId)}`)
+        router.refresh()
         return
       }
-      if (isBirthAffecting(initial, form)) {
-        router.push(`/clients/${chart.id}/nirmana`)
-      } else {
-        router.push('/dashboard')
+      if (!response.ok) {
+        if (response.status === 409) {
+          setErrors({ api: 'A build is in progress for this chart. Your changes are kept — save again when it finishes.' })
+          return
+        }
+        const fieldErrors: FormErrors = {}
+        for (const [serverKey, message] of Object.entries((body?.fields ?? {}) as Record<string, string>)) {
+          const formKey = SERVER_FIELD_TO_FORM[serverKey]
+          if (formKey) fieldErrors[formKey] ??= message
+        }
+        if (Object.keys(fieldErrors).length === 0) fieldErrors.api = body?.error ?? 'The chart could not be updated.'
+        setErrors(fieldErrors)
+        return
       }
+      router.push(`/clients/${chart.id}`)
+      router.refresh()
     } catch {
-      setErrors({ api: 'Network error — please try again.' })
+      setErrors({ api: 'Network error — your changes are kept. Please try again.' })
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const validationErrors = validate()
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    const validation = validate()
+    if (Object.keys(validation).length > 0) {
+      setErrors(validation)
       return
     }
-    if (isBirthAffecting(initial, form)) {
-      pendingSubmitRef.current = true
-      setConfirmOpen(true)
-    } else {
-      await doSubmit()
-    }
+    if (requiresRecompute) setConfirmOpen(true)
+    else void submit()
   }
 
+  const fieldProps = (key: FieldKey) => ({
+    id: key,
+    'aria-invalid': errors[key] ? true : undefined,
+    'aria-describedby': errors[key] ? `${key}-error` : undefined,
+    className: inputClass(errors[key]),
+  })
+
+  const birthLine = [formatDate(chart.birth_date), initialTime(chart.birth_time), chart.birth_place].filter(Boolean).join(' · ')
+
   return (
-    <div
-      className="min-h-screen px-4 py-10"
-      style={{ background: 'var(--obsidian-bg, #08070a)', color: 'var(--text-primary, #e8e6df)' }}
-    >
-      <div className="mx-auto max-w-2xl">
-
-        {/* Rebuild warning banner */}
-        <div
-          role="note"
-          style={{
-            borderRadius: 8,
-            border: '1px solid rgba(212,175,55,0.3)',
-            background: 'rgba(212,175,55,0.06)',
-            padding: '12px 16px',
-            marginBottom: 24,
-            fontSize: 13,
-            color: '#d4a648',
-          }}
-        >
-          Editing birth details will rebuild this entire chart (Gaṇita → Mīmāṃsā) from scratch.
-        </div>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1
-            style={{
-              fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-              fontStyle: 'italic',
-              fontSize: 36,
-              color: 'var(--gold-primary, #d4a648)',
-              lineHeight: 1.15,
-              marginBottom: 8,
-            }}
+    <div className="jw-root min-h-full px-4 py-8 sm:px-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+        <header className="flex flex-col gap-2">
+          <Link
+            href={`/clients/${chart.id}`}
+            className="jw-touch inline-flex min-h-11 w-fit items-center text-xs uppercase tracking-[0.2em] text-[var(--jw-gold-dim)] hover:text-[var(--jw-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]"
           >
-            Edit · {chart.name}
-          </h1>
-        </div>
+            ← Jātaka workspace
+          </Link>
+          <p className="jw-eyebrow">Edit chart details</p>
+          <h1 className="jw-display text-4xl">{chart.name}</h1>
+          <p className="text-sm text-[var(--jw-ink-dim)]">{birthLine}</p>
+        </header>
 
-        <form onSubmit={handleSubmit} noValidate style={{ display: 'grid', gap: 16 }}>
-
-          {/* Name */}
-          <div
-            style={{ background: '#0a0908', border: '1px solid #1f1c17', borderRadius: 12, padding: 20 }}
-          >
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="full_name" className="text-[#c8bfb0] text-sm">Full name *</Label>
-              <Input
-                id="full_name"
-                type="text"
-                value={form.full_name}
-                maxLength={200}
-                aria-required="true"
-                aria-invalid={!!errors.full_name}
-                className={inputCls(!!errors.full_name)}
-                onChange={(e) => setField('full_name', e.target.value)}
-              />
-              <FieldError msg={errors.full_name} />
+        <form onSubmit={handleSubmit} noValidate className="grid gap-5">
+          <Group legend="Identity">
+            <div className="grid gap-1.5">
+              <label htmlFor="full_name" className="text-sm text-[var(--jw-ink-dim)]">Full name</label>
+              <input type="text" maxLength={200} aria-required="true" value={form.full_name}
+                onChange={(e) => setField('full_name', e.target.value)} {...fieldProps('full_name')} />
+              <FieldError id="full_name-error" msg={errors.full_name} />
             </div>
-          </div>
-
-          {/* Birth fields */}
-          <div
-            style={{ background: '#0a0908', border: '1px solid #1f1c17', borderRadius: 12, padding: 20, display: 'grid', gap: 16 }}
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="birth_date" className="text-[#c8bfb0] text-sm">Date *</Label>
-                <input
-                  id="birth_date"
-                  type="date"
-                  value={form.birth_date}
-                  min="1900-01-01"
-                  max={todayIso()}
-                  aria-required="true"
-                  className={inputCls(!!errors.birth_date)}
-                  onChange={(e) => setField('birth_date', e.target.value)}
-                />
-                <FieldError msg={errors.birth_date} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <label htmlFor="preferred_name" className="text-sm text-[var(--jw-ink-dim)]">Preferred name</label>
+                <input type="text" maxLength={100} value={form.preferred_name}
+                  onChange={(e) => setField('preferred_name', e.target.value)} {...fieldProps('preferred_name')} />
+                <FieldError id="preferred_name-error" msg={errors.preferred_name} />
               </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="birth_time" className="text-[#c8bfb0] text-sm">Time (24 h) *</Label>
-                <input
-                  id="birth_time"
-                  type="time"
-                  value={form.birth_time}
-                  aria-required="true"
-                  className={inputCls(!!errors.birth_time)}
-                  onChange={(e) => setField('birth_time', e.target.value)}
-                />
-                <FieldError msg={errors.birth_time} />
+              <div className="grid gap-1.5">
+                <label htmlFor="subject_name" className="text-sm text-[var(--jw-ink-dim)]">Subject label</label>
+                <input type="text" maxLength={200} value={form.subject_name}
+                  onChange={(e) => setField('subject_name', e.target.value)} {...fieldProps('subject_name')} />
+                <FieldError id="subject_name-error" msg={errors.subject_name} />
               </div>
             </div>
+          </Group>
 
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="birth_place" className="text-[#c8bfb0] text-sm">Birth place *</Label>
-              <Input
-                id="birth_place"
-                type="text"
-                value={form.birth_place}
-                aria-required="true"
-                className={inputCls(!!errors.birth_place)}
-                onChange={(e) => setField('birth_place', e.target.value)}
-              />
-              <FieldError msg={errors.birth_place} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="latitude" className="text-[#c8bfb0] text-sm">Latitude *</Label>
-                <input
-                  id="latitude"
-                  type="number"
-                  step="0.0001"
-                  min={-90}
-                  max={90}
-                  value={form.latitude}
-                  aria-required="true"
-                  className={inputCls(!!errors.latitude)}
-                  onChange={(e) => setField('latitude', e.target.value)}
-                />
-                <FieldError msg={errors.latitude} />
+          <Group legend="Birth coordinates">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <label htmlFor="birth_date" className="text-sm text-[var(--jw-ink-dim)]">Date of birth</label>
+                <input type="date" min="1800-01-01" aria-required="true" value={form.birth_date}
+                  onChange={(e) => setField('birth_date', e.target.value)} {...fieldProps('birth_date')} />
+                <FieldError id="birth_date-error" msg={errors.birth_date} />
               </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="longitude" className="text-[#c8bfb0] text-sm">Longitude *</Label>
-                <input
-                  id="longitude"
-                  type="number"
-                  step="0.0001"
-                  min={-180}
-                  max={180}
-                  value={form.longitude}
-                  aria-required="true"
-                  className={inputCls(!!errors.longitude)}
-                  onChange={(e) => setField('longitude', e.target.value)}
-                />
-                <FieldError msg={errors.longitude} />
+              <div className="grid gap-1.5">
+                <label htmlFor="birth_time" className="text-sm text-[var(--jw-ink-dim)]">Time of birth (24 h)</label>
+                <input type="time" step={1} aria-required="true" value={form.birth_time}
+                  onChange={(e) => setField('birth_time', e.target.value)} {...fieldProps('birth_time')} />
+                <FieldError id="birth_time-error" msg={errors.birth_time} />
               </div>
             </div>
-          </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="birth_place" className="text-sm text-[var(--jw-ink-dim)]">Birth place</label>
+              <input type="text" maxLength={300} aria-required="true" value={form.birth_place}
+                onChange={(e) => setField('birth_place', e.target.value)} {...fieldProps('birth_place')} />
+              <FieldError id="birth_place-error" msg={errors.birth_place} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <label htmlFor="latitude" className="text-sm text-[var(--jw-ink-dim)]">Latitude</label>
+                <input type="number" step="0.0001" min={-90} max={90} aria-required="true" value={form.latitude}
+                  onChange={(e) => setField('latitude', e.target.value)} {...fieldProps('latitude')} />
+                <FieldError id="latitude-error" msg={errors.latitude} />
+              </div>
+              <div className="grid gap-1.5">
+                <label htmlFor="longitude" className="text-sm text-[var(--jw-ink-dim)]">Longitude</label>
+                <input type="number" step="0.0001" min={-180} max={180} aria-required="true" value={form.longitude}
+                  onChange={(e) => setField('longitude', e.target.value)} {...fieldProps('longitude')} />
+                <FieldError id="longitude-error" msg={errors.longitude} />
+              </div>
+            </div>
+          </Group>
 
-          {/* Ayanamsha */}
-          <div
-            style={{ background: '#0a0908', border: '1px solid #1f1c17', borderRadius: 12, padding: 20 }}
-          >
-            <h3
-              style={{
-                fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-                fontStyle: 'italic',
-                fontSize: 18,
-                color: 'var(--gold-primary, #d4a648)',
-                fontWeight: 500,
-                marginBottom: 12,
-              }}
-            >
-              Ganana · Compute
-            </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {AYANAMSHA_OPTIONS.map((opt) => {
-                const checked = form.ayanamshas.includes(opt.id)
+          <Group legend="Time standard">
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="grid gap-1.5">
+                <label htmlFor="timezone_id" className="text-sm text-[var(--jw-ink-dim)]">Timezone</label>
+                <select aria-required="true" value={form.timezone_id}
+                  onChange={(e) => setField('timezone_id', e.target.value)} {...fieldProps('timezone_id')}>
+                  <option value="" disabled>Select a timezone</option>
+                  {timezoneOptions.map((zone) => (
+                    <option key={zone} value={zone}>{zone}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="min-h-11 content-center font-mono text-sm text-[var(--jw-gold)]" data-testid="effective-offset" aria-live="polite">
+                {offsetMinutes === null ? '—' : formatOffset(offsetMinutes)}
+                <span className="ml-2 font-sans text-xs text-[var(--jw-ink-dim)]">at birth</span>
+              </p>
+            </div>
+            <FieldError id="timezone_id-error" msg={errors.timezone_id} />
+          </Group>
+
+          <Group legend="Computation frame">
+            <div className="flex flex-wrap gap-2">
+              {AYANAMSHA_OPTIONS.map((option) => {
+                const checked = form.ayanamshas.includes(option.id)
                 return (
                   <label
-                    key={opt.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                      cursor: 'pointer',
-                      borderRadius: 8,
-                      border: `1px solid ${checked ? '#d4a648' : '#1f1c17'}`,
-                      padding: '10px 14px',
-                      background: checked ? 'rgba(212,166,72,0.06)' : 'transparent',
-                      minWidth: 120,
-                      transition: 'border-color 0.15s',
-                    }}
+                    key={option.id}
+                    className={cn(
+                      'jw-control jw-touch flex min-h-11 cursor-pointer items-center gap-2 border px-3 text-sm',
+                      checked ? 'border-[var(--jw-gold)] bg-[var(--jw-tint)] text-[var(--jw-ink)]' : 'border-[var(--jw-rule)] text-[var(--jw-ink-dim)]',
+                    )}
                   >
                     <input
                       type="checkbox"
-                      style={{ display: 'none' }}
                       checked={checked}
-                      aria-label={opt.label}
-                      onChange={() => toggleAyanamsha(opt.id)}
+                      onChange={() => toggleAyanamsha(option.id)}
+                      aria-label={option.label}
+                      className="h-4 w-4 accent-[#c9a24c]"
                     />
-                    <span style={{ fontSize: 13, fontWeight: 500, color: checked ? '#d4a648' : '#c8bfb0' }}>
-                      {opt.label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: checked ? 'rgba(212,166,72,0.6)' : '#5d5b54',
-                        fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                        letterSpacing: '0.04em',
-                      }}
-                    >
-                      {opt.sub}
-                    </span>
+                    <span aria-hidden="true">{option.label}</span>
+                    <span aria-hidden="true" className="font-mono text-[10px] text-[var(--jw-gold-dim)]">{option.sub}</span>
                   </label>
                 )
               })}
             </div>
-            <FieldError msg={errors.ayanamshas} />
-          </div>
+            <FieldError id="ayanamshas-error" msg={errors.ayanamshas} />
+          </Group>
 
-          {errors.api && (
-            <div
-              role="alert"
-              style={{
-                borderRadius: 8,
-                border: '1px solid rgba(156,58,42,0.4)',
-                background: 'rgba(156,58,42,0.1)',
-                padding: '12px 16px',
-                fontSize: 13,
-                color: '#c0392b',
-              }}
-            >
-              {errors.api}
-            </div>
+          {requiresRecompute && (
+            <p role="note" className="text-sm text-[var(--jw-ink-dim)]">
+              These changes affect the computed chart. Saving recomputes it and archives prior Paripraśna conversations as read-only history.
+            </p>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingBottom: 16 }}>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => router.back()}
-              style={{ color: '#888373', fontSize: 13 }}
+          {errors.api && (
+            <p role="alert" className="jw-panel border-[var(--jw-danger)] px-4 py-3 text-sm text-[var(--jw-danger)]">
+              {errors.api}
+            </p>
+          )}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Link
+              href={`/clients/${chart.id}`}
+              className="jw-control jw-touch inline-flex min-h-11 items-center justify-center px-4 text-sm text-[var(--jw-ink-dim)] hover:text-[var(--jw-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]"
             >
               Cancel
-            </Button>
-            <Button
+            </Link>
+            <button
+              ref={submitRef}
               type="submit"
               disabled={loading}
-              style={{
-                background: 'var(--gold-primary, #d4a648)',
-                color: 'var(--obsidian-bg, #08070a)',
-                fontSize: 13,
-                fontWeight: 500,
-                padding: '0 24px',
-                opacity: loading ? 0.5 : 1,
-              }}
+              className="jw-control jw-touch min-h-11 bg-[var(--jw-gold)] px-6 text-sm font-medium text-black hover:bg-[#d8b25e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-50"
             >
-              {loading ? 'Saving…' : 'Save changes'}
-            </Button>
+              {loading ? 'Saving…' : requiresRecompute ? 'Save and recompute' : 'Save changes'}
+            </button>
           </div>
         </form>
       </div>
@@ -432,13 +440,17 @@ export function EditClientForm({ chart }: Props) {
       <EditRebuildConfirmDialog
         chartName={chart.name}
         open={confirmOpen}
+        changes={changes}
         onCancel={() => {
           setConfirmOpen(false)
-          pendingSubmitRef.current = false
+          // Return focus to the trigger now and again after the dialog's own
+          // close/unmount focus handling has run.
+          submitRef.current?.focus()
+          requestAnimationFrame(() => submitRef.current?.focus())
         }}
         onConfirm={() => {
           setConfirmOpen(false)
-          doSubmit()
+          void submit()
         }}
       />
     </div>
