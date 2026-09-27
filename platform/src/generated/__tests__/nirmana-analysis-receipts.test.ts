@@ -152,11 +152,12 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       expect(archived.superseded_by_generation_id).toBe(want.generation)
       expect(layerPinRecord.history[layer]).toHaveLength(want.history)
     }
-    // L1, L4 and L5 are untouched by the repair
+    // L1, L4 and L5 are untouched by the L0 repair. L5 now has one later,
+    // independently authorized CCD-018 successor, asserted below.
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:149f8479ac4e:93de3b2c84b7')
     expect(layerPinRecord.history.L1).toHaveLength(2)
     expect(layerPinRecord.history.L4).toHaveLength(1)
-    expect(layerPinRecord.history.L5).toEqual([])
+    expect(layerPinRecord.history.L5).toHaveLength(1)
     // the predecessors' receipts stay re-derivable from the archived generation
     expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L2)).toContain('l2:149f8479ac4e:51d3164426ac')
     expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L3)).toContain('l3:87cc8c9baf89:002a118b218e')
@@ -228,24 +229,39 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md',
       sha256: '0f87dc072590179cc9a5e8b928bf30a0436de5d13b3d1e9ed4c20ce31aceee79',
     }])
-    // L5 was untouched by the L0-repair successor (PR #2727) -- the assertion below still
-    // proves that. It IS updated past its original convergence_commit/writer_inventory_sha256
-    // by a later, unrelated, legitimate live pin update (NIRMANA_L0_L5_RECEIPT_COUPLING_FIX_ADDENDUM_v1_0.md,
-    // CCD-017): the Jātaka Phase-A3 mi_bhara.py context-staleness fix moved L5's writer
-    // inventory, and this correction re-pinned L5 alone once build_pins()'s L0/L5 coupling
-    // bug (nirmana-analysis-layer-pins.py unconditionally validating L0 even for an L5-only
-    // request) was fixed. asset_prefix/non_writer_assets/receipt_count are UNCHANGED --
-    // membership never moved, only the reviewed source (convergence_commit) and its derived
-    // writer_inventory_sha256 did. history.L5 stays [] -- this was a live pin UPDATE via
-    // --layer L5, not a successor ADMISSION via --admit-successor.
-    expect(layerPinRecord.layers.L5).toEqual({
-      asset_prefix: 'mi_',
-      convergence_commit: 'ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b',
-      non_writer_assets: ['lel_events'],
-      receipt_count: 15,
-      writer_inventory_sha256: '9d222087056d2133991c52a53ca48ee20cafe06f5c9d3401565ad9e2436e99db',
-    })
-    expect(layerPinRecord.history.L5).toEqual([])
+    // L5 was untouched by the L0 repair. The later Jataka context-staleness
+    // changes are a separate CCD-018 successor: the original L5 pin is archived
+    // whole, membership remains unchanged, and exactly the four reviewed writer
+    // identities are classified.
+    const l5 = layerPinRecord.layers.L5
+    expect(l5.generation_id).toBe('l5:ed5ad601c5e5:9d222087056d')
+    expect(l5.supersedes_generation_id).toBe('l5:fd4c102e3ce5:df295e3ac158')
+    expect(l5.convergence_commit).toBe('ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b')
+    expect(l5.non_writer_assets).toEqual(['lel_events'])
+    expect(l5.receipt_count).toBe(15)
+    expect(l5.writer_inventory_sha256)
+      .toBe('9d222087056d2133991c52a53ca48ee20cafe06f5c9d3401565ad9e2436e99db')
+    expect(l5.admission.authority_decision).toBe('CCD-018')
+    expect(l5.admission.authority_commit)
+      .toBe('463c1dd66796356380fe2cab3103ad68b0d08d21')
+    expect(l5.admission.changed_assets).toEqual([
+      'mi_bhara', 'mi_gunanaka', 'mi_pariksha', 'mi_pramana',
+    ])
+    expect(new Set(Object.values(l5.admission.delta_classifications)))
+      .toEqual(new Set(['approved_intentional_change']))
+    expect(l5.admission.review_artifacts).toEqual([{
+      commit: 'a97fc8ffb0268954fb4bf8c7fb7e838c4bf6e558',
+      decision_binding: '**Reviewed technical head:** `ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b`.',
+      path: '00_ARCHITECTURE/SESSION_LOG.md',
+      sha256: '78273beef6032e0216916167f52b943e49605d6e11a7248f626d2b3205bf779f',
+    }])
+    const archivedL5 = layerPinRecord.history.L5[0]
+    expect(archivedL5.generation_id).toBe('l5:fd4c102e3ce5:df295e3ac158')
+    expect(archivedL5.superseded_by_generation_id).toBe(l5.generation_id)
+    expect(archivedL5.historical_snapshot_commit)
+      .toBe('6b26f3ff05ee0aba3cdd964bce62292496ae6b62')
+    expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L5))
+      .toContain('l5:fd4c102e3ce5:df295e3ac158')
   })
 
   it('admits only the exact SECURITY CLEAR L1/L2 compatibility closure', () => {

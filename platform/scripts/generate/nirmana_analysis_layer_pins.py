@@ -89,6 +89,18 @@ LAYER_PREFIX = {
 }
 
 AUTHORITY_BINDINGS = {
+    "CCD-018": {
+        # The native-authorized controlled Jataka production rollout includes
+        # fresh source review and release-blocker correction before protected
+        # integration.  The decision register binds that narrow authority to
+        # this exact session; it does not grant a general L5 re-pin capability.
+        "authority_commit": "463c1dd66796356380fe2cab3103ad68b0d08d21",
+        "evidence_commit": "463c1dd66796356380fe2cab3103ad68b0d08d21",
+        "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "sha256": "dbe44c43c8df047d8e0de560aa5584217b4c0ffbaa963efed8c282dbcbf672a5",
+        "decision_binding": "## CCD-018 — Jātaka controlled production rollout authority",
+        "authority_identity_binding": "`JATAKA-CONTROLLED-PROD-ROLLOUT-20260927`",
+    },
     "DP-SD-018": {
         # The approval identity remains immutable metadata.  Validation reads
         # the later integrated unblock record, which quotes that exact identity
@@ -137,6 +149,12 @@ SOURCE_INVENTORY_BINDINGS = {
 }
 
 EXPECTED_REVIEW_ARTIFACTS = {
+    "L5": [{
+        "commit": "a97fc8ffb0268954fb4bf8c7fb7e838c4bf6e558",
+        "path": "00_ARCHITECTURE/SESSION_LOG.md",
+        "sha256": "78273beef6032e0216916167f52b943e49605d6e11a7248f626d2b3205bf779f",
+        "decision_binding": "**Reviewed technical head:** `ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b`.",
+    }],
     "L0": [{
         "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
         "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md",
@@ -175,6 +193,9 @@ EXPECTED_REVIEW_ARTIFACTS = {
 }
 
 AUTHORIZED_SOURCE_COMMITS = {
+    "CCD-018": {
+        "L5": frozenset({"ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b"}),
+    },
     "DP-SD-018": {
         "L0": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
         "L1": frozenset({
@@ -507,7 +528,11 @@ def build_pins(
 
 
 def splice_layer_pin(
-    committed: dict[str, Any], layer: str, fresh: dict[str, Any]
+    committed: dict[str, Any],
+    layer: str,
+    fresh: dict[str, Any],
+    *,
+    accepted_definition_binding: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Merge one freshly-derived layer's pin into an already-committed record.
 
@@ -521,7 +546,26 @@ def splice_layer_pin(
     """
     updated = copy.deepcopy(committed)
     updated["layers"][layer] = fresh["layers"][layer]
-    updated.setdefault("definition_bindings", {})[layer] = fresh["definition_bindings"][layer]
+    definitions = updated.setdefault("definition_bindings", {})
+    fresh_definition = fresh["definition_bindings"][layer]
+    accepted_definition = (
+        accepted_definition_binding
+        if accepted_definition_binding is not None
+        else definitions.get(layer)
+    )
+    if accepted_definition is None:
+        definitions[layer] = fresh_definition
+    elif (
+        accepted_definition.get("schema_version")
+        != fresh_definition.get("schema_version")
+        or accepted_definition.get("membership_sha256")
+        != fresh_definition.get("membership_sha256")
+    ):
+        raise SystemExit(
+            f"{layer} scoped re-pin membership differs from its accepted definition binding"
+        )
+    else:
+        definitions[layer] = copy.deepcopy(accepted_definition)
     return updated
 
 
@@ -1146,6 +1190,61 @@ def _resolve_definition_bindings(
         ):
             return json.loads(json.dumps(existing))
     return build_definition_bindings(definition_snapshot_commit)
+
+
+def recover_direct_splice_predecessor(
+    committed: dict[str, Any],
+    *,
+    layer: str,
+    historical_snapshot_commit: str,
+    candidate_writer_digests: dict[str, str],
+    source_commit: str,
+) -> dict[str, Any]:
+    """Recover the predecessor of one exact unversioned direct splice.
+
+    This is deliberately narrower than a generic rewind.  It is only for a
+    layer whose candidate pin was already spliced into the live slot without
+    a successor admission.  The layer history and immutable definition must
+    still be byte-identical to the historical snapshot, and the live pin must
+    be exactly the candidate core derived from ``source_commit``.  Only then
+    is the historical predecessor restored in memory so ``admit_successor``
+    can archive it and append the governed candidate generation.
+    """
+    if layer not in LAYER_PREFIX:
+        raise SystemExit(f"unknown layer {layer!r}; expected one of {sorted(LAYER_PREFIX)}")
+    historical = _pins_at_commit(historical_snapshot_commit)
+    historical_pin = historical.get("layers", {}).get(layer)
+    active_pin = committed.get("layers", {}).get(layer)
+    if not isinstance(historical_pin, dict) or not isinstance(active_pin, dict):
+        raise SystemExit(f"{layer} direct-splice recovery needs both active and historical pins")
+
+    historical_history = historical.get("history", {}).get(layer, [])
+    active_history = committed.get("history", {}).get(layer, [])
+    if active_history != historical_history:
+        raise SystemExit(f"{layer} history differs from historical snapshot; refusing recovery")
+    historical_definition = historical.get("definition_bindings", {}).get(layer)
+    active_definition = committed.get("definition_bindings", {}).get(layer)
+    if active_definition != historical_definition:
+        raise SystemExit(
+            f"{layer} definition binding differs from historical snapshot; refusing recovery"
+        )
+
+    lineage_keys = {"generation_id", "supersedes_generation_id", "admission"}
+    if lineage_keys & set(active_pin) or lineage_keys & set(historical_pin):
+        raise SystemExit(f"{layer} direct-splice recovery only accepts unversioned pins")
+    expected_candidate = copy.deepcopy(historical_pin)
+    expected_candidate["convergence_commit"] = source_commit
+    expected_candidate["writer_inventory_sha256"] = layer_inventory_sha256(
+        candidate_writer_digests, LAYER_PREFIX[layer]
+    )
+    if active_pin != expected_candidate:
+        raise SystemExit(
+            f"{layer} active pin is not the exact candidate direct splice; refusing recovery"
+        )
+
+    recovered = copy.deepcopy(committed)
+    recovered["layers"][layer] = copy.deepcopy(historical_pin)
+    return recovered
 
 
 def admit_successor(
@@ -1817,6 +1916,15 @@ def main() -> int:
         action="store_true",
         help="append one reviewed layer successor while retaining the complete predecessor",
     )
+    parser.add_argument(
+        "--recover-direct-splice",
+        action="store_true",
+        help=(
+            "before successor admission, recover the exact unversioned predecessor from "
+            "--historical-snapshot-commit; fails unless history, definition and candidate "
+            "pin are otherwise byte-identical"
+        ),
+    )
     parser.add_argument("--source-commit", help="immutable implementation predecessor")
     parser.add_argument(
         "--historical-snapshot-commit",
@@ -1895,6 +2003,14 @@ def main() -> int:
             return 1
         previous_inventory = _inventory_at_commit(args.historical_snapshot_commit)
         committed = json.loads(args.output.read_text(encoding="utf-8"))
+        if args.recover_direct_splice:
+            committed = recover_direct_splice_predecessor(
+                committed,
+                layer=args.layer,
+                historical_snapshot_commit=args.historical_snapshot_commit,
+                candidate_writer_digests=writer_digests,
+                source_commit=args.source_commit,
+            )
         successor = admit_successor(
             committed,
             layer=args.layer,
@@ -1976,7 +2092,26 @@ def main() -> int:
             layers=[args.layer],
         )
         before = committed["layers"][args.layer]
-        updated = splice_layer_pin(committed, args.layer, pins)
+        accepted_definition_binding = None
+        if args.protected_baseline_commit:
+            _require_reachable_commit(
+                args.protected_baseline_commit, "protected baseline"
+            )
+            accepted_definition_binding = _pins_at_commit(
+                args.protected_baseline_commit
+            ).get("definition_bindings", {}).get(args.layer)
+            if not isinstance(accepted_definition_binding, dict):
+                print(
+                    f"ERROR: protected baseline has no {args.layer} definition binding",
+                    file=sys.stderr,
+                )
+                return 1
+        updated = splice_layer_pin(
+            committed,
+            args.layer,
+            pins,
+            accepted_definition_binding=accepted_definition_binding,
+        )
         fresh = updated["layers"][args.layer]
         args.output.write_text(render(updated), encoding="utf-8")
         moved = [k for k in fresh if before.get(k) != fresh.get(k)]

@@ -239,8 +239,6 @@ def test_predecessor_histories_remain_immutable_across_a_splice(fake_l0_frozen, 
             "L5": {"schema_version": pins_module.DEFINITION_SCHEMA_VERSION, "snapshot_commit": "e" * 40, "membership_sha256": "old-binding"},
         },
     }
-    committed_before = copy.deepcopy(committed)
-
     writer_digests = dict(fake_definition_snapshot)
     writer_digests["mi_gamma"] = _digest("9")
     fresh = pins_module.build_pins(
@@ -250,6 +248,10 @@ def test_predecessor_histories_remain_immutable_across_a_splice(fake_l0_frozen, 
         FAKE_SNAPSHOT_COMMIT,
         layers=["L5"],
     )
+    committed["definition_bindings"]["L5"]["membership_sha256"] = fresh[
+        "definition_bindings"
+    ]["L5"]["membership_sha256"]
+    committed_before = copy.deepcopy(committed)
 
     updated = pins_module.splice_layer_pin(committed, "L5", fresh)
 
@@ -261,6 +263,182 @@ def test_predecessor_histories_remain_immutable_across_a_splice(fake_l0_frozen, 
     )
     # committed itself (the caller's dict) is never mutated in place
     assert committed == committed_before
+
+
+def test_scoped_splice_preserves_the_accepted_definition_binding(fake_l0_frozen, fake_definition_snapshot):
+    """A writer-only L5 re-pin may change the live inventory digest, but an
+    unchanged membership must keep its already-accepted definition binding.
+
+    Replacing only ``snapshot_commit`` is still a protected-baseline rewrite;
+    this test catches exactly that regression while exercising the real splice.
+    """
+    writer_digests = dict(fake_definition_snapshot)
+    writer_digests["mi_gamma"] = _digest("9")
+    fresh = pins_module.build_pins(
+        writer_digests,
+        _manifest_assets(),
+        FAKE_CONVERGENCE_COMMIT,
+        FAKE_SNAPSHOT_COMMIT,
+        layers=["L5"],
+    )
+    accepted_binding = copy.deepcopy(fresh["definition_bindings"]["L5"])
+    accepted_binding["snapshot_commit"] = "d" * 40
+    committed = {
+        "version": pins_module.PINS_VERSION,
+        "layers": {"L5": {"writer_inventory_sha256": "old"}},
+        "history": {"L5": []},
+        "definition_bindings": {"L5": accepted_binding},
+    }
+
+    updated = pins_module.splice_layer_pin(committed, "L5", fresh)
+
+    assert updated["definition_bindings"]["L5"] == accepted_binding
+    assert updated["layers"]["L5"]["writer_inventory_sha256"] != "old"
+
+
+def test_scoped_splice_restores_the_protected_baseline_definition_binding(fake_l0_frozen, fake_definition_snapshot):
+    """When a branch already rewrote the snapshot label, an explicitly supplied
+    protected-baseline binding is the recovery authority; matching membership
+    allows the generator to restore those accepted bytes without hand-editing
+    the generated JSON.
+    """
+    writer_digests = dict(fake_definition_snapshot)
+    writer_digests["mi_gamma"] = _digest("9")
+    fresh = pins_module.build_pins(
+        writer_digests,
+        _manifest_assets(),
+        FAKE_CONVERGENCE_COMMIT,
+        FAKE_SNAPSHOT_COMMIT,
+        layers=["L5"],
+    )
+    protected_binding = copy.deepcopy(fresh["definition_bindings"]["L5"])
+    protected_binding["snapshot_commit"] = "d" * 40
+    rewritten_binding = copy.deepcopy(fresh["definition_bindings"]["L5"])
+    rewritten_binding["snapshot_commit"] = "c" * 40
+    committed = {
+        "version": pins_module.PINS_VERSION,
+        "layers": {"L5": {"writer_inventory_sha256": "old"}},
+        "history": {"L5": []},
+        "definition_bindings": {"L5": rewritten_binding},
+    }
+
+    updated = pins_module.splice_layer_pin(
+        committed,
+        "L5",
+        fresh,
+        accepted_definition_binding=protected_binding,
+    )
+
+    assert updated["definition_bindings"]["L5"] == protected_binding
+
+
+def test_direct_splice_recovery_restores_only_the_historical_predecessor(monkeypatch):
+    """The repair path may rewind only the exact unversioned direct splice.
+
+    Other layers, all histories, and accepted definition bindings must remain
+    byte-identical so the subsequent ``admit_successor()`` call can append the
+    governed L5 generation without laundering unrelated drift.
+    """
+    source_commit = "9" * 40
+    baseline_l5 = {
+        "asset_prefix": "mi_",
+        "convergence_commit": "8" * 40,
+        "non_writer_assets": ["lel_events"],
+        "receipt_count": 3,
+        "writer_inventory_sha256": "7" * 64,
+    }
+    definition = {
+        "schema_version": pins_module.DEFINITION_SCHEMA_VERSION,
+        "snapshot_commit": "6" * 40,
+        "membership_sha256": "5" * 64,
+    }
+    baseline = {
+        "version": pins_module.PINS_VERSION,
+        "layers": {"L5": baseline_l5},
+        "history": {"L5": []},
+        "definition_bindings": {"L5": definition},
+    }
+    candidate_writers = {"mi_alpha": _digest("a")}
+    direct_l5 = {
+        **baseline_l5,
+        "convergence_commit": source_commit,
+        "writer_inventory_sha256": pins_module.layer_inventory_sha256(
+            candidate_writers, L5_PREFIX
+        ),
+    }
+    committed = {
+        "version": pins_module.PINS_VERSION,
+        "layers": {
+            "L0": {"sentinel": "untouched"},
+            "L5": direct_l5,
+        },
+        "history": {"L0": [{"sentinel": "untouched"}], "L5": []},
+        "definition_bindings": {
+            "L0": {"sentinel": "untouched"},
+            "L5": definition,
+        },
+    }
+    monkeypatch.setattr(pins_module, "_pins_at_commit", lambda commit: baseline)
+
+    recovered = pins_module.recover_direct_splice_predecessor(
+        committed,
+        layer="L5",
+        historical_snapshot_commit="4" * 40,
+        candidate_writer_digests=candidate_writers,
+        source_commit=source_commit,
+    )
+
+    assert recovered["layers"]["L5"] == baseline_l5
+    assert recovered["layers"]["L0"] == committed["layers"]["L0"]
+    assert recovered["history"] == committed["history"]
+    assert recovered["definition_bindings"] == committed["definition_bindings"]
+    assert committed["layers"]["L5"] == direct_l5
+
+
+def test_direct_splice_recovery_rejects_history_drift(monkeypatch):
+    """Recovery fails closed if the layer lineage is not baseline-identical."""
+    source_commit = "9" * 40
+    candidate_writers = {"mi_alpha": _digest("a")}
+    baseline_pin = {
+        "asset_prefix": "mi_",
+        "convergence_commit": "8" * 40,
+        "non_writer_assets": [],
+        "receipt_count": 1,
+        "writer_inventory_sha256": "7" * 64,
+    }
+    definition = {
+        "schema_version": pins_module.DEFINITION_SCHEMA_VERSION,
+        "snapshot_commit": "6" * 40,
+        "membership_sha256": "5" * 64,
+    }
+    baseline = {
+        "layers": {"L5": baseline_pin},
+        "history": {"L5": []},
+        "definition_bindings": {"L5": definition},
+    }
+    committed = {
+        "layers": {
+            "L5": {
+                **baseline_pin,
+                "convergence_commit": source_commit,
+                "writer_inventory_sha256": pins_module.layer_inventory_sha256(
+                    candidate_writers, L5_PREFIX
+                ),
+            }
+        },
+        "history": {"L5": [{"unexpected": "history"}]},
+        "definition_bindings": {"L5": definition},
+    }
+    monkeypatch.setattr(pins_module, "_pins_at_commit", lambda commit: baseline)
+
+    with pytest.raises(SystemExit, match="history differs from historical snapshot"):
+        pins_module.recover_direct_splice_predecessor(
+            committed,
+            layer="L5",
+            historical_snapshot_commit="4" * 40,
+            candidate_writer_digests=candidate_writers,
+            source_commit=source_commit,
+        )
 
 
 def test_whole_file_regeneration_still_computes_every_layer(fake_l0_frozen, fake_definition_snapshot):

@@ -37,7 +37,7 @@ import {
 // package boundary, which is permitted in vitest (no bundler restriction applies to tests)
 // — the same pattern `intervention_ledger_filing_gate.test.ts` uses for the SQL migration
 // file and `vidhi_delivery.test.ts` uses for the doctrine harness receipt validator.
-import { EVENT_CLASS_IDS } from '../../../../platform/src/lib/event_classes.ts'
+import { EVENT_CLASS_IDS } from '../../../platform/src/lib/event_classes.ts'
 
 // ── Shared test fixtures ─────────────────────────────────────────────────────────────
 
