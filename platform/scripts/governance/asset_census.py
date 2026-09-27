@@ -2497,7 +2497,15 @@ def measure(layer_key: str) -> dict:
             m["Reach.fields"], reach = _grade_reach(tbl, cat["cols"].get(tbl, []), dc, caps_sql, caps_note, CHART_ID)
 
             tcols = set(cat["cols"].get(tbl, []))
-            cit = [c for c in ("source_citation", "source_text_id", "classical_citations", "citation_ref")
+            # R60: the singular `classical_citation` (as opposed to the plural `classical_citations`)
+            # was missing from this list — bg_nakshatra_medical and at least a dozen other L0 tables
+            # (bg_avastha_schemes, bg_combustion_orbs, bg_dignity_reference, bg_graha_dik,
+            # bg_graha_naisargika_friendship, bg_medical_mappings, bg_motion_state_thresholds,
+            # bg_prashna_* x5, bg_shashtiamsha_deities, bg_sign_medical, bg_transit_av_gates,
+            # bg_transit_moorti — measured 2026-09-28 via information_schema) carry it and got no
+            # Ldgr.source_presence check at all, despite a populated citation column.
+            cit = [c for c in ("source_citation", "source_text_id", "classical_citation",
+                                "classical_citations", "citation_ref")
                    if c in tcols]
             if cit and dc.get("rows"):
                 col = cit[0]
