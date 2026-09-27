@@ -55,14 +55,7 @@ export function AiChoicePicker({
       ;(selectedRow ?? listRef.current?.querySelector<HTMLElement>('[role="option"]:not([aria-disabled="true"])'))?.focus()
     })
     return () => cancelAnimationFrame(frame)
-  }, [open])
-
-  useEffect(() => {
-    if (!open || !disabled) return
-    closeAndRestore()
-    // `closeAndRestore` intentionally tracks the current controlled callback.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, disabled, onOpenChange])
+  }, [open, disabled, options, selectedKey])
 
   const grouped = useMemo(() => GROUPS.map(group => ({ group, rows: options.filter(option => option.group === group) })), [options])
   const ungrouped = options.filter(option => option.group === null)
@@ -148,7 +141,6 @@ export function AiChoicePicker({
           onOpenChange(!open)
         }}
         onKeyDown={event => {
-          if ((event.key === 'Enter' || event.key === ' ') && !open) onRefresh()
           if (event.key === 'Escape' && open) closeAndRestore()
         }}
       >
