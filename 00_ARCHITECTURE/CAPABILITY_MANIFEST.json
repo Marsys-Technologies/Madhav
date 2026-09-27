@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-27T13:40:41+05:30",
+  "generated_at": "2026-09-27T14:13:31+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "d05b058d63c0a238",
+  "fingerprint": "e33e8fe1a0d53545",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "b896d156e7262cddadd088ce708d0da70d559719ef1ebc29763be155613dbe86",
+      "fingerprint": "c09836648cb5afd32b97f86f0f4201e527b1196d07a75b43c4396374606bfb65",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-WAVE1-FOLD-20260927",
+      "last_verified_session": "NIKASHA-WAVE2-OPEN-20260927",
       "last_verified_on": "2026-09-27",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
@@ -2058,9 +2058,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "f1e4bcebce4bb3a0a8ef1d70696fc686f64e40afc0962c3f44f605d9359ad1a6",
+      "fingerprint": "af2cd8914fcb3476249bb20d238be0a8a9a3080a72e70bd71f40d7e0c7e5fb54",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-D5-REVISION-20260927",
+      "last_verified_session": "NIKASHA-WAVE2-OPEN-20260927",
       "last_verified_on": "2026-09-27",
       "note": "6 native-only decisions with recommendations and option costs"
     },

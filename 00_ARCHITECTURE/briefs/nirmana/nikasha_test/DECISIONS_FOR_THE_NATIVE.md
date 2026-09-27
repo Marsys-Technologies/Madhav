@@ -9,6 +9,7 @@ ruled_on: 2026-09-27
 ruled_by: Claude Fable session NIKASHA-DECISIONS-FREEZE-20260927, under explicit native delegation ("use Fable to reconcile it and freeze it")
 rulings_source: DECISIONS_RECOMMENDATIONS_v2_0.md (FINAL; reconciles DECISIONS_RECOMMENDATIONS_v1_0.md with reviews/REVIEW_NIKASHA_DECISIONS_RECOMMENDATIONS_v1_0.md)
 changelog:
+  - "1.0 (2026-09-27, R227): native-delegated decision recorded under D5 — route evidence never counts as coverage."
   - "1.0 (2026-09-27, D5 revised): the native overturned D5 in kind — the planner LLM maps questions to catalog units per query, so no static P/V × layer table is used; D5's appended ruling replaced with the 2.1 text (catalog provenance + DAG closure, computed; P-needs as planner test; §0.1 re-scoped; no §3.6). D1–D4, D6 unchanged."
   - "1.0 (2026-09-27, RULED): status AWAITING_NATIVE → RULED; the adopted ruling appended verbatim under each of D1–D6 from DECISIONS_RECOMMENDATIONS_v2_0.md. The original decision text above each ruling is unchanged, so the recommendation-as-raised and the ruling-as-adopted can be read side by side."
   - "1.0 (2026-09-26): six decisions raised at Phase 6 close, AWAITING_NATIVE."
@@ -305,6 +306,8 @@ judgement — which needs genuinely cannot be answered without a layer — not m
 > place in the necessity closure" — a derived section, filled from parts 2–3, never judged. The clause
 > whose unanswerability produced the 130 invention rows is retired with its cause. **No T2 §3.6 is
 > created.** Layer instances inherit the computed closure and narrow, never invent.
+
+**Native-delegated decision, 2026-09-27 (register R227):** route evidence never counts as coverage — a `route_evidence_only` claim is carried in the provenance artifact but a catalog unit whose only producer is route evidence reads `NO_DETECTOR — route_evidence_only_not_a_producer`. Grounded in this ruling's own words, "names the asset(s) that produce or part-produce it". No current figure depends on it.
 
 ## D6 · Align the Earn/Cost verdict scale with tier 4 (surfaces at R55)
 

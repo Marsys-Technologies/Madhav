@@ -7,6 +7,7 @@ supersedes: NIKASHA_CHANGE_REGISTER_v1_0.md
 produced_on: 2026-09-26
 decision_owner: Native
 changelog:
+  - "2.2 (2026-09-27, R227 decided): native delegated the decision — route evidence never counts as coverage, ADOPTED; R227 CLOSED. OPEN 202 → 201, CLOSED 11 → 12."
   - "2.2 (2026-09-27, wave-1 fold): Lane A (A_REVIEW2) and Lane B (B_REVIEW5) accepted with corrections. CLOSED: R216, R57, R58, R47, R62, R30, R40, R41, R220, R85. Annotated: R55 (classifier landed, stays OPEN), R219 (reader scan). Added R222–R231 (§2.11) — every gate carry-forward registered. Totals 221 → 231; OPEN 202 (−10 closed, +10 new); CLOSED 1 → 11."
   - "2.1 (2026-09-27, D5 native revision): R85 re-scoped to catalog provenance + DAG closure (the P/V × layer matrix is withdrawn — the planner LLM maps questions to catalog units per query); R218 planner test, R219 dead `build_dependencies`, R220 active population 127, R221 T3 §0.1 re-scope (§2.10). Totals 217 → 221; OPEN 198 → 202."
   - "2.0 (2026-09-27, NIKASHA-DECISIONS-FREEZE-20260927): rulings D1–D6 applied per nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md — R34/R36 → CLOSED_ON_BRANCH (engine A1/A3) with residuals; R35/R37/R38 re-owned to engine A2/C1/B1 with residuals; R215–R217 added (§2.9); R55 re-specified (D6); R57 amended and R78–R81 re-scoped (D4; R79 not withdrawn); R71 remedy fixed with R94/R119/R140/R185 (D3); R85 → T2 §3.6 (D5); every sealed-tier row annotated with its D2 reopen or explicit deferral; state vocabulary gains CLOSED_ON_BRANCH; counts re-totalled to 217. Version stays 2.0 (LIVING; in-place update, as R82's P7 close was)."
@@ -45,10 +46,10 @@ is a register row here (R85–R214), quoted against the clause that failed to pr
 
 | state | count |
 |---|---|
-| OPEN | 202 |
+| OPEN | 201 |
 | CLOSED_ON_BRANCH | 2 |
 | DONE | 15 |
-| CLOSED | 11 |
+| CLOSED | 12 |
 | MEASURED in P6 | 1 |
 
 ### 0.2 · Count by severity
@@ -418,7 +419,7 @@ rest `depends_on` it.
 | R224 | **G5 — census active population is prefix-scoped**: measures 126, missing `lel_events` (no `mi_` prefix), while the tracker counts 127. Scope by `asset_registry.layer`, not id prefix | A_REVIEW2 (G5) | DEGRADES | R220 | 1 | OPEN |
 | R225 | **G1 — F1's call-site guard has no failing proof**: removing `attempt_linkage_wired=False` from the `measure()` call breaks no test (the only guard greps source text a comment also contains; the parameter defaults to the unsafe value). Behavioural test with the instrument present; safe default | A_REVIEW2 (G1) | BLOCKS_LAYER | R55 | 1 | OPEN — must close before migration 1094 is applied anywhere the census emits |
 | R226 | **`catalog_provenance.py --live`** — re-derive against the database and diff with the committed artifact; the offline `--check` cannot see table existence/ownership, erased derived producers or the `summary` block (fabricated producers reusing real citations read 153/182; erasure reads as low as 21/182) | B_REVIEW5 §5 (W4) | BLOCKS_LAYER | R85 | 3 | OPEN — required before the compiler.ts wiring lane consumes the artifact |
-| R227 | **B1 native confirmation** — "route evidence never counts as coverage" is the executor's application of D5 rev. 2.1's "produce or part-produce"; no current figure depends on it (no SCU has route evidence as its only producer) | B_REPORT v2.4 §2d.4 | DEGRADES | R85 | 0 | OPEN — AWAITING_NATIVE |
+| R227 | **B1 native confirmation** — "route evidence never counts as coverage" is the executor's application of D5 rev. 2.1's "produce or part-produce"; no current figure depends on it (no SCU has route evidence as its only producer) | B_REPORT v2.4 §2d.4 | DEGRADES | R85 | 0 | CLOSED 2026-09-27 — native-delegated decision ("take the decision on my behalf"): ADOPTED — route evidence never counts as coverage, per D5 rev. 2.1 "produce or part-produce"; a route_evidence_only claim is carried but covers nothing; no current figure changes |
 | R228 | Twelve `source_ref` annotations in the retrieval registry point past the end of their files (e.g. get_dignity.ts 104 lines, ref 78-108); seven produce `source_ref_out_of_range` NO_DETECTORs | Lane B C-4 | DEGRADES | — | 1 | OPEN — owner: `source_query_availability.ts` / retrieval plane |
 | R229 | 27 tables read by catalog queries have no `asset_registry` owner (incl. `bg_graha_naisargika_friendship`; the tables behind `bg_prashna_rules` and `ga_prashna`, which keep those two assets outside the closure) | Lane B C-5/C-6 | DEGRADES | R85 | 3 | OPEN |
 | R230 | Concurrent-lane commit discipline: the Lane A F5 commit `cbc8b6724` swept five uncommitted Lane B files under a Lane A message. Enforce `git commit -- <paths>` (only-mode) in every lane prompt, and add a pre-commit check that a lane commit touches only its declared paths | wave-1 fold (A_REVIEW2 §5, B_REVIEW5 §3) | DEGRADES | R215 | 2 | OPEN |
