@@ -49,6 +49,7 @@ import {
   buildStructuredResponseAccountability,
   inquiryCitedHandles,
   stripInquiryCitationMarkers,
+  successorChain,
 } from '@/lib/vidhi/inquiry/response_accountability'
 
 export const maxDuration = 60
@@ -471,10 +472,11 @@ function certifyExternalAnswer(
   if (snapshot.content_hash !== final.capability_content_hash) {
     return response({ ok: false, error: 'CAPABILITY_KNOWLEDGE_STALE' }, 409)
   }
-  const committedHashes = new Set([
-    ...final.obligations.flatMap((obligation) => obligation.evidence_refs),
-    ...final.plan_items.flatMap((item) => item.observation?.evidence_refs ?? []),
-  ].filter((ref) => ref.startsWith('raw:')).map((ref) => ref.slice('raw:'.length)))
+  // A successor answer accounts for its parents' evidence too (the register inherits it).
+  const committedHashes = new Set(successorChain(final).flatMap((member) => [
+    ...member.obligations.flatMap((obligation) => obligation.evidence_refs),
+    ...member.plan_items.flatMap((item) => item.observation?.evidence_refs ?? []),
+  ]).filter((ref) => ref.startsWith('raw:')).map((ref) => ref.slice('raw:'.length)))
   const supplied = new Map<string, unknown>()
   for (const payload of body.evidence_payloads) {
     if (Buffer.byteLength(JSON.stringify(payload) ?? '') > MAX_RESULT_BYTES) {

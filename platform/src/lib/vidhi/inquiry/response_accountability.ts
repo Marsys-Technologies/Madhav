@@ -50,7 +50,12 @@ export function annotateInquiryEvidenceForSynthesis(
 ): { register: InquiryFactRegister; handles: ReadonlyMap<string, string>; payloads: unknown[] } {
   const register = buildInquiryFactRegister(contract, evidencePayloads, knowledgeSnapshot)
   const handles = inquiryFindingCitationHandles(register)
-  const bindings = knowledgeSnapshot ? indexInquiryEvidenceBindings(knowledgeSnapshot, contract, evidencePayloads) : {}
+  // A successor's register inherits its parents' findings under their own contract identities, so
+  // a payload is bound and identified against whichever contract in the chain observed it.
+  const chain = successorChain(contract)
+  const bindings = knowledgeSnapshot
+    ? Object.assign({}, ...[...chain].reverse().map((member) => indexInquiryEvidenceBindings(knowledgeSnapshot, member, evidencePayloads)))
+    : {}
   const payloads = evidencePayloads.map((payload) => {
     const copy: unknown = payload === undefined ? undefined : JSON.parse(JSON.stringify(payload))
     const binding = bindings[stableFingerprint(payload)]
@@ -61,7 +66,7 @@ export function annotateInquiryEvidenceForSynthesis(
       if (!row || typeof row !== 'object' || Array.isArray(row)) return
       const content = normalizedFindingContent(row, extraction.mode)
       const coordinate = `${sourceCoordinate}:${extraction.result_collection_path ?? 'opaque'}:${stableFingerprint(content)}`
-      const handle = handles.get(factIdentity('finding', contract, coordinate))
+      const handle = chain.map((member) => handles.get(factIdentity('finding', member, coordinate))).find(Boolean)
       // The extracted collection is the copy's own array, so this annotates the display copy in place.
       if (handle) (extraction.rows as unknown[])[index] = { [INQUIRY_CITATION_FIELD]: handle, ...(row as Record<string, unknown>) }
     })
@@ -114,10 +119,24 @@ function normalizedFindingContent(
   return canonicalize(value) ?? String(value)
 }
 
+const MAX_SUCCESSOR_CHAIN_DEPTH = 8
+
+/** The contract followed by each ancestor it continues (successor → parent → …), bounded. */
+export function successorChain(contract: InquiryContract): InquiryContract[] {
+  const chain = [contract]
+  let current = contract.successor?.parent_contract
+  while (current && chain.length <= MAX_SUCCESSOR_CHAIN_DEPTH) {
+    chain.push(current)
+    current = current.successor?.parent_contract
+  }
+  return chain
+}
+
 export function buildInquiryFactRegister(
   contract: InquiryContract,
   evidencePayloads: readonly unknown[] = [],
   knowledgeSnapshot?: CapabilityKnowledgeSnapshot,
+  chainDepth = 0,
 ): InquiryFactRegister {
   const validationErrors: string[] = []
   const obligationIds = new Set<string>()
@@ -255,6 +274,34 @@ export function buildInquiryFactRegister(
       evidence_refs: [...uniqueSorted([...finding.evidence_refs]), `result:${finding.row_hash}`],
       normalized_content: finding.content,
     })
+  }
+
+  // A successor continues its parent: the answer must still account for everything the parent
+  // obligated and observed. The parent's facts are inherited under the parent's own identities;
+  // a parent frontier item the successor admitted is absorbed by the successor's obligation for
+  // it (never both missing in the parent and owed in the successor).
+  const parent = contract.successor?.parent_contract
+  if (parent) {
+    if (chainDepth >= MAX_SUCCESSOR_CHAIN_DEPTH) {
+      validationErrors.push(`successor chain deeper than ${MAX_SUCCESSOR_CHAIN_DEPTH}`)
+    } else {
+      const parentRegister = buildInquiryFactRegister(parent, evidencePayloads, knowledgeSnapshot, chainDepth + 1)
+      const admitted = new Map(contract.successor!.admitted_frontier.map((frontier) => [frontier.frontier_id, frontier]))
+      for (const fact of parentRegister.facts) {
+        const absorbedBy = fact.kind === 'frontier' && fact.frontier_id ? admitted.get(fact.frontier_id) : undefined
+        facts.push(absorbedBy
+          ? {
+              ...fact,
+              meaning: {
+                ...fact.meaning,
+                disposition: 'absorbed',
+                rationale: `${fact.meaning.rationale} — admitted to successor contract ${contract.contract_id} for ${absorbedBy.scu_id}`,
+              },
+            }
+          : fact)
+      }
+      validationErrors.push(...parentRegister.validation_errors.map((error) => `parent ${parent.contract_id}: ${error}`))
+    }
   }
 
   const normalizedFacts = [...facts].sort((a, b) => a.fact_id.localeCompare(b.fact_id))
