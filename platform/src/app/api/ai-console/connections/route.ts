@@ -3,7 +3,7 @@ import { createConnection, listAiConsoleState } from '@/lib/ai-console/repositor
 import { encryptCredential } from '@/lib/ai-console/crypto'
 import { validateConnection } from '@/lib/ai-console/validation'
 import { ProviderIdSchema } from '@/lib/ai-console/types'
-import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, projectConnection, projectState, projectValidation, readBody, withAiConsole, withAiConsoleMutation, withValidationAdmission } from '../_shared'
+import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, projectConnection, projectState, projectValidation, readBody, reserveValidationFlight, withAiConsole, withAiConsoleMutation, withValidationAdmission } from '../_shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +22,12 @@ export async function POST(request: Request) {
     const input = await readBody(request, CreateSchema)
     const connection = projectConnection(await createConnection(userId,
       { name: input.name, providerId: input.providerId }, encryptCredential(input.apiKey)))
-    const validation = projectValidation(await validateConnection(userId, connection.id, { credentialVersion: 1, signal: request.signal }))
-    return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE }, 201)
+    // The new identity is now observable. Reserve it synchronously before any next
+    // await, while the outer create flight still prevents overlapping creation.
+    const release = reserveValidationFlight(userId, connection.id)
+    try {
+      const validation = projectValidation(await validateConnection(userId, connection.id, { credentialVersion: 1, signal: request.signal }))
+      return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE }, 201)
+    } finally { release() }
   }))
 }

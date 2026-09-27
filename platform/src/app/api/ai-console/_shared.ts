@@ -47,13 +47,26 @@ function checkRate(key: string, limit: number) {
   if (!result.allowed) throw new RequestError(429, 'rate_limited', result.retry_after_seconds ?? 60)
 }
 
-/** Covers the entire mutation plus probe, so rejection cannot leave a changed key. */
-export async function withValidationAdmission<T>(userId: string, target: string, work: () => Promise<T>): Promise<T> {
+/** Synchronous alias reservation; does not consume an additional validation RPM token. */
+export function reserveValidationFlight(userId: string, target: string): () => void {
   const key = JSON.stringify([userId, target])
   if (validationFlights.has(key)) throw new RequestError(429, 'rate_limited', 30)
-  checkRate(`ai-console:validation:${userId}`, VALIDATION_RPM_LIMIT)
   validationFlights.add(key)
-  try { return await work() } finally { validationFlights.delete(key) }
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    validationFlights.delete(key)
+  }
+}
+
+/** Covers the entire mutation plus probe, so rejection cannot leave a changed key. */
+export async function withValidationAdmission<T>(userId: string, target: string, work: () => Promise<T>): Promise<T> {
+  const release = reserveValidationFlight(userId, target)
+  try {
+    checkRate(`ai-console:validation:${userId}`, VALIDATION_RPM_LIMIT)
+    return await work()
+  } finally { release() }
 }
 
 export function json(body: unknown, status = 200) {

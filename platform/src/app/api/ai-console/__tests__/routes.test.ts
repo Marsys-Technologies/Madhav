@@ -23,6 +23,7 @@ import * as validation from '../connections/[id]/validate/route'
 import * as configurations from '../configurations/route'
 import * as configuration from '../configurations/[id]/route'
 import * as defaults from '../default/route'
+import * as guards from '../_shared'
 
 const id = '11111111-1111-4111-8111-111111111111'
 const configId = '22222222-2222-4222-8222-222222222222'
@@ -260,6 +261,57 @@ describe('mutation and validation admission', () => {
       expect((await validation.POST(validTest(), context())).status).toBe(200)
       expect(mocks.validate).toHaveBeenCalledWith('other', id, expect.anything())
     } finally { release({ state: 'validated', modelCount: 1 }); await first }
+  })
+
+  it.each(['success', 'error'])('reserves the observable new connection ID until automatic validation ends with %s', async outcome => {
+    let release!: () => void
+    let entered!: () => void
+    const started = new Promise<void>(resolve => { entered = resolve })
+    mocks.validate.mockImplementationOnce(() => {
+      entered()
+      return new Promise((resolve, reject) => { release = () => outcome === 'success'
+        ? resolve({ state: 'validated', modelCount: 1 }) : reject(new AiConsoleError('AI_EXECUTION_FAILED')) })
+    })
+    const creating = connections.POST(validCreate())
+    await started
+    try {
+      expect((await (await connections.GET()).json()).connections[0].id).toBe(id)
+      mocks.encrypt.mockClear()
+      mocks.createConnection.mockClear()
+      await expect429(await validation.POST(validTest(), context()))
+      await expect429(await connection.PATCH(validReplace(), context()))
+      expect(mocks.encrypt).not.toHaveBeenCalled()
+      expect(mocks.createConnection).not.toHaveBeenCalled()
+      expect(mocks.replaceConnectionCredential).not.toHaveBeenCalled()
+      expect(mocks.validate).toHaveBeenCalledTimes(1)
+    } finally { release() }
+    expect((await creating).status).toBe(outcome === 'success' ? 201 : 500)
+    expect((await validation.POST(validTest(), context())).status).toBe(200)
+    // The additional ID reservation consumes no second RPM token.
+    expect((await connection.PATCH(validReplace(), context())).status).toBe(200)
+  })
+
+  it('additional reservations consume no RPM and release idempotently without releasing a later owner', () => {
+    fill('ai-console:validation:owner', 3)
+    const releaseFirst = guards.reserveValidationFlight('owner', id)
+    releaseFirst()
+    const releaseSecond = guards.reserveValidationFlight('owner', id)
+    try {
+      releaseFirst()
+      expect(() => guards.reserveValidationFlight('owner', id)).toThrow()
+    } finally { releaseSecond() }
+    const releaseThird = guards.reserveValidationFlight('owner', id)
+    releaseThird()
+  })
+
+  it('fails safely without probing if the newly persisted ID unexpectedly already has a flight', async () => {
+    const release = guards.reserveValidationFlight('owner', id)
+    try {
+      await expect429(await connections.POST(validCreate()))
+      expect(mocks.createConnection).toHaveBeenCalledOnce()
+      expect(mocks.validate).not.toHaveBeenCalled()
+    } finally { release() }
+    expect((await connections.POST(validCreate())).status).toBe(201)
   })
 })
 
