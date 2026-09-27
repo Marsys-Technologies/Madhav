@@ -70,7 +70,7 @@ GATES = [
  # with no measurement behind it). Runtime state comes from ctx.dry_run, never from state='lit' (§N.8).
  # The gate asks whether the rebuild WORKS; making a working rebuild faster or incremental is a tier-4
  # §9 opportunity and never blocks. Fixes go in the asset or the registry, never the frozen orchestrator.
- ("Build","buildability",          "always",      "the orchestrator can dispatch the asset and a triggered rebuild produces the correct result — six static checks plus a dry-run proof"),
+ ("Build","buildability",          "always",      "the orchestrator can dispatch the asset and a triggered rebuild produces the correct result — nine static checks, all read-only (R65: aligned on nine per T4 §4.2; D2 reopen carries the T3 §5.2/changelog half)"),
 ]
 
 # Pick the ONE that fits what the asset actually does. Running three where one applies is theatre;
